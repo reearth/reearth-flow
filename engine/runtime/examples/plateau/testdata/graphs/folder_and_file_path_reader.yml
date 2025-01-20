@@ -55,6 +55,14 @@ nodes:
         - udxDirs
       outputAttribute: fileIndex
 
+  - id: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
+    name: CityCodeExtractor
+    type: action
+    action: PLATEAU4.CityCodeExtractor
+    with:
+      codelistsPathAttribute: dirCodelists
+      cityCodeAttribute: cityCode
+
   - id: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
     name: Router
     type: action
@@ -88,8 +96,13 @@ edges:
     to: f3465c78-59fa-4307-bc02-67c46c2ddd98
     fromPort: default
     toPort: default
-  - id: 80462b53-a06a-4e0b-bed8-07dcda744a55
+  - id: de265ab1-79f8-497e-a559-fb7766e251b6
     from: f3465c78-59fa-4307-bc02-67c46c2ddd98
+    to: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
+    fromPort: default
+    toPort: default
+  - id: 80462b53-a06a-4e0b-bed8-07dcda744a55
+    from: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
     to: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
     fromPort: default
     toPort: default

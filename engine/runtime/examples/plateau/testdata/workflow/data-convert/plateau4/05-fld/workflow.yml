@@ -1,22 +1,22 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
-id: d6a556db-dfac-4ca1-9275-c490ef2d1ad8
-name: "PLATEAU4-DataConvert-02-tran-rwy-trk-squr-wwy"
-entryGraphId: 34bf873b-3364-46b0-8153-efeb9568bb3c
+id: cd93ce74-eff8-479c-abec-f8a1bc24cbda
+name: "PLATEAU4-DataConvert-05-fld-workflow"
+entryGraphId: 6f9f1383-8a50-4a22-b815-5d06a9f9398a
 with:
   cityGmlPath:
   cityCode:
   codelistsPath:
   schemasPath:
   targetPackages:
-    - tran
-    - rwy
-    - trk
-    - squr
-    - wwy
+    - fld
+    - tnm
+    - htd
+    - ifld
+    - rfld
   outputPath:
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
-  - id: 34bf873b-3364-46b0-8153-efeb9568bb3c
+  - id: 6f9f1383-8a50-4a22-b815-5d06a9f9398a
     name: entry_point
     nodes:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
@@ -102,50 +102,18 @@ graphs:
           output: |
             file::join_path(env.get("outputPath"), "maxLod.tsv")
 
-      - id: c32a279d-97be-4584-b282-4d65627b1132
-        name: FeatureLodFilter
-        type: action
-        action: FeatureLodFilter
-        with:
-          filterKey: path
-
-      - id: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        name: FeatureDuplicateFilter
-        type: action
-        action: FeatureDuplicateFilter
-
       - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        name: AttributeMapperByLod0-2
+        name: AttributeFlattener
         type: action
-        action: AttributeMapper
+        action: AttributeFlattener
         with:
-          mappers:
-            - attribute: meshcode
-              expr: |
-                let file = file::extract_filename(env.get("__value")["path"]);
-                file[0..8]
-            - attribute: city_code
-              valueAttribute: cityCode
-            - attribute: city_name
-              valueAttribute: cityName
-            - attribute: feature_type
-              valueAttribute: gmlName
-            - attribute: gml_id
-              valueAttribute: gmlId
-            - attribute: lod
-              valueAttribute: maxLod
+          attributes:
+            - cityGmlAttributes
 
-      - id: 7a17c4f9-dd4d-44b0-936c-50c394272016
-        name: MVTWriter
+      - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+        name: NoopSink
         type: action
-        action: MVTWriter
-        with:
-          layerName: |
-            env.get("__value").feature_type.split(":")[1]
-          minZoom: 8
-          maxZoom: 16
-          output: |
-            file::join_path(env.get("outputPath"), env.get("__value").feature_type.split(":")[0] + "_lod" + env.get("__value").lod)
+        action: NoopSink
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -153,7 +121,7 @@ graphs:
         to: d376f32b-7ce8-4721-8b9e-bfa39d71b860
         fromPort: default
         toPort: default
-      - id: 64196428-ea1b-4177-9d66-28331fad14f8
+      - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
         from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
         to: ded2e272-e05c-4918-86b3-aa9f763da6e6
         fromPort: default
@@ -180,36 +148,11 @@ graphs:
         toPort: default
       - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
-        to: c32a279d-97be-4584-b282-4d65627b1132
-        fromPort: default
-        toPort: default
-      - id: 90f518e2-3ca0-404f-821c-5dffe4e57597
-        from: c32a279d-97be-4584-b282-4d65627b1132
-        to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        fromPort: up_to_lod0
-        toPort: default
-      - id: 83c68df9-a61b-4cad-8f64-ea20186e9db1
-        from: c32a279d-97be-4584-b282-4d65627b1132
-        to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        fromPort: up_to_lod1
-        toPort: default
-      - id: dde1d751-fe3e-4283-8742-ec4a61a41574
-        from: c32a279d-97be-4584-b282-4d65627b1132
-        to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        fromPort: up_to_lod0
-        toPort: default
-      - id: 7303c673-ccf3-4075-9eec-97176ced4b86
-        from: c32a279d-97be-4584-b282-4d65627b1132
-        to: 2ccf7b99-4123-446e-8ff7-049be1c604c7
-        fromPort: up_to_lod2
-        toPort: default
-      - id: 841f1bed-a4d3-4425-a754-4f0dd7461ead
-        from: 2ccf7b99-4123-446e-8ff7-049be1c604c7
         to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         fromPort: default
         toPort: default
-      - id: bef08313-519f-48b5-b74c-6744bbc6bee2
+      - id: e862f11a-88a6-4c1b-a743-ba80253039df
         from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        to: 7a17c4f9-dd4d-44b0-936c-50c394272016
+        to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         fromPort: default
         toPort: default
