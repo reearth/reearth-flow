@@ -7,8 +7,8 @@ use super::{
     aggregator::AttributeAggregatorFactory, bulk_renamer::BulkAttributeRenamerFactory,
     duplicate_filter::AttributeDuplicateFilterFactory,
     file_path_info_extractor::AttributeFilePathInfoExtractorFactory,
-    manager::AttributeManagerFactory, mapper::AttributeMapperFactory,
-    statistics_calculator::StatisticsCalculatorFactory,
+    flattener::AttributeFlattenerFactory, manager::AttributeManagerFactory,
+    mapper::AttributeMapperFactory, statistics_calculator::StatisticsCalculatorFactory,
 };
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -20,6 +20,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<AttributeFilePathInfoExtractorFactory>::default(),
         Box::<BulkAttributeRenamerFactory>::default(),
         Box::<StatisticsCalculatorFactory>::default(),
+        Box::<AttributeFlattenerFactory>::default(),
     ];
     factories
         .into_iter()

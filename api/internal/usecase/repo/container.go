@@ -22,6 +22,7 @@ type Container struct {
 	Parameter   Parameter
 	Project     Project
 	Transaction usecasex.Transaction
+	Trigger     Trigger
 	User        accountrepo.User
 	Workflow    Workflow
 	Workspace   accountrepo.Workspace
@@ -50,6 +51,7 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 		Parameter:   c.Parameter,
 		Project:     c.Project.Filtered(workspace),
 		Transaction: c.Transaction,
+		Trigger:     c.Trigger,
 		User:        c.User,
 		Workspace:   c.Workspace,
 	}
