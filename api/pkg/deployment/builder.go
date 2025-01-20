@@ -70,3 +70,13 @@ func (b *DeploymentBuilder) UpdatedAt(updatedAt time.Time) *DeploymentBuilder {
 	b.d.updatedAt = updatedAt
 	return b
 }
+
+func (b *DeploymentBuilder) HeadID(headID *ID) *DeploymentBuilder {
+	b.d.headId = headID
+	return b
+}
+
+func (b *DeploymentBuilder) IsHead(isHead bool) *DeploymentBuilder {
+	b.d.isHead = isHead
+	return b
+}

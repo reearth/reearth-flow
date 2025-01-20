@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
@@ -57,12 +59,29 @@ func (i *Deployment) FindByProject(ctx context.Context, id id.ProjectID, operato
 	return i.deploymentRepo.FindByProject(ctx, id)
 }
 
-func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentParam, operator *usecase.Operator) (result *deployment.Deployment, err error) {
-	// TODO: uncomment this once operator checks are fixed
-	// if err := i.CanWriteWorkspace(dp.Workspace, operator); err != nil {
-	// 	return nil, err
-	// }
+func (i *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID, version string, operator *usecase.Operator) (*deployment.Deployment, error) {
+	return i.deploymentRepo.FindByVersion(ctx, wsID, projectID, version)
+}
 
+func (i *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID, operator *usecase.Operator) (*deployment.Deployment, error) {
+	return i.deploymentRepo.FindHead(ctx, wsID, projectID)
+}
+
+func (i *Deployment) FindVersions(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID, operator *usecase.Operator) ([]*deployment.Deployment, error) {
+	return i.deploymentRepo.FindVersions(ctx, wsID, projectID)
+}
+
+func incrementVersion(version string) string {
+	if strings.HasPrefix(version, "v") {
+		currentVersion, err := strconv.Atoi(version[1:])
+		if err == nil {
+			return fmt.Sprintf("v%d", currentVersion+1)
+		}
+	}
+	return "v1"
+}
+
+func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentParam, operator *usecase.Operator) (result *deployment.Deployment, err error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -90,11 +109,29 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 	d := deployment.New().
 		NewID().
 		Workspace(dp.Workspace).
-		WorkflowURL(url.String()).
-		Version("v0.1") //version is hardcoded for now @pyshx
+		WorkflowURL(url.String())
 
 	if dp.Project != nil {
 		d = d.Project(dp.Project)
+
+		head, _ := i.deploymentRepo.FindHead(ctx, dp.Workspace, dp.Project)
+
+		d = d.IsHead(true)
+		if head != nil {
+			currentHeadID := head.ID()
+			d = d.HeadID(&currentHeadID)
+			d = d.Version(incrementVersion(head.Version()))
+
+			head.SetIsHead(false)
+			if err := i.deploymentRepo.Save(ctx, head); err != nil {
+				return nil, err
+			}
+		} else {
+			d = d.Version("v1")
+		}
+	} else {
+		d = d.Version("v0")
+		d = d.IsHead(false)
 	}
 
 	if dp.Description != nil {
@@ -131,10 +168,6 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 	if err != nil {
 		return nil, err
 	}
-	// TODO: uncomment this once operator checks are fixed
-	// if err := i.CanWriteWorkspace(d.Workspace(), operator); err != nil {
-	// 	return nil, err
-	// }
 
 	if dp.Workflow != nil {
 		if url, _ := url.Parse(d.WorkflowURL()); url != nil {
@@ -148,13 +181,28 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 			return nil, err
 		}
 		d.SetWorkflowURL(url.String())
+
+		if d.Project() != nil {
+			currentHead, err := i.deploymentRepo.FindHead(ctx, d.Workspace(), d.Project())
+			if err != nil {
+				return nil, err
+			}
+
+			d.SetVersion(incrementVersion(currentHead.Version()))
+			d.SetIsHead(true)
+			if currentHead != nil && currentHead.ID() != d.ID() {
+				d.SetHeadID(currentHead.ID())
+				currentHead.SetIsHead(false)
+				if err := i.deploymentRepo.Save(ctx, currentHead); err != nil {
+					return nil, err
+				}
+			}
+		}
 	}
 
 	if dp.Description != nil {
 		d.SetDescription(*dp.Description)
 	}
-
-	// d.SetVersion() // version is hardcoded for now but will need to be incremented here eventually
 
 	if err := i.deploymentRepo.Save(ctx, d); err != nil {
 		return nil, err
@@ -181,19 +229,22 @@ func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID, o
 	if err != nil {
 		return err
 	}
-	// TODO: uncomment this once operator checks are fixed
-	// if err := i.CanWriteWorkspace(dep.Workspace(), operator); err != nil {
-	// 	return err
-	// }
 
-	if url, _ := url.Parse(dep.WorkflowURL()); url != nil {
-		if err := i.file.RemoveWorkflow(ctx, url); err != nil {
-			return err
-		}
+	versions, err := i.deploymentRepo.FindVersions(ctx, dep.Workspace(), dep.Project())
+	if err != nil {
+		return err
 	}
 
-	if err := i.deploymentRepo.Remove(ctx, deploymentID); err != nil {
-		return err
+	for _, version := range versions {
+		if url, _ := url.Parse(version.WorkflowURL()); url != nil {
+			if err := i.file.RemoveWorkflow(ctx, url); err != nil {
+				return err
+			}
+		}
+
+		if err := i.deploymentRepo.Remove(ctx, version.ID()); err != nil {
+			return err
+		}
 	}
 
 	tx.Commit()

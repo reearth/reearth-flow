@@ -1,0 +1,62 @@
+type Trigger implements Node {
+    id: ID!
+    createdAt: DateTime!
+    updatedAt: DateTime!
+    lastTriggered: DateTime
+    workspaceId: ID!
+    workspace: Workspace
+    deployment: Deployment!
+    deploymentId: ID!
+    eventSource: EventSourceType!
+    authToken: String
+    timeInterval: TimeInterval
+}
+
+# Enums
+
+enum EventSourceType {
+    TIME_DRIVEN
+    API_DRIVEN
+}
+
+enum TimeInterval {
+    EVERY_DAY
+    EVERY_HOUR
+    EVERY_MONTH
+    EVERY_WEEK
+}
+
+# InputType
+
+input TimeDriverInput {
+    interval: TimeInterval!
+}
+
+input APIDriverInput {
+    token: String!
+}
+
+input CreateTriggerInput {
+    workspaceId: ID!
+    deploymentId: ID!
+    timeDriverInput: TimeDriverInput
+    apiDriverInput: APIDriverInput
+}
+
+input UpdateTriggerInput {
+    triggerId: ID!
+    timeDriverInput: TimeDriverInput
+    apiDriverInput: APIDriverInput
+}
+
+# Query and Mutation
+
+extend type Query {
+    triggers(workspaceId: ID!): [Trigger!]!
+}
+
+extend type Mutation {
+    createTrigger(input: CreateTriggerInput!): Trigger!
+    updateTrigger(input: UpdateTriggerInput!): Trigger!
+    deleteTrigger(triggerId: ID!): Boolean!
+}
