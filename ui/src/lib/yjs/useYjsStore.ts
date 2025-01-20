@@ -78,6 +78,7 @@ export default ({
   const {
     currentYWorkflow,
     handleWorkflowAdd,
+    handleWorkflowAddFromSelection,
     handleWorkflowUpdate,
     handleWorkflowsRemove,
     handleWorkflowRename,
@@ -186,6 +187,7 @@ export default ({
     handleWorkflowOpen,
     handleWorkflowClose,
     handleWorkflowAdd,
+    handleWorkflowAddFromSelection,
     handleWorkflowUpdate,
     handleNodesUpdate,
     handleNodeParamsUpdate,

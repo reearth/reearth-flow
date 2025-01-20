@@ -11,7 +11,6 @@ import { cancellableDebounce } from "@flow/utils";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useNodeLocker from "./useNodeLocker";
-// import { useSubworkflowCreation } from "./useSubworkflowCreation";
 
 export default ({
   yWorkflows,
@@ -44,6 +43,7 @@ export default ({
     handleWorkflowOpen,
     handleWorkflowClose,
     handleWorkflowAdd,
+    handleWorkflowAddFromSelection,
     handleWorkflowUpdate,
     handleNodesUpdate,
     handleNodeParamsUpdate,
@@ -181,7 +181,7 @@ export default ({
     },
     {
       keyBinding: { key: "s", commandKey: false },
-      callback: () => handleWorkflowAdd(undefined, nodes, edges),
+      callback: () => handleWorkflowAddFromSelection(nodes, edges),
     },
   ]);
 
