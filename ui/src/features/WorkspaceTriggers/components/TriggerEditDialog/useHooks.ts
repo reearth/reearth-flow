@@ -22,18 +22,14 @@ export default ({
     TimeInterval | undefined
   >(selectedTrigger.timeInterval || undefined);
 
-  const handleEventSourceChange = useCallback(
-    (eventSource: EventSourceType) => {
-      setUpdatedEventSource(eventSource);
-      if (eventSource === "API_DRIVEN") {
-        setUpdatedTimeInterval(undefined);
-      }
-      if (eventSource === "TIME_DRIVEN") {
-        setUpdatedAuthToken("");
-      }
-    },
-    [],
-  );
+  const handleEventSourceChange = (eventSource: EventSourceType) => {
+    setUpdatedEventSource(eventSource);
+    if (eventSource === "TIME_DRIVEN") {
+      setUpdatedTimeInterval(selectedTrigger.timeInterval || "EVERY_DAY");
+    } else {
+      setUpdatedTimeInterval(undefined);
+    }
+  };
 
   const handleAuthTokenChange = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {

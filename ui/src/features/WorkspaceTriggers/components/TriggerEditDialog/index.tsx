@@ -92,18 +92,12 @@ const TriggerEditDialog: React.FC<Props> = ({
                 {t("Select Time Interval")}
               </Label>
               <Select
-                value={updatedTimeInterval || ""}
+                value={updatedTimeInterval || "EVERY_DAY"}
                 onValueChange={(value) =>
                   handleTimeIntervalChange(value.toString() as TimeInterval)
                 }>
                 <SelectTrigger>
-                  <SelectValue
-                    placeholder={
-                      updatedTimeInterval
-                        ? timeIntervals[updatedTimeInterval]
-                        : timeIntervals.EVERY_DAY
-                    }
-                  />
+                  <SelectValue placeholder={timeIntervals.EVERY_DAY} />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(timeIntervals).map(([value, label]) => (

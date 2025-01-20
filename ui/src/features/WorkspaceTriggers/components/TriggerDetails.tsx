@@ -43,11 +43,30 @@ const TriggerDetails: React.FC<Props> = ({
               name: t("Project Name"),
               value: selectedTrigger.deployment.projectName,
             },
+
             {
               id: "eventSource",
               name: t("Event Source"),
               value: selectedTrigger.eventSource,
             },
+            ...(selectedTrigger.eventSource === "API_DRIVEN"
+              ? [
+                  {
+                    id: "authToken",
+                    name: t("Auth Token"),
+                    value: selectedTrigger.authToken,
+                  },
+                ]
+              : []),
+            ...(selectedTrigger.eventSource === "TIME_DRIVEN"
+              ? [
+                  {
+                    id: "timeInterval",
+                    name: t("Time Interval"),
+                    value: selectedTrigger.timeInterval,
+                  },
+                ]
+              : []),
             {
               id: "lastTriggered",
               name: t("Last Triggered"),

@@ -68,6 +68,11 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
 
   const handleSelectEventSource = (eventSource: string) => {
     setEventSource(eventSource);
+    if (eventSource === "TIME_DRIVEN") {
+      setTimeInterval("EVERY_DAY");
+    } else {
+      setTimeInterval(undefined);
+    }
   };
 
   const eventSources: Record<string, string> = {
@@ -173,7 +178,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                 {t("Select Time Interval")}
               </Label>
               <Select
-                value={timeInterval}
+                value={timeInterval || "EVERY_DAY"} // Set default value here as well
                 onValueChange={handleSelectTimeInterval}>
                 <SelectTrigger>
                   <SelectValue placeholder={timeIntervals.EVERY_DAY} />
@@ -200,6 +205,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
             disabled={
               (eventSource === "API_DRIVEN" && !authToken) ||
               (eventSource === "TIME_DRIVEN" && !timeInterval) ||
+              !eventSource ||
               !deploymentId
             }>
             {t("Add New Trigger")}

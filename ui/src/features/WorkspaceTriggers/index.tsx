@@ -47,10 +47,6 @@ const TriggerManager: React.FC = () => {
       header: t("Event Source"),
     },
     {
-      accessorKey: "lastTriggered",
-      header: t("Last Triggered"),
-    },
-    {
       accessorKey: "updatedAt",
       header: t("Updated At"),
     },
