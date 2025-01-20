@@ -31,12 +31,12 @@ func getUser(ctx context.Context) *user.User {
 	return adapter.User(ctx)
 }
 
-// Temporarily returns nil because the operator is defined in reearthx interface.
-// This implementation is a temporary workaround and will be removed in the future.
-// TODO: After fixing the reearthx module (removing operator implementation and modifying interfaces),
-// this function and all its usages should be deleted.
+// Temporarily returns an empty operator instead of nil to avoid nil pointer dereference.
+// This is a temporary workaround since the operator is defined in reearthx interface.
+// TODO: After migrating to Cerbos for permission management and modifying reearthx interfaces,
+// this function and all its usages will be deleted.
 func getAcOperator() *accountusecase.Operator {
-	return nil
+	return &accountusecase.Operator{}
 }
 
 func usecases(ctx context.Context) *interfaces.Container {
