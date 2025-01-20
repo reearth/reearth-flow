@@ -58,15 +58,15 @@ func (i *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deplo
 	return i.deploymentRepo.FindByProject(ctx, id)
 }
 
-func (i *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID, version string, operator *usecase.Operator) (*deployment.Deployment, error) {
+func (i *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID, version string) (*deployment.Deployment, error) {
 	return i.deploymentRepo.FindByVersion(ctx, wsID, projectID, version)
 }
 
-func (i *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID, operator *usecase.Operator) (*deployment.Deployment, error) {
+func (i *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID) (*deployment.Deployment, error) {
 	return i.deploymentRepo.FindHead(ctx, wsID, projectID)
 }
 
-func (i *Deployment) FindVersions(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID, operator *usecase.Operator) ([]*deployment.Deployment, error) {
+func (i *Deployment) FindVersions(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID) ([]*deployment.Deployment, error) {
 	return i.deploymentRepo.FindVersions(ctx, wsID, projectID)
 }
 
