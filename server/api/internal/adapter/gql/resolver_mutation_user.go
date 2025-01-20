@@ -43,7 +43,7 @@ func (r *mutationResolver) UpdateMe(ctx context.Context, input gqlmodel.UpdateMe
 		Lang:                 input.Lang,
 		Password:             input.Password,
 		PasswordConfirmation: input.PasswordConfirmation,
-	}, getAcOperator())
+	}, getAcOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -52,7 +52,7 @@ func (r *mutationResolver) UpdateMe(ctx context.Context, input gqlmodel.UpdateMe
 }
 
 func (r *mutationResolver) RemoveMyAuth(ctx context.Context, input gqlmodel.RemoveMyAuthInput) (*gqlmodel.UpdateMePayload, error) {
-	res, err := usecases(ctx).User.RemoveMyAuth(ctx, input.Auth, getAcOperator())
+	res, err := usecases(ctx).User.RemoveMyAuth(ctx, input.Auth, getAcOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ func (r *mutationResolver) DeleteMe(ctx context.Context, input gqlmodel.DeleteMe
 		return nil, err
 	}
 
-	if err := usecases(ctx).User.DeleteMe(ctx, uid, getAcOperator()); err != nil {
+	if err := usecases(ctx).User.DeleteMe(ctx, uid, getAcOperator(ctx)); err != nil {
 		return nil, err
 	}
 

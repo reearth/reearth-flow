@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
+	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/account/accountusecase"
@@ -31,12 +32,15 @@ func getUser(ctx context.Context) *user.User {
 	return adapter.User(ctx)
 }
 
-// Temporarily returns an empty operator instead of nil to avoid nil pointer dereference.
-// This is a temporary workaround since the operator is defined in reearthx interface.
-// TODO: After migrating to Cerbos for permission management and modifying reearthx interfaces,
-// this function and all its usages will be deleted.
-func getAcOperator() *accountusecase.Operator {
-	return &accountusecase.Operator{}
+func getOperator(ctx context.Context) *usecase.Operator {
+	return adapter.Operator(ctx)
+}
+
+func getAcOperator(ctx context.Context) *accountusecase.Operator {
+	if op := getOperator(ctx); op != nil {
+		return op.AcOperator
+	}
+	return nil
 }
 
 func usecases(ctx context.Context) *interfaces.Container {
