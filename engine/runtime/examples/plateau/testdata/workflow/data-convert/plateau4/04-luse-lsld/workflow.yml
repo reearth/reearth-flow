@@ -59,7 +59,7 @@ graphs:
           aggregateAttributes:
           - newAttribute: file
             attributeValue: |
-              file::extract_filename(env.get("__value").cityGmlPath)
+              file::extract_filename(env.get("__value")["path"])
           - newAttribute: type
             attributeValue: |
               env.get("__feature_type")
