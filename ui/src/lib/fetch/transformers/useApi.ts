@@ -106,7 +106,7 @@ const combinedFilter = (
       return false;
     }
     if (action.type === "reader") {
-      return !filter.nodes?.some((node) => node.type === "reader");
+      return !hasReader(filter.nodes);
     }
   } else {
     if (action.type === "reader" || action.type === "writer") {
@@ -165,4 +165,8 @@ const filterBySearchTerm = (action: Action, searchTerm?: string) => {
         : String(value);
     return strValue.toLowerCase().includes(searchTerm?.toLowerCase() ?? "");
   });
+};
+
+export const hasReader = (nodes: Node[] | undefined) => {
+  return nodes?.some((node) => node.type === "reader");
 };
