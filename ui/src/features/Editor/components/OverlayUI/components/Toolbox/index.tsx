@@ -13,7 +13,7 @@ import { createRoot } from "react-dom/client";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { type NodeType, Node } from "@flow/types";
+import type { NodeType, Node } from "@flow/types";
 
 type ToolboxItem<T> = {
   id: T;

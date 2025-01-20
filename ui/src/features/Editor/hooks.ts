@@ -3,7 +3,7 @@ import { MouseEvent, useCallback, useState } from "react";
 import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useIsMainWorkflow, useShortcuts } from "@flow/hooks";
+import { useHasReader, useIsMainWorkflow, useShortcuts } from "@flow/hooks";
 import { useYjsStore } from "@flow/lib/yjs";
 import { YWorkflow } from "@flow/lib/yjs/utils";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
@@ -61,6 +61,8 @@ export default ({
     handleCurrentWorkflowIdChange,
   });
 
+  const hasReader = useHasReader(nodes);
+
   const { lockedNodeIds, locallyLockedNode, handleNodeLocking } = useNodeLocker(
     { selectedNodes, handleNodesUpdate },
   );
@@ -109,12 +111,8 @@ export default ({
       position?: XYPosition,
       nodeType?: ActionNodeType,
       isMainWorkflow?: boolean,
-      nodes?: Node[],
     ) => {
-      if (
-        (!isMainWorkflow && nodeType === "reader") ||
-        nodes?.some((node) => node.type === "reader")
-      ) {
+      if ((!isMainWorkflow && nodeType === "reader") || hasReader) {
         return;
       }
 
@@ -126,7 +124,7 @@ export default ({
         !position || !nodeType ? undefined : { position, nodeType },
       );
     },
-    [],
+    [hasReader],
   );
 
   const handleNodePickerClose = useCallback(
@@ -170,7 +168,7 @@ export default ({
     {
       keyBinding: { key: "r", commandKey: false },
       callback: () =>
-        handleNodePickerOpen({ x: 0, y: 0 }, "reader", isMainWorkflow, nodes),
+        handleNodePickerOpen({ x: 0, y: 0 }, "reader", isMainWorkflow),
     },
     {
       keyBinding: { key: "t", commandKey: false },
@@ -228,5 +226,6 @@ export default ({
     canUndo,
     canRedo,
     isMainWorkflow,
+    hasReader,
   };
 };

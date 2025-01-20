@@ -51,6 +51,7 @@ export default function Editor({
     handleWorkflowUndo,
     handleWorkflowRename,
     isMainWorkflow,
+    hasReader,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
   return (
     <div className="flex h-screen flex-col">
@@ -61,6 +62,7 @@ export default function Editor({
           onOpen={handlePanelOpen}
           onNodesChange={handleNodesUpdate}
           isMainWorkflow={isMainWorkflow}
+          hasReader={hasReader}
         />
         <div className="flex flex-1 flex-col">
           <OverlayUI

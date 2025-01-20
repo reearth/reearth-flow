@@ -30,12 +30,14 @@ type Props = {
   nodes: Node[];
   onNodesChange: (nodes: Node[]) => void;
   isMainWorkflow: boolean;
+  hasReader: boolean;
 };
 
 const ActionsList: React.FC<Props> = ({
   nodes,
   onNodesChange,
   isMainWorkflow,
+  hasReader,
 }) => {
   const t = useT();
   const { useGetActions, useGetActionsSegregated } = useAction(i18n.language);
@@ -171,11 +173,7 @@ const ActionsList: React.FC<Props> = ({
                   Object.entries(actions)
                     .filter(([key]) => {
                       if (isMainWorkflow) {
-                        if (
-                          key === "reader" &&
-                          nodes.some((node) => node.type === "reader")
-                        )
-                          return false;
+                        if (key === "reader" && hasReader) return false;
                         return true;
                       } else {
                         return key !== "reader" && key !== "writer";
