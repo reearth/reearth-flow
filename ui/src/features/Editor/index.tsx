@@ -2,8 +2,6 @@ import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import { YWorkflow } from "@flow/lib/yjs/utils";
 
-import { useIsMainWorkflow } from "../KeyboardShortcutDialog/useHooks";
-
 import {
   BottomPanel,
   Canvas,
@@ -52,8 +50,9 @@ export default function Editor({
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
+    isMainWorkflow,
+    hasReader,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
-  const isMainWorkflow = useIsMainWorkflow(currentWorkflowId);
   return (
     <div className="flex h-screen flex-col">
       <div className="relative flex flex-1">
@@ -63,6 +62,7 @@ export default function Editor({
           onOpen={handlePanelOpen}
           onNodesChange={handleNodesUpdate}
           isMainWorkflow={isMainWorkflow}
+          hasReader={hasReader}
         />
         <div className="flex flex-1 flex-col">
           <OverlayUI
@@ -76,7 +76,8 @@ export default function Editor({
             onWorkflowRedo={handleWorkflowRedo}
             onNodesChange={handleNodesUpdate}
             onNodePickerClose={handleNodePickerClose}
-            isMainWorkflow={isMainWorkflow}>
+            isMainWorkflow={isMainWorkflow}
+            hasReader={hasReader}>
             <Canvas
               nodes={nodes}
               edges={edges}

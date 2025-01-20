@@ -3,7 +3,7 @@ import { MouseEvent, useCallback, useState } from "react";
 import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useShortcuts } from "@flow/hooks";
+import { useHasReader, useIsMainWorkflow, useShortcuts } from "@flow/hooks";
 import { useYjsStore } from "@flow/lib/yjs";
 import { YWorkflow } from "@flow/lib/yjs/utils";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
@@ -32,6 +32,7 @@ export default ({
     },
     [setCurrentWorkflowId],
   );
+  const isMainWorkflow = useIsMainWorkflow(currentWorkflowId);
 
   const {
     nodes,
@@ -59,6 +60,8 @@ export default ({
     undoTrackerActionWrapper,
     handleCurrentWorkflowIdChange,
   });
+
+  const hasReader = useHasReader(nodes);
 
   const { lockedNodeIds, locallyLockedNode, handleNodeLocking } = useNodeLocker(
     { selectedNodes, handleNodesUpdate },
@@ -104,14 +107,25 @@ export default ({
   >(undefined);
 
   const handleNodePickerOpen = useCallback(
-    (position?: XYPosition, nodeType?: ActionNodeType) => {
+    (
+      position?: XYPosition,
+      nodeType?: ActionNodeType,
+      isMainWorkflow?: boolean,
+    ) => {
+      if ((isMainWorkflow === false && nodeType === "reader") || hasReader) {
+        return;
+      }
+
+      if (isMainWorkflow === false && nodeType === "writer") {
+        return;
+      }
+
       setNodePickerOpen(
         !position || !nodeType ? undefined : { position, nodeType },
       );
     },
-    [],
+    [hasReader],
   );
-
   const handleNodePickerClose = useCallback(
     () => setNodePickerOpen(undefined),
     [],
@@ -152,7 +166,8 @@ export default ({
   useShortcuts([
     {
       keyBinding: { key: "r", commandKey: false },
-      callback: () => handleNodePickerOpen({ x: 0, y: 0 }, "reader"),
+      callback: () =>
+        handleNodePickerOpen({ x: 0, y: 0 }, "reader", isMainWorkflow),
     },
     {
       keyBinding: { key: "t", commandKey: false },
@@ -160,7 +175,8 @@ export default ({
     },
     {
       keyBinding: { key: "w", commandKey: false },
-      callback: () => handleNodePickerOpen({ x: 0, y: 0 }, "writer"),
+      callback: () =>
+        handleNodePickerOpen({ x: 0, y: 0 }, "writer", isMainWorkflow),
     },
     {
       keyBinding: { key: "c", commandKey: true },
@@ -208,5 +224,7 @@ export default ({
     handleWorkflowRename,
     canUndo,
     canRedo,
+    isMainWorkflow,
+    hasReader,
   };
 };
