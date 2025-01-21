@@ -1,75 +1,64 @@
-[workspace]
-members = ["app", "crates/*"]
-
-resolver = "2"
-
-[workspace.package]
-authors = ["Re:Earth Flow Contributors"]
+[package]
+name = "websocket"
+version = "0.8.0"
 edition = "2021"
-exclude = ["benches/", "test-data/", "testdata/"]
-homepage = "https://github.com/reearth/reearth-flow/websocket"
-license = "MIT OR Apache-2.0"
-repository = "https://github.com/reearth/reearth-flow/websocket"
-rust-version = "1.81"
-version = "0.1.0"
+description = "Yrs synchronization protocol using Warp web sockets"
+license = "MIT"
+authors = ["Bartosz Sypytkowski <b.sypytkowski@gmail.com>"]
+keywords = ["crdt", "yrs", "warp"]
+homepage = "https://github.com/y-crdt/yrs-warp/"
+repository = "https://github.com/y-crdt/yrs-warp/"
+readme = "./README.md"
 
-[profile.dev]
-opt-level = 0
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
-# Like release, but with full debug symbols and with stack unwinds. Useful for e.g. `perf`.
-[profile.debug-fast]
-debug = true
-incremental = false
-inherits = "release"
-panic = "unwind"
-strip = "none"
-
-# Optimized release profile
-[profile.release]
-codegen-units = 1
-lto = "fat"
-opt-level = 3
-panic = "abort"
-strip = true
-
-[workspace.dependencies]
-flow-websocket-infra = { path = "crates/infra", default-features = false }
-flow-websocket-services = { path = "crates/services", default-features = false }
-
-async-trait = "0.1.80"
-axum = { version = "0.7.9", features = ["ws"] }
-axum-extra = { version = "0.9.6", features = ["typed-header"] }
-axum-macros = "0.4"
-base64 = "0.22.1"
-bb8 = "0.8"
-bb8-redis = "0.17.0"
-chrono = { version = "0.4", features = ["serde"] }
-dotenv = "0.15.0"
-envy = "0.4.2"
-futures = "0.3.4"
-futures-util = "0.3"
-google-cloud-storage = "0.22.1"
-lru = "0.12.4"
-mockall = { version = "0.13.0" }
-rand = "0.8"
-redis = { version = "0.27.5", features = ["aio", "tokio-comp"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0.133", features = ["arbitrary_precision"] }
-serde_yaml = "0.9.0"
-sha2 = "0.10.8"
-tempfile = "3.12.0"
-thiserror = "2.0.3"
-tokio = { version = "1.38.0", features = ["full", "time"] }
-tokio-tungstenite = "0.20"
-tower = { version = "0.5.1", features = ["timeout"] }
-tower-http = { version = "0.6.1", features = ["fs", "trace"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-url = "2.4"
-uuid = { version = "1.8.0", features = [
-  "fast-rng",
-  "macro-diagnostics",
-  "serde",
-  "v4",
+[dependencies]
+yrs = { version = "0.21.3", features = ["sync"] }
+axum = { version = "0.7", features = ["ws"] }
+tower-http = { version = "0.6.2", features = ["fs"] }
+futures-util = { version = "0.3", features = ["sink"] }
+tokio = { version = "1.36", features = [
+    "rt",
+    "net",
+    "sync",
+    "macros",
+    "rt-multi-thread",
 ] }
-yrs = "0.21.3"
+serde = { version = "1.0", features = ["derive", "rc"] }
+serde_json = "1.0"
+tracing = { version = "0.1", features = ["log"] }
+tokio-util = { version = "0.7.10", features = ["codec"] }
+# lmdb-rs = { version = "0.7" }
+thiserror = "2.0.6"
+smallvec = { version = "1.10", features = [
+    "write",
+    "union",
+    "const_generics",
+    "const_new",
+] }
+anyhow = "1.0"
+tempdir = "0.3.7"
+google-cloud-storage = "0.23.0"
+async-trait = "0.1.83"
+futures = { version = "0.3", features = ["executor"] }
+redis = { version = "0.27.5", features = ["tokio-comp", "connection-manager"] }
+rusqlite = { version = "0.29.0", features = ["bundled"] }
+r2d2 = "0.8"
+r2d2_sqlite = "0.22"
+tracing-subscriber = "0.3"
+hex = "0.4"
+config = "0.14.1"
+dashmap = "6.1.0"
+
+[dev-dependencies]
+tokio-tungstenite = "0.24.0"
+tokio = { version = "1", features = ["full"] }
+bytes = "1.6"
+mockall = "0.13.1"
+criterion = { version = "0.5.1", features = ["async"] }
+url = "2.2.2"
+
+[[bench]]
+name = "server_bench"
+harness = false
+
