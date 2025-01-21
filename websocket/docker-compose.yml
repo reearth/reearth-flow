@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "8000:8000"
     environment:
       - REDIS_URL=redis://redis:6379
       - GCS_ENDPOINT=http://fake-gcs:4443
