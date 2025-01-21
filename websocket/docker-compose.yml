@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+  websocket:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - GCS_ENDPOINT=http://fake-gcs:4443
+    depends_on:
+      - redis
+      - fake-gcs
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  fake-gcs:
+    image: fsouza/fake-gcs-server
+    ports:
+      - "4443:4443"
+    command: ["-scheme", "http"]
+    volumes:
+      - gcs-data:/data
+
+volumes:
+  gcs-data:
