@@ -93,7 +93,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 
 	// authenticated routes
 	apiPrivate := api.Group("", privateCache)
-	apiPrivate.Use(authMiddleware, attachUserMiddleware(cfg))
+	apiPrivate.Use(authMiddleware, attachOpMiddleware(cfg))
 	apiPrivate.Any("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev, origins))
 	apiPrivate.POST("/signup", Signup())
 
