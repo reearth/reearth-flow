@@ -1,3 +1,4 @@
+import { Bug } from "@phosphor-icons/react";
 import {
   CaretSortIcon,
   ClockIcon,
@@ -5,6 +6,7 @@ import {
   ExclamationTriangleIcon,
   InfoCircledIcon,
   UpdateIcon,
+  MagnifyingGlassIcon,
 } from "@radix-ui/react-icons";
 import {
   ColumnDef,
@@ -28,7 +30,7 @@ import {
   Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { LogStatus } from "@flow/types";
+import { LogLevel } from "@flow/types";
 
 import { Table, TableBody, TableCell, TableRow } from "../Table";
 
@@ -77,11 +79,11 @@ const Logs = <TData, TValue>({
     },
   });
 
-  const handleStatusChange = (status: LogStatus) => {
+  const handleStatusChange = (status: LogLevel) => {
     if (getStatusValue === status) {
       setColumnFilters([]);
     } else {
-      setColumnFilters([{ id: "status", value: status }]);
+      setColumnFilters([{ id: "logLevel", value: status }]);
     }
   };
 
@@ -98,10 +100,10 @@ const Logs = <TData, TValue>({
   };
 
   const getStatusValue = useMemo(() => {
-    const value = columnFilters.find((id) => id.id === "status");
+    const value = columnFilters.find((id) => id.id === "logLevel");
     return value?.value;
   }, [columnFilters]);
-
+  console.log("data", data);
   return (
     <div className="w-full overflow-auto rounded">
       <div className="flex h-16 w-full items-center justify-between p-2">
@@ -110,22 +112,31 @@ const Logs = <TData, TValue>({
           <Button
             variant={getStatusValue === "ERROR" ? "default" : "outline"}
             size="icon"
-            onClick={() => handleStatusChange("ERROR")}
-          >
+            onClick={() => handleStatusChange(LogLevel.ERROR)}>
             <CrossCircledIcon />
           </Button>
           <Button
-            variant={getStatusValue === "WARNING" ? "default" : "outline"}
+            variant={getStatusValue === "WARN" ? "default" : "outline"}
             size="icon"
-            onClick={() => handleStatusChange("WARNING")}
-          >
+            onClick={() => handleStatusChange(LogLevel.WARN)}>
             <ExclamationTriangleIcon />
+          </Button>
+          <Button
+            variant={getStatusValue === "DEBUG" ? "default" : "outline"}
+            size="icon"
+            onClick={() => handleStatusChange(LogLevel.DEBUG)}>
+            <Bug />
+          </Button>
+          <Button
+            variant={getStatusValue === "TRACE" ? "default" : "outline"}
+            size="icon"
+            onClick={() => handleStatusChange(LogLevel.TRACE)}>
+            <MagnifyingGlassIcon />
           </Button>
           <Button
             variant={getStatusValue === "INFO" ? "default" : "outline"}
             size="icon"
-            onClick={() => handleStatusChange("INFO")}
-          >
+            onClick={() => handleStatusChange(LogLevel.INFO)}>
             <InfoCircledIcon />
           </Button>
           <Button
@@ -135,8 +146,7 @@ const Logs = <TData, TValue>({
                 : "outline"
             }
             size="icon"
-            onClick={handleTimeStampColumnVisibility}
-          >
+            onClick={handleTimeStampColumnVisibility}>
             <ClockIcon />
           </Button>
           <Button variant="ghost" size="icon">
@@ -175,8 +185,7 @@ const Logs = <TData, TValue>({
                       checked={column.getIsVisible()}
                       onCheckedChange={(value) =>
                         column.toggleVisibility(!!value)
-                      }
-                    >
+                      }>
                       {column.id}
                     </DropdownMenuCheckboxItem>
                   );
@@ -192,8 +201,7 @@ const Logs = <TData, TValue>({
             table.getRowModel().rows.map((row) => (
               <TableRow
                 key={row.id}
-                data-state={row.getIsSelected() && "selected"}
-              >
+                data-state={row.getIsSelected() && "selected"}>
                 {row.getVisibleCells().map((cell) => (
                   <TableCell className="cursor-pointer" key={cell.id}>
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
