@@ -7,8 +7,8 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearthx/account/accountdomain/user"
-	"github.com/reearth/reearthx/account/accountusecase"
 
+	"github.com/reearth/reearthx/account/accountusecase"
 	"github.com/samber/lo"
 )
 
