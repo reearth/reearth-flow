@@ -47,6 +47,11 @@ export const useTrigger = () => {
       });
       return { trigger: data?.trigger, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Trigger Could Not Be Created"),
+        description: t("There was an error when creating the trigger."),
+        variant: "destructive",
+      });
       return { trigger: undefined, ...rest };
     }
   };
@@ -71,6 +76,11 @@ export const useTrigger = () => {
       });
       return { trigger, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Trigger Could Not Be Updated"),
+        description: t("There was an error when updating the trigger."),
+        variant: "destructive",
+      });
       return { trigger: undefined, ...rest };
     }
   };
