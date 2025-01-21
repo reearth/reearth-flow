@@ -28,6 +28,7 @@ import {
   DropdownMenuTrigger,
   Button,
   Input,
+  IconButton,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { LogLevel } from "@flow/types";
@@ -109,52 +110,62 @@ const Logs = <TData, TValue>({
       <div className="flex h-16 w-full items-center justify-between p-2">
         <h2 className="text-lg">{t("Log")}</h2>
         <div className="flex gap-2">
-          <Button
+          <IconButton
+            size="icon"
             variant={getStatusValue === "ERROR" ? "default" : "outline"}
+            tooltipText={t("Error")}
+            onClick={() => handleStatusChange(LogLevel.ERROR)}
+            icon={<CrossCircledIcon />}
+          />
+          <IconButton
             size="icon"
-            onClick={() => handleStatusChange(LogLevel.ERROR)}>
-            <CrossCircledIcon />
-          </Button>
-          <Button
             variant={getStatusValue === "WARN" ? "default" : "outline"}
+            tooltipText={t("Warning")}
+            onClick={() => handleStatusChange(LogLevel.WARN)}
+            icon={<ExclamationTriangleIcon />}
+          />
+          <IconButton
             size="icon"
-            onClick={() => handleStatusChange(LogLevel.WARN)}>
-            <ExclamationTriangleIcon />
-          </Button>
-          <Button
             variant={getStatusValue === "DEBUG" ? "default" : "outline"}
+            tooltipText={t("Debug")}
+            onClick={() => handleStatusChange(LogLevel.DEBUG)}
+            icon={<Bug />}
+          />
+          <IconButton
             size="icon"
-            onClick={() => handleStatusChange(LogLevel.DEBUG)}>
-            <Bug />
-          </Button>
-          <Button
             variant={getStatusValue === "TRACE" ? "default" : "outline"}
+            tooltipText={t("Trace")}
+            onClick={() => handleStatusChange(LogLevel.TRACE)}
+            icon={<MagnifyingGlassIcon />}
+          />
+          <IconButton
             size="icon"
-            onClick={() => handleStatusChange(LogLevel.TRACE)}>
-            <MagnifyingGlassIcon />
-          </Button>
-          <Button
             variant={getStatusValue === "INFO" ? "default" : "outline"}
+            tooltipText={t("Info")}
+            onClick={() => handleStatusChange(LogLevel.INFO)}
+            icon={<InfoCircledIcon />}
+          />
+          <IconButton
             size="icon"
-            onClick={() => handleStatusChange(LogLevel.INFO)}>
-            <InfoCircledIcon />
-          </Button>
-          <Button
             variant={
               table.getColumn("timestamp")?.getIsVisible()
                 ? "default"
                 : "outline"
             }
-            size="icon"
-            onClick={handleTimeStampColumnVisibility}>
-            <ClockIcon />
-          </Button>
+            tooltipText={t("Include Timestamp")}
+            onClick={handleTimeStampColumnVisibility}
+            icon={<ClockIcon />}
+          />
           <Button variant="ghost" size="icon">
             <CaretSortIcon />
           </Button>
-          <Button variant="ghost" size="icon" onClick={handleResetTable}>
-            <UpdateIcon />
-          </Button>
+          <IconButton
+            size="icon"
+            variant="ghost"
+            tooltipText={t("Reset Logs")}
+            onClick={handleResetTable}
+            icon={<UpdateIcon />}
+          />
         </div>
       </div>
       <div className="flex items-center gap-4 p-4">
