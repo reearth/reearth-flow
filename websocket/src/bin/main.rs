@@ -7,7 +7,18 @@ use axum::{
     routing::get,
     Router,
 };
+
+#[cfg(feature = "auth")]
+use axum::body::Bytes;
+#[cfg(feature = "auth")]
+use axum::extract::Query;
+#[cfg(feature = "auth")]
+use axum::response::IntoResponse;
+#[cfg(feature = "auth")]
+use serde::Deserialize;
 use std::sync::Arc;
+#[cfg(feature = "auth")]
+use websocket::auth::AuthService;
 use websocket::broadcast_pool::BroadcastPool;
 use websocket::{broadcast::BroadcastGroup, conf::Config};
 //use websocket::storage::sqlite::SqliteStore;
@@ -22,6 +33,14 @@ use websocket::ws::WarpConn;
 //const REDIS_URL: &str = "redis://127.0.0.1:6379";
 //const REDIS_TTL: u64 = 3600; // Cache TTL in seconds
 const BUCKET_NAME: &str = "yrs-dev";
+const PORT: &str = "8000";
+
+#[cfg(feature = "auth")]
+#[derive(Debug, Deserialize)]
+struct AuthQuery {
+    #[serde(default)]
+    token: String,
+}
 
 async fn ensure_bucket(client: &Client) -> Result<(), anyhow::Error> {
     let bucket = BucketCreationConfig {
@@ -39,6 +58,64 @@ async fn ensure_bucket(client: &Client) -> Result<(), anyhow::Error> {
         Err(e) if e.to_string().contains("already exists") => Ok(()),
         Err(e) => Err(e.into()),
     }
+}
+
+#[cfg(feature = "auth")]
+#[derive(Clone)]
+struct AppState {
+    pool: Arc<BroadcastPool>,
+    auth: Arc<AuthService>,
+}
+
+#[cfg(not(feature = "auth"))]
+#[derive(Clone)]
+struct AppState {
+    pool: Arc<BroadcastPool>,
+}
+
+async fn ws_handler(
+    ws: WebSocketUpgrade,
+    Path(doc_id): Path<String>,
+    #[cfg(feature = "auth")] Query(auth): Query<AuthQuery>,
+    axum::extract::State(state): axum::extract::State<AppState>,
+) -> Response {
+    let doc_id = if doc_id.ends_with(":main") {
+        doc_id[..doc_id.len() - 5].to_string()
+    } else {
+        doc_id.clone()
+    };
+
+    #[cfg(feature = "auth")]
+    {
+        match state.auth.verify_token(&auth.token, &doc_id).await {
+            Ok(true) => (),
+            Ok(false) => {
+                tracing::warn!("Authentication failed for doc_id: {}", doc_id);
+                return Bytes::from("Unauthorized").into_response();
+            }
+            Err(e) => {
+                tracing::error!("Authentication error: {}", e);
+                return Bytes::from("Internal Server Error").into_response();
+            }
+        }
+    }
+
+    let bcast = state.pool.get_or_create_group(&doc_id).await;
+    ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, state.pool.clone()))
+}
+
+async fn handle_socket(
+    socket: WebSocket,
+    bcast: Arc<BroadcastGroup>,
+    doc_id: String,
+    pool: Arc<BroadcastPool>,
+) {
+    bcast.increment_connections();
+    let conn = WarpConn::new(bcast, socket);
+    if let Err(e) = conn.await {
+        tracing::error!("WebSocket connection error: {}", e);
+    }
+    pool.remove_connection(&doc_id).await;
 }
 
 #[tokio::main]
@@ -75,41 +152,26 @@ async fn main() {
     let pool = Arc::new(BroadcastPool::new(store, config.redis));
     tracing::info!("Broadcast pool initialized");
 
-    let app = Router::new()
-        .route("/:doc_id", get(ws_handler))
-        .with_state(pool);
-
-    tracing::info!("Starting server on 0.0.0.0:8080");
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
-}
-
-async fn ws_handler(
-    ws: WebSocketUpgrade,
-    Path(doc_id): Path<String>,
-    axum::extract::State(pool): axum::extract::State<Arc<BroadcastPool>>,
-) -> Response {
-    let doc_id = if doc_id.ends_with(":main") {
-        doc_id[..doc_id.len() - 5].to_string()
-    } else {
-        doc_id
+    let state = {
+        #[cfg(feature = "auth")]
+        {
+            let auth = Arc::new(AuthService::new(config.auth));
+            tracing::info!("Auth service initialized");
+            AppState { pool, auth }
+        }
+        #[cfg(not(feature = "auth"))]
+        {
+            AppState { pool }
+        }
     };
 
-    let bcast = pool.get_or_create_group(&doc_id).await;
+    let app = Router::new()
+        .route("/:doc_id", get(ws_handler))
+        .with_state(state);
 
-    ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, pool))
-}
-
-async fn handle_socket(
-    socket: WebSocket,
-    bcast: Arc<BroadcastGroup>,
-    doc_id: String,
-    pool: Arc<BroadcastPool>,
-) {
-    bcast.increment_connections();
-    let conn = WarpConn::new(bcast, socket);
-    if let Err(e) = conn.await {
-        tracing::error!("WebSocket connection error: {}", e);
-    }
-    pool.remove_connection(&doc_id).await;
+    tracing::info!("Starting server on 0.0.0.0:{}", PORT);
+    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", PORT))
+        .await
+        .unwrap();
+    axum::serve(listener, app).await.unwrap();
 }

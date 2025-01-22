@@ -4,3 +4,6 @@ redis:
 gcs:
   bucket_name: yrs-dev
   endpoint: http://fake-gcs:4443
+auth:
+  url: http://localhost:8080/auth
+  timeout_ms: 5000
