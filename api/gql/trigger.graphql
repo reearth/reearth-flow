@@ -8,6 +8,7 @@ type Trigger implements Node {
     deployment: Deployment!
     deploymentId: ID!
     eventSource: EventSourceType!
+    description: String 
     authToken: String
     timeInterval: TimeInterval
 }
@@ -39,12 +40,15 @@ input APIDriverInput {
 input CreateTriggerInput {
     workspaceId: ID!
     deploymentId: ID!
+    description: String
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
 }
 
 input UpdateTriggerInput {
     triggerId: ID!
+    description: String
+    deploymentId: ID 
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
 }

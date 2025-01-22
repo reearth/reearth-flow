@@ -64,6 +64,7 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 		NewID().
 		Workspace(param.WorkspaceID).
 		Deployment(param.DeploymentID).
+		Description(param.Description).
 		EventSource(param.EventSource).
 		UpdatedAt(time.Now())
 
@@ -102,6 +103,17 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 	t, err := i.triggerRepo.FindByID(ctx, param.ID)
 	if err != nil {
 		return nil, err
+	}
+
+	if param.DeploymentID != nil {
+		if _, err = i.deploymentRepo.FindByID(ctx, *param.DeploymentID); err != nil {
+			return nil, err
+		}
+		t.SetDeployment(*param.DeploymentID)
+	}
+
+	if param.Description != nil {
+		t.SetDescription(*param.Description)
 	}
 
 	if param.EventSource == "TIME_DRIVEN" {

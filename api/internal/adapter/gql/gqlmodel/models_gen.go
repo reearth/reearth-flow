@@ -84,6 +84,7 @@ type CreateProjectInput struct {
 type CreateTriggerInput struct {
 	WorkspaceID     ID               `json:"workspaceId"`
 	DeploymentID    ID               `json:"deploymentId"`
+	Description     *string          `json:"description,omitempty"`
 	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
 	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
 }
@@ -359,9 +360,13 @@ type Trigger struct {
 	Deployment    *Deployment     `json:"deployment"`
 	DeploymentID  ID              `json:"deploymentId"`
 	EventSource   EventSourceType `json:"eventSource"`
+	Description   *string         `json:"description,omitempty"`
 	AuthToken     *string         `json:"authToken,omitempty"`
 	TimeInterval  *TimeInterval   `json:"timeInterval,omitempty"`
 }
+
+func (Trigger) IsNode()        {}
+func (this Trigger) GetID() ID { return this.ID }
 
 type UpdateDeploymentInput struct {
 	DeploymentID ID              `json:"deploymentId"`
@@ -412,6 +417,8 @@ type UpdateProjectInput struct {
 
 type UpdateTriggerInput struct {
 	TriggerID       ID               `json:"triggerId"`
+	Description     *string          `json:"description,omitempty"`
+	DeploymentID    *ID              `json:"deploymentId,omitempty"`
 	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
 	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
 }

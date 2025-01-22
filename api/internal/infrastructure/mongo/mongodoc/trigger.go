@@ -13,6 +13,7 @@ type TriggerDocument struct {
 	ID            string    `bson:"id"`
 	WorkspaceID   string    `bson:"workspaceid"`
 	DeploymentID  string    `bson:"deploymentid"`
+	Description   string    `bson:"description"`
 	EventSource   string    `bson:"eventsource"`
 	TimeInterval  string    `bson:"timeinterval,omitempty"`
 	AuthToken     string    `bson:"authtoken,omitempty"`
@@ -39,6 +40,11 @@ func NewTrigger(t *trigger.Trigger) (*TriggerDocument, string) {
 		EventSource:  string(t.EventSource()),
 		CreatedAt:    t.CreatedAt(),
 		UpdatedAt:    t.UpdatedAt(),
+	}
+
+	if description := t.Description(); description != nil {
+		at := string(*description)
+		doc.Description = at
 	}
 
 	if timeInterval := t.TimeInterval(); timeInterval != nil {
@@ -81,6 +87,7 @@ func (d *TriggerDocument) Model() (*trigger.Trigger, error) {
 		ID(tid).
 		Workspace(wid).
 		Deployment(did).
+		Description(d.Description).
 		EventSource(eventSource).
 		TimeInterval(timeInterval).
 		AuthToken(d.AuthToken).

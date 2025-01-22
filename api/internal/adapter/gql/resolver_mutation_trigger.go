@@ -24,6 +24,8 @@ func (r *mutationResolver) CreateTrigger(ctx context.Context, input gqlmodel.Cre
 	param.WorkspaceID = wsid
 	param.DeploymentID = did
 
+	param.Description = *input.Description
+
 	if input.TimeDriverInput != nil {
 		param.EventSource = "TIME_DRIVEN"
 		param.TimeInterval = gqlmodel.FromTimeInterval(input.TimeDriverInput.Interval)
@@ -46,8 +48,16 @@ func (r *mutationResolver) UpdateTrigger(ctx context.Context, input gqlmodel.Upd
 		return nil, err
 	}
 
+	did, err := gqlmodel.ToID[id.Deployment](*input.DeploymentID)
+	if err != nil {
+		return nil, err
+	}
+
 	var param interfaces.UpdateTriggerParam
 	param.ID = tid
+	param.DeploymentID = &did
+
+	param.Description = input.Description
 
 	if input.TimeDriverInput != nil {
 		param.EventSource = "TIME_DRIVEN"
