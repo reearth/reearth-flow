@@ -7,9 +7,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
-    environment:
-      - REDIS_URL=redis://redis:6379
-      - GCS_ENDPOINT=http://fake-gcs:4443
+    env_file:
+      - .env
     depends_on:
       - redis
       - fake-gcs
