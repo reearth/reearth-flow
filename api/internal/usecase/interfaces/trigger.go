@@ -13,6 +13,7 @@ import (
 type CreateTriggerParam struct {
 	WorkspaceID  accountdomain.WorkspaceID
 	DeploymentID id.DeploymentID
+	Description  string
 	EventSource  trigger.EventSourceType
 	TimeInterval trigger.TimeInterval
 	AuthToken    string
@@ -20,6 +21,8 @@ type CreateTriggerParam struct {
 
 type UpdateTriggerParam struct {
 	ID           id.TriggerID
+	DeploymentID *id.DeploymentID
+	Description  *string
 	EventSource  trigger.EventSourceType
 	TimeInterval trigger.TimeInterval
 	AuthToken    string

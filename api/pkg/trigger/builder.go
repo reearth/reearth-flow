@@ -63,6 +63,11 @@ func (b *Builder) Deployment(deployment DeploymentID) *Builder {
 	return b
 }
 
+func (b *Builder) Description(description string) *Builder {
+	b.t.description = description
+	return b
+}
+
 func (b *Builder) EventSource(eventSource EventSourceType) *Builder {
 	b.t.eventSource = eventSource
 	return b

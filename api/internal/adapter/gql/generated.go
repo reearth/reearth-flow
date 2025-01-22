@@ -303,6 +303,7 @@ type ComplexityRoot struct {
 		CreatedAt     func(childComplexity int) int
 		Deployment    func(childComplexity int) int
 		DeploymentID  func(childComplexity int) int
+		Description   func(childComplexity int) int
 		EventSource   func(childComplexity int) int
 		ID            func(childComplexity int) int
 		LastTriggered func(childComplexity int) int
@@ -1684,6 +1685,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Trigger.DeploymentID(childComplexity), true
 
+	case "Trigger.description":
+		if e.complexity.Trigger.Description == nil {
+			break
+		}
+
+		return e.complexity.Trigger.Description(childComplexity), true
+
 	case "Trigger.eventSource":
 		if e.complexity.Trigger.EventSource == nil {
 			break
@@ -2438,7 +2446,7 @@ extend type Mutation {
   runProject(input: RunProjectInput!): RunProjectPayload
 }
 `, BuiltIn: false},
-	{Name: "../../../gql/trigger.graphql", Input: `type Trigger {
+	{Name: "../../../gql/trigger.graphql", Input: `type Trigger implements Node {
     id: ID!
     createdAt: DateTime!
     updatedAt: DateTime!
@@ -2448,6 +2456,7 @@ extend type Mutation {
     deployment: Deployment!
     deploymentId: ID!
     eventSource: EventSourceType!
+    description: String 
     authToken: String
     timeInterval: TimeInterval
 }
@@ -2479,26 +2488,29 @@ input APIDriverInput {
 input CreateTriggerInput {
     workspaceId: ID!
     deploymentId: ID!
+    description: String
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
 }
 
 input UpdateTriggerInput {
     triggerId: ID!
+    description: String
+    deploymentId: ID 
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
 }
 
 # Query and Mutation
 
+extend type Query {
+    triggers(workspaceId: ID!): [Trigger!]!
+}
+
 extend type Mutation {
     createTrigger(input: CreateTriggerInput!): Trigger!
     updateTrigger(input: UpdateTriggerInput!): Trigger!
     deleteTrigger(triggerId: ID!): Boolean!
-}
-
-extend type Query {
-    triggers(workspaceId: ID!): [Trigger!]!
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/user.graphql", Input: `type User implements Node {
@@ -7588,6 +7600,8 @@ func (ec *executionContext) fieldContext_Mutation_createTrigger(ctx context.Cont
 				return ec.fieldContext_Trigger_deploymentId(ctx, field)
 			case "eventSource":
 				return ec.fieldContext_Trigger_eventSource(ctx, field)
+			case "description":
+				return ec.fieldContext_Trigger_description(ctx, field)
 			case "authToken":
 				return ec.fieldContext_Trigger_authToken(ctx, field)
 			case "timeInterval":
@@ -7667,6 +7681,8 @@ func (ec *executionContext) fieldContext_Mutation_updateTrigger(ctx context.Cont
 				return ec.fieldContext_Trigger_deploymentId(ctx, field)
 			case "eventSource":
 				return ec.fieldContext_Trigger_eventSource(ctx, field)
+			case "description":
+				return ec.fieldContext_Trigger_description(ctx, field)
 			case "authToken":
 				return ec.fieldContext_Trigger_authToken(ctx, field)
 			case "timeInterval":
@@ -10684,6 +10700,8 @@ func (ec *executionContext) fieldContext_Query_triggers(ctx context.Context, fie
 				return ec.fieldContext_Trigger_deploymentId(ctx, field)
 			case "eventSource":
 				return ec.fieldContext_Trigger_eventSource(ctx, field)
+			case "description":
+				return ec.fieldContext_Trigger_description(ctx, field)
 			case "authToken":
 				return ec.fieldContext_Trigger_authToken(ctx, field)
 			case "timeInterval":
@@ -11752,6 +11770,47 @@ func (ec *executionContext) fieldContext_Trigger_eventSource(_ context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type EventSourceType does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Trigger_description(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Trigger) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Trigger_description(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Trigger_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Trigger",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -14621,7 +14680,7 @@ func (ec *executionContext) unmarshalInputCreateTriggerInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceId", "deploymentId", "timeDriverInput", "apiDriverInput"}
+	fieldsInOrder := [...]string{"workspaceId", "deploymentId", "description", "timeDriverInput", "apiDriverInput"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -14642,6 +14701,13 @@ func (ec *executionContext) unmarshalInputCreateTriggerInput(ctx context.Context
 				return it, err
 			}
 			it.DeploymentID = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
 		case "timeDriverInput":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timeDriverInput"))
 			data, err := ec.unmarshalOTimeDriverInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTimeDriverInput(ctx, v)
@@ -15507,7 +15573,7 @@ func (ec *executionContext) unmarshalInputUpdateTriggerInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"triggerId", "timeDriverInput", "apiDriverInput"}
+	fieldsInOrder := [...]string{"triggerId", "description", "deploymentId", "timeDriverInput", "apiDriverInput"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -15521,6 +15587,20 @@ func (ec *executionContext) unmarshalInputUpdateTriggerInput(ctx context.Context
 				return it, err
 			}
 			it.TriggerID = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "deploymentId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deploymentId"))
+			data, err := ec.unmarshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeploymentID = data
 		case "timeDriverInput":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timeDriverInput"))
 			data, err := ec.unmarshalOTimeDriverInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTimeDriverInput(ctx, v)
@@ -15611,6 +15691,13 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._Project(ctx, sel, obj)
+	case gqlmodel.Trigger:
+		return ec._Trigger(ctx, sel, &obj)
+	case *gqlmodel.Trigger:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._Trigger(ctx, sel, obj)
 	case gqlmodel.User:
 		return ec._User(ctx, sel, &obj)
 	case *gqlmodel.User:
@@ -17872,7 +17959,7 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 	}
 }
 
-var triggerImplementors = []string{"Trigger"}
+var triggerImplementors = []string{"Trigger", "Node"}
 
 func (ec *executionContext) _Trigger(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.Trigger) graphql.Marshaler {
 	fields := graphql.CollectFields(ec.OperationContext, sel, triggerImplementors)
@@ -17984,6 +18071,8 @@ func (ec *executionContext) _Trigger(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "description":
+			out.Values[i] = ec._Trigger_description(ctx, field, obj)
 		case "authToken":
 			out.Values[i] = ec._Trigger_authToken(ctx, field, obj)
 		case "timeInterval":
