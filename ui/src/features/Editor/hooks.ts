@@ -112,7 +112,10 @@ export default ({
       nodeType?: ActionNodeType,
       isMainWorkflow?: boolean,
     ) => {
-      if ((isMainWorkflow === false && nodeType === "reader") || hasReader) {
+      if (isMainWorkflow === false && nodeType === "reader" && !hasReader) {
+        return;
+      }
+      if (isMainWorkflow && nodeType === "reader" && hasReader) {
         return;
       }
 

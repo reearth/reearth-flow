@@ -237,6 +237,8 @@
   "Trigger Could Not Be Updated": "",
   "There was an error when updating the trigger.": "",
   "Trigger has been successfully deleted from your workspace.": "",
+  "Trigger Could Not Be Deleted": "",
+  "There was an error when deleting the trigger.": "",
   "Workspace Created": "",
   "Workspace has been successfully created.": "",
   "Workspace Deleted": "",
