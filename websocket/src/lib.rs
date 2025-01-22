@@ -1,6 +1,9 @@
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
+#[cfg(feature = "auth")]
+pub mod auth;
+
 pub mod broadcast;
 pub mod broadcast_pool;
 pub mod conf;
