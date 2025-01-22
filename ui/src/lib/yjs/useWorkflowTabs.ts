@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import type { Workflow } from "@flow/types";
+import type { Edge, Node } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 export default ({
@@ -10,7 +10,7 @@ export default ({
   handleCurrentWorkflowIdChange,
 }: {
   currentWorkflowId: string;
-  rawWorkflows: Workflow[];
+  rawWorkflows: Record<string, string | Node[] | Edge[]>[];
   handleCurrentWorkflowIdChange: (id?: string) => void;
 }) => {
   // This works as a semi-static base for the rest of the state in this hook.
