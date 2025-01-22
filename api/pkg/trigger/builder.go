@@ -64,7 +64,7 @@ func (b *Builder) Deployment(deployment DeploymentID) *Builder {
 }
 
 func (b *Builder) Description(description string) *Builder {
-	b.t.description = description
+	b.t.description = &description
 	return b
 }
 
