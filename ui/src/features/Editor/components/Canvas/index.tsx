@@ -37,6 +37,7 @@ type Props = {
   onNodeDoubleClick: (e: MouseEvent, node: Node) => void;
   onNodeHover: (e: MouseEvent, node?: Node) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
+  onEdgeSelection: (idsToAdd: string[], idsToDelete: string[]) => void;
   onEdgesUpdate: (newEdges: Edge[]) => void;
   onEdgeHover: (e: MouseEvent, edge?: Edge) => void;
 };
@@ -50,6 +51,7 @@ const Canvas: React.FC<Props> = ({
   onNodeSelection,
   onNodeDoubleClick,
   onNodeHover,
+  onEdgeSelection,
   onEdgeHover,
   onEdgesUpdate,
   onNodePickerOpen,
@@ -69,6 +71,7 @@ const Canvas: React.FC<Props> = ({
     onWorkflowAdd,
     onNodeSelection,
     onNodesUpdate,
+    onEdgeSelection,
     onEdgesUpdate,
     onNodePickerOpen,
   });

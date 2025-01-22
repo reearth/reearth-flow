@@ -48,6 +48,7 @@ export default function Editor({
     handleNodeDoubleClick,
     handleNodePickerOpen,
     handleNodePickerClose,
+    handleEdgeSelection,
     handleEdgesUpdate,
     handleEdgeHover,
     handleWorkflowRedo,
@@ -86,6 +87,7 @@ export default function Editor({
               onNodesUpdate={handleNodesUpdate}
               onNodeHover={handleNodeHover}
               onNodeSelection={handleNodeSelection}
+              onEdgeSelection={handleEdgeSelection}
               onNodeDoubleClick={handleNodeDoubleClick}
               onNodePickerOpen={handleNodePickerOpen}
               onEdgesUpdate={handleEdgesUpdate}

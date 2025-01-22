@@ -122,9 +122,36 @@ export default ({
     });
   }, [rawNodes, selectedNodeIds]);
 
-  const edges = useY(
-    currentYWorkflow.get("edges") ?? new Y.Array<Edge>(),
+  const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
+
+  const handleEdgeSelection = useCallback(
+    (idsToAdd: string[], idsToDelete: string[]) => {
+      setSelectedEdgeIds((seids) => {
+        const newIds: string[] = seids.filter(
+          (id) => !idsToDelete.includes(id),
+        );
+        newIds.push(...idsToAdd);
+        return newIds;
+      });
+    },
+    [],
+  );
+
+  const rawEdges = useY(
+    currentYWorkflow.get("edges") ?? new Y.Array(),
   ) as Edge[];
+
+  const edges = useMemo(() => {
+    return rawEdges.map((edge) => {
+      return {
+        ...edge,
+        selected:
+          selectedEdgeIds.includes(edge.id) && !edge.selected
+            ? true
+            : (edge.selected ?? false),
+      };
+    });
+  }, [rawEdges, selectedEdgeIds]);
 
   const handleWorkflowDeployment = useCallback(
     async (deploymentId?: string, description?: string) => {
@@ -208,6 +235,7 @@ export default ({
     handleNodeSelection,
     handleNodesUpdate,
     handleNodeParamsUpdate,
+    handleEdgeSelection,
     handleEdgesUpdate,
     handleWorkflowUndo,
     handleWorkflowRedo,

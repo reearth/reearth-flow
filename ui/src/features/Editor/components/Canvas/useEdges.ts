@@ -12,13 +12,30 @@ import { Edge } from "@flow/types";
 
 type Props = {
   edges: Edge[];
+  onEdgeSelection: (idsToAdd: string[], idsToDelete: string[]) => void;
   onEdgeChange: (edges: Edge[]) => void;
 };
 
-export default ({ edges, onEdgeChange }: Props) => {
+export default ({ edges, onEdgeSelection, onEdgeChange }: Props) => {
   const handleEdgesChange: OnEdgesChange = useCallback(
-    (changes) => onEdgeChange(applyEdgeChanges(changes, edges)),
-    [edges, onEdgeChange],
+    (changes) => {
+      const idsToAdd: string[] = [];
+      const idsToDelete: string[] = [];
+
+      changes.forEach((c) => {
+        if (c.type === "select") {
+          if (c.selected) {
+            idsToAdd.push(c.id);
+          } else if (c.selected === false) {
+            idsToDelete.push(c.id);
+          }
+        }
+      });
+      onEdgeSelection(idsToAdd, idsToDelete);
+
+      onEdgeChange(applyEdgeChanges(changes, edges));
+    },
+    [edges, onEdgeSelection, onEdgeChange],
   );
 
   const handleConnect: OnConnect = useCallback(

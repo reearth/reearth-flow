@@ -11,6 +11,7 @@ type Props = {
   onWorkflowAdd: (position?: XYPosition) => void;
   onNodeSelection: (idsToAdd: string[], idsToDelete: string[]) => void;
   onNodesUpdate: (newNodes: Node[]) => void;
+  onEdgeSelection: (idsToAdd: string[], idsToDelete: string[]) => void;
   onEdgesUpdate: (newEdges: Edge[]) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
@@ -38,6 +39,7 @@ export default ({
   onWorkflowAdd,
   onNodesUpdate,
   onNodeSelection,
+  onEdgeSelection,
   onEdgesUpdate,
   onNodePickerOpen,
 }: Props) => {
@@ -59,6 +61,7 @@ export default ({
 
   const { handleEdgesChange, handleConnect, handleReconnect } = useEdges({
     edges,
+    onEdgeSelection,
     onEdgeChange: onEdgesUpdate,
   });
 
