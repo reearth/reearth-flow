@@ -4,10 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import type { Node } from "@flow/types";
 
 export default ({
-  selectedNodes,
+  selectedNodeIds,
   handleNodesUpdate,
 }: {
-  selectedNodes: Node[];
+  selectedNodeIds: string[];
   handleNodesUpdate: (newNodes: Node[]) => void;
 }) => {
   const { getNodes } = useReactFlow<Node>();
@@ -21,10 +21,10 @@ export default ({
   );
 
   useEffect(() => {
-    if (!selectedNodes.length) {
+    if (!selectedNodeIds.length) {
       setLocallyLockedNode(undefined);
     }
-  }, [selectedNodes]);
+  }, [selectedNodeIds]);
 
   // consider making a node context and supplying vars and functions like this to the nodes that way
   const handleNodeLocking = useCallback(

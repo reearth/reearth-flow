@@ -1,10 +1,10 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useY } from "react-yjs";
 import * as Y from "yjs";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useCurrentProject } from "@flow/stores";
-import type { Edge, Node, Workflow } from "@flow/types";
+import type { Edge, Node } from "@flow/types";
 import { isDefined } from "@flow/utils";
 import { jsonToFormData } from "@flow/utils/jsonToFormData";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflowJson/engineReadyWorkflow";
@@ -17,6 +17,7 @@ import useYEdge from "./useYEdge";
 import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
 import { YWorkflow } from "./utils";
+import { convertYWorkflowToWorkflow } from "./utils/convertToWorkflow";
 
 export default ({
   currentWorkflowId,
@@ -61,7 +62,7 @@ export default ({
     return stackLength > 0;
   }, [undoManager?.redoStack?.length]);
 
-  const rawWorkflows = useY(yWorkflows);
+  const rawWorkflows = yWorkflows.map((w) => convertYWorkflowToWorkflow(w));
 
   const {
     openWorkflows,
@@ -90,14 +91,40 @@ export default ({
     setOpenWorkflowIds,
   });
 
-  const nodes = useY(
-    currentYWorkflow.get("nodes") ?? new Y.Array<Node>(),
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+
+  const handleNodeSelection = useCallback(
+    (idsToAdd: string[], idsToDelete: string[]) => {
+      setSelectedNodeIds((snids) => {
+        const newIds: string[] = snids.filter(
+          (id) => !idsToDelete.includes(id),
+        );
+        newIds.push(...idsToAdd);
+        return newIds;
+      });
+    },
+    [],
+  );
+
+  const rawNodes = useY(
+    currentYWorkflow.get("nodes") ?? new Y.Array(),
   ) as Node[];
+
+  const nodes = useMemo(() => {
+    return rawNodes.map((node) => {
+      return {
+        ...node,
+        selected:
+          selectedNodeIds.includes(node.id) && !node.selected
+            ? true
+            : (node.selected ?? false),
+      };
+    });
+  }, [rawNodes, selectedNodeIds]);
+
   const edges = useY(
     currentYWorkflow.get("edges") ?? new Y.Array<Edge>(),
   ) as Edge[];
-
-  const selectedNodes = useMemo(() => nodes.filter((n) => n.selected), [nodes]);
 
   const handleWorkflowDeployment = useCallback(
     async (deploymentId?: string, description?: string) => {
@@ -111,16 +138,7 @@ export default ({
 
       const engineReadyWorkflow = createEngineReadyWorkflow(
         projectName,
-        rawWorkflows
-          .map((w): Workflow | undefined => {
-            if (!w || w.nodes.length < 1) return undefined;
-            const id = w.id as string;
-            const name = w.name as string;
-            const n = w.nodes as Node[];
-            const e = w.edges as Edge[];
-            return { id, name, nodes: n, edges: e };
-          })
-          .filter(isDefined),
+        yWorkflows.map((w) => convertYWorkflowToWorkflow(w)).filter(isDefined),
       );
 
       if (!engineReadyWorkflow) {
@@ -152,7 +170,7 @@ export default ({
       }
     },
     [
-      rawWorkflows,
+      yWorkflows,
       currentProject,
       t,
       createDeployment,
@@ -178,7 +196,7 @@ export default ({
     nodes,
     edges,
     openWorkflows,
-    selectedNodes,
+    selectedNodeIds,
     canUndo,
     canRedo,
     rawWorkflows,
@@ -187,6 +205,7 @@ export default ({
     handleWorkflowClose,
     handleWorkflowAdd,
     handleWorkflowUpdate,
+    handleNodeSelection,
     handleNodesUpdate,
     handleNodeParamsUpdate,
     handleEdgesUpdate,

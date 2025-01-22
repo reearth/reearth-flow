@@ -20,6 +20,7 @@ import useDnd from "./useDnd";
 type Props = {
   nodes: Node[];
   edges: Edge[];
+  onNodeSelection: (idsToAdd: string[], idsToDelete: string[]) => void;
   onWorkflowAdd: (position?: XYPosition) => void;
   onNodesChange: (newNodes: Node[]) => void;
   onEdgesChange: (edges: Edge[]) => void;
@@ -29,6 +30,7 @@ type Props = {
 export default ({
   nodes,
   edges,
+  onNodeSelection,
   onWorkflowAdd,
   onNodesChange,
   onEdgesChange,
@@ -46,16 +48,32 @@ export default ({
   });
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(
-    (changes) => onNodesChange(applyNodeChanges<Node>(changes, nodes)),
-    [nodes, onNodesChange],
+    (changes) => {
+      const idsToAdd: string[] = [];
+      const idsToDelete: string[] = [];
+
+      changes.forEach((c) => {
+        if (c.type === "select") {
+          if (c.selected) {
+            idsToAdd.push(c.id);
+          } else if (c.selected === false) {
+            idsToDelete.push(c.id);
+          }
+        }
+      });
+      onNodeSelection(idsToAdd, idsToDelete);
+
+      onNodesChange(applyNodeChanges<Node>(changes, nodes));
+    },
+    [nodes, onNodesChange, onNodeSelection],
   );
 
   const handleNodesDelete = useCallback(
     (deleted: Node[]) => {
-      // If a deleted node is connected between two remaining nodes,
-      // on removal, create a new connection between those nodes
       onEdgesChange(
         deleted.reduce((acc, node) => {
+          // If a deleted node is connected between two remaining nodes,
+          // on removal, create a new connection between those nodes
           const incomers = getIncomers(node, nodes, edges);
           const outgoers = getOutgoers(node, nodes, edges);
           const connectedEdges = getConnectedEdges([node], edges);

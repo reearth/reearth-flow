@@ -37,21 +37,22 @@ export default ({
     nodes,
     edges,
     openWorkflows,
-    selectedNodes,
+    selectedNodeIds,
+    canUndo,
+    canRedo,
     rawWorkflows,
     handleWorkflowDeployment,
     handleWorkflowOpen,
     handleWorkflowClose,
     handleWorkflowAdd,
     handleWorkflowUpdate,
+    handleNodeSelection,
     handleNodesUpdate,
     handleNodeParamsUpdate,
     handleEdgesUpdate,
     handleWorkflowUndo,
     handleWorkflowRedo,
     handleWorkflowRename,
-    canUndo,
-    canRedo,
   } = useYjsStore({
     currentWorkflowId,
     yWorkflows,
@@ -61,7 +62,7 @@ export default ({
   });
 
   const { lockedNodeIds, locallyLockedNode, handleNodeLocking } = useNodeLocker(
-    { selectedNodes, handleNodesUpdate },
+    { selectedNodeIds, handleNodesUpdate },
   );
 
   const handleNodeDoubleClick = useCallback(
@@ -198,6 +199,7 @@ export default ({
     handleNodesUpdate,
     handleNodeParamsUpdate,
     handleNodeHover,
+    handleNodeSelection,
     handleNodeDoubleClick,
     handleNodePickerOpen,
     handleNodePickerClose,

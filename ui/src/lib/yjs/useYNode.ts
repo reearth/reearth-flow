@@ -4,7 +4,7 @@ import * as Y from "yjs";
 
 import type { Edge, Node } from "@flow/types";
 
-import { YNodesArray, YWorkflow } from "./utils";
+import { createYNode, YNodesArray, YWorkflow } from "./utils";
 
 export default ({
   currentYWorkflow,
@@ -31,6 +31,8 @@ export default ({
 
         if (isEqual(n, newNodes)) return;
 
+        const newYNodes = newNodes.map((node) => createYNode(node));
+
         // If one or more nodes are deleted
         if (newNodes.length < n.length) {
           const idsToBeRemoved = nodesToBeRemoved(n, newNodes).map((n) => n.id);
@@ -48,7 +50,7 @@ export default ({
         }
 
         yNodes.delete(0, n.length);
-        yNodes.insert(0, newNodes);
+        yNodes.insert(0, newYNodes);
       }),
     [currentYWorkflow, undoTrackerActionWrapper, handleWorkflowsRemove],
   );
@@ -83,8 +85,10 @@ export default ({
         const newNodes = [...nodes];
         newNodes.splice(nodeIndex, 1, updatedNode);
 
+        const newYNodes = newNodes.map((node) => createYNode(node));
+
         yNodes.delete(0, nodes.length);
-        yNodes.insert(0, newNodes);
+        yNodes.insert(0, newYNodes);
       });
     },
     [currentYWorkflow, rawWorkflows, yWorkflows, undoTrackerActionWrapper],
@@ -219,8 +223,10 @@ function updateParentYWorkflowNode(
     updatedSubworkflowNode,
   );
 
+  const newParentYNode = newParentNodes.map((node) => createYNode(node));
+
   yParentNodes.delete(0, parentNodes.length);
-  yParentNodes.insert(0, newParentNodes);
+  yParentNodes.insert(0, newParentYNode);
 }
 
 function updateParentYWorkflowEdges(

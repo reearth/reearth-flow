@@ -1,12 +1,79 @@
 import * as Y from "yjs";
 
-import { Edge, Node } from "@flow/types";
+import type { Edge, Node, NodeData } from "@flow/types";
+
+// Define what is not tracked by Yjs but needed for React Flow
+export type NonReactiveFields = {
+  type: string;
+  // selected?: boolean;
+  dragging?: boolean;
+  data: NodeData;
+};
+
+type NonReactiveField = string | boolean | NodeData;
+
+type YNodeValue = Y.Text | Y.Map<unknown> | number | NonReactiveField; // add other possible types
+
+export type YNode = Y.Map<YNodeValue>;
+
+type YEdgeValue = Y.Text;
+
+export type YEdge = Y.Map<YEdgeValue>;
+
+export type YNodesArray = Y.Array<YNode>;
+
+export type YEdgesArray = Y.Array<YEdge>;
 
 export type YWorkflow = Y.Map<Y.Text | YNodesArray | YEdgesArray>;
 
-export type YNodesArray = Y.Array<Node>;
+// First, define a helper to create a Y.Map for a Node
+export const createYNode = (node: Node) => {
+  const yNode = new Y.Map() as YNode;
 
-export type YEdgesArray = Y.Array<Edge>;
+  // Add reactive node properties
+  yNode.set("id", new Y.Text(node.id));
+
+  const yPosition = new Y.Map();
+  yPosition.set("x", node.position.x);
+  yPosition.set("y", node.position.y);
+  yNode.set("position", yPosition);
+
+  const yMeasured = new Y.Map();
+  yMeasured.set("width", node.measured?.width || 0);
+  yMeasured.set("height", node.measured?.height || 0);
+  yNode.set("measured", yMeasured);
+
+  // TODO: figure out how to handle locking
+
+  // All non-reactive properties can be set directly
+  const nonReactiveFields: NonReactiveFields = {
+    type: node.type,
+    // selected: node.selected,
+    dragging: node.dragging,
+    data: { ...node.data },
+  };
+  yNode.set("type", nonReactiveFields.type);
+  // yNode.set("selected", nonReactiveFields.selected || false);
+  yNode.set("dragging", nonReactiveFields.dragging || false);
+  yNode.set("data", nonReactiveFields.data);
+  return yNode;
+};
+
+export const createYEdge = (edge: Edge) => {
+  const yEdge = new Y.Map() as YEdge;
+
+  yEdge.set("id", new Y.Text(edge.id));
+  yEdge.set("source", new Y.Text(edge.source));
+  yEdge.set("target", new Y.Text(edge.target));
+  if (edge.sourceHandle) {
+    yEdge.set("sourceHandle", new Y.Text(edge.sourceHandle));
+  }
+  if (edge.targetHandle) {
+    yEdge.set("targetHandle", new Y.Text(edge.targetHandle));
+  }
+
+  return yEdge;
+};
 
 export const yWorkflowBuilder = (
   id: string,
@@ -14,17 +81,20 @@ export const yWorkflowBuilder = (
   nodes?: Node[],
   edges?: Edge[],
 ) => {
-  const yWorkflow = new Y.Map<Y.Text | YNodesArray | YEdgesArray>();
-
+  const yWorkflow = new Y.Map() as YWorkflow;
   const yId = new Y.Text(id);
   const yName = new Y.Text(name);
-  const yNodes = new Y.Array<Node>();
+  const yNodes = new Y.Array() as YNodesArray;
+  const yEdges = new Y.Array() as YEdgesArray;
+
   if (nodes) {
-    yNodes.insert(0, nodes);
+    const yNodeMaps = nodes.map((node) => createYNode(node));
+    yNodes.insert(0, yNodeMaps);
   }
-  const yEdges = new Y.Array<Edge>();
+
   if (edges) {
-    yEdges.insert(0, edges);
+    const yEdgeMaps = edges?.map((edge) => createYEdge(edge));
+    yEdges.insert(0, yEdgeMaps);
   }
 
   yWorkflow.set("id", yId);

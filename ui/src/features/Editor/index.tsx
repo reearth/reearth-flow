@@ -41,6 +41,7 @@ export default function Editor({
     handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowChange,
+    handleNodeSelection,
     handleNodesUpdate,
     handleNodeParamsUpdate,
     handleNodeHover,
@@ -84,6 +85,7 @@ export default function Editor({
               onWorkflowAdd={handleWorkflowAdd}
               onNodesUpdate={handleNodesUpdate}
               onNodeHover={handleNodeHover}
+              onNodeSelection={handleNodeSelection}
               onNodeDoubleClick={handleNodeDoubleClick}
               onNodePickerOpen={handleNodePickerOpen}
               onEdgesUpdate={handleEdgesUpdate}

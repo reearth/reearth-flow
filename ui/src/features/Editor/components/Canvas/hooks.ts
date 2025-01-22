@@ -9,6 +9,7 @@ type Props = {
   nodes: Node[];
   edges: Edge[];
   onWorkflowAdd: (position?: XYPosition) => void;
+  onNodeSelection: (idsToAdd: string[], idsToDelete: string[]) => void;
   onNodesUpdate: (newNodes: Node[]) => void;
   onEdgesUpdate: (newEdges: Edge[]) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
@@ -36,6 +37,7 @@ export default ({
   edges,
   onWorkflowAdd,
   onNodesUpdate,
+  onNodeSelection,
   onEdgesUpdate,
   onNodePickerOpen,
 }: Props) => {
@@ -49,6 +51,7 @@ export default ({
     nodes,
     edges,
     onWorkflowAdd,
+    onNodeSelection,
     onNodesChange: onNodesUpdate,
     onEdgesChange: onEdgesUpdate,
     onNodePickerOpen,

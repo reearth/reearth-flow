@@ -3,7 +3,7 @@ import { useCallback } from "react";
 
 import type { Edge } from "@flow/types";
 
-import { YEdgesArray, YWorkflow } from "./utils";
+import { createYEdge, YEdgesArray, YWorkflow } from "./utils";
 
 export default ({
   currentYWorkflow,
@@ -24,8 +24,10 @@ export default ({
 
         if (isEqual(e, newEdges)) return;
 
+        const newYEdges = newEdges.map((edge) => createYEdge(edge));
+
         yEdges.delete(0, e.length);
-        yEdges.insert(0, newEdges);
+        yEdges.insert(0, newYEdges);
       }),
     [currentYWorkflow, undoTrackerActionWrapper],
   );

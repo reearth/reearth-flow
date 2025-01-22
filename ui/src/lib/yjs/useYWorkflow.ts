@@ -1,5 +1,6 @@
 import { XYPosition } from "@xyflow/react";
 import { Dispatch, SetStateAction, useCallback } from "react";
+import * as Y from "yjs";
 import { Array as YArray } from "yjs";
 
 import { config } from "@flow/config";
@@ -12,7 +13,13 @@ import { generateUUID } from "@flow/utils";
 
 import { fetcher } from "../fetch/transformers/useFetch";
 
-import { YNodesArray, YWorkflow, yWorkflowBuilder } from "./utils";
+import {
+  createYNode,
+  YNode,
+  YNodesArray,
+  YWorkflow,
+  yWorkflowBuilder,
+} from "./utils";
 
 export default ({
   yWorkflows,
@@ -88,7 +95,7 @@ export default ({
           newOutputNode,
         ]);
 
-        const newSubworkflowNode: Node = {
+        const newSubworkflowNode: YNode = createYNode({
           id: workflowId,
           type: "subworkflow",
           position: position ?? { x: 600, y: 200 },
@@ -102,7 +109,7 @@ export default ({
               { nodeId: outputNodeId, portName: DEFAULT_ROUTING_PORT },
             ],
           },
-        };
+        });
 
         const parentWorkflow = yWorkflows.get(
           rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
@@ -200,11 +207,24 @@ export default ({
         const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesArray;
 
         for (const node of mainWorkflowNodes) {
-          if (node.id === id) {
-            node.data = {
-              ...node.data,
-              customName: name,
-            };
+          // Get the id from the YNode
+          const nodeId = (node.get("id") as Y.Text).toString();
+
+          if (nodeId === id) {
+            // Get existing data as YMap
+            const currentData = node.get("data") as Y.Map<unknown>;
+
+            // Create new YMap with updated data
+            const newData = new Y.Map();
+            // Copy over existing data
+            currentData.forEach((value, key) => {
+              newData.set(key, value);
+            });
+            // Set new customName
+            newData.set("customName", name);
+
+            // Update the node's data
+            node.set("data", newData);
           }
         }
       }),
