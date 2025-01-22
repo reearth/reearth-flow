@@ -115,19 +115,21 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 	t.Helper()
 
 	query := `mutation($input: CreateTriggerInput!) {
-		createTrigger(input: $input) {
-			id
-			workspaceId
-			deploymentId
-			eventSource
-			timeInterval
-		}
-	}`
+        createTrigger(input: $input) {
+            id
+            workspaceId
+            deploymentId
+            description
+            eventSource
+            timeInterval
+        }
+    }`
 
 	variables := map[string]interface{}{
 		"input": map[string]interface{}{
 			"workspaceId":  wId1.String(),
 			"deploymentId": deploymentId,
+			"description":  "Daily scheduled trigger",
 			"timeDriverInput": map[string]interface{}{
 				"interval": "EVERY_DAY",
 			},
@@ -156,6 +158,7 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 				ID           string `json:"id"`
 				WorkspaceID  string `json:"workspaceId"`
 				DeploymentID string `json:"deploymentId"`
+				Description  string `json:"description"`
 				EventSource  string `json:"eventSource"`
 				TimeInterval string `json:"timeInterval"`
 			} `json:"createTrigger"`
@@ -178,6 +181,7 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 	assert.NotEmpty(t, trigger.ID)
 	assert.Equal(t, wId1.String(), trigger.WorkspaceID)
 	assert.Equal(t, deploymentId, trigger.DeploymentID)
+	assert.Equal(t, "Daily scheduled trigger", trigger.Description)
 	assert.Equal(t, "TIME_DRIVEN", trigger.EventSource)
 	assert.Equal(t, "EVERY_DAY", trigger.TimeInterval)
 

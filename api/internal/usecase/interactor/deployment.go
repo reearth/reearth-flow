@@ -299,11 +299,11 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 
 	j.SetGCPJobID(gcpJobID)
 
-	tx.Commit()
-
 	if err := i.job.StartMonitoring(ctx, j, operator); err != nil {
 		return nil, fmt.Errorf("failed to start job monitoring: %v", err)
 	}
+
+	tx.Commit()
 
 	return j, nil
 }
