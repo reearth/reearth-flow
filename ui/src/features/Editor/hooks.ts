@@ -44,6 +44,7 @@ export default ({
     handleWorkflowOpen,
     handleWorkflowClose,
     handleWorkflowAdd,
+    handleWorkflowAddFromSelection,
     handleWorkflowUpdate,
     handleNodesUpdate,
     handleNodeParamsUpdate,
@@ -193,6 +194,10 @@ export default ({
     {
       keyBinding: { key: "z", commandKey: true },
       callback: handleWorkflowUndo,
+    },
+    {
+      keyBinding: { key: "s", commandKey: false },
+      callback: () => handleWorkflowAddFromSelection(nodes, edges),
     },
   ]);
 
