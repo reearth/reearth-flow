@@ -102,34 +102,3 @@ func SignupVerify() echo.HandlerFunc {
 		return c.JSON(http.StatusOK, output)
 	}
 }
-
-type AuthRequest struct {
-	Token string `json:"token"`
-}
-
-func VerifyAuth() echo.HandlerFunc {
-	return func(c echo.Context) error {
-		ctx := c.Request().Context()
-
-		// Check if Content-Type is set
-		if c.Request().Header.Get(echo.HeaderContentType) == "" {
-			return c.JSON(http.StatusBadRequest, echo.Map{"authorized": false})
-		}
-
-		var req AuthRequest
-		if err := c.Bind(&req); err != nil {
-			return c.JSON(http.StatusBadRequest, echo.Map{"authorized": false})
-		}
-
-		token := req.Token
-		if token == "" {
-			return c.JSON(http.StatusUnauthorized, echo.Map{"authorized": false})
-		}
-
-		if adapter.Operator(ctx) == nil {
-			return c.JSON(http.StatusUnauthorized, echo.Map{"authorized": false})
-		}
-
-		return c.JSON(http.StatusOK, echo.Map{"authorized": true})
-	}
-}
