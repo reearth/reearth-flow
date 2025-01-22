@@ -87,7 +87,7 @@ async fn ws_handler(
 
     #[cfg(feature = "auth")]
     {
-        match state.auth.verify_token(&auth.token, &doc_id).await {
+        match state.auth.verify_token(&auth.token).await {
             Ok(true) => (),
             Ok(false) => {
                 tracing::warn!("Authentication failed for doc_id: {}", doc_id);
