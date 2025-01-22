@@ -98,7 +98,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 
 	// Add auth routes with JWT middleware
 	apiPrivateWithAuth := apiPrivate.Group("", echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, false))))
-	apiPrivateWithAuth.GET("/validate-token", func(c echo.Context) error {
+	apiPrivateWithAuth.GET("/verify/token", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, echo.Map{"authorized": true})
 	})
 

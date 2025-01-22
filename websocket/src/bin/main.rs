@@ -127,10 +127,7 @@ async fn main() {
         .with_line_number(true)
         .init();
 
-    let config = Config::load().unwrap_or_else(|err| {
-        eprintln!("Failed to load config: {}, using defaults", err);
-        Config::default()
-    });
+    let config = Config::load();
 
     // Initialize SQLite store
     //let store = Arc::new(SqliteStore::new(DB_PATH).expect("Failed to open SQLite database"));
