@@ -1,4 +1,5 @@
 pub(crate) mod aggregator;
+pub(crate) mod bulk_array_joiner;
 pub(crate) mod bulk_renamer;
 pub(crate) mod duplicate_filter;
 pub(crate) mod errors;

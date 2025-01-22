@@ -17,7 +17,8 @@ export type EditorKeys =
   | "p" // bottom panel preview
   | "a" // SHIFT + a = left panel actions list
   | "r" // SHIFT + r = left panel resources
-  | "c"; // SHIFT + c = left panel canvas navigator
+  | "c" // SHIFT + c = left panel canvas navigator
+  | "s"; // new subworkflow with select nodes
 
 export type CanvasKeys =
   | "c" // w CMD = Copy, wout CMD = left panel canvas navigator
@@ -47,7 +48,8 @@ type PossibleActions =
   | "bottomPanelPreview"
   | "leftPanelCanvasNavigator"
   | "leftPanelActionsList"
-  | "leftPanelResources";
+  | "leftPanelResources"
+  | "groupToSubWorkFlow";
 
 export type KeyBinding<K extends PossibleKeys = PossibleKeys> = {
   key: K;
@@ -84,6 +86,7 @@ export const EditorKeyBindings: Partial<
   leftPanelCanvasNavigator: { key: "c", shiftKey: true },
   leftPanelActionsList: { key: "a", shiftKey: true },
   leftPanelResources: { key: "r", shiftKey: true },
+  groupToSubWorkFlow: { key: "s" },
 };
 
 export const CanvasKeyBindings: Partial<

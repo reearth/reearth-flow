@@ -34,7 +34,7 @@ graphs:
         action: FilePathExtractor
         with:
           sourceDataset: |
-            env.get("cityGmlPath")
+            env.get("__value")["path"]
           extractArchive: true
 
       - id: 8510992d-2546-4e89-a09b-f31ff435bbb7
@@ -329,7 +329,7 @@ graphs:
         to: 2b51486a-7258-42a6-ac9d-41a4f9a48624
         fromPort: default
         toPort: default
-      - id: 9f855529-bc8b-46e3-a679-0b2c13d06092
+      - id: d44adfb3-082e-4e31-8e27-ac3a4f36303c
         from: f2d222e7-fc54-4bf8-b066-515fe1cfe328
         to: 993965e1-2bef-45e5-8afa-33efa633064e
         fromPort: summary

@@ -24,6 +24,7 @@ type Props = {
   onOpen: (panel?: "left" | "right" | "bottom") => void;
   onNodesChange: (nodes: Node[]) => void;
   isMainWorkflow: boolean;
+  hasReader?: boolean;
 };
 
 const LeftPanel: React.FC<Props> = ({
@@ -32,6 +33,7 @@ const LeftPanel: React.FC<Props> = ({
   onOpen,
   onNodesChange,
   isMainWorkflow,
+  hasReader,
 }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
@@ -104,6 +106,7 @@ const LeftPanel: React.FC<Props> = ({
           nodes={nodes}
           onNodesChange={onNodesChange}
           isMainWorkflow={isMainWorkflow}
+          hasReader={hasReader}
         />
       ),
     },
