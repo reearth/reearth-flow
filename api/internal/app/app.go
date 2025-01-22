@@ -93,7 +93,12 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	apiPrivate := api.Group("", privateCache)
 	apiPrivate.Use(authMiddleware, attachOpMiddleware(cfg))
 	apiPrivate.POST("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev))
-	apiPrivate.POST("/auth/verify", VerifyAuth(), privateCache)
+
+	// Add auth routes with JWT middleware
+	apiPrivateWithAuth := apiPrivate.Group("", echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, false))))
+	apiPrivateWithAuth.GET("/validate-token", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, echo.Map{"authorized": true})
+	})
 
 	apiPrivate.POST("/signup", Signup())
 
