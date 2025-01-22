@@ -110,10 +110,43 @@ graphs:
           attributes:
             - cityGmlAttributes
 
-      - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
-        name: NoopSink
+      - id: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
+        name: AttributeBulkArrayJoiner
         type: action
-        action: NoopSink
+        action: AttributeBulkArrayJoiner
+
+      - id: c074f373-44e9-40b8-af83-76f36e141a9c
+        name: AttributeConvert
+        type: action
+        action: RhaiCaller
+        with:
+          isTarget: |
+            true
+          process: |
+            env.get("__value") + #{
+              "uro:description": env.get("__value")["gml:name"],
+              "uro:rank": env.get("__value")["uro:floodingRiskAttribute"]["uro:rank"]
+            }
+
+      - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
+        name: VerticalReprojector
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
+        name: Cesium3DTilesWriterNoTexture
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          minZoom: 15
+          maxZoom: 18
+          attachTexture: false
+          output: |
+            let udx_dirs = env.get("__value")["udxDirs"];
+            udx_dirs.replace("/", "_");
+            file::join_path(env.get("outputPath"), udx_dirs + "_no_texture")
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -153,6 +186,22 @@ graphs:
         toPort: default
       - id: e862f11a-88a6-4c1b-a743-ba80253039df
         from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
+        to: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
+        fromPort: default
+        toPort: default
+      - id: 0929145d-e654-441e-8b4d-4f3df4396211
+        from: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
+        to: c074f373-44e9-40b8-af83-76f36e141a9c
+        fromPort: default
+        toPort: default
+      - id: 16c7a724-7b87-424e-8dff-d1f92ea74f42
+        from: c074f373-44e9-40b8-af83-76f36e141a9c
+        to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
+        fromPort: default
+        toPort: default
+      - id: 92e83e72-2507-4a3e-8889-815fb6eeb68d
+        from: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         fromPort: default
         toPort: default
+

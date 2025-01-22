@@ -12,8 +12,6 @@ enum ActionFetchKeys {
   segregated = "segregated",
 }
 
-const BASE_URL = config().api;
-
 const CHANGE_NAMES: Record<string, string> = {
   processor: "transformer",
   sink: "writer",
@@ -74,6 +72,7 @@ export const fetcher = async <T extends Action[] | Segregated | Action>(
 };
 
 export const useFetch = () => {
+  const BASE_URL = config().api;
   const useGetActionsFetch = (lang: string) =>
     useQuery({
       queryKey: [ActionFetchKeys.actions, lang],
