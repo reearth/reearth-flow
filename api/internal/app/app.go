@@ -93,6 +93,8 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	apiPrivate := api.Group("", privateCache)
 	apiPrivate.Use(authMiddleware, attachOpMiddleware(cfg))
 	apiPrivate.POST("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev))
+	apiPrivate.POST("/auth/verify", VerifyAuth(), privateCache)
+
 	apiPrivate.POST("/signup", Signup())
 
 	if !cfg.Config.AuthSrv.Disabled {
