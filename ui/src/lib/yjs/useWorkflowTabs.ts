@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import type { Edge, Node } from "@flow/types";
+import { Edge, Node } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 export default ({
