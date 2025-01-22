@@ -31,8 +31,6 @@ export default ({
 
         if (isEqual(n, newNodes)) return;
 
-        const newYNodes = newNodes.map((node) => createYNode(node));
-
         // If one or more nodes are deleted
         if (newNodes.length < n.length) {
           const idsToBeRemoved = nodesToBeRemoved(n, newNodes).map((n) => n.id);
@@ -49,8 +47,22 @@ export default ({
           // that are effected by the removal of the subworkflow node. @KaWaite
         }
 
-        yNodes.delete(0, n.length);
-        yNodes.insert(0, newYNodes);
+        // Create a map of existing nodes by ID for quick lookup
+        const existingNodesMap = new Map(
+          Array.from(yNodes).map((yNode, index) => [
+            yNode.get("id")?.toString(),
+            { yNode, index },
+          ]),
+        );
+
+        newNodes.forEach((newNode, index) => {
+          const existing = existingNodesMap.get(newNode.id);
+          const newYNode = createYNode(newNode);
+          if (existing) {
+            yNodes.delete(index, 1);
+          }
+          yNodes.insert(index, [newYNode]);
+        });
       }),
     [currentYWorkflow, undoTrackerActionWrapper, handleWorkflowsRemove],
   );
