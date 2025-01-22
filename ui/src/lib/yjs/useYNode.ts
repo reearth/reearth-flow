@@ -55,13 +55,26 @@ export default ({
           ]),
         );
 
-        newNodes.forEach((newNode, index) => {
+        console.log("n", n);
+        console.log("newNodes", newNodes);
+
+        newNodes.forEach((newNode) => {
           const existing = existingNodesMap.get(newNode.id);
-          const newYNode = createYNode(newNode);
-          if (existing) {
-            yNodes.delete(index, 1);
-          }
-          yNodes.insert(index, [newYNode]);
+          // const newYNode = createYNode(newNode);
+          // if (existing) {
+          //   yNodes.delete(index, 1);
+          // }
+          // yNodes.insert(index, [newYNode]);
+          // const newPosition = newYNode.get("position");
+          // if (newPosition) {
+          console.log("newPosition", newNode.position);
+          const newPosition = new Y.Map<unknown>();
+          newPosition.set("x", newNode.position.x);
+          newPosition.set("y", newNode.position.y);
+          existing?.yNode.set("position", newPosition);
+          // } else {
+          // console.log("NO NEW POSITION");
+          // }
         });
       }),
     [currentYWorkflow, undoTrackerActionWrapper, handleWorkflowsRemove],
