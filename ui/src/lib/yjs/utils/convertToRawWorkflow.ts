@@ -23,16 +23,31 @@ export const reassembleNode = (yNode: YNode): Node => {
     type: yNode.get("type") as string,
   };
 
-  // Ensure `data` and other required fields are present
-  return {
+  const reassembledNode: Node = {
     id,
     position,
-    measured,
-    // selected: nonReactiveFields["selected"],
     type: nonReactiveFields["type"],
     dragging: nonReactiveFields["dragging"],
     data: nonReactiveFields["data"],
   };
+
+  if (measured.width && measured.height) {
+    reassembledNode.measured = measured;
+  }
+  // if (nonReactiveFields["selected"]) {
+  //   reassembledNode.selected = nonReactiveFields["selected"];
+  // }
+  if (nonReactiveFields["dragging"]) {
+    reassembledNode.dragging = nonReactiveFields["dragging"];
+  }
+  if (nonReactiveFields["data"]) {
+    reassembledNode.data = nonReactiveFields["data"];
+  }
+  if (nonReactiveFields["type"]) {
+    reassembledNode.type = nonReactiveFields["type"];
+  }
+
+  return reassembledNode;
 };
 
 export const reassembleEdge = (yEdge: YEdge): Edge => {

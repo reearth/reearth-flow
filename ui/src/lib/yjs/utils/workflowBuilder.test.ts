@@ -3,6 +3,7 @@ import * as Y from "yjs";
 
 import { Edge, Node } from "@flow/types";
 
+import { reassembleEdge, reassembleNode } from "./convertToRawWorkflow";
 import {
   yWorkflowBuilder,
   YNodesArray,
@@ -39,6 +40,7 @@ describe("yWorkflowBuilder", () => {
         id: "node-1",
         type: "transformer",
         position: { x: 0, y: 0 },
+        dragging: false,
         data: { officialName: "Node 1" },
       },
     ];
@@ -50,8 +52,12 @@ describe("yWorkflowBuilder", () => {
 
     expect(yWorkflow.get("id")?.toJSON()).toEqual(id);
     expect(yWorkflow.get("name")?.toJSON()).toEqual(name);
-    expect((yWorkflow.get("nodes") as YNodesArray)?.toArray()).toEqual(nodes);
-    expect((yWorkflow.get("edges") as YEdgesArray)?.toArray()).toEqual(edges);
+    expect(
+      (yWorkflow.get("nodes") as YNodesArray).map((yn) => reassembleNode(yn)),
+    ).toEqual(nodes);
+    expect(
+      (yWorkflow.get("edges") as YEdgesArray).map((ye) => reassembleEdge(ye)),
+    ).toEqual(edges);
   });
 
   it("should create a YWorkflow with empty nodes and edges if not provided", () => {

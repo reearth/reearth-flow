@@ -1,9 +1,9 @@
 import { renderHook } from "@testing-library/react";
-import { useY } from "react-yjs";
 import * as Y from "yjs";
 
 import useWorkflowTabs from "./useWorkflowTabs";
 import { YWorkflow, yWorkflowBuilder } from "./utils";
+import { convertYWorkflowToWorkflow } from "./utils/convertToWorkflow";
 
 describe("useWorkflowTabs", () => {
   it("should initialize with the first workflow as active", () => {
@@ -13,7 +13,9 @@ describe("useWorkflowTabs", () => {
     yWorkflows.push([yWorkflow]);
 
     const currentWorkflowId = "1";
-    const { result: result1 } = renderHook(() => useY(yWorkflows));
+    const { result: result1 } = renderHook(() =>
+      yWorkflows.map((w) => convertYWorkflowToWorkflow(w)),
+    );
 
     const { result: result2 } = renderHook(() =>
       useWorkflowTabs({
