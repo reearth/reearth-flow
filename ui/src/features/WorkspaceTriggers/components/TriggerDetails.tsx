@@ -39,11 +39,15 @@ const TriggerDetails: React.FC<Props> = ({
               value: selectedTrigger.deploymentId,
             },
             {
-              id: "deploymentName",
+              id: "projectName",
               name: t("Project Name"),
               value: selectedTrigger.deployment.projectName,
             },
-
+            {
+              id: "deploymentDescription",
+              name: t("Deployment Description"),
+              value: selectedTrigger.deployment.description,
+            },
             {
               id: "eventSource",
               name: t("Event Source"),
@@ -67,11 +71,21 @@ const TriggerDetails: React.FC<Props> = ({
                   },
                 ]
               : []),
-            {
-              id: "lastTriggered",
-              name: t("Last Triggered"),
-              value: selectedTrigger.lastTriggered,
-            },
+            ...(selectedTrigger?.lastTriggered
+              ? [
+                  {
+                    id: "lastTriggered",
+                    name: t("Last Triggered"),
+                    value: selectedTrigger.lastTriggered,
+                  },
+                ]
+              : [
+                  {
+                    id: "lastTriggered",
+                    name: t("Last Triggered"),
+                    value: t("Never"),
+                  },
+                ]),
             {
               id: "createdAt",
               name: t("Created At"),
