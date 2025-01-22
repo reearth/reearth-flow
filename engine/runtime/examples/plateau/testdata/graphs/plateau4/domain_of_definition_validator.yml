@@ -1,5 +1,5 @@
 id: b7396083-17d0-47dd-be86-83caf6c5ac63
-name: PLATEAU3.DomainOfDefinitionValidator
+name: PLATEAU4.DomainOfDefinitionValidator
 nodes:
   - id: dfcdb977-e929-41b9-a3de-e368d158b5b9
     name: InputRouter
@@ -20,9 +20,9 @@ nodes:
             }
 
   - id: 747d2fa3-2527-4324-b630-92fba84a548c
-    name: PLATEAU3.DomainOfDefinitionValidator01
+    name: PLATEAU4.DomainOfDefinitionValidator01
     type: action
-    action: PLATEAU3.DomainOfDefinitionValidator
+    action: PLATEAU4.DomainOfDefinitionValidator
 
   - id: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     name: FeatureFilterByFlag

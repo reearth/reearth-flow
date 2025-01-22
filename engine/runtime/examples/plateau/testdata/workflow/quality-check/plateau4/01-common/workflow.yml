@@ -1,18 +1,15 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: f01ce0bb-e982-4dfa-94de-7a766156b4b3
-name: "QualityCheck-01-common-workflow"
+name: "PLATEAU4-QualityCheck-01-common-workflow"
 entryGraphId: 7f86c5d5-b375-4190-ab93-001e9a099d1e
 with:
   cityGmlPath:
   codelistsPath:
   schemasPath:
-  schemaJson: !include ../../../config/schema.txt
-  addNsprefixToFeatureTypes: true
-  extractDmGeometryAsXmlFragment: false
   outputPath:
 graphs:
-  - !include ../../../graphs/xml_validator.yml
-  - !include ../../../graphs/domain_of_definition_validator.yml
+  - !include ../../../graphs/plateau4/xml_validator.yml
+  - !include ../../../graphs/plateau4/domain_of_definition_validator.yml
   - id: 7f86c5d5-b375-4190-ab93-001e9a099d1e
     name: entry_point
     nodes:
@@ -63,15 +60,15 @@ graphs:
           filePathAttribute: path
 
       - id: b16c4701-3b21-48f3-8b09-cf2fc6a51f1e
-        name: PLATEAU3.UDXFolderExtractor
+        name: PLATEAU4.UDXFolderExtractor
         type: action
-        action: PLATEAU3.UDXFolderExtractor
+        action: PLATEAU4.UDXFolderExtractor
         with:
           cityGmlPath: |
             env.get("__value").path
 
       - id: f2d222e7-fc54-4bf8-b066-515fe1cfe328
-        name: PLATEAU3.XMLValidator
+        name: PLATEAU4.XMLValidator
         type: subGraph
         subGraphId: 2c753ffc-cc90-4f4a-b5ee-f5d7853dbac6
 

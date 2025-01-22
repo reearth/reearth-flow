@@ -1,0 +1,133 @@
+id: 2c753ffc-cc90-4f4a-b5ee-f5d7853dbac6
+name: PLATEAU4.XMLValidator
+nodes:
+  - id: 1c0e21d1-cc12-48bd-b761-d5e943f5006f
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+
+  - id: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
+    name: XMLValidatorSuntaxAndNamespace
+    type: action
+    action: XMLValidator
+    with:
+      attribute: cityGmlPath
+      inputType: file
+      validationType: syntaxAndNamespace
+
+  - id: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f
+    name: XMLValidatorSyntaxAndSchema
+    type: action
+    action: XMLValidator
+    with:
+      attribute: cityGmlPath
+      inputType: file
+      validationType: syntaxAndSchema
+
+  - id: 14225ce7-1d9f-44bc-8b41-3aa06d4275cd
+    name: AttributeManagerCreateValid
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: status
+          method: create
+          value: |
+            "VALID"
+
+  - id: 9293ff92-7cde-422d-a157-011d54b23cf0
+    name: AttributeManagerCreateNotWellFormed
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: status
+          method: create
+          value: |
+            "NOT_WELL_FORMED"
+
+  - id: 6c235d0b-26fb-47dd-a3df-709fa961855c
+    name: AttributeManagerCreateInvalid
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: status
+          method: create
+          value: |
+            "INVALID"
+
+  - id: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
+    name: SummaryRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: summary
+
+  - id: abd4320c-aa7c-445a-af78-4c4f1f9a35c7
+    name: InvalidRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: invalid
+
+  - id: 3c0724c6-263e-43b9-8532-e46c7584323a
+    name: NotWellFormedRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: not_well_formed
+
+edges:
+  - id: f9ede89b-a599-4b07-bbc2-e2c1399ae91f
+    from: 1c0e21d1-cc12-48bd-b761-d5e943f5006f
+    to: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
+    fromPort: default
+    toPort: default
+  - id: 433e7166-48de-4479-9039-63acdab6d3fa
+    from: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
+    to: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f
+    fromPort: success
+    toPort: default
+  - id: 3e8f6cb7-882b-4b81-9f70-eec8374221d5
+    from: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
+    to: 9293ff92-7cde-422d-a157-011d54b23cf0
+    fromPort: failed
+    toPort: default
+  - id: 2903c5d8-28d9-49b2-bccc-f6a43e4822c3
+    from: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
+    to: 3c0724c6-263e-43b9-8532-e46c7584323a
+    fromPort: failed
+    toPort: default
+  - id: 7a133f42-08d8-4e9c-8f88-d8ee9f2d3c1d
+    from: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f
+    to: 14225ce7-1d9f-44bc-8b41-3aa06d4275cd
+    fromPort: success
+    toPort: default
+  - id: aeba356e-a59a-4b4d-8c63-50da73b7664c
+    from: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f
+    to: 6c235d0b-26fb-47dd-a3df-709fa961855c
+    fromPort: failed
+    toPort: default
+  - id: 300b2fa9-d5e2-4145-9703-49189b4fe849
+    from: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f
+    to: abd4320c-aa7c-445a-af78-4c4f1f9a35c7
+    fromPort: failed
+    toPort: default
+  - id: 8ba8930c-52b3-4074-b7f8-199b74405cbe
+    from: 14225ce7-1d9f-44bc-8b41-3aa06d4275cd
+    to: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
+    fromPort: default
+    toPort: default
+  - id: aa9aec13-bfdf-4cd8-95e1-a5535ea9bc19
+    from: 9293ff92-7cde-422d-a157-011d54b23cf0
+    to: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
+    fromPort: default
+    toPort: default
+  - id: 0c8a07cf-cf92-432c-8e62-fc3ae96a1f3a
+    from: 6c235d0b-26fb-47dd-a3df-709fa961855c
+    to: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
+    fromPort: default
+    toPort: default
