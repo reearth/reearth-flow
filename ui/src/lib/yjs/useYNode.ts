@@ -20,44 +20,42 @@ export default ({
   handleWorkflowsRemove: (workflowId: string[]) => void;
 }) => {
   const handleNodesUpdate = useCallback(
-    (newNodes: Node[]) =>
-      undoTrackerActionWrapper(() => {
-        const yNodes = currentYWorkflow?.get("nodes") as
-          | YNodesArray
-          | undefined;
-        if (!yNodes) return;
+    (newNodes: Node[]) => {
+      const yNodes = currentYWorkflow?.get("nodes") as YNodesArray | undefined;
+      if (!yNodes) return;
 
-        const n = yNodes.toJSON() as Node[];
+      const n = yNodes.toJSON() as Node[];
 
-        if (isEqual(n, newNodes)) return;
+      if (isEqual(n, newNodes)) return;
 
-        // If one or more nodes are deleted
-        if (newNodes.length < n.length) {
-          const idsToBeRemoved = nodesToBeRemoved(n, newNodes).map((n) => n.id);
+      // If one or more nodes are deleted
+      if (newNodes.length < n.length) {
+        const idsToBeRemoved = nodesToBeRemoved(n, newNodes).map((n) => n.id);
 
-          if (idsToBeRemoved.length > 0) {
-            handleWorkflowsRemove(idsToBeRemoved);
-          }
-          // TODO:
-          // Currently here we are doing "cleanup" to
-          // remove the subworkflow nodes that are not used anymore.
-          // What we want is to have a cleanup function
-          // that does this removal but also to update
-          // any subworkflow nodes' pseudoInputs and pseudoOutputs
-          // that are effected by the removal of the subworkflow node. @KaWaite
+        if (idsToBeRemoved.length > 0) {
+          handleWorkflowsRemove(idsToBeRemoved);
         }
+        // TODO:
+        // Currently here we are doing "cleanup" to
+        // remove the subworkflow nodes that are not used anymore.
+        // What we want is to have a cleanup function
+        // that does this removal but also to update
+        // any subworkflow nodes' pseudoInputs and pseudoOutputs
+        // that are effected by the removal of the subworkflow node. @KaWaite
+      }
 
-        // Create a map of existing nodes by ID for quick lookup
-        const existingNodesMap = new Map(
-          Array.from(yNodes).map((yNode, index) => [
-            yNode.get("id")?.toString(),
-            { yNode, index },
-          ]),
-        );
+      // Create a map of existing nodes by ID for quick lookup
+      const existingNodesMap = new Map(
+        Array.from(yNodes).map((yNode, index) => [
+          yNode.get("id")?.toString(),
+          { yNode, index },
+        ]),
+      );
 
-        console.log("n", n);
-        console.log("newNodes", newNodes);
+      console.log("n", n);
+      console.log("newNodes", newNodes);
 
+      undoTrackerActionWrapper(() => {
         newNodes.forEach((newNode) => {
           const existing = existingNodesMap.get(newNode.id);
           // const newYNode = createYNode(newNode);
@@ -76,7 +74,8 @@ export default ({
           // console.log("NO NEW POSITION");
           // }
         });
-      }),
+      });
+    },
     [currentYWorkflow, undoTrackerActionWrapper, handleWorkflowsRemove],
   );
 
