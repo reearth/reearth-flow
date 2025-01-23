@@ -90,7 +90,11 @@ async fn ws_handler(
         match state.auth.verify_token(&auth.token).await {
             Ok(true) => (),
             Ok(false) => {
-                tracing::warn!("Authentication failed for doc_id: {}", doc_id);
+                tracing::warn!(
+                    "Authentication failed for doc_id: {}, token: {}",
+                    doc_id,
+                    auth.token
+                );
                 return Bytes::from("Unauthorized").into_response();
             }
             Err(e) => {

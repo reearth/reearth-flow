@@ -53,10 +53,13 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		)
 	}
 
-	// auth config
+	// auth
 	authConfig := cfg.Config.JWTProviders()
 	log.Infof("auth: config: %#v", authConfig)
-	authMiddleware := echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, true)))
+	e.Use(
+		echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, true))),
+		attachOpMiddleware(cfg),
+	)
 
 	// enable pprof
 	if e.Debug {
