@@ -137,15 +137,11 @@ pub fn is_3d(point_type: &geojson::PointType) -> bool {
     point_type.len() == 3
 }
 
-pub(crate) fn create_geo_point_2d(point_type: &geojson::PointType) -> Point2D<f64>
-where
-{
+pub(crate) fn create_geo_point_2d(point_type: &geojson::PointType) -> Point2D<f64> {
     Point2D::from((point_type[0], point_type[1]))
 }
 
-pub(crate) fn create_geo_point_3d(point_type: &geojson::PointType) -> Point3D<f64>
-where
-{
+pub(crate) fn create_geo_point_3d(point_type: &geojson::PointType) -> Point3D<f64> {
     Point3D::new(point_type[0], point_type[1], point_type[2])
 }
 
