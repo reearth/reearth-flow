@@ -136,6 +136,6 @@ func (r *queryResolver) SearchUser(ctx context.Context, nameOrEmail string) (*gq
 	return loaders(ctx).User.SearchUser(ctx, nameOrEmail)
 }
 
-func (r *queryResolver) Triggers(ctx context.Context, workspaceID gqlmodel.ID) ([]*gqlmodel.Trigger, error) {
-	return loaders(ctx).Trigger.FindByWorkspace(ctx, workspaceID)
+func (r *queryResolver) Triggers(ctx context.Context, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.TriggerConnection, error) {
+	return loaders(ctx).Trigger.FindByWorkspace(ctx, workspaceID, pagination)
 }

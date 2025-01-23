@@ -35,8 +35,8 @@ func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID, operator *useca
 	return i.triggerRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, operator *usecase.Operator) ([]*trigger.Trigger, error) {
-	return i.triggerRepo.FindByWorkspace(ctx, id)
+func (i *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *usecasex.Pagination, operator *usecase.Operator) ([]*trigger.Trigger, *usecasex.PageInfo, error) {
+	return i.triggerRepo.FindByWorkspace(ctx, id, p)
 }
 
 func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID, operator *usecase.Operator) (*trigger.Trigger, error) {
