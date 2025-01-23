@@ -57,17 +57,17 @@ const DeploymentDetails: React.FC<Props> = ({
             {
               id: "createdAt",
               name: t("Created At"),
-              value: selectedDeployment.createdAt,
+              value: selectedDeployment.createdAt || t("N/A"),
             },
             {
               id: "updatedAt",
               name: t("Updated At"),
-              value: selectedDeployment.updatedAt,
+              value: selectedDeployment.updatedAt || t("Never"),
             },
             {
               id: "workflowUrl",
               name: t("Workflow Url"),
-              value: selectedDeployment.workflowUrl,
+              value: selectedDeployment.workflowUrl || t("N/A"),
             },
             {
               id: "workflowDownload",

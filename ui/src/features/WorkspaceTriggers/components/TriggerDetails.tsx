@@ -46,7 +46,9 @@ const TriggerDetails: React.FC<Props> = ({
             {
               id: "projectName",
               name: t("Project Name"),
-              value: selectedTrigger.deployment.projectName,
+              value:
+                selectedTrigger.deployment.projectName ||
+                t("Unknown or deleted project"),
             },
             {
               id: "deploymentDescription",
@@ -76,35 +78,25 @@ const TriggerDetails: React.FC<Props> = ({
                   },
                 ]
               : []),
-            ...(selectedTrigger?.lastTriggered
-              ? [
-                  {
-                    id: "lastTriggered",
-                    name: t("Last Triggered"),
-                    value: selectedTrigger.lastTriggered,
-                  },
-                ]
-              : [
-                  {
-                    id: "lastTriggered",
-                    name: t("Last Triggered"),
-                    value: t("Never"),
-                  },
-                ]),
+            {
+              id: "lastTriggered",
+              name: t("Last Triggered"),
+              value: selectedTrigger.lastTriggered || t("Never"),
+            },
             {
               id: "createdAt",
               name: t("Created At"),
-              value: selectedTrigger.createdAt,
+              value: selectedTrigger.createdAt || t("N/A"),
             },
             {
               id: "updatedAt",
               name: t("Updated At"),
-              value: selectedTrigger.updatedAt,
+              value: selectedTrigger.updatedAt || t("Never"),
             },
             {
               id: "workflowUrl",
               name: t("Workflow Url"),
-              value: selectedTrigger.deployment.workflowUrl,
+              value: selectedTrigger.deployment.workflowUrl || t("N/A"),
             },
           ]
         : undefined,

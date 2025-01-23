@@ -37,7 +37,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     undefined,
   );
   const [authToken, setAuthToken] = useState<string>("");
-  const [description, setDescription] = useState("");
+  const [description, setDescription] = useState<string>("");
   const { useGetDeploymentsInfinite } = useDeployment();
 
   const { pages } = useGetDeploymentsInfinite(currentWorkspace?.id);
@@ -126,7 +126,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
         <DialogTitle>{t("Create a new trigger")}</DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex flex-col">
-            <Label>{t("Description (optional): ")}</Label>
+            <Label>{t("Description")}</Label>
             <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -217,7 +217,8 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               (eventSource === "API_DRIVEN" && !authToken) ||
               (eventSource === "TIME_DRIVEN" && !timeInterval) ||
               !eventSource ||
-              !deploymentId
+              !deploymentId ||
+              !description
             }>
             {t("Add New Trigger")}
           </Button>
