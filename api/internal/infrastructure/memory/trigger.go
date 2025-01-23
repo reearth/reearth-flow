@@ -40,9 +40,9 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 	}
 
 	result := []*trigger.Trigger{}
-	for _, d := range r.data {
-		if d.Workspace() == id {
-			result = append(result, d)
+	for _, t := range r.data {
+		if t.Workspace() == id {
+			result = append(result, t)
 		}
 	}
 
