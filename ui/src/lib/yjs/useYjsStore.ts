@@ -96,12 +96,12 @@ export default ({
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
 
   const handleNodeSelection = useCallback(
-    (idsToAdd: string[], idsToDelete: string[]) => {
+    (selecting: string[], deselecting: string[]) => {
       setSelectedNodeIds((snids) => {
         const newIds: string[] = snids.filter(
-          (id) => !idsToDelete.includes(id),
+          (id) => !deselecting.includes(id),
         );
-        newIds.push(...idsToAdd);
+        newIds.push(...selecting);
         return newIds;
       });
     },
@@ -224,13 +224,14 @@ export default ({
     ],
   );
 
-  const { handleNodesUpdate, handleNodeParamsUpdate } = useYNode({
-    currentYWorkflow,
-    rawWorkflows,
-    yWorkflows,
-    undoTrackerActionWrapper,
-    handleWorkflowsRemove,
-  });
+  const { handleNodesUpdate, handleNodesChange2, handleNodeParamsUpdate } =
+    useYNode({
+      currentYWorkflow,
+      rawWorkflows,
+      yWorkflows,
+      undoTrackerActionWrapper,
+      handleWorkflowsRemove,
+    });
 
   const { handleEdgesUpdate } = useYEdge({
     currentYWorkflow,
@@ -252,6 +253,7 @@ export default ({
     handleWorkflowAddFromSelection,
     handleWorkflowUpdate,
     handleNodeSelection,
+    handleNodesChange2,
     handleNodesUpdate,
     handleNodeParamsUpdate,
     handleEdgeSelection,

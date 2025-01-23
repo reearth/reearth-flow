@@ -1,3 +1,4 @@
+import { NodeChange } from "@xyflow/react";
 import isEqual from "lodash-es/isEqual";
 import { useCallback } from "react";
 import * as Y from "yjs";
@@ -19,6 +20,32 @@ export default ({
   undoTrackerActionWrapper: (callback: () => void) => void;
   handleWorkflowsRemove: (workflowId: string[]) => void;
 }) => {
+  const handleNodesChange2 = (changes: NodeChange<Node>[]) => {
+    const yNodes = currentYWorkflow?.get("nodes") as YNodesArray | undefined;
+    if (!yNodes) return;
+
+    const existingNodesMap = new Map(
+      Array.from(yNodes).map((yNode, index) => [
+        yNode.get("id")?.toString(),
+        { yNode, index },
+      ]),
+    );
+    undoTrackerActionWrapper(() => {
+      changes.forEach((change) => {
+        if (change.type === "position") {
+          const existing = existingNodesMap.get(change.id);
+
+          if (existing && change.position) {
+            console.log("newPosition", change.position);
+            const newPosition = new Y.Map<unknown>();
+            newPosition.set("x", change.position.x);
+            newPosition.set("y", change.position.y);
+            existing?.yNode.set("position", newPosition);
+          }
+        }
+      });
+    });
+  };
   const handleNodesUpdate = useCallback(
     (newNodes: Node[]) => {
       const yNodes = currentYWorkflow?.get("nodes") as YNodesArray | undefined;
@@ -58,21 +85,17 @@ export default ({
       undoTrackerActionWrapper(() => {
         newNodes.forEach((newNode) => {
           const existing = existingNodesMap.get(newNode.id);
-          // const newYNode = createYNode(newNode);
-          // if (existing) {
-          //   yNodes.delete(index, 1);
-          // }
-          // yNodes.insert(index, [newYNode]);
-          // const newPosition = newYNode.get("position");
-          // if (newPosition) {
-          console.log("newPosition", newNode.position);
-          const newPosition = new Y.Map<unknown>();
-          newPosition.set("x", newNode.position.x);
-          newPosition.set("y", newNode.position.y);
-          existing?.yNode.set("position", newPosition);
-          // } else {
-          // console.log("NO NEW POSITION");
-          // }
+
+          if (existing) {
+            console.log("newPosition", newNode.position);
+            const newPosition = new Y.Map<unknown>();
+            newPosition.set("x", newNode.position.x);
+            newPosition.set("y", newNode.position.y);
+            existing?.yNode.set("position", newPosition);
+          } else {
+            console.log("NEW NODE");
+            yNodes.push([createYNode(newNode)]);
+          }
         });
       });
     },
@@ -119,6 +142,7 @@ export default ({
   );
 
   return {
+    handleNodesChange2,
     handleNodesUpdate,
     handleNodeParamsUpdate,
   };

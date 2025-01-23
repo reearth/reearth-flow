@@ -1,9 +1,9 @@
 import {
   Connection,
+  NodeChange,
   OnNodesChange,
   XYPosition,
   addEdge,
-  applyNodeChanges,
   getBezierPath,
   getConnectedEdges,
   getIncomers,
@@ -20,9 +20,10 @@ import useDnd from "./useDnd";
 type Props = {
   nodes: Node[];
   edges: Edge[];
-  onNodeSelection: (idsToAdd: string[], idsToDelete: string[]) => void;
+  onNodeSelection: (selecting: string[], deselecting: string[]) => void;
   onWorkflowAdd: (position?: XYPosition) => void;
   onNodesChange: (newNodes: Node[]) => void;
+  onNodesChange2: (changes: NodeChange<Node>[]) => void;
   onEdgesChange: (edges: Edge[]) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
@@ -33,6 +34,7 @@ export default ({
   onNodeSelection,
   onWorkflowAdd,
   onNodesChange,
+  onNodesChange2,
   onEdgesChange,
   onNodePickerOpen,
 }: Props) => {
@@ -49,23 +51,25 @@ export default ({
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(
     (changes) => {
-      const idsToAdd: string[] = [];
-      const idsToDelete: string[] = [];
+      const selectingIds: string[] = [];
+      const deselectingIds: string[] = [];
 
       changes.forEach((c) => {
         if (c.type === "select") {
           if (c.selected) {
-            idsToAdd.push(c.id);
+            selectingIds.push(c.id);
           } else if (c.selected === false) {
-            idsToDelete.push(c.id);
+            deselectingIds.push(c.id);
           }
+        } else {
+          console.log("c", c);
         }
       });
-      onNodeSelection(idsToAdd, idsToDelete);
+      onNodeSelection(selectingIds, deselectingIds);
 
-      onNodesChange(applyNodeChanges<Node>(changes, nodes));
+      onNodesChange2(changes);
     },
-    [nodes, onNodesChange, onNodeSelection],
+    [onNodesChange2, onNodeSelection],
   );
 
   const handleNodesDelete = useCallback(

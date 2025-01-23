@@ -6,6 +6,7 @@ import {
   ProOptions,
   SnapGrid,
   XYPosition,
+  NodeChange,
 } from "@xyflow/react";
 import { MouseEvent, memo } from "react";
 
@@ -33,7 +34,8 @@ type Props = {
   canvasLock: boolean;
   onWorkflowAdd: (position?: XYPosition) => void;
   onNodesUpdate: (newNodes: Node[]) => void;
-  onNodeSelection: (idsToAdd: string[], idsToDelete: string[]) => void;
+  onNodesChange2: (changes: NodeChange<Node>[]) => void;
+  onNodeSelection: (selecting: string[], deselecting: string[]) => void;
   onNodeDoubleClick: (e: MouseEvent, node: Node) => void;
   onNodeHover: (e: MouseEvent, node?: Node) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
@@ -48,6 +50,7 @@ const Canvas: React.FC<Props> = ({
   edges,
   onWorkflowAdd,
   onNodesUpdate,
+  onNodesChange2,
   onNodeSelection,
   onNodeDoubleClick,
   onNodeHover,
@@ -70,6 +73,7 @@ const Canvas: React.FC<Props> = ({
     edges,
     onWorkflowAdd,
     onNodeSelection,
+    onNodesChange2,
     onNodesUpdate,
     onEdgeSelection,
     onEdgesUpdate,

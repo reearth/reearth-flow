@@ -41,6 +41,7 @@ export default function Editor({
     handleWorkflowChange,
     handleNodeSelection,
     handleNodesUpdate,
+    handleNodesChange2,
     handleNodeParamsUpdate,
     handleNodeHover,
     handleNodeDoubleClick,
@@ -86,6 +87,7 @@ export default function Editor({
               canvasLock={!!locallyLockedNode}
               onWorkflowAdd={handleWorkflowAdd}
               onNodesUpdate={handleNodesUpdate}
+              onNodesChange2={handleNodesChange2}
               onNodeHover={handleNodeHover}
               onNodeSelection={handleNodeSelection}
               onEdgeSelection={handleEdgeSelection}
