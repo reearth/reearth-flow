@@ -108,29 +108,21 @@ export default ({
     [],
   );
 
-  const nodes: Node[] = (
-    useY(currentYWorkflow.get("nodes") ?? new Y.Array()) as Node[]
-  ).map((node) => {
-    return {
-      ...node,
-      selected:
-        selectedNodeIds.includes(node.id) && !node.selected
-          ? true
-          : (node.selected ?? false),
-    };
-  });
+  const rawNodes = useY(
+    currentYWorkflow.get("nodes") ?? new Y.Array(),
+  ) as Node[];
 
-  // const nodes = useMemo(() => {
-  //   return rawNodes.map((node) => {
-  //     return {
-  //       ...node,
-  //       selected:
-  //         selectedNodeIds.includes(node.id) && !node.selected
-  //           ? true
-  //           : (node.selected ?? false),
-  //     };
-  //   });
-  // }, [rawNodes, selectedNodeIds]);
+  const nodes = useMemo(
+    () =>
+      rawNodes.map((node) => ({
+        ...node,
+        selected:
+          selectedNodeIds.includes(node.id) && !node.selected
+            ? true
+            : (node.selected ?? false),
+      })),
+    [rawNodes, selectedNodeIds],
+  );
 
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
 
@@ -147,29 +139,21 @@ export default ({
     [],
   );
 
-  const edges: Edge[] = (
-    useY(currentYWorkflow.get("edges") ?? new Y.Array()) as Edge[]
-  ).map((edge) => {
-    return {
-      ...edge,
-      selected:
-        selectedEdgeIds.includes(edge.id) && !edge.selected
-          ? true
-          : (edge.selected ?? false),
-    };
-  });
+  const rawEdges = useY(
+    currentYWorkflow.get("edges") ?? new Y.Array(),
+  ) as Edge[];
 
-  // const edges = useMemo(() => {
-  //   return rawEdges.map((edge) => {
-  //     return {
-  //       ...edge,
-  //       selected:
-  //         selectedEdgeIds.includes(edge.id) && !edge.selected
-  //           ? true
-  //           : (edge.selected ?? false),
-  //     };
-  //   });
-  // }, [rawEdges, selectedEdgeIds]);
+  const edges = useMemo(
+    () =>
+      rawEdges.map((edge) => ({
+        ...edge,
+        selected:
+          selectedEdgeIds.includes(edge.id) && !edge.selected
+            ? true
+            : (edge.selected ?? false),
+      })),
+    [rawEdges, selectedEdgeIds],
+  );
 
   const handleWorkflowDeployment = useCallback(
     async (deploymentId?: string, description?: string) => {
