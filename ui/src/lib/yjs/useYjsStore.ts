@@ -64,6 +64,7 @@ export default ({
 
   const rawWorkflows = yWorkflows.map((w) => convertYWorkflowToWorkflow(w));
 
+  console.log("rawWorkflows", rawWorkflows);
   const {
     openWorkflows,
     setWorkflows,
@@ -107,21 +108,29 @@ export default ({
     [],
   );
 
-  const rawNodes = useY(
-    currentYWorkflow.get("nodes") ?? new Y.Array(),
-  ) as Node[];
+  const nodes: Node[] = (
+    useY(currentYWorkflow.get("nodes") ?? new Y.Array()) as Node[]
+  ).map((node) => {
+    return {
+      ...node,
+      selected:
+        selectedNodeIds.includes(node.id) && !node.selected
+          ? true
+          : (node.selected ?? false),
+    };
+  });
 
-  const nodes = useMemo(() => {
-    return rawNodes.map((node) => {
-      return {
-        ...node,
-        selected:
-          selectedNodeIds.includes(node.id) && !node.selected
-            ? true
-            : (node.selected ?? false),
-      };
-    });
-  }, [rawNodes, selectedNodeIds]);
+  // const nodes = useMemo(() => {
+  //   return rawNodes.map((node) => {
+  //     return {
+  //       ...node,
+  //       selected:
+  //         selectedNodeIds.includes(node.id) && !node.selected
+  //           ? true
+  //           : (node.selected ?? false),
+  //     };
+  //   });
+  // }, [rawNodes, selectedNodeIds]);
 
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
 
@@ -138,21 +147,29 @@ export default ({
     [],
   );
 
-  const rawEdges = useY(
-    currentYWorkflow.get("edges") ?? new Y.Array(),
-  ) as Edge[];
+  const edges: Edge[] = (
+    useY(currentYWorkflow.get("edges") ?? new Y.Array()) as Edge[]
+  ).map((edge) => {
+    return {
+      ...edge,
+      selected:
+        selectedEdgeIds.includes(edge.id) && !edge.selected
+          ? true
+          : (edge.selected ?? false),
+    };
+  });
 
-  const edges = useMemo(() => {
-    return rawEdges.map((edge) => {
-      return {
-        ...edge,
-        selected:
-          selectedEdgeIds.includes(edge.id) && !edge.selected
-            ? true
-            : (edge.selected ?? false),
-      };
-    });
-  }, [rawEdges, selectedEdgeIds]);
+  // const edges = useMemo(() => {
+  //   return rawEdges.map((edge) => {
+  //     return {
+  //       ...edge,
+  //       selected:
+  //         selectedEdgeIds.includes(edge.id) && !edge.selected
+  //           ? true
+  //           : (edge.selected ?? false),
+  //     };
+  //   });
+  // }, [rawEdges, selectedEdgeIds]);
 
   const handleWorkflowDeployment = useCallback(
     async (deploymentId?: string, description?: string) => {
