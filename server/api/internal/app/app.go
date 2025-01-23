@@ -55,6 +55,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 
 	// auth
 <<<<<<< HEAD
+<<<<<<< HEAD
 	authConfig := cfg.Config.JWTProviders()
 	log.Infof("auth: config: %#v", authConfig)
 =======
@@ -64,6 +65,14 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		AUD:     []string{"https://api.test.reearth.dev"},
 		JWKSURI: lo.ToPtr("https://reearth-oss-test.eu.auth0.com/.well-known/jwks.json"),
 	}}
+=======
+	authConfig := cfg.Config.JWTProviders()
+	// authConfig := []appx.JWTProvider{{
+	// 	ISS:     "https://reearth-oss-test.eu.auth0.com/",
+	// 	AUD:     []string{"https://api.test.reearth.dev"},
+	// 	JWKSURI: lo.ToPtr("https://reearth-oss-test.eu.auth0.com/.well-known/jwks.json"),
+	// }}
+>>>>>>> bf4415824 (refactor(auth): restore dynamic JWT provider configuration from config)
 	log.Infof("Final auth config: %+v", authConfig)
 >>>>>>> bcb586b77 (refactor(auth): update WebSocket token verification route and adjust configuration URLs in .env and Rust files)
 	e.Use(
