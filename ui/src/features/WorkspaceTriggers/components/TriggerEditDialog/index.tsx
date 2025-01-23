@@ -59,6 +59,14 @@ const TriggerEditDialog: React.FC<Props> = ({
       <DialogContent size="sm">
         <DialogTitle>{t("Update Trigger")}</DialogTitle>
         <DialogContentWrapper>
+          <DialogContentSection className="flex flex-col">
+            <Label>{t("Description (optional): ")}</Label>
+            <Input
+              value={updatedDescription}
+              onChange={handleDescriptionChange}
+              placeholder={t("Give your trigger a meaningful description...")}
+            />
+          </DialogContentSection>
           <DialogContentSection className="flex-1">
             <Label htmlFor="event-source-selector">
               {t("Select Event Source")}
@@ -77,14 +85,6 @@ const TriggerEditDialog: React.FC<Props> = ({
                 ))}
               </SelectContent>
             </Select>
-          </DialogContentSection>
-          <DialogContentSection className="flex flex-col">
-            <Label>{t("Description (optional): ")}</Label>
-            <Input
-              value={updatedDescription}
-              onChange={handleDescriptionChange}
-              placeholder={t("Give your trigger a meaningful description...")}
-            />
           </DialogContentSection>
           {updatedEventSource === "API_DRIVEN" && (
             <DialogContentSection className="flex flex-col">
@@ -126,7 +126,8 @@ const TriggerEditDialog: React.FC<Props> = ({
             disabled={
               updatedEventSource === selectedTrigger.eventSource &&
               updatedTimeInterval === selectedTrigger.timeInterval &&
-              updatedAuthToken === selectedTrigger.authToken
+              updatedAuthToken === selectedTrigger.authToken &&
+              selectedTrigger.description === updatedDescription
             }>
             {t("Update Trigger")}
           </Button>

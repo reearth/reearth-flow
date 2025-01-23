@@ -34,6 +34,11 @@ const TriggerDetails: React.FC<Props> = ({
               value: selectedTrigger.id,
             },
             {
+              id: "triggerId",
+              name: t("Trigger Description"),
+              value: selectedTrigger.description,
+            },
+            {
               id: "deploymentId",
               name: t("Deployment Id"),
               value: selectedTrigger.deploymentId,

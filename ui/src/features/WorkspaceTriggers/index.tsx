@@ -35,7 +35,7 @@ const TriggerManager: React.FC = () => {
   } = useHooks();
   const columns: ColumnDef<Trigger>[] = [
     {
-      accessorKey: "id",
+      accessorKey: "description",
       header: t("Trigger Description"),
     },
     {
