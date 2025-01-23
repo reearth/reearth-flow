@@ -3,7 +3,6 @@ import { useT } from "@flow/lib/i18n";
 import type {
   CreateTrigger,
   DeleteTrigger,
-  GetTriggers,
   TimeInterval,
   Trigger,
   UpdateTrigger,
@@ -21,7 +20,7 @@ export const useTrigger = () => {
     createTriggerMutation,
     updateTriggerMutation,
     deleteTriggerMutation,
-    useGetTriggersQuery,
+    useGetTriggersInfiniteQuery,
   } = useQueries();
 
   const createTrigger = async (
@@ -114,17 +113,17 @@ export const useTrigger = () => {
     }
   };
 
-  const useGetTriggers = (workspaceId?: string): GetTriggers => {
-    const { data, ...rest } = useGetTriggersQuery(workspaceId);
+  const useGetTriggersInfinite = (workspaceId?: string) => {
+    const { data, ...rest } = useGetTriggersInfiniteQuery(workspaceId);
     return {
-      triggers: data?.triggers,
+      pages: data?.pages,
       ...rest,
     };
   };
 
   return {
     createTrigger,
-    useGetTriggers,
+    useGetTriggersInfinite,
     useUpdateTrigger,
     useDeleteTrigger,
   };

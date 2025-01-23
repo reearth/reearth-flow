@@ -539,7 +539,7 @@ export type Query = {
   nodes: Array<Maybe<Node>>;
   projects: ProjectConnection;
   searchUser?: Maybe<User>;
-  triggers: Array<Trigger>;
+  triggers: TriggerConnection;
 };
 
 
@@ -612,6 +612,7 @@ export type QuerySearchUserArgs = {
 
 
 export type QueryTriggersArgs = {
+  pagination?: InputMaybe<Pagination>;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -709,6 +710,20 @@ export type Trigger = Node & {
   updatedAt: Scalars['DateTime']['output'];
   workspace?: Maybe<Workspace>;
   workspaceId: Scalars['ID']['output'];
+};
+
+export type TriggerConnection = {
+  __typename?: 'TriggerConnection';
+  edges: Array<TriggerEdge>;
+  nodes: Array<Maybe<Trigger>>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+};
+
+export type TriggerEdge = {
+  __typename?: 'TriggerEdge';
+  cursor: Scalars['Cursor']['output'];
+  node?: Maybe<Trigger>;
 };
 
 export type UpdateDeploymentInput = {
@@ -946,10 +961,11 @@ export type DeleteTriggerMutation = { __typename?: 'Mutation', deleteTrigger: bo
 
 export type GetTriggersQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
+  pagination?: InputMaybe<Pagination>;
 }>;
 
 
-export type GetTriggersQuery = { __typename?: 'Query', triggers: Array<{ __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description?: string | null, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } }> };
+export type GetTriggersQuery = { __typename?: 'Query', triggers: { __typename?: 'TriggerConnection', totalCount: number, nodes: Array<{ __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description?: string | null, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } | null>, pageInfo: { __typename?: 'PageInfo', endCursor?: any | null, hasNextPage: boolean } } };
 
 export type GetMeQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1244,9 +1260,16 @@ export const DeleteTriggerDocument = gql`
 }
     `;
 export const GetTriggersDocument = gql`
-    query GetTriggers($workspaceId: ID!) {
-  triggers(workspaceId: $workspaceId) {
-    ...Trigger
+    query GetTriggers($workspaceId: ID!, $pagination: Pagination) {
+  triggers(workspaceId: $workspaceId, pagination: $pagination) {
+    totalCount
+    nodes {
+      ...Trigger
+    }
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
   }
 }
     ${TriggerFragmentDoc}`;
