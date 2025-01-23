@@ -11,7 +11,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::Sender;
 
-use super::{citygml, csv, json};
+use super::{citygml, csv, geojson, json};
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -48,6 +48,12 @@ pub enum FileReader {
         #[serde(flatten)]
         property: citygml::CityGmlReaderParam,
     },
+    /// # GeoJSON
+    #[serde(rename = "geojson")]
+    GeoJson {
+        #[serde(flatten)]
+        common_property: FileReaderCommonParam,
+    },
 }
 
 #[async_trait::async_trait]
@@ -71,59 +77,54 @@ impl Source for FileReader {
         match self {
             Self::Json { common_property } => {
                 let input_path = get_input_path(&ctx, common_property)?;
-                let result = json::read_json(input_path, storage_resolver, sender).await;
-                match result {
-                    Ok(_) => Ok(()),
-                    Err(e) => Err(Box::new(e)),
-                }
+                json::read_json(input_path, storage_resolver, sender)
+                    .await
+                    .map_err(Into::<BoxedError>::into)
+            }
+            Self::GeoJson { common_property } => {
+                let input_path = get_input_path(&ctx, common_property)?;
+                geojson::read_geojson(input_path, storage_resolver, sender)
+                    .await
+                    .map_err(Into::<BoxedError>::into)
             }
             Self::Csv {
                 common_property,
                 property,
             } => {
                 let input_path = get_input_path(&ctx, common_property)?;
-                let result = csv::read_csv(
+                csv::read_csv(
                     Delimiter::Comma,
                     input_path,
                     property,
                     storage_resolver,
                     sender,
                 )
-                .await;
-                match result {
-                    Ok(_) => Ok(()),
-                    Err(e) => Err(Box::new(e)),
-                }
+                .await
+                .map_err(Into::<BoxedError>::into)
             }
             Self::Tsv {
                 common_property,
                 property,
             } => {
                 let input_path = get_input_path(&ctx, common_property)?;
-                let result = csv::read_csv(
+                csv::read_csv(
                     Delimiter::Tab,
                     input_path,
                     property,
                     storage_resolver,
                     sender,
                 )
-                .await;
-                match result {
-                    Ok(_) => Ok(()),
-                    Err(e) => Err(Box::new(e)),
-                }
+                .await
+                .map_err(Into::<BoxedError>::into)
             }
             Self::Citygml {
                 common_property,
                 property,
             } => {
                 let input_path = get_input_path(&ctx, common_property)?;
-                let result =
-                    citygml::read_citygml(input_path, property, storage_resolver, sender).await;
-                match result {
-                    Ok(_) => Ok(()),
-                    Err(e) => Err(Box::new(e)),
-                }
+                citygml::read_citygml(input_path, property, storage_resolver, sender)
+                    .await
+                    .map_err(Into::<BoxedError>::into)
             }
         }
     }

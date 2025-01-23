@@ -12,10 +12,11 @@ use crate::errors::SourceError;
 
 use self::runner::FileReader;
 
-pub mod citygml;
-pub mod csv;
-pub mod json;
-pub mod runner;
+pub(crate) mod citygml;
+pub(crate) mod csv;
+pub(crate) mod geojson;
+pub(crate) mod json;
+pub(crate) mod runner;
 
 #[derive(Debug, Clone, Default)]
 pub struct FileReaderFactory;
