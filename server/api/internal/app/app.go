@@ -54,8 +54,18 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	}
 
 	// auth
+<<<<<<< HEAD
 	authConfig := cfg.Config.JWTProviders()
 	log.Infof("auth: config: %#v", authConfig)
+=======
+	// authConfig := cfg.Config.JWTProviders()
+	authConfig := []appx.JWTProvider{{
+		ISS:     "https://reearth-oss-test.eu.auth0.com/",
+		AUD:     []string{"https://api.test.reearth.dev"},
+		JWKSURI: lo.ToPtr("https://reearth-oss-test.eu.auth0.com/.well-known/jwks.json"),
+	}}
+	log.Infof("Final auth config: %+v", authConfig)
+>>>>>>> bcb586b77 (refactor(auth): update WebSocket token verification route and adjust configuration URLs in .env and Rust files)
 	e.Use(
 		echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, true))),
 		attachOpMiddleware(cfg),
@@ -99,9 +109,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	apiPrivate.Use(authMiddleware, attachOpMiddleware(cfg))
 	apiPrivate.POST("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev))
 
-	// Add auth routes with JWT middleware
-	apiPrivateWithAuth := apiPrivate.Group("", echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, false))))
-	apiPrivateWithAuth.GET("/verify/token", func(c echo.Context) error {
+	apiPrivate.GET("/verify/ws-token", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, echo.Map{"authorized": true})
 	})
 
