@@ -1641,6 +1641,25 @@ Reads features from a file
           ]
         }
       }
+    },
+    {
+      "title": "GeoJSON",
+      "type": "object",
+      "required": [
+        "dataset",
+        "format"
+      ],
+      "properties": {
+        "dataset": {
+          "$ref": "#/definitions/Expr"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "geojson"
+          ]
+        }
+      }
     }
   ],
   "definitions": {

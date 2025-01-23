@@ -5754,6 +5754,7 @@ dependencies = [
  "bytes",
  "csv",
  "futures",
+ "geojson",
  "nusamai-citygml",
  "nusamai-plateau",
  "nusamai-projection",
