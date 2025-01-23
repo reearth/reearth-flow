@@ -23,6 +23,9 @@ func (b *Builder) Build() (*Trigger, error) {
 	if b.t.deploymentId.IsNil() {
 		return nil, errors.New("deployment is required")
 	}
+	if b.t.description == "" {
+		return nil, errors.New("description is required")
+	}
 	if b.t.eventSource == "" {
 		return nil, errors.New("event source is required")
 	}
