@@ -12,7 +12,7 @@ export default ({
 }) => {
   const { useUpdateTrigger } = useTrigger();
   const [updatedDescription, setUpdatedDescription] = useState(
-    selectedTrigger?.description || "",
+    selectedTrigger.description || "",
   );
   const [updatedEventSource, setUpdatedEventSource] = useState(
     selectedTrigger.eventSource,

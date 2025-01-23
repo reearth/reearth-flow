@@ -127,7 +127,7 @@ const TriggerEditDialog: React.FC<Props> = ({
               updatedEventSource === selectedTrigger.eventSource &&
               updatedTimeInterval === selectedTrigger.timeInterval &&
               updatedAuthToken === selectedTrigger.authToken &&
-              selectedTrigger.description === updatedDescription
+              updatedDescription === selectedTrigger.description
             }>
             {t("Update Trigger")}
           </Button>
