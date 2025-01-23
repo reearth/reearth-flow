@@ -2,7 +2,7 @@ use crate::conf::AuthConfig;
 use anyhow::Result;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
+use std::{fmt::Debug, time::Duration};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct AuthResponse {
@@ -34,6 +34,8 @@ impl AuthService {
                 .header("Authorization", format!("Bearer {}", token))
                 .send()
                 .await?;
+
+            tracing::debug!("response: {:?}", response);
 
             if !response.status().is_success() {
                 return Ok(false);
