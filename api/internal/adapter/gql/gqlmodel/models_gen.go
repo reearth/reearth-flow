@@ -71,7 +71,7 @@ type CreateDeploymentInput struct {
 	WorkspaceID ID             `json:"workspaceId"`
 	File        graphql.Upload `json:"file"`
 	ProjectID   *ID            `json:"projectId,omitempty"`
-	Description *string        `json:"description,omitempty"`
+	Description string         `json:"description"`
 }
 
 type CreateProjectInput struct {
@@ -84,7 +84,7 @@ type CreateProjectInput struct {
 type CreateTriggerInput struct {
 	WorkspaceID     ID               `json:"workspaceId"`
 	DeploymentID    ID               `json:"deploymentId"`
-	Description     *string          `json:"description,omitempty"`
+	Description     string           `json:"description"`
 	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
 	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
 }
@@ -360,7 +360,7 @@ type Trigger struct {
 	Deployment    *Deployment     `json:"deployment"`
 	DeploymentID  ID              `json:"deploymentId"`
 	EventSource   EventSourceType `json:"eventSource"`
-	Description   *string         `json:"description,omitempty"`
+	Description   string          `json:"description"`
 	AuthToken     *string         `json:"authToken,omitempty"`
 	TimeInterval  *TimeInterval   `json:"timeInterval,omitempty"`
 }

@@ -17,7 +17,7 @@ type CreateDeploymentParam struct {
 	Project     *id.ProjectID
 	Workspace   accountdomain.WorkspaceID
 	Workflow    *file.File
-	Description *string
+	Description string
 }
 
 type UpdateDeploymentParam struct {
