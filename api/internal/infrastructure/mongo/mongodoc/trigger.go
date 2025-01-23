@@ -37,14 +37,10 @@ func NewTrigger(t *trigger.Trigger) (*TriggerDocument, string) {
 		ID:           tid,
 		WorkspaceID:  t.Workspace().String(),
 		DeploymentID: t.Deployment().String(),
+		Description:  t.Description(),
 		EventSource:  string(t.EventSource()),
 		CreatedAt:    t.CreatedAt(),
 		UpdatedAt:    t.UpdatedAt(),
-	}
-
-	if description := t.Description(); description != nil {
-		at := string(*description)
-		doc.Description = at
 	}
 
 	if timeInterval := t.TimeInterval(); timeInterval != nil {

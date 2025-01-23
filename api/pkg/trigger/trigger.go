@@ -28,7 +28,7 @@ type Trigger struct {
 	lastTriggered *time.Time
 	workspaceId   WorkspaceID
 	deploymentId  DeploymentID
-	description   *string
+	description   string
 	eventSource   EventSourceType
 	authToken     *string
 	timeInterval  *TimeInterval
@@ -54,7 +54,7 @@ func (t *Trigger) Workspace() WorkspaceID {
 	return t.workspaceId
 }
 
-func (t *Trigger) Description() *string {
+func (t *Trigger) Description() string {
 	return t.description
 }
 
@@ -90,7 +90,7 @@ func (t *Trigger) SetEventSource(eventSource EventSourceType) {
 }
 
 func (t *Trigger) SetDescription(description string) {
-	t.description = &description
+	t.description = description
 	t.updatedAt = time.Now()
 }
 

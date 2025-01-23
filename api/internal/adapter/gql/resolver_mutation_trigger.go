@@ -24,7 +24,7 @@ func (r *mutationResolver) CreateTrigger(ctx context.Context, input gqlmodel.Cre
 	param.WorkspaceID = wsid
 	param.DeploymentID = did
 
-	param.Description = *input.Description
+	param.Description = input.Description
 
 	if input.TimeDriverInput != nil {
 		param.EventSource = "TIME_DRIVEN"
