@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
+import { useAuth } from "@flow/lib/auth";
 import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 
@@ -13,6 +14,7 @@ export default ({ workflowId }: { workflowId?: string }) => {
   const { projectId }: { projectId: string } = useParams({
     strict: false,
   });
+  const { getAccessToken } = useAuth();
 
   const [undoManager, setUndoManager] = useState<Y.UndoManager | null>(null);
 
@@ -31,11 +33,18 @@ export default ({ workflowId }: { workflowId?: string }) => {
     let yWebSocketProvider: WebsocketProvider | null = null;
 
     if (workflowId && websocket && projectId) {
-      yWebSocketProvider = new WebsocketProvider(
-        websocket,
-        `${projectId}:${workflowId}`,
-        yDoc,
-      );
+      (async () => {
+        const token = await getAccessToken();
+        yWebSocketProvider = new WebsocketProvider(
+          websocket,
+          `${projectId}:${workflowId}`,
+          yDoc,
+          {
+            params: {
+              token,
+            },
+          },
+        );
 
       yWebSocketProvider.once("sync", () => {
         if (yWorkflows.length === 0) {
@@ -48,8 +57,9 @@ export default ({ workflowId }: { workflowId?: string }) => {
           });
         }
 
-        setIsSynced(true); // Mark as synced
-      });
+          setIsSynced(true); // Mark as synced
+        });
+      })();
     }
 
     // Initial state setup
@@ -64,7 +74,7 @@ export default ({ workflowId }: { workflowId?: string }) => {
       setIsSynced(false); // Mark as not synced
       yWebSocketProvider?.destroy(); // Cleanup on unmount
     };
-  }, [projectId, workflowId]);
+  }, [projectId, workflowId, getAccessToken]);
 
   const { yDoc, yWorkflows, undoTrackerActionWrapper } = state || {};
 
