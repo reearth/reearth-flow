@@ -30,7 +30,7 @@ impl AuthService {
         {
             let response = self
                 .client
-                .get(&self.config.url)
+                .post(&self.config.url)
                 .header("Authorization", format!("Bearer {}", token))
                 .send()
                 .await?;

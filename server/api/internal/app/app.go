@@ -109,7 +109,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	apiPrivate.Use(authMiddleware, attachOpMiddleware(cfg))
 	apiPrivate.POST("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev))
 
-	apiPrivate.GET("/verify/ws-token", func(c echo.Context) error {
+	apiPrivate.POST("/verify/ws-token", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, echo.Map{"authorized": true})
 	})
 
