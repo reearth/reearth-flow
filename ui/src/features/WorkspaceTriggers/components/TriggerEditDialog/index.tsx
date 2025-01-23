@@ -34,9 +34,11 @@ const TriggerEditDialog: React.FC<Props> = ({
     updatedEventSource,
     updatedAuthToken,
     updatedTimeInterval,
+    updatedDescription,
     handleEventSourceChange,
     handleAuthTokenChange,
     handleTimeIntervalChange,
+    handleDescriptionChange,
     handleTriggerUpdate,
   } = useHooks({ selectedTrigger, onDialogClose });
 
@@ -75,6 +77,14 @@ const TriggerEditDialog: React.FC<Props> = ({
                 ))}
               </SelectContent>
             </Select>
+          </DialogContentSection>
+          <DialogContentSection className="flex flex-col">
+            <Label>{t("Description (optional): ")}</Label>
+            <Input
+              value={updatedDescription}
+              onChange={handleDescriptionChange}
+              placeholder={t("Give your trigger a meaningful description...")}
+            />
           </DialogContentSection>
           {updatedEventSource === "API_DRIVEN" && (
             <DialogContentSection className="flex flex-col">

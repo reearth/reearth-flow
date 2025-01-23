@@ -11,7 +11,9 @@ export default ({
   onDialogClose: () => void;
 }) => {
   const { useUpdateTrigger } = useTrigger();
-
+  const [updatedDescription, setUpdatedDescription] = useState(
+    selectedTrigger?.description || "",
+  );
   const [updatedEventSource, setUpdatedEventSource] = useState(
     selectedTrigger.eventSource,
   );
@@ -42,6 +44,13 @@ export default ({
     setUpdatedTimeInterval(timeInterval);
   }, []);
 
+  const handleDescriptionChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      setUpdatedDescription(e.target.value);
+    },
+    [],
+  );
+
   const handleTriggerUpdate = useCallback(async () => {
     if (!selectedTrigger) return;
 
@@ -49,6 +58,7 @@ export default ({
       selectedTrigger.id,
       updatedEventSource === "TIME_DRIVEN" ? updatedTimeInterval : undefined,
       updatedEventSource === "API_DRIVEN" ? updatedAuthToken : undefined,
+      updatedDescription,
     );
 
     onDialogClose();
@@ -59,15 +69,18 @@ export default ({
     updatedTimeInterval,
     onDialogClose,
     useUpdateTrigger,
+    updatedDescription,
   ]);
 
   return {
     updatedEventSource,
     updatedAuthToken,
     updatedTimeInterval,
+    updatedDescription,
     handleEventSourceChange,
     handleAuthTokenChange,
     handleTimeIntervalChange,
     handleTriggerUpdate,
+    handleDescriptionChange,
   };
 };

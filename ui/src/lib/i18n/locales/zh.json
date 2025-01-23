@@ -195,6 +195,7 @@
   "Every Week": "每周",
   "Every Month": "每月",
   "Create a new trigger": "创建新触发器",
+  "Give your trigger a meaningful description...": "",
   "Select a deployment": "选择一个部署",
   "Select Event Source": "选择事件源",
   "Select an event source": "",

@@ -195,6 +195,7 @@
   "Every Week": "Chaque semaine",
   "Every Month": "Chaque mois",
   "Create a new trigger": "Créer un nouveau déclencheur",
+  "Give your trigger a meaningful description...": "",
   "Select a deployment": "Sélectionner un déploiement",
   "Select Event Source": "Sélectionner la source de l'événement",
   "Select an event source": "",

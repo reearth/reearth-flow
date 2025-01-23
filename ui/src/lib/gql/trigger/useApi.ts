@@ -29,6 +29,7 @@ export const useTrigger = () => {
     deploymentId: string,
     timeInterval?: TimeInterval,
     authToken?: string,
+    description?: string,
   ): Promise<CreateTrigger> => {
     const { mutateAsync, ...rest } = createTriggerMutation;
 
@@ -40,6 +41,7 @@ export const useTrigger = () => {
           ? { interval: timeInterval as TimeDriverInput["interval"] }
           : undefined,
         apiDriverInput: authToken ? { token: authToken } : undefined,
+        description,
       });
       toast({
         title: t("Trigger Created"),
@@ -60,6 +62,7 @@ export const useTrigger = () => {
     triggerId: string,
     timeInterval?: TimeInterval,
     authToken?: string,
+    description?: string,
   ): Promise<UpdateTrigger> => {
     const { mutateAsync, ...rest } = updateTriggerMutation;
     try {
@@ -69,6 +72,7 @@ export const useTrigger = () => {
           ? { interval: timeInterval as TimeDriverInput["interval"] }
           : undefined,
         apiDriverInput: authToken ? { token: authToken } : undefined,
+        description,
       });
       toast({
         title: t("Trigger Updated"),

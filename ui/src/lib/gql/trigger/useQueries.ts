@@ -25,11 +25,13 @@ export const useQueries = () => {
       deploymentId,
       timeDriverInput,
       apiDriverInput,
+      description,
     }: {
       workspaceId: string;
       deploymentId: string;
       timeDriverInput?: TimeDriverInput;
       apiDriverInput?: ApiDriverInput;
+      description?: string;
     }) => {
       const data = await graphQLContext?.CreateTrigger({
         input: {
@@ -37,6 +39,7 @@ export const useQueries = () => {
           deploymentId,
           timeDriverInput,
           apiDriverInput,
+          description,
         },
       });
 
@@ -58,15 +61,18 @@ export const useQueries = () => {
       triggerId,
       apiDriverInput,
       timeDriverInput,
+      description,
     }: {
       triggerId: string;
       apiDriverInput?: ApiDriverInput;
       timeDriverInput?: TimeDriverInput;
+      description?: string;
     }) => {
       const input: UpdateTriggerInput = {
         triggerId,
         apiDriverInput,
         timeDriverInput,
+        description,
       };
 
       const data = await graphQLContext?.UpdateTrigger({
