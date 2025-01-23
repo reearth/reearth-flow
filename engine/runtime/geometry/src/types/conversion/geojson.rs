@@ -19,10 +19,10 @@ where
     let y: f64 = point.y().to_f64().expect("Failed to convert y to f64");
 
     if point.z().is_nan() {
-        vec![x, y]
+        vec![y, x]
     } else {
         let z: f64 = point.z().to_f64().expect("Failed to convert z to f64");
-        vec![x, y, z]
+        vec![y, x, z]
     }
 }
 
@@ -122,11 +122,11 @@ where
 }
 
 pub(crate) fn create_geo_coordinate_2d(point_type: &geojson::PointType) -> Coordinate2D<f64> {
-    Coordinate2D::new_(point_type[0], point_type[1])
+    Coordinate2D::new_(point_type[1], point_type[0])
 }
 
 pub(crate) fn create_geo_coordinate_3d(point_type: &geojson::PointType) -> Coordinate3D<f64> {
-    Coordinate3D::new__(point_type[0], point_type[1], point_type[2])
+    Coordinate3D::new__(point_type[1], point_type[0], point_type[2])
 }
 
 pub fn is_2d(point_type: &geojson::PointType) -> bool {
@@ -137,12 +137,48 @@ pub fn is_3d(point_type: &geojson::PointType) -> bool {
     point_type.len() == 3
 }
 
+pub fn is_2d_geojson_value(value: &geojson::Value) -> bool {
+    match value {
+        geojson::Value::Point(point_type) => is_2d(point_type),
+        geojson::Value::LineString(line_type) => line_type.iter().all(is_2d),
+        geojson::Value::Polygon(polygon_type) => {
+            polygon_type.iter().all(|line| line.iter().all(is_2d))
+        }
+        geojson::Value::MultiPoint(multi_point_type) => multi_point_type.iter().all(is_2d),
+        geojson::Value::MultiLineString(multi_line_type) => {
+            multi_line_type.iter().all(|line| line.iter().all(is_2d))
+        }
+        geojson::Value::MultiPolygon(multi_polygon_type) => multi_polygon_type
+            .iter()
+            .all(|polygon| polygon.iter().all(|line| line.iter().all(is_2d))),
+        _ => false,
+    }
+}
+
+pub fn is_3d_geojson_value(value: &geojson::Value) -> bool {
+    match value {
+        geojson::Value::Point(point_type) => is_3d(point_type),
+        geojson::Value::LineString(line_type) => line_type.iter().all(is_3d),
+        geojson::Value::Polygon(polygon_type) => {
+            polygon_type.iter().all(|line| line.iter().all(is_3d))
+        }
+        geojson::Value::MultiPoint(multi_point_type) => multi_point_type.iter().all(is_3d),
+        geojson::Value::MultiLineString(multi_line_type) => {
+            multi_line_type.iter().all(|line| line.iter().all(is_3d))
+        }
+        geojson::Value::MultiPolygon(multi_polygon_type) => multi_polygon_type
+            .iter()
+            .all(|polygon| polygon.iter().all(|line| line.iter().all(is_3d))),
+        _ => false,
+    }
+}
+
 pub(crate) fn create_geo_point_2d(point_type: &geojson::PointType) -> Point2D<f64> {
-    Point2D::from((point_type[0], point_type[1]))
+    Point2D::from((point_type[1], point_type[0]))
 }
 
 pub(crate) fn create_geo_point_3d(point_type: &geojson::PointType) -> Point3D<f64> {
-    Point3D::new(point_type[0], point_type[1], point_type[2])
+    Point3D::new(point_type[1], point_type[0], point_type[2])
 }
 
 pub(crate) fn create_geo_line_string_2d(line_type: &geojson::LineStringType) -> LineString2D<f64> {
@@ -257,16 +293,16 @@ mod test {
         assert!(is_2d(&point_type));
         assert!(!is_3d(&point_type));
         let point = create_geo_point_2d(&point_type);
-        assert_eq!(point.x(), 1.0);
-        assert_eq!(point.y(), 2.0);
+        assert_eq!(point.x(), 2.0);
+        assert_eq!(point.y(), 1.0);
         assert_eq!(point.z(), NoValue);
 
         let point_type: PointType = vec![1.0, 2.0, 1.0];
         assert!(!is_2d(&point_type));
         assert!(is_3d(&point_type));
         let point = create_geo_point_3d(&point_type);
-        assert_eq!(point.x(), 1.0);
-        assert_eq!(point.y(), 2.0);
+        assert_eq!(point.x(), 2.0);
+        assert_eq!(point.y(), 1.0);
         assert_eq!(point.z(), 1.0);
     }
 }
