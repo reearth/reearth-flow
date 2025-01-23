@@ -8,6 +8,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearthx/account/accountdomain"
+	"github.com/reearth/reearthx/usecasex"
 )
 
 type CreateTriggerParam struct {
@@ -38,7 +39,7 @@ var (
 type Trigger interface {
 	Fetch(context.Context, []id.TriggerID, *usecase.Operator) ([]*trigger.Trigger, error)
 	FindByID(context.Context, id.TriggerID, *usecase.Operator) (*trigger.Trigger, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecase.Operator) ([]*trigger.Trigger, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination, *usecase.Operator) ([]*trigger.Trigger, *usecasex.PageInfo, error)
 	Create(context.Context, CreateTriggerParam, *usecase.Operator) (*trigger.Trigger, error)
 	Update(context.Context, UpdateTriggerParam, *usecase.Operator) (*trigger.Trigger, error)
 	Delete(context.Context, id.TriggerID, *usecase.Operator) error

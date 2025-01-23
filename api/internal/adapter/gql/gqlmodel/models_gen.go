@@ -368,6 +368,18 @@ type Trigger struct {
 func (Trigger) IsNode()        {}
 func (this Trigger) GetID() ID { return this.ID }
 
+type TriggerConnection struct {
+	Edges      []*TriggerEdge `json:"edges"`
+	Nodes      []*Trigger     `json:"nodes"`
+	PageInfo   *PageInfo      `json:"pageInfo"`
+	TotalCount int            `json:"totalCount"`
+}
+
+type TriggerEdge struct {
+	Cursor usecasex.Cursor `json:"cursor"`
+	Node   *Trigger        `json:"node,omitempty"`
+}
+
 type UpdateDeploymentInput struct {
 	DeploymentID ID              `json:"deploymentId"`
 	File         *graphql.Upload `json:"file,omitempty"`
