@@ -90,7 +90,7 @@ func (t *Trigger) SetEventSource(eventSource EventSourceType) {
 }
 
 func (t *Trigger) SetDescription(description string) {
-	t.description = &description
+	t.description = description
 	t.updatedAt = time.Now()
 }
 
