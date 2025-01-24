@@ -839,6 +839,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "calamine"
+version = "0.26.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "138646b9af2c5d7f1804ea4bf93afc597737d2bd4f7341d67c48b03316976eb1"
+dependencies = [
+ "byteorder",
+ "codepage",
+ "encoding_rs",
+ "log",
+ "quick-xml 0.31.0",
+ "serde",
+ "zip",
+]
+
+[[package]]
 name = "cargo_toml"
 version = "0.15.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1084,6 +1099,15 @@ dependencies = [
  "core-graphics-types",
  "libc",
  "objc",
+]
+
+[[package]]
+name = "codepage"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "48f68d061bc2828ae826206326e61251aca94c1e4a5305cf52d9138639c918b4"
+dependencies = [
+ "encoding_rs",
 ]
 
 [[package]]
@@ -3825,7 +3849,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.4#5ceecd96795a6916357e2ac75bd0fec0f77db22a"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.5#b8f6151cc6ee53c7b7a2a1e48cd1c2e28993fd0c"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4279,7 +4303,7 @@ dependencies = [
 [[package]]
 name = "nusamai-citygml"
 version = "0.0.0-alpha.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.4#5ceecd96795a6916357e2ac75bd0fec0f77db22a"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.5#b8f6151cc6ee53c7b7a2a1e48cd1c2e28993fd0c"
 dependencies = [
  "ahash 0.8.11",
  "chrono",
@@ -4300,7 +4324,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.4#5ceecd96795a6916357e2ac75bd0fec0f77db22a"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.5#b8f6151cc6ee53c7b7a2a1e48cd1c2e28993fd0c"
 dependencies = [
  "byteorder",
  "nusamai-gltf-json",
@@ -4310,7 +4334,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.4#5ceecd96795a6916357e2ac75bd0fec0f77db22a"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.5#b8f6151cc6ee53c7b7a2a1e48cd1c2e28993fd0c"
 dependencies = [
  "cesiumtiles",
  "serde",
@@ -4321,7 +4345,7 @@ dependencies = [
 [[package]]
 name = "nusamai-plateau"
 version = "0.0.0-alpha.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.4#5ceecd96795a6916357e2ac75bd0fec0f77db22a"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.5#b8f6151cc6ee53c7b7a2a1e48cd1c2e28993fd0c"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -4339,7 +4363,7 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.4#5ceecd96795a6916357e2ac75bd0fec0f77db22a"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.5#b8f6151cc6ee53c7b7a2a1e48cd1c2e28993fd0c"
 dependencies = [
  "japan-geoid",
  "thiserror 2.0.11",
@@ -5290,6 +5314,16 @@ checksum = "a993555f31e5a609f617c12db6250dedcac1b0a85076912c436e6fc9b2c8e6a3"
 
 [[package]]
 name = "quick-xml"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1004a344b30a54e2ee58d66a71b32d2db2feb0a31f9a2d302bf0536f15de2a33"
+dependencies = [
+ "encoding_rs",
+ "memchr",
+]
+
+[[package]]
+name = "quick-xml"
 version = "0.32.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1d3a6e5838b60e0e8fa7a43f22ade549a37d61f8bdbe636d0d7816191de969c2"
@@ -5614,6 +5648,7 @@ dependencies = [
  "approx",
  "async-trait",
  "bytes",
+ "calamine",
  "chrono",
  "itertools 0.14.0",
  "num-traits",
