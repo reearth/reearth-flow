@@ -60,7 +60,7 @@ const TriggerEditDialog: React.FC<Props> = ({
         <DialogTitle>{t("Update Trigger")}</DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex flex-col">
-            <Label>{t("Description (optional): ")}</Label>
+            <Label>{t("Description")}</Label>
             <Input
               value={updatedDescription}
               onChange={handleDescriptionChange}
@@ -127,7 +127,8 @@ const TriggerEditDialog: React.FC<Props> = ({
               updatedEventSource === selectedTrigger.eventSource &&
               updatedTimeInterval === selectedTrigger.timeInterval &&
               updatedAuthToken === selectedTrigger.authToken &&
-              updatedDescription === selectedTrigger.description
+              (updatedDescription === selectedTrigger.description ||
+                !updatedDescription.trim())
             }>
             {t("Update Trigger")}
           </Button>
