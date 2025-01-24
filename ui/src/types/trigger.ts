@@ -23,6 +23,7 @@ export type Trigger = {
   eventSource: EventSourceType;
   authToken?: string;
   timeInterval?: TimeInterval;
+  description?: string;
 };
 
 export type GetTriggers = {

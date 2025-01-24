@@ -34,9 +34,11 @@ const TriggerEditDialog: React.FC<Props> = ({
     updatedEventSource,
     updatedAuthToken,
     updatedTimeInterval,
+    updatedDescription,
     handleEventSourceChange,
     handleAuthTokenChange,
     handleTimeIntervalChange,
+    handleDescriptionChange,
     handleTriggerUpdate,
   } = useHooks({ selectedTrigger, onDialogClose });
 
@@ -57,6 +59,14 @@ const TriggerEditDialog: React.FC<Props> = ({
       <DialogContent size="sm">
         <DialogTitle>{t("Update Trigger")}</DialogTitle>
         <DialogContentWrapper>
+          <DialogContentSection className="flex flex-col">
+            <Label>{t("Description")}</Label>
+            <Input
+              value={updatedDescription}
+              onChange={handleDescriptionChange}
+              placeholder={t("Give your trigger a meaningful description...")}
+            />
+          </DialogContentSection>
           <DialogContentSection className="flex-1">
             <Label htmlFor="event-source-selector">
               {t("Select Event Source")}
@@ -116,7 +126,9 @@ const TriggerEditDialog: React.FC<Props> = ({
             disabled={
               updatedEventSource === selectedTrigger.eventSource &&
               updatedTimeInterval === selectedTrigger.timeInterval &&
-              updatedAuthToken === selectedTrigger.authToken
+              updatedAuthToken === selectedTrigger.authToken &&
+              (updatedDescription === selectedTrigger.description ||
+                !updatedDescription.trim())
             }>
             {t("Update Trigger")}
           </Button>

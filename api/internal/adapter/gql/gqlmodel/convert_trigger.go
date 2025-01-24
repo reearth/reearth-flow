@@ -16,6 +16,7 @@ func ToTrigger(t *trigger.Trigger) *Trigger {
 		LastTriggered: t.LastTriggered(),
 		WorkspaceID:   IDFrom(t.Workspace()),
 		DeploymentID:  IDFrom(t.Deployment()),
+		Description:   t.Description(),
 		EventSource:   ToEventSourceType(t.EventSource()),
 		AuthToken:     t.AuthToken(),
 		TimeInterval:  ToTimeInterval(*t.TimeInterval()),

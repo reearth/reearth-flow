@@ -46,6 +46,7 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   eventSource: trigger.eventSource,
   authToken: trigger.authToken ?? undefined,
   timeInterval: trigger.timeInterval ?? undefined,
+  description: trigger.description ?? undefined,
 });
 
 export const toJob = (job: JobFragment): Job => ({

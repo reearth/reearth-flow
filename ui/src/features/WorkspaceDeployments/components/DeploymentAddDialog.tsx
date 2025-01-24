@@ -118,7 +118,7 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
             />
           </DialogContentSection>
           <DialogContentSection className="flex flex-col">
-            <Label>{t("Description (optional): ")}</Label>
+            <Label>{t("Description")}</Label>
             <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -135,7 +135,7 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
         </DialogContentWrapper>
         <DialogFooter>
           <Button
-            disabled={invalidFile || !workflowFile}
+            disabled={invalidFile || !workflowFile || !description.trim()}
             onClick={handleWorkflowDeployment}>
             {t("Deploy")}
           </Button>

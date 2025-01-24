@@ -31,22 +31,29 @@ const TriggerDetails: React.FC<Props> = ({
             {
               id: "id",
               name: t("ID"),
-              value: selectedTrigger.id,
+              value: selectedTrigger.id || t("Unknown or deleted trigger"),
+            },
+            {
+              id: "triggerId",
+              name: t("Trigger Description"),
+              value: selectedTrigger.description || t("N/A"),
             },
             {
               id: "deploymentId",
               name: t("Deployment Id"),
-              value: selectedTrigger.deploymentId,
+              value: selectedTrigger.deploymentId || t("N/A"),
             },
             {
               id: "projectName",
               name: t("Project Name"),
-              value: selectedTrigger.deployment.projectName,
+              value:
+                selectedTrigger.deployment.projectName ||
+                t("Unknown or deleted project"),
             },
             {
               id: "deploymentDescription",
               name: t("Deployment Description"),
-              value: selectedTrigger.deployment.description,
+              value: selectedTrigger.deployment.description || t("N/A"),
             },
             {
               id: "eventSource",
@@ -58,7 +65,7 @@ const TriggerDetails: React.FC<Props> = ({
                   {
                     id: "authToken",
                     name: t("Auth Token"),
-                    value: selectedTrigger.authToken,
+                    value: selectedTrigger.authToken || t("N/A"),
                   },
                 ]
               : []),
@@ -67,39 +74,29 @@ const TriggerDetails: React.FC<Props> = ({
                   {
                     id: "timeInterval",
                     name: t("Time Interval"),
-                    value: selectedTrigger.timeInterval,
+                    value: selectedTrigger.timeInterval || t("N/A"),
                   },
                 ]
               : []),
-            ...(selectedTrigger?.lastTriggered
-              ? [
-                  {
-                    id: "lastTriggered",
-                    name: t("Last Triggered"),
-                    value: selectedTrigger.lastTriggered,
-                  },
-                ]
-              : [
-                  {
-                    id: "lastTriggered",
-                    name: t("Last Triggered"),
-                    value: t("Never"),
-                  },
-                ]),
+            {
+              id: "lastTriggered",
+              name: t("Last Triggered"),
+              value: selectedTrigger.lastTriggered || t("Never"),
+            },
             {
               id: "createdAt",
               name: t("Created At"),
-              value: selectedTrigger.createdAt,
+              value: selectedTrigger.createdAt || t("N/A"),
             },
             {
               id: "updatedAt",
               name: t("Updated At"),
-              value: selectedTrigger.updatedAt,
+              value: selectedTrigger.updatedAt || t("Never"),
             },
             {
               id: "workflowUrl",
               name: t("Workflow Url"),
-              value: selectedTrigger.deployment.workflowUrl,
+              value: selectedTrigger.deployment.workflowUrl || t("N/A"),
             },
           ]
         : undefined,

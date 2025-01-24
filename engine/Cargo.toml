@@ -64,10 +64,10 @@ reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }
 reearth-flow-types = { path = "runtime/types" }
 
-nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.7.4", features = ["serde", "serde_json"] }
-nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.7.4" }
-nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.7.4", features = ["serde"] }
-nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.7.4" }
+nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.7.5", features = ["serde", "serde_json"] }
+nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.7.5" }
+nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.7.5", features = ["serde"] }
+nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.7.5" }
 
 Inflector = "0.11.4"
 ahash = "0.8.11"
@@ -82,6 +82,7 @@ bincode = { version = "2.0.0-rc.3", default-features = false, features = ["serde
 bytemuck = { version = "1.21.0", features = ["derive"] }
 byteorder = "1.5.0"
 bytes = { version = "1.9.0", features = ["serde"] }
+calamine = "0.26.1"
 cesiumtiles = { git = "https://github.com/MIERUNE/cesiumtiles-rs.git" }
 chrono = { version = "0.4.39", features = ["serde"] }
 clap = { version = "4.5.27", features = ["env", "string"] }

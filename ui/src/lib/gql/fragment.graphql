@@ -37,6 +37,7 @@ fragment Trigger on Trigger {
   eventSource
   authToken
   timeInterval
+  description
 }
 
 fragment Job on Job {

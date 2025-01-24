@@ -8,7 +8,9 @@ use num_traits::Zero;
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
-use super::conversion::geojson::{create_geo_point, create_point_type, mismatch_geom_err};
+use super::conversion::geojson::{
+    create_geo_point_2d, create_geo_point_3d, create_point_type, mismatch_geom_err,
+};
 use super::coordnum::{CoordFloat, CoordNum};
 use super::no_value::NoValue;
 use super::point::Point;
@@ -127,20 +129,26 @@ impl<T: CoordFloat, Z: CoordFloat> From<MultiPoint<T, Z>> for geojson::Value {
     }
 }
 
-impl<T, Z> TryFrom<geojson::Value> for MultiPoint<T, Z>
-where
-    T: CoordFloat,
-    Z: CoordFloat,
-{
+impl TryFrom<geojson::Value> for MultiPoint2D<f64> {
     type Error = crate::error::Error;
 
     fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
         match value {
             geojson::Value::MultiPoint(multi_point_type) => Ok(MultiPoint::new(
-                multi_point_type
-                    .iter()
-                    .map(|point_type| create_geo_point(point_type))
-                    .collect(),
+                multi_point_type.iter().map(create_geo_point_2d).collect(),
+            )),
+            other => Err(mismatch_geom_err("MultiPoint", &other)),
+        }
+    }
+}
+
+impl TryFrom<geojson::Value> for MultiPoint3D<f64> {
+    type Error = crate::error::Error;
+
+    fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
+        match value {
+            geojson::Value::MultiPoint(multi_point_type) => Ok(MultiPoint::new(
+                multi_point_type.iter().map(create_geo_point_3d).collect(),
             )),
             other => Err(mismatch_geom_err("MultiPoint", &other)),
         }

@@ -20,7 +20,7 @@ export default () => {
   const [triggerToBeDeleted, setTriggerToBeDeleted] = useState<
     Trigger | undefined
   >(undefined);
-  const { useGetTriggers, useDeleteTrigger } = useTrigger();
+  const { useGetTriggersInfinite, useDeleteTrigger } = useTrigger();
 
   const {
     location: { pathname },
@@ -28,7 +28,19 @@ export default () => {
 
   const tab = getTab(pathname);
 
-  const { triggers } = useGetTriggers(currentWorkspace?.id);
+  const { pages, hasNextPage, isFetching, fetchNextPage } =
+    useGetTriggersInfinite(currentWorkspace?.id);
+
+  const triggers: Trigger[] | undefined = useMemo(
+    () =>
+      pages?.reduce((triggers, page) => {
+        if (page?.triggers) {
+          triggers.push(...page.triggers);
+        }
+        return triggers;
+      }, [] as Trigger[]),
+    [pages],
+  );
 
   const selectedTrigger = useMemo(
     () => triggers?.find((trigger) => trigger.id === tab),
@@ -58,24 +70,28 @@ export default () => {
   useEffect(() => {
     if (
       ref.current &&
-      ref.current?.scrollHeight <= document.documentElement.clientHeight
+      ref.current?.scrollHeight <= document.documentElement.clientHeight &&
+      hasNextPage &&
+      !isFetching
     ) {
-      console.log("Fetch next page placeholder");
+      fetchNextPage();
     }
-  }, [ref]);
+  }, [isFetching, hasNextPage, ref, fetchNextPage]);
 
   useEffect(() => {
     const handleScroll = () => {
       if (
         window.innerHeight + document.documentElement.scrollTop + 5 >=
-        document.documentElement.scrollHeight
+          document.documentElement.scrollHeight &&
+        !isFetching &&
+        hasNextPage
       ) {
-        console.log("Fetch next page placeholder");
+        fetchNextPage();
       }
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [isFetching, fetchNextPage, hasNextPage]);
 
   return {
     ref,

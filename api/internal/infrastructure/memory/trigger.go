@@ -9,6 +9,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/rerror"
+	"github.com/reearth/reearthx/usecasex"
 )
 
 type Trigger struct {
@@ -30,12 +31,12 @@ func (r *Trigger) Filtered(f repo.WorkspaceFilter) repo.Trigger {
 	}
 }
 
-func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID) ([]*trigger.Trigger, error) {
+func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *usecasex.Pagination) ([]*trigger.Trigger, *usecasex.PageInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
 	if !r.f.CanRead(id) {
-		return nil, nil
+		return nil, nil, nil
 	}
 
 	result := []*trigger.Trigger{}
@@ -45,7 +46,21 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		}
 	}
 
-	return result, nil
+	var startCursor, endCursor *usecasex.Cursor
+	if len(result) > 0 {
+		_startCursor := usecasex.Cursor(result[0].ID().String())
+		_endCursor := usecasex.Cursor(result[len(result)-1].ID().String())
+		startCursor = &_startCursor
+		endCursor = &_endCursor
+	}
+
+	return result, usecasex.NewPageInfo(
+		int64(len(result)),
+		startCursor,
+		endCursor,
+		true,
+		true,
+	), nil
 }
 
 func (r *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigger, error) {
