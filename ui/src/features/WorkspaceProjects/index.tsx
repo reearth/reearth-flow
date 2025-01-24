@@ -1,6 +1,6 @@
 import { Plus } from "@phosphor-icons/react";
 
-import { Button, FlowLogo, ScrollArea } from "@flow/components/";
+import { Button, FlowLogo, Pagination, ScrollArea } from "@flow/components/";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
 
@@ -31,6 +31,12 @@ const ProjectsManager: React.FC = () => {
     handleDeleteProject,
     handleUpdateValue,
     handleUpdateProject,
+    totalPages,
+    currentPage,
+    hasNextPage,
+    isFetchingNextPage,
+    handleNextPage,
+    handlePrevPage,
   } = useHooks();
 
   return (
@@ -69,6 +75,14 @@ const ProjectsManager: React.FC = () => {
             icon={<FlowLogo className="size-16 text-accent" />}
           />
         )}
+        <Pagination
+          hasNextPage={hasNextPage}
+          onNextPage={handleNextPage}
+          onPrevPage={handlePrevPage}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          isFetchingNextPage={isFetchingNextPage}
+        />
       </div>
       <ProjectAddDialog
         isOpen={openProjectAddDialog}

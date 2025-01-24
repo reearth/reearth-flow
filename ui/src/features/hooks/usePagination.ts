@@ -1,17 +1,18 @@
 import { useCallback, useMemo, Dispatch, SetStateAction } from "react";
 
-import { Deployment, Job, Trigger } from "@flow/types";
+import type { Deployment, Job, Project, Trigger } from "@flow/types";
 
 type PageData<T> =
   | {
       triggers?: T[];
       jobs?: T[];
       deployments?: T[];
+      projects?: T[];
       totalCount: number;
     }
   | undefined;
 
-export default <T extends Trigger | Job | Deployment>(
+export default <T extends Trigger | Job | Deployment | Project>(
   fetchRate: number,
   hasNextPage: boolean,
   isFetchingNextPage: boolean,
@@ -34,7 +35,8 @@ export default <T extends Trigger | Job | Deployment>(
       const hasData =
         nextPageData?.triggers ||
         nextPageData?.jobs ||
-        nextPageData?.deployments;
+        nextPageData?.deployments ||
+        nextPageData?.projects;
 
       if (hasData) {
         setCurrentPage((prev) => prev + 1);

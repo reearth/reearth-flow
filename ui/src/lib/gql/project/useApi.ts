@@ -5,7 +5,6 @@ import {
   DeleteProject,
   EngineReadyWorkflow,
   GetProject,
-  GetWorkspaceProjects,
   Project,
   RunProject,
   UpdateProject,
@@ -47,8 +46,12 @@ export const useProject = () => {
 
   const useGetWorkspaceProjectsInfinite = (
     workspaceId?: string,
-  ): GetWorkspaceProjects => {
-    const { data, ...rest } = useGetProjectsInfiniteQuery(workspaceId);
+    fetchRate?: number,
+  ) => {
+    const { data, ...rest } = useGetProjectsInfiniteQuery(
+      workspaceId,
+      fetchRate,
+    );
     return {
       pages: data?.pages,
       ...rest,

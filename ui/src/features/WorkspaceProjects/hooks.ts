@@ -1,22 +1,26 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { useProject } from "@flow/lib/gql";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 import { Project } from "@flow/types";
 
+import usePagination from "../hooks/usePagination";
+
+const PROJECT_FETCH_RATE = 5;
 export default () => {
   const ref = useRef<HTMLDivElement>(null);
 
   const [workspace] = useCurrentWorkspace();
 
   const [currentProject, setCurrentProject] = useCurrentProject();
-
+  const [currentPage, setCurrentPage] = useState<number>(0);
   const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
   const { useGetWorkspaceProjectsInfinite, deleteProject, updateProject } =
     useProject();
-  const { pages, hasNextPage, isFetching, fetchNextPage } =
-    useGetWorkspaceProjectsInfinite(workspace?.id);
+
+  const { pages, hasNextPage, fetchNextPage, isFetchingNextPage } =
+    useGetWorkspaceProjectsInfinite(workspace?.id, PROJECT_FETCH_RATE);
 
   const [openProjectAddDialog, setOpenProjectAddDialog] = useState(false);
   const [showError, setShowError] = useState(false);
@@ -68,43 +72,20 @@ export default () => {
   };
 
   const projects: Project[] | undefined = useMemo(
-    () =>
-      pages?.reduce((projects, page) => {
-        if (page?.projects) {
-          projects.push(...page.projects);
-        }
-        return projects;
-      }, [] as Project[]),
-    [pages],
+    () => pages?.[currentPage]?.projects,
+    [pages, currentPage],
   );
 
-  // Auto fills the page
-  useEffect(() => {
-    if (
-      ref.current &&
-      ref.current?.scrollHeight <= document.documentElement.clientHeight &&
-      hasNextPage &&
-      !isFetching
-    ) {
-      fetchNextPage();
-    }
-  }, [isFetching, hasNextPage, ref, fetchNextPage]);
-
-  // Loads more projects as scroll reaches the bottom
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop + 5 >=
-          document.documentElement.scrollHeight &&
-        !isFetching &&
-        hasNextPage
-      ) {
-        fetchNextPage();
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isFetching, fetchNextPage, hasNextPage]);
+  const { totalPages, handleNextPage, handlePrevPage, canGoNext } =
+    usePagination<Project>(
+      PROJECT_FETCH_RATE,
+      hasNextPage,
+      isFetchingNextPage,
+      pages,
+      fetchNextPage,
+      currentPage,
+      setCurrentPage,
+    );
 
   return {
     projects,
@@ -122,5 +103,12 @@ export default () => {
     handleDeleteProject,
     handleUpdateValue,
     handleUpdateProject,
+    totalPages,
+    currentPage,
+    hasNextPage: canGoNext,
+    // isFetching,
+    isFetchingNextPage,
+    handleNextPage,
+    handlePrevPage,
   };
 };

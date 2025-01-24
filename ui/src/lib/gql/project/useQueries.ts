@@ -22,7 +22,7 @@ export enum ProjectQueryKeys {
   GetProject = "getProject",
 }
 
-const PROJECT_FETCH_AMOUNT = 5;
+const PROJECT_FETCH_AMOUNT = 1;
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
@@ -43,14 +43,17 @@ export const useQueries = () => {
       }),
   });
 
-  const useGetProjectsInfiniteQuery = (workspaceId?: string) =>
+  const useGetProjectsInfiniteQuery = (
+    workspaceId?: string,
+    fetchRate?: number,
+  ) =>
     useInfiniteQuery({
       queryKey: [ProjectQueryKeys.GetWorkspaceProjects, workspaceId],
       initialPageParam: null,
       queryFn: async ({ pageParam }) => {
         const data = await graphQLContext?.GetProjects({
           workspaceId: workspaceId ?? "",
-          first: PROJECT_FETCH_AMOUNT,
+          first: fetchRate ?? PROJECT_FETCH_AMOUNT,
           after: pageParam,
         });
         if (!data) return;
@@ -58,12 +61,13 @@ export const useQueries = () => {
           projects: {
             nodes,
             pageInfo: { endCursor, hasNextPage },
+            totalCount,
           },
         } = data;
         const projects: Project[] = nodes
           .filter(isDefined)
           .map((project) => toProject(project));
-        return { projects, endCursor, hasNextPage };
+        return { projects, endCursor, hasNextPage, totalCount };
       },
       enabled: !!workspaceId,
       getNextPageParam: (lastPage) => {
