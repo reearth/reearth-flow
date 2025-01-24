@@ -1,5 +1,5 @@
 import { XYPosition } from "@xyflow/react";
-import { MouseEvent, useCallback, useState } from "react";
+import { MouseEvent, useCallback, useMemo, useState } from "react";
 import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
@@ -34,11 +34,14 @@ export default ({
   );
   const isMainWorkflow = useIsMainWorkflow(currentWorkflowId);
 
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+
+  console.log("selectedNodeIds", selectedNodeIds);
+
   const {
     nodes,
     edges,
     openWorkflows,
-    selectedNodeIds,
     canUndo,
     canRedo,
     rawWorkflows,
@@ -48,9 +51,8 @@ export default ({
     handleWorkflowAdd,
     handleWorkflowAddFromSelection,
     handleWorkflowUpdate,
-    handleNodeSelection,
-    handleNodesChange2,
-    handleNodesUpdate,
+    handleYNodesAdd,
+    handleYNodesChange,
     handleNodeParamsUpdate,
     handleEdgeSelection,
     handleEdgesUpdate,
@@ -61,14 +63,18 @@ export default ({
     currentWorkflowId,
     yWorkflows,
     undoManager,
+    selectedNodeIds,
+    setSelectedNodeIds,
     undoTrackerActionWrapper,
     handleCurrentWorkflowIdChange,
   });
 
+  const allowedToDeploy = useMemo(() => nodes.length > 0, [nodes]);
+
   const hasReader = useHasReader(nodes);
 
   const { lockedNodeIds, locallyLockedNode, handleNodeLocking } = useNodeLocker(
-    { selectedNodeIds, handleNodesUpdate },
+    { selectedNodeIds, nodes },
   );
 
   const handleNodeDoubleClick = useCallback(
@@ -87,7 +93,8 @@ export default ({
     edges,
     rawWorkflows,
     handleWorkflowUpdate,
-    handleNodesUpdate,
+    handleNodesAdd: handleYNodesAdd,
+    handleNodesChange: handleYNodesChange,
     handleEdgesUpdate,
   });
 
@@ -217,16 +224,16 @@ export default ({
     hoveredDetails,
     nodePickerOpen,
     openPanel,
+    allowedToDeploy,
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowChange: handleCurrentWorkflowIdChange,
-    handleNodesUpdate,
     handleNodeParamsUpdate,
     handleNodeHover,
-    handleNodeSelection,
-    handleNodesChange2,
+    handleYNodesAdd,
+    handleYNodesChange,
     handleNodeDoubleClick,
     handleNodePickerOpen,
     handleNodePickerClose,

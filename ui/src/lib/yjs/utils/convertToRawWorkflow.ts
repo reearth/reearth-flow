@@ -11,8 +11,13 @@ export const reassembleNode = (yNode: YNode): Node => {
     y: (yNode.get("position") as YMap<any>).get("y"),
   };
   const measured = {
-    width: (yNode.get("measured") as YMap<any>).get("width"),
-    height: (yNode.get("measured") as YMap<any>).get("height"),
+    width: (yNode.get("measured") as YMap<any>)?.get("width"),
+    height: (yNode.get("measured") as YMap<any>)?.get("height"),
+  };
+
+  const style = {
+    width: (yNode.get("style") as YMap<any>)?.get("width"),
+    height: (yNode.get("style") as YMap<any>)?.get("height"),
   };
 
   // Get non-reactive fields
@@ -28,24 +33,16 @@ export const reassembleNode = (yNode: YNode): Node => {
     position,
     type: nonReactiveFields["type"],
     dragging: nonReactiveFields["dragging"],
+    measured,
     data: nonReactiveFields["data"],
   };
 
-  if (measured.width && measured.height) {
-    reassembledNode.measured = measured;
+  if (nonReactiveFields["type"] === "batch" && style.width && style.height) {
+    reassembledNode.style = style;
   }
   // if (nonReactiveFields["selected"]) {
   //   reassembledNode.selected = nonReactiveFields["selected"];
   // }
-  if (nonReactiveFields["dragging"]) {
-    reassembledNode.dragging = nonReactiveFields["dragging"];
-  }
-  if (nonReactiveFields["data"]) {
-    reassembledNode.data = nonReactiveFields["data"];
-  }
-  if (nonReactiveFields["type"]) {
-    reassembledNode.type = nonReactiveFields["type"];
-  }
 
   return reassembledNode;
 };

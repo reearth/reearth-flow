@@ -1,4 +1,8 @@
-import type { NodeProps, Node as ReactFlowNode } from "@xyflow/react";
+import type {
+  NodeProps,
+  Node as ReactFlowNode,
+  NodeChange as ReactFlowNodeChange,
+} from "@xyflow/react";
 import { ComponentType } from "react";
 
 import type { Status } from "./shared";
@@ -63,3 +67,5 @@ export type NodeTypes = Record<
     }
   >
 >;
+
+export type NodeChange = ReactFlowNodeChange<Node>;

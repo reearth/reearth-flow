@@ -34,10 +34,7 @@ const createSpecializedNode = ({
     case "batch":
       return { ...node, ...baseBatchNode };
     case "note":
-      return {
-        ...node,
-        data: { ...node.data, ...baseNoteNode },
-      };
+      return { ...node, ...baseNoteNode };
     default:
       return node;
   }

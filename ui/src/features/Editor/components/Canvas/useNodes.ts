@@ -14,16 +14,14 @@ import { MouseEvent, useCallback } from "react";
 
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
-import useBatch from "./useBatch";
 import useDnd from "./useDnd";
 
 type Props = {
   nodes: Node[];
   edges: Edge[];
-  onNodeSelection: (selecting: string[], deselecting: string[]) => void;
   onWorkflowAdd: (position?: XYPosition) => void;
-  onNodesChange: (newNodes: Node[]) => void;
-  onNodesChange2: (changes: NodeChange<Node>[]) => void;
+  onNodesAdd: (newNode: Node[]) => void;
+  onNodesChange: (changes: NodeChange<Node>[]) => void;
   onEdgesChange: (edges: Edge[]) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
@@ -31,45 +29,23 @@ type Props = {
 export default ({
   nodes,
   edges,
-  onNodeSelection,
   onWorkflowAdd,
+  onNodesAdd,
   onNodesChange,
-  onNodesChange2,
   onEdgesChange,
   onNodePickerOpen,
 }: Props) => {
   const { isNodeIntersecting } = useReactFlow();
-  const { handleNodeDropInBatch } = useBatch();
 
   const { handleNodeDragOver, handleNodeDrop } = useDnd({
-    nodes,
     onWorkflowAdd,
-    onNodesChange,
+    onNodesAdd,
     onNodePickerOpen,
-    handleNodeDropInBatch,
   });
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(
-    (changes) => {
-      const selectingIds: string[] = [];
-      const deselectingIds: string[] = [];
-
-      changes.forEach((c) => {
-        if (c.type === "select") {
-          if (c.selected) {
-            selectingIds.push(c.id);
-          } else if (c.selected === false) {
-            deselectingIds.push(c.id);
-          }
-        } else {
-          console.log("c", c);
-        }
-      });
-      onNodeSelection(selectingIds, deselectingIds);
-
-      onNodesChange2(changes);
-    },
-    [onNodesChange2, onNodeSelection],
+    (changes) => onNodesChange(changes),
+    [onNodesChange],
   );
 
   const handleNodesDelete = useCallback(

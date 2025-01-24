@@ -40,6 +40,7 @@ describe("yWorkflowBuilder", () => {
         id: "node-1",
         type: "transformer",
         position: { x: 0, y: 0 },
+        measured: { width: 100, height: 100 },
         dragging: false,
         data: { officialName: "Node 1" },
       },

@@ -28,14 +28,14 @@ type Ordering = "default" | "categorically" | "byType";
 
 type Props = {
   nodes: Node[];
-  onNodesChange: (nodes: Node[]) => void;
+  onNodesAdd: (nodes: Node[]) => void;
   isMainWorkflow: boolean;
   hasReader?: boolean;
 };
 
 const ActionsList: React.FC<Props> = ({
   nodes,
-  onNodesChange,
+  onNodesAdd,
   isMainWorkflow,
   hasReader,
 }) => {
@@ -103,7 +103,7 @@ const ActionsList: React.FC<Props> = ({
           locked: false,
         },
       };
-      onNodesChange(nodes.concat(newNode));
+      onNodesAdd([newNode]);
     },
   );
 

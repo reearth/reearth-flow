@@ -12,6 +12,10 @@ const minSize = { width: 250, height: 150 };
 export const baseNoteNode = {
   type: "note",
   content: "New Note",
+  measured: {
+    width: initialSize.width,
+    height: initialSize.height,
+  },
   style: {
     width: `${initialSize.width}px`,
     height: `${initialSize.height}px`,

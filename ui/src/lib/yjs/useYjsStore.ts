@@ -1,4 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import {
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useMemo,
+  useState,
+} from "react";
 import { useY } from "react-yjs";
 import * as Y from "yjs";
 
@@ -23,12 +29,16 @@ export default ({
   currentWorkflowId,
   yWorkflows,
   undoManager,
+  selectedNodeIds,
+  setSelectedNodeIds,
   undoTrackerActionWrapper,
   handleCurrentWorkflowIdChange,
 }: {
   currentWorkflowId: string;
   yWorkflows: Y.Array<YWorkflow>;
   undoManager: Y.UndoManager | null;
+  selectedNodeIds: string[];
+  setSelectedNodeIds: Dispatch<SetStateAction<string[]>>;
   undoTrackerActionWrapper: (callback: () => void) => void;
   handleCurrentWorkflowIdChange: (id?: string) => void;
 }) => {
@@ -92,21 +102,6 @@ export default ({
     setWorkflows,
     setOpenWorkflowIds,
   });
-
-  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
-
-  const handleNodeSelection = useCallback(
-    (selecting: string[], deselecting: string[]) => {
-      setSelectedNodeIds((snids) => {
-        const newIds: string[] = snids.filter(
-          (id) => !deselecting.includes(id),
-        );
-        newIds.push(...selecting);
-        return newIds;
-      });
-    },
-    [],
-  );
 
   const rawNodes = useY(
     currentYWorkflow.get("nodes") ?? new Y.Array(),
@@ -208,11 +203,12 @@ export default ({
     ],
   );
 
-  const { handleNodesUpdate, handleNodesChange2, handleNodeParamsUpdate } =
+  const { handleYNodesAdd, handleYNodesChange, handleNodeParamsUpdate } =
     useYNode({
       currentYWorkflow,
       rawWorkflows,
       yWorkflows,
+      setSelectedNodeIds,
       undoTrackerActionWrapper,
       handleWorkflowsRemove,
     });
@@ -236,9 +232,8 @@ export default ({
     handleWorkflowAdd,
     handleWorkflowAddFromSelection,
     handleWorkflowUpdate,
-    handleNodeSelection,
-    handleNodesChange2,
-    handleNodesUpdate,
+    handleYNodesAdd,
+    handleYNodesChange,
     handleNodeParamsUpdate,
     handleEdgeSelection,
     handleEdgesUpdate,

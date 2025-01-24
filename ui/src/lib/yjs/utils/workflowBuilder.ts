@@ -4,8 +4,8 @@ import type { Edge, Node, NodeData } from "@flow/types";
 
 // Define what is not tracked by Yjs but needed for React Flow
 export type NonReactiveFields = {
-  type: string;
   // selected?: boolean;
+  type: string;
   dragging?: boolean;
   data: NodeData;
 };
@@ -39,23 +39,31 @@ export const createYNode = (node: Node) => {
   yNode.set("position", yPosition);
 
   const yMeasured = new Y.Map();
-  yMeasured.set("width", node.measured?.width || 0);
-  yMeasured.set("height", node.measured?.height || 0);
+  yMeasured.set("width", node.measured?.width);
+  yMeasured.set("height", node.measured?.height);
   yNode.set("measured", yMeasured);
+
+  if (node.type === "batch") {
+    const yStyle = new Y.Map();
+    yStyle.set("width", node.style?.width || 0);
+    yStyle.set("height", node.style?.height || 0);
+    yNode.set("style", yStyle);
+  }
 
   // TODO: figure out how to handle locking
 
   // All non-reactive properties can be set directly
   const nonReactiveFields: NonReactiveFields = {
-    type: node.type,
     // selected: node.selected,
+    type: node.type,
     dragging: node.dragging,
     data: { ...node.data },
   };
-  yNode.set("type", nonReactiveFields.type);
+  yNode.set("type", nonReactiveFields["type"]);
   // yNode.set("selected", nonReactiveFields.selected || false);
-  yNode.set("dragging", nonReactiveFields.dragging || false);
-  yNode.set("data", nonReactiveFields.data);
+  yNode.set("dragging", nonReactiveFields["dragging"] || false);
+  yNode.set("data", nonReactiveFields["data"]);
+
   return yNode;
 };
 

@@ -34,14 +34,14 @@ export default function Editor({
     openPanel,
     canUndo,
     canRedo,
+    allowedToDeploy,
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowChange,
-    handleNodeSelection,
-    handleNodesUpdate,
-    handleNodesChange2,
+    handleYNodesAdd,
+    handleYNodesChange,
     handleNodeParamsUpdate,
     handleNodeHover,
     handleNodeDoubleClick,
@@ -63,7 +63,7 @@ export default function Editor({
           nodes={nodes}
           isOpen={openPanel === "left" && !locallyLockedNode}
           onOpen={handlePanelOpen}
-          onNodesChange={handleNodesUpdate}
+          onNodesAdd={handleYNodesAdd}
           isMainWorkflow={isMainWorkflow}
           hasReader={hasReader}
         />
@@ -71,13 +71,13 @@ export default function Editor({
           <OverlayUI
             hoveredDetails={hoveredDetails}
             nodePickerOpen={nodePickerOpen}
-            nodes={nodes}
+            allowedToDeploy={allowedToDeploy}
             canUndo={canUndo}
             canRedo={canRedo}
             onWorkflowDeployment={handleWorkflowDeployment}
             onWorkflowUndo={handleWorkflowUndo}
             onWorkflowRedo={handleWorkflowRedo}
-            onNodesChange={handleNodesUpdate}
+            onNodesAdd={handleYNodesAdd}
             onNodePickerClose={handleNodePickerClose}
             isMainWorkflow={isMainWorkflow}
             hasReader={hasReader}>
@@ -86,10 +86,9 @@ export default function Editor({
               edges={edges}
               canvasLock={!!locallyLockedNode}
               onWorkflowAdd={handleWorkflowAdd}
-              onNodesUpdate={handleNodesUpdate}
-              onNodesChange2={handleNodesChange2}
+              onNodesAdd={handleYNodesAdd}
+              onNodesChange={handleYNodesChange}
               onNodeHover={handleNodeHover}
-              onNodeSelection={handleNodeSelection}
               onEdgeSelection={handleEdgeSelection}
               onNodeDoubleClick={handleNodeDoubleClick}
               onNodePickerOpen={handleNodePickerOpen}
