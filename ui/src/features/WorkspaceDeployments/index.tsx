@@ -118,7 +118,6 @@ const DeploymentManager: React.FC = () => {
                 columns={columns}
                 data={deployments}
                 selectColumns
-                showFiltering
                 rowHeight={14}
                 onRowClick={handleDeploymentSelect}
                 hasNextPage={hasNextPage}

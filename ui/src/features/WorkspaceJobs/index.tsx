@@ -63,7 +63,6 @@ const JobsManager: React.FC = () => {
             columns={columns}
             data={jobs}
             selectColumns
-            showFiltering
             rowHeight={14}
             onRowClick={handleJobSelect}
             hasNextPage={hasNextPage}

@@ -108,7 +108,6 @@ const TriggerManager: React.FC = () => {
                 columns={columns}
                 data={triggers}
                 selectColumns
-                showFiltering
                 rowHeight={14}
                 onRowClick={handleTriggerSelect}
                 hasNextPage={hasNextPage}
