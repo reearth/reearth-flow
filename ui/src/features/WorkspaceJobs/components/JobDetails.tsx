@@ -44,7 +44,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
             {
               id: "completedAt",
               name: t("Completed At"),
-              value: selectedJob.completedAt,
+              value: selectedJob.completedAt || t("N/A"),
             },
           ]
         : undefined,
