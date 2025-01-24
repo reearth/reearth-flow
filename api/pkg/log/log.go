@@ -21,12 +21,12 @@ type Log struct {
 	message    string
 }
 
-func NewLog(workflowID WorkflowID, jobID JobID, nodeID *NodeID, level Level, message string) *Log {
+func NewLog(workflowID WorkflowID, jobID JobID, nodeID *NodeID, time time.Time, level Level, message string) *Log {
 	return &Log{
 		workflowID: workflowID,
 		jobID:      jobID,
 		nodeID:     nodeID,
-		timestamp:  time.Now().UTC(),
+		timestamp:  time,
 		level:      level,
 		message:    message,
 	}
