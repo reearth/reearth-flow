@@ -31,17 +31,17 @@ const TriggerDetails: React.FC<Props> = ({
             {
               id: "id",
               name: t("ID"),
-              value: selectedTrigger.id,
+              value: selectedTrigger.id || t("Unknown or deleted trigger"),
             },
             {
               id: "triggerId",
               name: t("Trigger Description"),
-              value: selectedTrigger.description,
+              value: selectedTrigger.description || t("N/A"),
             },
             {
               id: "deploymentId",
               name: t("Deployment Id"),
-              value: selectedTrigger.deploymentId,
+              value: selectedTrigger.deploymentId || t("N/A"),
             },
             {
               id: "projectName",
@@ -53,7 +53,7 @@ const TriggerDetails: React.FC<Props> = ({
             {
               id: "deploymentDescription",
               name: t("Deployment Description"),
-              value: selectedTrigger.deployment.description,
+              value: selectedTrigger.deployment.description || t("N/A"),
             },
             {
               id: "eventSource",
@@ -65,7 +65,7 @@ const TriggerDetails: React.FC<Props> = ({
                   {
                     id: "authToken",
                     name: t("Auth Token"),
-                    value: selectedTrigger.authToken,
+                    value: selectedTrigger.authToken || t("N/A"),
                   },
                 ]
               : []),
@@ -74,7 +74,7 @@ const TriggerDetails: React.FC<Props> = ({
                   {
                     id: "timeInterval",
                     name: t("Time Interval"),
-                    value: selectedTrigger.timeInterval,
+                    value: selectedTrigger.timeInterval || t("N/A"),
                   },
                 ]
               : []),
