@@ -6,7 +6,6 @@ import type {
   Deployment,
   EngineReadyWorkflow,
   ExecuteDeployment,
-  GetDeployments,
   UpdateDeployment,
 } from "@flow/types";
 import { jsonToFormData } from "@flow/utils/jsonToFormData";
@@ -130,8 +129,14 @@ export const useDeployment = () => {
     }
   };
 
-  const useGetDeploymentsInfinite = (workspaceId?: string): GetDeployments => {
-    const { data, ...rest } = useGetDeploymentsInfiniteQuery(workspaceId);
+  const useGetDeploymentsInfinite = (
+    workspaceId?: string,
+    fetchRate?: number,
+  ) => {
+    const { data, ...rest } = useGetDeploymentsInfiniteQuery(
+      workspaceId,
+      fetchRate,
+    );
     return {
       pages: data?.pages,
       ...rest,

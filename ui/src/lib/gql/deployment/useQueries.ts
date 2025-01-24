@@ -21,8 +21,6 @@ export enum DeploymentQueryKeys {
   GetDeployments = "getDeployments",
 }
 
-const DEPLOYMENT_FETCH_RATE = 10;
-
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
@@ -153,7 +151,10 @@ export const useQueries = () => {
       }),
   });
 
-  const useGetDeploymentsInfiniteQuery = (workspaceId?: string) =>
+  const useGetDeploymentsInfiniteQuery = (
+    workspaceId?: string,
+    fetchRate?: number,
+  ) =>
     useInfiniteQuery({
       queryKey: [DeploymentQueryKeys.GetDeployments, workspaceId],
       initialPageParam: null,
@@ -161,7 +162,7 @@ export const useQueries = () => {
         const data = await graphQLContext?.GetDeployments({
           workspaceId: workspaceId ?? "",
           pagination: {
-            first: DEPLOYMENT_FETCH_RATE,
+            first: fetchRate,
             after: pageParam,
           },
         });
@@ -170,12 +171,13 @@ export const useQueries = () => {
           deployments: {
             nodes,
             pageInfo: { endCursor, hasNextPage },
+            totalCount,
           },
         } = data;
         const deployments: Deployment[] = nodes
           .filter(isDefined)
           .map((deployment) => toDeployment(deployment));
-        return { deployments, endCursor, hasNextPage };
+        return { deployments, endCursor, hasNextPage, totalCount };
       },
       enabled: !!workspaceId,
       getNextPageParam: (lastPage) => {

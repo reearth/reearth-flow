@@ -34,6 +34,12 @@ const DeploymentManager: React.FC = () => {
     handleDeploymentSelect,
     handleDeploymentDelete,
     handleDeploymentRun,
+    totalPages,
+    currentPage,
+    hasNextPage,
+    isFetchingNextPage,
+    handleNextPage,
+    handlePrevPage,
   } = useHooks();
 
   const columns: ColumnDef<Deployment>[] = [
@@ -113,9 +119,15 @@ const DeploymentManager: React.FC = () => {
                 data={deployments}
                 selectColumns
                 showFiltering
-                enablePagination
                 rowHeight={14}
                 onRowClick={handleDeploymentSelect}
+                hasNextPage={hasNextPage}
+                onNextPage={handleNextPage}
+                onPrevPage={handlePrevPage}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                isFetchingNextPage={isFetchingNextPage}
+                enablePagination
               />
             ) : (
               <BasicBoiler

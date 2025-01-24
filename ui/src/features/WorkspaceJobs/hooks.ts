@@ -1,26 +1,27 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useJob } from "@flow/lib/gql/job";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { Job } from "@flow/types";
 import { lastOfUrl as getJobId } from "@flow/utils";
 
+import usePagination from "../hooks/usePagination";
 import { RouteOption } from "../WorkspaceLeftPanel";
 
+const JOBS_FETCH_RATE = 15;
 export default () => {
-  const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   const [openJobRunDialog, setOpenJobRunDialog] = useState(false);
   const [currentWorkspace] = useCurrentWorkspace();
-
+  const [currentPage, setCurrentPage] = useState<number>(0);
   const { useGetJobsInfinite } = useJob();
 
-  const { pages, hasNextPage, isFetching, fetchNextPage } = useGetJobsInfinite(
-    currentWorkspace?.id,
-  );
+  const { pages, hasNextPage, isFetchingNextPage, fetchNextPage } =
+    useGetJobsInfinite(currentWorkspace?.id, JOBS_FETCH_RATE);
 
+  console.log("pages", pages);
   const {
     location: { pathname },
   } = useRouterState();
@@ -28,14 +29,8 @@ export default () => {
   const tab = getTab(pathname);
 
   const jobs: Job[] | undefined = useMemo(
-    () =>
-      pages?.reduce((jobs, page) => {
-        if (page?.jobs) {
-          jobs.push(...page.jobs);
-        }
-        return jobs;
-      }, [] as Job[]),
-    [pages],
+    () => pages?.[currentPage]?.jobs,
+    [pages, currentPage],
   );
 
   const selectedJob = useMemo(
@@ -51,38 +46,26 @@ export default () => {
     [currentWorkspace, navigate],
   );
 
-  // Auto fills the page
-  useEffect(() => {
-    if (
-      ref.current &&
-      ref.current?.scrollHeight <= document.documentElement.clientHeight &&
-      hasNextPage &&
-      !isFetching
-    ) {
-      fetchNextPage();
-    }
-  }, [isFetching, hasNextPage, ref, fetchNextPage]);
-
-  // Loads more projects as scroll reaches the bottom
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop + 5 >=
-          document.documentElement.scrollHeight &&
-        !isFetching &&
-        hasNextPage
-      ) {
-        fetchNextPage();
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isFetching, fetchNextPage, hasNextPage]);
+  const { totalPages, handleNextPage, handlePrevPage, canGoNext } =
+    usePagination<Job>(
+      JOBS_FETCH_RATE,
+      hasNextPage,
+      isFetchingNextPage,
+      pages,
+      fetchNextPage,
+      currentPage,
+      setCurrentPage,
+    );
 
   return {
-    ref,
     jobs,
     selectedJob,
+    totalPages,
+    currentPage,
+    hasNextPage: canGoNext,
+    isFetchingNextPage,
+    handleNextPage,
+    handlePrevPage,
     openJobRunDialog,
     setOpenJobRunDialog,
     handleJobSelect,

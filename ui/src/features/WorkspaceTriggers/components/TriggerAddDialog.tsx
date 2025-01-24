@@ -40,7 +40,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   const [description, setDescription] = useState("");
   const { useGetDeploymentsInfinite } = useDeployment();
 
-  const { pages } = useGetDeploymentsInfinite(currentWorkspace?.id);
+  const { pages } = useGetDeploymentsInfinite(currentWorkspace?.id, 15);
 
   const deployments: Deployment[] | undefined = useMemo(
     () =>
@@ -189,7 +189,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                 {t("Select Time Interval")}
               </Label>
               <Select
-                value={timeInterval || "EVERY_DAY"} // Set default value here as well
+                value={timeInterval || "EVERY_DAY"}
                 onValueChange={handleSelectTimeInterval}>
                 <SelectTrigger>
                   <SelectValue placeholder={timeIntervals.EVERY_DAY} />

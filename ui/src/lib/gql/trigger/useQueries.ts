@@ -19,8 +19,6 @@ export enum TriggerQueryKeys {
   GetTriggers = "getTriggers",
 }
 
-const TRIGGERS_FETCH_RATE = 15;
-
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
@@ -117,7 +115,10 @@ export const useQueries = () => {
     },
   });
 
-  const useGetTriggersInfiniteQuery = (workspaceId?: string) =>
+  const useGetTriggersInfiniteQuery = (
+    workspaceId?: string,
+    fetchRate?: number,
+  ) =>
     useInfiniteQuery({
       queryKey: [TriggerQueryKeys.GetTriggers, workspaceId],
       initialPageParam: null,
@@ -125,7 +126,7 @@ export const useQueries = () => {
         const data = await graphQLContext?.GetTriggers({
           workspaceId: workspaceId ?? "",
           pagination: {
-            first: TRIGGERS_FETCH_RATE,
+            first: fetchRate,
             after: pageParam,
           },
         });
@@ -134,12 +135,13 @@ export const useQueries = () => {
           triggers: {
             nodes,
             pageInfo: { endCursor, hasNextPage },
+            totalCount,
           },
         } = data;
         const triggers: Trigger[] = nodes
           .filter(isDefined)
           .map((trigger) => toTrigger(trigger));
-        return { triggers, endCursor, hasNextPage };
+        return { triggers, endCursor, hasNextPage, totalCount };
       },
       enabled: !!workspaceId,
       getNextPageParam: (lastPage) => {

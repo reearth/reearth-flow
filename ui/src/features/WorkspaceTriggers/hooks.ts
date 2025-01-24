@@ -1,17 +1,18 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useTrigger } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Trigger } from "@flow/types";
 import { lastOfUrl as getTriggerId } from "@flow/utils";
 
+import usePagination from "../hooks/usePagination";
 import { RouteOption } from "../WorkspaceLeftPanel";
 
-export default () => {
-  const ref = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
+const TRIGGERS_FETCH_RATE = 15;
 
+export default () => {
+  const navigate = useNavigate();
   const [openTriggerAddDialog, setOpenTriggerAddDialog] = useState(false);
   const [currentWorkspace] = useCurrentWorkspace();
   const [triggerToBeEdited, setTriggerToBeEdited] = useState<
@@ -20,6 +21,7 @@ export default () => {
   const [triggerToBeDeleted, setTriggerToBeDeleted] = useState<
     Trigger | undefined
   >(undefined);
+  const [currentPage, setCurrentPage] = useState<number>(0);
   const { useGetTriggersInfinite, useDeleteTrigger } = useTrigger();
 
   const {
@@ -28,18 +30,12 @@ export default () => {
 
   const tab = getTab(pathname);
 
-  const { pages, hasNextPage, isFetching, fetchNextPage } =
-    useGetTriggersInfinite(currentWorkspace?.id);
+  const { pages, hasNextPage, isFetching, fetchNextPage, isFetchingNextPage } =
+    useGetTriggersInfinite(currentWorkspace?.id, TRIGGERS_FETCH_RATE);
 
   const triggers: Trigger[] | undefined = useMemo(
-    () =>
-      pages?.reduce((triggers, page) => {
-        if (page?.triggers) {
-          triggers.push(...page.triggers);
-        }
-        return triggers;
-      }, [] as Trigger[]),
-    [pages],
+    () => pages?.[currentPage]?.triggers,
+    [pages, currentPage],
   );
 
   const selectedTrigger = useMemo(
@@ -67,35 +63,25 @@ export default () => {
     [currentWorkspace, triggerToBeDeleted, triggers, useDeleteTrigger],
   );
 
-  useEffect(() => {
-    if (
-      ref.current &&
-      ref.current?.scrollHeight <= document.documentElement.clientHeight &&
-      hasNextPage &&
-      !isFetching
-    ) {
-      fetchNextPage();
-    }
-  }, [isFetching, hasNextPage, ref, fetchNextPage]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop + 5 >=
-          document.documentElement.scrollHeight &&
-        !isFetching &&
-        hasNextPage
-      ) {
-        fetchNextPage();
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isFetching, fetchNextPage, hasNextPage]);
-
+  const { totalPages, handleNextPage, handlePrevPage, canGoNext } =
+    usePagination<Trigger>(
+      TRIGGERS_FETCH_RATE,
+      hasNextPage,
+      isFetchingNextPage,
+      pages,
+      fetchNextPage,
+      currentPage,
+      setCurrentPage,
+    );
   return {
-    ref,
     triggers,
+    totalPages,
+    currentPage,
+    hasNextPage: canGoNext,
+    isFetching,
+    isFetchingNextPage,
+    handleNextPage,
+    handlePrevPage,
     selectedTrigger,
     triggerToBeDeleted,
     openTriggerAddDialog,

@@ -1,18 +1,11 @@
-import {
-  CaretDoubleLeft,
-  CaretDoubleRight,
-  CaretLeft,
-  CaretRight,
-} from "@phosphor-icons/react";
+import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import {
   ColumnDef,
-  PaginationState,
   SortingState,
   VisibilityState,
   flexRender,
   getCoreRowModel,
   getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
@@ -43,10 +36,15 @@ type DataTableProps<TData, TValue> = {
   data: TData[];
   selectColumns?: boolean;
   showFiltering?: boolean;
-  enablePagination?: boolean;
-  pageSize?: number;
   rowHeight?: number;
   onRowClick?: (row: TData) => void;
+  hasNextPage?: boolean;
+  onNextPage?: () => void;
+  onPrevPage?: () => void;
+  currentPage?: number;
+  totalPages?: number;
+  isFetchingNextPage?: boolean;
+  enablePagination?: boolean;
 };
 
 function DataTable<TData, TValue>({
@@ -54,46 +52,38 @@ function DataTable<TData, TValue>({
   data,
   selectColumns = false,
   showFiltering = false,
-  enablePagination = false,
-  pageSize = 10,
   rowHeight,
   onRowClick,
+  hasNextPage,
+  onNextPage,
+  onPrevPage,
+  currentPage = 0,
+  totalPages,
+  isFetchingNextPage,
+  enablePagination,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
   const [globalFilter, setGlobalFilter] = useState("");
-  const [pagination, setPagination] = useState<PaginationState>({
-    pageIndex: 0,
-    pageSize,
-  });
 
   const table = useReactTable({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    // Sorting
     onSortingChange: setSorting,
     getSortedRowModel: getSortedRowModel(),
-    // Visibility
     onColumnVisibilityChange: setColumnVisibility,
     columnResizeMode: "onChange",
-    // Row selection
     onRowSelectionChange: setRowSelection,
-    // Filtering
     onGlobalFilterChange: setGlobalFilter,
     getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: enablePagination
-      ? getPaginationRowModel()
-      : undefined,
-    onPaginationChange: setPagination,
     state: {
       sorting,
       columnVisibility,
       rowSelection,
       globalFilter,
-      pagination,
     },
   });
 
@@ -183,7 +173,7 @@ function DataTable<TData, TValue>({
                   <TableCell
                     colSpan={columns.length}
                     className="h-24 text-center">
-                    {t("No Results")}
+                    {isFetchingNextPage ? t("Loading...") : t("No Results")}
                   </TableCell>
                 </TableRow>
               )}
@@ -195,37 +185,23 @@ function DataTable<TData, TValue>({
         <div className="flex justify-center gap-4 pt-4">
           <div className="flex gap-1">
             <IconButton
-              variant="outline"
-              icon={<CaretDoubleLeft />}
-              onClick={() => table.firstPage()}
-              disabled={!table.getCanPreviousPage()}
-            />
-            <IconButton
+              className="rounded border p-1"
               variant="outline"
               icon={<CaretLeft />}
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
+              onClick={onPrevPage}
+              disabled={currentPage === 0}
             />
             <div className="flex min-w-10 items-center justify-center gap-1">
-              <p className="text-sm font-light">
-                {table.getState().pagination.pageIndex + 1}
-              </p>
+              <p className="text-sm font-light">{currentPage + 1}</p>
               <p className="text-xs font-light">/</p>
-              <p className="text-sm font-light">
-                {table.getPageCount().toLocaleString()}
-              </p>
+              <p className="text-sm font-light">{totalPages}</p>
             </div>
             <IconButton
               className="rounded border p-1"
+              variant="outline"
               icon={<CaretRight />}
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            />
-            <IconButton
-              className="rounded border p-1"
-              icon={<CaretDoubleRight />}
-              onClick={() => table.lastPage()}
-              disabled={!table.getCanNextPage()}
+              onClick={onNextPage}
+              disabled={!hasNextPage || isFetchingNextPage}
             />
           </div>
         </div>

@@ -16,7 +16,13 @@ const JobsManager: React.FC = () => {
     selectedJob,
     openJobRunDialog,
     setOpenJobRunDialog,
+    totalPages,
+    currentPage,
     handleJobSelect,
+    handleNextPage,
+    handlePrevPage,
+    hasNextPage,
+    isFetchingNextPage,
   } = useHooks();
 
   const columns: ColumnDef<Job>[] = [
@@ -58,9 +64,15 @@ const JobsManager: React.FC = () => {
             data={jobs}
             selectColumns
             showFiltering
-            enablePagination
             rowHeight={14}
             onRowClick={handleJobSelect}
+            hasNextPage={hasNextPage}
+            onNextPage={handleNextPage}
+            onPrevPage={handlePrevPage}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            isFetchingNextPage={isFetchingNextPage}
+            enablePagination
           />
         ) : (
           <BasicBoiler
