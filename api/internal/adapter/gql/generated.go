@@ -2214,7 +2214,7 @@ input CreateDeploymentInput {
   workspaceId: ID!
   file: Upload!
   projectId: ID
-  description: String
+  description: String!
 }
 
 input DeleteDeploymentInput {
@@ -2510,7 +2510,7 @@ extend type Mutation {
     deployment: Deployment!
     deploymentId: ID!
     eventSource: EventSourceType!
-    description: String 
+    description: String!
     authToken: String
     timeInterval: TimeInterval
 }
@@ -2542,7 +2542,7 @@ input APIDriverInput {
 input CreateTriggerInput {
     workspaceId: ID!
     deploymentId: ID!
-    description: String
+    description: String!
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
 }
@@ -11856,11 +11856,14 @@ func (ec *executionContext) _Trigger_description(ctx context.Context, field grap
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*string)
+	res := resTmp.(string)
 	fc.Result = res
-	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Trigger_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -15003,7 +15006,7 @@ func (ec *executionContext) unmarshalInputCreateDeploymentInput(ctx context.Cont
 			it.ProjectID = data
 		case "description":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -15092,7 +15095,7 @@ func (ec *executionContext) unmarshalInputCreateTriggerInput(ctx context.Context
 			it.DeploymentID = data
 		case "description":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			data, err := ec.unmarshalNString2string(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -18462,6 +18465,9 @@ func (ec *executionContext) _Trigger(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "description":
 			out.Values[i] = ec._Trigger_description(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "authToken":
 			out.Values[i] = ec._Trigger_authToken(ctx, field, obj)
 		case "timeInterval":
