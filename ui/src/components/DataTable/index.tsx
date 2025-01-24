@@ -1,4 +1,3 @@
-import { CaretLeft, CaretRight } from "@phosphor-icons/react";
 import {
   ColumnDef,
   SortingState,
@@ -18,7 +17,7 @@ import {
   DropdownMenuTrigger,
   Button,
   Input,
-  IconButton,
+  Pagination,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
@@ -86,7 +85,6 @@ function DataTable<TData, TValue>({
       globalFilter,
     },
   });
-
   return (
     <div className="flex flex-col justify-between">
       <div>
@@ -182,29 +180,14 @@ function DataTable<TData, TValue>({
         </div>
       </div>
       {enablePagination && (
-        <div className="flex justify-center gap-4 pt-4">
-          <div className="flex gap-1">
-            <IconButton
-              className="rounded border p-1"
-              variant="outline"
-              icon={<CaretLeft />}
-              onClick={onPrevPage}
-              disabled={currentPage === 0}
-            />
-            <div className="flex min-w-10 items-center justify-center gap-1">
-              <p className="text-sm font-light">{currentPage + 1}</p>
-              <p className="text-xs font-light">/</p>
-              <p className="text-sm font-light">{totalPages}</p>
-            </div>
-            <IconButton
-              className="rounded border p-1"
-              variant="outline"
-              icon={<CaretRight />}
-              onClick={onNextPage}
-              disabled={!hasNextPage || isFetchingNextPage}
-            />
-          </div>
-        </div>
+        <Pagination
+          hasNextPage={hasNextPage}
+          onNextPage={onNextPage}
+          onPrevPage={onPrevPage}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          isFetchingNextPage={isFetchingNextPage}
+        />
       )}
     </div>
   );

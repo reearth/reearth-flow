@@ -21,7 +21,6 @@ export default () => {
   const { pages, hasNextPage, isFetchingNextPage, fetchNextPage } =
     useGetJobsInfinite(currentWorkspace?.id, JOBS_FETCH_RATE);
 
-  console.log("pages", pages);
   const {
     location: { pathname },
   } = useRouterState();
