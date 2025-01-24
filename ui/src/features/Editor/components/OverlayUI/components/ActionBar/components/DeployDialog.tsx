@@ -91,7 +91,9 @@ const DeployDialog: React.FC<Props> = ({
           </DialogContentSection>
         </DialogContentWrapper>
         <DialogFooter>
-          <Button disabled={!description} onClick={handleWorkflowDeployment}>
+          <Button
+            disabled={!description.trim()}
+            onClick={handleWorkflowDeployment}>
             {deployment ? t("Update") : t("Deploy")}
           </Button>
         </DialogFooter>
