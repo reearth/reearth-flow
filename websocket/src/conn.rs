@@ -8,7 +8,7 @@ use std::task::{Context, Poll};
 use tokio::sync::Mutex;
 use yrs::sync::Error;
 
-use crate::broadcast::{BroadcastGroup, Subscription};
+use crate::group::{BroadcastGroup, Subscription};
 
 type CompletionFuture = Pin<Box<dyn Future<Output = Result<(), Error>> + Send>>;
 
