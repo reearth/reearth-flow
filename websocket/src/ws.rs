@@ -1,4 +1,4 @@
-use crate::broadcast::BroadcastGroup;
+use crate::broadcast::group::BroadcastGroup;
 use crate::conn::Connection;
 use axum::extract::ws::{Message, WebSocket};
 use futures_util::stream::{SplitSink, SplitStream};

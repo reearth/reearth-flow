@@ -1,4 +1,4 @@
-use crate::broadcast::{BroadcastConfig, BroadcastGroup, RedisConfig};
+use crate::broadcast::group::{BroadcastConfig, BroadcastGroup, RedisConfig};
 use crate::storage::kv::DocOps;
 //use crate::storage::sqlite::SqliteStore;
 use crate::storage::gcs::GcsStore;
