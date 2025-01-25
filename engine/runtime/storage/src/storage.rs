@@ -15,7 +15,6 @@ use object_store::GetResultPayload;
 use object_store::ObjectMeta;
 use object_store::Result;
 use opendal::Buffer;
-use opendal::Metakey;
 use opendal::Operator;
 
 use reearth_flow_common::uri::Uri;
@@ -203,7 +202,6 @@ impl Storage {
             .inner
             .lister_with(&path)
             .recursive(recursive)
-            .metakey(Metakey::ContentLength | Metakey::LastModified)
             .await
             .map_err(|err| format_object_store_error(err, &path))?;
 

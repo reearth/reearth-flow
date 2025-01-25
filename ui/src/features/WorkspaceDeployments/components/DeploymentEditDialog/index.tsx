@@ -56,7 +56,7 @@ const DeploymentEditDialog: React.FC<Props> = ({
           </DialogContentSection>
           <div className="border-b border-primary text-center" />
           <DialogContentSection className="flex flex-col">
-            <Label>{t("Description (optional): ")}</Label>
+            <Label>{t("Description")}</Label>
             <Input
               value={updatedDescription}
               onChange={handleDescriptionChange}
@@ -74,7 +74,8 @@ const DeploymentEditDialog: React.FC<Props> = ({
         <DialogFooter>
           <Button
             disabled={
-              selectedDeployment.description === updatedDescription &&
+              (updatedDescription === selectedDeployment.description ||
+                !updatedDescription.trim()) &&
               !workflowFile
             }
             onClick={handleDeploymentUpdate}>

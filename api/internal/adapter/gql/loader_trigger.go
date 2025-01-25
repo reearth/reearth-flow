@@ -8,6 +8,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
+	"github.com/reearth/reearthx/usecasex"
 	"github.com/reearth/reearthx/util"
 )
 
@@ -38,23 +39,35 @@ func (c *TriggerLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmod
 	return triggers, nil
 }
 
-func (c *TriggerLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID) ([]*gqlmodel.Trigger, error) {
+func (c *TriggerLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.TriggerConnection, error) {
 	tid, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := c.usecase.FindByWorkspace(ctx, tid, getOperator(ctx))
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, gqlmodel.ToPagination(pagination), getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	triggers := make([]*gqlmodel.Trigger, 0, len(res))
+	edges := make([]*gqlmodel.TriggerEdge, 0, len(res))
+	nodes := make([]*gqlmodel.Trigger, 0, len(res))
+
 	for _, t := range res {
-		triggers = append(triggers, gqlmodel.ToTrigger(t))
+		trig := gqlmodel.ToTrigger(t)
+		edges = append(edges, &gqlmodel.TriggerEdge{
+			Node:   trig,
+			Cursor: usecasex.Cursor(trig.ID),
+		})
+		nodes = append(nodes, trig)
 	}
 
-	return triggers, nil
+	return &gqlmodel.TriggerConnection{
+		Edges:      edges,
+		Nodes:      nodes,
+		PageInfo:   gqlmodel.ToPageInfo(pi),
+		TotalCount: int(pi.TotalCount),
+	}, nil
 }
 
 // data loaders
