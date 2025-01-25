@@ -141,11 +141,12 @@ func initLogRedis(ctx context.Context, conf *config.Config) gateway.Log {
 }
 
 func initLogGCS(ctx context.Context, conf *config.Config) gateway.Log {
-	gcsClient, err := storage.NewClient(ctx)
+	c, err := storage.NewClient(ctx)
 	if err != nil {
 		log.Fatalf("Failed to create gcs client: %v", err)
 	}
-	logGCSRepo, err := gcs.NewGCSLog(gcsClient)
+	gcsClient := gcs.NewRealGCSClient(c)
+	logGCSRepo, err := gcs.NewGCSLog(gcsClient, conf.GCS.BucketName)
 	if err != nil {
 		log.Fatalf("Failed to create gcs log repository: %v", err)
 	}

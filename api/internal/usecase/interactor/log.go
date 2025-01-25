@@ -34,14 +34,15 @@ func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, workflowI
 	// Add timeout to prevent long-running queries
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
+	until := time.Now().UTC()
 	if time.Since(since) <= li.recentLogsThreshold {
-		logs, err := li.logsGatewayRedis.GetLogs(ctx, since, workflowID, jobID)
+		logs, err := li.logsGatewayRedis.GetLogs(ctx, since, until, workflowID, jobID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get logs from Redis: %w", err)
 		}
 		return logs, nil
 	}
-	logs, err := li.logsGatewayGCS.GetLogs(ctx, since, workflowID, jobID)
+	logs, err := li.logsGatewayGCS.GetLogs(ctx, since, until, workflowID, jobID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get logs from GCS: %w", err)
 	}

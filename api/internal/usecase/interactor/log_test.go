@@ -17,7 +17,7 @@ type mockLogGateway struct {
 	err  error
 }
 
-func (m *mockLogGateway) GetLogs(ctx context.Context, since time.Time, workflowID id.WorkflowID, jobID id.JobID) ([]*log.Log, error) {
+func (m *mockLogGateway) GetLogs(ctx context.Context, since time.Time, until time.Time, workflowID id.WorkflowID, jobID id.JobID) ([]*log.Log, error) {
 	return m.logs, m.err
 }
 

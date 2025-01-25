@@ -22,7 +22,6 @@ func NewRedisLog(client *redis.Client) (gateway.Log, error) {
 	if client == nil {
 		return nil, errors.New("client is nil")
 	}
-
 	return &redisLog{client: client}, nil
 }
 
@@ -30,7 +29,7 @@ type LogEntry struct {
 	WorkflowID string    `json:"workflowId"`
 	JobID      string    `json:"jobId"`
 	NodeID     *string   `json:"nodeId,omitempty"`
-	LoggedAt   time.Time `json:"timestamp"`
+	Timestamp  time.Time `json:"timestamp"`
 	LogLevel   log.Level `json:"logLevel"`
 	Message    string    `json:"message"`
 }
@@ -45,11 +44,12 @@ func ToLogEntry(l *log.Log) *LogEntry {
 		s := l.NodeID().String()
 		nid = &s
 	}
+
 	return &LogEntry{
 		WorkflowID: l.WorkflowID().String(),
 		JobID:      l.JobID().String(),
 		NodeID:     nid,
-		LoggedAt:   l.Timestamp(),
+		Timestamp:  l.Timestamp().UTC(),
 		LogLevel:   l.Level(),
 		Message:    l.Message(),
 	}
@@ -77,29 +77,36 @@ func (e *LogEntry) ToDomain() (*log.Log, error) {
 		wid,
 		jid,
 		nodeID,
-		e.LoggedAt,
+		e.Timestamp.UTC(),
 		e.LogLevel,
 		e.Message,
 	), nil
 }
 
-func (r *redisLog) GetLogs(ctx context.Context, since time.Time, workflowID id.WorkflowID, jobID id.JobID) ([]*log.Log, error) {
+func (r *redisLog) GetLogs(
+	ctx context.Context,
+	since time.Time,
+	until time.Time,
+	workflowID id.WorkflowID,
+	jobID id.JobID,
+) ([]*log.Log, error) {
 	// pattern: log:{workflowID}:{jobID}:*
 	pattern := fmt.Sprintf("log:%s:%s:*", workflowID.String(), jobID.String())
 
 	var cursor uint64
 	var result []*log.Log
 
-	// Scan for keys using SCAN command
+	sinceUTC := since.UTC()
+	untilUTC := until.UTC()
+
 	for {
-		// count=100 is the maximum number of items returned by one SCAN. Adjust as needed.
+		// count=100 is the limit of keys to be retrieved in one SCAN. Adjust as needed.
 		keys, newCursor, err := r.client.Scan(ctx, cursor, pattern, 100).Result()
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan redis keys: %w", err)
 		}
 
 		for _, key := range keys {
-			// Get value (JSON string) from key
 			val, err := r.client.Get(ctx, key).Result()
 			if err == redis.Nil {
 				// Skip if key does not exist (deleted)
@@ -108,7 +115,6 @@ func (r *redisLog) GetLogs(ctx context.Context, since time.Time, workflowID id.W
 				return nil, fmt.Errorf("failed to get redis value for key=%s: %w", key, err)
 			}
 
-			// JSON -> LogEntry
 			var entry LogEntry
 			if err := json.Unmarshal([]byte(val), &entry); err != nil {
 				// Skip if corrupted JSON
@@ -116,8 +122,15 @@ func (r *redisLog) GetLogs(ctx context.Context, since time.Time, workflowID id.W
 				continue
 			}
 
-			// Exclude anything older than "since" timestamp
-			if entry.LoggedAt.Before(since) {
+			// Convert entry.Timestamp to UTC and then check range
+			entryTimestampUTC := entry.Timestamp.UTC()
+
+			// Skip anything after since
+			if entryTimestampUTC.Before(sinceUTC) {
+				continue
+			}
+			// Skip anything after until
+			if entryTimestampUTC.After(untilUTC) {
 				continue
 			}
 

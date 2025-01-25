@@ -52,7 +52,9 @@ func TestToLogEntry(t *testing.T) {
 		assert.Equal(t, jid.String(), entry.JobID)
 		assert.NotNil(t, entry.NodeID)
 		assert.Equal(t, nid.String(), *entry.NodeID)
-		assert.Equal(t, now, entry.LoggedAt)
+
+		// Converted to UTC on the ToLogEntry side
+		assert.Equal(t, now.UTC(), entry.Timestamp)
 		assert.Equal(t, log.LevelInfo, entry.LogLevel)
 		assert.Equal(t, "test message", entry.Message)
 	})
@@ -74,7 +76,7 @@ func TestLogEntry_ToDomain(t *testing.T) {
 			WorkflowID: wid,
 			JobID:      jid,
 			NodeID:     &nid,
-			LoggedAt:   now,
+			Timestamp:  now,
 			LogLevel:   log.LevelInfo,
 			Message:    "hello",
 		}
@@ -84,7 +86,9 @@ func TestLogEntry_ToDomain(t *testing.T) {
 		assert.Equal(t, wid, dl.WorkflowID().String())
 		assert.Equal(t, jid, dl.JobID().String())
 		assert.Equal(t, nid, dl.NodeID().String())
-		assert.Equal(t, now, dl.Timestamp())
+
+		// Convert to UTC on the ToDomain side
+		assert.Equal(t, now.UTC(), dl.Timestamp())
 		assert.Equal(t, log.LevelInfo, dl.Level())
 		assert.Equal(t, "hello", dl.Message())
 	})
@@ -132,7 +136,10 @@ func TestRedisLog_GetLogs(t *testing.T) {
 	ctx := context.Background()
 	wid := id.NewWorkflowID()
 	jid := id.NewJobID()
-	since := time.Now().Add(-1 * time.Hour)
+
+	now := time.Now().UTC()
+	since := now.Add(-1 * time.Hour) // 1 hour ago
+	until := now                     // Set the current time as until
 
 	scanKey1 := "log:" + wid.String() + ":" + jid.String() + ":key1"
 	scanKey2 := "log:" + wid.String() + ":" + jid.String() + ":key2"
@@ -141,9 +148,9 @@ func TestRedisLog_GetLogs(t *testing.T) {
 	entry1 := redis.LogEntry{
 		WorkflowID: wid.String(),
 		JobID:      jid.String(),
-		LoggedAt:   time.Now(),
-		LogLevel:   log.LevelInfo,
-		Message:    "test1",
+		Timestamp: now,
+		LogLevel:  log.LevelInfo,
+		Message:   "test1",
 	}
 	bytes1, _ := json.Marshal(entry1)
 
@@ -160,16 +167,16 @@ func TestRedisLog_GetLogs(t *testing.T) {
 	// Next key 2 (broken JSON)
 	mock.ExpectGet(scanKey2).SetVal(brokenJSON)
 
-	// Second SCAN (cursor=999)
+	// 2nd SCAN -> no more keys
 	mock.ExpectScan(uint64(999), "log:"+wid.String()+":"+jid.String()+":*", int64(100)).
 		SetVal([]string{}, 0)
 
-	// execution
-	result, getErr := r.GetLogs(ctx, since, wid, jid)
+	// Test execution: Pass the since & until that you determined first.
+	result, getErr := r.GetLogs(ctx, since, until, wid, jid)
 	require.NoError(t, getErr)
 
 	// Assert
-	assert.Len(t, result, 1, "Assuming that only one result is returned, excluding any corrupted JSON.")
+	assert.Len(t, result, 1, "Only one valid log, excluding corrupted JSON.")
 	if len(result) == 1 {
 		assert.Equal(t, entry1.Message, result[0].Message())
 	}
@@ -186,12 +193,13 @@ func TestRedisLog_GetLogs_Empty(t *testing.T) {
 	wid := id.NewWorkflowID()
 	jid := id.NewJobID()
 	since := time.Now().Add(-1 * time.Hour)
+	until := time.Now().UTC()
 
 	// SCAN returns no keys
 	mock.ExpectScan(uint64(0), "log:"+wid.String()+":"+jid.String()+":*", int64(100)).
 		SetVal([]string{}, 0)
 
-	result, getErr := r.GetLogs(ctx, since, wid, jid)
+	result, getErr := r.GetLogs(ctx, since, until, wid, jid)
 	require.NoError(t, getErr)
 	assert.Empty(t, result)
 }
@@ -206,27 +214,27 @@ func TestRedisLog_GetLogs_OldData(t *testing.T) {
 	ctx := context.Background()
 	wid := id.NewWorkflowID()
 	jid := id.NewJobID()
-	since := time.Now() // It is assumed that logs from now on will be ignored.
+	// Do not retrieve logs prior to since
+	since := time.Now().UTC()
+	until := since.Add(1 * time.Hour) // For testing purposes, set "until" to 1 hour later
 
 	scanKey := "log:" + wid.String() + ":" + jid.String() + ":key1"
 
-	// 1 key on 1st SCAN, no key on 2nd SCAN -> Finish
 	mock.ExpectScan(uint64(0), "log:"+wid.String()+":"+jid.String()+":*", int64(100)).
 		SetVal([]string{scanKey}, 0)
 
 	entry := redis.LogEntry{
 		WorkflowID: wid.String(),
 		JobID:      jid.String(),
-		// 1 minute before than since
-		LoggedAt: time.Now().Add(-1 * time.Minute),
-		LogLevel: log.LevelInfo,
-		Message:  "old log",
+		// 1 minute before since
+		Timestamp: since.Add(-1 * time.Minute),
+		LogLevel:  log.LevelInfo,
+		Message:   "old log",
 	}
 	bytes, _ := json.Marshal(entry)
-
 	mock.ExpectGet(scanKey).SetVal(string(bytes))
 
-	result, getErr := r.GetLogs(ctx, since, wid, jid)
+	result, getErr := r.GetLogs(ctx, since, until, wid, jid)
 	require.NoError(t, getErr)
 	assert.Empty(t, result, "It's older than since so it shouldn't be returned.")
 }
@@ -245,7 +253,80 @@ func TestRedisLog_GetLogs_Error(t *testing.T) {
 	mock.ExpectScan(uint64(0), "log:"+wid.String()+":"+jid.String()+":*", int64(100)).
 		SetErr(errors.New("scan error"))
 
-	result, getErr := r.GetLogs(ctx, time.Now(), wid, jid)
+	result, getErr := r.GetLogs(ctx, time.Now().UTC(), time.Now().UTC(), wid, jid)
 	assert.Nil(t, result)
 	assert.EqualError(t, getErr, "failed to scan redis keys: scan error")
+}
+
+func TestRedisLog_GetLogs_Boundary(t *testing.T) {
+	// Test what happens if the log is just since, just until, or after until
+	client, mock := redismock.NewClientMock()
+	r, err := redis.NewRedisLog(client)
+	require.NoError(t, err)
+	require.NotNil(t, r)
+
+	ctx := context.Background()
+	wid := id.NewWorkflowID()
+	jid := id.NewJobID()
+
+	// First, determine the base time
+	now := time.Now().UTC().Truncate(time.Second)
+	since := now
+	until := now.Add(10 * time.Second) // Set since+10 seconds as until
+
+	scanKey1 := "log:" + wid.String() + ":" + jid.String() + ":key1"
+	scanKey2 := "log:" + wid.String() + ":" + jid.String() + ":key2"
+	scanKey3 := "log:" + wid.String() + ":" + jid.String() + ":key3"
+
+	// key1: just since
+	entry1 := redis.LogEntry{
+		WorkflowID: wid.String(),
+		JobID:      jid.String(),
+		Timestamp:  since, // Just like since
+		LogLevel:   log.LevelInfo,
+		Message:    "at since",
+	}
+	bytes1, _ := json.Marshal(entry1)
+
+	// key2: just until
+	entry2 := redis.LogEntry{
+		WorkflowID: wid.String(),
+		JobID:      jid.String(),
+		Timestamp:  until, // Just like since
+		LogLevel:   log.LevelInfo,
+		Message:    "at until",
+	}
+	bytes2, _ := json.Marshal(entry2)
+
+	// key3: after until
+	entry3 := redis.LogEntry{
+		WorkflowID: wid.String(),
+		JobID:      jid.String(),
+		// 1 second after until
+		Timestamp: until.Add(1 * time.Second),
+		LogLevel:  log.LevelInfo,
+		Message:   "after until",
+	}
+	bytes3, _ := json.Marshal(entry3)
+
+	mock.ExpectScan(uint64(0), "log:"+wid.String()+":"+jid.String()+":*", int64(100)).
+		SetVal([]string{scanKey1, scanKey2, scanKey3}, 0)
+
+	mock.ExpectGet(scanKey1).SetVal(string(bytes1))
+	mock.ExpectGet(scanKey2).SetVal(string(bytes2))
+	mock.ExpectGet(scanKey3).SetVal(string(bytes3))
+
+	// execution
+	result, err := r.GetLogs(ctx, since, until, wid, jid)
+	require.NoError(t, err)
+	assert.Len(t, result, 2, "since と until に一致する2件のみ含まれるはず")
+
+	foundMsgs := make(map[string]bool)
+	for _, dl := range result {
+		foundMsgs[dl.Message()] = true
+	}
+
+	assert.True(t, foundMsgs["at since"])
+	assert.True(t, foundMsgs["at until"])
+	assert.False(t, foundMsgs["after until"], "until より後なので含まれない")
 }

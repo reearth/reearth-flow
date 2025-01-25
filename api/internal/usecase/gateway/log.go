@@ -9,5 +9,5 @@ import (
 )
 
 type Log interface {
-	GetLogs(context.Context, time.Time, id.WorkflowID, id.JobID) ([]*log.Log, error)
+	GetLogs(ctx context.Context, since time.Time, until time.Time, workflowID id.WorkflowID, jobID id.JobID) ([]*log.Log, error)
 }
