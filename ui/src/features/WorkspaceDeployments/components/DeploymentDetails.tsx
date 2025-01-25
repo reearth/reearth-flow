@@ -35,12 +35,13 @@ const DeploymentDetails: React.FC<Props> = ({
             {
               id: "id",
               name: t("ID"),
-              value: selectedDeployment.id,
+              value:
+                selectedDeployment.id || t("Unknown or deleted deployment"),
             },
             {
               id: "description",
               name: t("Description"),
-              value: selectedDeployment.description,
+              value: selectedDeployment.description || t("N/A"),
             },
             {
               id: "project",
@@ -52,22 +53,22 @@ const DeploymentDetails: React.FC<Props> = ({
             {
               id: "version",
               name: t("Version"),
-              value: selectedDeployment.version,
+              value: selectedDeployment.version || "",
             },
             {
               id: "createdAt",
               name: t("Created At"),
-              value: selectedDeployment.createdAt,
+              value: selectedDeployment.createdAt || t("N/A") || "",
             },
             {
               id: "updatedAt",
               name: t("Updated At"),
-              value: selectedDeployment.updatedAt,
+              value: selectedDeployment.updatedAt || t("Never") || "",
             },
             {
               id: "workflowUrl",
               name: t("Workflow Url"),
-              value: selectedDeployment.workflowUrl,
+              value: selectedDeployment.workflowUrl || t("N/A") || "",
             },
             {
               id: "workflowDownload",

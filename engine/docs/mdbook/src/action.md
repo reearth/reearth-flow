@@ -147,6 +147,42 @@ Aggregates features by attributes
 ### Category
 * Attribute
 
+## AttributeBulkArrayJoiner
+### Type
+* processor
+### Description
+Flattens features by attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AttributeBulkArrayJoinerParam",
+  "type": "object",
+  "properties": {
+    "ignoreAttributes": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Attribute
+
 ## AttributeDuplicateFilter
 ### Type
 * processor
@@ -1602,6 +1638,25 @@ Reads features from a file
           "type": "string",
           "enum": [
             "citygml"
+          ]
+        }
+      }
+    },
+    {
+      "title": "GeoJSON",
+      "type": "object",
+      "required": [
+        "dataset",
+        "format"
+      ],
+      "properties": {
+        "dataset": {
+          "$ref": "#/definitions/Expr"
+        },
+        "format": {
+          "type": "string",
+          "enum": [
+            "geojson"
           ]
         }
       }

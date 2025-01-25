@@ -3,7 +3,6 @@ import { useT } from "@flow/lib/i18n";
 import type {
   CreateTrigger,
   DeleteTrigger,
-  GetTriggers,
   TimeInterval,
   Trigger,
   UpdateTrigger,
@@ -21,7 +20,7 @@ export const useTrigger = () => {
     createTriggerMutation,
     updateTriggerMutation,
     deleteTriggerMutation,
-    useGetTriggersQuery,
+    useGetTriggersInfiniteQuery,
   } = useQueries();
 
   const createTrigger = async (
@@ -29,6 +28,7 @@ export const useTrigger = () => {
     deploymentId: string,
     timeInterval?: TimeInterval,
     authToken?: string,
+    description?: string,
   ): Promise<CreateTrigger> => {
     const { mutateAsync, ...rest } = createTriggerMutation;
 
@@ -40,6 +40,7 @@ export const useTrigger = () => {
           ? { interval: timeInterval as TimeDriverInput["interval"] }
           : undefined,
         apiDriverInput: authToken ? { token: authToken } : undefined,
+        description,
       });
       toast({
         title: t("Trigger Created"),
@@ -47,6 +48,11 @@ export const useTrigger = () => {
       });
       return { trigger: data?.trigger, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Trigger Could Not Be Created"),
+        description: t("There was an error when creating the trigger."),
+        variant: "warning",
+      });
       return { trigger: undefined, ...rest };
     }
   };
@@ -55,6 +61,7 @@ export const useTrigger = () => {
     triggerId: string,
     timeInterval?: TimeInterval,
     authToken?: string,
+    description?: string,
   ): Promise<UpdateTrigger> => {
     const { mutateAsync, ...rest } = updateTriggerMutation;
     try {
@@ -64,6 +71,7 @@ export const useTrigger = () => {
           ? { interval: timeInterval as TimeDriverInput["interval"] }
           : undefined,
         apiDriverInput: authToken ? { token: authToken } : undefined,
+        description,
       });
       toast({
         title: t("Trigger Updated"),
@@ -71,6 +79,11 @@ export const useTrigger = () => {
       });
       return { trigger, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Trigger Could Not Be Updated"),
+        description: t("There was an error when updating the trigger."),
+        variant: "warning",
+      });
       return { trigger: undefined, ...rest };
     }
   };
@@ -91,21 +104,26 @@ export const useTrigger = () => {
       });
       return { success: data.success, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Trigger Could Not Be Deleted"),
+        description: t("There was an error when deleting the trigger."),
+        variant: "warning",
+      });
       return { success: false, ...rest };
     }
   };
 
-  const useGetTriggers = (workspaceId?: string): GetTriggers => {
-    const { data, ...rest } = useGetTriggersQuery(workspaceId);
+  const useGetTriggersInfinite = (workspaceId?: string) => {
+    const { data, ...rest } = useGetTriggersInfiniteQuery(workspaceId);
     return {
-      triggers: data?.triggers,
+      pages: data?.pages,
       ...rest,
     };
   };
 
   return {
     createTrigger,
-    useGetTriggers,
+    useGetTriggersInfinite,
     useUpdateTrigger,
     useDeleteTrigger,
   };

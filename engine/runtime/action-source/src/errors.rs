@@ -6,6 +6,14 @@ pub enum SourceError {
     FileReaderFactory(String),
     #[error("File Reader error: {0}")]
     FileReader(String),
+    #[error("CityGmlFileReader error: {0}")]
+    CityGmlFileReader(String),
+    #[error("CsvFileReader error: {0}")]
+    CsvFileReader(String),
+    #[error("JsonFileReader error: {0}")]
+    JsonFileReader(String),
+    #[error("GeoJsonFileReader error: {0}")]
+    GeoJsonFileReader(String),
     #[error("File Path Extractor Factory error: {0}")]
     FilePathExtractorFactory(String),
     #[error("File Path Extractor error: {0}")]
