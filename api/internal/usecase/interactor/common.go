@@ -28,15 +28,11 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 	config ContainerConfig,
 ) interfaces.Container {
 	job := NewJob(r, g)
-	log, err := NewLogInteractor(g.LogRedis, g.LogGCS, 60*time.Minute)
-	if err != nil {
-		panic(err)
-	}
 	return interfaces.Container{
 		Asset:      NewAsset(r, g),
 		Job:        job,
 		Deployment: NewDeployment(r, g, job),
-		Log:        log,
+		Log:        NewLogInteractor(g.LogRedis, g.LogGCS, 60*time.Minute),
 		Parameter:  NewParameter(r),
 		Project:    NewProject(r, g),
 		Workspace:  accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
