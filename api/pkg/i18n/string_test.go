@@ -192,7 +192,7 @@ func TestString_Clone(t *testing.T) {
 		{
 			Name:     "empty String",
 			Target:   String{},
-			Expected: nil,
+			Expected: nil, // Empty is assumed to return nil
 		},
 		{
 			Name:     "nil",
@@ -205,9 +205,20 @@ func TestString_Clone(t *testing.T) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
+
+			// Clone
 			res := tc.Target.Clone()
+			// Values as expected
 			assert.Equal(t, tc.Expected, res)
-			assert.NotSame(t, tc.Target, res)
+			// "nil" or if the element is empty, the clone will be assumed to be nil
+			if len(tc.Target) != 0 {
+				// Check if changing the contents of the clone doesn't change the original
+				res["test"] = "bar"
+				// The original should not have a "test" key here
+				_, originalHasKey := tc.Target["test"]
+				assert.False(t, originalHasKey, "original map should not have the new key")
+				assert.Equal(t, "bar", res["test"])
+			}
 		})
 	}
 }
