@@ -7,7 +7,7 @@ import { openLinkInNewTab } from "@flow/utils";
 export type DetailsBoxContent = {
   id: string;
   name: string;
-  value?: string;
+  value: string;
   type?: "link" | "download" | "status";
 };
 

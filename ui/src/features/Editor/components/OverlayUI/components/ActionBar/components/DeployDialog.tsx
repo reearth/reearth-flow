@@ -75,7 +75,7 @@ const DeployDialog: React.FC<Props> = ({
           </DialogContentSection> */}
           <div className="border-t border-primary" />
           <DialogContentSection className="flex flex-col">
-            <Label>{t("Description (optional): ")}</Label>
+            <Label>{t("Description")}</Label>
             <Input
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -91,7 +91,9 @@ const DeployDialog: React.FC<Props> = ({
           </DialogContentSection>
         </DialogContentWrapper>
         <DialogFooter>
-          <Button onClick={handleWorkflowDeployment}>
+          <Button
+            disabled={!description.trim()}
+            onClick={handleWorkflowDeployment}>
             {deployment ? t("Update") : t("Deploy")}
           </Button>
         </DialogFooter>

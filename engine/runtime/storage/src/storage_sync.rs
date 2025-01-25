@@ -6,7 +6,6 @@ use std::time::Duration;
 use bytes::Bytes;
 use object_store::ObjectMeta;
 use object_store::Result;
-use opendal::Metakey;
 use reearth_flow_common::uri::Protocol;
 use reearth_flow_common::uri::Uri;
 
@@ -184,7 +183,6 @@ impl Storage {
             .blocking()
             .lister_with(&path)
             .recursive(recursive)
-            .metakey(Metakey::ContentLength | Metakey::LastModified)
             .call()
             .map_err(|err| format_object_store_error(err, ""))?;
         let result = ds

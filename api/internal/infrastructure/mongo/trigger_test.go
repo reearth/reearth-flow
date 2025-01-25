@@ -65,15 +65,16 @@ func TestTrigger_FindByWorkspace(t *testing.T) {
 	wid2 := accountdomain.NewWorkspaceID()
 
 	_, _ = c.Collection("trigger").InsertMany(ctx, []any{
-		bson.M{"id": "t1", "workspaceid": wid.String()},
-		bson.M{"id": "t2", "workspaceid": wid.String()},
-		bson.M{"id": "t3", "workspaceid": wid2.String()},
+		bson.M{"id": "t1", "workspaceid": wid.String(), "eventsource": "TIME_DRIVEN"},
+		bson.M{"id": "t2", "workspaceid": wid.String(), "eventsource": "API_DRIVEN"},
+		bson.M{"id": "t3", "workspaceid": wid2.String(), "eventsource": "TIME_DRIVEN"},
 	})
 
 	r := NewTrigger(mongox.NewClientWithDatabase(c))
 
-	got, err := r.FindByWorkspace(ctx, wid)
+	got, pageInfo, err := r.FindByWorkspace(ctx, wid, nil)
 	assert.NoError(t, err)
+	assert.NotNil(t, pageInfo)
 	assert.Equal(t, 2, len(got))
 	assert.Equal(t, "t1", got[0].ID().String())
 	assert.Equal(t, "t2", got[1].ID().String())

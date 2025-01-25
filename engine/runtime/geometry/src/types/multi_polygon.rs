@@ -10,7 +10,8 @@ use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
 
 use super::conversion::geojson::{
-    create_geo_multi_polygon, create_multi_polygon_type, mismatch_geom_err,
+    create_geo_multi_polygon_2d, create_geo_multi_polygon_3d, create_multi_polygon_type,
+    mismatch_geom_err,
 };
 use super::coordnum::{CoordFloat, CoordNum};
 use super::line_string::LineString;
@@ -140,17 +141,26 @@ impl<T: CoordFloat, Z: CoordFloat> From<MultiPolygon<T, Z>> for geojson::Value {
     }
 }
 
-impl<T, Z> TryFrom<geojson::Value> for MultiPolygon<T, Z>
-where
-    T: CoordFloat,
-    Z: CoordFloat,
-{
+impl TryFrom<geojson::Value> for MultiPolygon2D<f64> {
     type Error = crate::error::Error;
 
-    fn try_from(value: geojson::Value) -> crate::error::Result<MultiPolygon<T, Z>> {
+    fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
         match value {
             geojson::Value::MultiPolygon(multi_polygon_type) => {
-                Ok(create_geo_multi_polygon(&multi_polygon_type))
+                Ok(create_geo_multi_polygon_2d(&multi_polygon_type))
+            }
+            other => Err(mismatch_geom_err("MultiPolygon", &other)),
+        }
+    }
+}
+
+impl TryFrom<geojson::Value> for MultiPolygon3D<f64> {
+    type Error = crate::error::Error;
+
+    fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
+        match value {
+            geojson::Value::MultiPolygon(multi_polygon_type) => {
+                Ok(create_geo_multi_polygon_3d(&multi_polygon_type))
             }
             other => Err(mismatch_geom_err("MultiPolygon", &other)),
         }

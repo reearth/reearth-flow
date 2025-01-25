@@ -19,7 +19,7 @@ input CreateDeploymentInput {
   workspaceId: ID!
   file: Upload!
   projectId: ID
-  description: String
+  description: String!
 }
 
 input DeleteDeploymentInput {
