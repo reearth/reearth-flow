@@ -130,9 +130,12 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 }
 
 func initLogRedis(ctx context.Context, conf *config.Config) gateway.Log {
-	client := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
-	})
+	opts := &redis.Options{
+		Addr:     conf.Redis.Addr,
+		Password: conf.Redis.Password,
+		DB:       conf.Redis.DB,
+	}
+	client := redis.NewClient(opts)
 	logRedisRepo, err := redisrepo.NewRedisLog(client)
 	if err != nil {
 		log.Fatalf("Failed to create redis log repository: %v", err)

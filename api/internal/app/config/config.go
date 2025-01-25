@@ -55,6 +55,9 @@ type (
 		GCS GCSConfig `pp:",omitempty"`
 		S3  S3Config  `pp:",omitempty"`
 
+		// redis
+		Redis RedisConfig `pp:",omitempty"`
+
 		// auth
 		Auth          AuthConfigs   `pp:",omitempty"`
 		Auth0         Auth0Config   `pp:",omitempty"`
