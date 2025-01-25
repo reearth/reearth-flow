@@ -101,7 +101,7 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 
 	t.Run("redis gateway is nil", func(t *testing.T) {
 		li := NewLogInteractor(nil, gcsMock, 1*time.Hour)
-		since := time.Now().Add(-30 * time.Minute) // Redis 側にアクセスするケース
+		since := time.Now().Add(-30 * time.Minute) // Cases where Redis is accessed
 
 		out, err := li.GetLogs(context.Background(), since, workflowID, jobID, &usecase.Operator{})
 		assert.Nil(t, out)
@@ -111,7 +111,7 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 
 	t.Run("gcs gateway is nil", func(t *testing.T) {
 		li := NewLogInteractor(redisMock, nil, 1*time.Hour)
-		since := time.Now().Add(-2 * time.Hour) // GCS 側にアクセスするケース
+		since := time.Now().Add(-2 * time.Hour) // Cases where GCS is accessed
 
 		out, err := li.GetLogs(context.Background(), since, workflowID, jobID, &usecase.Operator{})
 		assert.Nil(t, out)
