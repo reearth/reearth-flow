@@ -152,7 +152,7 @@ func initLogGCS(ctx context.Context, conf *config.Config) gateway.Log {
 		log.Infofc(ctx, "log: GCS storage is used: %s\n", conf.GCSLog.BucketName)
 		c, err := storage.NewClient(ctx)
 		if err != nil {
-			log.Fatalf("Failed to create gcs client: %v", err)
+			log.Warnf("log: failed to init GCS storage: %s\n", err.Error())
 		}
 		gcsClient := gcs.NewRealGCSClient(c)
 		logGCSRepo, err := gcs.NewGCSLog(gcsClient, conf.GCSLog.BucketName)
