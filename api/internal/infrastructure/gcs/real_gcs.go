@@ -53,7 +53,9 @@ func (b *realGCSBucket) ReadObject(ctx context.Context, objectName string) ([]by
 	defer func() {
 		if closeErr := r.Close(); closeErr != nil {
 			log.Errorf("failed to close reader: %v", closeErr)
-			err = closeErr
+			if err == nil {
+				err = closeErr
+			}
 		}
 	}()
 
