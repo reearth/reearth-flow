@@ -148,9 +148,9 @@ func TestRedisLog_GetLogs(t *testing.T) {
 	entry1 := redis.LogEntry{
 		WorkflowID: wid.String(),
 		JobID:      jid.String(),
-		Timestamp: now,
-		LogLevel:  log.LevelInfo,
-		Message:   "test1",
+		Timestamp:  now,
+		LogLevel:   log.LevelInfo,
+		Message:    "test1",
 	}
 	bytes1, _ := json.Marshal(entry1)
 
@@ -319,7 +319,7 @@ func TestRedisLog_GetLogs_Boundary(t *testing.T) {
 	// execution
 	result, err := r.GetLogs(ctx, since, until, wid, jid)
 	require.NoError(t, err)
-	assert.Len(t, result, 2, "since と until に一致する2件のみ含まれるはず")
+	assert.Len(t, result, 2, "Only two matches should be included: since and until")
 
 	foundMsgs := make(map[string]bool)
 	for _, dl := range result {
@@ -328,5 +328,5 @@ func TestRedisLog_GetLogs_Boundary(t *testing.T) {
 
 	assert.True(t, foundMsgs["at since"])
 	assert.True(t, foundMsgs["at until"])
-	assert.False(t, foundMsgs["after until"], "until より後なので含まれない")
+	assert.False(t, foundMsgs["after until"], "Not included because it is after until")
 }
