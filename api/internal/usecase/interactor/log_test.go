@@ -98,4 +98,24 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get logs from GCS")
 	})
+
+	t.Run("redis gateway is nil", func(t *testing.T) {
+		li := NewLogInteractor(nil, gcsMock, 1*time.Hour)
+		since := time.Now().Add(-30 * time.Minute) // Redis 側にアクセスするケース
+
+		out, err := li.GetLogs(context.Background(), since, workflowID, jobID, &usecase.Operator{})
+		assert.Nil(t, out)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "logsGatewayRedis is nil")
+	})
+
+	t.Run("gcs gateway is nil", func(t *testing.T) {
+		li := NewLogInteractor(redisMock, nil, 1*time.Hour)
+		since := time.Now().Add(-2 * time.Hour) // GCS 側にアクセスするケース
+
+		out, err := li.GetLogs(context.Background(), since, workflowID, jobID, &usecase.Operator{})
+		assert.Nil(t, out)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "logsGatewayGCS is nil")
+	})
 }

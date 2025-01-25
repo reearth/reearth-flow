@@ -130,28 +130,36 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 }
 
 func initLogRedis(ctx context.Context, conf *config.Config) gateway.Log {
-	opts := &redis.Options{
-		Addr:     conf.Redis.Addr,
-		Password: conf.Redis.Password,
-		DB:       conf.Redis.DB,
+	if conf.RedisLog.IsConfigured() {
+		log.Infofc(ctx, "log: redis storage is used: %s\n", conf.RedisLog.Addr)
+		opts := &redis.Options{
+			Addr:     conf.RedisLog.Addr,
+			Password: conf.RedisLog.Password,
+			DB:       conf.RedisLog.DB,
+		}
+		client := redis.NewClient(opts)
+		logRedisRepo, err := redisrepo.NewRedisLog(client)
+		if err != nil {
+			log.Warnf("log: failed to init redis storage: %s\n", err.Error())
+		}
+		return logRedisRepo
 	}
-	client := redis.NewClient(opts)
-	logRedisRepo, err := redisrepo.NewRedisLog(client)
-	if err != nil {
-		log.Fatalf("Failed to create redis log repository: %v", err)
-	}
-	return logRedisRepo
+	return nil
 }
 
 func initLogGCS(ctx context.Context, conf *config.Config) gateway.Log {
-	c, err := storage.NewClient(ctx)
-	if err != nil {
-		log.Fatalf("Failed to create gcs client: %v", err)
+	if conf.GCSLog.IsConfigured() {
+		log.Infofc(ctx, "log: GCS storage is used: %s\n", conf.GCSLog.BucketName)
+		c, err := storage.NewClient(ctx)
+		if err != nil {
+			log.Fatalf("Failed to create gcs client: %v", err)
+		}
+		gcsClient := gcs.NewRealGCSClient(c)
+		logGCSRepo, err := gcs.NewGCSLog(gcsClient, conf.GCSLog.BucketName)
+		if err != nil {
+			log.Warnf("log: failed to init GCS storage: %s\n", err.Error())
+		}
+		return logGCSRepo
 	}
-	gcsClient := gcs.NewRealGCSClient(c)
-	logGCSRepo, err := gcs.NewGCSLog(gcsClient, conf.GCS.BucketName)
-	if err != nil {
-		log.Fatalf("Failed to create gcs log repository: %v", err)
-	}
-	return logGCSRepo
+	return nil
 }
