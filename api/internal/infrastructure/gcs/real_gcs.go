@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"cloud.google.com/go/storage"
+	"github.com/reearth/reearthx/log"
 	"google.golang.org/api/iterator"
 )
 
@@ -49,7 +50,12 @@ func (b *realGCSBucket) ReadObject(ctx context.Context, objectName string) ([]by
 	if err != nil {
 		return nil, err
 	}
-	defer r.Close()
+	defer func() {
+		if closeErr := r.Close(); closeErr != nil {
+			log.Errorf("failed to close reader: %v", closeErr)
+			err = closeErr
+		}
+	}()
 
 	data, err := io.ReadAll(r)
 	if err != nil {
