@@ -19,8 +19,9 @@ use serde::Deserialize;
 use std::sync::Arc;
 #[cfg(feature = "auth")]
 use websocket::auth::AuthService;
-use websocket::broadcast_pool::BroadcastPool;
-use websocket::{broadcast::BroadcastGroup, conf::Config};
+use websocket::conf::Config;
+use websocket::group::BroadcastGroup;
+use websocket::pool::BroadcastPool;
 //use websocket::storage::sqlite::SqliteStore;
 use google_cloud_storage::{
     client::Client,

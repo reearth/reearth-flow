@@ -4,7 +4,7 @@ use std::env;
 use std::path::Path;
 use tracing::{info, warn};
 
-use crate::{broadcast::RedisConfig, storage::gcs::GcsConfig};
+use crate::{group::RedisConfig, storage::gcs::GcsConfig};
 
 // Default configuration constants
 const DEFAULT_REDIS_URL: &str = "redis://127.0.0.1:6379";
