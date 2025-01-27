@@ -18,11 +18,11 @@ import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflowJson/engi
 import { useDeployment } from "../gql/deployment";
 import { useT } from "../i18n";
 
+import type { YWorkflow } from "./types";
 import useWorkflowTabs from "./useWorkflowTabs";
 import useYEdge from "./useYEdge";
 import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
-import { YWorkflow } from "./utils";
 import { convertYWorkflowToWorkflow } from "./utils/convertToWorkflow";
 
 export default ({

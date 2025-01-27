@@ -6,7 +6,8 @@ import * as Y from "yjs";
 import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 
-import { YWorkflow, yWorkflowBuilder } from "./utils";
+import type { YWorkflow } from "./types";
+import { yWorkflowBuilder } from "./utils";
 
 export default ({ workflowId }: { workflowId?: string }) => {
   const { projectId }: { projectId: string } = useParams({

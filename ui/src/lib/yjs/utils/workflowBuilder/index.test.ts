@@ -1,15 +1,12 @@
 import { cleanup } from "@testing-library/react";
 import * as Y from "yjs";
 
-import { Edge, Node } from "@flow/types";
+import type { YEdgesArray, YNodesArray, YWorkflow } from "@flow/lib/yjs/types";
+import type { Edge, Node } from "@flow/types";
 
-import { reassembleEdge, reassembleNode } from "./convertToRawWorkflow";
-import {
-  yWorkflowBuilder,
-  YNodesArray,
-  YEdgesArray,
-  YWorkflow,
-} from "./workflowBuilder";
+import { reassembleEdge, reassembleNode } from "../convertToWorkflow";
+
+import { yWorkflowBuilder } from "./";
 
 afterEach(() => {
   cleanup();
@@ -42,7 +39,29 @@ describe("yWorkflowBuilder", () => {
         position: { x: 0, y: 0 },
         measured: { width: 100, height: 100 },
         dragging: false,
-        data: { officialName: "Node 1" },
+        data: {
+          officialName: "Node 1",
+          inputs: ["input1", "input2"],
+          outputs: ["output1", "output2"],
+          params: {
+            param1: "value1",
+            param2: 2,
+            param3: true,
+            param4: null,
+            param5: { key: "value" },
+          },
+          pseudoInputs: [
+            { nodeId: "node-2", portName: "port1" },
+            { nodeId: "node-3", portName: "port2" },
+          ],
+          pseudoOutputs: [
+            { nodeId: "node-4", portName: "port3" },
+            { nodeId: "node-5", portName: "port4" },
+          ],
+          content: "Content",
+          backgroundColor: "#FFFFFF",
+          textColor: "#000000",
+        },
       },
     ];
     const edges: Edge[] = [

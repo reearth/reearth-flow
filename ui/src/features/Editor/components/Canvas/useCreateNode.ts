@@ -20,7 +20,6 @@ const createBaseNode = ({ position, type }: CreateNodeOptions): Node => ({
   data: {
     officialName: type,
     status: "idle",
-    locked: false,
   },
 });
 
@@ -61,7 +60,6 @@ const createActionNode = async (
       inputs: [...action.inputPorts],
       outputs: [...action.outputPorts],
       status: "idle",
-      locked: false,
     },
   };
 };

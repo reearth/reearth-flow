@@ -1,9 +1,120 @@
 import * as Y from "yjs";
 
 import { Workflow } from "@flow/types";
+import type { Edge, Node, NodeData } from "@flow/types";
 
-import { reassembleEdge, reassembleNode } from "./convertToRawWorkflow";
-import { YEdge, YNode, YWorkflow } from "./workflowBuilder";
+import type { YWorkflow, YEdge, YNode } from "../types";
+
+export const reassembleNode = (yNode: YNode): Node => {
+  const id = yNode.get("id")?.toString() as string;
+  const position = {
+    x: (yNode.get("position") as Y.Map<any>).get("x"),
+    y: (yNode.get("position") as Y.Map<any>).get("y"),
+  };
+  const type = yNode.get("type")?.toString() as string;
+  const dragging = yNode.get("dragging") as boolean;
+  const measured = {
+    width: (yNode.get("measured") as Y.Map<any>)?.get("width"),
+    height: (yNode.get("measured") as Y.Map<any>)?.get("height"),
+  };
+
+  const data: NodeData = {
+    officialName: (yNode.get("data") as Y.Map<any>)
+      ?.get("officialName")
+      .toString(),
+  };
+  if ((yNode.get("data") as Y.Map<any>)?.get("customName") !== undefined) {
+    data.customName = (yNode.get("data") as Y.Map<any>)
+      ?.get("customName")
+      .toString();
+  }
+  if ((yNode.get("data") as Y.Map<any>)?.get("inputs") !== undefined) {
+    data.inputs = (
+      (yNode.get("data") as Y.Map<any>)?.get("inputs").toArray() as Y.Text[]
+    ).map((input) => input.toString());
+  }
+  if ((yNode.get("data") as Y.Map<any>)?.get("outputs") !== undefined) {
+    data.outputs = (
+      (yNode.get("data") as Y.Map<any>)?.get("outputs").toArray() as Y.Text[]
+    ).map((input) => input.toString());
+  }
+  // NOTE: Status might be better not to be persisted
+  if ((yNode.get("data") as Y.Map<any>)?.get("status") !== undefined) {
+    data.status = (yNode.get("data") as Y.Map<any>)?.get("status").toString();
+  }
+  if ((yNode.get("data") as Y.Map<any>)?.get("params") !== undefined) {
+    data.params = (yNode.get("data") as Y.Map<any>)?.get("params");
+  }
+  // Subworkflow specific
+  if ((yNode.get("data") as Y.Map<any>)?.get("pseudoInputs") !== undefined) {
+    data.pseudoInputs = (yNode.get("data") as Y.Map<any>)
+      ?.get("pseudoInputs")
+      .toArray()
+      .map((input: Y.Map<any>) => ({
+        nodeId: input.get("nodeId").toString(),
+        portName: input.get("portName").toString(),
+      }));
+  }
+  if ((yNode.get("data") as Y.Map<any>)?.get("pseudoOutputs") !== undefined) {
+    data.pseudoOutputs = (yNode.get("data") as Y.Map<any>)
+      ?.get("pseudoOutputs")
+      .toArray()
+      .map((input: Y.Map<any>) => ({
+        nodeId: input.get("nodeId").toString(),
+        portName: input.get("portName").toString(),
+      }));
+  }
+  // Batch & note specific
+  if ((yNode.get("data") as Y.Map<any>)?.get("content") !== undefined) {
+    data.content = (yNode.get("data") as Y.Map<any>)?.get("content").toString();
+  }
+  if ((yNode.get("data") as Y.Map<any>)?.get("backgroundColor") !== undefined) {
+    data.backgroundColor = (yNode.get("data") as Y.Map<any>)
+      ?.get("backgroundColor")
+      .toString();
+  }
+  if ((yNode.get("data") as Y.Map<any>)?.get("textColor") !== undefined) {
+    data.textColor = (yNode.get("data") as Y.Map<any>)
+      ?.get("textColor")
+      .toString();
+  }
+
+  const style = {
+    width: (yNode.get("style") as Y.Map<any>)?.get("width").toString(),
+    height: (yNode.get("style") as Y.Map<any>)?.get("height").toString(),
+  };
+
+  const reassembledNode: Node = {
+    id,
+    position,
+    measured,
+    type,
+    dragging,
+    data,
+  };
+
+  if (type === "batch" && style.width && style.height) {
+    reassembledNode.style = style;
+  }
+
+  return reassembledNode;
+};
+
+export const reassembleEdge = (yEdge: YEdge): Edge => {
+  const id = yEdge.get("id")?.toString() as string;
+  const source = yEdge.get("source")?.toString() as string;
+  const target = yEdge.get("target")?.toString() as string;
+  const sourceHandle = yEdge.get("sourceHandle")?.toString();
+  const targetHandle = yEdge.get("targetHandle")?.toString();
+
+  return {
+    id,
+    source,
+    target,
+    sourceHandle,
+    targetHandle,
+  };
+};
 
 export const convertYWorkflowToWorkflow = (yWorkflow: YWorkflow): Workflow => {
   const workflow: Workflow = {

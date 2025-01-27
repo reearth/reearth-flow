@@ -24,14 +24,11 @@ export type NodeData = {
   outputs?: string[];
   status?: Status;
   params?: NodeParam;
-  locked?: boolean | undefined;
   // subworkflow nodes
   pseudoInputs?: PseudoPort[];
   pseudoOutputs?: PseudoPort[];
   // batch & note nodes
   content?: string;
-  width?: number;
-  height?: number;
   backgroundColor?: string;
   textColor?: string;
 };

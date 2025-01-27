@@ -3,7 +3,8 @@ import * as Y from "yjs";
 
 import type { Edge, Node, NodeChange } from "@flow/types";
 
-import { createYNode, YNodesArray, YWorkflow } from "./utils";
+import type { YNodesArray, YWorkflow } from "./types";
+import { createYNode } from "./utils";
 
 export default ({
   currentYWorkflow,

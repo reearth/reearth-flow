@@ -1,6 +1,6 @@
 import { Note } from "@phosphor-icons/react";
 import { NodeProps, NodeResizer } from "@xyflow/react";
-import { memo, useState } from "react";
+import { memo } from "react";
 
 import { Node } from "@flow/types";
 
@@ -25,9 +25,6 @@ export const baseNoteNode = {
 };
 
 const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
-  const [_width, _setWidth] = useState(data.width ?? initialSize.width);
-  const [_height, _setHeight] = useState(data.height ?? initialSize.height);
-
   return (
     <>
       {props.selected && (

@@ -13,13 +13,8 @@ import { generateUUID } from "@flow/utils";
 
 import { fetcher } from "../fetch/transformers/useFetch";
 
-import {
-  createYNode,
-  YNode,
-  YNodesArray,
-  YWorkflow,
-  yWorkflowBuilder,
-} from "./utils";
+import type { YNode, YNodesArray, YWorkflow } from "./types";
+import { createYNode, yWorkflowBuilder } from "./utils";
 
 export default ({
   yWorkflows,

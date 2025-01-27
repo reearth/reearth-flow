@@ -1,6 +1,6 @@
 import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
-import { YWorkflow } from "@flow/lib/yjs/utils";
+import type { YWorkflow } from "@flow/lib/yjs/types";
 
 import {
   BottomPanel,

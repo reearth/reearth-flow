@@ -1,11 +1,11 @@
-import { XYPosition } from "@xyflow/react";
+import type { XYPosition } from "@xyflow/react";
 import { MouseEvent, useCallback, useMemo, useState } from "react";
-import { Array as YArray, UndoManager as YUndoManager } from "yjs";
+import { type Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useHasReader, useIsMainWorkflow, useShortcuts } from "@flow/hooks";
 import { useYjsStore } from "@flow/lib/yjs";
-import { YWorkflow } from "@flow/lib/yjs/utils";
+import type { YWorkflow } from "@flow/lib/yjs/types";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 import { cancellableDebounce } from "@flow/utils";
 

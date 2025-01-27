@@ -100,7 +100,6 @@ const ActionsList: React.FC<Props> = ({
           inputs: [...action.inputPorts],
           outputs: [...action.outputPorts],
           status: "idle",
-          locked: false,
         },
       };
       onNodesAdd([newNode]);

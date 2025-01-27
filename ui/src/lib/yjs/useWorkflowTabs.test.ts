@@ -1,8 +1,9 @@
 import { renderHook } from "@testing-library/react";
 import * as Y from "yjs";
 
+import type { YWorkflow } from "./types";
 import useWorkflowTabs from "./useWorkflowTabs";
-import { YWorkflow, yWorkflowBuilder } from "./utils";
+import { yWorkflowBuilder } from "./utils";
 import { convertYWorkflowToWorkflow } from "./utils/convertToWorkflow";
 
 describe("useWorkflowTabs", () => {
