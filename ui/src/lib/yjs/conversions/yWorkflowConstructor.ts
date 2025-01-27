@@ -50,8 +50,8 @@ export const yNodeConstructor = (node: Node): YNode => {
       textColor: toYjsText(node.data.textColor),
     }),
     style: toYjsMap({
-      width: node.style?.width || 0,
-      height: node.style?.height || 0,
+      width: node.style?.width,
+      height: node.style?.height,
     }),
   }) as YNode;
 
