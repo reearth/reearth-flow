@@ -63,15 +63,27 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 
 	sort.Slice(result, func(i, j int) bool {
 		if pagination != nil && pagination.Page != nil && pagination.Page.OrderBy != nil && *pagination.Page.OrderBy == "version" {
-			if direction == 1 {
-				return result[i].Version() < result[j].Version()
+			// Compare versions first
+			vi, vj := result[i].Version(), result[j].Version()
+			if vi != vj {
+				if direction == 1 {
+					return vi < vj
+				}
+				return vi > vj
 			}
-			return result[i].Version() > result[j].Version()
+			// If versions are equal, use ID as secondary sort key for stability
+			return result[i].ID().String() < result[j].ID().String()
 		}
-		if direction == 1 {
-			return result[i].UpdatedAt().Before(result[j].UpdatedAt())
+		// Compare updatedAt first
+		ti, tj := result[i].UpdatedAt(), result[j].UpdatedAt()
+		if !ti.Equal(tj) {
+			if direction == 1 {
+				return ti.Before(tj)
+			}
+			return ti.After(tj)
 		}
-		return result[i].UpdatedAt().After(result[j].UpdatedAt())
+		// If timestamps are equal, use ID as secondary sort key for stability
+		return result[i].ID().String() < result[j].ID().String()
 	})
 
 	// Handle pagination
