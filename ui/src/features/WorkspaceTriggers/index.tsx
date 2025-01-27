@@ -23,6 +23,12 @@ const TriggerManager: React.FC = () => {
   const t = useT();
   const {
     triggers,
+    totalPages,
+    currentPage,
+    hasNextPage,
+    isFetchingNextPage,
+    handleNextPage,
+    handlePrevPage,
     selectedTrigger,
     triggerToBeDeleted,
     openTriggerAddDialog,
@@ -33,6 +39,7 @@ const TriggerManager: React.FC = () => {
     handleTriggerSelect,
     handleTriggerDelete,
   } = useHooks();
+
   const columns: ColumnDef<Trigger>[] = [
     {
       accessorKey: "description",
@@ -101,10 +108,15 @@ const TriggerManager: React.FC = () => {
                 columns={columns}
                 data={triggers}
                 selectColumns
-                showFiltering
-                enablePagination
                 rowHeight={14}
                 onRowClick={handleTriggerSelect}
+                hasNextPage={hasNextPage}
+                onNextPage={handleNextPage}
+                onPrevPage={handlePrevPage}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                isFetchingNextPage={isFetchingNextPage}
+                enablePagination
               />
             ) : (
               <BasicBoiler

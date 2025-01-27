@@ -11,12 +11,10 @@ export enum JobQueryKeys {
   GetJob = "getJob",
 }
 
-const JOBS_FETCH_RATE = 15;
-
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
 
-  const useGetJobsInfiniteQuery = (workspaceId?: string) =>
+  const useGetJobsInfiniteQuery = (workspaceId?: string, fetchRate?: number) =>
     useInfiniteQuery({
       queryKey: [JobQueryKeys.GetJobs, workspaceId],
       initialPageParam: null,
@@ -24,7 +22,7 @@ export const useQueries = () => {
         const data = await graphQLContext?.GetJobs({
           workspaceId: workspaceId ?? "",
           pagination: {
-            first: JOBS_FETCH_RATE,
+            first: fetchRate,
             after: pageParam,
           },
         });
@@ -33,10 +31,11 @@ export const useQueries = () => {
           jobs: {
             nodes,
             pageInfo: { endCursor, hasNextPage },
+            totalCount,
           },
         } = data;
         const jobs: Job[] = nodes.filter(isDefined).map((job) => toJob(job));
-        return { jobs, endCursor, hasNextPage };
+        return { jobs, endCursor, hasNextPage, totalCount };
       },
       enabled: !!workspaceId,
       getNextPageParam: (lastPage) => {
