@@ -1,7 +1,9 @@
 import { RectangleDashed } from "@phosphor-icons/react";
+import { RJSFSchema } from "@rjsf/utils";
 import { NodeProps, NodeResizer, useReactFlow } from "@xyflow/react";
 import { memo, useState, useCallback } from "react";
 
+import { cn } from "@flow/lib/utils";
 import { Node } from "@flow/types";
 
 import useBatch from "../../../useBatch";
@@ -10,11 +12,38 @@ export type BatchNodeProps = NodeProps<Node>;
 
 export const initialSize = { width: 300, height: 200 };
 
+const batchNodeSchema: RJSFSchema = {
+  type: "object",
+  properties: {
+    customName: { type: "string", title: "Name" },
+    backgroundColor: {
+      type: "string",
+      format: "color",
+      title: "Background Color",
+    },
+    textColor: { type: "string", format: "color", title: "Text Color" },
+  },
+};
+
+export const batchNodeAction = {
+  name: "batch",
+  description: "Batch node",
+  type: "batch",
+  categories: ["batch"],
+  inputPorts: ["input"],
+  outputPorts: ["output"],
+  builtin: true,
+  parameter: batchNodeSchema,
+};
+
 export const baseBatchNode = {
   type: "batch",
   style: { width: initialSize.width + "px", height: initialSize.height + "px" },
   zIndex: -1001,
 };
+
+const longClassName =
+  "absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t bg-accent/50 px-2 py-1";
 
 const minSize = { width: 250, height: 150 };
 
@@ -68,6 +97,8 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
   // No need to memoize as we want to update because bounds will change on resize
   const bounds = getChildNodesBoundary();
 
+  const { backgroundColor, textColor } = data;
+
   return (
     <>
       {selected && (
@@ -79,8 +110,8 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
           lineClassName="border border-border rounded"
           handleStyle={{
             background: "none",
-            width: 8,
-            height: 8,
+            width: 0,
+            height: 0,
             border: "none",
             borderRadius: "80%",
             zIndex: 0,
@@ -91,9 +122,23 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
         />
       )}
       <div
-        className={`relative z-0 h-full rounded-b-sm bg-accent/20 ${selected ? "border-border" : undefined}`}>
+        className={cn(
+          "relative z-0 h-full rounded-b-sm bg-accent/20",
+          selected ? "border-border" : undefined,
+        )}
+        // TODO: Not sure why this is not working
+        style={{
+          backgroundColor: backgroundColor + " !important",
+        }}>
         <div
-          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t bg-accent/50 px-2 py-1 ${selected ? "border-border" : "border-transparent"}`}>
+          className={cn(
+            longClassName,
+            selected ? "border-border" : "border-transparent",
+          )}
+          style={{
+            backgroundColor: backgroundColor + " !important",
+            color: textColor + " !important",
+          }}>
           <RectangleDashed />
           <p>{data.customName || data.officialName}</p>
         </div>
