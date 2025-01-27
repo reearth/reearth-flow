@@ -74,12 +74,13 @@ func TestBatchRepo_SubmitJob(t *testing.T) {
 	workspaceID, _ := id.WorkspaceIDFrom("test-workspace-id")
 	workflowURL := "gs://test-bucket/test-workflow.yaml"
 	metadataURL := "gs://test-bucket/test-metadata.json"
+	var variables map[string]interface{}
 
 	expectedJobName := "projects/test-project/locations/us-central1/jobs/test-job-id"
 
 	mockClient.On("CreateJob", ctx, mock.AnythingOfType("*batchpb.CreateJobRequest")).Return(&batchpb.Job{Name: expectedJobName}, nil)
 
-	jobName, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, projectID, accountdomain.WorkspaceID(workspaceID))
+	jobName, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, &variables, projectID, accountdomain.WorkspaceID(workspaceID))
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedJobName, jobName)

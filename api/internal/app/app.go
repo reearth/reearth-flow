@@ -107,6 +107,8 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	}
 	SetupActionRoutes(e)
 
+	SetupTriggerRoutes(e)
+
 	serveFiles(e, cfg.Gateways.File)
 
 	Web(e, cfg.Config.WebConfig(), cfg.Config.AuthForWeb(), cfg.Config.Web_Disabled, nil)
