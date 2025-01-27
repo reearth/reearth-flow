@@ -42,132 +42,134 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 		return nil, nil, nil
 	}
 
-	result := []*deployment.Deployment{}
+	// Pre-allocate slice with estimated capacity
+	result := make([]*deployment.Deployment, 0, len(r.data))
 	for _, d := range r.data {
 		if d.Workspace() == id {
 			result = append(result, d)
 		}
 	}
 
-	// Sort by version asc by default
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].Version() < result[j].Version()
-	})
+	total := int64(len(result))
+	if total == 0 {
+		return nil, &usecasex.PageInfo{TotalCount: 0}, nil
+	}
 
-	if pagination != nil {
-		if pagination.Page != nil {
-			// Page-based pagination
-			skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
-			limit := pagination.Page.PageSize
+	// Apply sorting
+	direction := 1         // default ascending
+	sortField := "version" // default sort field
 
-			// Apply custom sorting if specified
-			if pagination.Page.OrderBy != nil {
-				direction := 1 // default ascending
-				if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
-					direction = -1
-				}
-
-				sort.Slice(result, func(i, j int) bool {
-					switch *pagination.Page.OrderBy {
-					case "version":
-						if direction == 1 {
-							return result[i].Version() < result[j].Version()
-						}
-						return result[i].Version() > result[j].Version()
-					default:
-						if direction == 1 {
-							return result[i].UpdatedAt().Before(result[j].UpdatedAt())
-						}
-						return result[i].UpdatedAt().After(result[j].UpdatedAt())
-					}
-				})
-			}
-
-			total := int64(len(result))
-			if skip >= len(result) {
-				return nil, &usecasex.PageInfo{
-					TotalCount:      total,
-					HasNextPage:     false,
-					HasPreviousPage: false,
-				}, nil
-			}
-
-			end := skip + limit
-			if end > len(result) {
-				end = len(result)
-			}
-
-			if pagination.Page.Page == 2 && pagination.Page.PageSize == 2 {
-				return []*deployment.Deployment{result[1]}, &usecasex.PageInfo{
-					TotalCount:      total,
-					HasNextPage:     false,
-					HasPreviousPage: true,
-				}, nil
-			}
-
-			return result[skip:end], &usecasex.PageInfo{
-				TotalCount:      total,
-				HasNextPage:     end < len(result),
-				HasPreviousPage: skip > 0,
-			}, nil
-		} else if pagination.Cursor != nil {
-			// Cursor-based pagination
-			total := int64(len(result))
-			if total == 0 {
-				return nil, &usecasex.PageInfo{
-					TotalCount: total,
-				}, nil
-			}
-
-			var start, end int64
-			if pagination.Cursor.Cursor.After != nil {
-				// Find the position of the "after" cursor
-				for i, d := range result {
-					if d.ID().String() == string(*pagination.Cursor.Cursor.After) {
-						start = int64(i + 1)
-						break
-					}
-				}
-			}
-
-			if pagination.Cursor.Cursor.First != nil {
-				end = start + *pagination.Cursor.Cursor.First
-				if end > total {
-					end = total
-				}
-			} else {
-				end = total
-			}
-
-			if start >= total {
-				return nil, &usecasex.PageInfo{
-					TotalCount:      total,
-					HasNextPage:     false,
-					HasPreviousPage: start > 0,
-				}, nil
-			}
-
-			var startCursor, endCursor *usecasex.Cursor
-			if start < end {
-				sc := usecasex.Cursor(result[start].ID().String())
-				ec := usecasex.Cursor(result[end-1].ID().String())
-				startCursor = &sc
-				endCursor = &ec
-			}
-
-			return result[start:end], &usecasex.PageInfo{
-				TotalCount:      total,
-				HasNextPage:     end < total,
-				HasPreviousPage: start > 0,
-				StartCursor:     startCursor,
-				EndCursor:       endCursor,
-			}, nil
+	if pagination != nil && pagination.Page != nil && pagination.Page.OrderBy != nil {
+		sortField = *pagination.Page.OrderBy
+		if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
+			direction = -1
 		}
 	}
 
-	return result, &usecasex.PageInfo{
-		TotalCount: int64(len(result)),
-	}, nil
+	sort.Slice(result, func(i, j int) bool {
+		switch sortField {
+		case "version":
+			if direction == 1 {
+				return result[i].Version() < result[j].Version()
+			}
+			return result[i].Version() > result[j].Version()
+		case "updatedAt":
+			if direction == 1 {
+				return result[i].UpdatedAt().Before(result[j].UpdatedAt())
+			}
+			return result[i].UpdatedAt().After(result[j].UpdatedAt())
+		default:
+			if direction == 1 {
+				return result[i].UpdatedAt().Before(result[j].UpdatedAt())
+			}
+			return result[i].UpdatedAt().After(result[j].UpdatedAt())
+		}
+	})
+
+	// Handle pagination
+	if pagination == nil {
+		return result, &usecasex.PageInfo{TotalCount: total}, nil
+	}
+
+	if pagination.Page != nil {
+		// Page-based pagination
+		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
+		if skip >= len(result) {
+			return nil, &usecasex.PageInfo{
+				TotalCount:      total,
+				HasNextPage:     false,
+				HasPreviousPage: false,
+			}, nil
+		}
+
+		end := skip + pagination.Page.PageSize
+		if end > len(result) {
+			end = len(result)
+		}
+
+		// Calculate if there is a next page
+		hasNextPage := end < len(result)
+		// Calculate if there is a previous page
+		hasPreviousPage := pagination.Page.Page > 1 && skip < len(result)
+
+		// Get the current page
+		pageResult := result[skip:end]
+
+		return pageResult, &usecasex.PageInfo{
+			TotalCount:      total,
+			HasNextPage:     hasNextPage,
+			HasPreviousPage: hasPreviousPage,
+		}, nil
+	}
+
+	if pagination.Cursor != nil {
+		// Cursor-based pagination
+		var start int64
+		if pagination.Cursor.Cursor.After != nil {
+			// Find the position of the "after" cursor
+			afterID := string(*pagination.Cursor.Cursor.After)
+			for i, d := range result {
+				if d.ID().String() == afterID {
+					start = int64(i + 1)
+					break
+				}
+			}
+		}
+
+		end := total
+		if pagination.Cursor.Cursor.First != nil {
+			end = start + *pagination.Cursor.Cursor.First
+			if end > total {
+				end = total
+			}
+		}
+
+		if start >= total {
+			return nil, &usecasex.PageInfo{
+				TotalCount:      total,
+				HasNextPage:     false,
+				HasPreviousPage: start > 0,
+			}, nil
+		}
+
+		var startCursor, endCursor *usecasex.Cursor
+		if start < end {
+			sc := usecasex.Cursor(result[start].ID().String())
+			ec := usecasex.Cursor(result[end-1].ID().String())
+			startCursor = &sc
+			endCursor = &ec
+		}
+
+		return result[start:end], &usecasex.PageInfo{
+			TotalCount:      total,
+			HasNextPage:     end < total,
+			HasPreviousPage: start > 0,
+			StartCursor:     startCursor,
+			EndCursor:       endCursor,
+		}, nil
+	}
+
+	return result, &usecasex.PageInfo{TotalCount: total}, nil
 }
 
 func (r *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deployment.Deployment, error) {
