@@ -11,7 +11,7 @@ import { cleanup } from "@testing-library/react";
 //   YEdgesArray,
 //   YNodesArray,
 //   YWorkflow,
-//   yWorkflowBuilder,
+//   yWorkflowConstructor,
 // } from "./workflowBuilder";
 
 afterEach(() => {
@@ -22,7 +22,7 @@ describe("useYNode", () => {
   test("should update nodes correctly", () => {
     // const yDoc = new Y.Doc();
     // const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-    // const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
+    // const yWorkflow = yWorkflowConstructor("main", "Main Workflow");
     // yWorkflows.push([yWorkflow]);
     // const { result } = renderHook(() =>
     //   useYNode({
@@ -49,7 +49,7 @@ describe("useYNode", () => {
   test("should not update edges if they are equal", () => {
     // const yDoc = new Y.Doc();
     // const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-    // const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
+    // const yWorkflow = yWorkflowConstructor("main", "Main Workflow");
     // yWorkflows.push([yWorkflow]);
     // const { result } = renderHook(() =>
     //   useYNode({

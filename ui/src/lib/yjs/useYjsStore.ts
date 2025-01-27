@@ -18,12 +18,12 @@ import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflowJson/engi
 import { useDeployment } from "../gql/deployment";
 import { useT } from "../i18n";
 
+import { rebuildWorkflow } from "./conversions";
 import type { YWorkflow } from "./types";
 import useWorkflowTabs from "./useWorkflowTabs";
 import useYEdge from "./useYEdge";
 import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
-import { convertYWorkflowToWorkflow } from "./utils/convertToWorkflow";
 
 export default ({
   currentWorkflowId,
@@ -72,7 +72,7 @@ export default ({
     return stackLength > 0;
   }, [undoManager?.redoStack?.length]);
 
-  const rawWorkflows = yWorkflows.map((w) => convertYWorkflowToWorkflow(w));
+  const rawWorkflows = yWorkflows.map((w) => rebuildWorkflow(w));
 
   console.log("rawWorkflows", rawWorkflows);
   const {
@@ -162,7 +162,7 @@ export default ({
 
       const engineReadyWorkflow = createEngineReadyWorkflow(
         projectName,
-        yWorkflows.map((w) => convertYWorkflowToWorkflow(w)).filter(isDefined),
+        yWorkflows.map((w) => rebuildWorkflow(w)).filter(isDefined),
       );
 
       if (!engineReadyWorkflow) {

@@ -3,8 +3,8 @@ import { useCallback } from "react";
 
 import type { Edge } from "@flow/types";
 
+import { yEdgeConstructor } from "./conversions";
 import type { YEdgesArray, YWorkflow } from "./types";
-import { createYEdge } from "./utils";
 
 export default ({
   currentYWorkflow,
@@ -25,7 +25,7 @@ export default ({
 
         if (isEqual(e, newEdges)) return;
 
-        const newYEdges = newEdges.map((edge) => createYEdge(edge));
+        const newYEdges = newEdges.map((edge) => yEdgeConstructor(edge));
 
         yEdges.delete(0, e.length);
         yEdges.insert(0, newYEdges);

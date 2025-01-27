@@ -1,15 +1,15 @@
-import { Map as YMap, Text as YText, Array as YArray } from "yjs";
+import * as Y from "yjs";
 
-type YNodeValue = YText | YMap<unknown> | number | boolean; // add other possible types
+export type YNodeValue = Y.Text | Y.Map<unknown> | number | boolean; // add other possible types
 
-export type YNode = YMap<YNodeValue>;
+export type YNode = Y.Map<YNodeValue>;
 
-type YEdgeValue = YText;
+export type YEdgeValue = Y.Text;
 
-export type YEdge = YMap<YEdgeValue>;
+export type YEdge = Y.Map<YEdgeValue>;
 
-export type YNodesArray = YArray<YNode>;
+export type YNodesArray = Y.Array<YNode>;
 
-export type YEdgesArray = YArray<YEdge>;
+export type YEdgesArray = Y.Array<YEdge>;
 
-export type YWorkflow = YMap<YText | YNodesArray | YEdgesArray>;
+export type YWorkflow = Y.Map<Y.Text | YNodesArray | YEdgesArray>;

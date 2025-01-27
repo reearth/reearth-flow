@@ -116,7 +116,7 @@ export const reassembleEdge = (yEdge: YEdge): Edge => {
   };
 };
 
-export const convertYWorkflowToWorkflow = (yWorkflow: YWorkflow): Workflow => {
+export const rebuildWorkflow = (yWorkflow: YWorkflow): Workflow => {
   const workflow: Workflow = {
     id: "", // Default value, update if `id` is found in `yWorkflow`
   };

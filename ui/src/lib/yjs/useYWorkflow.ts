@@ -13,8 +13,8 @@ import { generateUUID } from "@flow/utils";
 
 import { fetcher } from "../fetch/transformers/useFetch";
 
+import { yNodeConstructor, yWorkflowConstructor } from "./conversions";
 import type { YNode, YNodesArray, YWorkflow } from "./types";
-import { createYNode, yWorkflowBuilder } from "./utils";
 
 export default ({
   yWorkflows,
@@ -57,7 +57,7 @@ export default ({
       ]);
 
       const inputNodeId = generateUUID();
-      // newInputNode is not a YNode because it will be converted in the yWorkflowBuilder
+      // newInputNode is not a YNode because it will be converted in the yWorkflowConstructor
       const newInputNode: Node = {
         id: inputNodeId,
         type: inputRouter.type,
@@ -73,7 +73,7 @@ export default ({
       };
 
       const outputNodeId = generateUUID();
-      // newOutputNode is not a YNode because it will be converted in the yWorkflowBuilder
+      // newOutputNode is not a YNode because it will be converted in the yWorkflowConstructor
       const newOutputNode: Node = {
         id: outputNodeId,
         type: outputRouter.type,
@@ -93,14 +93,14 @@ export default ({
         ...(initialNodes ?? []),
         newOutputNode,
       ];
-      const newYWorkflow = yWorkflowBuilder(
+      const newYWorkflow = yWorkflowConstructor(
         workflowId,
         workflowName,
         workflowNodes,
         initialEdges,
       );
 
-      const newSubworkflowNode: YNode = createYNode({
+      const newSubworkflowNode: YNode = yNodeConstructor({
         id: workflowId,
         type: "subworkflow",
         position,
@@ -230,7 +230,7 @@ export default ({
           | undefined;
         const remainingNodes = nodes
           .filter((n) => !allIncludedNodeIds.has(n.id))
-          .map((n) => createYNode(n));
+          .map((n) => yNodeConstructor(n));
 
         parentWorkflowNodes?.delete(0, parentWorkflowNodes.length);
         parentWorkflowNodes?.insert(0, [...remainingNodes, newSubworkflowNode]);
@@ -253,7 +253,7 @@ export default ({
   const handleWorkflowUpdate = useCallback(
     (workflowId: string, nodes?: Node[], edges?: Edge[]) => {
       const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
-      const newYWorkflow = yWorkflowBuilder(
+      const newYWorkflow = yWorkflowConstructor(
         workflowId,
         workflowName,
         nodes,

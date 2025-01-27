@@ -3,8 +3,8 @@ import * as Y from "yjs";
 
 import type { Edge, Node, NodeChange } from "@flow/types";
 
+import { yNodeConstructor } from "./conversions";
 import type { YNodesArray, YWorkflow } from "./types";
-import { createYNode } from "./utils";
 
 export default ({
   currentYWorkflow,
@@ -26,7 +26,7 @@ export default ({
       undoTrackerActionWrapper(() => {
         const yNodes = currentYWorkflow.get("nodes") as YNodesArray | undefined;
         if (!yNodes) return;
-        const newYNodes = newNodes.map((newNode) => createYNode(newNode));
+        const newYNodes = newNodes.map((newNode) => yNodeConstructor(newNode));
 
         newNodes.forEach((newNode) => {
           if (newNode.selected) {
@@ -173,7 +173,7 @@ export default ({
         const newNodes = [...nodes];
         newNodes.splice(nodeIndex, 1, updatedNode);
 
-        const newYNodes = newNodes.map((node) => createYNode(node));
+        const newYNodes = newNodes.map((node) => yNodeConstructor(node));
 
         yNodes.delete(0, nodes.length);
         yNodes.insert(0, newYNodes);
@@ -305,7 +305,7 @@ function updateParentYWorkflowNode(
     updatedSubworkflowNode,
   );
 
-  const newParentYNode = newParentNodes.map((node) => createYNode(node));
+  const newParentYNode = newParentNodes.map((node) => yNodeConstructor(node));
 
   yParentNodes.delete(0, parentNodes.length);
   yParentNodes.insert(0, newParentYNode);

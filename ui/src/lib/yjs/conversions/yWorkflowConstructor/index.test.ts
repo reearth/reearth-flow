@@ -4,21 +4,21 @@ import * as Y from "yjs";
 import type { YEdgesArray, YNodesArray, YWorkflow } from "@flow/lib/yjs/types";
 import type { Edge, Node } from "@flow/types";
 
-import { reassembleEdge, reassembleNode } from "../convertToWorkflow";
+import { reassembleEdge, reassembleNode } from "../rebuildWorkflow";
 
-import { yWorkflowBuilder } from "./";
+import { yWorkflowConstructor } from ".";
 
 afterEach(() => {
   cleanup();
 });
 
-describe("yWorkflowBuilder", () => {
+describe("yWorkflowConstructor", () => {
   test("should create a YWorkflow with the provided id and name", () => {
     const yDoc = new Y.Doc();
     const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
     const id = "workflow-1";
     const name = "My Workflow";
-    const yWorkflow = yWorkflowBuilder(id, name);
+    const yWorkflow = yWorkflowConstructor(id, name);
 
     yWorkflows.push([yWorkflow]);
 
@@ -67,7 +67,7 @@ describe("yWorkflowBuilder", () => {
     const edges: Edge[] = [
       { id: "edge-1", source: "node-1", target: "node-2" },
     ];
-    const yWorkflow = yWorkflowBuilder(id, name, nodes, edges);
+    const yWorkflow = yWorkflowConstructor(id, name, nodes, edges);
     yWorkflows.push([yWorkflow]);
 
     expect(yWorkflow.get("id")?.toJSON()).toEqual(id);
@@ -86,7 +86,7 @@ describe("yWorkflowBuilder", () => {
     const id = "workflow-1";
     const name = "My Workflow";
 
-    const yWorkflow = yWorkflowBuilder(id, name);
+    const yWorkflow = yWorkflowConstructor(id, name);
     yWorkflows.push([yWorkflow]);
 
     expect(yWorkflow.get("id")?.toJSON()).toEqual(id);
