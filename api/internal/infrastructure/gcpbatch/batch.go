@@ -63,8 +63,10 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 	}
 
 	var varArgs []string
-	for k, v := range *variables {
-		varArgs = append(varArgs, fmt.Sprintf("--var=%s=%v", k, v))
+	if variables != nil {
+		for k, v := range *variables {
+			varArgs = append(varArgs, fmt.Sprintf("--var=%s=%v", k, v))
+		}
 	}
 	varString := strings.Join(varArgs, " ")
 
