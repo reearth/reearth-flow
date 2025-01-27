@@ -53,32 +53,10 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		)
 	}
 
-	// auth
-<<<<<<< HEAD
-<<<<<<< HEAD
+	// auth config
 	authConfig := cfg.Config.JWTProviders()
 	log.Infof("auth: config: %#v", authConfig)
-=======
-	// authConfig := cfg.Config.JWTProviders()
-	authConfig := []appx.JWTProvider{{
-		ISS:     "https://reearth-oss-test.eu.auth0.com/",
-		AUD:     []string{"https://api.test.reearth.dev"},
-		JWKSURI: lo.ToPtr("https://reearth-oss-test.eu.auth0.com/.well-known/jwks.json"),
-	}}
-=======
-	authConfig := cfg.Config.JWTProviders()
-	// authConfig := []appx.JWTProvider{{
-	// 	ISS:     "https://reearth-oss-test.eu.auth0.com/",
-	// 	AUD:     []string{"https://api.test.reearth.dev"},
-	// 	JWKSURI: lo.ToPtr("https://reearth-oss-test.eu.auth0.com/.well-known/jwks.json"),
-	// }}
->>>>>>> bf4415824 (refactor(auth): restore dynamic JWT provider configuration from config)
-	log.Infof("Final auth config: %+v", authConfig)
->>>>>>> bcb586b77 (refactor(auth): update WebSocket token verification route and adjust configuration URLs in .env and Rust files)
-	e.Use(
-		echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, true))),
-		attachOpMiddleware(cfg),
-	)
+	authMiddleware := echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, true)))
 
 	// enable pprof
 	if e.Debug {
@@ -117,7 +95,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	apiPrivate := api.Group("", privateCache)
 	apiPrivate.Use(authMiddleware, attachOpMiddleware(cfg))
 	apiPrivate.POST("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev))
-
+	apiPrivate.POST("/signup", Signup())
 	apiPrivate.POST("/verify/ws-token", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, echo.Map{"authorized": true})
 	})
