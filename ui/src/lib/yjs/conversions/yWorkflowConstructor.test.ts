@@ -4,9 +4,8 @@ import * as Y from "yjs";
 import type { YEdgesArray, YNodesArray, YWorkflow } from "@flow/lib/yjs/types";
 import type { Edge, Node } from "@flow/types";
 
-import { reassembleEdge, reassembleNode } from "../rebuildWorkflow";
-
-import { yWorkflowConstructor } from ".";
+import { reassembleEdge, reassembleNode } from "./rebuildWorkflow";
+import { yWorkflowConstructor } from "./yWorkflowConstructor";
 
 afterEach(() => {
   cleanup();
