@@ -56,34 +56,22 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 	}
 
 	// Apply sorting
-	direction := 1         // default ascending
-	sortField := "version" // default sort field
-
-	if pagination != nil && pagination.Page != nil && pagination.Page.OrderBy != nil {
-		sortField = *pagination.Page.OrderBy
-		if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
-			direction = -1
-		}
+	direction := 1 // default ascending
+	if pagination != nil && pagination.Page != nil && pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
+		direction = -1
 	}
 
 	sort.Slice(result, func(i, j int) bool {
-		switch sortField {
-		case "version":
+		if pagination != nil && pagination.Page != nil && pagination.Page.OrderBy != nil && *pagination.Page.OrderBy == "version" {
 			if direction == 1 {
 				return result[i].Version() < result[j].Version()
 			}
 			return result[i].Version() > result[j].Version()
-		case "updatedAt":
-			if direction == 1 {
-				return result[i].UpdatedAt().Before(result[j].UpdatedAt())
-			}
-			return result[i].UpdatedAt().After(result[j].UpdatedAt())
-		default:
-			if direction == 1 {
-				return result[i].UpdatedAt().Before(result[j].UpdatedAt())
-			}
-			return result[i].UpdatedAt().After(result[j].UpdatedAt())
 		}
+		if direction == 1 {
+			return result[i].UpdatedAt().Before(result[j].UpdatedAt())
+		}
+		return result[i].UpdatedAt().After(result[j].UpdatedAt())
 	})
 
 	// Handle pagination
