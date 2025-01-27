@@ -73,37 +73,54 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 			}, nil
 		} else if pagination.Cursor != nil {
 			// Cursor-based pagination
-			var startIndex, endIndex int
+			var startIndex int
+			endIndex := len(result)
+
+			if pagination.Cursor != nil && pagination.Cursor.Cursor != nil {
+				cursor := pagination.Cursor.Cursor
+				if cursor.First != nil {
+					endIndex = int(*cursor.First)
+					if endIndex > len(result) {
+						endIndex = len(result)
+					}
+				}
+
+				if cursor.After != nil {
+					for i, d := range result {
+						if usecasex.Cursor(d.ID().String()) == *cursor.After {
+							startIndex = i + 1
+							break
+						}
+					}
+				}
+			}
+
+			if startIndex >= len(result) {
+				return nil, &usecasex.PageInfo{
+					TotalCount: int64(len(result)),
+				}, nil
+			}
+
+			if startIndex > endIndex {
+				endIndex = startIndex
+			}
+
+			slicedResult := result[startIndex:endIndex]
+
 			var startCursor, endCursor *usecasex.Cursor
-
-			if first := int64(len(result)); first > 0 {
-				endIndex = int(first)
-				if endIndex > len(result) {
-					endIndex = len(result)
-				}
-				if len(result) > 0 && endIndex > 0 {
-					c := usecasex.Cursor(result[endIndex-1].ID().String())
-					endCursor = &c
-				}
+			if len(slicedResult) > 0 {
+				start := usecasex.Cursor(slicedResult[0].ID().String())
+				end := usecasex.Cursor(slicedResult[len(slicedResult)-1].ID().String())
+				startCursor = &start
+				endCursor = &end
 			}
 
-			if startIndex < len(result) {
-				c := usecasex.Cursor(result[startIndex].ID().String())
-				startCursor = &c
-			}
-
-			if endIndex > startIndex {
-				result = result[startIndex:endIndex]
-			} else {
-				result = nil
-			}
-
-			return result, &usecasex.PageInfo{
-				StartCursor:     startCursor,
-				EndCursor:       endCursor,
+			return slicedResult, &usecasex.PageInfo{
+				TotalCount:      int64(len(result)),
 				HasNextPage:     endIndex < len(result),
 				HasPreviousPage: startIndex > 0,
-				TotalCount:      int64(len(result)),
+				StartCursor:     startCursor,
+				EndCursor:       endCursor,
 			}, nil
 		}
 	}
