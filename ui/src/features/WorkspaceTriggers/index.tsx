@@ -80,7 +80,7 @@ const TriggerManager: React.FC = () => {
       ),
     },
   ];
-  console.log("TriggerManager -> triggers", triggers);
+
   return (
     <>
       {selectedTrigger ? (
