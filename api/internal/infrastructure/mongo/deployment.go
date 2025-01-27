@@ -225,10 +225,10 @@ func (r *Deployment) paginate(ctx context.Context, filter bson.M, pagination *in
 			if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
 				direction = -1
 			}
-			sort = bson.D{{*pagination.Page.OrderBy, direction}}
+			sort = bson.D{{Key: *pagination.Page.OrderBy, Value: direction}}
 		} else {
 			// Default sort by updatedAt desc
-			sort = bson.D{{"updatedAt", -1}}
+			sort = bson.D{{Key: "updatedAt", Value: -1}}
 		}
 
 		// Get total count for page info
