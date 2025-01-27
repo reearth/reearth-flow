@@ -86,7 +86,7 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, operator *usecase
 	if cancel, exists := i.monitoring[j.ID().String()]; exists {
 		cancel()
 	}
-	monitorCtx, cancel := context.WithCancel(ctx)
+	monitorCtx, cancel := context.WithCancel(context.Background())
 	i.monitoring[j.ID().String()] = cancel
 	i.monitoringMu.Unlock()
 
@@ -100,16 +100,36 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, operator *usecase
 			case <-monitorCtx.Done():
 				return
 			case <-ticker.C:
-				status, err := i.batch.GetJobStatus(ctx, j.GCPJobID())
+				checkCtx := context.Background()
+
+				status, err := i.batch.GetJobStatus(checkCtx, j.GCPJobID())
 				if err != nil {
-					log.Errorfc(ctx, "failed to get job status: %v", err)
+					log.Errorfc(checkCtx, "failed to get job status: %v", err)
 					continue
 				}
 
 				if j.Status() != job.Status(status) {
+					tx, err := i.transaction.Begin(checkCtx)
+					if err != nil {
+						log.Errorfc(checkCtx, "failed to begin transaction: %v", err)
+						continue
+					}
+
+					txCtx := tx.Context()
+
 					j.SetStatus(job.Status(status))
-					if err := i.jobRepo.Save(ctx, j); err != nil {
-						log.Errorfc(ctx, "failed to save job: %v", err)
+					if err := i.jobRepo.Save(txCtx, j); err != nil {
+						log.Errorfc(txCtx, "failed to save job: %v", err)
+						if endErr := tx.End(txCtx); endErr != nil {
+							log.Errorfc(txCtx, "failed to end transaction after save error: %v", endErr)
+						}
+						continue
+					}
+
+					tx.Commit()
+
+					if err := tx.End(txCtx); err != nil {
+						log.Errorfc(txCtx, "failed to end transaction: %v", err)
 						continue
 					}
 

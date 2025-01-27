@@ -51,7 +51,7 @@ func NewBatch(ctx context.Context, config BatchConfig) (gateway.Batch, error) {
 	}, nil
 }
 
-func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL, metadataURL string, projectID id.ProjectID, workspaceID accountdomain.WorkspaceID) (string, error) {
+func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL, metadataURL string, variables *map[string]interface{}, projectID id.ProjectID, workspaceID accountdomain.WorkspaceID) (string, error) {
 	formattedJobID := formatJobID(jobID.String())
 
 	jobName := fmt.Sprintf("projects/%s/locations/%s/jobs/%s", b.config.ProjectID, b.config.Region, formattedJobID)
@@ -62,12 +62,18 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		binaryPath = "reearth-flow-worker"
 	}
 
-	// Match the command line example format
+	var varArgs []string
+	for k, v := range *variables {
+		varArgs = append(varArgs, fmt.Sprintf("--var=%s=%v", k, v))
+	}
+	varString := strings.Join(varArgs, " ")
+
 	workflowCommand := fmt.Sprintf(
-		"%s --workflow %q --metadata-path %q --pubsub-backend noop",
+		"%s --workflow %q --metadata-path %q --pubsub-backend noop %s",
 		binaryPath,
 		workflowsURL,
 		metadataURL,
+		varString,
 	)
 
 	commands := []string{
