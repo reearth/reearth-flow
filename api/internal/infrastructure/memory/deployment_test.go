@@ -159,7 +159,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 					PageSize: 2,
 				},
 			},
-			want: []*deployment.Deployment{d3},
+			want: []*deployment.Deployment{d2},
 			wantInfo: &usecasex.PageInfo{
 				TotalCount:      3,
 				HasNextPage:     false,

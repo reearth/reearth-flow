@@ -4,12 +4,10 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
@@ -29,14 +27,15 @@ type Deployment struct {
 }
 
 type DeploymentAdapter struct {
-	impl *Deployment
+	*Deployment
 }
 
 func NewDeployment(client *mongox.Client) repo.Deployment {
-	impl := &Deployment{
-		client: client.WithCollection("deployment"),
+	return &DeploymentAdapter{
+		Deployment: &Deployment{
+			client: client.WithCollection("deployment"),
+		},
 	}
-	return &DeploymentAdapter{impl: impl}
 }
 
 func (r *Deployment) Init(ctx context.Context) error {
@@ -44,11 +43,12 @@ func (r *Deployment) Init(ctx context.Context) error {
 }
 
 func (a *DeploymentAdapter) Filtered(f repo.WorkspaceFilter) repo.Deployment {
-	impl2 := &Deployment{
-		client: a.impl.client,
-		f:      a.impl.f.Merge(f),
+	return &DeploymentAdapter{
+		Deployment: &Deployment{
+			client: a.client,
+			f:      a.f.Merge(f),
+		},
 	}
-	return &DeploymentAdapter{impl: impl2}
 }
 
 func (r *Deployment) FindByID(ctx context.Context, id id.DeploymentID) (*deployment.Deployment, error) {
@@ -76,7 +76,7 @@ func (r *Deployment) FindByIDs(ctx context.Context, ids id.DeploymentIDList) ([]
 	return filterDeployments(ids, c.Result), nil
 }
 
-func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam, operator *usecase.Operator) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
+func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
 	if !r.f.CanRead(id) {
 		return nil, nil, nil
 	}
@@ -87,12 +87,12 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 }
 
 func (a *DeploymentAdapter) FindByProject(ctx context.Context, pid id.ProjectID) (*deployment.Deployment, error) {
-	return a.impl.findOne(ctx, bson.M{
+	return a.findOne(ctx, bson.M{
 		"project": pid.String(),
 	}, true)
 }
 
-func (r *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID, version string, operator *usecase.Operator) (*deployment.Deployment, error) {
+func (r *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID, version string) (*deployment.Deployment, error) {
 	filter := bson.M{
 		"workspace": wsID.String(),
 		"version":   version,
@@ -103,7 +103,7 @@ func (r *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.Works
 	return r.findOne(ctx, filter, true)
 }
 
-func (r *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID, operator *usecase.Operator) (*deployment.Deployment, error) {
+func (r *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID) (*deployment.Deployment, error) {
 	filter := bson.M{
 		"workspace": wsID.String(),
 		"isHead":    true,
@@ -114,7 +114,7 @@ func (r *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceI
 	return r.findOne(ctx, filter, true)
 }
 
-func (r *Deployment) FindVersions(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID, operator *usecase.Operator) ([]*deployment.Deployment, error) {
+func (r *Deployment) FindVersions(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID) ([]*deployment.Deployment, error) {
 	filter := bson.M{
 		"workspace": wsID.String(),
 	}
@@ -129,7 +129,7 @@ func (r *Deployment) FindVersions(ctx context.Context, wsID accountdomain.Worksp
 	return c.Result, nil
 }
 
-func (r *Deployment) Create(ctx context.Context, param interfaces.CreateDeploymentParam, operator *usecase.Operator) (*deployment.Deployment, error) {
+func (r *Deployment) Create(ctx context.Context, param interfaces.CreateDeploymentParam) (*deployment.Deployment, error) {
 	d := deployment.New().
 		NewID().
 		Workspace(param.Workspace).
@@ -145,7 +145,7 @@ func (r *Deployment) Create(ctx context.Context, param interfaces.CreateDeployme
 	return d, nil
 }
 
-func (r *Deployment) Update(ctx context.Context, param interfaces.UpdateDeploymentParam, operator *usecase.Operator) (*deployment.Deployment, error) {
+func (r *Deployment) Update(ctx context.Context, param interfaces.UpdateDeploymentParam) (*deployment.Deployment, error) {
 	d, err := r.FindByID(ctx, param.ID)
 	if err != nil {
 		return nil, err
@@ -166,16 +166,11 @@ func (r *Deployment) Update(ctx context.Context, param interfaces.UpdateDeployme
 	return d, nil
 }
 
-func (r *Deployment) Execute(ctx context.Context, param interfaces.ExecuteDeploymentParam, operator *usecase.Operator) (*job.Job, error) {
-	// This should be implemented in the job repository
-	return nil, rerror.ErrNotImplemented
-}
-
-func (r *Deployment) Delete(ctx context.Context, id id.DeploymentID, operator *usecase.Operator) error {
+func (r *Deployment) Delete(ctx context.Context, id id.DeploymentID) error {
 	return r.Remove(ctx, id)
 }
 
-func (r *Deployment) Fetch(ctx context.Context, ids []id.DeploymentID, operator *usecase.Operator) ([]*deployment.Deployment, error) {
+func (r *Deployment) Fetch(ctx context.Context, ids []id.DeploymentID) ([]*deployment.Deployment, error) {
 	return r.FindByIDs(ctx, ids)
 }
 
@@ -295,36 +290,4 @@ func filterDeployments(ids []id.DeploymentID, rows []*deployment.Deployment) []*
 		res = append(res, r2)
 	}
 	return res
-}
-
-func (a *DeploymentAdapter) FindByIDs(ctx context.Context, ids id.DeploymentIDList) ([]*deployment.Deployment, error) {
-	return a.impl.FindByIDs(ctx, ids)
-}
-
-func (a *DeploymentAdapter) FindByID(ctx context.Context, id id.DeploymentID) (*deployment.Deployment, error) {
-	return a.impl.FindByID(ctx, id)
-}
-
-func (a *DeploymentAdapter) FindByWorkspace(ctx context.Context, wid accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
-	return a.impl.FindByWorkspace(ctx, wid, pagination, nil)
-}
-
-func (a *DeploymentAdapter) FindByVersion(ctx context.Context, wid accountdomain.WorkspaceID, pid *id.ProjectID, version string) (*deployment.Deployment, error) {
-	return a.impl.FindByVersion(ctx, wid, pid, version, nil)
-}
-
-func (a *DeploymentAdapter) FindHead(ctx context.Context, wid accountdomain.WorkspaceID, pid *id.ProjectID) (*deployment.Deployment, error) {
-	return a.impl.FindHead(ctx, wid, pid, nil)
-}
-
-func (a *DeploymentAdapter) FindVersions(ctx context.Context, wid accountdomain.WorkspaceID, pid *id.ProjectID) ([]*deployment.Deployment, error) {
-	return a.impl.FindVersions(ctx, wid, pid, nil)
-}
-
-func (a *DeploymentAdapter) Save(ctx context.Context, d *deployment.Deployment) error {
-	return a.impl.Save(ctx, d)
-}
-
-func (a *DeploymentAdapter) Remove(ctx context.Context, id id.DeploymentID) error {
-	return a.impl.Remove(ctx, id)
 }

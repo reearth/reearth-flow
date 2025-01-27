@@ -42,96 +42,71 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 		return nil, nil, nil
 	}
 
-	result := make([]*deployment.Deployment, 0, len(r.data))
+	result := []*deployment.Deployment{}
 	for _, d := range r.data {
 		if d.Workspace() == id {
 			result = append(result, d)
 		}
 	}
 
-	// Sort by updatedAt desc
+	// Sort by updatedAt desc by default
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].UpdatedAt().After(result[j].UpdatedAt())
 	})
 
-	if pagination != nil {
-		if pagination.Page != nil {
-			// Page-based pagination
-			skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
-			limit := pagination.Page.PageSize
+	if pagination != nil && pagination.Page != nil {
+		// Page-based pagination
+		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
+		limit := pagination.Page.PageSize
 
-			if skip >= len(result) {
-				return nil, &usecasex.PageInfo{
-					TotalCount: int64(len(result)),
-				}, nil
+		// Apply custom sorting if specified
+		if pagination.Page.OrderBy != nil {
+			direction := 1 // default ascending
+			if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
+				direction = -1
 			}
 
-			end := skip + limit
-			if end > len(result) {
-				end = len(result)
-			}
-
-			return result[skip:end], &usecasex.PageInfo{
-				TotalCount:      int64(len(result)),
-				HasNextPage:     end < len(result),
-				HasPreviousPage: skip > 0,
-			}, nil
-		} else if pagination.Cursor != nil {
-			// Cursor-based pagination
-			var startIndex int
-			endIndex := len(result)
-
-			if pagination.Cursor != nil && pagination.Cursor.Cursor != nil {
-				cursor := pagination.Cursor.Cursor
-				if cursor.First != nil {
-					endIndex = int(*cursor.First)
-					if endIndex > len(result) {
-						endIndex = len(result)
+			sort.Slice(result, func(i, j int) bool {
+				switch *pagination.Page.OrderBy {
+				case "version":
+					if direction == 1 {
+						return result[i].Version() < result[j].Version()
 					}
-				}
-
-				if cursor.After != nil {
-					for i, d := range result {
-						if usecasex.Cursor(d.ID().String()) == *cursor.After {
-							startIndex = i + 1
-							break
-						}
+					return result[i].Version() > result[j].Version()
+				default:
+					if direction == 1 {
+						return result[i].UpdatedAt().Before(result[j].UpdatedAt())
 					}
+					return result[i].UpdatedAt().After(result[j].UpdatedAt())
 				}
-			}
+			})
+		}
 
-			if startIndex >= len(result) {
-				return nil, &usecasex.PageInfo{
-					TotalCount: int64(len(result)),
-				}, nil
-			}
-
-			if startIndex > endIndex {
-				endIndex = startIndex
-			}
-
-			slicedResult := result[startIndex:endIndex]
-
-			var startCursor, endCursor *usecasex.Cursor
-			if len(slicedResult) > 0 {
-				start := usecasex.Cursor(slicedResult[0].ID().String())
-				end := usecasex.Cursor(slicedResult[len(slicedResult)-1].ID().String())
-				startCursor = &start
-				endCursor = &end
-			}
-
-			return slicedResult, &usecasex.PageInfo{
-				TotalCount:      int64(len(result)),
-				HasNextPage:     endIndex < len(result),
-				HasPreviousPage: startIndex > 0,
-				StartCursor:     startCursor,
-				EndCursor:       endCursor,
+		total := int64(len(result))
+		if skip >= len(result) {
+			return []*deployment.Deployment{}, &usecasex.PageInfo{
+				TotalCount:      total,
+				HasNextPage:     false,
+				HasPreviousPage: pagination.Page.Page > 1,
 			}, nil
 		}
+
+		end := skip + limit
+		if end > len(result) {
+			end = len(result)
+		}
+
+		return result[skip:end], &usecasex.PageInfo{
+			TotalCount:      total,
+			HasNextPage:     end < len(result),
+			HasPreviousPage: pagination.Page.Page > 1,
+		}, nil
 	}
 
 	return result, &usecasex.PageInfo{
-		TotalCount: int64(len(result)),
+		TotalCount:      int64(len(result)),
+		HasNextPage:     false,
+		HasPreviousPage: false,
 	}, nil
 }
 
