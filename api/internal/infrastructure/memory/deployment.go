@@ -5,6 +5,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -33,7 +34,7 @@ func (r *Deployment) Filtered(f repo.WorkspaceFilter) repo.Deployment {
 	}
 }
 
-func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *usecasex.Pagination) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
+func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -41,28 +42,75 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 		return nil, nil, nil
 	}
 
-	result := []*deployment.Deployment{}
+	result := make([]*deployment.Deployment, 0, len(r.data))
 	for _, d := range r.data {
 		if d.Workspace() == id {
 			result = append(result, d)
 		}
 	}
 
-	var startCursor, endCursor *usecasex.Cursor
-	if len(result) > 0 {
-		_startCursor := usecasex.Cursor(result[0].ID().String())
-		_endCursor := usecasex.Cursor(result[len(result)-1].ID().String())
-		startCursor = &_startCursor
-		endCursor = &_endCursor
+	if pagination != nil {
+		if pagination.Page != nil {
+			// Page-based pagination
+			skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
+			limit := pagination.Page.PageSize
+
+			if skip >= len(result) {
+				return nil, &usecasex.PageInfo{
+					TotalCount: int64(len(result)),
+				}, nil
+			}
+
+			end := skip + limit
+			if end > len(result) {
+				end = len(result)
+			}
+
+			return result[skip:end], &usecasex.PageInfo{
+				TotalCount:      int64(len(result)),
+				HasNextPage:     end < len(result),
+				HasPreviousPage: skip > 0,
+			}, nil
+		} else if pagination.Cursor != nil {
+			// Cursor-based pagination
+			var startIndex, endIndex int
+			var startCursor, endCursor *usecasex.Cursor
+
+			if first := int64(len(result)); first > 0 {
+				endIndex = int(first)
+				if endIndex > len(result) {
+					endIndex = len(result)
+				}
+				if len(result) > 0 && endIndex > 0 {
+					c := usecasex.Cursor(result[endIndex-1].ID().String())
+					endCursor = &c
+				}
+			}
+
+			if startIndex < len(result) {
+				c := usecasex.Cursor(result[startIndex].ID().String())
+				startCursor = &c
+			}
+
+			if endIndex > startIndex {
+				result = result[startIndex:endIndex]
+			} else {
+				result = nil
+			}
+
+			return result, &usecasex.PageInfo{
+				StartCursor:     startCursor,
+				EndCursor:       endCursor,
+				HasNextPage:     endIndex < len(result),
+				HasPreviousPage: startIndex > 0,
+				TotalCount:      int64(len(result)),
+			}, nil
+		}
 	}
 
-	return result, usecasex.NewPageInfo(
-		int64(len(result)),
-		startCursor,
-		endCursor,
-		true,
-		true,
-	), nil
+	return result, &usecasex.PageInfo{
+		TotalCount: int64(len(result)),
+	}, nil
 }
 
 func (r *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deployment.Deployment, error) {

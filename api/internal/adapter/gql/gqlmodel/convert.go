@@ -30,6 +30,7 @@ func ToPageInfo(p *usecasex.PageInfo) *PageInfo {
 		EndCursor:       p.EndCursor,
 		HasNextPage:     p.HasNextPage,
 		HasPreviousPage: p.HasPreviousPage,
+		TotalCount:      int(p.TotalCount),
 	}
 }
 
@@ -50,4 +51,12 @@ func intToInt64(i *int) *int64 {
 		return nil
 	}
 	return lo.ToPtr(int64(*i))
+}
+
+func OrderDirectionToString(dir *OrderDirection) *string {
+	if dir == nil {
+		return nil
+	}
+	s := string(*dir)
+	return &s
 }

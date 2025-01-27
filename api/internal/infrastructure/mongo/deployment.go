@@ -4,9 +4,12 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
+	"github.com/reearth/reearth-flow/api/internal/usecase"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
@@ -21,23 +24,31 @@ var (
 )
 
 type Deployment struct {
-	client *mongox.ClientCollection
+	client *mongox.Collection
 	f      repo.WorkspaceFilter
 }
 
-func NewDeployment(client *mongox.Client) *Deployment {
-	return &Deployment{client: client.WithCollection("deployment")}
+type DeploymentAdapter struct {
+	impl *Deployment
+}
+
+func NewDeployment(client *mongox.Client) repo.Deployment {
+	impl := &Deployment{
+		client: client.WithCollection("deployment"),
+	}
+	return &DeploymentAdapter{impl: impl}
 }
 
 func (r *Deployment) Init(ctx context.Context) error {
 	return createIndexes(ctx, r.client, deploymentIndexes, deploymentUniqueIndexes)
 }
 
-func (r *Deployment) Filtered(f repo.WorkspaceFilter) repo.Deployment {
-	return &Deployment{
-		client: r.client,
-		f:      r.f.Merge(f),
+func (a *DeploymentAdapter) Filtered(f repo.WorkspaceFilter) repo.Deployment {
+	impl2 := &Deployment{
+		client: a.impl.client,
+		f:      a.impl.f.Merge(f),
 	}
+	return &DeploymentAdapter{impl: impl2}
 }
 
 func (r *Deployment) FindByID(ctx context.Context, id id.DeploymentID) (*deployment.Deployment, error) {
@@ -47,111 +58,144 @@ func (r *Deployment) FindByID(ctx context.Context, id id.DeploymentID) (*deploym
 }
 
 func (r *Deployment) FindByIDs(ctx context.Context, ids id.DeploymentIDList) ([]*deployment.Deployment, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
 	filter := bson.M{
 		"id": bson.M{
 			"$in": ids.Strings(),
 		},
 	}
-	res, err := r.find(ctx, filter)
-	if err != nil {
-		return nil, err
+
+	c := mongodoc.NewDeploymentConsumer(r.f.Readable)
+	if err := r.client.Find(ctx, filter, c); err != nil {
+		return nil, rerror.ErrInternalByWithContext(ctx, err)
 	}
-	return filterDeployments(ids, res), nil
+
+	return filterDeployments(ids, c.Result), nil
 }
 
-func (r *Deployment) FindByWorkspace(ctx context.Context, workspace accountdomain.WorkspaceID, pagination *usecasex.Pagination) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
-	if !r.f.CanRead(workspace) {
-		return nil, usecasex.EmptyPageInfo(), nil
+func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam, operator *usecase.Operator) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
+	if !r.f.CanRead(id) {
+		return nil, nil, nil
 	}
+
 	return r.paginate(ctx, bson.M{
-		"workspaceid": workspace.String(),
+		"workspace": id.String(),
 	}, pagination)
 }
 
-func (r *Deployment) FindByProject(ctx context.Context, project id.ProjectID) (*deployment.Deployment, error) {
-	return r.findOne(ctx, bson.M{
-		"projectid": project.String(),
-		"$and": []bson.M{
-			{"projectid": bson.M{"$exists": true}},
-			{"projectid": bson.M{"$ne": nil}},
-		},
+func (a *DeploymentAdapter) FindByProject(ctx context.Context, pid id.ProjectID) (*deployment.Deployment, error) {
+	return a.impl.findOne(ctx, bson.M{
+		"project": pid.String(),
 	}, true)
 }
 
-func (r *Deployment) FindByVersion(ctx context.Context, workspace accountdomain.WorkspaceID, project *id.ProjectID, version string) (*deployment.Deployment, error) {
-	if !r.f.CanRead(workspace) {
-		return nil, nil
-	}
-
+func (r *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID, version string, operator *usecase.Operator) (*deployment.Deployment, error) {
 	filter := bson.M{
-		"workspaceid": workspace.String(),
-		"version":     version,
+		"workspace": wsID.String(),
+		"version":   version,
 	}
-
-	if project != nil {
-		filter["projectid"] = project.String()
+	if pID != nil {
+		filter["project"] = pID.String()
 	}
-
 	return r.findOne(ctx, filter, true)
 }
 
-func (r *Deployment) FindHead(ctx context.Context, workspace accountdomain.WorkspaceID, project *id.ProjectID) (*deployment.Deployment, error) {
-	if !r.f.CanRead(workspace) {
-		return nil, nil
-	}
-
+func (r *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID, operator *usecase.Operator) (*deployment.Deployment, error) {
 	filter := bson.M{
-		"workspaceid": workspace.String(),
-		"ishead":      true,
+		"workspace": wsID.String(),
+		"isHead":    true,
 	}
-
-	if project != nil {
-		filter["projectid"] = project.String()
+	if pID != nil {
+		filter["project"] = pID.String()
 	}
-
 	return r.findOne(ctx, filter, true)
 }
 
-func (r *Deployment) FindVersions(ctx context.Context, workspace accountdomain.WorkspaceID, project *id.ProjectID) ([]*deployment.Deployment, error) {
-	if !r.f.CanRead(workspace) {
-		return nil, nil
-	}
-
+func (r *Deployment) FindVersions(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID, operator *usecase.Operator) ([]*deployment.Deployment, error) {
 	filter := bson.M{
-		"workspaceid": workspace.String(),
+		"workspace": wsID.String(),
 	}
-
-	if project != nil {
-		filter["projectid"] = project.String()
+	if pID != nil {
+		filter["project"] = pID.String()
 	}
-
-	opts := options.Find().SetSort(bson.D{{Key: "version", Value: -1}})
 
 	c := mongodoc.NewDeploymentConsumer(r.f.Readable)
-	if err := r.client.Find(ctx, filter, c, opts); err != nil {
-		return nil, err
+	if err := r.client.Find(ctx, filter, c); err != nil {
+		return nil, rerror.ErrInternalByWithContext(ctx, err)
 	}
 	return c.Result, nil
+}
+
+func (r *Deployment) Create(ctx context.Context, param interfaces.CreateDeploymentParam, operator *usecase.Operator) (*deployment.Deployment, error) {
+	d := deployment.New().
+		NewID().
+		Workspace(param.Workspace).
+		Project(param.Project).
+		Description(param.Description).
+		WorkflowURL(param.Workflow.Path).
+		MustBuild()
+
+	if err := r.Save(ctx, d); err != nil {
+		return nil, err
+	}
+
+	return d, nil
+}
+
+func (r *Deployment) Update(ctx context.Context, param interfaces.UpdateDeploymentParam, operator *usecase.Operator) (*deployment.Deployment, error) {
+	d, err := r.FindByID(ctx, param.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	if param.Description != nil {
+		d.SetDescription(*param.Description)
+	}
+
+	if param.Workflow != nil {
+		d.SetWorkflowURL(param.Workflow.Path)
+	}
+
+	if err := r.Save(ctx, d); err != nil {
+		return nil, err
+	}
+
+	return d, nil
+}
+
+func (r *Deployment) Execute(ctx context.Context, param interfaces.ExecuteDeploymentParam, operator *usecase.Operator) (*job.Job, error) {
+	// This should be implemented in the job repository
+	return nil, rerror.ErrNotImplemented
+}
+
+func (r *Deployment) Delete(ctx context.Context, id id.DeploymentID, operator *usecase.Operator) error {
+	return r.Remove(ctx, id)
+}
+
+func (r *Deployment) Fetch(ctx context.Context, ids []id.DeploymentID, operator *usecase.Operator) ([]*deployment.Deployment, error) {
+	return r.FindByIDs(ctx, ids)
 }
 
 func (r *Deployment) Save(ctx context.Context, deployment *deployment.Deployment) error {
 	if !r.f.CanWrite(deployment.Workspace()) {
-		return repo.ErrOperationDenied
+		return interfaces.ErrOperationDenied
 	}
-	doc, id := mongodoc.NewDeployment(deployment)
-	return r.client.SaveOne(ctx, id, doc)
+
+	doc, err := mongodoc.NewDeployment(deployment)
+	if err != nil {
+		return rerror.ErrInternalByWithContext(ctx, err)
+	}
+
+	return r.client.SaveOne(ctx, doc.ID, doc)
 }
 
 func (r *Deployment) Remove(ctx context.Context, id id.DeploymentID) error {
-	return r.client.RemoveOne(ctx, bson.M{"id": id.String()})
-}
-
-func (r *Deployment) find(ctx context.Context, filter interface{}) ([]*deployment.Deployment, error) {
-	c := mongodoc.NewDeploymentConsumer(r.f.Readable)
-	if err := r.client.Find(ctx, filter, c); err != nil {
-		return nil, err
-	}
-	return c.Result, nil
+	return r.client.RemoveOne(ctx, bson.M{
+		"id": id.String(),
+	})
 }
 
 func (r *Deployment) findOne(ctx context.Context, filter any, filterByWorkspaces bool) (*deployment.Deployment, error) {
@@ -166,13 +210,76 @@ func (r *Deployment) findOne(ctx context.Context, filter any, filterByWorkspaces
 	return c.Result[0], nil
 }
 
-func (r *Deployment) paginate(ctx context.Context, filter bson.M, pagination *usecasex.Pagination) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
+func (r *Deployment) paginate(ctx context.Context, filter bson.M, pagination *interfaces.PaginationParam) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
 	c := mongodoc.NewDeploymentConsumer(r.f.Readable)
-	pageInfo, err := r.client.Paginate(ctx, filter, nil, pagination, c)
-	if err != nil {
+
+	if pagination != nil && pagination.Page != nil {
+		// Page-based pagination
+		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
+		limit := pagination.Page.PageSize
+
+		// Add sorting
+		var sort bson.D
+		if pagination.Page.OrderBy != nil {
+			direction := 1 // default ascending
+			if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
+				direction = -1
+			}
+			sort = bson.D{{*pagination.Page.OrderBy, direction}}
+		} else {
+			// Default sort by updatedAt desc
+			sort = bson.D{{"updatedAt", -1}}
+		}
+
+		// Get total count for page info
+		total, err := r.client.Count(ctx, filter)
+		if err != nil {
+			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		// Execute find with skip and limit
+		opts := options.Find().
+			SetSort(sort).
+			SetSkip(int64(skip)).
+			SetLimit(int64(limit))
+
+		if err := r.client.Find(ctx, filter, c, opts); err != nil {
+			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		// Calculate page info
+		totalPages := (total + int64(pagination.Page.PageSize) - 1) / int64(pagination.Page.PageSize)
+		hasNextPage := int64(pagination.Page.Page) < totalPages
+		hasPrevPage := pagination.Page.Page > 1
+
+		pageInfo := &usecasex.PageInfo{
+			HasNextPage:     hasNextPage,
+			HasPreviousPage: hasPrevPage,
+			TotalCount:      total,
+		}
+
+		return c.Result, pageInfo, nil
+	}
+
+	// Cursor-based pagination
+	if pagination != nil && pagination.Cursor != nil {
+		pageInfo, err := r.client.Paginate(ctx, filter, nil, pagination.Cursor, c)
+		if err != nil {
+			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+		return c.Result, pageInfo, nil
+	}
+
+	// No pagination, return all results
+	if err := r.client.Find(ctx, filter, c); err != nil {
 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 	}
-	return c.Result, pageInfo, nil
+
+	return c.Result, &usecasex.PageInfo{
+		HasNextPage:     false,
+		HasPreviousPage: false,
+		TotalCount:      int64(len(c.Result)),
+	}, nil
 }
 
 func filterDeployments(ids []id.DeploymentID, rows []*deployment.Deployment) []*deployment.Deployment {
@@ -188,4 +295,36 @@ func filterDeployments(ids []id.DeploymentID, rows []*deployment.Deployment) []*
 		res = append(res, r2)
 	}
 	return res
+}
+
+func (a *DeploymentAdapter) FindByIDs(ctx context.Context, ids id.DeploymentIDList) ([]*deployment.Deployment, error) {
+	return a.impl.FindByIDs(ctx, ids)
+}
+
+func (a *DeploymentAdapter) FindByID(ctx context.Context, id id.DeploymentID) (*deployment.Deployment, error) {
+	return a.impl.FindByID(ctx, id)
+}
+
+func (a *DeploymentAdapter) FindByWorkspace(ctx context.Context, wid accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
+	return a.impl.FindByWorkspace(ctx, wid, pagination, nil)
+}
+
+func (a *DeploymentAdapter) FindByVersion(ctx context.Context, wid accountdomain.WorkspaceID, pid *id.ProjectID, version string) (*deployment.Deployment, error) {
+	return a.impl.FindByVersion(ctx, wid, pid, version, nil)
+}
+
+func (a *DeploymentAdapter) FindHead(ctx context.Context, wid accountdomain.WorkspaceID, pid *id.ProjectID) (*deployment.Deployment, error) {
+	return a.impl.FindHead(ctx, wid, pid, nil)
+}
+
+func (a *DeploymentAdapter) FindVersions(ctx context.Context, wid accountdomain.WorkspaceID, pid *id.ProjectID) ([]*deployment.Deployment, error) {
+	return a.impl.FindVersions(ctx, wid, pid, nil)
+}
+
+func (a *DeploymentAdapter) Save(ctx context.Context, d *deployment.Deployment) error {
+	return a.impl.Save(ctx, d)
+}
+
+func (a *DeploymentAdapter) Remove(ctx context.Context, id id.DeploymentID) error {
+	return a.impl.Remove(ctx, id)
 }

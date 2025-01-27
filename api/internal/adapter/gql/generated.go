@@ -209,10 +209,13 @@ type ComplexityRoot struct {
 	}
 
 	PageInfo struct {
+		CurrentPage     func(childComplexity int) int
 		EndCursor       func(childComplexity int) int
 		HasNextPage     func(childComplexity int) int
 		HasPreviousPage func(childComplexity int) int
 		StartCursor     func(childComplexity int) int
+		TotalCount      func(childComplexity int) int
+		TotalPages      func(childComplexity int) int
 	}
 
 	Parameter struct {
@@ -266,6 +269,7 @@ type ComplexityRoot struct {
 		DeploymentHead      func(childComplexity int, input gqlmodel.GetHeadInput) int
 		DeploymentVersions  func(childComplexity int, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) int
 		Deployments         func(childComplexity int, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) int
+		DeploymentsPage     func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
 		Job                 func(childComplexity int, id gqlmodel.ID) int
 		Jobs                func(childComplexity int, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) int
 		Me                  func(childComplexity int) int
@@ -416,6 +420,7 @@ type QueryResolver interface {
 	Nodes(ctx context.Context, id []gqlmodel.ID, typeArg gqlmodel.NodeType) ([]gqlmodel.Node, error)
 	Assets(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination *gqlmodel.Pagination) (*gqlmodel.AssetConnection, error)
 	Deployments(ctx context.Context, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.DeploymentConnection, error)
+	DeploymentsPage(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error)
 	DeploymentByVersion(ctx context.Context, input gqlmodel.GetByVersionInput) (*gqlmodel.Deployment, error)
 	DeploymentHead(ctx context.Context, input gqlmodel.GetHeadInput) (*gqlmodel.Deployment, error)
 	DeploymentVersions(ctx context.Context, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) ([]*gqlmodel.Deployment, error)
@@ -1226,6 +1231,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.UpdateWorkspace(childComplexity, args["input"].(gqlmodel.UpdateWorkspaceInput)), true
 
+	case "PageInfo.currentPage":
+		if e.complexity.PageInfo.CurrentPage == nil {
+			break
+		}
+
+		return e.complexity.PageInfo.CurrentPage(childComplexity), true
+
 	case "PageInfo.endCursor":
 		if e.complexity.PageInfo.EndCursor == nil {
 			break
@@ -1253,6 +1265,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PageInfo.StartCursor(childComplexity), true
+
+	case "PageInfo.totalCount":
+		if e.complexity.PageInfo.TotalCount == nil {
+			break
+		}
+
+		return e.complexity.PageInfo.TotalCount(childComplexity), true
+
+	case "PageInfo.totalPages":
+		if e.complexity.PageInfo.TotalPages == nil {
+			break
+		}
+
+		return e.complexity.PageInfo.TotalPages(childComplexity), true
 
 	case "Parameter.createdAt":
 		if e.complexity.Parameter.CreatedAt == nil {
@@ -1523,6 +1549,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Deployments(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(*gqlmodel.Pagination)), true
+
+	case "Query.deploymentsPage":
+		if e.complexity.Query.DeploymentsPage == nil {
+			break
+		}
+
+		args, err := ec.field_Query_deploymentsPage_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.DeploymentsPage(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
 
 	case "Query.job":
 		if e.complexity.Query.Job == nil {
@@ -1940,6 +1978,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputExecuteDeploymentInput,
 		ec.unmarshalInputGetByVersionInput,
 		ec.unmarshalInputGetHeadInput,
+		ec.unmarshalInputPageBasedPagination,
 		ec.unmarshalInputPagination,
 		ec.unmarshalInputRemoveAssetInput,
 		ec.unmarshalInputRemoveMemberFromWorkspaceInput,
@@ -2099,13 +2138,34 @@ type PageInfo {
   hasNextPage: Boolean!
   hasPreviousPage: Boolean!
   startCursor: Cursor
+  totalCount: Int!
+  currentPage: Int
+  totalPages: Int
 }
 
-input Pagination{
+input PageBasedPagination {
+  page: Int!
+  pageSize: Int!
+  orderBy: String
+  orderDir: OrderDirection
+}
+
+enum OrderDirection {
+  ASC
+  DESC
+}
+
+input Pagination {
+  # Cursor-based pagination
   first: Int
   last: Int
   after: Cursor
   before: Cursor
+  # Page-based pagination
+  page: Int
+  pageSize: Int
+  orderBy: String
+  orderDir: OrderDirection
 }
 
 # Query & Mutation
@@ -2274,6 +2334,7 @@ type DeploymentEdge {
 
 extend type Query {
   deployments(workspaceId: ID!, pagination: Pagination): DeploymentConnection!
+  deploymentsPage(workspaceId: ID!, pagination: PageBasedPagination!): DeploymentConnection!
   deploymentByVersion(input: GetByVersionInput!): Deployment
   deploymentHead(input: GetHeadInput!): Deployment
   deploymentVersions(workspaceId: ID!, projectId: ID): [Deployment!]!
@@ -3297,6 +3358,30 @@ func (ec *executionContext) field_Query_deploymentVersions_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_deploymentsPage_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.ID
+	if tmp, ok := rawArgs["workspaceId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["workspaceId"] = arg0
+	var arg1 gqlmodel.PageBasedPagination
+	if tmp, ok := rawArgs["pagination"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pagination"))
+		arg1, err = ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["pagination"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_deployments_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -4233,6 +4318,12 @@ func (ec *executionContext) fieldContext_AssetConnection_pageInfo(_ context.Cont
 				return ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
 			case "startCursor":
 				return ec.fieldContext_PageInfo_startCursor(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_PageInfo_totalCount(ctx, field)
+			case "currentPage":
+				return ec.fieldContext_PageInfo_currentPage(ctx, field)
+			case "totalPages":
+				return ec.fieldContext_PageInfo_totalPages(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
 		},
@@ -5410,6 +5501,12 @@ func (ec *executionContext) fieldContext_DeploymentConnection_pageInfo(_ context
 				return ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
 			case "startCursor":
 				return ec.fieldContext_PageInfo_startCursor(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_PageInfo_totalCount(ctx, field)
+			case "currentPage":
+				return ec.fieldContext_PageInfo_currentPage(ctx, field)
+			case "totalPages":
+				return ec.fieldContext_PageInfo_totalPages(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
 		},
@@ -6184,6 +6281,12 @@ func (ec *executionContext) fieldContext_JobConnection_pageInfo(_ context.Contex
 				return ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
 			case "startCursor":
 				return ec.fieldContext_PageInfo_startCursor(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_PageInfo_totalCount(ctx, field)
+			case "currentPage":
+				return ec.fieldContext_PageInfo_currentPage(ctx, field)
+			case "totalPages":
+				return ec.fieldContext_PageInfo_totalPages(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
 		},
@@ -8568,6 +8671,132 @@ func (ec *executionContext) fieldContext_PageInfo_startCursor(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _PageInfo_totalCount(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.PageInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PageInfo_totalCount(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalCount, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PageInfo_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PageInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PageInfo_currentPage(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.PageInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PageInfo_currentPage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CurrentPage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PageInfo_currentPage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PageInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PageInfo_totalPages(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.PageInfo) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PageInfo_totalPages(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalPages, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*int)
+	fc.Result = res
+	return ec.marshalOInt2ᚖint(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PageInfo_totalPages(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PageInfo",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Parameter_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Parameter) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Parameter_createdAt(ctx, field)
 	if err != nil {
@@ -9805,6 +10034,12 @@ func (ec *executionContext) fieldContext_ProjectConnection_pageInfo(_ context.Co
 				return ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
 			case "startCursor":
 				return ec.fieldContext_PageInfo_startCursor(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_PageInfo_totalCount(ctx, field)
+			case "currentPage":
+				return ec.fieldContext_PageInfo_currentPage(ctx, field)
+			case "totalPages":
+				return ec.fieldContext_PageInfo_totalPages(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
 		},
@@ -10276,6 +10511,71 @@ func (ec *executionContext) fieldContext_Query_deployments(ctx context.Context, 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_deployments_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_deploymentsPage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_deploymentsPage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().DeploymentsPage(rctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.DeploymentConnection)
+	fc.Result = res
+	return ec.marshalNDeploymentConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeploymentConnection(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_deploymentsPage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "edges":
+				return ec.fieldContext_DeploymentConnection_edges(ctx, field)
+			case "nodes":
+				return ec.fieldContext_DeploymentConnection_nodes(ctx, field)
+			case "pageInfo":
+				return ec.fieldContext_DeploymentConnection_pageInfo(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_DeploymentConnection_totalCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DeploymentConnection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_deploymentsPage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -12128,6 +12428,12 @@ func (ec *executionContext) fieldContext_TriggerConnection_pageInfo(_ context.Co
 				return ec.fieldContext_PageInfo_hasPreviousPage(ctx, field)
 			case "startCursor":
 				return ec.fieldContext_PageInfo_startCursor(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_PageInfo_totalCount(ctx, field)
+			case "currentPage":
+				return ec.fieldContext_PageInfo_currentPage(ctx, field)
+			case "totalPages":
+				return ec.fieldContext_PageInfo_totalPages(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PageInfo", field.Name)
 		},
@@ -15412,6 +15718,54 @@ func (ec *executionContext) unmarshalInputGetHeadInput(ctx context.Context, obj 
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputPageBasedPagination(ctx context.Context, obj interface{}) (gqlmodel.PageBasedPagination, error) {
+	var it gqlmodel.PageBasedPagination
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"page", "pageSize", "orderBy", "orderDir"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "page":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Page = data
+		case "pageSize":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pageSize"))
+			data, err := ec.unmarshalNInt2int(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PageSize = data
+		case "orderBy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderBy"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderBy = data
+		case "orderDir":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderDir"))
+			data, err := ec.unmarshalOOrderDirection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐOrderDirection(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderDir = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputPagination(ctx context.Context, obj interface{}) (gqlmodel.Pagination, error) {
 	var it gqlmodel.Pagination
 	asMap := map[string]interface{}{}
@@ -15419,7 +15773,7 @@ func (ec *executionContext) unmarshalInputPagination(ctx context.Context, obj in
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"first", "last", "after", "before"}
+	fieldsInOrder := [...]string{"first", "last", "after", "before", "page", "pageSize", "orderBy", "orderDir"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -15454,6 +15808,34 @@ func (ec *executionContext) unmarshalInputPagination(ctx context.Context, obj in
 				return it, err
 			}
 			it.Before = data
+		case "page":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("page"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Page = data
+		case "pageSize":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pageSize"))
+			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PageSize = data
+		case "orderBy":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderBy"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderBy = data
+		case "orderDir":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("orderDir"))
+			data, err := ec.unmarshalOOrderDirection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐOrderDirection(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OrderDir = data
 		}
 	}
 
@@ -17420,6 +17802,15 @@ func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet,
 			}
 		case "startCursor":
 			out.Values[i] = ec._PageInfo_startCursor(ctx, field, obj)
+		case "totalCount":
+			out.Values[i] = ec._PageInfo_totalCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "currentPage":
+			out.Values[i] = ec._PageInfo_currentPage(ctx, field, obj)
+		case "totalPages":
+			out.Values[i] = ec._PageInfo_totalPages(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -17939,6 +18330,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_deployments(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "deploymentsPage":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_deploymentsPage(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -19990,6 +20403,11 @@ func (ec *executionContext) marshalNNodeType2githubᚗcomᚋreearthᚋreearthᚑ
 	return v
 }
 
+func (ec *executionContext) unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination(ctx context.Context, v interface{}) (gqlmodel.PageBasedPagination, error) {
+	res, err := ec.unmarshalInputPageBasedPagination(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNPageInfo2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageInfo(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.PageInfo) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -21070,6 +21488,22 @@ func (ec *executionContext) marshalONode2githubᚗcomᚋreearthᚋreearthᚑflow
 		return graphql.Null
 	}
 	return ec._Node(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOOrderDirection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐOrderDirection(ctx context.Context, v interface{}) (*gqlmodel.OrderDirection, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(gqlmodel.OrderDirection)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOOrderDirection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐOrderDirection(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.OrderDirection) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOPagination2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPagination(ctx context.Context, v interface{}) (*gqlmodel.Pagination, error) {

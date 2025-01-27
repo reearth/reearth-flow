@@ -79,6 +79,7 @@ type DeploymentEdge {
 
 extend type Query {
   deployments(workspaceId: ID!, pagination: Pagination): DeploymentConnection!
+  deploymentsPage(workspaceId: ID!, pagination: PageBasedPagination!): DeploymentConnection!
   deploymentByVersion(input: GetByVersionInput!): Deployment
   deploymentHead(input: GetHeadInput!): Deployment
   deploymentVersions(workspaceId: ID!, projectId: ID): [Deployment!]!

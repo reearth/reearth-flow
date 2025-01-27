@@ -51,7 +51,7 @@ func (i *Deployment) Fetch(ctx context.Context, ids []id.DeploymentID, operator 
 	return i.deploymentRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *usecasex.Pagination, operator *usecase.Operator) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
+func (i *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *interfaces.PaginationParam, operator *usecase.Operator) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
 	return i.deploymentRepo.FindByWorkspace(ctx, id, p)
 }
 

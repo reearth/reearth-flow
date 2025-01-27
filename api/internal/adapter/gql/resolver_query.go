@@ -29,6 +29,10 @@ func (r *queryResolver) Deployments(ctx context.Context, workspaceID gqlmodel.ID
 	return loaders(ctx).Deployment.FindByWorkspace(ctx, workspaceID, pagination)
 }
 
+func (r *queryResolver) DeploymentsPage(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error) {
+	return loaders(ctx).Deployment.FindByWorkspacePage(ctx, workspaceID, pagination)
+}
+
 func (r *queryResolver) DeploymentByVersion(ctx context.Context, input gqlmodel.GetByVersionInput) (*gqlmodel.Deployment, error) {
 	return loaders(ctx).Deployment.FindByVersion(ctx, &input)
 }
