@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -54,19 +55,79 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	wid2 := accountdomain.NewWorkspaceID()
 
 	_, _ = c.Collection("deployment").InsertMany(ctx, []any{
-		bson.M{"id": "d1", "workspaceid": wid.String(), "version": "v1"},
-		bson.M{"id": "d2", "workspaceid": wid.String(), "version": "v2"},
-		bson.M{"id": "d3", "workspaceid": wid2.String(), "version": "v1"},
+		bson.M{"id": "d1", "workspaceid": wid.String(), "version": "v1", "updatedat": time.Now().Add(-2 * time.Hour)},
+		bson.M{"id": "d2", "workspaceid": wid.String(), "version": "v2", "updatedat": time.Now().Add(-1 * time.Hour)},
+		bson.M{"id": "d3", "workspaceid": wid.String(), "version": "v3", "updatedat": time.Now()},
+		bson.M{"id": "d4", "workspaceid": wid2.String(), "version": "v1", "updatedat": time.Now()},
 	})
 
 	r := NewDeployment(mongox.NewClientWithDatabase(c))
 
+	// Test without pagination
 	got, pageInfo, err := r.FindByWorkspace(ctx, wid, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, pageInfo)
-	assert.Equal(t, 2, len(got))
-	assert.Equal(t, "d1", got[0].ID().String())
+	assert.Equal(t, 3, len(got))
+	assert.Equal(t, "d3", got[0].ID().String())
 	assert.Equal(t, "d2", got[1].ID().String())
+	assert.Equal(t, "d1", got[2].ID().String())
+
+	// Test page-based pagination: first page
+	pagination := &interfaces.PaginationParam{
+		Page: &interfaces.PageBasedPaginationParam{
+			Page:     1,
+			PageSize: 2,
+		},
+	}
+	got, pageInfo, err = r.FindByWorkspace(ctx, wid, pagination)
+	assert.NoError(t, err)
+	assert.NotNil(t, pageInfo)
+	assert.Equal(t, 2, len(got))
+	assert.Equal(t, "d3", got[0].ID().String())
+	assert.Equal(t, "d2", got[1].ID().String())
+	assert.Equal(t, int64(3), pageInfo.TotalCount)
+	assert.True(t, pageInfo.HasNextPage)
+	assert.False(t, pageInfo.HasPreviousPage)
+
+	// Test page-based pagination: second page
+	pagination = &interfaces.PaginationParam{
+		Page: &interfaces.PageBasedPaginationParam{
+			Page:     2,
+			PageSize: 2,
+		},
+	}
+	got, pageInfo, err = r.FindByWorkspace(ctx, wid, pagination)
+	assert.NoError(t, err)
+	assert.NotNil(t, pageInfo)
+	assert.Equal(t, 1, len(got))
+	assert.Equal(t, "d1", got[0].ID().String())
+	assert.Equal(t, int64(3), pageInfo.TotalCount)
+	assert.False(t, pageInfo.HasNextPage)
+	assert.True(t, pageInfo.HasPreviousPage)
+
+	// Test page-based pagination: empty page
+	pagination = &interfaces.PaginationParam{
+		Page: &interfaces.PageBasedPaginationParam{
+			Page:     3,
+			PageSize: 2,
+		},
+	}
+	got, pageInfo, err = r.FindByWorkspace(ctx, wid, pagination)
+	assert.NoError(t, err)
+	assert.NotNil(t, pageInfo)
+	assert.Equal(t, 0, len(got))
+	assert.Equal(t, int64(3), pageInfo.TotalCount)
+	assert.False(t, pageInfo.HasNextPage)
+	assert.True(t, pageInfo.HasPreviousPage)
+
+	// Test with workspace filter
+	r2 := r.Filtered(repo.WorkspaceFilter{
+		Readable: accountdomain.WorkspaceIDList{wid2},
+	})
+	got, pageInfo, err = r2.FindByWorkspace(ctx, wid, nil)
+	assert.NoError(t, err)
+	assert.NotNil(t, pageInfo)
+	assert.Equal(t, 0, len(got))
 }
 
 func TestDeployment_FindByVersion(t *testing.T) {
