@@ -4,9 +4,13 @@ import (
 	"context"
 	"testing"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
+	"github.com/reearth/reearthx/usecasex"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -98,4 +102,156 @@ func TestDeployment(t *testing.T) {
 		assert.Error(t, err)
 		assert.Equal(t, "not found", err.Error())
 	})
+}
+
+func TestDeployment_FindByWorkspace(t *testing.T) {
+	ctx := context.Background()
+	wsID := accountdomain.NewWorkspaceID()
+	wsID2 := accountdomain.NewWorkspaceID()
+
+	// Create test data
+	d1 := deployment.New().NewID().Workspace(wsID).Version("v1").MustBuild()
+	d2 := deployment.New().NewID().Workspace(wsID).Version("v2").MustBuild()
+	d3 := deployment.New().NewID().Workspace(wsID).Version("v3").MustBuild()
+	d4 := deployment.New().NewID().Workspace(wsID2).Version("v1").MustBuild()
+
+	tests := []struct {
+		name       string
+		init       map[id.DeploymentID]*deployment.Deployment
+		wsID       accountdomain.WorkspaceID
+		pagination *interfaces.PaginationParam
+		want       []*deployment.Deployment
+		wantInfo   *usecasex.PageInfo
+		wantErr    bool
+	}{
+		{
+			name: "page based pagination: first page",
+			init: map[id.DeploymentID]*deployment.Deployment{
+				d1.ID(): d1,
+				d2.ID(): d2,
+				d3.ID(): d3,
+			},
+			wsID: wsID,
+			pagination: &interfaces.PaginationParam{
+				Page: &interfaces.PageBasedPaginationParam{
+					Page:     1,
+					PageSize: 2,
+				},
+			},
+			want: []*deployment.Deployment{d1, d2},
+			wantInfo: &usecasex.PageInfo{
+				TotalCount:      3,
+				HasNextPage:     true,
+				HasPreviousPage: false,
+			},
+		},
+		{
+			name: "page based pagination: second page",
+			init: map[id.DeploymentID]*deployment.Deployment{
+				d1.ID(): d1,
+				d2.ID(): d2,
+				d3.ID(): d3,
+			},
+			wsID: wsID,
+			pagination: &interfaces.PaginationParam{
+				Page: &interfaces.PageBasedPaginationParam{
+					Page:     2,
+					PageSize: 2,
+				},
+			},
+			want: []*deployment.Deployment{d3},
+			wantInfo: &usecasex.PageInfo{
+				TotalCount:      3,
+				HasNextPage:     false,
+				HasPreviousPage: true,
+			},
+		},
+		{
+			name: "page based pagination: empty page",
+			init: map[id.DeploymentID]*deployment.Deployment{
+				d1.ID(): d1,
+				d2.ID(): d2,
+				d3.ID(): d3,
+			},
+			wsID: wsID,
+			pagination: &interfaces.PaginationParam{
+				Page: &interfaces.PageBasedPaginationParam{
+					Page:     3,
+					PageSize: 2,
+				},
+			},
+			want: nil,
+			wantInfo: &usecasex.PageInfo{
+				TotalCount: 3,
+			},
+		},
+		{
+			name: "cursor based pagination",
+			init: map[id.DeploymentID]*deployment.Deployment{
+				d1.ID(): d1,
+				d2.ID(): d2,
+				d3.ID(): d3,
+			},
+			wsID: wsID,
+			pagination: &interfaces.PaginationParam{
+				Cursor: usecasex.CursorPagination{
+					First: lo.ToPtr(int64(2)),
+				}.Wrap(),
+			},
+			want: []*deployment.Deployment{d1, d2},
+			wantInfo: &usecasex.PageInfo{
+				TotalCount:      3,
+				HasNextPage:     true,
+				HasPreviousPage: false,
+				StartCursor:     lo.ToPtr(usecasex.Cursor(d1.ID().String())),
+				EndCursor:       lo.ToPtr(usecasex.Cursor(d2.ID().String())),
+			},
+		},
+		{
+			name: "no pagination",
+			init: map[id.DeploymentID]*deployment.Deployment{
+				d1.ID(): d1,
+				d2.ID(): d2,
+				d3.ID(): d3,
+			},
+			wsID:       wsID,
+			pagination: nil,
+			want:       []*deployment.Deployment{d1, d2, d3},
+			wantInfo: &usecasex.PageInfo{
+				TotalCount: 3,
+			},
+		},
+		{
+			name: "different workspace",
+			init: map[id.DeploymentID]*deployment.Deployment{
+				d1.ID(): d1,
+				d4.ID(): d4,
+			},
+			wsID:       wsID2,
+			pagination: nil,
+			want:       []*deployment.Deployment{d4},
+			wantInfo: &usecasex.PageInfo{
+				TotalCount: 1,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &Deployment{
+				data: tt.init,
+				f:    repo.WorkspaceFilter{Readable: []accountdomain.WorkspaceID{tt.wsID}},
+			}
+
+			got, gotInfo, err := r.FindByWorkspace(ctx, tt.wsID, tt.pagination)
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tt.want, got)
+			assert.Equal(t, tt.wantInfo, gotInfo)
+		})
+	}
 }
