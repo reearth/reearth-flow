@@ -49,6 +49,11 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 		}
 	}
 
+	// Sort by updatedAt desc
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].UpdatedAt().After(result[j].UpdatedAt())
+	})
+
 	if pagination != nil {
 		if pagination.Page != nil {
 			// Page-based pagination
