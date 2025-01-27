@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
@@ -14,7 +15,7 @@ type Deployment interface {
 	Filtered(WorkspaceFilter) Deployment
 	FindByIDs(context.Context, id.DeploymentIDList) ([]*deployment.Deployment, error)
 	FindByID(context.Context, id.DeploymentID) (*deployment.Deployment, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination) ([]*deployment.Deployment, *usecasex.PageInfo, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *interfaces.PaginationParam) ([]*deployment.Deployment, *usecasex.PageInfo, error)
 	FindByProject(context.Context, id.ProjectID) (*deployment.Deployment, error)
 	FindByVersion(context.Context, accountdomain.WorkspaceID, *id.ProjectID, string) (*deployment.Deployment, error)
 	FindHead(context.Context, accountdomain.WorkspaceID, *id.ProjectID) (*deployment.Deployment, error)
@@ -24,14 +25,15 @@ type Deployment interface {
 }
 
 func IterateDeploymentsByWorkspace(repo Deployment, ctx context.Context, tid accountdomain.WorkspaceID, batch int64, callback func([]*deployment.Deployment) error) error {
-	pagination := usecasex.CursorPagination{
-		Before: nil,
-		After:  nil,
-		First:  lo.ToPtr(batch),
-		Last:   nil,
+	cursorPagination := usecasex.CursorPagination{
+		First: lo.ToPtr(batch),
 	}.Wrap()
 
 	for {
+		pagination := &interfaces.PaginationParam{
+			Cursor: cursorPagination,
+		}
+
 		deployments, info, err := repo.FindByWorkspace(ctx, tid, pagination)
 		if err != nil {
 			return err
@@ -49,7 +51,10 @@ func IterateDeploymentsByWorkspace(repo Deployment, ctx context.Context, tid acc
 		}
 
 		c := usecasex.Cursor(deployments[len(deployments)-1].ID().String())
-		pagination.Cursor.After = &c
+		cursorPagination = usecasex.CursorPagination{
+			First: lo.ToPtr(batch),
+			After: &c,
+		}.Wrap()
 	}
 
 	return nil

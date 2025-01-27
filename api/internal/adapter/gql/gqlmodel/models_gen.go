@@ -230,18 +230,32 @@ type Me struct {
 type Mutation struct {
 }
 
+type PageBasedPagination struct {
+	Page     int             `json:"page"`
+	PageSize int             `json:"pageSize"`
+	OrderBy  *string         `json:"orderBy,omitempty"`
+	OrderDir *OrderDirection `json:"orderDir,omitempty"`
+}
+
 type PageInfo struct {
 	EndCursor       *usecasex.Cursor `json:"endCursor,omitempty"`
 	HasNextPage     bool             `json:"hasNextPage"`
 	HasPreviousPage bool             `json:"hasPreviousPage"`
 	StartCursor     *usecasex.Cursor `json:"startCursor,omitempty"`
+	TotalCount      int              `json:"totalCount"`
+	CurrentPage     *int             `json:"currentPage,omitempty"`
+	TotalPages      *int             `json:"totalPages,omitempty"`
 }
 
 type Pagination struct {
-	First  *int             `json:"first,omitempty"`
-	Last   *int             `json:"last,omitempty"`
-	After  *usecasex.Cursor `json:"after,omitempty"`
-	Before *usecasex.Cursor `json:"before,omitempty"`
+	First    *int             `json:"first,omitempty"`
+	Last     *int             `json:"last,omitempty"`
+	After    *usecasex.Cursor `json:"after,omitempty"`
+	Before   *usecasex.Cursor `json:"before,omitempty"`
+	Page     *int             `json:"page,omitempty"`
+	PageSize *int             `json:"pageSize,omitempty"`
+	OrderBy  *string          `json:"orderBy,omitempty"`
+	OrderDir *OrderDirection  `json:"orderDir,omitempty"`
 }
 
 type Parameter struct {
@@ -643,6 +657,47 @@ func (e *NodeType) UnmarshalGQL(v interface{}) error {
 }
 
 func (e NodeType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type OrderDirection string
+
+const (
+	OrderDirectionAsc  OrderDirection = "ASC"
+	OrderDirectionDesc OrderDirection = "DESC"
+)
+
+var AllOrderDirection = []OrderDirection{
+	OrderDirectionAsc,
+	OrderDirectionDesc,
+}
+
+func (e OrderDirection) IsValid() bool {
+	switch e {
+	case OrderDirectionAsc, OrderDirectionDesc:
+		return true
+	}
+	return false
+}
+
+func (e OrderDirection) String() string {
+	return string(e)
+}
+
+func (e *OrderDirection) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = OrderDirection(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid OrderDirection", str)
+	}
+	return nil
+}
+
+func (e OrderDirection) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

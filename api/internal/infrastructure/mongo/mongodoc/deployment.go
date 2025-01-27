@@ -6,6 +6,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
+	"github.com/reearth/reearthx/rerror"
 	"golang.org/x/exp/slices"
 )
 
@@ -29,8 +30,15 @@ func NewDeploymentConsumer(workspaces []accountdomain.WorkspaceID) *DeploymentCo
 	})
 }
 
-func NewDeployment(d *deployment.Deployment) (*DeploymentDocument, string) {
+func NewDeployment(d *deployment.Deployment) (*DeploymentDocument, error) {
+	if d == nil {
+		return nil, rerror.ErrNotFound
+	}
+
 	did := d.ID().String()
+	if did == "" {
+		return nil, rerror.ErrNotFound
+	}
 
 	var pid *string
 	if p := d.Project(); p != nil {
@@ -54,7 +62,7 @@ func NewDeployment(d *deployment.Deployment) (*DeploymentDocument, string) {
 		UpdatedAt:   d.UpdatedAt(),
 		HeadID:      hid,
 		IsHead:      d.IsHead(),
-	}, did
+	}, nil
 }
 
 func (d *DeploymentDocument) Model() (*deployment.Deployment, error) {
