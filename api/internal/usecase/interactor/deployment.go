@@ -293,7 +293,6 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	if err != nil {
 		return nil, interfaces.ErrJobCreationFailed
 	}
-
 	j.SetGCPJobID(gcpJobID)
 
 	if err := i.job.StartMonitoring(ctx, j, operator); err != nil {

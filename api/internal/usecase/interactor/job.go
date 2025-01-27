@@ -80,11 +80,6 @@ func (i *Job) GetStatus(ctx context.Context, jobID id.JobID, operator *usecase.O
 func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, operator *usecase.Operator) error {
 	log.Debugfc(ctx, "job: starting monitoring for jobID=%s workspace=%s", j.ID(), j.Workspace())
 
-	if err := i.CanReadWorkspace(j.Workspace(), operator); err != nil {
-		log.Debugfc(ctx, "job: permission check failed for workspace=%s: %v", j.Workspace(), err)
-		return err
-	}
-
 	i.monitoringMu.Lock()
 	if cancel, exists := i.monitoring[j.ID().String()]; exists {
 		log.Debugfc(ctx, "job: cancelling existing monitoring for jobID=%s", j.ID())
