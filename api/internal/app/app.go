@@ -53,13 +53,10 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		)
 	}
 
-	// auth
+	// auth config
 	authConfig := cfg.Config.JWTProviders()
 	log.Infof("auth: config: %#v", authConfig)
-	e.Use(
-		echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, true))),
-		attachOpMiddleware(cfg),
-	)
+	authMiddleware := echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, true)))
 
 	// enable pprof
 	if e.Debug {
@@ -92,9 +89,10 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	api := e.Group("/api")
 	api.GET("/ping", Ping(), privateCache)
 
+	// authenticated routes
 	apiPrivate := api.Group("", privateCache)
+	apiPrivate.Use(authMiddleware, attachOpMiddleware(cfg))
 	apiPrivate.POST("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev))
-
 	apiPrivate.POST("/signup", Signup())
 
 	if !cfg.Config.AuthSrv.Disabled {
