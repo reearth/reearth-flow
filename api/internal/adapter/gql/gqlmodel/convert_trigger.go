@@ -9,6 +9,12 @@ func ToTrigger(t *trigger.Trigger) *Trigger {
 		return nil
 	}
 
+	var timeInterval *TimeInterval
+	if t.TimeInterval() != nil {
+		ti := ToTimeInterval(*t.TimeInterval())
+		timeInterval = ti
+	}
+
 	return &Trigger{
 		ID:            IDFrom(t.ID()),
 		CreatedAt:     t.CreatedAt(),
@@ -19,7 +25,7 @@ func ToTrigger(t *trigger.Trigger) *Trigger {
 		Description:   t.Description(),
 		EventSource:   ToEventSourceType(t.EventSource()),
 		AuthToken:     t.AuthToken(),
-		TimeInterval:  ToTimeInterval(*t.TimeInterval()),
+		TimeInterval:  timeInterval,
 	}
 }
 

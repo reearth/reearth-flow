@@ -7,6 +7,7 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
 	"github.com/reearth/reearth-flow/api/internal/usecase"
+	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -37,7 +38,9 @@ func TestTrigger_Create(t *testing.T) {
 		Trigger:    mongo.NewTrigger(mongox.NewClientWithDatabase(c)),
 		Deployment: mongo.NewDeployment(mongox.NewClientWithDatabase(c)),
 	}
-	i := NewTrigger(&repo)
+	gateway := &gateway.Container{}
+	job := NewJob(&repo, gateway)
+	i := NewTrigger(&repo, gateway, job)
 
 	param := interfaces.CreateTriggerParam{
 		WorkspaceID:  wid,
@@ -117,7 +120,9 @@ func TestTrigger_Update(t *testing.T) {
 		Trigger:    mongo.NewTrigger(mongox.NewClientWithDatabase(c)),
 		Deployment: mongo.NewDeployment(mongox.NewClientWithDatabase(c)),
 	}
-	i := NewTrigger(&repo)
+	gateway := &gateway.Container{}
+	job := NewJob(&repo, gateway)
+	i := NewTrigger(&repo, gateway, job)
 
 	// Test updating description and event source
 	newDesc := "Updated trigger"
@@ -196,7 +201,9 @@ func TestTrigger_Fetch(t *testing.T) {
 	repo := repo.Container{
 		Trigger: mongo.NewTrigger(mongox.NewClientWithDatabase(c)),
 	}
-	i := NewTrigger(&repo)
+	gateway := &gateway.Container{}
+	job := NewJob(&repo, gateway)
+	i := NewTrigger(&repo, gateway, job)
 
 	got, err := i.Fetch(ctx, []id.TriggerID{tid1, tid2}, &usecase.Operator{})
 	assert.NoError(t, err)
@@ -227,7 +234,9 @@ func TestTrigger_Delete(t *testing.T) {
 	repo := repo.Container{
 		Trigger: mongo.NewTrigger(mongox.NewClientWithDatabase(c)),
 	}
-	i := NewTrigger(&repo)
+	gateway := &gateway.Container{}
+	job := NewJob(&repo, gateway)
+	i := NewTrigger(&repo, gateway, job)
 
 	err := i.Delete(ctx, tid, &usecase.Operator{})
 	assert.NoError(t, err)

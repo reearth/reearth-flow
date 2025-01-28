@@ -35,7 +35,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Parameter:  NewParameter(r),
 		Project:    NewProject(r, g),
 		Workspace:  accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
-		Trigger:    NewTrigger(r),
+		Trigger:    NewTrigger(r, g, job),
 		User:       accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
 	}
 }
