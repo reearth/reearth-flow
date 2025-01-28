@@ -12,6 +12,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearthx/account/accountdomain"
+	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/mongox/mongotest"
 	"github.com/stretchr/testify/assert"
@@ -39,7 +40,10 @@ func TestTrigger_Create(t *testing.T) {
 	}
 	gateway := &gateway.Container{}
 	job := NewJob(&repo, gateway)
-	i := NewTrigger(&repo, gateway, job)
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+		return true, nil
+	})
+	i := NewTrigger(&repo, gateway, job, mockPermissionCheckerTrue)
 
 	param := interfaces.CreateTriggerParam{
 		WorkspaceID:  wid,
@@ -121,7 +125,10 @@ func TestTrigger_Update(t *testing.T) {
 	}
 	gateway := &gateway.Container{}
 	job := NewJob(&repo, gateway)
-	i := NewTrigger(&repo, gateway, job)
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+		return true, nil
+	})
+	i := NewTrigger(&repo, gateway, job, mockPermissionCheckerTrue)
 
 	// Test updating description and event source
 	newDesc := "Updated trigger"
@@ -202,7 +209,10 @@ func TestTrigger_Fetch(t *testing.T) {
 	}
 	gateway := &gateway.Container{}
 	job := NewJob(&repo, gateway)
-	i := NewTrigger(&repo, gateway, job)
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+		return true, nil
+	})
+	i := NewTrigger(&repo, gateway, job, mockPermissionCheckerTrue)
 
 	got, err := i.Fetch(ctx, []id.TriggerID{tid1, tid2})
 	assert.NoError(t, err)
@@ -235,7 +245,10 @@ func TestTrigger_Delete(t *testing.T) {
 	}
 	gateway := &gateway.Container{}
 	job := NewJob(&repo, gateway)
-	i := NewTrigger(&repo, gateway, job)
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+		return true, nil
+	})
+	i := NewTrigger(&repo, gateway, job, mockPermissionCheckerTrue)
 
 	err := i.Delete(ctx, tid)
 	assert.NoError(t, err)
