@@ -26,12 +26,24 @@ func ToPageInfo(p *usecasex.PageInfo) *PageInfo {
 	if p == nil {
 		return &PageInfo{}
 	}
+
+	// Check if this is a page-based info
+	var currentPage, totalPages *int
+	if pbi, ok := any(p).(*interfaces.PageBasedInfo); ok {
+		cp := pbi.CurrentPage
+		tp := pbi.TotalPages
+		currentPage = &cp
+		totalPages = &tp
+	}
+
 	return &PageInfo{
 		StartCursor:     p.StartCursor,
 		EndCursor:       p.EndCursor,
 		HasNextPage:     p.HasNextPage,
 		HasPreviousPage: p.HasPreviousPage,
 		TotalCount:      int(p.TotalCount),
+		CurrentPage:     currentPage,
+		TotalPages:      totalPages,
 	}
 }
 
