@@ -2,10 +2,8 @@ package interactor
 
 import (
 	"context"
-	"fmt"
 	"time"
 
-	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -42,6 +40,10 @@ func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		job:               jobUsecase,
 		permissionChecker: permissionChecker,
 	}
+}
+
+func (i *Trigger) checkPermission(ctx context.Context, action string) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceTrigger, action)
 }
 
 func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Trigger, error) {
@@ -259,17 +261,5 @@ func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {
 	}
 
 	tx.Commit()
-	return nil
-}
-
-func (i *Trigger) checkPermission(ctx context.Context, action string) error {
-	authInfo := adapter.GetAuthInfo(ctx)
-	hasPermission, err := i.permissionChecker.CheckPermission(ctx, authInfo, rbac.ResourceTrigger, action)
-	if err != nil {
-		return fmt.Errorf("failed to check permission: %w", err)
-	}
-	if !hasPermission {
-		return ErrPermissionDenied
-	}
 	return nil
 }
