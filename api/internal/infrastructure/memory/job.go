@@ -47,21 +47,60 @@ func (r *Job) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID,
 		}
 	}
 
-	var startCursor, endCursor *usecasex.Cursor
-	if len(result) > 0 {
-		_startCursor := usecasex.Cursor(result[0].ID().String())
-		_endCursor := usecasex.Cursor(result[len(result)-1].ID().String())
-		startCursor = &_startCursor
-		endCursor = &_endCursor
+	total := int64(len(result))
+	if total == 0 {
+		return nil, &usecasex.PageInfo{TotalCount: 0}, nil
 	}
 
-	return result, usecasex.NewPageInfo(
-		int64(len(result)),
-		startCursor,
-		endCursor,
-		true,
-		true,
-	), nil
+	if p != nil && p.Cursor != nil {
+		// Cursor-based pagination
+		var start int64
+		if p.Cursor.After != nil {
+			afterID := string(*p.Cursor.After)
+			for i, d := range result {
+				if d.ID().String() == afterID {
+					start = int64(i + 1)
+					break
+				}
+			}
+		}
+
+		end := total
+		if p.Cursor.First != nil {
+			end = start + *p.Cursor.First
+			if end > total {
+				end = total
+			}
+		}
+
+		if start >= total {
+			return nil, &usecasex.PageInfo{
+				TotalCount:      total,
+				HasNextPage:     false,
+				HasPreviousPage: start > 0,
+			}, nil
+		}
+
+		var startCursor, endCursor *usecasex.Cursor
+		if start < end {
+			sc := usecasex.Cursor(result[start].ID().String())
+			ec := usecasex.Cursor(result[end-1].ID().String())
+			startCursor = &sc
+			endCursor = &ec
+		}
+
+		return result[start:end], &usecasex.PageInfo{
+			TotalCount:      total,
+			HasNextPage:     end < total,
+			HasPreviousPage: start > 0,
+			StartCursor:     startCursor,
+			EndCursor:       endCursor,
+		}, nil
+	}
+
+	return result, &usecasex.PageInfo{
+		TotalCount: total,
+	}, nil
 }
 
 func (r *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
