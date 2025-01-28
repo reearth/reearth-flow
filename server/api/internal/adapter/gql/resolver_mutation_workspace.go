@@ -50,7 +50,8 @@ func (r *mutationResolver) AddMemberToWorkspace(ctx context.Context, input gqlmo
 		return nil, err
 	}
 
-	res, err := usecases(ctx).Workspace.AddUserMember(ctx, tid, map[accountdomain.UserID]workspace.Role{uid: gqlmodel.FromRole(input.Role)}, getAcOperator(ctx))
+	// TODO: After modifying AddUserMember, remove the role from the input
+	res, err := usecases(ctx).Workspace.AddUserMember(ctx, tid, map[accountdomain.UserID]workspace.Role{uid: workspace.Role("")}, getAcOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -70,18 +71,4 @@ func (r *mutationResolver) RemoveMemberFromWorkspace(ctx context.Context, input 
 	}
 
 	return &gqlmodel.RemoveMemberFromWorkspacePayload{Workspace: gqlmodel.ToWorkspace(res)}, nil
-}
-
-func (r *mutationResolver) UpdateMemberOfWorkspace(ctx context.Context, input gqlmodel.UpdateMemberOfWorkspaceInput) (*gqlmodel.UpdateMemberOfWorkspacePayload, error) {
-	tid, uid, err := gqlmodel.ToID2[accountdomain.Workspace, accountdomain.User](input.WorkspaceID, input.UserID)
-	if err != nil {
-		return nil, err
-	}
-
-	res, err := usecases(ctx).Workspace.UpdateUserMember(ctx, tid, uid, gqlmodel.FromRole(input.Role), getAcOperator(ctx))
-	if err != nil {
-		return nil, err
-	}
-
-	return &gqlmodel.UpdateMemberOfWorkspacePayload{Workspace: gqlmodel.ToWorkspace(res)}, nil
 }
