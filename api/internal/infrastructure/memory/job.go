@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
@@ -50,6 +51,28 @@ func (r *Job) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID,
 	total := int64(len(result))
 	if total == 0 {
 		return nil, &usecasex.PageInfo{TotalCount: 0}, nil
+	}
+
+	if p != nil && p.Offset != nil {
+		// Page-based pagination
+		skip := int(p.Offset.Offset)
+		limit := int(p.Offset.Limit)
+		if skip >= len(result) {
+			return nil, interfaces.NewPageBasedInfo(total, skip/limit+1, limit).ToPageInfo(), nil
+		}
+
+		end := skip + limit
+		if end > len(result) {
+			end = len(result)
+		}
+
+		// Get the current page
+		pageResult := result[skip:end]
+
+		// Create page-based info
+		pageInfo := interfaces.NewPageBasedInfo(total, skip/limit+1, limit)
+
+		return pageResult, pageInfo.ToPageInfo(), nil
 	}
 
 	if p != nil && p.Cursor != nil {
