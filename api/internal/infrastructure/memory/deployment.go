@@ -95,11 +95,7 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 		// Page-based pagination
 		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
 		if skip >= len(result) {
-			return nil, &usecasex.PageInfo{
-				TotalCount:      total,
-				HasNextPage:     false,
-				HasPreviousPage: false,
-			}, nil
+			return nil, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize).ToPageInfo(), nil
 		}
 
 		end := skip + pagination.Page.PageSize
@@ -107,19 +103,13 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 			end = len(result)
 		}
 
-		// Calculate if there is a next page
-		hasNextPage := end < len(result)
-		// Calculate if there is a previous page
-		hasPreviousPage := pagination.Page.Page > 1 && skip < len(result)
-
 		// Get the current page
 		pageResult := result[skip:end]
 
-		return pageResult, &usecasex.PageInfo{
-			TotalCount:      total,
-			HasNextPage:     hasNextPage,
-			HasPreviousPage: hasPreviousPage,
-		}, nil
+		// Create page-based info
+		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
+
+		return pageResult, pageInfo.ToPageInfo(), nil
 	}
 
 	if pagination.Cursor != nil {

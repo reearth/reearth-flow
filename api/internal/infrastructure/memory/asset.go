@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -71,21 +72,78 @@ func (r *Asset) FindByWorkspace(_ context.Context, wid accountdomain.WorkspaceID
 		})
 	}
 
-	var startCursor, endCursor *usecasex.Cursor
-	if len(result) > 0 {
-		_startCursor := usecasex.Cursor(result[0].ID().String())
-		_endCursor := usecasex.Cursor(result[len(result)-1].ID().String())
-		startCursor = &_startCursor
-		endCursor = &_endCursor
+	total := int64(len(result))
+	if total == 0 {
+		return nil, &usecasex.PageInfo{TotalCount: 0}, nil
 	}
 
-	return result, usecasex.NewPageInfo(
-		int64(len(result)),
-		startCursor,
-		endCursor,
-		true,
-		true,
-	), nil
+	if filter.Pagination != nil {
+		if filter.Pagination.Cursor != nil {
+			// Cursor-based pagination
+			var start int64
+			if filter.Pagination.Cursor.After != nil {
+				afterID := string(*filter.Pagination.Cursor.After)
+				for i, d := range result {
+					if d.ID().String() == afterID {
+						start = int64(i + 1)
+						break
+					}
+				}
+			}
+
+			end := total
+			if filter.Pagination.Cursor.First != nil {
+				end = start + *filter.Pagination.Cursor.First
+				if end > total {
+					end = total
+				}
+			}
+
+			if start >= total {
+				return nil, &usecasex.PageInfo{
+					TotalCount:      total,
+					HasNextPage:     false,
+					HasPreviousPage: start > 0,
+				}, nil
+			}
+
+			var startCursor, endCursor *usecasex.Cursor
+			if start < end {
+				sc := usecasex.Cursor(result[start].ID().String())
+				ec := usecasex.Cursor(result[end-1].ID().String())
+				startCursor = &sc
+				endCursor = &ec
+			}
+
+			return result[start:end], &usecasex.PageInfo{
+				TotalCount:      total,
+				HasNextPage:     end < total,
+				HasPreviousPage: start > 0,
+				StartCursor:     startCursor,
+				EndCursor:       endCursor,
+			}, nil
+		} else if filter.Pagination.Offset != nil {
+			// Page-based pagination
+			skip := int(filter.Pagination.Offset.Offset)
+			limit := int(filter.Pagination.Offset.Limit)
+			if skip >= len(result) {
+				pageInfo := interfaces.NewPageBasedInfo(total, skip/limit+1, limit)
+				return nil, pageInfo.ToPageInfo(), nil
+			}
+
+			end := skip + limit
+			if end > len(result) {
+				end = len(result)
+			}
+
+			pageInfo := interfaces.NewPageBasedInfo(total, skip/limit+1, limit)
+			return result[skip:end], pageInfo.ToPageInfo(), nil
+		}
+	}
+
+	return result, &usecasex.PageInfo{
+		TotalCount: total,
+	}, nil
 }
 
 func (r *Asset) TotalSizeByWorkspace(_ context.Context, wid accountdomain.WorkspaceID) (t int64, err error) {

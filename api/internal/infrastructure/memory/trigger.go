@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
@@ -51,50 +52,69 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		return nil, &usecasex.PageInfo{TotalCount: 0}, nil
 	}
 
-	if p != nil && p.Cursor != nil {
-		// Cursor-based pagination
-		var start int64
-		if p.Cursor.After != nil {
-			afterID := string(*p.Cursor.After)
-			for i, d := range result {
-				if d.ID().String() == afterID {
-					start = int64(i + 1)
-					break
+	if p != nil {
+		if p.Cursor != nil {
+			// Cursor-based pagination
+			var start int64
+			if p.Cursor.After != nil {
+				afterID := string(*p.Cursor.After)
+				for i, d := range result {
+					if d.ID().String() == afterID {
+						start = int64(i + 1)
+						break
+					}
 				}
 			}
-		}
 
-		end := total
-		if p.Cursor.First != nil {
-			end = start + *p.Cursor.First
-			if end > total {
-				end = total
+			end := total
+			if p.Cursor.First != nil {
+				end = start + *p.Cursor.First
+				if end > total {
+					end = total
+				}
 			}
-		}
 
-		if start >= total {
-			return nil, &usecasex.PageInfo{
+			if start >= total {
+				return nil, &usecasex.PageInfo{
+					TotalCount:      total,
+					HasNextPage:     false,
+					HasPreviousPage: start > 0,
+				}, nil
+			}
+
+			var startCursor, endCursor *usecasex.Cursor
+			if start < end {
+				sc := usecasex.Cursor(result[start].ID().String())
+				ec := usecasex.Cursor(result[end-1].ID().String())
+				startCursor = &sc
+				endCursor = &ec
+			}
+
+			return result[start:end], &usecasex.PageInfo{
 				TotalCount:      total,
-				HasNextPage:     false,
+				HasNextPage:     end < total,
 				HasPreviousPage: start > 0,
+				StartCursor:     startCursor,
+				EndCursor:       endCursor,
 			}, nil
-		}
+		} else if p.Offset != nil {
+			// Page-based pagination
+			skip := int(p.Offset.Offset)
+			limit := int(p.Offset.Limit)
 
-		var startCursor, endCursor *usecasex.Cursor
-		if start < end {
-			sc := usecasex.Cursor(result[start].ID().String())
-			ec := usecasex.Cursor(result[end-1].ID().String())
-			startCursor = &sc
-			endCursor = &ec
-		}
+			if skip >= int(total) {
+				pageInfo := interfaces.NewPageBasedInfo(total, skip/limit+1, limit)
+				return nil, pageInfo.ToPageInfo(), nil
+			}
 
-		return result[start:end], &usecasex.PageInfo{
-			TotalCount:      total,
-			HasNextPage:     end < total,
-			HasPreviousPage: start > 0,
-			StartCursor:     startCursor,
-			EndCursor:       endCursor,
-		}, nil
+			end := skip + limit
+			if end > int(total) {
+				end = int(total)
+			}
+
+			pageInfo := interfaces.NewPageBasedInfo(total, skip/limit+1, limit)
+			return result[skip:end], pageInfo.ToPageInfo(), nil
+		}
 	}
 
 	return result, &usecasex.PageInfo{
