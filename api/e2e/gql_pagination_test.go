@@ -67,7 +67,17 @@ func TestProjectsPagination(t *testing.T) {
 
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
+		assert.NotEmpty(t, result.Data.CreateProject.Project.ID, "Project creation failed")
 		projectIDs[i] = result.Data.CreateProject.Project.ID
+
+		// Add a small delay between project creations
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// Verify all projects were created
+	assert.Len(t, projectIDs, 5, "Expected 5 projects to be created")
+	for i, id := range projectIDs {
+		assert.NotEmpty(t, id, fmt.Sprintf("Project %d was not created successfully", i))
 	}
 
 	// Test pagination
@@ -785,7 +795,6 @@ func TestTriggersPagination(t *testing.T) {
 		},
 	}, true, baseSeederUser)
 
-	// 2. 创建测试部署
 	deploymentQuery := `mutation($input: CreateDeploymentInput!) {
 		createDeployment(input: $input) {
 			deployment {
@@ -813,7 +822,6 @@ func TestTriggersPagination(t *testing.T) {
 	jsonData, err := json.Marshal(request)
 	assert.NoError(t, err)
 
-	// 3. 发送请求创建部署
 	resp := e.POST("/api/graphql").
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).

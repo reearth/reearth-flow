@@ -165,8 +165,12 @@ func (r *Project) paginate(ctx context.Context, filter bson.M, pagination *useca
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
 
+		// Default sort by updatedAt desc
+		sort := bson.D{{Key: "updatedat", Value: -1}}
+
 		// Execute find with skip and limit
 		opts := options.Find().
+			SetSort(sort).
 			SetSkip(skip).
 			SetLimit(limit)
 
