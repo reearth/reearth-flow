@@ -69,6 +69,38 @@ func (c *ProjectLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID, p
 	}, nil
 }
 
+func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
+	tid, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
+	if err != nil {
+		return nil, err
+	}
+
+	paginationParam := gqlmodel.ToPageBasedPagination(pagination)
+
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam.Cursor, getOperator(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	edges := make([]*gqlmodel.ProjectEdge, 0, len(res))
+	nodes := make([]*gqlmodel.Project, 0, len(res))
+	for _, p := range res {
+		prj := gqlmodel.ToProject(p)
+		edges = append(edges, &gqlmodel.ProjectEdge{
+			Node:   prj,
+			Cursor: usecasex.Cursor(prj.ID),
+		})
+		nodes = append(nodes, prj)
+	}
+
+	return &gqlmodel.ProjectConnection{
+		Edges:      edges,
+		Nodes:      nodes,
+		PageInfo:   gqlmodel.ToPageInfo(pi),
+		TotalCount: int(pi.TotalCount),
+	}, nil
+}
+
 // data loaders
 
 type ProjectDataLoader interface {

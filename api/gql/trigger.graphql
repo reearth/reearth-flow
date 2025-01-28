@@ -70,6 +70,7 @@ type TriggerEdge {
 
 extend type Query {
     triggers(workspaceId: ID!, pagination: Pagination): TriggerConnection!
+    triggersPage(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!
 }
 
 extend type Mutation {

@@ -52,6 +52,10 @@ func (r *queryResolver) Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagin
 	return loaders(ctx).Job.FindByWorkspace(ctx, workspaceID, pagination)
 }
 
+func (r *queryResolver) JobsPage(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error) {
+	return loaders(ctx).Job.FindByWorkspacePage(ctx, workspaceID, pagination)
+}
+
 func (r *queryResolver) Node(ctx context.Context, i gqlmodel.ID, typeArg gqlmodel.NodeType) (gqlmodel.Node, error) {
 	dataloaders := dataloaders(ctx)
 	switch typeArg {
@@ -135,10 +139,18 @@ func (r *queryResolver) Projects(ctx context.Context, workspaceID gqlmodel.ID, i
 	return loaders(ctx).Project.FindByWorkspace(ctx, workspaceID, pagination)
 }
 
+func (r *queryResolver) ProjectsPage(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
+	return loaders(ctx).Project.FindByWorkspacePage(ctx, workspaceID, pagination)
+}
+
 func (r *queryResolver) SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error) {
 	return loaders(ctx).User.SearchUser(ctx, nameOrEmail)
 }
 
 func (r *queryResolver) Triggers(ctx context.Context, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.TriggerConnection, error) {
 	return loaders(ctx).Trigger.FindByWorkspace(ctx, workspaceID, pagination)
+}
+
+func (r *queryResolver) TriggersPage(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error) {
+	return loaders(ctx).Trigger.FindByWorkspacePage(ctx, workspaceID, pagination)
 }

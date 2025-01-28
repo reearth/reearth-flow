@@ -86,6 +86,38 @@ func (c *JobLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID, pagin
 	}, nil
 }
 
+func (c *JobLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error) {
+	tid, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
+	if err != nil {
+		return nil, err
+	}
+
+	paginationParam := gqlmodel.ToPageBasedPagination(pagination)
+
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam.Cursor, getOperator(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	edges := make([]*gqlmodel.JobEdge, 0, len(res))
+	nodes := make([]*gqlmodel.Job, 0, len(res))
+	for _, j := range res {
+		job := gqlmodel.ToJob(j)
+		edges = append(edges, &gqlmodel.JobEdge{
+			Node:   job,
+			Cursor: usecasex.Cursor(job.ID),
+		})
+		nodes = append(nodes, job)
+	}
+
+	return &gqlmodel.JobConnection{
+		Edges:      edges,
+		Nodes:      nodes,
+		PageInfo:   gqlmodel.ToPageInfo(pi),
+		TotalCount: int(pi.TotalCount),
+	}, nil
+}
+
 // data loaders
 
 type JobDataLoader interface {

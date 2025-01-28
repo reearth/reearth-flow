@@ -40,5 +40,6 @@ extend type Subscription {
 
 extend type Query {
   jobs(workspaceId: ID!, pagination: Pagination): JobConnection!
+  jobsPage(workspaceId: ID!, pagination: PageBasedPagination!): JobConnection!
   job(id: ID!): Job
 }

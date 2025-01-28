@@ -4,6 +4,7 @@ import (
 	"io"
 
 	"github.com/99designs/gqlgen/graphql"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearthx/usecasex"
 	"github.com/samber/lo"
@@ -38,12 +39,33 @@ func ToPagination(pagination *Pagination) *usecasex.Pagination {
 	if pagination == nil {
 		return nil
 	}
+
+	// Cursor-based pagination
 	return usecasex.CursorPagination{
 		Before: pagination.Before,
 		After:  pagination.After,
 		First:  intToInt64(pagination.First),
 		Last:   intToInt64(pagination.Last),
 	}.Wrap()
+}
+
+func ToPageBasedPagination(pagination PageBasedPagination) *interfaces.PaginationParam {
+	return &interfaces.PaginationParam{
+		Page: &interfaces.PageBasedPaginationParam{
+			Page:     pagination.Page,
+			PageSize: pagination.PageSize,
+			OrderBy:  pagination.OrderBy,
+			OrderDir: OrderDirectionToString(pagination.OrderDir),
+		},
+	}
+}
+
+func OrderDirectionToString(dir *OrderDirection) *string {
+	if dir == nil {
+		return nil
+	}
+	s := string(*dir)
+	return &s
 }
 
 func intToInt64(i *int) *int64 {
@@ -53,10 +75,15 @@ func intToInt64(i *int) *int64 {
 	return lo.ToPtr(int64(*i))
 }
 
-func OrderDirectionToString(dir *OrderDirection) *string {
-	if dir == nil {
-		return nil
+func FromPageInfo(p *PageInfo) *usecasex.PageInfo {
+	if p == nil {
+		return &usecasex.PageInfo{}
 	}
-	s := string(*dir)
-	return &s
+	return &usecasex.PageInfo{
+		StartCursor:     p.StartCursor,
+		EndCursor:       p.EndCursor,
+		HasNextPage:     p.HasNextPage,
+		HasPreviousPage: p.HasPreviousPage,
+		TotalCount:      int64(p.TotalCount),
+	}
 }

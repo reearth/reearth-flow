@@ -70,6 +70,39 @@ func (c *TriggerLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID, p
 	}, nil
 }
 
+func (c *TriggerLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error) {
+	tid, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
+	if err != nil {
+		return nil, err
+	}
+
+	paginationParam := gqlmodel.ToPageBasedPagination(pagination)
+
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam.Cursor, getOperator(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	edges := make([]*gqlmodel.TriggerEdge, 0, len(res))
+	nodes := make([]*gqlmodel.Trigger, 0, len(res))
+
+	for _, t := range res {
+		trig := gqlmodel.ToTrigger(t)
+		edges = append(edges, &gqlmodel.TriggerEdge{
+			Node:   trig,
+			Cursor: usecasex.Cursor(trig.ID),
+		})
+		nodes = append(nodes, trig)
+	}
+
+	return &gqlmodel.TriggerConnection{
+		Edges:      edges,
+		Nodes:      nodes,
+		PageInfo:   gqlmodel.ToPageInfo(pi),
+		TotalCount: int(pi.TotalCount),
+	}, nil
+}
+
 // data loaders
 
 type TriggerDataLoader interface {
