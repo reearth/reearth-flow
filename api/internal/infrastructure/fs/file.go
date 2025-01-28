@@ -23,17 +23,30 @@ type fileRepo struct {
 	workflowUrlBase *url.URL
 }
 
-// ReadMetadata implements gateway.File.
+func (f *fileRepo) CheckJobLogExists(context.Context, string) (bool, error) {
+	panic("unimplemented")
+}
+
+func (f *fileRepo) GetJobLogURL(string) string {
+	panic("unimplemented")
+}
+
+func (f *fileRepo) ListJobArtifacts(context.Context, string) ([]string, error) {
+	panic("unimplemented")
+}
+
+func (f *fileRepo) ReadArtifact(context.Context, string) (io.ReadCloser, error) {
+	panic("unimplemented")
+}
+
 func (f *fileRepo) ReadMetadata(context.Context, string) (io.ReadCloser, error) {
 	panic("unimplemented")
 }
 
-// RemoveMetadata implements gateway.File.
 func (f *fileRepo) RemoveMetadata(context.Context, *url.URL) error {
 	panic("unimplemented")
 }
 
-// UploadMetadata implements gateway.File.
 func (f *fileRepo) UploadMetadata(context.Context, string, []string) (*url.URL, error) {
 	panic("unimplemented")
 }

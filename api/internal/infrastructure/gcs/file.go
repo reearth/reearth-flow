@@ -20,12 +20,14 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/workflow"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/rerror"
+	"google.golang.org/api/iterator"
 )
 
 const (
+	gcsArtifactBasePath string = "artifacts"
 	gcsAssetBasePath    string = "assets"
-	gcsWorkflowBasePath string = "workflows"
 	gcsMetadataBasePath string = "metadata"
+	gcsWorkflowBasePath string = "workflows"
 	fileSizeLimit       int64  = 1024 * 1024 * 100 // about 100MB
 )
 
@@ -185,6 +187,81 @@ func (f *fileRepo) RemoveMetadata(ctx context.Context, u *url.URL) error {
 		return gateway.ErrInvalidFile
 	}
 	return f.delete(ctx, sn)
+}
+
+func (f *fileRepo) ReadArtifact(ctx context.Context, name string) (io.ReadCloser, error) {
+	sn := sanitize.Path(name)
+	if sn == "" {
+		return nil, rerror.ErrNotFound
+	}
+	return f.read(ctx, path.Join(gcsArtifactBasePath, sn))
+}
+
+func (f *fileRepo) ListJobArtifacts(ctx context.Context, jobID string) ([]string, error) {
+	if jobID == "" {
+		return nil, gateway.ErrInvalidFile
+	}
+
+	bucket, err := f.bucket(ctx)
+	if err != nil {
+		log.Errorfc(ctx, "gcs: list artifacts bucket err: %+v\n", err)
+		return nil, rerror.ErrInternalByWithContext(ctx, err)
+	}
+
+	prefix := path.Join(gcsArtifactBasePath, jobID, "artifacts/")
+	query := &storage.Query{
+		Prefix: prefix,
+	}
+
+	var files []string
+	it := bucket.Objects(ctx, query)
+	for {
+		attrs, err := it.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Errorfc(ctx, "gcs: list artifacts iteration err: %+v\n", err)
+			return nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		if strings.HasSuffix(attrs.Name, "/") {
+			continue
+		}
+
+		url := getGCSObjectURL(f.base, attrs.Name)
+		if url != nil {
+			files = append(files, url.String())
+		}
+	}
+
+	return files, nil
+}
+
+func (f *fileRepo) GetJobLogURL(jobID string) string {
+	logPath := path.Join(gcsArtifactBasePath, jobID, "action-log/all.log")
+	url := getGCSObjectURL(f.base, logPath)
+	if url == nil {
+		return ""
+	}
+	return url.String()
+}
+
+func (f *fileRepo) CheckJobLogExists(ctx context.Context, jobID string) (bool, error) {
+	bucket, err := f.bucket(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	logPath := path.Join(gcsArtifactBasePath, jobID, "action-log/all.log")
+	_, err = bucket.Object(logPath).Attrs(ctx)
+	if err == storage.ErrObjectNotExist {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 // helpers
