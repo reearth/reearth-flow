@@ -1,5 +1,5 @@
 import { type XYPosition } from "@xyflow/react";
-import { useMemo, memo } from "react";
+import { memo } from "react";
 
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
@@ -18,14 +18,14 @@ type OverlayUIProps = {
     position: XYPosition;
     nodeType: ActionNodeType;
   };
-  nodes: Node[];
+  allowedToDeploy: boolean;
   canUndo: boolean;
   canRedo: boolean;
   onWorkflowDeployment: (
     deploymentId?: string,
     description?: string,
   ) => Promise<void>;
-  onNodesChange: (nodes: Node[]) => void;
+  onNodesAdd: (nodes: Node[]) => void;
   onNodePickerClose: () => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
@@ -37,11 +37,11 @@ type OverlayUIProps = {
 const OverlayUI: React.FC<OverlayUIProps> = ({
   hoveredDetails,
   nodePickerOpen,
-  nodes,
+  allowedToDeploy,
   canUndo,
   canRedo,
   onWorkflowDeployment,
-  onNodesChange,
+  onNodesAdd,
   onNodePickerClose,
   onWorkflowUndo,
   onWorkflowRedo,
@@ -49,8 +49,6 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   hasReader,
   children: canvas,
 }) => {
-  // const { devMode } = config();
-  const allowedToDeploy = useMemo(() => nodes.length > 0, [nodes]);
   return (
     <>
       <div className="relative flex flex-1 flex-col">
@@ -75,8 +73,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
       {nodePickerOpen && (
         <NodePickerDialog
           openedActionType={nodePickerOpen}
-          nodes={nodes}
-          onNodesChange={onNodesChange}
+          onNodesAdd={onNodesAdd}
           onClose={onNodePickerClose}
           isMainWorkflow={isMainWorkflow}
         />

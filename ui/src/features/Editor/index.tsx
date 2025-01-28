@@ -1,6 +1,6 @@
 import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
-import { YWorkflow } from "@flow/lib/yjs/utils";
+import type { YWorkflow } from "@flow/lib/yjs/types";
 
 import {
   BottomPanel,
@@ -34,18 +34,21 @@ export default function Editor({
     openPanel,
     canUndo,
     canRedo,
+    allowedToDeploy,
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowChange,
-    handleNodesUpdate,
+    handleNodesAdd,
+    handleNodesChange,
     handleNodeParamsUpdate,
     handleNodeHover,
     handleNodeDoubleClick,
     handleNodePickerOpen,
     handleNodePickerClose,
-    handleEdgesUpdate,
+    handleEdgesAdd,
+    handleEdgesChange,
     handleEdgeHover,
     handleWorkflowRedo,
     handleWorkflowUndo,
@@ -60,7 +63,7 @@ export default function Editor({
           nodes={nodes}
           isOpen={openPanel === "left" && !locallyLockedNode}
           onOpen={handlePanelOpen}
-          onNodesChange={handleNodesUpdate}
+          onNodesAdd={handleNodesAdd}
           isMainWorkflow={isMainWorkflow}
           hasReader={hasReader}
         />
@@ -68,13 +71,13 @@ export default function Editor({
           <OverlayUI
             hoveredDetails={hoveredDetails}
             nodePickerOpen={nodePickerOpen}
-            nodes={nodes}
+            allowedToDeploy={allowedToDeploy}
             canUndo={canUndo}
             canRedo={canRedo}
             onWorkflowDeployment={handleWorkflowDeployment}
             onWorkflowUndo={handleWorkflowUndo}
             onWorkflowRedo={handleWorkflowRedo}
-            onNodesChange={handleNodesUpdate}
+            onNodesAdd={handleNodesAdd}
             onNodePickerClose={handleNodePickerClose}
             isMainWorkflow={isMainWorkflow}
             hasReader={hasReader}>
@@ -83,11 +86,13 @@ export default function Editor({
               edges={edges}
               canvasLock={!!locallyLockedNode}
               onWorkflowAdd={handleWorkflowAdd}
-              onNodesUpdate={handleNodesUpdate}
+              onNodesAdd={handleNodesAdd}
+              onNodesChange={handleNodesChange}
               onNodeHover={handleNodeHover}
               onNodeDoubleClick={handleNodeDoubleClick}
               onNodePickerOpen={handleNodePickerOpen}
-              onEdgesUpdate={handleEdgesUpdate}
+              onEdgesAdd={handleEdgesAdd}
+              onEdgesChange={handleEdgesChange}
               onEdgeHover={handleEdgeHover}
             />
           </OverlayUI>

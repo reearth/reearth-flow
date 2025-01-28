@@ -58,8 +58,6 @@ const WorkflowTabs: React.FC<Props> = ({
 
     try {
       onWorkflowRename(editId, trimmedName);
-      setEditId(undefined);
-      setName(undefined);
     } catch {
       toast({
         title: t("Unable to rename workflow"),
@@ -67,6 +65,8 @@ const WorkflowTabs: React.FC<Props> = ({
         variant: "destructive",
       });
     }
+    setEditId(undefined);
+    setName(undefined);
   };
 
   return (
