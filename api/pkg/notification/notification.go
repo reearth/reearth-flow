@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type Payload struct {
@@ -24,8 +25,11 @@ type HTTPNotifier struct {
 }
 
 func NewHTTPNotifier() *HTTPNotifier {
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
 	return &HTTPNotifier{
-		client: &http.Client{},
+		client: client,
 	}
 }
 

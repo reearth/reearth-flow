@@ -36,6 +36,9 @@ func (m *Manager) Unsubscribe(jobID string, ch chan job.Status) {
 		if sub == ch {
 			close(sub)
 			m.subscribers[jobID] = append(subs[:idx], subs[idx+1:]...)
+			if len(m.subscribers[jobID]) == 0 {
+				delete(m.subscribers, jobID)
+			}
 			break
 		}
 	}
