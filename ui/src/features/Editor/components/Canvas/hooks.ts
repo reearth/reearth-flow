@@ -2,8 +2,10 @@ import {
   DefaultEdgeOptions,
   EdgeChange,
   NodeChange,
+  useReactFlow,
   XYPosition,
 } from "@xyflow/react";
+import { useEffect } from "react";
 
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
@@ -48,6 +50,13 @@ export default ({
   onEdgesChange,
   onNodePickerOpen,
 }: Props) => {
+  const { fitView } = useReactFlow();
+
+  // Fit all nodes into view on mount
+  useEffect(() => {
+    fitView({ padding: 0.2 });
+  }, []); // eslint-disable-line
+
   const {
     handleNodesChange,
     handleNodesDelete,
