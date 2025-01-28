@@ -78,7 +78,7 @@ func (c *TriggerLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.I
 
 	paginationParam := gqlmodel.ToPageBasedPagination(pagination)
 
-	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam.Cursor, getOperator(ctx))
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
