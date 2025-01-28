@@ -275,7 +275,7 @@ type ComplexityRoot struct {
 		Me                  func(childComplexity int) int
 		Node                func(childComplexity int, id gqlmodel.ID, typeArg gqlmodel.NodeType) int
 		Nodes               func(childComplexity int, id []gqlmodel.ID, typeArg gqlmodel.NodeType) int
-		Projects            func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, first *int, last *int, after *usecasex.Cursor, before *usecasex.Cursor) int
+		Projects            func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, pagination *gqlmodel.Pagination) int
 		SearchUser          func(childComplexity int, nameOrEmail string) int
 		Triggers            func(childComplexity int, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) int
 	}
@@ -349,12 +349,12 @@ type ComplexityRoot struct {
 	}
 
 	Workspace struct {
-		Assets   func(childComplexity int, first *int, last *int, after *usecasex.Cursor, before *usecasex.Cursor) int
+		Assets   func(childComplexity int, pagination *gqlmodel.Pagination) int
 		ID       func(childComplexity int) int
 		Members  func(childComplexity int) int
 		Name     func(childComplexity int) int
 		Personal func(childComplexity int) int
-		Projects func(childComplexity int, includeArchived *bool, first *int, last *int, after *usecasex.Cursor, before *usecasex.Cursor) int
+		Projects func(childComplexity int, includeArchived *bool, pagination *gqlmodel.Pagination) int
 	}
 
 	WorkspaceMember struct {
@@ -426,7 +426,7 @@ type QueryResolver interface {
 	DeploymentVersions(ctx context.Context, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) ([]*gqlmodel.Deployment, error)
 	Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
-	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, first *int, last *int, after *usecasex.Cursor, before *usecasex.Cursor) (*gqlmodel.ProjectConnection, error)
+	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, pagination *gqlmodel.Pagination) (*gqlmodel.ProjectConnection, error)
 	Triggers(ctx context.Context, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.TriggerConnection, error)
 	Me(ctx context.Context) (*gqlmodel.Me, error)
 	SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error)
@@ -439,9 +439,9 @@ type TriggerResolver interface {
 	Deployment(ctx context.Context, obj *gqlmodel.Trigger) (*gqlmodel.Deployment, error)
 }
 type WorkspaceResolver interface {
-	Assets(ctx context.Context, obj *gqlmodel.Workspace, first *int, last *int, after *usecasex.Cursor, before *usecasex.Cursor) (*gqlmodel.AssetConnection, error)
+	Assets(ctx context.Context, obj *gqlmodel.Workspace, pagination *gqlmodel.Pagination) (*gqlmodel.AssetConnection, error)
 
-	Projects(ctx context.Context, obj *gqlmodel.Workspace, includeArchived *bool, first *int, last *int, after *usecasex.Cursor, before *usecasex.Cursor) (*gqlmodel.ProjectConnection, error)
+	Projects(ctx context.Context, obj *gqlmodel.Workspace, includeArchived *bool, pagination *gqlmodel.Pagination) (*gqlmodel.ProjectConnection, error)
 }
 type WorkspaceMemberResolver interface {
 	User(ctx context.Context, obj *gqlmodel.WorkspaceMember) (*gqlmodel.User, error)
@@ -1627,7 +1627,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Projects(childComplexity, args["workspaceId"].(gqlmodel.ID), args["includeArchived"].(*bool), args["first"].(*int), args["last"].(*int), args["after"].(*usecasex.Cursor), args["before"].(*usecasex.Cursor)), true
+		return e.complexity.Query.Projects(childComplexity, args["workspaceId"].(gqlmodel.ID), args["includeArchived"].(*bool), args["pagination"].(*gqlmodel.Pagination)), true
 
 	case "Query.searchUser":
 		if e.complexity.Query.SearchUser == nil {
@@ -1892,7 +1892,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Workspace.Assets(childComplexity, args["first"].(*int), args["last"].(*int), args["after"].(*usecasex.Cursor), args["before"].(*usecasex.Cursor)), true
+		return e.complexity.Workspace.Assets(childComplexity, args["pagination"].(*gqlmodel.Pagination)), true
 
 	case "Workspace.id":
 		if e.complexity.Workspace.ID == nil {
@@ -1932,7 +1932,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Workspace.Projects(childComplexity, args["includeArchived"].(*bool), args["first"].(*int), args["last"].(*int), args["after"].(*usecasex.Cursor), args["before"].(*usecasex.Cursor)), true
+		return e.complexity.Workspace.Projects(childComplexity, args["includeArchived"].(*bool), args["pagination"].(*gqlmodel.Pagination)), true
 
 	case "WorkspaceMember.role":
 		if e.complexity.WorkspaceMember.Role == nil {
@@ -2547,10 +2547,7 @@ extend type Query {
   projects(
     workspaceId: ID!
     includeArchived: Boolean
-    first: Int
-    last: Int
-    after: Cursor
-    before: Cursor
+    pagination: Pagination
   ): ProjectConnection!
 }
 
@@ -2714,12 +2711,15 @@ extend type Mutation {
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/workspace.graphql", Input: `type Workspace implements Node {
-  assets(first: Int, last: Int, after: Cursor, before: Cursor): AssetConnection!
+  assets(pagination: Pagination): AssetConnection!
   id: ID!
   members: [WorkspaceMember!]!
   name: String!
   personal: Boolean!
-  projects(includeArchived: Boolean, first: Int, last: Int, after: Cursor, before: Cursor): ProjectConnection!
+  projects(
+    includeArchived: Boolean
+    pagination: Pagination
+  ): ProjectConnection!
 }
 
 type WorkspaceMember {
@@ -3514,42 +3514,15 @@ func (ec *executionContext) field_Query_projects_args(ctx context.Context, rawAr
 		}
 	}
 	args["includeArchived"] = arg1
-	var arg2 *int
-	if tmp, ok := rawArgs["first"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("first"))
-		arg2, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+	var arg2 *gqlmodel.Pagination
+	if tmp, ok := rawArgs["pagination"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pagination"))
+		arg2, err = ec.unmarshalOPagination2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPagination(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["first"] = arg2
-	var arg3 *int
-	if tmp, ok := rawArgs["last"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("last"))
-		arg3, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["last"] = arg3
-	var arg4 *usecasex.Cursor
-	if tmp, ok := rawArgs["after"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
-		arg4, err = ec.unmarshalOCursor2ᚖgithubᚗcomᚋreearthᚋreearthxᚋusecasexᚐCursor(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["after"] = arg4
-	var arg5 *usecasex.Cursor
-	if tmp, ok := rawArgs["before"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
-		arg5, err = ec.unmarshalOCursor2ᚖgithubᚗcomᚋreearthᚋreearthxᚋusecasexᚐCursor(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["before"] = arg5
+	args["pagination"] = arg2
 	return args, nil
 }
 
@@ -3610,42 +3583,15 @@ func (ec *executionContext) field_Subscription_jobStatus_args(ctx context.Contex
 func (ec *executionContext) field_Workspace_assets_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *int
-	if tmp, ok := rawArgs["first"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("first"))
-		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+	var arg0 *gqlmodel.Pagination
+	if tmp, ok := rawArgs["pagination"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pagination"))
+		arg0, err = ec.unmarshalOPagination2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPagination(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["first"] = arg0
-	var arg1 *int
-	if tmp, ok := rawArgs["last"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("last"))
-		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["last"] = arg1
-	var arg2 *usecasex.Cursor
-	if tmp, ok := rawArgs["after"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
-		arg2, err = ec.unmarshalOCursor2ᚖgithubᚗcomᚋreearthᚋreearthxᚋusecasexᚐCursor(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["after"] = arg2
-	var arg3 *usecasex.Cursor
-	if tmp, ok := rawArgs["before"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
-		arg3, err = ec.unmarshalOCursor2ᚖgithubᚗcomᚋreearthᚋreearthxᚋusecasexᚐCursor(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["before"] = arg3
+	args["pagination"] = arg0
 	return args, nil
 }
 
@@ -3661,42 +3607,15 @@ func (ec *executionContext) field_Workspace_projects_args(ctx context.Context, r
 		}
 	}
 	args["includeArchived"] = arg0
-	var arg1 *int
-	if tmp, ok := rawArgs["first"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("first"))
-		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+	var arg1 *gqlmodel.Pagination
+	if tmp, ok := rawArgs["pagination"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pagination"))
+		arg1, err = ec.unmarshalOPagination2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPagination(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["first"] = arg1
-	var arg2 *int
-	if tmp, ok := rawArgs["last"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("last"))
-		arg2, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["last"] = arg2
-	var arg3 *usecasex.Cursor
-	if tmp, ok := rawArgs["after"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("after"))
-		arg3, err = ec.unmarshalOCursor2ᚖgithubᚗcomᚋreearthᚋreearthxᚋusecasexᚐCursor(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["after"] = arg3
-	var arg4 *usecasex.Cursor
-	if tmp, ok := rawArgs["before"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("before"))
-		arg4, err = ec.unmarshalOCursor2ᚖgithubᚗcomᚋreearthᚋreearthxᚋusecasexᚐCursor(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["before"] = arg4
+	args["pagination"] = arg1
 	return args, nil
 }
 
@@ -10968,7 +10887,7 @@ func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Projects(rctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["includeArchived"].(*bool), fc.Args["first"].(*int), fc.Args["last"].(*int), fc.Args["after"].(*usecasex.Cursor), fc.Args["before"].(*usecasex.Cursor))
+		return ec.resolvers.Query().Projects(rctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["includeArchived"].(*bool), fc.Args["pagination"].(*gqlmodel.Pagination))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -12961,7 +12880,7 @@ func (ec *executionContext) _Workspace_assets(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Workspace().Assets(rctx, obj, fc.Args["first"].(*int), fc.Args["last"].(*int), fc.Args["after"].(*usecasex.Cursor), fc.Args["before"].(*usecasex.Cursor))
+		return ec.resolvers.Workspace().Assets(rctx, obj, fc.Args["pagination"].(*gqlmodel.Pagination))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -13210,7 +13129,7 @@ func (ec *executionContext) _Workspace_projects(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Workspace().Projects(rctx, obj, fc.Args["includeArchived"].(*bool), fc.Args["first"].(*int), fc.Args["last"].(*int), fc.Args["after"].(*usecasex.Cursor), fc.Args["before"].(*usecasex.Cursor))
+		return ec.resolvers.Workspace().Projects(rctx, obj, fc.Args["includeArchived"].(*bool), fc.Args["pagination"].(*gqlmodel.Pagination))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

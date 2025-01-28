@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
-	"github.com/reearth/reearthx/usecasex"
 )
 
 func (r *Resolver) Query() QueryResolver {
@@ -132,8 +131,8 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []gqlmodel.ID, typeArg gq
 	}
 }
 
-func (r *queryResolver) Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, first *int, last *int, after *usecasex.Cursor, before *usecasex.Cursor) (*gqlmodel.ProjectConnection, error) {
-	return loaders(ctx).Project.FindByWorkspace(ctx, workspaceID, first, last, before, after)
+func (r *queryResolver) Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, pagination *gqlmodel.Pagination) (*gqlmodel.ProjectConnection, error) {
+	return loaders(ctx).Project.FindByWorkspace(ctx, workspaceID, pagination)
 }
 
 func (r *queryResolver) SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error) {

@@ -79,10 +79,7 @@ extend type Query {
   projects(
     workspaceId: ID!
     includeArchived: Boolean
-    first: Int
-    last: Int
-    after: Cursor
-    before: Cursor
+    pagination: Pagination
   ): ProjectConnection!
 }
 

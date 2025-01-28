@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
-	"github.com/reearth/reearthx/usecasex"
 )
 
 func (r *Resolver) Workspace() WorkspaceResolver {
@@ -17,17 +16,12 @@ func (r *Resolver) WorkspaceMember() WorkspaceMemberResolver {
 
 type workspaceResolver struct{ *Resolver }
 
-func (r *workspaceResolver) Assets(ctx context.Context, obj *gqlmodel.Workspace, first *int, last *int, after *usecasex.Cursor, before *usecasex.Cursor) (*gqlmodel.AssetConnection, error) {
-	return loaders(ctx).Asset.FindByWorkspace(ctx, obj.ID, nil, nil, &gqlmodel.Pagination{
-		First:  first,
-		Last:   last,
-		After:  after,
-		Before: before,
-	})
+func (r *workspaceResolver) Assets(ctx context.Context, obj *gqlmodel.Workspace, pagination *gqlmodel.Pagination) (*gqlmodel.AssetConnection, error) {
+	return loaders(ctx).Asset.FindByWorkspace(ctx, obj.ID, nil, nil, pagination)
 }
 
-func (r *workspaceResolver) Projects(ctx context.Context, obj *gqlmodel.Workspace, includeArchived *bool, first *int, last *int, after *usecasex.Cursor, before *usecasex.Cursor) (*gqlmodel.ProjectConnection, error) {
-	return loaders(ctx).Project.FindByWorkspace(ctx, obj.ID, first, last, before, after)
+func (r *workspaceResolver) Projects(ctx context.Context, obj *gqlmodel.Workspace, includeArchived *bool, pagination *gqlmodel.Pagination) (*gqlmodel.ProjectConnection, error) {
+	return loaders(ctx).Project.FindByWorkspace(ctx, obj.ID, pagination)
 }
 
 func (r *workspaceResolver) Deployments(ctx context.Context, obj *gqlmodel.Workspace, includeArchived *bool, pagination *gqlmodel.Pagination) (*gqlmodel.DeploymentConnection, error) {
