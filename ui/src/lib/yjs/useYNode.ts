@@ -4,7 +4,7 @@ import * as Y from "yjs";
 import type { Edge, Node, NodeChange } from "@flow/types";
 
 import { yNodeConstructor } from "./conversions";
-import type { YNodesArray, YWorkflow } from "./types";
+import type { YNodesArray, YNodeValue, YWorkflow } from "./types";
 
 export default ({
   currentYWorkflow,
@@ -144,7 +144,7 @@ export default ({
   );
 
   const handleYNodeParamsUpdate = useCallback(
-    (nodeId: string, params: any) => {
+    (nodeId: string, params: any) =>
       undoTrackerActionWrapper(() => {
         const yNodes = currentYWorkflow?.get("nodes") as
           | YNodesArray
@@ -169,17 +169,9 @@ export default ({
           );
         }
 
-        const updatedNode: Node = { ...node, data: { ...node.data, params } };
-        const newNodes = [...nodes];
-        newNodes.splice(nodeIndex, 1, updatedNode);
-
-        const newYNodes = newNodes.map((node) => yNodeConstructor(node));
-
-        // TODO: NEED TO UPDATE HERE
-        yNodes.delete(0, nodes.length);
-        yNodes.insert(0, newYNodes);
-      });
-    },
+        const yData = yNodes.get(nodeIndex)?.get("data") as Y.Map<YNodeValue>;
+        yData?.set("params", params);
+      }),
     [currentYWorkflow, rawWorkflows, yWorkflows, undoTrackerActionWrapper],
   );
 
@@ -308,7 +300,6 @@ function updateParentYWorkflowNode(
 
   const newParentYNode = newParentNodes.map((node) => yNodeConstructor(node));
 
-  // TODO: MIGHT NEED TO UPDATE HERE
   yParentNodes.delete(0, parentNodes.length);
   yParentNodes.insert(0, newParentYNode);
 }
@@ -346,7 +337,6 @@ function updateParentYWorkflowEdges(
     return e;
   });
 
-  // TODO: MIGHT NEED TO UPDATE HERE
   yParentEdges.delete(0, parentEdges.length);
   yParentEdges.insert(0, updatedEdges);
 }

@@ -7,9 +7,6 @@ import { ComponentType } from "react";
 
 import type { Status } from "./shared";
 
-// type ParamValueType = string | number | boolean | object | null;
-
-// type NodeParam<T extends ParamValueType> = {
 type NodeParam = Record<string, any>;
 
 export type PseudoPort = {
