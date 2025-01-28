@@ -24,7 +24,7 @@ type Job struct {
 	jobRepo       repo.Job
 	workspaceRepo accountrepo.Workspace
 	transaction   usecasex.Transaction
-	file           gateway.File
+	file          gateway.File
 	batch         gateway.Batch
 	monitor       *monitor.Monitor
 	subscriptions *subscription.Manager

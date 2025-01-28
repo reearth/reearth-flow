@@ -46,7 +46,11 @@ func (n *HTTPNotifier) Send(url string, payload Payload) error {
 	if err != nil {
 		return fmt.Errorf("failed to send notification: %v", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
+			fmt.Printf("failed to close response body: %v\n", err)
+		}
+	}()
 
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("notification request failed with status: %d", resp.StatusCode)
