@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -67,4 +68,16 @@ func workspaceMemberCountEnforcer(_ *repo.Container) accountinteractor.Workspace
 	return func(ctx context.Context, ws *workspace.Workspace, _ user.List, op *accountusecase.Operator) error {
 		return nil
 	}
+}
+
+func checkPermission(ctx context.Context, permissionChecker gateway.PermissionChecker, resource string, action string) error {
+	authInfo := adapter.GetAuthInfo(ctx)
+	hasPermission, err := permissionChecker.CheckPermission(ctx, authInfo, resource, action)
+	if err != nil {
+		return fmt.Errorf("failed to check permission: %w", err)
+	}
+	if !hasPermission {
+		return ErrPermissionDenied
+	}
+	return nil
 }

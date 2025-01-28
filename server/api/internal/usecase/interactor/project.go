@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -39,6 +38,10 @@ func NewProject(r *repo.Container, gr *gateway.Container, permissionChecker gate
 		file:              gr.File,
 		permissionChecker: permissionChecker,
 	}
+}
+
+func (i *Project) checkPermission(ctx context.Context, action string) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProject, action)
 }
 
 func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID) ([]*project.Project, error) {
@@ -226,16 +229,4 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (starte
 
 	tx.Commit()
 	return true, nil
-}
-
-func (i *Project) checkPermission(ctx context.Context, action string) error {
-	authInfo := adapter.GetAuthInfo(ctx)
-	hasPermission, err := i.permissionChecker.CheckPermission(ctx, authInfo, rbac.ResourceProject, action)
-	if err != nil {
-		return fmt.Errorf("failed to check permission: %w", err)
-	}
-	if !hasPermission {
-		return ErrPermissionDenied
-	}
-	return nil
 }
