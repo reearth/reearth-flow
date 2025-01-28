@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/storage"
-	"github.com/kennygrant/sanitize"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -61,7 +60,7 @@ func NewFile(bucketName, base string, cacheControl string) (gateway.File, error)
 }
 
 func (f *fileRepo) ReadAsset(ctx context.Context, name string) (io.ReadCloser, error) {
-	sn := sanitize.Path(name)
+	sn := sanitizePath(name)
 	if sn == "" {
 		return nil, rerror.ErrNotFound
 	}
@@ -76,7 +75,7 @@ func (f *fileRepo) UploadAsset(ctx context.Context, file *file.File) (*url.URL, 
 		return nil, 0, gateway.ErrFileTooLarge
 	}
 
-	sn := sanitize.Path(newAssetID() + path.Ext(file.Path))
+	sn := sanitizePath(newAssetID() + path.Ext(file.Path))
 	if sn == "" {
 		return nil, 0, gateway.ErrInvalidFile
 	}
@@ -105,7 +104,7 @@ func (f *fileRepo) RemoveAsset(ctx context.Context, u *url.URL) error {
 }
 
 func (f *fileRepo) ReadWorkflow(ctx context.Context, name string) (io.ReadCloser, error) {
-	sn := sanitize.Path(name)
+	sn := sanitizePath(name)
 	if sn == "" {
 		return nil, rerror.ErrNotFound
 	}
@@ -117,7 +116,7 @@ func (f *fileRepo) UploadWorkflow(ctx context.Context, file *file.File) (*url.UR
 		return nil, gateway.ErrInvalidFile
 	}
 
-	sn := sanitize.Path(newWorkflowID() + path.Ext(file.Path))
+	sn := sanitizePath(newWorkflowID() + path.Ext(file.Path))
 	if sn == "" {
 		return nil, gateway.ErrInvalidFile
 	}
@@ -146,7 +145,7 @@ func (f *fileRepo) RemoveWorkflow(ctx context.Context, u *url.URL) error {
 }
 
 func (f *fileRepo) ReadMetadata(ctx context.Context, name string) (io.ReadCloser, error) {
-	sn := sanitize.Path(name)
+	sn := sanitizePath(name)
 	if sn == "" {
 		return nil, rerror.ErrNotFound
 	}
@@ -159,7 +158,7 @@ func (f *fileRepo) UploadMetadata(ctx context.Context, jobID string, assets []st
 		return nil, err
 	}
 
-	sn := sanitize.Path(metadataFile.Path)
+	sn := sanitizePath(metadataFile.Path)
 	if sn == "" {
 		return nil, gateway.ErrInvalidFile
 	}
@@ -190,7 +189,7 @@ func (f *fileRepo) RemoveMetadata(ctx context.Context, u *url.URL) error {
 }
 
 func (f *fileRepo) ReadArtifact(ctx context.Context, name string) (io.ReadCloser, error) {
-	sn := sanitize.Path(name)
+	sn := sanitizePath(name)
 	if sn == "" {
 		return nil, rerror.ErrNotFound
 	}
@@ -402,7 +401,7 @@ func getGCSObjectNameFromURL(base, u *url.URL, gcsBasePath string) string {
 	if base == nil {
 		base = &url.URL{}
 	}
-	p := sanitize.Path(strings.TrimPrefix(u.Path, "/"))
+	p := sanitizePath(strings.TrimPrefix(u.Path, "/"))
 	if p == "" || u.Host != base.Host || u.Scheme != base.Scheme || !strings.HasPrefix(p, gcsBasePath+"/") {
 		return ""
 	}
@@ -416,4 +415,8 @@ func newAssetID() string {
 
 func newWorkflowID() string {
 	return id.NewWorkflowID().String()
+}
+
+func sanitizePath(name string) string {
+	return path.Clean(name)
 }
