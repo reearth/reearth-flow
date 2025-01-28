@@ -2,6 +2,7 @@ use std::{collections::HashMap, io::Cursor};
 
 use bytes::Bytes;
 use calamine::{RangeDeserializerBuilder, Reader, Xlsx};
+use reearth_flow_types::AttributeValue;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -76,10 +77,79 @@ pub(crate) struct FeatureTypes {
     pub(crate) types: Vec<String>,
 }
 
+impl From<FeatureTypes> for AttributeValue {
+    fn from(value: FeatureTypes) -> Self {
+        let mut map = HashMap::<String, AttributeValue>::new();
+        map.insert("prefix".to_string(), AttributeValue::String(value.prefix));
+        map.insert(
+            "types".to_string(),
+            AttributeValue::Array(
+                value
+                    .types
+                    .into_iter()
+                    .map(AttributeValue::String)
+                    .collect(),
+            ),
+        );
+        AttributeValue::Map(map)
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct ObjectList {
     pub(crate) prefix: String,
     pub(crate) types: HashMap<String, ObjectListValue>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub(crate) struct ObjectListValue {
+    pub(crate) required: Vec<String>,
+    pub(crate) target: Vec<String>,
+}
+
+impl From<ObjectList> for AttributeValue {
+    fn from(value: ObjectList) -> Self {
+        let mut map = HashMap::<String, AttributeValue>::new();
+        map.insert("prefix".to_string(), AttributeValue::String(value.prefix));
+        map.insert(
+            "types".to_string(),
+            AttributeValue::Map(
+                value
+                    .types
+                    .into_iter()
+                    .map(|(k, v)| (k, v.into()))
+                    .collect(),
+            ),
+        );
+        AttributeValue::Map(map)
+    }
+}
+
+impl From<ObjectListValue> for AttributeValue {
+    fn from(value: ObjectListValue) -> Self {
+        let mut map = HashMap::<String, AttributeValue>::new();
+        map.insert(
+            "required".to_string(),
+            AttributeValue::Array(
+                value
+                    .required
+                    .into_iter()
+                    .map(AttributeValue::String)
+                    .collect(),
+            ),
+        );
+        map.insert(
+            "target".to_string(),
+            AttributeValue::Array(
+                value
+                    .target
+                    .into_iter()
+                    .map(AttributeValue::String)
+                    .collect(),
+            ),
+        );
+        AttributeValue::Map(map)
+    }
 }
 
 impl From<(String, Vec<Record>)> for ObjectList {
@@ -100,12 +170,6 @@ impl From<(String, Vec<Record>)> for ObjectList {
         }
         Self { prefix, types }
     }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct ObjectListValue {
-    pub(crate) required: Vec<String>,
-    pub(crate) target: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default)]
