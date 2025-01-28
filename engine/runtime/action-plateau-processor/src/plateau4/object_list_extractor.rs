@@ -98,7 +98,7 @@ impl Processor for ObjectListExtractor {
             .get(&self.object_list_path_attribute)
             .and_then(|v| v.as_string())
             .ok_or(PlateauProcessorError::ObjectListExtractor(
-                "cityGmlPath attribute empty".to_string(),
+                "objectListPath attribute empty".to_string(),
             ))?;
         let object_list_path = Uri::from_str(object_list_path.as_str())
             .map_err(|e| PlateauProcessorError::ObjectListExtractor(format!("{}", e)))?;
