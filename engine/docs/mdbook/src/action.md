@@ -2773,6 +2773,39 @@ Extracts maxLod
 ### Category
 * PLATEAU
 
+## PLATEAU4.ObjectListExtractor
+### Type
+* processor
+### Description
+Extract object list
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ObjectListExtractorParam",
+  "type": "object",
+  "required": [
+    "objectListPathAttribute"
+  ],
+  "properties": {
+    "objectListPathAttribute": {
+      "$ref": "#/definitions/Attribute"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* PLATEAU
+
 ## PLATEAU4.UDXFolderExtractor
 ### Type
 * processor

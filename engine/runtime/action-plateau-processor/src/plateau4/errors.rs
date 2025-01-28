@@ -17,6 +17,10 @@ pub(super) enum PlateauProcessorError {
     CityCodeExtractorFactory(String),
     #[error("CityCode Extractor error: {0}")]
     CityCodeExtractor(String),
+    #[error("ObjectList Extractor Factory error: {0}")]
+    ObjectListExtractorFactory(String),
+    #[error("ObjectList Extractor error: {0}")]
+    ObjectListExtractor(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;
