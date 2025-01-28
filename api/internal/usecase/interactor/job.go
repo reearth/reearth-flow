@@ -194,6 +194,8 @@ func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 		Outputs:      outputs,
 	}
 
+	log.Debugfc(ctx, "job: sending notification payload for jobID=%s: %+v", j.ID(), payload)
+
 	return i.notifier.Send(*config.NotificationURL, payload)
 }
 
