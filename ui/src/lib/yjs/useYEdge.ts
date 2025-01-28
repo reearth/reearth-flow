@@ -13,7 +13,7 @@ export default ({
   currentYWorkflow: YWorkflow;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
-  const handleEdgesUpdate = useCallback(
+  const handleYEdgesUpdate = useCallback(
     (newEdges: Edge[]) =>
       undoTrackerActionWrapper(() => {
         const yEdges = currentYWorkflow?.get("edges") as
@@ -33,6 +33,6 @@ export default ({
     [currentYWorkflow, undoTrackerActionWrapper],
   );
   return {
-    handleEdgesUpdate,
+    handleYEdgesUpdate,
   };
 };

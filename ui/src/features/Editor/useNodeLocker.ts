@@ -30,12 +30,9 @@ export default ({
   const handleNodeLocking = useCallback(
     (nodeId: string) => {
       setLockedNodeIds((ids) => {
-        console.log("ids", ids);
         if (ids.includes(nodeId)) {
-          console.log("removing", nodeId);
           return ids.filter((id) => id !== nodeId);
         }
-        console.log("adding", nodeId);
         return [...ids, nodeId];
       });
 

@@ -1,15 +1,26 @@
 import type { XYPosition } from "@xyflow/react";
 import { MouseEvent, useCallback, useMemo, useState } from "react";
-import { type Array as YArray, UndoManager as YUndoManager } from "yjs";
+import { useY } from "react-yjs";
+import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useHasReader, useIsMainWorkflow, useShortcuts } from "@flow/hooks";
+import { useHasReader, useShortcuts } from "@flow/hooks";
+import { useDeployment } from "@flow/lib/gql";
+import { useT } from "@flow/lib/i18n";
 import { useYjsStore } from "@flow/lib/yjs";
+import { rebuildWorkflow } from "@flow/lib/yjs/conversions";
 import type { YWorkflow } from "@flow/lib/yjs/types";
+import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
+import { useCurrentProject } from "@flow/stores";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
-import { cancellableDebounce } from "@flow/utils";
+import { isDefined } from "@flow/utils";
+import { jsonToFormData } from "@flow/utils/jsonToFormData";
+import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflowJson/engineReadyWorkflow";
+
+import { useToast } from "../NotificationSystem/useToast";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
+import useHover from "./useHover";
 import useNodeLocker from "./useNodeLocker";
 
 export default ({
@@ -21,53 +32,87 @@ export default ({
   undoManager: YUndoManager | null;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
+  const { toast } = useToast();
+  const t = useT();
+
+  const [currentProject] = useCurrentProject();
+  const { createDeployment, useUpdateDeployment } = useDeployment();
+
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(
     DEFAULT_ENTRY_GRAPH_ID,
   );
 
-  const handleCurrentWorkflowIdChange = useCallback(
-    (id?: string) => {
-      if (!id) return setCurrentWorkflowId(DEFAULT_ENTRY_GRAPH_ID);
-      setCurrentWorkflowId(id);
-    },
-    [setCurrentWorkflowId],
-  );
-  const isMainWorkflow = useIsMainWorkflow(currentWorkflowId);
-
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+  const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
 
-  console.log("selectedNodeIds", selectedNodeIds);
+  const handleEdgeSelection = useCallback(
+    (idsToAdd: string[], idsToDelete: string[]) => {
+      setSelectedEdgeIds((seids) => {
+        const newIds: string[] = seids.filter(
+          (id) => !idsToDelete.includes(id),
+        );
+        newIds.push(...idsToAdd);
+        return newIds;
+      });
+    },
+    [],
+  );
 
   const {
-    nodes,
-    edges,
-    openWorkflows,
     canUndo,
     canRedo,
     rawWorkflows,
-    handleWorkflowDeployment,
-    handleWorkflowOpen,
-    handleWorkflowClose,
-    handleWorkflowAdd,
-    handleWorkflowAddFromSelection,
-    handleWorkflowUpdate,
+    currentYWorkflow,
+    handleYWorkflowAdd,
+    handleYWorkflowAddFromSelection,
+    handleYWorkflowUpdate,
     handleYNodesAdd,
     handleYNodesChange,
-    handleNodeParamsUpdate,
-    handleEdgeSelection,
-    handleEdgesUpdate,
-    handleWorkflowUndo,
-    handleWorkflowRedo,
-    handleWorkflowRename,
+    handleYNodeParamsUpdate,
+    handleYEdgesUpdate,
+    handleYWorkflowUndo,
+    handleYWorkflowRedo,
+    handleYWorkflowRename,
   } = useYjsStore({
     currentWorkflowId,
     yWorkflows,
     undoManager,
-    selectedNodeIds,
     setSelectedNodeIds,
+    setSelectedEdgeIds,
     undoTrackerActionWrapper,
-    handleCurrentWorkflowIdChange,
   });
+
+  const rawNodes = useY(
+    currentYWorkflow.get("nodes") ?? new YArray(),
+  ) as Node[];
+
+  const nodes = useMemo(
+    () =>
+      rawNodes.map((node) => ({
+        ...node,
+        selected:
+          selectedNodeIds.includes(node.id) && !node.selected
+            ? true
+            : (node.selected ?? false),
+      })),
+    [rawNodes, selectedNodeIds],
+  );
+
+  const rawEdges = useY(
+    currentYWorkflow.get("edges") ?? new YArray(),
+  ) as Edge[];
+
+  const edges = useMemo(
+    () =>
+      rawEdges.map((edge) => ({
+        ...edge,
+        selected:
+          selectedEdgeIds.includes(edge.id) && !edge.selected
+            ? true
+            : (edge.selected ?? false),
+      })),
+    [rawEdges, selectedEdgeIds],
+  );
 
   const allowedToDeploy = useMemo(() => nodes.length > 0, [nodes]);
 
@@ -76,6 +121,18 @@ export default ({
   const { lockedNodeIds, locallyLockedNode, handleNodeLocking } = useNodeLocker(
     { selectedNodeIds, nodes },
   );
+
+  const {
+    openWorkflows,
+    isMainWorkflow,
+    handleWorkflowOpen,
+    handleWorkflowClose,
+    handleCurrentWorkflowIdChange,
+  } = useWorkflowTabs({
+    currentWorkflowId,
+    rawWorkflows,
+    setCurrentWorkflowId,
+  });
 
   const handleNodeDoubleClick = useCallback(
     (_e: MouseEvent, node: Node) => {
@@ -92,10 +149,10 @@ export default ({
     nodes,
     edges,
     rawWorkflows,
-    handleWorkflowUpdate,
+    handleWorkflowUpdate: handleYWorkflowUpdate,
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
-    handleEdgesUpdate,
+    handleEdgesUpdate: handleYEdgesUpdate,
   });
 
   const [openPanel, setOpenPanel] = useState<
@@ -145,36 +202,59 @@ export default ({
     [],
   );
 
-  const [hoveredDetails, setHoveredDetails] = useState<
-    Node | Edge | undefined
-  >();
+  const { hoveredDetails, handleNodeHover, handleEdgeHover } = useHover();
 
-  const hoverActionDebounce = cancellableDebounce(
-    (callback: () => void) => callback(),
-    100,
-  );
+  const handleWorkflowDeployment = useCallback(
+    async (deploymentId?: string, description?: string) => {
+      const {
+        name: projectName,
+        workspaceId,
+        id: projectId,
+      } = currentProject ?? {};
 
-  const handleNodeHover = useCallback(
-    (e: MouseEvent, node?: Node) => {
-      hoverActionDebounce.cancel();
-      if (e.type === "mouseleave" && hoveredDetails) {
-        hoverActionDebounce(() => setHoveredDetails(undefined));
+      if (!workspaceId || !projectId) return;
+
+      const engineReadyWorkflow = createEngineReadyWorkflow(
+        projectName,
+        yWorkflows.map((w) => rebuildWorkflow(w)).filter(isDefined),
+      );
+
+      if (!engineReadyWorkflow) {
+        toast({
+          title: t("Empty workflow detected"),
+          description: t("You cannot create a deployment without a workflow."),
+        });
+        return;
+      }
+
+      const formData = jsonToFormData(
+        engineReadyWorkflow,
+        engineReadyWorkflow.id,
+      );
+
+      if (deploymentId) {
+        await useUpdateDeployment(
+          deploymentId,
+          formData.get("file") ?? undefined,
+          description,
+        );
       } else {
-        setHoveredDetails(node);
+        await createDeployment(
+          workspaceId,
+          projectId,
+          engineReadyWorkflow,
+          description,
+        );
       }
     },
-    [hoveredDetails, hoverActionDebounce],
-  );
-
-  const handleEdgeHover = useCallback(
-    (e: MouseEvent, edge?: Edge) => {
-      if (e.type === "mouseleave" && hoveredDetails) {
-        setHoveredDetails(undefined);
-      } else {
-        setHoveredDetails(edge);
-      }
-    },
-    [hoveredDetails],
+    [
+      yWorkflows,
+      currentProject,
+      t,
+      createDeployment,
+      useUpdateDeployment,
+      toast,
+    ],
   );
 
   useShortcuts([
@@ -202,15 +282,15 @@ export default ({
     },
     {
       keyBinding: { key: "z", commandKey: true, shiftKey: true },
-      callback: handleWorkflowRedo,
+      callback: handleYWorkflowRedo,
     },
     {
       keyBinding: { key: "z", commandKey: true },
-      callback: handleWorkflowUndo,
+      callback: handleYWorkflowUndo,
     },
     {
       keyBinding: { key: "s", commandKey: false },
-      callback: () => handleWorkflowAddFromSelection(nodes, edges),
+      callback: () => handleYWorkflowAddFromSelection(nodes, edges),
     },
   ]);
 
@@ -225,12 +305,12 @@ export default ({
     nodePickerOpen,
     openPanel,
     allowedToDeploy,
-    handleWorkflowAdd,
+    handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowDeployment,
     handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowChange: handleCurrentWorkflowIdChange,
-    handleNodeParamsUpdate,
+    handleNodeParamsUpdate: handleYNodeParamsUpdate,
     handleNodeHover,
     handleYNodesAdd,
     handleYNodesChange,
@@ -238,11 +318,11 @@ export default ({
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgeSelection,
-    handleEdgesUpdate,
+    handleEdgesUpdate: handleYEdgesUpdate,
     handleEdgeHover,
-    handleWorkflowRedo,
-    handleWorkflowUndo,
-    handleWorkflowRename,
+    handleWorkflowRedo: handleYWorkflowRedo,
+    handleWorkflowUndo: handleYWorkflowUndo,
+    handleWorkflowRename: handleYWorkflowRename,
     canUndo,
     canRedo,
     isMainWorkflow,

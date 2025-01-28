@@ -1,5 +1,5 @@
 import { XYPosition } from "@xyflow/react";
-import { Dispatch, SetStateAction, useCallback } from "react";
+import { useCallback } from "react";
 import * as Y from "yjs";
 import { Array as YArray } from "yjs";
 
@@ -21,29 +21,18 @@ export default ({
   rawWorkflows,
   currentWorkflowId,
   undoTrackerActionWrapper,
-  setWorkflows,
-  setOpenWorkflowIds,
 }: {
   yWorkflows: YArray<YWorkflow>;
   rawWorkflows: Record<string, string | Node[] | Edge[]>[];
   currentWorkflowId: string;
   undoTrackerActionWrapper: (callback: () => void) => void;
-  setWorkflows: Dispatch<
-    SetStateAction<
-      {
-        id: string;
-        name: string;
-      }[]
-    >
-  >;
-  setOpenWorkflowIds: Dispatch<SetStateAction<string[]>>;
 }) => {
   const { api } = config();
   const currentYWorkflow = yWorkflows.get(
     rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
   );
 
-  const createWorkflow = useCallback(
+  const createYWorkflow = useCallback(
     async (
       workflowId: string,
       workflowName: string,
@@ -122,13 +111,13 @@ export default ({
     [api],
   );
 
-  const handleWorkflowAdd = useCallback(
+  const handleYWorkflowAdd = useCallback(
     (position: XYPosition = { x: 600, y: 200 }) =>
       undoTrackerActionWrapper(async () => {
         const workflowId = generateUUID();
         const workflowName = `Sub Workflow-${yWorkflows.length}`;
 
-        const { newYWorkflow, newSubworkflowNode } = await createWorkflow(
+        const { newYWorkflow, newSubworkflowNode } = await createYWorkflow(
           workflowId,
           workflowName,
           position,
@@ -143,21 +132,17 @@ export default ({
         parentWorkflowNodes?.push([newSubworkflowNode]);
 
         yWorkflows.push([newYWorkflow]);
-        setWorkflows((w) => [...w, { id: workflowId, name: workflowName }]);
-        setOpenWorkflowIds((ids) => [...ids, workflowId]);
       }),
     [
       yWorkflows,
       currentWorkflowId,
       rawWorkflows,
-      createWorkflow,
+      createYWorkflow,
       undoTrackerActionWrapper,
-      setWorkflows,
-      setOpenWorkflowIds,
     ],
   );
 
-  const handleWorkflowAddFromSelection = useCallback(
+  const handleYWorkflowAddFromSelection = useCallback(
     (nodes: Node[], edges: Edge[]) =>
       undoTrackerActionWrapper(async () => {
         const nodesByParentId = new Map<string, Node[]>();
@@ -214,7 +199,7 @@ export default ({
         const workflowId = generateUUID();
         const workflowName = `Sub Workflow-${yWorkflows.length}`;
 
-        const { newYWorkflow, newSubworkflowNode } = await createWorkflow(
+        const { newYWorkflow, newSubworkflowNode } = await createYWorkflow(
           workflowId,
           workflowName,
           position,
@@ -236,21 +221,17 @@ export default ({
         parentWorkflowNodes?.insert(0, [...remainingNodes, newSubworkflowNode]);
 
         yWorkflows.push([newYWorkflow]);
-        setWorkflows((w) => [...w, { id: workflowId, name: workflowName }]);
-        setOpenWorkflowIds((ids) => [...ids, workflowId]);
       }),
     [
       yWorkflows,
       currentWorkflowId,
       rawWorkflows,
-      createWorkflow,
+      createYWorkflow,
       undoTrackerActionWrapper,
-      setWorkflows,
-      setOpenWorkflowIds,
     ],
   );
 
-  const handleWorkflowUpdate = useCallback(
+  const handleYWorkflowUpdate = useCallback(
     (workflowId: string, nodes?: Node[], edges?: Edge[]) => {
       const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
       const newYWorkflow = yWorkflowConstructor(
@@ -260,12 +241,11 @@ export default ({
         edges,
       );
       yWorkflows.push([newYWorkflow]);
-      setWorkflows((w) => [...w, { id: workflowId, name: workflowName }]);
     },
-    [setWorkflows, yWorkflows],
+    [yWorkflows],
   );
 
-  const handleWorkflowsRemove = useCallback(
+  const handleYWorkflowsRemove = useCallback(
     (nodeIds: string[]) =>
       undoTrackerActionWrapper(() => {
         const workflowIds: string[] = [];
@@ -292,30 +272,16 @@ export default ({
         };
 
         removeNodes(nodeIds);
-
-        setWorkflows((w) => w.filter((w) => !workflowIds.includes(w.id)));
-        setOpenWorkflowIds((ids) =>
-          ids.filter((id) => !workflowIds.includes(id)),
-        );
       }),
-    [
-      rawWorkflows,
-      yWorkflows,
-      undoTrackerActionWrapper,
-      setWorkflows,
-      setOpenWorkflowIds,
-    ],
+    [rawWorkflows, yWorkflows, undoTrackerActionWrapper],
   );
 
-  const handleWorkflowRename = useCallback(
+  const handleYWorkflowRename = useCallback(
     (id: string, name: string) =>
       undoTrackerActionWrapper(() => {
         if (!name.trim()) {
           throw new Error("Workflow name cannot be empty");
         }
-
-        // Update local state
-        setWorkflows((w) => w.map((w) => (w.id === id ? { ...w, name } : w)));
 
         // Update subworkflow node in main workflow if this is a subworkflow
         const mainWorkflow = yWorkflows.get(0);
@@ -327,31 +293,22 @@ export default ({
 
           if (nodeId === id) {
             // Get existing data as YMap
-            const currentData = node.get("data") as Y.Map<unknown>;
+            const nodeData = node.get("data") as Y.Map<unknown>;
 
-            // Create new YMap with updated data
-            const newData = new Y.Map();
-            // Copy over existing data
-            currentData.forEach((value, key) => {
-              newData.set(key, value);
-            });
-            // Set new customName
-            newData.set("customName", name);
-
-            // Update the node's data
-            node.set("data", newData);
+            if (nodeData.get("customName")?.toString() === name) return;
+            nodeData.set("customName", name);
           }
         }
       }),
-    [undoTrackerActionWrapper, yWorkflows, setWorkflows],
+    [undoTrackerActionWrapper, yWorkflows],
   );
 
   return {
     currentYWorkflow,
-    handleWorkflowAdd,
-    handleWorkflowUpdate,
-    handleWorkflowsRemove,
-    handleWorkflowRename,
-    handleWorkflowAddFromSelection,
+    handleYWorkflowAdd,
+    handleYWorkflowUpdate,
+    handleYWorkflowsRemove,
+    handleYWorkflowRename,
+    handleYWorkflowAddFromSelection,
   };
 };

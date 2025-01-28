@@ -143,7 +143,7 @@ export default ({
     ],
   );
 
-  const handleNodeParamsUpdate = useCallback(
+  const handleYNodeParamsUpdate = useCallback(
     (nodeId: string, params: any) => {
       undoTrackerActionWrapper(() => {
         const yNodes = currentYWorkflow?.get("nodes") as
@@ -185,7 +185,7 @@ export default ({
   return {
     handleYNodesAdd,
     handleYNodesChange,
-    handleNodeParamsUpdate,
+    handleYNodeParamsUpdate,
   };
 };
 
