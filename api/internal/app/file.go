@@ -44,6 +44,14 @@ func serveFiles(
 
 	group := ec.Group("")
 
+	group.Match([]string{"GET", "HEAD"}, "/artifacts/:filename",
+		fileHandler(func(ctx echo.Context) (io.Reader, string, error) {
+			filename := ctx.Param("filename")
+			r, err := repo.ReadArtifact(ctx.Request().Context(), filename)
+			return r, filename, err
+		}),
+	)
+
 	group.Match([]string{"GET", "HEAD"}, "/assets/:filename",
 		fileHandler(func(ctx echo.Context) (io.Reader, string, error) {
 			filename := ctx.Param("filename")

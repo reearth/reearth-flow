@@ -11,9 +11,9 @@ import (
 
 type Trigger interface {
 	Filtered(WorkspaceFilter) Trigger
-	FindByIDs(context.Context, id.TriggerIDList) ([]*trigger.Trigger, error)
 	FindByID(context.Context, id.TriggerID) (*trigger.Trigger, error)
+	FindByIDs(context.Context, id.TriggerIDList) ([]*trigger.Trigger, error)
 	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination) ([]*trigger.Trigger, *usecasex.PageInfo, error)
-	Save(context.Context, *trigger.Trigger) error
 	Remove(context.Context, id.TriggerID) error
+	Save(context.Context, *trigger.Trigger) error
 }

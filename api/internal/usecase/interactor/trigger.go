@@ -155,7 +155,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 
 	j.SetGCPJobID(gcpJobID)
 
-	if err := i.job.StartMonitoring(ctx, j, operator); err != nil {
+	if err := i.job.StartMonitoring(ctx, j, &p.NotificationURL, operator); err != nil {
 		return nil, err
 	}
 
