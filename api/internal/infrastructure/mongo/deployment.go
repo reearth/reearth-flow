@@ -3,6 +3,7 @@ package mongo
 import (
 	"context"
 
+	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -247,13 +248,18 @@ func (r *Deployment) paginate(ctx context.Context, filter bson.M, pagination *in
 		hasNextPage := int64(pagination.Page.Page) < totalPages
 		hasPrevPage := pagination.Page.Page > 1
 
-		pageInfo := &usecasex.PageInfo{
+		currentPage := pagination.Page.Page
+		totalPagesInt := int(totalPages)
+
+		pageInfo := &gqlmodel.PageInfo{
 			HasNextPage:     hasNextPage,
 			HasPreviousPage: hasPrevPage,
-			TotalCount:      total,
+			TotalCount:      int(total),
+			CurrentPage:     &currentPage,
+			TotalPages:      &totalPagesInt,
 		}
 
-		return c.Result, pageInfo, nil
+		return c.Result, gqlmodel.FromPageInfo(pageInfo), nil
 	}
 
 	// Cursor-based pagination

@@ -81,6 +81,11 @@ extend type Query {
     includeArchived: Boolean
     pagination: Pagination
   ): ProjectConnection!
+  projectsPage(
+    workspaceId: ID!
+    includeArchived: Boolean
+    pagination: PageBasedPagination!
+  ): ProjectConnection!
 }
 
 extend type Mutation {
