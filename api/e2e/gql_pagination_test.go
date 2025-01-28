@@ -797,7 +797,7 @@ func TestTriggersPagination(t *testing.T) {
 		},
 	}, true, baseSeederUser)
 
-	// Create a test deployment first
+	// 2. 创建测试部署
 	deploymentQuery := `mutation($input: CreateDeploymentInput!) {
 		createDeployment(input: $input) {
 			deployment {
@@ -810,22 +810,7 @@ func TestTriggersPagination(t *testing.T) {
 		"input": {
 			"workspaceId": "%s",
 			"name": "Test Deployment",
-			"description": "Test deployment description",
-			"workflow": {
-				"name": "Test Workflow",
-				"description": "Test workflow description",
-				"steps": [
-					{
-						"name": "Test Step",
-						"description": "Test step description",
-						"type": "TASK",
-						"config": {
-							"image": "test-image",
-							"command": ["test-command"]
-						}
-					}
-				]
-			}
+			"description": "Test deployment description"
 		}
 	}`, wId1.String())
 
@@ -840,8 +825,8 @@ func TestTriggersPagination(t *testing.T) {
 	jsonData, err := json.Marshal(request)
 	assert.NoError(t, err)
 
+	// 3. 发送请求创建部署
 	resp := e.POST("/api/graphql").
-		WithHeader("authorization", "Bearer test").
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).
@@ -859,9 +844,8 @@ func TestTriggersPagination(t *testing.T) {
 
 	err = json.Unmarshal([]byte(resp.Body().Raw()), &deploymentResult)
 	assert.NoError(t, err)
-	deploymentID := deploymentResult.Data.CreateDeployment.Deployment.ID
+	deploymentId := deploymentResult.Data.CreateDeployment.Deployment.ID
 
-	// Create multiple triggers for testing
 	for i := 0; i < 5; i++ {
 		triggerQuery := `mutation($input: CreateTimeDrivenTriggerInput!) {
 			createTimeDrivenTrigger(input: $input) {
@@ -878,7 +862,7 @@ func TestTriggersPagination(t *testing.T) {
 				"description": "Test Trigger %d",
 				"schedule": "*/5 * * * *"
 			}
-		}`, wId1.String(), deploymentID, i)
+		}`, wId1.String(), deploymentId, i)
 
 		var triggerVariablesMap map[string]any
 		err := json.Unmarshal([]byte(triggerVariables), &triggerVariablesMap)
@@ -892,7 +876,6 @@ func TestTriggersPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp := e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -942,7 +925,6 @@ func TestTriggersPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp := e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -968,6 +950,10 @@ func TestTriggersPagination(t *testing.T) {
 
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
+
+		assert.Len(t, result.Data.Triggers.Edges, 2)
+		assert.True(t, result.Data.Triggers.PageInfo.HasNextPage)
+		assert.Equal(t, 5, result.Data.Triggers.PageInfo.TotalCount)
 	})
 
 	// Test sorting
@@ -1119,7 +1105,6 @@ func TestTriggersPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp := e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -1187,7 +1172,6 @@ func TestTriggersPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp = e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -1235,7 +1219,6 @@ func TestTriggersPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp = e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
