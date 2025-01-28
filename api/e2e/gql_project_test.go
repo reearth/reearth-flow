@@ -234,7 +234,9 @@ func TestListProjects(t *testing.T) {
 		projects(
 			workspaceId: "%s"
 			includeArchived: true
-			first: 10
+			pagination: {
+				first: 10
+			}
 		) {
 			edges {
 				node {
@@ -250,14 +252,15 @@ func TestListProjects(t *testing.T) {
 					updatedAt
 					workspaceId
 				}
+				cursor
 			}
 			pageInfo {
 				hasNextPage
 				hasPreviousPage
 				startCursor
 				endCursor
+				totalCount
 			}
-			totalCount
 		}
 	}`, wId1.String())
 
@@ -279,21 +282,40 @@ func TestListProjects(t *testing.T) {
 			Projects struct {
 				Edges []struct {
 					Node struct {
-						ID string `json:"id"`
+						ID                string `json:"id"`
+						Name              string `json:"name"`
+						Description       string `json:"description"`
+						IsArchived        bool   `json:"isArchived"`
+						IsBasicAuthActive bool   `json:"isBasicAuthActive"`
+						BasicAuthUsername string `json:"basicAuthUsername"`
+						BasicAuthPassword string `json:"basicAuthPassword"`
+						Version           int    `json:"version"`
+						WorkspaceID       string `json:"workspaceId"`
 					} `json:"node"`
+					Cursor string `json:"cursor"`
 				} `json:"edges"`
 				PageInfo struct {
-					HasNextPage     bool    `json:"hasNextPage"`
-					HasPreviousPage bool    `json:"hasPreviousPage"`
-					StartCursor     *string `json:"startCursor"`
-					EndCursor       *string `json:"endCursor"`
+					HasNextPage     bool   `json:"hasNextPage"`
+					HasPreviousPage bool   `json:"hasPreviousPage"`
+					StartCursor     string `json:"startCursor"`
+					EndCursor       string `json:"endCursor"`
+					TotalCount      int    `json:"totalCount"`
 				} `json:"pageInfo"`
-				TotalCount int `json:"totalCount"`
 			} `json:"projects"`
 		} `json:"data"`
 	}
 
 	err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 	assert.NoError(t, err)
-	assert.GreaterOrEqual(t, result.Data.Projects.TotalCount, 0)
+
+	// Verify the response
+	projects := result.Data.Projects
+	assert.NotNil(t, projects.Edges)
+	for _, edge := range projects.Edges {
+		assert.NotEmpty(t, edge.Node.ID)
+		assert.NotEmpty(t, edge.Node.Name)
+		assert.Equal(t, wId1.String(), edge.Node.WorkspaceID)
+		assert.NotEmpty(t, edge.Cursor)
+	}
+	assert.NotNil(t, projects.PageInfo)
 }
