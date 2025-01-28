@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/internal/adapter"
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -17,42 +19,60 @@ import (
 )
 
 type Trigger struct {
-	triggerRepo    repo.Trigger
-	deploymentRepo repo.Deployment
-	jobRepo        repo.Job
-	workspaceRepo  accountrepo.Workspace
-	transaction    usecasex.Transaction
-	batch          gateway.Batch
-	file           gateway.File
-	job            interfaces.Job
+	triggerRepo       repo.Trigger
+	deploymentRepo    repo.Deployment
+	jobRepo           repo.Job
+	workspaceRepo     accountrepo.Workspace
+	transaction       usecasex.Transaction
+	batch             gateway.Batch
+	file              gateway.File
+	job               interfaces.Job
+	permissionChecker gateway.PermissionChecker
 }
 
-func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job) interfaces.Trigger {
+func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker) interfaces.Trigger {
 	return &Trigger{
-		triggerRepo:    r.Trigger,
-		deploymentRepo: r.Deployment,
-		jobRepo:        r.Job,
-		workspaceRepo:  r.Workspace,
-		transaction:    r.Transaction,
-		batch:          gr.Batch,
-		file:           gr.File,
-		job:            jobUsecase,
+		triggerRepo:       r.Trigger,
+		deploymentRepo:    r.Deployment,
+		jobRepo:           r.Job,
+		workspaceRepo:     r.Workspace,
+		transaction:       r.Transaction,
+		batch:             gr.Batch,
+		file:              gr.File,
+		job:               jobUsecase,
+		permissionChecker: permissionChecker,
 	}
 }
 
 func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Trigger, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	return i.triggerRepo.FindByIDs(ctx, ids)
 }
 
 func (i *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *interfaces.PaginationParam) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, nil, err
+	}
+
 	return i.triggerRepo.FindByWorkspace(ctx, id, p)
 }
 
 func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigger, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	return i.triggerRepo.FindByID(ctx, id)
 }
 
 func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerParam) (result *trigger.Trigger, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -97,6 +117,10 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 }
 
 func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPITriggerParam) (_ *job.Job, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -163,6 +187,10 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 }
 
 func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerParam) (_ *trigger.Trigger, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -210,6 +238,10 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 }
 
 func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -227,5 +259,17 @@ func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {
 	}
 
 	tx.Commit()
+	return nil
+}
+
+func (i *Trigger) checkPermission(ctx context.Context, action string) error {
+	authInfo := adapter.GetAuthInfo(ctx)
+	hasPermission, err := i.permissionChecker.CheckPermission(ctx, authInfo, rbac.ResourceTrigger, action)
+	if err != nil {
+		return fmt.Errorf("failed to check permission: %w", err)
+	}
+	if !hasPermission {
+		return ErrPermissionDenied
+	}
 	return nil
 }

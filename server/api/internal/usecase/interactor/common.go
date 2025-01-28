@@ -40,7 +40,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Project:       NewProject(r, g, permissionChecker),
 		ProjectAccess: NewProjectAccess(r, g, config),
 		Workspace:     accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
-		Trigger:       NewTrigger(r, g, job),
+		Trigger:       NewTrigger(r, g, job, permissionChecker),
 		User:          accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
 	}
 }

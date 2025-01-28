@@ -13,6 +13,7 @@ const (
 	ResourceUser      = "user"
 	ResourceWorkspace = "workspace"
 	ResourceProject   = "project"
+	ResourceTrigger   = "trigger"
 )
 
 const (
@@ -76,6 +77,14 @@ func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDef
 				roleMaintainer,
 				roleOwner,
 			}),
+			generator.NewActionDefinition(ActionAny, []string{
+				roleReader,
+				roleEditor,
+				roleOwner,
+				roleMaintainer,
+			}),
+		}).
+		AddResource(ResourceTrigger, []generator.ActionDefinition{
 			generator.NewActionDefinition(ActionAny, []string{
 				roleReader,
 				roleEditor,
