@@ -27,7 +27,7 @@ describe("useYEdge", () => {
       }),
     );
 
-    const { handleEdgesUpdate } = result.current;
+    const { handleYEdgesUpdate } = result.current;
 
     const newEdges: Edge[] = [
       {
@@ -46,7 +46,7 @@ describe("useYEdge", () => {
       },
     ];
 
-    handleEdgesUpdate(newEdges);
+    handleYEdgesUpdate(newEdges);
 
     const yEdges = yWorkflow.get("edges") as YEdgesArray;
 

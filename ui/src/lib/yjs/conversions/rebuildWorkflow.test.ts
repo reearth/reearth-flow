@@ -68,4 +68,21 @@ describe("rebuildWorkflow", () => {
     expect(workflow.nodes).toEqual(nodes);
     expect(workflow.edges).toEqual(edges);
   });
+
+  test("should handle empty workflow", () => {
+    const yDoc = new Y.Doc();
+    const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+    const id = "empty-workflow";
+    const name = "Empty Workflow";
+
+    const yWorkflow = yWorkflowConstructor(id, name, [], []);
+    yWorkflows.push([yWorkflow]);
+
+    const workflow = rebuildWorkflow(yWorkflow);
+
+    expect(workflow.id).toEqual(id);
+    expect(workflow.name).toEqual(name);
+    expect(workflow.nodes).toEqual([]);
+    expect(workflow.edges).toEqual([]);
+  });
 });
