@@ -12,7 +12,7 @@ export default ({
   handleWorkflowUpdate,
   handleNodesAdd,
   handleNodesChange,
-  handleEdgesUpdate,
+  handleEdgesAdd,
 }: {
   nodes: Node[];
   edges: Edge[];
@@ -24,7 +24,7 @@ export default ({
   ) => void;
   handleNodesAdd: (newNodes: Node[]) => void;
   handleNodesChange: (changes: NodeChange[]) => void;
-  handleEdgesUpdate: (newEdges: Edge[]) => void;
+  handleEdgesAdd: (newEdges: Edge[]) => void;
 }) => {
   const { copy, paste } = useCopyPaste<
     { nodeIds: string[]; edges: Edge[] } | undefined
@@ -92,7 +92,7 @@ export default ({
       return rbn;
     });
 
-    let newEdges: Edge[] = edges;
+    let newEdges: Edge[] = [];
     for (const e of pe) {
       const sourceNode =
         reBatchedNodes[pn?.findIndex((n) => n.id === e.source)];
@@ -131,7 +131,7 @@ export default ({
 
     handleNodesAdd([...reBatchedNodes]);
 
-    handleEdgesUpdate(newEdges);
+    handleEdgesAdd(newEdges);
   }, [
     nodes,
     edges,
@@ -141,7 +141,7 @@ export default ({
     handleWorkflowUpdate,
     handleNodesAdd,
     handleNodesChange,
-    handleEdgesUpdate,
+    handleEdgesAdd,
   ]);
 
   return {

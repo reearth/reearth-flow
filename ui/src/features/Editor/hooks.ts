@@ -45,19 +45,6 @@ export default ({
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
 
-  const handleEdgeSelection = useCallback(
-    (idsToAdd: string[], idsToDelete: string[]) => {
-      setSelectedEdgeIds((seids) => {
-        const newIds: string[] = seids.filter(
-          (id) => !idsToDelete.includes(id),
-        );
-        newIds.push(...idsToAdd);
-        return newIds;
-      });
-    },
-    [],
-  );
-
   const {
     canUndo,
     canRedo,
@@ -69,7 +56,8 @@ export default ({
     handleYNodesAdd,
     handleYNodesChange,
     handleYNodeParamsUpdate,
-    handleYEdgesUpdate,
+    handleYEdgesAdd,
+    handleYEdgesChange,
     handleYWorkflowUndo,
     handleYWorkflowRedo,
     handleYWorkflowRename,
@@ -152,7 +140,7 @@ export default ({
     handleWorkflowUpdate: handleYWorkflowUpdate,
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
-    handleEdgesUpdate: handleYEdgesUpdate,
+    handleEdgesAdd: handleYEdgesAdd,
   });
 
   const [openPanel, setOpenPanel] = useState<
@@ -310,19 +298,19 @@ export default ({
     handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowChange: handleCurrentWorkflowIdChange,
-    handleNodeParamsUpdate: handleYNodeParamsUpdate,
-    handleNodeHover,
-    handleYNodesAdd,
-    handleYNodesChange,
-    handleNodeDoubleClick,
-    handleNodePickerOpen,
-    handleNodePickerClose,
-    handleEdgeSelection,
-    handleEdgesUpdate: handleYEdgesUpdate,
-    handleEdgeHover,
     handleWorkflowRedo: handleYWorkflowRedo,
     handleWorkflowUndo: handleYWorkflowUndo,
     handleWorkflowRename: handleYWorkflowRename,
+    handleNodesAdd: handleYNodesAdd,
+    handleNodesChange: handleYNodesChange,
+    handleNodeHover,
+    handleNodeParamsUpdate: handleYNodeParamsUpdate,
+    handleNodeDoubleClick,
+    handleNodePickerOpen,
+    handleNodePickerClose,
+    handleEdgesAdd: handleYEdgesAdd,
+    handleEdgesChange: handleYEdgesChange,
+    handleEdgeHover,
     canUndo,
     canRedo,
     isMainWorkflow,

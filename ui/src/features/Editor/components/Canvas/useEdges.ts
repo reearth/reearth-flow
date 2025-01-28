@@ -1,52 +1,50 @@
 import {
+  EdgeChange,
   OnConnect,
   OnEdgesChange,
   OnReconnect,
-  addEdge,
-  applyEdgeChanges,
-  reconnectEdge,
 } from "@xyflow/react";
 import { useCallback } from "react";
 
 import { Edge } from "@flow/types";
 
 type Props = {
-  edges: Edge[];
-  onEdgeSelection: (idsToAdd: string[], idsToDelete: string[]) => void;
-  onEdgeChange: (edges: Edge[]) => void;
+  onEdgesAdd: (newEdges: Edge[]) => void;
+  onEdgesChange: (changes: EdgeChange[]) => void;
 };
 
-export default ({ edges, onEdgeSelection, onEdgeChange }: Props) => {
-  const handleEdgesChange: OnEdgesChange = useCallback(
-    (changes) => {
-      const idsToAdd: string[] = [];
-      const idsToDelete: string[] = [];
-
-      changes.forEach((c) => {
-        if (c.type === "select") {
-          if (c.selected) {
-            idsToAdd.push(c.id);
-          } else if (c.selected === false) {
-            idsToDelete.push(c.id);
-          }
-        }
-      });
-      onEdgeSelection(idsToAdd, idsToDelete);
-
-      onEdgeChange(applyEdgeChanges(changes, edges));
-    },
-    [edges, onEdgeSelection, onEdgeChange],
+export default ({ onEdgesAdd, onEdgesChange }: Props) => {
+  const handleEdgesChange: OnEdgesChange<Edge> = useCallback(
+    (changes) => onEdgesChange(changes),
+    [onEdgesChange],
   );
 
   const handleConnect: OnConnect = useCallback(
-    (connection) => onEdgeChange(addEdge(connection, edges)),
-    [edges, onEdgeChange],
+    (connection) => {
+      // Reference: https://github.com/xyflow/xyflow/blob/043c8120ace53b562c0b3ec8194ccdef64ccad0e/packages/system/src/utils/edges/general.ts#L79
+      const edgeId = `xy-edge__${connection.source}${connection.sourceHandle || ""}-${connection.target}${connection.targetHandle || ""}`;
+      onEdgesAdd([
+        {
+          id: edgeId,
+          ...connection,
+        },
+      ]);
+    },
+    [onEdgesAdd],
   );
 
   const handleReconnect: OnReconnect = useCallback(
-    (oldEdge, newConnection) =>
-      onEdgeChange(reconnectEdge(oldEdge, newConnection, edges)),
-    [edges, onEdgeChange],
+    (oldEdge, newConnection) => {
+      const updatedEdge = {
+        ...oldEdge,
+        source: newConnection.source,
+        target: newConnection.target,
+        sourceHandle: newConnection.sourceHandle,
+        targetHandle: newConnection.targetHandle,
+      };
+      onEdgesChange([{ id: oldEdge.id, type: "replace", item: updatedEdge }]);
+    },
+    [onEdgesChange],
   );
 
   return {

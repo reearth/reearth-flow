@@ -175,6 +175,7 @@ export default ({
 
         const newYNodes = newNodes.map((node) => yNodeConstructor(node));
 
+        // TODO: NEED TO UPDATE HERE
         yNodes.delete(0, nodes.length);
         yNodes.insert(0, newYNodes);
       });
@@ -307,6 +308,7 @@ function updateParentYWorkflowNode(
 
   const newParentYNode = newParentNodes.map((node) => yNodeConstructor(node));
 
+  // TODO: MIGHT NEED TO UPDATE HERE
   yParentNodes.delete(0, parentNodes.length);
   yParentNodes.insert(0, newParentYNode);
 }
@@ -344,6 +346,7 @@ function updateParentYWorkflowEdges(
     return e;
   });
 
+  // TODO: MIGHT NEED TO UPDATE HERE
   yParentEdges.delete(0, parentEdges.length);
   yParentEdges.insert(0, updatedEdges);
 }

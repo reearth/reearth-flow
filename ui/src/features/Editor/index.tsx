@@ -40,15 +40,15 @@ export default function Editor({
     handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowChange,
-    handleYNodesAdd,
-    handleYNodesChange,
+    handleNodesAdd,
+    handleNodesChange,
     handleNodeParamsUpdate,
     handleNodeHover,
     handleNodeDoubleClick,
     handleNodePickerOpen,
     handleNodePickerClose,
-    handleEdgeSelection,
-    handleEdgesUpdate,
+    handleEdgesAdd,
+    handleEdgesChange,
     handleEdgeHover,
     handleWorkflowRedo,
     handleWorkflowUndo,
@@ -63,7 +63,7 @@ export default function Editor({
           nodes={nodes}
           isOpen={openPanel === "left" && !locallyLockedNode}
           onOpen={handlePanelOpen}
-          onNodesAdd={handleYNodesAdd}
+          onNodesAdd={handleNodesAdd}
           isMainWorkflow={isMainWorkflow}
           hasReader={hasReader}
         />
@@ -77,7 +77,7 @@ export default function Editor({
             onWorkflowDeployment={handleWorkflowDeployment}
             onWorkflowUndo={handleWorkflowUndo}
             onWorkflowRedo={handleWorkflowRedo}
-            onNodesAdd={handleYNodesAdd}
+            onNodesAdd={handleNodesAdd}
             onNodePickerClose={handleNodePickerClose}
             isMainWorkflow={isMainWorkflow}
             hasReader={hasReader}>
@@ -86,13 +86,13 @@ export default function Editor({
               edges={edges}
               canvasLock={!!locallyLockedNode}
               onWorkflowAdd={handleWorkflowAdd}
-              onNodesAdd={handleYNodesAdd}
-              onNodesChange={handleYNodesChange}
+              onNodesAdd={handleNodesAdd}
+              onNodesChange={handleNodesChange}
               onNodeHover={handleNodeHover}
-              onEdgeSelection={handleEdgeSelection}
               onNodeDoubleClick={handleNodeDoubleClick}
               onNodePickerOpen={handleNodePickerOpen}
-              onEdgesUpdate={handleEdgesUpdate}
+              onEdgesAdd={handleEdgesAdd}
+              onEdgesChange={handleEdgesChange}
               onEdgeHover={handleEdgeHover}
             />
           </OverlayUI>

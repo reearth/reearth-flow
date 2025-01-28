@@ -13,6 +13,7 @@ export default ({
   yWorkflows,
   undoManager,
   setSelectedNodeIds,
+  setSelectedEdgeIds,
   undoTrackerActionWrapper,
 }: {
   currentWorkflowId: string;
@@ -48,8 +49,9 @@ export default ({
       handleWorkflowsRemove: handleYWorkflowsRemove,
     });
 
-  const { handleYEdgesUpdate } = useYEdge({
+  const { handleYEdgesAdd, handleYEdgesChange } = useYEdge({
     currentYWorkflow,
+    setSelectedEdgeIds,
     undoTrackerActionWrapper,
   });
 
@@ -67,7 +69,8 @@ export default ({
     handleYNodesAdd,
     handleYNodesChange,
     handleYNodeParamsUpdate,
-    handleYEdgesUpdate,
+    handleYEdgesAdd,
+    handleYEdgesChange,
     handleYWorkflowUndo,
     handleYWorkflowRedo,
     handleYWorkflowRename,
