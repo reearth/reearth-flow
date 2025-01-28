@@ -50,7 +50,6 @@ func TestProjectsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp := e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -101,7 +100,6 @@ func TestProjectsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp := e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -160,7 +158,6 @@ func TestProjectsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp := e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -220,7 +217,6 @@ func TestProjectsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp := e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -286,7 +282,6 @@ func TestProjectsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp := e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -354,7 +349,6 @@ func TestProjectsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp = e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -458,7 +452,6 @@ func TestJobsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp := e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -521,7 +514,6 @@ func TestJobsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp := e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -579,7 +571,6 @@ func TestJobsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp := e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -638,7 +629,6 @@ func TestJobsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp := e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -708,7 +698,6 @@ func TestJobsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp := e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -774,7 +763,6 @@ func TestJobsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp = e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -983,7 +971,6 @@ func TestTriggersPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp := e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
@@ -1043,7 +1030,6 @@ func TestTriggersPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		resp := e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
