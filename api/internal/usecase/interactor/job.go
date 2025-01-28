@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -79,7 +78,7 @@ func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error)
 	return j.Status(), nil
 }
 
-func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *string, operator *usecase.Operator) error {
+func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *string) error {
 	log.Debugfc(ctx, "job: starting monitoring for jobID=%s workspace=%s", j.ID(), j.Workspace())
 
 	monitorCtx, cancel := context.WithCancel(context.Background())

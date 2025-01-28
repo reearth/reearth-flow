@@ -44,14 +44,13 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 	}
 
 	triggerUsecase := adapter.Usecases(c.Request().Context()).Trigger
-	operator := adapter.Operator(c.Request().Context())
 
 	job, err := triggerUsecase.ExecuteAPITrigger(c.Request().Context(), interfaces.ExecuteAPITriggerParam{
 		AuthenticationToken: token,
 		TriggerID:           triggerID,
 		NotificationURL:     req.NotificationURL,
 		Variables:           req.With,
-	}, operator)
+	})
 
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
