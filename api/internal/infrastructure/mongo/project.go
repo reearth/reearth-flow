@@ -4,8 +4,10 @@ import (
 	"context"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
@@ -151,6 +153,35 @@ func (r *Project) findOne(ctx context.Context, filter any, filterByWorkspaces bo
 
 func (r *Project) paginate(ctx context.Context, filter bson.M, pagination *usecasex.Pagination) ([]*project.Project, *usecasex.PageInfo, error) {
 	c := mongodoc.NewProjectConsumer(r.f.Readable)
+
+	if pagination != nil && pagination.Offset != nil {
+		// Page-based pagination
+		skip := pagination.Offset.Offset
+		limit := pagination.Offset.Limit
+
+		// Get total count for page info
+		total, err := r.client.Count(ctx, filter)
+		if err != nil {
+			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		// Execute find with skip and limit
+		opts := options.Find().
+			SetSkip(skip).
+			SetLimit(limit)
+
+		if err := r.client.Find(ctx, filter, c, opts); err != nil {
+			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		// Create page-based info
+		currentPage := int(skip/limit) + 1
+		pageInfo := interfaces.NewPageBasedInfo(total, currentPage, int(limit))
+
+		return c.Result, pageInfo.ToPageInfo(), nil
+	}
+
+	// Cursor-based pagination
 	pageInfo, err := r.client.Paginate(ctx, filter, nil, pagination, c)
 	if err != nil {
 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
