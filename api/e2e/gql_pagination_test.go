@@ -255,6 +255,14 @@ func TestJobsPagination(t *testing.T) {
 
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
+
+		// Verify pagination results
+		assert.Len(t, result.Data.Jobs.Edges, 2, "Should return exactly 2 jobs")
+		assert.NotZero(t, result.Data.Jobs.PageInfo.TotalCount, "Total count should be greater than zero")
+		if result.Data.Jobs.PageInfo.TotalCount > 2 {
+			assert.True(t, result.Data.Jobs.PageInfo.HasNextPage, "Should have next page")
+			assert.NotEmpty(t, result.Data.Jobs.PageInfo.EndCursor, "End cursor should not be empty")
+		}
 	})
 
 	// Test sorting
@@ -305,12 +313,69 @@ func TestJobsPagination(t *testing.T) {
 
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
-
+		// Verify pagination results
+		assert.Len(t, result.Data.Jobs.Edges, 2, "Should return exactly 2 jobs")
 		// Verify sorting
 		for i := 1; i < len(result.Data.Jobs.Edges); i++ {
 			prev := result.Data.Jobs.Edges[i-1].Node.StartedAt
 			curr := result.Data.Jobs.Edges[i].Node.StartedAt
 			assert.True(t, prev.After(curr), "Jobs should be sorted by startedAt in descending order")
+		}
+	})
+
+	// Test sorting in ascending order
+	t.Run("test_sorting_ascending", func(t *testing.T) {
+		query := fmt.Sprintf(`{
+			jobs(
+				workspaceId: "%s"
+				pagination: {
+					first: 5
+					orderBy: "startedAt"
+					orderDir: ASC
+				}
+			) {
+				edges {
+					node {
+						id
+						startedAt
+					}
+				}
+			}
+		}`, wId1.String())
+
+		request := GraphQLRequest{
+			Query: query,
+		}
+		jsonData, err := json.Marshal(request)
+		assert.NoError(t, err)
+
+		resp := e.POST("/api/graphql").
+			WithHeader("authorization", "Bearer test").
+			WithHeader("Content-Type", "application/json").
+			WithHeader("X-Reearth-Debug-User", uId1.String()).
+			WithBytes(jsonData).
+			Expect().Status(http.StatusOK)
+
+		var result struct {
+			Data struct {
+				Jobs struct {
+					Edges []struct {
+						Node struct {
+							ID        string    `json:"id"`
+							StartedAt time.Time `json:"startedAt"`
+						} `json:"node"`
+					} `json:"edges"`
+				} `json:"jobs"`
+			} `json:"data"`
+		}
+
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+		assert.NoError(t, err)
+		// Verify sorting
+		for i := 1; i < len(result.Data.Jobs.Edges); i++ {
+			prev := result.Data.Jobs.Edges[i-1].Node.StartedAt
+			curr := result.Data.Jobs.Edges[i].Node.StartedAt
+			assert.True(t, prev.Before(curr), "Jobs should be sorted by startedAt in ascending order")
 		}
 	})
 }
