@@ -71,9 +71,17 @@ func (i *Job) Fetch(ctx context.Context, ids []id.JobID, operator *usecase.Opera
 	return i.filterReadableJobs(jobs, operator), nil
 }
 
-func (i *Job) FindByWorkspace(ctx context.Context, wsID accountdomain.WorkspaceID, pagination *usecasex.Pagination, operator *usecase.Operator) ([]*job.Job, *usecasex.PageInfo, error) {
+func (i *Job) FindByWorkspace(ctx context.Context, wsID accountdomain.WorkspaceID, p *usecasex.Pagination, operator *usecase.Operator) ([]*job.Job, *usecasex.PageInfo, error) {
 	if err := i.CanReadWorkspace(wsID, operator); err != nil {
 		return nil, nil, err
+	}
+
+	pagination := &interfaces.PaginationParam{}
+	if p != nil && p.Cursor != nil && p.Cursor.First != nil {
+		pagination.Page = &interfaces.PageBasedPaginationParam{
+			Page:     1,
+			PageSize: int(*p.Cursor.First),
+		}
 	}
 	return i.jobRepo.FindByWorkspace(ctx, wsID, pagination)
 }

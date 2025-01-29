@@ -33,7 +33,7 @@ func (r *Job) Filtered(f repo.WorkspaceFilter) repo.Job {
 	}
 }
 
-func (r *Job) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *usecasex.Pagination) ([]*job.Job, *usecasex.PageInfo, error) {
+func (r *Job) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*job.Job, *usecasex.PageInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -53,15 +53,18 @@ func (r *Job) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID,
 		return nil, &usecasex.PageInfo{TotalCount: 0}, nil
 	}
 
-	if p != nil && p.Offset != nil {
+	if pagination == nil {
+		return result, &usecasex.PageInfo{TotalCount: total}, nil
+	}
+
+	if pagination.Page != nil {
 		// Page-based pagination
-		skip := int(p.Offset.Offset)
-		limit := int(p.Offset.Limit)
+		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
 		if skip >= len(result) {
-			return nil, interfaces.NewPageBasedInfo(total, skip/limit+1, limit).ToPageInfo(), nil
+			return nil, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize).ToPageInfo(), nil
 		}
 
-		end := skip + limit
+		end := skip + pagination.Page.PageSize
 		if end > len(result) {
 			end = len(result)
 		}
@@ -70,60 +73,12 @@ func (r *Job) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID,
 		pageResult := result[skip:end]
 
 		// Create page-based info
-		pageInfo := interfaces.NewPageBasedInfo(total, skip/limit+1, limit)
+		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
 
 		return pageResult, pageInfo.ToPageInfo(), nil
 	}
 
-	if p != nil && p.Cursor != nil {
-		// Cursor-based pagination
-		var start int64
-		if p.Cursor.After != nil {
-			afterID := string(*p.Cursor.After)
-			for i, d := range result {
-				if d.ID().String() == afterID {
-					start = int64(i + 1)
-					break
-				}
-			}
-		}
-
-		end := total
-		if p.Cursor.First != nil {
-			end = start + *p.Cursor.First
-			if end > total {
-				end = total
-			}
-		}
-
-		if start >= total {
-			return nil, &usecasex.PageInfo{
-				TotalCount:      total,
-				HasNextPage:     false,
-				HasPreviousPage: start > 0,
-			}, nil
-		}
-
-		var startCursor, endCursor *usecasex.Cursor
-		if start < end {
-			sc := usecasex.Cursor(result[start].ID().String())
-			ec := usecasex.Cursor(result[end-1].ID().String())
-			startCursor = &sc
-			endCursor = &ec
-		}
-
-		return result[start:end], &usecasex.PageInfo{
-			TotalCount:      total,
-			HasNextPage:     end < total,
-			HasPreviousPage: start > 0,
-			StartCursor:     startCursor,
-			EndCursor:       endCursor,
-		}, nil
-	}
-
-	return result, &usecasex.PageInfo{
-		TotalCount: total,
-	}, nil
+	return result, &usecasex.PageInfo{TotalCount: total}, nil
 }
 
 func (r *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
