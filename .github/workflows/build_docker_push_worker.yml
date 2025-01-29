@@ -1,4 +1,4 @@
-name: Docker Push Worker
+name: Build Docker Push Worker
 
 on:
   workflow_call:
@@ -20,15 +20,63 @@ on:
         type: string
 
 jobs:
-  deploy-worker:
+  build-worker:
+    name: Build Worker
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Build Worker
+        run: |
+          cd engine
+          cargo build --release -p reearth-flow-worker
+
+      - name: Create distribution directory
+        run: |
+          mkdir -p engine/dist
+          mv engine/target/release/reearth-flow-worker engine/dist/reearth-flow-worker
+
+      - name: Rename Artifacts
+        if: ${{ inputs.name != 'blank' }}
+        run: |
+          cd engine/dist
+          mv reearth-flow-worker reearth-flow-worker_${{ inputs.name }}
+
+      - name: List Artifacts
+        run: ls -l engine/dist
+
+      - name: Upload Worker Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: worker-artifacts
+          path: engine/dist/*
+
+  build-docker-image:
     name: Build and Push Docker Image
+    needs: build-worker
     runs-on: ubuntu-latest
     if: ${{ inputs.name != 'blank' || inputs.new_tag != 'blank' }}
     env:
       IMAGE_NAME: reearth/reearth-flow-worker
+      IMAGE_GCP: us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-worker
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Download Worker Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: worker-artifacts
+          path: engine/dist
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -36,7 +84,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Docker Hub
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Log in to DockerHub
         uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -48,12 +101,12 @@ jobs:
           TAG="${{ inputs.new_tag_short != 'blank' && inputs.new_tag_short || '' }}"
           NAME="${{ inputs.name }}"
           SHA="${{ inputs.sha_short }}"
-
+          
           if [[ -n "$TAG" ]]; then
-            PLATFORMS="linux/amd64,linux/arm64"
+            PLATFORMS="linux/amd64"
             VERSION="$TAG"
             TAGS="$IMAGE_NAME:$TAG"
-
+            
             if [[ ! "$TAG" =~ '-' ]]; then
               TAGS+=",${IMAGE_NAME}:${TAG%.*}"
               TAGS+=",${IMAGE_NAME}:${TAG%%.*}"
@@ -64,12 +117,12 @@ jobs:
             VERSION="$SHA"
             TAGS="$IMAGE_NAME:$NAME"
           fi
-
+          
           echo "platforms=$PLATFORMS" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
-      - name: Build and push
+      - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
         with:
           context: engine
@@ -80,5 +133,13 @@ jobs:
           tags: ${{ steps.options.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          provenance: true
-          sbom: true
+
+      - name: Configure Docker for GCP
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Push Docker Image to GCP Artifact Registry
+        if: ${{ inputs.name == 'nightly' }}
+        run: |
+          docker pull $IMAGE_NAME:${{ inputs.name }}
+          docker tag $IMAGE_NAME:${{ inputs.name }} $IMAGE_GCP:${{ inputs.name }}
+          docker push $IMAGE_GCP:${{ inputs.name }}
