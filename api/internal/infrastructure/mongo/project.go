@@ -15,7 +15,6 @@ import (
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
-	"github.com/reearth/reearthx/usecasex"
 )
 
 var (
@@ -212,47 +211,47 @@ func (r *Project) findOne(ctx context.Context, filter any, filterByWorkspaces bo
 	return c.Result[0], nil
 }
 
-func (r *Project) paginate(ctx context.Context, filter bson.M, pagination *usecasex.Pagination) ([]*project.Project, *usecasex.PageInfo, error) {
-	c := mongodoc.NewProjectConsumer(r.f.Readable)
+// func (r *Project) paginate(ctx context.Context, filter bson.M, pagination *usecasex.Pagination) ([]*project.Project, *usecasex.PageInfo, error) {
+// 	c := mongodoc.NewProjectConsumer(r.f.Readable)
 
-	if pagination != nil && pagination.Offset != nil {
-		// Page-based pagination
-		skip := pagination.Offset.Offset
-		limit := pagination.Offset.Limit
+// 	if pagination != nil && pagination.Offset != nil {
+// 		// Page-based pagination
+// 		skip := pagination.Offset.Offset
+// 		limit := pagination.Offset.Limit
 
-		// Get total count for page info
-		total, err := r.client.Count(ctx, filter)
-		if err != nil {
-			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-		}
+// 		// Get total count for page info
+// 		total, err := r.client.Count(ctx, filter)
+// 		if err != nil {
+// 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+// 		}
 
-		// Default sort by updatedAt desc
-		sort := bson.D{{Key: "updatedat", Value: -1}}
+// 		// Default sort by updatedAt desc
+// 		sort := bson.D{{Key: "updatedat", Value: -1}}
 
-		// Execute find with skip and limit
-		opts := options.Find().
-			SetSort(sort).
-			SetSkip(skip).
-			SetLimit(limit)
+// 		// Execute find with skip and limit
+// 		opts := options.Find().
+// 			SetSort(sort).
+// 			SetSkip(skip).
+// 			SetLimit(limit)
 
-		if err := r.client.Find(ctx, filter, c, opts); err != nil {
-			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-		}
+// 		if err := r.client.Find(ctx, filter, c, opts); err != nil {
+// 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+// 		}
 
-		// Create page-based info
-		currentPage := int(skip/limit) + 1
-		pageInfo := interfaces.NewPageBasedInfo(total, currentPage, int(limit))
+// 		// Create page-based info
+// 		currentPage := int(skip/limit) + 1
+// 		pageInfo := interfaces.NewPageBasedInfo(total, currentPage, int(limit))
 
-		return c.Result, pageInfo.ToPageInfo(), nil
-	}
+// 		return c.Result, pageInfo.ToPageInfo(), nil
+// 	}
 
-	// Cursor-based pagination
-	pageInfo, err := r.client.Paginate(ctx, filter, nil, pagination, c)
-	if err != nil {
-		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-	}
-	return c.Result, pageInfo, nil
-}
+// 	// Cursor-based pagination
+// 	pageInfo, err := r.client.Paginate(ctx, filter, nil, pagination, c)
+// 	if err != nil {
+// 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+// 	}
+// 	return c.Result, pageInfo, nil
+// }
 
 func filterProjects(ids []id.ProjectID, rows []*project.Project) []*project.Project {
 	res := make([]*project.Project, 0, len(ids))
