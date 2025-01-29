@@ -16,7 +16,7 @@ type Project interface {
 	CountPublicByWorkspace(context.Context, accountdomain.WorkspaceID) (int, error)
 	FindByID(context.Context, id.ProjectID) (*project.Project, error)
 	FindByIDs(context.Context, id.ProjectIDList) ([]*project.Project, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination) ([]*project.Project, *usecasex.PageInfo, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *interfaces.PaginationParam) ([]*project.Project, *usecasex.PageInfo, error)
 	Remove(context.Context, id.ProjectID) error
 	Save(context.Context, *project.Project) error
 }
