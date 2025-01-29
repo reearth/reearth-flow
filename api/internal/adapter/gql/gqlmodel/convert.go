@@ -7,7 +7,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearthx/usecasex"
-	"github.com/samber/lo"
 )
 
 func FromFile(f *graphql.Upload) *file.File {
@@ -82,12 +81,12 @@ func OrderDirectionToString(dir *OrderDirection) *string {
 	return &s
 }
 
-func intToInt64(i *int) *int64 {
-	if i == nil {
-		return nil
-	}
-	return lo.ToPtr(int64(*i))
-}
+// func intToInt64(i *int) *int64 {
+// 	if i == nil {
+// 		return nil
+// 	}
+// 	return lo.ToPtr(int64(*i))
+// }
 
 func FromPageInfo(p *PageInfo) *usecasex.PageInfo {
 	if p == nil {
