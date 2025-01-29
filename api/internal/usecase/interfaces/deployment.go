@@ -30,19 +30,6 @@ type ExecuteDeploymentParam struct {
 	DeploymentID id.DeploymentID
 }
 
-type PageBasedPaginationParam struct {
-	Page     int
-	PageSize int
-	OrderBy  *string
-	OrderDir *string
-}
-
-type PaginationParam struct {
-	// Only one of these should be set
-	Cursor *usecasex.Pagination
-	Page   *PageBasedPaginationParam
-}
-
 var (
 	ErrDeploymentNotFound error = errors.New("deployment not found")
 	ErrJobCreationFailed  error = errors.New("failed to create job for deployment")

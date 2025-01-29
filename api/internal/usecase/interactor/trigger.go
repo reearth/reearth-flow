@@ -47,7 +47,13 @@ func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID, operator *useca
 }
 
 func (i *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *usecasex.Pagination, operator *usecase.Operator) ([]*trigger.Trigger, *usecasex.PageInfo, error) {
-	return i.triggerRepo.FindByWorkspace(ctx, id, p)
+	pagination := &interfaces.PaginationParam{
+		Page: &interfaces.PageBasedPaginationParam{
+			Page:     1,
+			PageSize: int(*p.Cursor.First),
+		},
+	}
+	return i.triggerRepo.FindByWorkspace(ctx, id, pagination)
 }
 
 func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID, operator *usecase.Operator) (*trigger.Trigger, error) {
