@@ -8,7 +8,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/usecasex"
-	"github.com/samber/lo"
 )
 
 type Deployment interface {
@@ -25,13 +24,13 @@ type Deployment interface {
 }
 
 func IterateDeploymentsByWorkspace(repo Deployment, ctx context.Context, tid accountdomain.WorkspaceID, batch int64, callback func([]*deployment.Deployment) error) error {
-	cursorPagination := usecasex.CursorPagination{
-		First: lo.ToPtr(batch),
-	}.Wrap()
-
+	page := 1
 	for {
 		pagination := &interfaces.PaginationParam{
-			Cursor: cursorPagination,
+			Page: &interfaces.PageBasedPaginationParam{
+				Page:     page,
+				PageSize: int(batch),
+			},
 		}
 
 		deployments, info, err := repo.FindByWorkspace(ctx, tid, pagination)
@@ -46,16 +45,11 @@ func IterateDeploymentsByWorkspace(repo Deployment, ctx context.Context, tid acc
 			return err
 		}
 
-		if !info.HasNextPage {
+		if info.TotalCount <= int64(page*int(batch)) {
 			break
 		}
 
-		c := usecasex.Cursor(deployments[len(deployments)-1].ID().String())
-		cursorPagination = usecasex.CursorPagination{
-			First: lo.ToPtr(batch),
-			After: &c,
-		}.Wrap()
+		page++
 	}
-
 	return nil
 }

@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"sort"
 	"sync"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -32,7 +33,7 @@ func (r *Trigger) Filtered(f repo.WorkspaceFilter) repo.Trigger {
 	}
 }
 
-func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *usecasex.Pagination) ([]*trigger.Trigger, *usecasex.PageInfo, error) {
+func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*trigger.Trigger, *usecasex.PageInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -40,7 +41,8 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		return nil, nil, nil
 	}
 
-	result := []*trigger.Trigger{}
+	// Pre-allocate slice with estimated capacity
+	result := make([]*trigger.Trigger, 0, len(r.data))
 	for _, t := range r.data {
 		if t.Workspace() == id {
 			result = append(result, t)
@@ -52,74 +54,57 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		return nil, &usecasex.PageInfo{TotalCount: 0}, nil
 	}
 
-	if p != nil {
-		if p.Cursor != nil {
-			// Cursor-based pagination
-			var start int64
-			if p.Cursor.After != nil {
-				afterID := string(*p.Cursor.After)
-				for i, d := range result {
-					if d.ID().String() == afterID {
-						start = int64(i + 1)
-						break
-					}
-				}
-			}
-
-			end := total
-			if p.Cursor.First != nil {
-				end = start + *p.Cursor.First
-				if end > total {
-					end = total
-				}
-			}
-
-			if start >= total {
-				return nil, &usecasex.PageInfo{
-					TotalCount:      total,
-					HasNextPage:     false,
-					HasPreviousPage: start > 0,
-				}, nil
-			}
-
-			var startCursor, endCursor *usecasex.Cursor
-			if start < end {
-				sc := usecasex.Cursor(result[start].ID().String())
-				ec := usecasex.Cursor(result[end-1].ID().String())
-				startCursor = &sc
-				endCursor = &ec
-			}
-
-			return result[start:end], &usecasex.PageInfo{
-				TotalCount:      total,
-				HasNextPage:     end < total,
-				HasPreviousPage: start > 0,
-				StartCursor:     startCursor,
-				EndCursor:       endCursor,
-			}, nil
-		} else if p.Offset != nil {
-			// Page-based pagination
-			skip := int(p.Offset.Offset)
-			limit := int(p.Offset.Limit)
-
-			if skip >= int(total) {
-				pageInfo := interfaces.NewPageBasedInfo(total, skip/limit+1, limit)
-				return nil, pageInfo.ToPageInfo(), nil
-			}
-
-			end := skip + limit
-			if end > int(total) {
-				end = int(total)
-			}
-
-			pageInfo := interfaces.NewPageBasedInfo(total, skip/limit+1, limit)
-			return result[skip:end], pageInfo.ToPageInfo(), nil
-		}
+	// Apply sorting
+	direction := 1 // default ascending
+	if pagination != nil && pagination.Page != nil && pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
+		direction = -1
 	}
 
-	return result, &usecasex.PageInfo{
-		TotalCount: total,
-	}, nil
+	sort.Slice(result, func(i, j int) bool {
+		if pagination != nil && pagination.Page != nil && pagination.Page.OrderBy != nil {
+			// Compare by specified field
+			switch *pagination.Page.OrderBy {
+			case "createdAt":
+				ti, tj := result[i].CreatedAt(), result[j].CreatedAt()
+				if !ti.Equal(tj) {
+					if direction == 1 {
+						return ti.Before(tj)
+					}
+					return ti.After(tj)
+				}
+			}
+		}
+		// Default sort or tie-breaker: by ID
+		return result[i].ID().String() < result[j].ID().String()
+	})
+
+	// Handle pagination
+	if pagination == nil {
+		return result, &usecasex.PageInfo{TotalCount: total}, nil
+	}
+
+	if pagination.Page != nil {
+		// Page-based pagination
+		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
+		if skip >= len(result) {
+			return nil, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize).ToPageInfo(), nil
+		}
+
+		end := skip + pagination.Page.PageSize
+		if end > len(result) {
+			end = len(result)
+		}
+
+		// Get the current page
+		pageResult := result[skip:end]
+
+		// Create page-based info
+		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
+
+		return pageResult, pageInfo.ToPageInfo(), nil
+	}
+
+	return result, &usecasex.PageInfo{TotalCount: total}, nil
 }
 
 func (r *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigger, error) {

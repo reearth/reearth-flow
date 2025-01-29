@@ -3,31 +3,32 @@ package repo
 import (
 	"context"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/usecasex"
-	"github.com/samber/lo"
 )
 
 type Job interface {
 	Filtered(WorkspaceFilter) Job
 	FindByIDs(context.Context, id.JobIDList) ([]*job.Job, error)
 	FindByID(context.Context, id.JobID) (*job.Job, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination) ([]*job.Job, *usecasex.PageInfo, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *interfaces.PaginationParam) ([]*job.Job, *usecasex.PageInfo, error)
 	Save(context.Context, *job.Job) error
 	Remove(context.Context, id.JobID) error
 }
 
 func IterateJobsByWorkspace(repo Job, ctx context.Context, tid accountdomain.WorkspaceID, batch int64, callback func([]*job.Job) error) error {
-	pagination := usecasex.CursorPagination{
-		Before: nil,
-		After:  nil,
-		First:  lo.ToPtr(batch),
-		Last:   nil,
-	}.Wrap()
-
+	page := 1
 	for {
+		pagination := &interfaces.PaginationParam{
+			Page: &interfaces.PageBasedPaginationParam{
+				Page:     page,
+				PageSize: int(batch),
+			},
+		}
+
 		jobs, info, err := repo.FindByWorkspace(ctx, tid, pagination)
 		if err != nil {
 			return err
@@ -40,13 +41,11 @@ func IterateJobsByWorkspace(repo Job, ctx context.Context, tid accountdomain.Wor
 			return err
 		}
 
-		if !info.HasNextPage {
+		if info.TotalCount <= int64(page*int(batch)) {
 			break
 		}
 
-		c := usecasex.Cursor(jobs[len(jobs)-1].ID().String())
-		pagination.Cursor.After = &c
+		page++
 	}
-
 	return nil
 }

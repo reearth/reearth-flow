@@ -112,53 +112,6 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 		return pageResult, pageInfo.ToPageInfo(), nil
 	}
 
-	if pagination.Cursor != nil {
-		// Cursor-based pagination
-		var start int64
-		if pagination.Cursor.Cursor.After != nil {
-			// Find the position of the "after" cursor
-			afterID := string(*pagination.Cursor.Cursor.After)
-			for i, d := range result {
-				if d.ID().String() == afterID {
-					start = int64(i + 1)
-					break
-				}
-			}
-		}
-
-		end := total
-		if pagination.Cursor.Cursor.First != nil {
-			end = start + *pagination.Cursor.Cursor.First
-			if end > total {
-				end = total
-			}
-		}
-
-		if start >= total {
-			return nil, &usecasex.PageInfo{
-				TotalCount:      total,
-				HasNextPage:     false,
-				HasPreviousPage: start > 0,
-			}, nil
-		}
-
-		var startCursor, endCursor *usecasex.Cursor
-		if start < end {
-			sc := usecasex.Cursor(result[start].ID().String())
-			ec := usecasex.Cursor(result[end-1].ID().String())
-			startCursor = &sc
-			endCursor = &ec
-		}
-
-		return result[start:end], &usecasex.PageInfo{
-			TotalCount:      total,
-			HasNextPage:     end < total,
-			HasPreviousPage: start > 0,
-			StartCursor:     startCursor,
-			EndCursor:       endCursor,
-		}, nil
-	}
-
 	return result, &usecasex.PageInfo{TotalCount: total}, nil
 }
 

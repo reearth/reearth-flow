@@ -248,15 +248,6 @@ func (r *Deployment) paginate(ctx context.Context, filter bson.M, pagination *in
 		return c.Result, pageInfo.ToPageInfo(), nil
 	}
 
-	// Cursor-based pagination
-	if pagination != nil && pagination.Cursor != nil {
-		pageInfo, err := r.client.Paginate(ctx, filter, nil, pagination.Cursor, c)
-		if err != nil {
-			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-		}
-		return c.Result, pageInfo, nil
-	}
-
 	// No pagination, return all results
 	if err := r.client.Find(ctx, filter, c); err != nil {
 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)

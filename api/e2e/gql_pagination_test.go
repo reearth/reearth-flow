@@ -80,25 +80,24 @@ func TestProjectsPagination(t *testing.T) {
 		assert.NotEmpty(t, id, fmt.Sprintf("Project %d was not created successfully", i))
 	}
 
-	// Test pagination
-	t.Run("test_pagination", func(t *testing.T) {
+	// Test page-based pagination
+	t.Run("test_page_based_pagination", func(t *testing.T) {
 		query := fmt.Sprintf(`{
-			projects(
+			projectsPage(
 				workspaceId: "%s"
 				pagination: {
-					first: 2
+					page: 1
+					pageSize: 2
 				}
 			) {
-				edges {
-					node {
-						id
-						name
-					}
+				nodes {
+					id
+					name
 				}
 				pageInfo {
-					hasNextPage
-					endCursor
 					totalCount
+					totalPages
+					currentPage
 				}
 			}
 		}`, wId1.String())
@@ -117,46 +116,44 @@ func TestProjectsPagination(t *testing.T) {
 
 		var result struct {
 			Data struct {
-				Projects struct {
-					Edges []struct {
-						Node struct {
-							ID   string `json:"id"`
-							Name string `json:"name"`
-						} `json:"node"`
-					} `json:"edges"`
+				ProjectsPage struct {
+					Nodes []struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					} `json:"nodes"`
 					PageInfo struct {
-						HasNextPage bool   `json:"hasNextPage"`
-						EndCursor   string `json:"endCursor"`
-						TotalCount  int    `json:"totalCount"`
+						TotalCount  int `json:"totalCount"`
+						TotalPages  int `json:"totalPages"`
+						CurrentPage int `json:"currentPage"`
 					} `json:"pageInfo"`
-				} `json:"projects"`
+				} `json:"projectsPage"`
 			} `json:"data"`
 		}
 
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 
-		assert.Len(t, result.Data.Projects.Edges, 2)
-		assert.True(t, result.Data.Projects.PageInfo.HasNextPage)
-		assert.Equal(t, 5, result.Data.Projects.PageInfo.TotalCount)
+		assert.Len(t, result.Data.ProjectsPage.Nodes, 2)
+		assert.Equal(t, 5, result.Data.ProjectsPage.PageInfo.TotalCount)
+		assert.Equal(t, 3, result.Data.ProjectsPage.PageInfo.TotalPages)
+		assert.Equal(t, 1, result.Data.ProjectsPage.PageInfo.CurrentPage)
 	})
 
 	// Test sorting
 	t.Run("test_sorting", func(t *testing.T) {
 		query := fmt.Sprintf(`{
-			projects(
+			projectsPage(
 				workspaceId: "%s"
 				pagination: {
-					first: 5
+					page: 1
+					pageSize: 5
 					orderBy: "name"
 					orderDir: ASC
 				}
 			) {
-				edges {
-					node {
-						id
-						name
-					}
+				nodes {
+					id
+					name
 				}
 			}
 		}`, wId1.String())
@@ -175,14 +172,12 @@ func TestProjectsPagination(t *testing.T) {
 
 		var result struct {
 			Data struct {
-				Projects struct {
-					Edges []struct {
-						Node struct {
-							ID   string `json:"id"`
-							Name string `json:"name"`
-						} `json:"node"`
-					} `json:"edges"`
-				} `json:"projects"`
+				ProjectsPage struct {
+					Nodes []struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					} `json:"nodes"`
+				} `json:"projectsPage"`
 			} `json:"data"`
 		}
 
@@ -190,237 +185,70 @@ func TestProjectsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Verify sorting
-		for i := 1; i < len(result.Data.Projects.Edges); i++ {
-			prev := result.Data.Projects.Edges[i-1].Node.Name
-			curr := result.Data.Projects.Edges[i].Node.Name
+		for i := 1; i < len(result.Data.ProjectsPage.Nodes); i++ {
+			prev := result.Data.ProjectsPage.Nodes[i-1].Name
+			curr := result.Data.ProjectsPage.Nodes[i].Name
 			assert.True(t, prev <= curr, "Projects should be sorted by name in ascending order")
 		}
 	})
 
-	// Test cursor pagination
-	t.Run("test_cursor_pagination", func(t *testing.T) {
+	// Test last page
+	t.Run("test_last_page", func(t *testing.T) {
 		query := fmt.Sprintf(`{
-			projects(
-				workspaceId: "%s"
-				pagination: {
-					first: 2
-				}
-			) {
-				edges {
-					node {
-						id
-						name
-					}
-				}
-				pageInfo {
-					hasNextPage
-					endCursor
-					totalCount
-				}
-			}
-		}`, wId1.String())
-
-		request := GraphQLRequest{
-			Query: query,
-		}
-		jsonData, err := json.Marshal(request)
-		assert.NoError(t, err)
-
-		resp := e.POST("/api/graphql").
-			WithHeader("Content-Type", "application/json").
-			WithHeader("X-Reearth-Debug-User", uId1.String()).
-			WithBytes(jsonData).
-			Expect().Status(http.StatusOK)
-
-		var result struct {
-			Data struct {
-				Projects struct {
-					Edges []struct {
-						Node struct {
-							ID   string `json:"id"`
-							Name string `json:"name"`
-						} `json:"node"`
-					} `json:"edges"`
-					PageInfo struct {
-						HasNextPage bool   `json:"hasNextPage"`
-						EndCursor   string `json:"endCursor"`
-						TotalCount  int    `json:"totalCount"`
-					} `json:"pageInfo"`
-				} `json:"projects"`
-			} `json:"data"`
-		}
-
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
-		assert.NoError(t, err)
-
-		assert.Len(t, result.Data.Projects.Edges, 2)
-		assert.True(t, result.Data.Projects.PageInfo.HasNextPage)
-		assert.Equal(t, 5, result.Data.Projects.PageInfo.TotalCount)
-	})
-
-	// Test page-based pagination
-	t.Run("test_page_pagination", func(t *testing.T) {
-		// Test first page
-		query := fmt.Sprintf(`{
-			projects(
-				workspaceId: "%s"
-				pagination: {
-					page: 1
-					pageSize: 2
-				}
-			) {
-				edges {
-					node {
-						id
-						name
-					}
-				}
-				pageInfo {
-					hasNextPage
-					hasPreviousPage
-					totalCount
-					currentPage
-					totalPages
-				}
-			}
-		}`, wId1.String())
-
-		request := GraphQLRequest{
-			Query: query,
-		}
-		jsonData, err := json.Marshal(request)
-		assert.NoError(t, err)
-
-		resp := e.POST("/api/graphql").
-			WithHeader("Content-Type", "application/json").
-			WithHeader("X-Reearth-Debug-User", uId1.String()).
-			WithBytes(jsonData).
-			Expect().Status(http.StatusOK)
-
-		var result struct {
-			Data struct {
-				Projects struct {
-					Edges []struct {
-						Node struct {
-							ID   string `json:"id"`
-							Name string `json:"name"`
-						} `json:"node"`
-					} `json:"edges"`
-					PageInfo struct {
-						HasNextPage     bool `json:"hasNextPage"`
-						HasPreviousPage bool `json:"hasPreviousPage"`
-						TotalCount      int  `json:"totalCount"`
-						CurrentPage     int  `json:"currentPage"`
-						TotalPages      int  `json:"totalPages"`
-					} `json:"pageInfo"`
-				} `json:"projects"`
-			} `json:"data"`
-		}
-
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
-		assert.NoError(t, err)
-
-		assert.Len(t, result.Data.Projects.Edges, 2)
-		assert.True(t, result.Data.Projects.PageInfo.HasNextPage)
-		assert.False(t, result.Data.Projects.PageInfo.HasPreviousPage)
-		assert.Equal(t, 5, result.Data.Projects.PageInfo.TotalCount)
-		assert.Equal(t, 1, result.Data.Projects.PageInfo.CurrentPage)
-		assert.Equal(t, 3, result.Data.Projects.PageInfo.TotalPages)
-
-		// Test second page
-		query = fmt.Sprintf(`{
-			projects(
-				workspaceId: "%s"
-				pagination: {
-					page: 2
-					pageSize: 2
-				}
-			) {
-				edges {
-					node {
-						id
-						name
-					}
-				}
-				pageInfo {
-					hasNextPage
-					hasPreviousPage
-					totalCount
-					currentPage
-					totalPages
-				}
-			}
-		}`, wId1.String())
-
-		request = GraphQLRequest{
-			Query: query,
-		}
-		jsonData, err = json.Marshal(request)
-		assert.NoError(t, err)
-
-		resp = e.POST("/api/graphql").
-			WithHeader("Content-Type", "application/json").
-			WithHeader("X-Reearth-Debug-User", uId1.String()).
-			WithBytes(jsonData).
-			Expect().Status(http.StatusOK)
-
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
-		assert.NoError(t, err)
-
-		assert.Len(t, result.Data.Projects.Edges, 2)
-		assert.True(t, result.Data.Projects.PageInfo.HasNextPage)
-		assert.True(t, result.Data.Projects.PageInfo.HasPreviousPage)
-		assert.Equal(t, 5, result.Data.Projects.PageInfo.TotalCount)
-		assert.Equal(t, 2, result.Data.Projects.PageInfo.CurrentPage)
-		assert.Equal(t, 3, result.Data.Projects.PageInfo.TotalPages)
-
-		// Test last page
-		query = fmt.Sprintf(`{
-			projects(
+			projectsPage(
 				workspaceId: "%s"
 				pagination: {
 					page: 3
 					pageSize: 2
 				}
 			) {
-				edges {
-					node {
-						id
-						name
-					}
+				nodes {
+					id
+					name
 				}
 				pageInfo {
-					hasNextPage
-					hasPreviousPage
 					totalCount
-					currentPage
 					totalPages
+					currentPage
 				}
 			}
 		}`, wId1.String())
 
-		request = GraphQLRequest{
+		request := GraphQLRequest{
 			Query: query,
 		}
-		jsonData, err = json.Marshal(request)
+		jsonData, err := json.Marshal(request)
 		assert.NoError(t, err)
 
-		resp = e.POST("/api/graphql").
-			WithHeader("authorization", "Bearer test").
+		resp := e.POST("/api/graphql").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
 			Expect().Status(http.StatusOK)
 
+		var result struct {
+			Data struct {
+				ProjectsPage struct {
+					Nodes []struct {
+						ID   string `json:"id"`
+						Name string `json:"name"`
+					} `json:"nodes"`
+					PageInfo struct {
+						TotalCount  int `json:"totalCount"`
+						TotalPages  int `json:"totalPages"`
+						CurrentPage int `json:"currentPage"`
+					} `json:"pageInfo"`
+				} `json:"projectsPage"`
+			} `json:"data"`
+		}
+
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 
-		assert.Len(t, result.Data.Projects.Edges, 1)
-		assert.False(t, result.Data.Projects.PageInfo.HasNextPage)
-		assert.True(t, result.Data.Projects.PageInfo.HasPreviousPage)
-		assert.Equal(t, 5, result.Data.Projects.PageInfo.TotalCount)
-		assert.Equal(t, 3, result.Data.Projects.PageInfo.CurrentPage)
-		assert.Equal(t, 3, result.Data.Projects.PageInfo.TotalPages)
+		assert.Len(t, result.Data.ProjectsPage.Nodes, 1) // Last page should have 1 item
+		assert.Equal(t, 5, result.Data.ProjectsPage.PageInfo.TotalCount)
+		assert.Equal(t, 3, result.Data.ProjectsPage.PageInfo.TotalPages)
+		assert.Equal(t, 3, result.Data.ProjectsPage.PageInfo.CurrentPage)
 	})
 }
 
