@@ -11,7 +11,6 @@ import (
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
-	"github.com/reearth/reearthx/usecasex"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -23,7 +22,6 @@ var (
 
 type Job struct {
 	client *mongox.ClientCollection
-	f      repo.WorkspaceFilter
 }
 
 func NewJob(client *mongox.Client) repo.Job {
@@ -37,10 +35,7 @@ func (r *Job) Init(ctx context.Context) error {
 }
 
 func (r *Job) Filtered(f repo.WorkspaceFilter) repo.Job {
-	return &Job{
-		client: r.client,
-		f:      r.f.Merge(f),
-	}
+	return r
 }
 
 func (r *Job) FindByIDs(ctx context.Context, ids id.JobIDList) ([]*job.Job, error) {
@@ -72,24 +67,22 @@ func (r *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
 	})
 }
 
-func (r *Job) FindByWorkspace(ctx context.Context, workspace accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*job.Job, *usecasex.PageInfo, error) {
-	if !r.f.CanRead(workspace) {
-		return []*job.Job{}, usecasex.EmptyPageInfo(), nil
+func (r *Job) FindByWorkspace(ctx context.Context, workspace accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error) {
+	filter := bson.M{"workspaceid": workspace.String()}
+
+	// Get total count for page info
+	total, err := r.client.Count(ctx, filter)
+	if err != nil {
+		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 	}
 
-	c := mongodoc.NewJobConsumer(r.f.Readable)
-	filter := bson.M{"workspaceid": workspace.String()}
+	// Create consumer with workspace filter
+	c := mongodoc.NewJobConsumer([]accountdomain.WorkspaceID{workspace})
 
 	if pagination != nil && pagination.Page != nil {
 		// Page-based pagination
 		skip := int64((pagination.Page.Page - 1) * pagination.Page.PageSize)
 		limit := int64(pagination.Page.PageSize)
-
-		// Get total count for page info
-		total, err := r.client.Count(ctx, filter)
-		if err != nil {
-			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-		}
 
 		// Set up sort options
 		var sort bson.D
@@ -123,7 +116,7 @@ func (r *Job) FindByWorkspace(ctx context.Context, workspace accountdomain.Works
 
 		// Create page info
 		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
-		return c.Result, pageInfo.ToPageInfo(), nil
+		return c.Result, pageInfo, nil
 	}
 
 	// No pagination
@@ -131,13 +124,12 @@ func (r *Job) FindByWorkspace(ctx context.Context, workspace accountdomain.Works
 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 	}
 
-	return c.Result, usecasex.EmptyPageInfo(), nil
+	// Create page info without pagination
+	pageInfo := interfaces.NewPageBasedInfo(total, 1, int(total))
+	return c.Result, pageInfo, nil
 }
 
 func (r *Job) CountByWorkspace(ctx context.Context, ws accountdomain.WorkspaceID) (int, error) {
-	if !r.f.CanRead(ws) {
-		return 0, nil
-	}
 	count, err := r.client.Count(ctx, bson.M{
 		"workspaceid": ws.String(),
 	})
@@ -145,21 +137,17 @@ func (r *Job) CountByWorkspace(ctx context.Context, ws accountdomain.WorkspaceID
 }
 
 func (r *Job) Save(ctx context.Context, j *job.Job) error {
-	if !r.f.CanWrite(j.Workspace()) {
-		return repo.ErrOperationDenied
-	}
 	doc, id := mongodoc.NewJob(j)
-
 	err := r.client.SaveOne(ctx, id, doc)
 	return err
 }
 
 func (r *Job) Remove(ctx context.Context, id id.JobID) error {
-	return r.client.RemoveOne(ctx, r.writeFilter(bson.M{"id": id.String()}))
+	return r.client.RemoveOne(ctx, bson.M{"id": id.String()})
 }
 
 func (r *Job) find(ctx context.Context, filter interface{}) ([]*job.Job, error) {
-	c := mongodoc.NewJobConsumer(r.f.Readable)
+	c := mongodoc.NewJobConsumer(nil)
 	if err := r.client.Find(ctx, filter, c); err != nil {
 		return nil, err
 	}
@@ -167,47 +155,11 @@ func (r *Job) find(ctx context.Context, filter interface{}) ([]*job.Job, error) 
 }
 
 func (r *Job) findOne(ctx context.Context, filter any) (*job.Job, error) {
-	c := mongodoc.NewJobConsumer(r.f.Readable)
+	c := mongodoc.NewJobConsumer(nil)
 	if err := r.client.FindOne(ctx, filter, c); err != nil {
 		return nil, err
 	}
 	return c.Result[0], nil
-}
-
-func (r *Job) paginate(ctx context.Context, filter bson.M, pagination *interfaces.PaginationParam) ([]*job.Job, *usecasex.PageInfo, error) {
-	c := mongodoc.NewJobConsumer(r.f.Readable)
-
-	if pagination != nil && pagination.Page != nil {
-		// Page-based pagination
-		skip := int64((pagination.Page.Page - 1) * pagination.Page.PageSize)
-		limit := int64(pagination.Page.PageSize)
-
-		// Get total count for page info
-		total, err := r.client.Count(ctx, filter)
-		if err != nil {
-			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-		}
-
-		// Execute find with skip and limit
-		opts := options.Find().
-			SetSkip(skip).
-			SetLimit(limit)
-
-		if err := r.client.Find(ctx, filter, c, opts); err != nil {
-			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-		}
-
-		// Create page-based info
-		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
-		return c.Result, pageInfo.ToPageInfo(), nil
-	}
-
-	// No pagination
-	if err := r.client.Find(ctx, filter, c); err != nil {
-		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-	}
-	total := int64(len(c.Result))
-	return c.Result, &usecasex.PageInfo{TotalCount: total}, nil
 }
 
 func filterJobs(ids []id.JobID, rows []*job.Job) []*job.Job {
@@ -223,8 +175,4 @@ func filterJobs(ids []id.JobID, rows []*job.Job) []*job.Job {
 		res = append(res, r2)
 	}
 	return res
-}
-
-func (r *Job) writeFilter(filter interface{}) interface{} {
-	return applyWorkspaceFilter(filter, r.f.Writable)
 }

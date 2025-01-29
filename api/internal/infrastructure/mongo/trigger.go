@@ -11,7 +11,6 @@ import (
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
-	"github.com/reearth/reearthx/usecasex"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -60,13 +59,13 @@ func (r *Trigger) FindByIDs(ctx context.Context, ids id.TriggerIDList) ([]*trigg
 	return filterTriggers(ids, res), nil
 }
 
-func (r *Trigger) FindByWorkspace(ctx context.Context, workspace accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*trigger.Trigger, *usecasex.PageInfo, error) {
-	if !r.f.CanRead(workspace) {
-		return nil, usecasex.EmptyPageInfo(), nil
+func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
+	if !r.f.CanRead(id) {
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
 	c := mongodoc.NewTriggerConsumer(r.f.Readable)
-	filter := bson.M{"workspaceid": workspace.String()}
+	filter := bson.M{"workspace": id.String()}
 
 	if pagination != nil && pagination.Page != nil {
 		// Page-based pagination
@@ -80,25 +79,19 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, workspace accountdomain.W
 		}
 
 		// Execute find with skip and limit
-		opts := options.Find().
-			SetSkip(skip).
-			SetLimit(limit)
-
+		opts := options.Find().SetSkip(skip).SetLimit(limit)
 		if err := r.client.Find(ctx, filter, c, opts); err != nil {
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
 
-		// Create page-based info
-		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
-		return c.Result, pageInfo.ToPageInfo(), nil
+		return c.Result, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
 	}
 
-	// No pagination
 	if err := r.client.Find(ctx, filter, c); err != nil {
 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 	}
 	total := int64(len(c.Result))
-	return c.Result, &usecasex.PageInfo{TotalCount: total}, nil
+	return c.Result, interfaces.NewPageBasedInfo(total, 1, len(c.Result)), nil
 }
 
 func (r *Trigger) Save(ctx context.Context, trigger *trigger.Trigger) error {

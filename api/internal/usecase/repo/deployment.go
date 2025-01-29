@@ -7,14 +7,13 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/usecasex"
 )
 
 type Deployment interface {
 	Filtered(WorkspaceFilter) Deployment
 	FindByIDs(context.Context, id.DeploymentIDList) ([]*deployment.Deployment, error)
 	FindByID(context.Context, id.DeploymentID) (*deployment.Deployment, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *interfaces.PaginationParam) ([]*deployment.Deployment, *usecasex.PageInfo, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *interfaces.PaginationParam) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error)
 	FindByProject(context.Context, id.ProjectID) (*deployment.Deployment, error)
 	FindByVersion(context.Context, accountdomain.WorkspaceID, *id.ProjectID, string) (*deployment.Deployment, error)
 	FindHead(context.Context, accountdomain.WorkspaceID, *id.ProjectID) (*deployment.Deployment, error)

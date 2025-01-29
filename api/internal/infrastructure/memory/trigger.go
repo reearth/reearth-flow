@@ -11,7 +11,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/rerror"
-	"github.com/reearth/reearthx/usecasex"
 )
 
 type Trigger struct {
@@ -33,12 +32,12 @@ func (r *Trigger) Filtered(f repo.WorkspaceFilter) repo.Trigger {
 	}
 }
 
-func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*trigger.Trigger, *usecasex.PageInfo, error) {
+func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
 	if !r.f.CanRead(id) {
-		return nil, nil, nil
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
 	// Pre-allocate slice with estimated capacity
@@ -51,7 +50,7 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 
 	total := int64(len(result))
 	if total == 0 {
-		return nil, &usecasex.PageInfo{TotalCount: 0}, nil
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
 	// Apply sorting
@@ -80,14 +79,14 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 
 	// Handle pagination
 	if pagination == nil {
-		return result, &usecasex.PageInfo{TotalCount: total}, nil
+		return result, interfaces.NewPageBasedInfo(total, 1, int(total)), nil
 	}
 
 	if pagination.Page != nil {
 		// Page-based pagination
 		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
 		if skip >= len(result) {
-			return nil, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize).ToPageInfo(), nil
+			return nil, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
 		}
 
 		end := skip + pagination.Page.PageSize
@@ -101,10 +100,10 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		// Create page-based info
 		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
 
-		return pageResult, pageInfo.ToPageInfo(), nil
+		return pageResult, pageInfo, nil
 	}
 
-	return result, &usecasex.PageInfo{TotalCount: total}, nil
+	return result, interfaces.NewPageBasedInfo(total, 1, int(total)), nil
 }
 
 func (r *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigger, error) {

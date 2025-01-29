@@ -11,7 +11,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/rerror"
-	"github.com/reearth/reearthx/usecasex"
 	"github.com/reearth/reearthx/util"
 )
 
@@ -47,9 +46,9 @@ func (r *Asset) FindByIDs(_ context.Context, ids id.AssetIDList) ([]*asset.Asset
 	}), nil
 }
 
-func (r *Asset) FindByWorkspace(_ context.Context, wid accountdomain.WorkspaceID, filter repo.AssetFilter) ([]*asset.Asset, *usecasex.PageInfo, error) {
+func (r *Asset) FindByWorkspace(_ context.Context, wid accountdomain.WorkspaceID, filter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(wid) {
-		return nil, usecasex.EmptyPageInfo(), nil
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
 	result := r.data.FindAll(func(k id.AssetID, v *asset.Asset) bool {
@@ -74,15 +73,14 @@ func (r *Asset) FindByWorkspace(_ context.Context, wid accountdomain.WorkspaceID
 
 	total := int64(len(result))
 	if total == 0 {
-		return nil, &usecasex.PageInfo{TotalCount: 0}, nil
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
 	if filter.Pagination != nil && filter.Pagination.Page != nil {
 		// Page-based pagination
 		skip := (filter.Pagination.Page.Page - 1) * filter.Pagination.Page.PageSize
 		if skip >= len(result) {
-			pageInfo := interfaces.NewPageBasedInfo(total, filter.Pagination.Page.Page, filter.Pagination.Page.PageSize)
-			return nil, pageInfo.ToPageInfo(), nil
+			return nil, interfaces.NewPageBasedInfo(total, filter.Pagination.Page.Page, filter.Pagination.Page.PageSize), nil
 		}
 
 		end := skip + filter.Pagination.Page.PageSize
@@ -90,13 +88,10 @@ func (r *Asset) FindByWorkspace(_ context.Context, wid accountdomain.WorkspaceID
 			end = len(result)
 		}
 
-		pageInfo := interfaces.NewPageBasedInfo(total, filter.Pagination.Page.Page, filter.Pagination.Page.PageSize)
-		return result[skip:end], pageInfo.ToPageInfo(), nil
+		return result[skip:end], interfaces.NewPageBasedInfo(total, filter.Pagination.Page.Page, filter.Pagination.Page.PageSize), nil
 	}
 
-	return result, &usecasex.PageInfo{
-		TotalCount: total,
-	}, nil
+	return result, interfaces.NewPageBasedInfo(total, 1, int(total)), nil
 }
 
 func (r *Asset) TotalSizeByWorkspace(_ context.Context, wid accountdomain.WorkspaceID) (t int64, err error) {

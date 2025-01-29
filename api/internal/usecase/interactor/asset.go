@@ -12,7 +12,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/usecasex"
 )
 
 type Asset struct {
@@ -31,11 +30,11 @@ func (i *Asset) Fetch(ctx context.Context, assets []id.AssetID, operator *usecas
 	return i.repos.Asset.FindByIDs(ctx, assets)
 }
 
-func (i *Asset) FindByWorkspace(ctx context.Context, tid accountdomain.WorkspaceID, keyword *string, sort *asset.SortType, p *interfaces.PaginationParam, operator *usecase.Operator) ([]*asset.Asset, *usecasex.PageInfo, error) {
+func (i *Asset) FindByWorkspace(ctx context.Context, tid accountdomain.WorkspaceID, keyword *string, sort *asset.SortType, p *interfaces.PaginationParam, operator *usecase.Operator) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	return Run2(
 		ctx, operator, i.repos,
 		Usecase().WithReadableWorkspaces(tid),
-		func(ctx context.Context) ([]*asset.Asset, *usecasex.PageInfo, error) {
+		func(ctx context.Context) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 			return i.repos.Asset.FindByWorkspace(ctx, tid, repo.AssetFilter{
 				Sort:       sort,
 				Keyword:    keyword,

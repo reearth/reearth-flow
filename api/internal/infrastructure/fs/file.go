@@ -28,20 +28,38 @@ type fileRepo struct {
 	workflowUrlBase *url.URL
 }
 
-func (f *fileRepo) CheckJobLogExists(context.Context, string) (bool, error) {
-	panic("unimplemented")
+func (f *fileRepo) CheckJobLogExists(ctx context.Context, jobID string) (bool, error) {
+	logPath := filepath.Join(metadataDir, fmt.Sprintf("job-%s.log", jobID))
+	exists, err := afero.Exists(f.fs, logPath)
+	if err != nil {
+		return false, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	return exists, nil
 }
 
-func (f *fileRepo) GetJobLogURL(string) string {
-	panic("unimplemented")
+func (f *fileRepo) GetJobLogURL(jobID string) string {
+	return fmt.Sprintf("file://%s/job-%s.log", metadataDir, jobID)
 }
 
-func (f *fileRepo) ListJobArtifacts(context.Context, string) ([]string, error) {
-	panic("unimplemented")
+func (f *fileRepo) ListJobArtifacts(ctx context.Context, jobID string) ([]string, error) {
+	artifactsPath := filepath.Join(metadataDir, fmt.Sprintf("job-%s-artifacts", jobID))
+	files, err := afero.ReadDir(f.fs, artifactsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []string{}, nil
+		}
+		return nil, rerror.ErrInternalByWithContext(ctx, err)
+	}
+
+	var artifacts []string
+	for _, file := range files {
+		artifacts = append(artifacts, file.Name())
+	}
+	return artifacts, nil
 }
 
-func (f *fileRepo) ReadArtifact(context.Context, string) (io.ReadCloser, error) {
-	panic("unimplemented")
+func (f *fileRepo) ReadArtifact(ctx context.Context, path string) (io.ReadCloser, error) {
+	return f.read(ctx, path)
 }
 
 func (f *fileRepo) ReadMetadata(ctx context.Context, name string) (io.ReadCloser, error) {
