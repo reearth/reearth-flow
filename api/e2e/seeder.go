@@ -39,7 +39,7 @@ func baseSeeder(ctx context.Context, r *repo.Container) error {
 	w := workspace.New().ID(wID).
 		Name("e2e").
 		Personal(false).
-		Members(map[accountdomain.UserID]workspace.Member{u.ID(): workspace.Member{}}).
+		Members(map[accountdomain.UserID]workspace.Member{u.ID(): {}}).
 		MustBuild()
 	if err := r.Workspace.Save(ctx, w); err != nil {
 		return err
