@@ -13,7 +13,7 @@ import (
 type Job interface {
 	Fetch(context.Context, []id.JobID, *usecase.Operator) ([]*job.Job, error)
 	FindByID(context.Context, id.JobID, *usecase.Operator) (*job.Job, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination, *usecase.Operator) ([]*job.Job, *usecasex.PageInfo, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *PaginationParam, *usecase.Operator) ([]*job.Job, *usecasex.PageInfo, error)
 	GetStatus(context.Context, id.JobID, *usecase.Operator) (job.Status, error)
 	StartMonitoring(context.Context, *job.Job, *string, *usecase.Operator) error
 	Subscribe(context.Context, id.JobID, *usecase.Operator) (chan job.Status, error)

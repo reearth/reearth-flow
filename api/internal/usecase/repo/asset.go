@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
@@ -12,7 +13,7 @@ import (
 type AssetFilter struct {
 	Sort       *asset.SortType
 	Keyword    *string
-	Pagination *usecasex.Pagination
+	Pagination *interfaces.PaginationParam
 }
 
 type Asset interface {

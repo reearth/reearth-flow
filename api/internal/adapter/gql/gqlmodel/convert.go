@@ -61,14 +61,15 @@ func ToPagination(pagination *Pagination) *usecasex.Pagination {
 	return nil
 }
 
-func ToPageBasedPagination(pagination PageBasedPagination) *usecasex.Pagination {
-	p := &usecasex.Pagination{
-		Offset: &usecasex.OffsetPagination{
-			Offset: int64((pagination.Page - 1) * pagination.PageSize),
-			Limit:  int64(pagination.PageSize),
+func ToPageBasedPagination(pagination PageBasedPagination) *interfaces.PaginationParam {
+	return &interfaces.PaginationParam{
+		Page: &interfaces.PageBasedPaginationParam{
+			Page:     pagination.Page,
+			PageSize: pagination.PageSize,
+			OrderBy:  pagination.OrderBy,
+			OrderDir: OrderDirectionToString(pagination.OrderDir),
 		},
 	}
-	return p
 }
 
 func ToPageBasedPaginationParam(pagination PageBasedPagination) *interfaces.PaginationParam {

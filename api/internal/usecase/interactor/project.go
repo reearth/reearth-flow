@@ -43,16 +43,7 @@ func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID, _ *usecase.Oper
 	return i.projectRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *usecasex.Pagination, _ *usecase.Operator) ([]*project.Project, *usecasex.PageInfo, error) {
-	pagination := &interfaces.PaginationParam{
-		Page: &interfaces.PageBasedPaginationParam{
-			Page:     1,
-			PageSize: int(p.Offset.Limit),
-		},
-	}
-	if p.Offset != nil {
-		pagination.Page.Page = int(p.Offset.Offset/p.Offset.Limit) + 1
-	}
+func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam, _ *usecase.Operator) ([]*project.Project, *usecasex.PageInfo, error) {
 	return i.projectRepo.FindByWorkspace(ctx, id, pagination)
 }
 

@@ -77,68 +77,21 @@ func (r *Asset) FindByWorkspace(_ context.Context, wid accountdomain.WorkspaceID
 		return nil, &usecasex.PageInfo{TotalCount: 0}, nil
 	}
 
-	if filter.Pagination != nil {
-		if filter.Pagination.Cursor != nil {
-			// Cursor-based pagination
-			var start int64
-			if filter.Pagination.Cursor.After != nil {
-				afterID := string(*filter.Pagination.Cursor.After)
-				for i, d := range result {
-					if d.ID().String() == afterID {
-						start = int64(i + 1)
-						break
-					}
-				}
-			}
-
-			end := total
-			if filter.Pagination.Cursor.First != nil {
-				end = start + *filter.Pagination.Cursor.First
-				if end > total {
-					end = total
-				}
-			}
-
-			if start >= total {
-				return nil, &usecasex.PageInfo{
-					TotalCount:      total,
-					HasNextPage:     false,
-					HasPreviousPage: start > 0,
-				}, nil
-			}
-
-			var startCursor, endCursor *usecasex.Cursor
-			if start < end {
-				sc := usecasex.Cursor(result[start].ID().String())
-				ec := usecasex.Cursor(result[end-1].ID().String())
-				startCursor = &sc
-				endCursor = &ec
-			}
-
-			return result[start:end], &usecasex.PageInfo{
-				TotalCount:      total,
-				HasNextPage:     end < total,
-				HasPreviousPage: start > 0,
-				StartCursor:     startCursor,
-				EndCursor:       endCursor,
-			}, nil
-		} else if filter.Pagination.Offset != nil {
-			// Page-based pagination
-			skip := int(filter.Pagination.Offset.Offset)
-			limit := int(filter.Pagination.Offset.Limit)
-			if skip >= len(result) {
-				pageInfo := interfaces.NewPageBasedInfo(total, skip/limit+1, limit)
-				return nil, pageInfo.ToPageInfo(), nil
-			}
-
-			end := skip + limit
-			if end > len(result) {
-				end = len(result)
-			}
-
-			pageInfo := interfaces.NewPageBasedInfo(total, skip/limit+1, limit)
-			return result[skip:end], pageInfo.ToPageInfo(), nil
+	if filter.Pagination != nil && filter.Pagination.Page != nil {
+		// Page-based pagination
+		skip := (filter.Pagination.Page.Page - 1) * filter.Pagination.Page.PageSize
+		if skip >= len(result) {
+			pageInfo := interfaces.NewPageBasedInfo(total, filter.Pagination.Page.Page, filter.Pagination.Page.PageSize)
+			return nil, pageInfo.ToPageInfo(), nil
 		}
+
+		end := skip + filter.Pagination.Page.PageSize
+		if end > len(result) {
+			end = len(result)
+		}
+
+		pageInfo := interfaces.NewPageBasedInfo(total, filter.Pagination.Page.Page, filter.Pagination.Page.PageSize)
+		return result[skip:end], pageInfo.ToPageInfo(), nil
 	}
 
 	return result, &usecasex.PageInfo{

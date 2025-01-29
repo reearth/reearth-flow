@@ -2,6 +2,7 @@ package gql
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqldataloader"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
@@ -44,12 +45,17 @@ func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.I
 		return nil, err
 	}
 
-	// Convert pagination parameters for both offset and sorting
-	offsetPagination := gqlmodel.ToPageBasedPagination(pagination)
-	sortPagination := gqlmodel.ToPageBasedPaginationParam(pagination)
+	fmt.Printf("DEBUG: Received pagination params: page=%d, pageSize=%d, orderBy=%v, orderDir=%v\n",
+		pagination.Page, pagination.PageSize, pagination.OrderBy, pagination.OrderDir)
 
-	// Use the offset pagination for the usecase call and pass sort parameters
-	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, offsetPagination, getOperator(ctx))
+	// Convert pagination parameters using ToPageBasedPagination
+	paginationParam := gqlmodel.ToPageBasedPagination(pagination)
+
+	fmt.Printf("DEBUG: Converted pagination params: page=%d, pageSize=%d\n",
+		paginationParam.Page.Page, paginationParam.Page.PageSize)
+
+	// Use the pagination param for the usecase call
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -61,12 +67,17 @@ func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.I
 
 	pageInfo := gqlmodel.ToPageInfo(pi)
 	if pageInfo.CurrentPage == nil {
-		cp := sortPagination.Page.Page
+		cp := pagination.Page
 		pageInfo.CurrentPage = &cp
 	}
 	if pageInfo.TotalPages == nil {
-		tp := (int(pi.TotalCount) + sortPagination.Page.PageSize - 1) / sortPagination.Page.PageSize
+		tp := (int(pi.TotalCount) + pagination.PageSize - 1) / pagination.PageSize
 		pageInfo.TotalPages = &tp
+	}
+
+	fmt.Printf("DEBUG: Returning %d nodes\n", len(nodes))
+	for _, n := range nodes {
+		fmt.Printf("DEBUG: Node name=%s\n", n.Name)
 	}
 
 	return &gqlmodel.ProjectConnection{
