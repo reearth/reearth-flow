@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/gavv/httpexpect/v2"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
@@ -230,36 +231,82 @@ func TestListProjects(t *testing.T) {
 		},
 	}, true, baseSeederUser)
 
+	// Create test projects
+	projectIDs := make([]string, 3)
+	for i := 0; i < 3; i++ {
+		query := `mutation($input: CreateProjectInput!) {
+			createProject(input: $input) {
+				project {
+					id
+				}
+			}
+		}`
+
+		variables := fmt.Sprintf(`{
+			"input": {
+				"workspaceId": "%s",
+				"name": "Test Project %d",
+				"description": "Test project description %d"
+			}
+		}`, wId1.String(), i, i)
+
+		var variablesMap map[string]any
+		err := json.Unmarshal([]byte(variables), &variablesMap)
+		assert.NoError(t, err)
+
+		request := GraphQLRequest{
+			Query:     query,
+			Variables: variablesMap,
+		}
+		jsonData, err := json.Marshal(request)
+		assert.NoError(t, err)
+
+		resp := e.POST("/api/graphql").
+			WithHeader("authorization", "Bearer test").
+			WithHeader("Content-Type", "application/json").
+			WithHeader("X-Reearth-Debug-User", uId1.String()).
+			WithBytes(jsonData).
+			Expect().Status(http.StatusOK)
+
+		var result struct {
+			Data struct {
+				CreateProject struct {
+					Project struct {
+						ID string `json:"id"`
+					} `json:"project"`
+				} `json:"createProject"`
+			} `json:"data"`
+		}
+
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, result.Data.CreateProject.Project.ID, "Project creation failed")
+		projectIDs[i] = result.Data.CreateProject.Project.ID
+
+		// Add a small delay between project creations
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// Test listing projects with pagination
 	query := fmt.Sprintf(`{
-		projects(
+		projectsPage(
 			workspaceId: "%s"
-			includeArchived: true
 			pagination: {
-				first: 10
+				page: 1
+				pageSize: 2
+				orderBy: "name"
+				orderDir: ASC
 			}
 		) {
-			edges {
-				node {
-					id
-					name
-					description
-					isArchived
-					isBasicAuthActive
-					basicAuthUsername
-					basicAuthPassword
-					version
-					createdAt
-					updatedAt
-					workspaceId
-				}
-				cursor
+			nodes {
+				id
+				name
+				description
 			}
 			pageInfo {
-				hasNextPage
-				hasPreviousPage
-				startCursor
-				endCursor
 				totalCount
+				totalPages
+				currentPage
 			}
 		}
 	}`, wId1.String())
@@ -279,29 +326,18 @@ func TestListProjects(t *testing.T) {
 
 	var result struct {
 		Data struct {
-			Projects struct {
-				Edges []struct {
-					Node struct {
-						ID                string `json:"id"`
-						Name              string `json:"name"`
-						Description       string `json:"description"`
-						IsArchived        bool   `json:"isArchived"`
-						IsBasicAuthActive bool   `json:"isBasicAuthActive"`
-						BasicAuthUsername string `json:"basicAuthUsername"`
-						BasicAuthPassword string `json:"basicAuthPassword"`
-						Version           int    `json:"version"`
-						WorkspaceID       string `json:"workspaceId"`
-					} `json:"node"`
-					Cursor string `json:"cursor"`
-				} `json:"edges"`
+			ProjectsPage struct {
+				Nodes []struct {
+					ID          string `json:"id"`
+					Name        string `json:"name"`
+					Description string `json:"description"`
+				} `json:"nodes"`
 				PageInfo struct {
-					HasNextPage     bool   `json:"hasNextPage"`
-					HasPreviousPage bool   `json:"hasPreviousPage"`
-					StartCursor     string `json:"startCursor"`
-					EndCursor       string `json:"endCursor"`
-					TotalCount      int    `json:"totalCount"`
+					TotalCount  int `json:"totalCount"`
+					TotalPages  int `json:"totalPages"`
+					CurrentPage int `json:"currentPage"`
 				} `json:"pageInfo"`
-			} `json:"projects"`
+			} `json:"projectsPage"`
 		} `json:"data"`
 	}
 
@@ -309,13 +345,15 @@ func TestListProjects(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Verify the response
-	projects := result.Data.Projects
-	assert.NotNil(t, projects.Edges)
-	for _, edge := range projects.Edges {
-		assert.NotEmpty(t, edge.Node.ID)
-		assert.NotEmpty(t, edge.Node.Name)
-		assert.Equal(t, wId1.String(), edge.Node.WorkspaceID)
-		assert.NotEmpty(t, edge.Cursor)
+	projects := result.Data.ProjectsPage
+	assert.NotNil(t, projects.Nodes)
+	assert.Len(t, projects.Nodes, 2) // Should get 2 projects per page
+	for _, node := range projects.Nodes {
+		assert.NotEmpty(t, node.ID)
+		assert.NotEmpty(t, node.Name)
+		assert.NotEmpty(t, node.Description)
 	}
-	assert.NotNil(t, projects.PageInfo)
+	assert.Equal(t, 3, projects.PageInfo.TotalCount)
+	assert.Equal(t, 2, projects.PageInfo.TotalPages)
+	assert.Equal(t, 1, projects.PageInfo.CurrentPage)
 }
