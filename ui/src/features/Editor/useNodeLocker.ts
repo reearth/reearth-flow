@@ -19,7 +19,7 @@ export default ({
 
   // When a node is deselected on the canvas, we need to unlock it
   useEffect(() => {
-    if (!selectedNodeIds.length && locallyLockedNode) {
+    if (locallyLockedNode && !selectedNodeIds.includes(locallyLockedNode.id)) {
       setLocallyLockedNode(undefined);
       setLockedNodeIds((lln) =>
         lln.filter((id) => id !== locallyLockedNode?.id),

@@ -1,2 +1,2 @@
-export * from "./EndSection";
+export * from "./BottomSection";
 export * from "./TopSection";

@@ -3869,6 +3869,7 @@ __metadata:
     "@testing-library/dom": "npm:10.4.0"
     "@testing-library/jest-dom": "npm:6.6.3"
     "@testing-library/react": "npm:16.1.0"
+    "@types/js-yaml": "npm:4.0.9"
     "@types/jsdom": "npm:21.1.7"
     "@types/lodash-es": "npm:4.17.12"
     "@types/react": "npm:19.0.2"
@@ -3895,6 +3896,7 @@ __metadata:
     i18next-browser-languagedetector: "npm:8.0.2"
     i18next-parser: "npm:9.1.0"
     jotai: "npm:2.11.0"
+    js-yaml: "npm:4.1.0"
     jsdom: "npm:25.0.1"
     lodash-es: "npm:4.17.21"
     maplibre-gl: "npm:4.7.1"
@@ -5090,7 +5092,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/js-yaml@npm:^4.0.0":
+"@types/js-yaml@npm:4.0.9, @types/js-yaml@npm:^4.0.0":
   version: 4.0.9
   resolution: "@types/js-yaml@npm:4.0.9"
   checksum: 10c0/24de857aa8d61526bbfbbaa383aa538283ad17363fcd5bb5148e2c7f604547db36646440e739d78241ed008702a8920665d1add5618687b6743858fae00da211
@@ -10422,7 +10424,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"js-yaml@npm:^4.0.0, js-yaml@npm:^4.1.0":
+"js-yaml@npm:4.1.0, js-yaml@npm:^4.0.0, js-yaml@npm:^4.1.0":
   version: 4.1.0
   resolution: "js-yaml@npm:4.1.0"
   dependencies:
