@@ -53,6 +53,11 @@ func (r *Deployment) FindByWorkspace(_ context.Context, wid accountdomain.Worksp
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
+	// Sort by version in ascending order
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Version() < result[j].Version()
+	})
+
 	if p != nil && p.Page != nil {
 		skip := (p.Page.Page - 1) * p.Page.PageSize
 		if skip >= len(result) {

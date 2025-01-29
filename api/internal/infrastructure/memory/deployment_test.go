@@ -136,7 +136,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 					PageSize: 2,
 				},
 			},
-			want:     []*deployment.Deployment{d2, d3},
+			want:     []*deployment.Deployment{d1, d2},
 			wantInfo: interfaces.NewPageBasedInfo(3, 1, 2),
 		},
 		{
@@ -153,7 +153,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 					PageSize: 2,
 				},
 			},
-			want:     []*deployment.Deployment{d1},
+			want:     []*deployment.Deployment{d3},
 			wantInfo: interfaces.NewPageBasedInfo(3, 2, 2),
 		},
 		{
@@ -182,7 +182,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 			},
 			wsID:       wsID,
 			pagination: nil,
-			want:       []*deployment.Deployment{d2, d3, d1},
+			want:       []*deployment.Deployment{d1, d2, d3},
 			wantInfo:   interfaces.NewPageBasedInfo(3, 1, 3),
 		},
 		{
