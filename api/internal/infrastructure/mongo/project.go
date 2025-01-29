@@ -89,6 +89,24 @@ func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		// Default sort by updatedAt desc
 		sort := bson.D{{Key: "updatedat", Value: -1}}
 
+		// Handle custom sorting
+		if pagination.Page.OrderBy != nil {
+			sortDir := -1 // default DESC
+			if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "ASC" {
+				sortDir = 1
+			}
+			// Convert field name to MongoDB field name (lowercase)
+			field := *pagination.Page.OrderBy
+			if field == "name" {
+				field = "name"
+			} else if field == "createdAt" {
+				field = "createdat"
+			} else if field == "updatedAt" {
+				field = "updatedat"
+			}
+			sort = bson.D{{Key: field, Value: sortDir}}
+		}
+
 		// Execute find with skip and limit
 		opts := options.Find().
 			SetSort(sort).
@@ -101,7 +119,7 @@ func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 
 		// Create page-based info
 		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
-		return c.Result, pageInfo.ToPageInfo(), nil
+		return c.Result, pageInfo.PageInfo, nil
 	}
 
 	// No pagination

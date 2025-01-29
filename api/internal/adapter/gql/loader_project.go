@@ -44,9 +44,12 @@ func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.I
 		return nil, err
 	}
 
-	paginationParam := gqlmodel.ToPageBasedPagination(pagination)
+	// Convert pagination parameters for both offset and sorting
+	offsetPagination := gqlmodel.ToPageBasedPagination(pagination)
+	sortPagination := gqlmodel.ToPageBasedPaginationParam(pagination)
 
-	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam, getOperator(ctx))
+	// Use the offset pagination for the usecase call and pass sort parameters
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, offsetPagination, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -56,9 +59,19 @@ func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.I
 		nodes = append(nodes, gqlmodel.ToProject(p))
 	}
 
+	pageInfo := gqlmodel.ToPageInfo(pi)
+	if pageInfo.CurrentPage == nil {
+		cp := sortPagination.Page.Page
+		pageInfo.CurrentPage = &cp
+	}
+	if pageInfo.TotalPages == nil {
+		tp := (int(pi.TotalCount) + sortPagination.Page.PageSize - 1) / sortPagination.Page.PageSize
+		pageInfo.TotalPages = &tp
+	}
+
 	return &gqlmodel.ProjectConnection{
 		Nodes:      nodes,
-		PageInfo:   gqlmodel.ToPageInfo(pi),
+		PageInfo:   pageInfo,
 		TotalCount: int(pi.TotalCount),
 	}, nil
 }
