@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
-	"github.com/reearth/reearthx/usecasex"
 	"golang.org/x/text/language"
 )
 
@@ -47,15 +46,9 @@ func (Asset) IsNode()        {}
 func (this Asset) GetID() ID { return this.ID }
 
 type AssetConnection struct {
-	Edges      []*AssetEdge `json:"edges"`
-	Nodes      []*Asset     `json:"nodes"`
-	PageInfo   *PageInfo    `json:"pageInfo"`
-	TotalCount int          `json:"totalCount"`
-}
-
-type AssetEdge struct {
-	Cursor usecasex.Cursor `json:"cursor"`
-	Node   *Asset          `json:"node,omitempty"`
+	Nodes      []*Asset  `json:"nodes"`
+	PageInfo   *PageInfo `json:"pageInfo"`
+	TotalCount int       `json:"totalCount"`
 }
 
 type CreateAssetInput struct {
@@ -156,15 +149,9 @@ func (Deployment) IsNode()        {}
 func (this Deployment) GetID() ID { return this.ID }
 
 type DeploymentConnection struct {
-	Edges      []*DeploymentEdge `json:"edges"`
-	Nodes      []*Deployment     `json:"nodes"`
-	PageInfo   *PageInfo         `json:"pageInfo"`
-	TotalCount int               `json:"totalCount"`
-}
-
-type DeploymentEdge struct {
-	Cursor usecasex.Cursor `json:"cursor"`
-	Node   *Deployment     `json:"node,omitempty"`
+	Nodes      []*Deployment `json:"nodes"`
+	PageInfo   *PageInfo     `json:"pageInfo"`
+	TotalCount int           `json:"totalCount"`
 }
 
 type DeploymentPayload struct {
@@ -201,15 +188,9 @@ func (Job) IsNode()        {}
 func (this Job) GetID() ID { return this.ID }
 
 type JobConnection struct {
-	Edges      []*JobEdge `json:"edges"`
-	Nodes      []*Job     `json:"nodes"`
-	PageInfo   *PageInfo  `json:"pageInfo"`
-	TotalCount int        `json:"totalCount"`
-}
-
-type JobEdge struct {
-	Cursor usecasex.Cursor `json:"cursor"`
-	Node   *Job            `json:"node,omitempty"`
+	Nodes      []*Job    `json:"nodes"`
+	PageInfo   *PageInfo `json:"pageInfo"`
+	TotalCount int       `json:"totalCount"`
 }
 
 type JobPayload struct {
@@ -238,24 +219,16 @@ type PageBasedPagination struct {
 }
 
 type PageInfo struct {
-	EndCursor       *usecasex.Cursor `json:"endCursor,omitempty"`
-	HasNextPage     bool             `json:"hasNextPage"`
-	HasPreviousPage bool             `json:"hasPreviousPage"`
-	StartCursor     *usecasex.Cursor `json:"startCursor,omitempty"`
-	TotalCount      int              `json:"totalCount"`
-	CurrentPage     *int             `json:"currentPage,omitempty"`
-	TotalPages      *int             `json:"totalPages,omitempty"`
+	TotalCount  int  `json:"totalCount"`
+	CurrentPage *int `json:"currentPage,omitempty"`
+	TotalPages  *int `json:"totalPages,omitempty"`
 }
 
 type Pagination struct {
-	First    *int             `json:"first,omitempty"`
-	Last     *int             `json:"last,omitempty"`
-	After    *usecasex.Cursor `json:"after,omitempty"`
-	Before   *usecasex.Cursor `json:"before,omitempty"`
-	Page     *int             `json:"page,omitempty"`
-	PageSize *int             `json:"pageSize,omitempty"`
-	OrderBy  *string          `json:"orderBy,omitempty"`
-	OrderDir *OrderDirection  `json:"orderDir,omitempty"`
+	Page     *int            `json:"page,omitempty"`
+	PageSize *int            `json:"pageSize,omitempty"`
+	OrderBy  *string         `json:"orderBy,omitempty"`
+	OrderDir *OrderDirection `json:"orderDir,omitempty"`
 }
 
 type Parameter struct {
@@ -291,15 +264,9 @@ func (Project) IsNode()        {}
 func (this Project) GetID() ID { return this.ID }
 
 type ProjectConnection struct {
-	Edges      []*ProjectEdge `json:"edges"`
-	Nodes      []*Project     `json:"nodes"`
-	PageInfo   *PageInfo      `json:"pageInfo"`
-	TotalCount int            `json:"totalCount"`
-}
-
-type ProjectEdge struct {
-	Cursor usecasex.Cursor `json:"cursor"`
-	Node   *Project        `json:"node,omitempty"`
+	Nodes      []*Project `json:"nodes"`
+	PageInfo   *PageInfo  `json:"pageInfo"`
+	TotalCount int        `json:"totalCount"`
 }
 
 type ProjectPayload struct {
@@ -383,15 +350,9 @@ func (Trigger) IsNode()        {}
 func (this Trigger) GetID() ID { return this.ID }
 
 type TriggerConnection struct {
-	Edges      []*TriggerEdge `json:"edges"`
-	Nodes      []*Trigger     `json:"nodes"`
-	PageInfo   *PageInfo      `json:"pageInfo"`
-	TotalCount int            `json:"totalCount"`
-}
-
-type TriggerEdge struct {
-	Cursor usecasex.Cursor `json:"cursor"`
-	Node   *Trigger        `json:"node,omitempty"`
+	Nodes      []*Trigger `json:"nodes"`
+	PageInfo   *PageInfo  `json:"pageInfo"`
+	TotalCount int        `json:"totalCount"`
 }
 
 type UpdateDeploymentInput struct {

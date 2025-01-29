@@ -37,13 +37,9 @@ func ToPageInfo(p *usecasex.PageInfo) *PageInfo {
 	}
 
 	return &PageInfo{
-		StartCursor:     p.StartCursor,
-		EndCursor:       p.EndCursor,
-		HasNextPage:     p.HasNextPage,
-		HasPreviousPage: p.HasPreviousPage,
-		TotalCount:      int(p.TotalCount),
-		CurrentPage:     currentPage,
-		TotalPages:      totalPages,
+		TotalCount:  int(p.TotalCount),
+		CurrentPage: currentPage,
+		TotalPages:  totalPages,
 	}
 }
 
@@ -62,13 +58,7 @@ func ToPagination(pagination *Pagination) *usecasex.Pagination {
 		}
 	}
 
-	// Cursor-based pagination
-	return usecasex.CursorPagination{
-		Before: pagination.Before,
-		After:  pagination.After,
-		First:  intToInt64(pagination.First),
-		Last:   intToInt64(pagination.Last),
-	}.Wrap()
+	return nil
 }
 
 func ToPageBasedPagination(pagination PageBasedPagination) *usecasex.Pagination {
@@ -100,10 +90,6 @@ func FromPageInfo(p *PageInfo) *usecasex.PageInfo {
 		return &usecasex.PageInfo{}
 	}
 	return &usecasex.PageInfo{
-		StartCursor:     p.StartCursor,
-		EndCursor:       p.EndCursor,
-		HasNextPage:     p.HasNextPage,
-		HasPreviousPage: p.HasPreviousPage,
-		TotalCount:      int64(p.TotalCount),
+		TotalCount: int64(p.TotalCount),
 	}
 }

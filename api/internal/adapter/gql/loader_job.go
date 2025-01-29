@@ -8,7 +8,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/usecasex"
 )
 
 type JobLoader struct {
@@ -56,36 +55,6 @@ func (c *JobLoader) FindByID(ctx context.Context, jobID gqlmodel.ID) (*gqlmodel.
 	return gqlmodel.ToJob(job), nil
 }
 
-func (c *JobLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.JobConnection, error) {
-	tid, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
-	if err != nil {
-		return nil, err
-	}
-
-	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, gqlmodel.ToPagination(pagination), getOperator(ctx))
-	if err != nil {
-		return nil, err
-	}
-
-	edges := make([]*gqlmodel.JobEdge, 0, len(res))
-	nodes := make([]*gqlmodel.Job, 0, len(res))
-	for _, j := range res {
-		job := gqlmodel.ToJob(j)
-		edges = append(edges, &gqlmodel.JobEdge{
-			Node:   job,
-			Cursor: usecasex.Cursor(job.ID),
-		})
-		nodes = append(nodes, job)
-	}
-
-	return &gqlmodel.JobConnection{
-		Edges:      edges,
-		Nodes:      nodes,
-		PageInfo:   gqlmodel.ToPageInfo(pi),
-		TotalCount: int(pi.TotalCount),
-	}, nil
-}
-
 func (c *JobLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error) {
 	tid, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
 	if err != nil {
@@ -99,19 +68,12 @@ func (c *JobLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, p
 		return nil, err
 	}
 
-	edges := make([]*gqlmodel.JobEdge, 0, len(res))
 	nodes := make([]*gqlmodel.Job, 0, len(res))
 	for _, j := range res {
-		job := gqlmodel.ToJob(j)
-		edges = append(edges, &gqlmodel.JobEdge{
-			Node:   job,
-			Cursor: usecasex.Cursor(job.ID),
-		})
-		nodes = append(nodes, job)
+		nodes = append(nodes, gqlmodel.ToJob(j))
 	}
 
 	return &gqlmodel.JobConnection{
-		Edges:      edges,
 		Nodes:      nodes,
 		PageInfo:   gqlmodel.ToPageInfo(pi),
 		TotalCount: int(pi.TotalCount),

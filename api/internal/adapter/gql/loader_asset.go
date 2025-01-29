@@ -9,7 +9,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/usecasex"
 	"github.com/reearth/reearthx/util"
 )
 
@@ -35,30 +34,23 @@ func (c *AssetLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel
 	return util.Map(res, gqlmodel.ToAsset), nil
 }
 
-func (c *AssetLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID, keyword *string, sort *asset.SortType, pagination *gqlmodel.Pagination) (*gqlmodel.AssetConnection, error) {
+func (c *AssetLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID, keyword *string, sort *asset.SortType, pagination *gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error) {
 	tid, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
 	if err != nil {
 		return nil, err
 	}
 
-	assets, pi, err := c.usecase.FindByWorkspace(ctx, tid, keyword, sort, gqlmodel.ToPagination(pagination), getOperator(ctx))
+	assets, pi, err := c.usecase.FindByWorkspace(ctx, tid, keyword, sort, gqlmodel.ToPageBasedPagination(*pagination), getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	edges := make([]*gqlmodel.AssetEdge, 0, len(assets))
 	nodes := make([]*gqlmodel.Asset, 0, len(assets))
 	for _, a := range assets {
-		asset := gqlmodel.ToAsset(a)
-		edges = append(edges, &gqlmodel.AssetEdge{
-			Node:   asset,
-			Cursor: usecasex.Cursor(asset.ID),
-		})
-		nodes = append(nodes, asset)
+		nodes = append(nodes, gqlmodel.ToAsset(a))
 	}
 
 	return &gqlmodel.AssetConnection{
-		Edges:      edges,
 		Nodes:      nodes,
 		PageInfo:   gqlmodel.ToPageInfo(pi),
 		TotalCount: int(pi.TotalCount),
