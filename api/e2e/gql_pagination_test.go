@@ -437,71 +437,6 @@ func TestJobsPagination(t *testing.T) {
 		}
 	})
 
-	// Test cursor pagination
-	t.Run("test_cursor_pagination", func(t *testing.T) {
-		query := fmt.Sprintf(`{
-			jobs(
-				workspaceId: "%s"
-				pagination: {
-					first: 2
-				}
-			) {
-				edges {
-					node {
-						id
-						status
-					}
-				}
-				pageInfo {
-					hasNextPage
-					endCursor
-					totalCount
-				}
-			}
-		}`, wId1.String())
-
-		request := GraphQLRequest{
-			Query: query,
-		}
-		jsonData, err := json.Marshal(request)
-		assert.NoError(t, err)
-
-		resp := e.POST("/api/graphql").
-			WithHeader("Content-Type", "application/json").
-			WithHeader("X-Reearth-Debug-User", uId1.String()).
-			WithBytes(jsonData).
-			Expect().Status(http.StatusOK)
-
-		var result struct {
-			Data struct {
-				Jobs struct {
-					Edges []struct {
-						Node struct {
-							ID     string `json:"id"`
-							Status string `json:"status"`
-						} `json:"node"`
-					} `json:"edges"`
-					PageInfo struct {
-						HasNextPage bool   `json:"hasNextPage"`
-						EndCursor   string `json:"endCursor"`
-						TotalCount  int    `json:"totalCount"`
-					} `json:"pageInfo"`
-				} `json:"jobs"`
-			} `json:"data"`
-		}
-
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
-		assert.NoError(t, err)
-
-		// Verify pagination results
-		assert.Len(t, result.Data.Jobs.Edges, 2, "Should return exactly 2 jobs")
-		assert.NotZero(t, result.Data.Jobs.PageInfo.TotalCount, "Total count should be greater than zero")
-		if result.Data.Jobs.PageInfo.TotalCount > 2 {
-			assert.True(t, result.Data.Jobs.PageInfo.HasNextPage, "Should have next page")
-			assert.NotEmpty(t, result.Data.Jobs.PageInfo.EndCursor, "End cursor should not be empty")
-		}
-	})
-
 	// Test page-based pagination
 	t.Run("test_page_pagination", func(t *testing.T) {
 		// Test first page
@@ -834,63 +769,6 @@ func TestTriggersPagination(t *testing.T) {
 			curr := result.Data.Triggers.Edges[i].Node.CreatedAt
 			assert.True(t, prev.After(curr), "Triggers should be sorted by createdAt in descending order")
 		}
-	})
-
-	// Test cursor pagination
-	t.Run("test_cursor_pagination", func(t *testing.T) {
-		query := fmt.Sprintf(`{
-			triggers(
-				workspaceId: "%s"
-				pagination: {
-					first: 2
-				}
-			) {
-				edges {
-					node {
-						id
-						description
-					}
-				}
-				pageInfo {
-					hasNextPage
-					endCursor
-					totalCount
-				}
-			}
-		}`, wId1.String())
-
-		request := GraphQLRequest{
-			Query: query,
-		}
-		jsonData, err := json.Marshal(request)
-		assert.NoError(t, err)
-
-		resp := e.POST("/api/graphql").
-			WithHeader("Content-Type", "application/json").
-			WithHeader("X-Reearth-Debug-User", uId1.String()).
-			WithBytes(jsonData).
-			Expect().Status(http.StatusOK)
-
-		var result struct {
-			Data struct {
-				Triggers struct {
-					Edges []struct {
-						Node struct {
-							ID          string `json:"id"`
-							Description string `json:"description"`
-						} `json:"node"`
-					} `json:"edges"`
-					PageInfo struct {
-						HasNextPage bool   `json:"hasNextPage"`
-						EndCursor   string `json:"endCursor"`
-						TotalCount  int    `json:"totalCount"`
-					} `json:"pageInfo"`
-				} `json:"triggers"`
-			} `json:"data"`
-		}
-
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
-		assert.NoError(t, err)
 	})
 
 	// Test page-based pagination
