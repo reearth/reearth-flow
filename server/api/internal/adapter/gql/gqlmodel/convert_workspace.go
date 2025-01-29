@@ -11,7 +11,7 @@ func ToWorkspace(t *workspace.Workspace) *Workspace {
 
 	memberMap := t.Members().Users()
 	members := make([]*WorkspaceMember, 0, len(memberMap))
-	for u, _ := range memberMap {
+	for u := range memberMap {
 		members = append(members, &WorkspaceMember{
 			UserID: IDFrom(u),
 		})
