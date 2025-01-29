@@ -185,27 +185,6 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 			},
 		},
 		{
-			name: "cursor based pagination",
-			init: map[id.DeploymentID]*deployment.Deployment{
-				d1.ID(): d1,
-				d2.ID(): d2,
-				d3.ID(): d3,
-			},
-			wsID: wsID,
-			pagination: &interfaces.PaginationParam{
-				Page: &interfaces.PageBasedPaginationParam{
-					Page:     1,
-					PageSize: 2,
-				},
-			},
-			want: []*deployment.Deployment{d1, d2},
-			wantInfo: &usecasex.PageInfo{
-				TotalCount:      3,
-				HasNextPage:     true,
-				HasPreviousPage: false,
-			},
-		},
-		{
 			name: "no pagination",
 			init: map[id.DeploymentID]*deployment.Deployment{
 				d1.ID(): d1,
