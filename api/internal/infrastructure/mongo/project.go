@@ -67,13 +67,49 @@ func (r *Project) FindByIDs(ctx context.Context, ids id.ProjectIDList) ([]*proje
 	return filterProjects(ids, res), nil
 }
 
-func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *usecasex.Pagination) ([]*project.Project, *usecasex.PageInfo, error) {
+func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*project.Project, *usecasex.PageInfo, error) {
 	if !r.f.CanRead(id) {
 		return nil, usecasex.EmptyPageInfo(), nil
 	}
-	return r.paginate(ctx, bson.M{
-		"workspace": id.String(),
-	}, pagination)
+
+	c := mongodoc.NewProjectConsumer(r.f.Readable)
+	filter := bson.M{"workspace": id.String()}
+
+	if pagination != nil && pagination.Page != nil {
+		// Page-based pagination
+		skip := int64((pagination.Page.Page - 1) * pagination.Page.PageSize)
+		limit := int64(pagination.Page.PageSize)
+
+		// Get total count for page info
+		total, err := r.client.Count(ctx, filter)
+		if err != nil {
+			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		// Default sort by updatedAt desc
+		sort := bson.D{{Key: "updatedat", Value: -1}}
+
+		// Execute find with skip and limit
+		opts := options.Find().
+			SetSort(sort).
+			SetSkip(skip).
+			SetLimit(limit)
+
+		if err := r.client.Find(ctx, filter, c, opts); err != nil {
+			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		// Create page-based info
+		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
+		return c.Result, pageInfo.ToPageInfo(), nil
+	}
+
+	// No pagination
+	if err := r.client.Find(ctx, filter, c); err != nil {
+		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	total := int64(len(c.Result))
+	return c.Result, &usecasex.PageInfo{TotalCount: total}, nil
 }
 
 func (r *Project) FindByPublicName(ctx context.Context, name string) (*project.Project, error) {

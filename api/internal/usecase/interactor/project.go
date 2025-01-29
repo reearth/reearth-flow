@@ -44,7 +44,13 @@ func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID, _ *usecase.Oper
 }
 
 func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *usecasex.Pagination, _ *usecase.Operator) ([]*project.Project, *usecasex.PageInfo, error) {
-	return i.projectRepo.FindByWorkspace(ctx, id, p)
+	pagination := &interfaces.PaginationParam{
+		Page: &interfaces.PageBasedPaginationParam{
+			Page:     1,
+			PageSize: int(*p.Cursor.First),
+		},
+	}
+	return i.projectRepo.FindByWorkspace(ctx, id, pagination)
 }
 
 func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
