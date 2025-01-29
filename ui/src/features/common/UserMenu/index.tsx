@@ -68,9 +68,11 @@ const UserMenu: React.FC<Props> = ({
           side={dropdownPosition ?? "bottom"}
           align="end"
           sideOffset={dropdownOffset ?? 4}>
-          <div className="mb-2 rounded bg-primary px-2 py-1">
-            <p className="text-xs">{t("Username: ")}</p>
-            <p className="truncate text-sm">{me?.name ?? me?.email}</p>
+          <div className="mb-2 rounded px-2 py-1">
+            <p className="text-xs font-thin">{t("Username: ")}</p>
+            <p className="truncate text-sm font-light">
+              {me?.name ?? me?.email}
+            </p>
           </div>
           <DropdownMenuItem
             className="gap-2"
