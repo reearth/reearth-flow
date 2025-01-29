@@ -9,7 +9,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/idx"
-	"github.com/reearth/reearthx/usecasex"
 	"github.com/reearth/reearthx/util"
 )
 
@@ -40,61 +39,6 @@ func (c *DeploymentLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gql
 	return deployments, nil
 }
 
-func (c *DeploymentLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.DeploymentConnection, error) {
-	wID, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
-	if err != nil {
-		return nil, err
-	}
-
-	var paginationParam *interfaces.PaginationParam
-	if pagination != nil {
-		if pagination.Page != nil && pagination.PageSize != nil {
-			// Page-based pagination
-			paginationParam = &interfaces.PaginationParam{
-				Page: &interfaces.PageBasedPaginationParam{
-					Page:     *pagination.Page,
-					PageSize: *pagination.PageSize,
-					OrderBy:  pagination.OrderBy,
-					OrderDir: gqlmodel.OrderDirectionToString(pagination.OrderDir),
-				},
-			}
-		} else {
-			// Cursor-based pagination
-			paginationParam = &interfaces.PaginationParam{
-				Cursor: usecasex.CursorPagination{
-					Before: pagination.Before,
-					After:  pagination.After,
-					First:  intToInt64(pagination.First),
-					Last:   intToInt64(pagination.Last),
-				}.Wrap(),
-			}
-		}
-	}
-
-	res, pageInfo, err := c.usecase.FindByWorkspace(ctx, wID, paginationParam, getOperator(ctx))
-	if err != nil {
-		return nil, err
-	}
-
-	edges := make([]*gqlmodel.DeploymentEdge, 0, len(res))
-	nodes := make([]*gqlmodel.Deployment, 0, len(res))
-	for _, d := range res {
-		deployment := gqlmodel.ToDeployment(d)
-		nodes = append(nodes, deployment)
-		edges = append(edges, &gqlmodel.DeploymentEdge{
-			Node:   deployment,
-			Cursor: usecasex.Cursor(d.ID().String()),
-		})
-	}
-
-	return &gqlmodel.DeploymentConnection{
-		Edges:      edges,
-		Nodes:      nodes,
-		PageInfo:   gqlmodel.ToPageInfo(pageInfo),
-		TotalCount: len(res),
-	}, nil
-}
-
 func (c *DeploymentLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error) {
 	wID, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
 	if err != nil {
@@ -115,19 +59,12 @@ func (c *DeploymentLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmode
 		return nil, err
 	}
 
-	edges := make([]*gqlmodel.DeploymentEdge, 0, len(res))
 	nodes := make([]*gqlmodel.Deployment, 0, len(res))
 	for _, d := range res {
-		deployment := gqlmodel.ToDeployment(d)
-		nodes = append(nodes, deployment)
-		edges = append(edges, &gqlmodel.DeploymentEdge{
-			Node:   deployment,
-			Cursor: usecasex.Cursor(d.ID().String()),
-		})
+		nodes = append(nodes, gqlmodel.ToDeployment(d))
 	}
 
 	return &gqlmodel.DeploymentConnection{
-		Edges:      edges,
 		Nodes:      nodes,
 		PageInfo:   gqlmodel.ToPageInfo(pageInfo),
 		TotalCount: len(res),

@@ -8,7 +8,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/usecasex"
 	"github.com/reearth/reearthx/util"
 )
 
@@ -39,36 +38,6 @@ func (c *ProjectLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmod
 	return projects, nil
 }
 
-func (c *ProjectLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.ProjectConnection, error) {
-	tid, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
-	if err != nil {
-		return nil, err
-	}
-
-	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, gqlmodel.ToPagination(pagination), getOperator(ctx))
-	if err != nil {
-		return nil, err
-	}
-
-	edges := make([]*gqlmodel.ProjectEdge, 0, len(res))
-	nodes := make([]*gqlmodel.Project, 0, len(res))
-	for _, p := range res {
-		prj := gqlmodel.ToProject(p)
-		edges = append(edges, &gqlmodel.ProjectEdge{
-			Node:   prj,
-			Cursor: usecasex.Cursor(prj.ID),
-		})
-		nodes = append(nodes, prj)
-	}
-
-	return &gqlmodel.ProjectConnection{
-		Edges:      edges,
-		Nodes:      nodes,
-		PageInfo:   gqlmodel.ToPageInfo(pi),
-		TotalCount: int(pi.TotalCount),
-	}, nil
-}
-
 func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
 	tid, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
 	if err != nil {
@@ -82,19 +51,12 @@ func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.I
 		return nil, err
 	}
 
-	edges := make([]*gqlmodel.ProjectEdge, 0, len(res))
 	nodes := make([]*gqlmodel.Project, 0, len(res))
 	for _, p := range res {
-		prj := gqlmodel.ToProject(p)
-		edges = append(edges, &gqlmodel.ProjectEdge{
-			Node:   prj,
-			Cursor: usecasex.Cursor(prj.ID),
-		})
-		nodes = append(nodes, prj)
+		nodes = append(nodes, gqlmodel.ToProject(p))
 	}
 
 	return &gqlmodel.ProjectConnection{
-		Edges:      edges,
 		Nodes:      nodes,
 		PageInfo:   gqlmodel.ToPageInfo(pi),
 		TotalCount: int(pi.TotalCount),
