@@ -47,8 +47,11 @@ func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 	pagination := &interfaces.PaginationParam{
 		Page: &interfaces.PageBasedPaginationParam{
 			Page:     1,
-			PageSize: int(*p.Cursor.First),
+			PageSize: int(p.Offset.Limit),
 		},
+	}
+	if p.Offset != nil {
+		pagination.Page.Page = int(p.Offset.Offset/p.Offset.Limit) + 1
 	}
 	return i.projectRepo.FindByWorkspace(ctx, id, pagination)
 }
