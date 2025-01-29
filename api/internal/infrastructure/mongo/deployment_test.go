@@ -71,6 +71,9 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	assert.Equal(t, "d3", got[0].ID().String())
 	assert.Equal(t, "d2", got[1].ID().String())
 	assert.Equal(t, "d1", got[2].ID().String())
+	assert.Equal(t, int64(3), pageInfo.TotalCount)
+	assert.Equal(t, 1, pageInfo.CurrentPage)
+	assert.Equal(t, 1, pageInfo.TotalPages)
 
 	// Test page-based pagination: first page
 	pagination := &interfaces.PaginationParam{
@@ -86,8 +89,8 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	assert.Equal(t, "d3", got[0].ID().String())
 	assert.Equal(t, "d2", got[1].ID().String())
 	assert.Equal(t, int64(3), pageInfo.TotalCount)
-	assert.True(t, pageInfo.HasNextPage)
-	assert.False(t, pageInfo.HasPreviousPage)
+	assert.Equal(t, 1, pageInfo.CurrentPage)
+	assert.Equal(t, 2, pageInfo.TotalPages)
 
 	// Test page-based pagination: second page
 	pagination = &interfaces.PaginationParam{
@@ -102,8 +105,8 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	assert.Equal(t, 1, len(got))
 	assert.Equal(t, "d1", got[0].ID().String())
 	assert.Equal(t, int64(3), pageInfo.TotalCount)
-	assert.False(t, pageInfo.HasNextPage)
-	assert.True(t, pageInfo.HasPreviousPage)
+	assert.Equal(t, 2, pageInfo.CurrentPage)
+	assert.Equal(t, 2, pageInfo.TotalPages)
 
 	// Test page-based pagination: empty page
 	pagination = &interfaces.PaginationParam{
@@ -117,8 +120,8 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	assert.NotNil(t, pageInfo)
 	assert.Equal(t, 0, len(got))
 	assert.Equal(t, int64(3), pageInfo.TotalCount)
-	assert.False(t, pageInfo.HasNextPage)
-	assert.True(t, pageInfo.HasPreviousPage)
+	assert.Equal(t, 3, pageInfo.CurrentPage)
+	assert.Equal(t, 2, pageInfo.TotalPages)
 
 	// Test with workspace filter
 	r2 := r.Filtered(repo.WorkspaceFilter{
@@ -128,6 +131,9 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, pageInfo)
 	assert.Equal(t, 0, len(got))
+	assert.Equal(t, int64(0), pageInfo.TotalCount)
+	assert.Equal(t, 1, pageInfo.CurrentPage)
+	assert.Equal(t, 1, pageInfo.TotalPages)
 }
 
 func TestDeployment_FindByVersion(t *testing.T) {
