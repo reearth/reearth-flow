@@ -74,7 +74,7 @@ func (r *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
 
 func (r *Job) FindByWorkspace(ctx context.Context, workspace accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*job.Job, *usecasex.PageInfo, error) {
 	if !r.f.CanRead(workspace) {
-		return nil, usecasex.EmptyPageInfo(), nil
+		return []*job.Job{}, usecasex.EmptyPageInfo(), nil
 	}
 
 	c := mongodoc.NewJobConsumer(r.f.Readable)
@@ -91,16 +91,37 @@ func (r *Job) FindByWorkspace(ctx context.Context, workspace accountdomain.Works
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
 
-		// Execute find with skip and limit
+		// Set up sort options
+		var sort bson.D
+		if pagination.Page.OrderBy != nil {
+			dir := 1
+			if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
+				dir = -1
+			}
+			// Convert field name to MongoDB field name (lowercase)
+			fieldName := *pagination.Page.OrderBy
+			if fieldName == "startedAt" {
+				fieldName = "startedat"
+			} else if fieldName == "completedAt" {
+				fieldName = "completedat"
+			}
+			sort = bson.D{{Key: fieldName, Value: dir}}
+		} else {
+			// Default sort by startedAt desc
+			sort = bson.D{{Key: "startedat", Value: -1}}
+		}
+
+		// Find with pagination
 		opts := options.Find().
 			SetSkip(skip).
-			SetLimit(limit)
+			SetLimit(limit).
+			SetSort(sort)
 
 		if err := r.client.Find(ctx, filter, c, opts); err != nil {
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
 
-		// Create page-based info
+		// Create page info
 		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
 		return c.Result, pageInfo.ToPageInfo(), nil
 	}
@@ -109,8 +130,8 @@ func (r *Job) FindByWorkspace(ctx context.Context, workspace accountdomain.Works
 	if err := r.client.Find(ctx, filter, c); err != nil {
 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 	}
-	total := int64(len(c.Result))
-	return c.Result, &usecasex.PageInfo{TotalCount: total}, nil
+
+	return c.Result, usecasex.EmptyPageInfo(), nil
 }
 
 func (r *Job) CountByWorkspace(ctx context.Context, ws accountdomain.WorkspaceID) (int, error) {
