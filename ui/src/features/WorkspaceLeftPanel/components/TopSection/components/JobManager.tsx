@@ -21,7 +21,7 @@ const JobManager: React.FC<Props> = ({ selected }) => {
           navigate({ to: `/workspaces/${currentWorkspace?.id}/jobs/all` })
         }>
         <SneakerMove weight="light" />
-        <p className="text-sm dark:font-extralight">{t("Manage jobs")}</p>
+        <p className="text-sm dark:font-extralight">{t("Jobs")}</p>
       </div>
     </div>
   );
