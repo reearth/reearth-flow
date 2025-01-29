@@ -76,14 +76,39 @@ func (r *Deployment) FindByIDs(ctx context.Context, ids id.DeploymentIDList) ([]
 	return filterDeployments(ids, c.Result), nil
 }
 
-func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
+func (r *DeploymentAdapter) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(id) {
-		return nil, nil, nil
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
-	return r.paginate(ctx, bson.M{
-		"workspace": id.String(),
-	}, pagination)
+	c := mongodoc.NewDeploymentConsumer(r.f.Readable)
+	filter := bson.M{"workspace": id.String()}
+
+	if pagination != nil && pagination.Page != nil {
+		// Page-based pagination
+		skip := int64((pagination.Page.Page - 1) * pagination.Page.PageSize)
+		limit := int64(pagination.Page.PageSize)
+
+		// Get total count for page info
+		total, err := r.client.Count(ctx, filter)
+		if err != nil {
+			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		// Execute find with skip and limit
+		opts := options.Find().SetSkip(skip).SetLimit(limit)
+		if err := r.client.Find(ctx, filter, c, opts); err != nil {
+			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		return c.Result, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
+	}
+
+	if err := r.client.Find(ctx, filter, c); err != nil {
+		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	total := int64(len(c.Result))
+	return c.Result, interfaces.NewPageBasedInfo(total, 1, len(c.Result)), nil
 }
 
 func (a *DeploymentAdapter) FindByProject(ctx context.Context, pid id.ProjectID) (*deployment.Deployment, error) {

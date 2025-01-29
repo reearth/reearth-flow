@@ -7,14 +7,13 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/usecasex"
 )
 
 type Job interface {
 	Filtered(WorkspaceFilter) Job
 	FindByIDs(context.Context, id.JobIDList) ([]*job.Job, error)
 	FindByID(context.Context, id.JobID) (*job.Job, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *interfaces.PaginationParam) ([]*job.Job, *usecasex.PageInfo, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error)
 	Save(context.Context, *job.Job) error
 	Remove(context.Context, id.JobID) error
 }
@@ -41,7 +40,7 @@ func IterateJobsByWorkspace(repo Job, ctx context.Context, tid accountdomain.Wor
 			return err
 		}
 
-		if info.TotalCount <= int64(page*int(batch)) {
+		if int64(info.CurrentPage*info.TotalPages) >= int64(page*int(batch)) {
 			break
 		}
 

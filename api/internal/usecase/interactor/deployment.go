@@ -51,7 +51,7 @@ func (i *Deployment) Fetch(ctx context.Context, ids []id.DeploymentID, operator 
 	return i.deploymentRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *interfaces.PaginationParam, operator *usecase.Operator) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
+func (i *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *interfaces.PaginationParam, operator *usecase.Operator) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
 	return i.deploymentRepo.FindByWorkspace(ctx, id, p)
 }
 
@@ -278,7 +278,12 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	}
 
 	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{}) // TODO: add assets
-	j.SetMetadataURL(metadataURL.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to upload metadata: %v", err)
+	}
+	if metadataURL != nil {
+		j.SetMetadataURL(metadataURL.String())
+	}
 
 	if err := i.jobRepo.Save(ctx, j); err != nil {
 		return nil, err
@@ -295,11 +300,15 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	}
 	j.SetGCPJobID(gcpJobID)
 
-	if err := i.job.StartMonitoring(ctx, j, nil, operator); err != nil {
-		return nil, fmt.Errorf("failed to start job monitoring: %v", err)
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		return nil, err
 	}
 
 	tx.Commit()
+
+	if err := i.job.StartMonitoring(ctx, j, nil, operator); err != nil {
+		return nil, fmt.Errorf("failed to start job monitoring: %v", err)
+	}
 
 	return j, nil
 }

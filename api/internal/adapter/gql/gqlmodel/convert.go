@@ -22,24 +22,15 @@ func FromFile(f *graphql.Upload) *file.File {
 	}
 }
 
-func ToPageInfo(p *usecasex.PageInfo) *PageInfo {
+func ToPageInfo(p *interfaces.PageBasedInfo) *PageInfo {
 	if p == nil {
-		return &PageInfo{}
-	}
-
-	// Check if this is a page-based info
-	var currentPage, totalPages *int
-	if pbi, ok := any(p).(*interfaces.PageBasedInfo); ok {
-		cp := pbi.CurrentPage
-		tp := pbi.TotalPages
-		currentPage = &cp
-		totalPages = &tp
+		return nil
 	}
 
 	return &PageInfo{
 		TotalCount:  int(p.TotalCount),
-		CurrentPage: currentPage,
-		TotalPages:  totalPages,
+		CurrentPage: &p.CurrentPage,
+		TotalPages:  &p.TotalPages,
 	}
 }
 

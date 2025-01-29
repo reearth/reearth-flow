@@ -68,9 +68,9 @@ func (r *Project) FindByIDs(ctx context.Context, ids id.ProjectIDList) ([]*proje
 	return filterProjects(ids, res), nil
 }
 
-func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*project.Project, *usecasex.PageInfo, error) {
+func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(id) {
-		return nil, usecasex.EmptyPageInfo(), nil
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
 	c := mongodoc.NewProjectConsumer(r.f.Readable)
@@ -126,8 +126,7 @@ func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		}
 
 		// Create page-based info
-		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
-		return c.Result, pageInfo.PageInfo, nil
+		return c.Result, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
 	}
 
 	// No pagination
@@ -135,7 +134,7 @@ func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 	}
 	total := int64(len(c.Result))
-	return c.Result, &usecasex.PageInfo{TotalCount: total}, nil
+	return c.Result, interfaces.NewPageBasedInfo(total, 1, len(c.Result)), nil
 }
 
 func (r *Project) FindByPublicName(ctx context.Context, name string) (*project.Project, error) {

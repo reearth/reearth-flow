@@ -374,6 +374,9 @@ func TestJobsPagination(t *testing.T) {
 
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
+
+		// Add a small delay to ensure the job is saved
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	// Test pagination

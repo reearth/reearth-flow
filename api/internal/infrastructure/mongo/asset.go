@@ -13,7 +13,6 @@ import (
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
-	"github.com/reearth/reearthx/usecasex"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -64,9 +63,9 @@ func (r *Asset) FindByIDs(ctx context.Context, ids id.AssetIDList) ([]*asset.Ass
 	return filterAssets(ids, res), nil
 }
 
-func (r *Asset) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, uFilter repo.AssetFilter) ([]*asset.Asset, *usecasex.PageInfo, error) {
+func (r *Asset) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, uFilter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(id) {
-		return nil, usecasex.EmptyPageInfo(), nil
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
 	var filter any = bson.M{
@@ -126,7 +125,7 @@ func (r *Asset) Remove(ctx context.Context, id id.AssetID) error {
 	}))
 }
 
-func (r *Asset) paginate(ctx context.Context, filter any, sort *asset.SortType, pagination *interfaces.PaginationParam) ([]*asset.Asset, *usecasex.PageInfo, error) {
+func (r *Asset) paginate(ctx context.Context, filter any, sort *asset.SortType, pagination *interfaces.PaginationParam) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	c := mongodoc.NewAssetConsumer(r.f.Readable)
 
 	if pagination != nil && pagination.Page != nil {
@@ -153,13 +152,10 @@ func (r *Asset) paginate(ctx context.Context, filter any, sort *asset.SortType, 
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
 
-		// Create page-based info
-		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
-
-		return c.Result, pageInfo.ToPageInfo(), nil
+		return c.Result, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
 	}
 
-	return c.Result, &usecasex.PageInfo{TotalCount: int64(len(c.Result))}, nil
+	return c.Result, interfaces.NewPageBasedInfo(int64(len(c.Result)), 1, len(c.Result)), nil
 }
 
 func (r *Asset) find(ctx context.Context, filter any) ([]*asset.Asset, error) {
