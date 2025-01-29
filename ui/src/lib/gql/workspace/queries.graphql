@@ -4,7 +4,6 @@ fragment Workspace on Workspace {
   personal
   members {
     userId
-    role
     user {
       id
       email
@@ -61,14 +60,6 @@ mutation AddMemberToWorkspace($input: AddMemberToWorkspaceInput!) {
 
 mutation RemoveMemberFromWorkspace($input: RemoveMemberFromWorkspaceInput!) {
   removeMemberFromWorkspace(input: $input) {
-    workspace {
-      ...Workspace
-    }
-  }
-}
-
-mutation UpdateMemberOfWorkspace($input: UpdateMemberOfWorkspaceInput!) {
-  updateMemberOfWorkspace(input: $input) {
     workspace {
       ...Workspace
     }
