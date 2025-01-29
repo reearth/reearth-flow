@@ -28,7 +28,7 @@ export function updateParentYWorkflow(
   updateParentYWorkflowNode(currentWorkflowId, yParentWorkflow, node, params);
 }
 
-export function updateParentYWorkflowNode(
+function updateParentYWorkflowNode(
   currentWorkflowId: string,
   yParentWorkflow: YWorkflow,
   node: Node,
@@ -57,7 +57,6 @@ export function updateParentYWorkflowNode(
   };
 
   // Here we want to update pseudoInputs if the node is a RouterInput (RouterInputs only have outputs as default)
-
   if (node.data.outputs?.length) {
     const previousPseudoInputs = updatedSubworkflowNode.data.pseudoInputs ?? [];
     const updatedPseudoInputs = [...previousPseudoInputs];
@@ -128,44 +127,70 @@ export function updateParentYWorkflowNode(
   yParentNodes.insert(0, newParentYNode);
 }
 
-export function updateParentYWorkflowEdges(
+function updateParentYWorkflowEdges(
   currentWorkflowId: string,
   yParentWorkflow: YWorkflow,
   params: any,
   prevHandleName: string,
   type: "source" | "target",
 ) {
-  const yParentEdges = yParentWorkflow?.get("edges") as
-    | Y.Array<Edge>
-    | undefined;
+  if (!prevHandleName || !currentWorkflowId) return;
+  // need to correct this type to use <Edge> instead of <unknown>
+  const yParentEdges = yParentWorkflow?.get("edges") as Y.Array<unknown>;
   if (!yParentEdges) return;
 
-  const parentEdges = yParentEdges.toJSON() as Edge[];
+  let hasUpdates = false;
+  try {
+    // Convert all edges to plain objects and update the one that needs changing
+    const parentEdges = yParentEdges.toJSON() as Edge[];
 
-  // Update the edges that are effected by the subworkflow node changes
-  const updatedEdges = parentEdges.map((e) => {
-    if (
-      e.source === currentWorkflowId &&
-      type === "source" &&
-      e.sourceHandle === prevHandleName
-    ) {
-      return { ...e, sourceHandle: params.routingPort };
-    }
-    if (
-      e.target === currentWorkflowId &&
-      type === "target" &&
-      e.targetHandle === prevHandleName
-    ) {
-      return { ...e, targetHandle: params.routingPort };
-    }
-    return e;
-  });
+    // Update the edges that are effected by the subworkflow node changes
 
-  yParentEdges.delete(0, parentEdges.length);
-  yParentEdges.insert(0, updatedEdges);
+    const newEdges = parentEdges.map((e) => {
+      // Create a new object that we'll use to create a new YMap
+      const newEdgeObj = { ...e };
+
+      if (
+        type === "source" &&
+        e.source === currentWorkflowId &&
+        e.sourceHandle === prevHandleName
+      ) {
+        hasUpdates = true;
+        newEdgeObj.sourceHandle = params.routingPort;
+      }
+
+      if (
+        type === "target" &&
+        e.target === currentWorkflowId &&
+        e.targetHandle === prevHandleName
+      ) {
+        hasUpdates = true;
+        newEdgeObj.targetHandle = params.routingPort;
+      }
+
+      // This needs to be reviewed and changed
+      const newYMap = new Y.Map();
+      Object.entries(newEdgeObj).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          newYMap.set(key, value);
+        }
+      });
+      return newYMap;
+    });
+
+    // Only update if we made changes
+    if (hasUpdates) {
+      // Clear and recreate the entire edges array
+      yParentEdges.delete(0, parentEdges.length);
+      // Insert all edges at once as a single operation
+      yParentEdges.insert(0, newEdges);
+    }
+  } catch (error) {
+    console.error("Error cleaning up edges:", error);
+  }
 }
 
-export function cleanupRelatedEdges(
+function cleanupRelatedEdges(
   currentWorkflowId: string,
   yParentWorkflow: YWorkflow,
   portName: string | undefined,
@@ -173,32 +198,46 @@ export function cleanupRelatedEdges(
 ) {
   if (!portName || !currentWorkflowId) return;
 
-  const yParentEdges = yParentWorkflow?.get("edges") as
-    | Y.Array<Edge>
-    | undefined;
+  const yParentEdges = yParentWorkflow?.get("edges") as Y.Array<unknown>;
   if (!yParentEdges || yParentEdges.length === 0) return;
 
   try {
-    const edgesArray = Array.from(yParentEdges).filter(Boolean);
-    if (edgesArray.length === 0) return;
+    const edgesArray = Array.from(yParentEdges);
 
-    const remainingEdges = edgesArray.filter((edge) => {
-      if (!edge || !edge.id) return false;
-
-      if (type === "source") {
+    // First convert all to plain objects and filter out edges to remove
+    const remainingEdgeObjects = edgesArray
+      .map((e) => (e as Y.Map<unknown>).toJSON() as Edge)
+      .filter((edgeObj) => {
+        if (type === "source") {
+          return !(
+            edgeObj.source === currentWorkflowId &&
+            edgeObj.sourceHandle === portName
+          );
+        }
         return !(
-          edge.source === currentWorkflowId && edge.sourceHandle === portName
+          edgeObj.target === currentWorkflowId &&
+          edgeObj.targetHandle === portName
         );
+      });
+
+    // If we have any changes (length is different)
+    if (remainingEdgeObjects.length !== edgesArray.length) {
+      // Create fresh YMaps for all remaining edges
+      const newEdges = remainingEdgeObjects.map((edgeObj) => {
+        const newYMap = new Y.Map();
+        Object.entries(edgeObj).forEach(([key, value]) => {
+          if (value !== undefined && value !== null) {
+            newYMap.set(key, value);
+          }
+        });
+        return newYMap;
+      });
+
+      // Update the edges array
+      yParentEdges.delete(0, edgesArray.length);
+      if (newEdges.length > 0) {
+        yParentEdges.insert(0, newEdges);
       }
-      return !(
-        edge.target === currentWorkflowId && edge.targetHandle === portName
-      );
-    });
-
-    yParentEdges.delete(0, yParentEdges.length);
-
-    if (remainingEdges.length > 0) {
-      yParentEdges.insert(0, remainingEdges);
     }
   } catch (error) {
     console.error("Error cleaning up edges:", error);
@@ -273,6 +312,4 @@ export function cleanupPseudoPorts(
   const newParentYNodes = newParentNodes.map((node) => yNodeConstructor(node));
   yParentNodes.delete(0, parentNodes.length);
   yParentNodes.insert(0, newParentYNodes);
-
-  console.log("cleanupPseudoPorts", updatedSubworkflowNode);
 }
