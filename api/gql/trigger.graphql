@@ -52,24 +52,18 @@ input UpdateTriggerInput {
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
 }
+
 # Connection
 
 type TriggerConnection {
-  edges: [TriggerEdge!]!
   nodes: [Trigger]!
   pageInfo: PageInfo!
   totalCount: Int!
 }
 
-type TriggerEdge {
-  cursor: Cursor!
-  node: Trigger
-}
-
 # Query and Mutation
 
 extend type Query {
-    triggers(workspaceId: ID!, pagination: Pagination): TriggerConnection!
     triggersPage(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!
 }
 
