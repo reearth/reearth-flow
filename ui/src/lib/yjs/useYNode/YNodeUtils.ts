@@ -135,42 +135,38 @@ function updateParentYWorkflowEdges(
   type: "source" | "target",
 ) {
   if (!prevHandleName || !currentWorkflowId) return;
-  // need to correct this type to use <Edge> instead of <unknown>
+
   const yParentEdges = yParentWorkflow?.get("edges") as Y.Array<unknown>;
   if (!yParentEdges) return;
 
+  const parentEdges = yParentEdges.toJSON() as Edge[];
   let hasUpdates = false;
-  try {
-    // Convert all edges to plain objects and update the one that needs changing
-    const parentEdges = yParentEdges.toJSON() as Edge[];
 
-    // Update the edges that are effected by the subworkflow node changes
+  const updatedEdges = parentEdges.map((e) => {
+    if (
+      type === "source" &&
+      e.source === currentWorkflowId &&
+      e.sourceHandle === prevHandleName
+    ) {
+      hasUpdates = true;
+      return { ...e, sourceHandle: params.routingPort };
+    }
+    if (
+      type === "target" &&
+      e.target === currentWorkflowId &&
+      e.targetHandle === prevHandleName
+    ) {
+      hasUpdates = true;
+      return { ...e, targetHandle: params.routingPort };
+    }
+    return e;
+  });
 
-    const newEdges = parentEdges.map((e) => {
-      // Create a new object that we'll use to create a new YMap
-      const newEdgeObj = { ...e };
-
-      if (
-        type === "source" &&
-        e.source === currentWorkflowId &&
-        e.sourceHandle === prevHandleName
-      ) {
-        hasUpdates = true;
-        newEdgeObj.sourceHandle = params.routingPort;
-      }
-
-      if (
-        type === "target" &&
-        e.target === currentWorkflowId &&
-        e.targetHandle === prevHandleName
-      ) {
-        hasUpdates = true;
-        newEdgeObj.targetHandle = params.routingPort;
-      }
-
-      // This needs to be reviewed and changed
+  // Only create YMaps if we actually made changes
+  if (hasUpdates) {
+    const newYMapEdges = updatedEdges.map((edge) => {
       const newYMap = new Y.Map();
-      Object.entries(newEdgeObj).forEach(([key, value]) => {
+      Object.entries(edge).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
           newYMap.set(key, value);
         }
@@ -178,15 +174,8 @@ function updateParentYWorkflowEdges(
       return newYMap;
     });
 
-    // Only update if we made changes
-    if (hasUpdates) {
-      // Clear and recreate the entire edges array
-      yParentEdges.delete(0, parentEdges.length);
-      // Insert all edges at once as a single operation
-      yParentEdges.insert(0, newEdges);
-    }
-  } catch (error) {
-    console.error("Error cleaning up edges:", error);
+    yParentEdges.delete(0, parentEdges.length);
+    yParentEdges.insert(0, newYMapEdges);
   }
 }
 
@@ -226,6 +215,7 @@ function cleanupRelatedEdges(
       const newEdges = remainingEdgeObjects.map((edgeObj) => {
         const newYMap = new Y.Map();
         Object.entries(edgeObj).forEach(([key, value]) => {
+          console.log("key", key, "value", value);
           if (value !== undefined && value !== null) {
             newYMap.set(key, value);
           }
