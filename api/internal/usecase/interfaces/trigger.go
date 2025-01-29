@@ -48,7 +48,7 @@ type Trigger interface {
 	ExecuteAPITrigger(context.Context, ExecuteAPITriggerParam, *usecase.Operator) (*job.Job, error)
 	Fetch(context.Context, []id.TriggerID, *usecase.Operator) ([]*trigger.Trigger, error)
 	FindByID(context.Context, id.TriggerID, *usecase.Operator) (*trigger.Trigger, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination, *usecase.Operator) ([]*trigger.Trigger, *usecasex.PageInfo, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *PaginationParam, *usecase.Operator) ([]*trigger.Trigger, *usecasex.PageInfo, error)
 	Create(context.Context, CreateTriggerParam, *usecase.Operator) (*trigger.Trigger, error)
 	Update(context.Context, UpdateTriggerParam, *usecase.Operator) (*trigger.Trigger, error)
 	Delete(context.Context, id.TriggerID, *usecase.Operator) error

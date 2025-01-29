@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -105,6 +106,7 @@ func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 				field = "updatedat"
 			}
 			sort = bson.D{{Key: field, Value: sortDir}}
+			fmt.Printf("DEBUG: Sorting with field=%s, direction=%d\n", field, sortDir)
 		}
 
 		// Execute find with skip and limit
@@ -115,6 +117,12 @@ func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 
 		if err := r.client.Find(ctx, filter, c, opts); err != nil {
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		// Print debug info for results
+		fmt.Printf("DEBUG: Found %d results\n", len(c.Result))
+		for _, p := range c.Result {
+			fmt.Printf("DEBUG: Project name=%s\n", p.Name())
 		}
 
 		// Create page-based info

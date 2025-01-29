@@ -153,13 +153,13 @@ func (r *Job) findOne(ctx context.Context, filter any) (*job.Job, error) {
 	return c.Result[0], nil
 }
 
-func (r *Job) paginate(ctx context.Context, filter bson.M, pagination *usecasex.Pagination) ([]*job.Job, *usecasex.PageInfo, error) {
+func (r *Job) paginate(ctx context.Context, filter bson.M, pagination *interfaces.PaginationParam) ([]*job.Job, *usecasex.PageInfo, error) {
 	c := mongodoc.NewJobConsumer(r.f.Readable)
 
-	if pagination != nil && pagination.Offset != nil {
+	if pagination != nil && pagination.Page != nil {
 		// Page-based pagination
-		skip := pagination.Offset.Offset
-		limit := pagination.Offset.Limit
+		skip := int64((pagination.Page.Page - 1) * pagination.Page.PageSize)
+		limit := int64(pagination.Page.PageSize)
 
 		// Get total count for page info
 		total, err := r.client.Count(ctx, filter)
@@ -177,18 +177,16 @@ func (r *Job) paginate(ctx context.Context, filter bson.M, pagination *usecasex.
 		}
 
 		// Create page-based info
-		currentPage := int(skip/limit) + 1
-		pageInfo := interfaces.NewPageBasedInfo(total, currentPage, int(limit))
-
+		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
 		return c.Result, pageInfo.ToPageInfo(), nil
 	}
 
-	// Cursor-based pagination
-	pageInfo, err := r.client.Paginate(ctx, filter, nil, pagination, c)
-	if err != nil {
+	// No pagination
+	if err := r.client.Find(ctx, filter, c); err != nil {
 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 	}
-	return c.Result, pageInfo, nil
+	total := int64(len(c.Result))
+	return c.Result, &usecasex.PageInfo{TotalCount: total}, nil
 }
 
 func filterJobs(ids []id.JobID, rows []*job.Job) []*job.Job {

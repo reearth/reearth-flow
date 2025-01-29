@@ -126,20 +126,13 @@ func (r *Asset) Remove(ctx context.Context, id id.AssetID) error {
 	}))
 }
 
-func (r *Asset) paginate(ctx context.Context, filter any, sort *asset.SortType, pagination *usecasex.Pagination) ([]*asset.Asset, *usecasex.PageInfo, error) {
-	var usort *usecasex.Sort
-	if sort != nil {
-		usort = &usecasex.Sort{
-			Key: string(*sort),
-		}
-	}
-
+func (r *Asset) paginate(ctx context.Context, filter any, sort *asset.SortType, pagination *interfaces.PaginationParam) ([]*asset.Asset, *usecasex.PageInfo, error) {
 	c := mongodoc.NewAssetConsumer(r.f.Readable)
 
-	if pagination != nil && pagination.Offset != nil {
+	if pagination != nil && pagination.Page != nil {
 		// Page-based pagination
-		skip := pagination.Offset.Offset
-		limit := pagination.Offset.Limit
+		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
+		limit := pagination.Page.PageSize
 
 		// Get total count for page info
 		total, err := r.client.Count(ctx, filter)
@@ -147,29 +140,26 @@ func (r *Asset) paginate(ctx context.Context, filter any, sort *asset.SortType, 
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
 
-		// Execute find with skip and limit
-		opts := options.Find().
-			SetSkip(skip).
-			SetLimit(limit)
+		// Add sorting
+		opts := options.Find()
+		if sort != nil {
+			opts.SetSort(bson.D{{Key: string(*sort), Value: 1}})
+		}
+
+		// Add pagination
+		opts.SetSkip(int64(skip)).SetLimit(int64(limit))
 
 		if err := r.client.Find(ctx, filter, c, opts); err != nil {
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
 
 		// Create page-based info
-		currentPage := int(skip/limit) + 1
-		pageInfo := interfaces.NewPageBasedInfo(total, currentPage, int(limit))
+		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
 
 		return c.Result, pageInfo.ToPageInfo(), nil
 	}
 
-	// Cursor-based pagination
-	pageInfo, err := r.client.Paginate(ctx, filter, usort, pagination, c)
-	if err != nil {
-		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-	}
-
-	return c.Result, pageInfo, nil
+	return c.Result, &usecasex.PageInfo{TotalCount: int64(len(c.Result))}, nil
 }
 
 func (r *Asset) find(ctx context.Context, filter any) ([]*asset.Asset, error) {
