@@ -9,7 +9,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/usecasex"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -120,7 +119,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 		wsID       accountdomain.WorkspaceID
 		pagination *interfaces.PaginationParam
 		want       []*deployment.Deployment
-		wantInfo   *usecasex.PageInfo
+		wantInfo   *interfaces.PageBasedInfo
 		wantErr    bool
 	}{
 		{
@@ -137,12 +136,8 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 					PageSize: 2,
 				},
 			},
-			want: []*deployment.Deployment{d1, d2},
-			wantInfo: &usecasex.PageInfo{
-				TotalCount:      3,
-				HasNextPage:     true,
-				HasPreviousPage: false,
-			},
+			want:     []*deployment.Deployment{d2, d3},
+			wantInfo: interfaces.NewPageBasedInfo(3, 1, 2),
 		},
 		{
 			name: "page based pagination: second page",
@@ -158,12 +153,8 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 					PageSize: 2,
 				},
 			},
-			want: []*deployment.Deployment{d3},
-			wantInfo: &usecasex.PageInfo{
-				TotalCount:      3,
-				HasNextPage:     false,
-				HasPreviousPage: true,
-			},
+			want:     []*deployment.Deployment{d1},
+			wantInfo: interfaces.NewPageBasedInfo(3, 2, 2),
 		},
 		{
 			name: "page based pagination: empty page",
@@ -179,10 +170,8 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 					PageSize: 2,
 				},
 			},
-			want: nil,
-			wantInfo: &usecasex.PageInfo{
-				TotalCount: 3,
-			},
+			want:     nil,
+			wantInfo: interfaces.NewPageBasedInfo(3, 3, 2),
 		},
 		{
 			name: "no pagination",
@@ -193,10 +182,8 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 			},
 			wsID:       wsID,
 			pagination: nil,
-			want:       []*deployment.Deployment{d1, d2, d3},
-			wantInfo: &usecasex.PageInfo{
-				TotalCount: 3,
-			},
+			want:       []*deployment.Deployment{d2, d3, d1},
+			wantInfo:   interfaces.NewPageBasedInfo(3, 1, 3),
 		},
 		{
 			name: "different workspace",
@@ -207,9 +194,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 			wsID:       wsID2,
 			pagination: nil,
 			want:       []*deployment.Deployment{d4},
-			wantInfo: &usecasex.PageInfo{
-				TotalCount: 1,
-			},
+			wantInfo:   interfaces.NewPageBasedInfo(1, 1, 1),
 		},
 	}
 
