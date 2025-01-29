@@ -39,11 +39,10 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 	defer r.lock.Unlock()
 
 	if !r.f.CanRead(id) {
-		return nil, nil, nil
+		return nil, usecasex.EmptyPageInfo(), nil
 	}
 
-	// Pre-allocate slice with estimated capacity
-	result := make([]*deployment.Deployment, 0, len(r.data))
+	result := []*deployment.Deployment{}
 	for _, d := range r.data {
 		if d.Workspace() == id {
 			result = append(result, d)
@@ -86,7 +85,6 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 		return result[i].ID().String() < result[j].ID().String()
 	})
 
-	// Handle pagination
 	if pagination == nil {
 		return result, &usecasex.PageInfo{TotalCount: total}, nil
 	}
@@ -95,7 +93,11 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 		// Page-based pagination
 		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
 		if skip >= len(result) {
-			return nil, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize).ToPageInfo(), nil
+			return nil, &usecasex.PageInfo{
+				TotalCount:      total,
+				HasNextPage:     false,
+				HasPreviousPage: skip > 0 && int64(skip) <= total,
+			}, nil
 		}
 
 		end := skip + pagination.Page.PageSize
@@ -106,10 +108,11 @@ func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.Works
 		// Get the current page
 		pageResult := result[skip:end]
 
-		// Create page-based info
-		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
-
-		return pageResult, pageInfo.ToPageInfo(), nil
+		return pageResult, &usecasex.PageInfo{
+			TotalCount:      total,
+			HasNextPage:     int64(end) < total,
+			HasPreviousPage: skip > 0,
+		}, nil
 	}
 
 	return result, &usecasex.PageInfo{TotalCount: total}, nil
