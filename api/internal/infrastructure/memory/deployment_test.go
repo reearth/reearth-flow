@@ -10,7 +10,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/usecasex"
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -194,17 +193,16 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 			},
 			wsID: wsID,
 			pagination: &interfaces.PaginationParam{
-				Cursor: usecasex.CursorPagination{
-					First: lo.ToPtr(int64(2)),
-				}.Wrap(),
+				Page: &interfaces.PageBasedPaginationParam{
+					Page:     1,
+					PageSize: 2,
+				},
 			},
 			want: []*deployment.Deployment{d1, d2},
 			wantInfo: &usecasex.PageInfo{
 				TotalCount:      3,
 				HasNextPage:     true,
 				HasPreviousPage: false,
-				StartCursor:     lo.ToPtr(usecasex.Cursor(d1.ID().String())),
-				EndCursor:       lo.ToPtr(usecasex.Cursor(d2.ID().String())),
 			},
 		},
 		{
