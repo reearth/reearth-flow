@@ -5,7 +5,7 @@ import { Node } from "@flow/types";
 
 import { yWorkflowConstructor } from "./conversions";
 import type { YNodesArray, YWorkflow } from "./types";
-import useYNode from "./useYNode";
+import useYNode from "./useYNode/useYNode";
 
 afterEach(() => {
   cleanup();
