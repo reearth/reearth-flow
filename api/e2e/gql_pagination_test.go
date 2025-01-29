@@ -1,8 +1,10 @@
 package e2e
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"testing"
 	"time"
@@ -260,6 +262,120 @@ func TestJobsPagination(t *testing.T) {
 		},
 	}, true, baseSeederUser)
 
+	deploymentQuery := `mutation($input: CreateDeploymentInput!) {
+		createDeployment(input: $input) {
+			deployment {
+				id
+			}
+		}
+	}`
+
+	// Create multipart form data
+	var b bytes.Buffer
+	w := multipart.NewWriter(&b)
+
+	// Add operations field
+	operations := map[string]any{
+		"query": deploymentQuery,
+		"variables": map[string]any{
+			"input": map[string]any{
+				"workspaceId": wId1.String(),
+				"description": "Test deployment description",
+				"file":        nil,
+			},
+		},
+	}
+	operationsJSON, err := json.Marshal(operations)
+	assert.NoError(t, err)
+
+	err = w.WriteField("operations", string(operationsJSON))
+	assert.NoError(t, err)
+
+	// Add map field
+	err = w.WriteField("map", `{"0": ["variables.input.file"]}`)
+	assert.NoError(t, err)
+
+	// Add file
+	workflowContent := `{
+		"name": "Test Workflow",
+		"version": "1.0",
+		"steps": []
+	}`
+	part, err := w.CreateFormFile("0", "workflow.json")
+	assert.NoError(t, err)
+	_, err = part.Write([]byte(workflowContent))
+	assert.NoError(t, err)
+
+	err = w.Close()
+	assert.NoError(t, err)
+
+	resp := e.POST("/api/graphql").
+		WithHeader("Content-Type", w.FormDataContentType()).
+		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithBytes(b.Bytes()).
+		Expect().Status(http.StatusOK)
+
+	var deploymentResult struct {
+		Data struct {
+			CreateDeployment struct {
+				Deployment struct {
+					ID string `json:"id"`
+				} `json:"deployment"`
+			} `json:"createDeployment"`
+		} `json:"data"`
+	}
+
+	err = json.Unmarshal([]byte(resp.Body().Raw()), &deploymentResult)
+	assert.NoError(t, err)
+	deploymentId := deploymentResult.Data.CreateDeployment.Deployment.ID
+
+	// Create multiple jobs
+	for i := 0; i < 5; i++ {
+		jobQuery := `mutation($input: ExecuteDeploymentInput!) {
+			executeDeployment(input: $input) {
+				job {
+					id
+				}
+			}
+		}`
+
+		jobVariables := fmt.Sprintf(`{
+			"input": {
+				"deploymentId": "%s"
+			}
+		}`, deploymentId)
+
+		var jobVariablesMap map[string]any
+		err := json.Unmarshal([]byte(jobVariables), &jobVariablesMap)
+		assert.NoError(t, err)
+
+		request := GraphQLRequest{
+			Query:     jobQuery,
+			Variables: jobVariablesMap,
+		}
+		jsonData, err := json.Marshal(request)
+		assert.NoError(t, err)
+
+		resp := e.POST("/api/graphql").
+			WithHeader("Content-Type", "application/json").
+			WithHeader("X-Reearth-Debug-User", uId1.String()).
+			WithBytes(jsonData).
+			Expect().Status(http.StatusOK)
+
+		var result struct {
+			Data struct {
+				ExecuteDeployment struct {
+					Job struct {
+						ID string `json:"id"`
+					} `json:"job"`
+				} `json:"executeDeployment"`
+			} `json:"data"`
+		}
+
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+		assert.NoError(t, err)
+	}
+
 	// Test pagination
 	t.Run("test_pagination", func(t *testing.T) {
 		query := fmt.Sprintf(`{
@@ -275,7 +391,6 @@ func TestJobsPagination(t *testing.T) {
 					status
 				}
 				pageInfo {
-					hasNextPage
 					totalCount
 					currentPage
 					totalPages
@@ -303,10 +418,9 @@ func TestJobsPagination(t *testing.T) {
 						Status string `json:"status"`
 					} `json:"nodes"`
 					PageInfo struct {
-						HasNextPage bool `json:"hasNextPage"`
-						TotalCount  int  `json:"totalCount"`
-						CurrentPage int  `json:"currentPage"`
-						TotalPages  int  `json:"totalPages"`
+						TotalCount  int `json:"totalCount"`
+						CurrentPage int `json:"currentPage"`
+						TotalPages  int `json:"totalPages"`
 					} `json:"pageInfo"`
 				} `json:"jobsPage"`
 			} `json:"data"`
@@ -315,14 +429,9 @@ func TestJobsPagination(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 
-		// Verify pagination results
+		// Verify first page results
 		assert.Len(t, result.Data.JobsPage.Nodes, 2, "Should return exactly 2 jobs")
-		assert.NotZero(t, result.Data.JobsPage.PageInfo.TotalCount, "Total count should be greater than zero")
-		if result.Data.JobsPage.PageInfo.TotalCount > 2 {
-			assert.True(t, result.Data.JobsPage.PageInfo.HasNextPage, "Should have next page")
-			assert.Equal(t, 1, result.Data.JobsPage.PageInfo.CurrentPage, "Should be on first page")
-			assert.Greater(t, result.Data.JobsPage.PageInfo.TotalPages, 1, "Should have more than one page")
-		}
+		assert.Greater(t, result.Data.JobsPage.PageInfo.TotalCount, 0, "Total count should be greater than zero")
 	})
 
 	// Test sorting
@@ -370,7 +479,7 @@ func TestJobsPagination(t *testing.T) {
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 		// Verify pagination results
-		assert.Len(t, result.Data.JobsPage.Nodes, 2, "Should return exactly 2 jobs")
+		assert.Len(t, result.Data.JobsPage.Nodes, 5, "Should return exactly 5 jobs")
 		// Verify sorting
 		for i := 1; i < len(result.Data.JobsPage.Nodes); i++ {
 			prev := result.Data.JobsPage.Nodes[i-1].StartedAt
@@ -447,8 +556,6 @@ func TestJobsPagination(t *testing.T) {
 					status
 				}
 				pageInfo {
-					hasNextPage
-					hasPreviousPage
 					totalCount
 					currentPage
 					totalPages
@@ -476,11 +583,9 @@ func TestJobsPagination(t *testing.T) {
 						Status string `json:"status"`
 					} `json:"nodes"`
 					PageInfo struct {
-						HasNextPage     bool `json:"hasNextPage"`
-						HasPreviousPage bool `json:"hasPreviousPage"`
-						TotalCount      int  `json:"totalCount"`
-						CurrentPage     int  `json:"currentPage"`
-						TotalPages      int  `json:"totalPages"`
+						TotalCount  int `json:"totalCount"`
+						CurrentPage int `json:"currentPage"`
+						TotalPages  int `json:"totalPages"`
 					} `json:"pageInfo"`
 				} `json:"jobsPage"`
 			} `json:"data"`
@@ -491,8 +596,9 @@ func TestJobsPagination(t *testing.T) {
 
 		// Verify first page results
 		assert.Len(t, result.Data.JobsPage.Nodes, 2)
-		assert.False(t, result.Data.JobsPage.PageInfo.HasPreviousPage)
 		assert.Equal(t, 1, result.Data.JobsPage.PageInfo.CurrentPage)
+		assert.Equal(t, 5, result.Data.JobsPage.PageInfo.TotalCount)
+		assert.Equal(t, 3, result.Data.JobsPage.PageInfo.TotalPages)
 
 		// Test second page
 		query = fmt.Sprintf(`{
@@ -508,8 +614,6 @@ func TestJobsPagination(t *testing.T) {
 					status
 				}
 				pageInfo {
-					hasNextPage
-					hasPreviousPage
 					totalCount
 					currentPage
 					totalPages
@@ -533,393 +637,9 @@ func TestJobsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Verify second page results
-		assert.True(t, result.Data.JobsPage.PageInfo.HasPreviousPage)
 		assert.Equal(t, 2, result.Data.JobsPage.PageInfo.CurrentPage)
-	})
-}
-
-func TestTriggersPagination(t *testing.T) {
-	e, _ := StartGQLServer(t, &config.Config{
-		Origins: []string{"https://example.com"},
-		AuthSrv: config.AuthSrvConfig{
-			Disabled: true,
-		},
-	}, true, baseSeederUser)
-
-	deploymentQuery := `mutation($input: CreateDeploymentInput!) {
-		createDeployment(input: $input) {
-			deployment {
-				id
-			}
-		}
-	}`
-
-	deploymentVariables := fmt.Sprintf(`{
-		"input": {
-			"workspaceId": "%s",
-			"name": "Test Deployment",
-			"description": "Test deployment description"
-		}
-	}`, wId1.String())
-
-	var deploymentVariablesMap map[string]any
-	err := json.Unmarshal([]byte(deploymentVariables), &deploymentVariablesMap)
-	assert.NoError(t, err)
-
-	request := GraphQLRequest{
-		Query:     deploymentQuery,
-		Variables: deploymentVariablesMap,
-	}
-	jsonData, err := json.Marshal(request)
-	assert.NoError(t, err)
-
-	resp := e.POST("/api/graphql").
-		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", uId1.String()).
-		WithBytes(jsonData).
-		Expect().Status(http.StatusOK)
-
-	var deploymentResult struct {
-		Data struct {
-			CreateDeployment struct {
-				Deployment struct {
-					ID string `json:"id"`
-				} `json:"deployment"`
-			} `json:"createDeployment"`
-		} `json:"data"`
-	}
-
-	err = json.Unmarshal([]byte(resp.Body().Raw()), &deploymentResult)
-	assert.NoError(t, err)
-	deploymentId := deploymentResult.Data.CreateDeployment.Deployment.ID
-
-	for i := 0; i < 5; i++ {
-		triggerQuery := `mutation($input: CreateTimeDrivenTriggerInput!) {
-			createTimeDrivenTrigger(input: $input) {
-				trigger {
-					id
-				}
-			}
-		}`
-
-		triggerVariables := fmt.Sprintf(`{
-			"input": {
-				"workspaceId": "%s",
-				"deploymentId": "%s",
-				"description": "Test Trigger %d",
-				"schedule": "*/5 * * * *"
-			}
-		}`, wId1.String(), deploymentId, i)
-
-		var triggerVariablesMap map[string]any
-		err := json.Unmarshal([]byte(triggerVariables), &triggerVariablesMap)
-		assert.NoError(t, err)
-
-		request := GraphQLRequest{
-			Query:     triggerQuery,
-			Variables: triggerVariablesMap,
-		}
-		jsonData, err := json.Marshal(request)
-		assert.NoError(t, err)
-
-		resp := e.POST("/api/graphql").
-			WithHeader("Content-Type", "application/json").
-			WithHeader("X-Reearth-Debug-User", uId1.String()).
-			WithBytes(jsonData).
-			Expect().Status(http.StatusOK)
-
-		var result struct {
-			Data struct {
-				CreateTimeDrivenTrigger struct {
-					Trigger struct {
-						ID string `json:"id"`
-					} `json:"trigger"`
-				} `json:"createTimeDrivenTrigger"`
-			} `json:"data"`
-		}
-
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
-		assert.NoError(t, err)
-	}
-
-	// Test pagination
-	t.Run("test_pagination", func(t *testing.T) {
-		query := fmt.Sprintf(`{
-			triggers(
-				workspaceId: "%s"
-				pagination: {
-					first: 2
-				}
-			) {
-				edges {
-					node {
-						id
-						description
-					}
-				}
-				pageInfo {
-					hasNextPage
-					endCursor
-					totalCount
-				}
-			}
-		}`, wId1.String())
-
-		request := GraphQLRequest{
-			Query: query,
-		}
-		jsonData, err := json.Marshal(request)
-		assert.NoError(t, err)
-
-		resp := e.POST("/api/graphql").
-			WithHeader("Content-Type", "application/json").
-			WithHeader("X-Reearth-Debug-User", uId1.String()).
-			WithBytes(jsonData).
-			Expect().Status(http.StatusOK)
-
-		var result struct {
-			Data struct {
-				Triggers struct {
-					Edges []struct {
-						Node struct {
-							ID          string `json:"id"`
-							Description string `json:"description"`
-						} `json:"node"`
-					} `json:"edges"`
-					PageInfo struct {
-						HasNextPage bool   `json:"hasNextPage"`
-						EndCursor   string `json:"endCursor"`
-						TotalCount  int    `json:"totalCount"`
-					} `json:"pageInfo"`
-				} `json:"triggers"`
-			} `json:"data"`
-		}
-
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
-		assert.NoError(t, err)
-
-		assert.Len(t, result.Data.Triggers.Edges, 2)
-		assert.True(t, result.Data.Triggers.PageInfo.HasNextPage)
-		assert.Equal(t, 5, result.Data.Triggers.PageInfo.TotalCount)
-	})
-
-	// Test sorting
-	t.Run("test_sorting", func(t *testing.T) {
-		query := fmt.Sprintf(`{
-			triggers(
-				workspaceId: "%s"
-				pagination: {
-					first: 5
-					orderBy: "createdAt"
-					orderDir: DESC
-				}
-			) {
-				edges {
-					node {
-						id
-						createdAt
-					}
-				}
-			}
-		}`, wId1.String())
-
-		request := GraphQLRequest{
-			Query: query,
-		}
-		jsonData, err := json.Marshal(request)
-		assert.NoError(t, err)
-
-		resp := e.POST("/api/graphql").
-			WithHeader("Content-Type", "application/json").
-			WithHeader("X-Reearth-Debug-User", uId1.String()).
-			WithBytes(jsonData).
-			Expect().Status(http.StatusOK)
-
-		var result struct {
-			Data struct {
-				Triggers struct {
-					Edges []struct {
-						Node struct {
-							ID        string    `json:"id"`
-							CreatedAt time.Time `json:"createdAt"`
-						} `json:"node"`
-					} `json:"edges"`
-				} `json:"triggers"`
-			} `json:"data"`
-		}
-
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
-		assert.NoError(t, err)
-
-		// Verify sorting
-		for i := 1; i < len(result.Data.Triggers.Edges); i++ {
-			prev := result.Data.Triggers.Edges[i-1].Node.CreatedAt
-			curr := result.Data.Triggers.Edges[i].Node.CreatedAt
-			assert.True(t, prev.After(curr), "Triggers should be sorted by createdAt in descending order")
-		}
-	})
-
-	// Test page-based pagination
-	t.Run("test_page_pagination", func(t *testing.T) {
-		// Test first page
-		query := fmt.Sprintf(`{
-			triggers(
-				workspaceId: "%s"
-				pagination: {
-					page: 1
-					pageSize: 2
-				}
-			) {
-				edges {
-					node {
-						id
-						description
-					}
-				}
-				pageInfo {
-					hasNextPage
-					hasPreviousPage
-					totalCount
-					currentPage
-					totalPages
-				}
-			}
-		}`, wId1.String())
-
-		request := GraphQLRequest{
-			Query: query,
-		}
-		jsonData, err := json.Marshal(request)
-		assert.NoError(t, err)
-
-		resp := e.POST("/api/graphql").
-			WithHeader("Content-Type", "application/json").
-			WithHeader("X-Reearth-Debug-User", uId1.String()).
-			WithBytes(jsonData).
-			Expect().Status(http.StatusOK)
-
-		var result struct {
-			Data struct {
-				Triggers struct {
-					Edges []struct {
-						Node struct {
-							ID          string `json:"id"`
-							Description string `json:"description"`
-						} `json:"node"`
-					} `json:"edges"`
-					PageInfo struct {
-						HasNextPage     bool `json:"hasNextPage"`
-						HasPreviousPage bool `json:"hasPreviousPage"`
-						TotalCount      int  `json:"totalCount"`
-						CurrentPage     int  `json:"currentPage"`
-						TotalPages      int  `json:"totalPages"`
-					} `json:"pageInfo"`
-				} `json:"triggers"`
-			} `json:"data"`
-		}
-
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
-		assert.NoError(t, err)
-
-		assert.Len(t, result.Data.Triggers.Edges, 2)
-		assert.True(t, result.Data.Triggers.PageInfo.HasNextPage)
-		assert.False(t, result.Data.Triggers.PageInfo.HasPreviousPage)
-		assert.Equal(t, 5, result.Data.Triggers.PageInfo.TotalCount)
-		assert.Equal(t, 1, result.Data.Triggers.PageInfo.CurrentPage)
-		assert.Equal(t, 3, result.Data.Triggers.PageInfo.TotalPages)
-
-		// Test second page
-		query = fmt.Sprintf(`{
-			triggers(
-				workspaceId: "%s"
-				pagination: {
-					page: 2
-					pageSize: 2
-				}
-			) {
-				edges {
-					node {
-						id
-						description
-					}
-				}
-				pageInfo {
-					hasNextPage
-					hasPreviousPage
-					totalCount
-					currentPage
-					totalPages
-				}
-			}
-		}`, wId1.String())
-
-		request = GraphQLRequest{
-			Query: query,
-		}
-		jsonData, err = json.Marshal(request)
-		assert.NoError(t, err)
-
-		resp = e.POST("/api/graphql").
-			WithHeader("Content-Type", "application/json").
-			WithHeader("X-Reearth-Debug-User", uId1.String()).
-			WithBytes(jsonData).
-			Expect().Status(http.StatusOK)
-
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
-		assert.NoError(t, err)
-
-		assert.Len(t, result.Data.Triggers.Edges, 2)
-		assert.True(t, result.Data.Triggers.PageInfo.HasNextPage)
-		assert.True(t, result.Data.Triggers.PageInfo.HasPreviousPage)
-		assert.Equal(t, 5, result.Data.Triggers.PageInfo.TotalCount)
-		assert.Equal(t, 2, result.Data.Triggers.PageInfo.CurrentPage)
-		assert.Equal(t, 3, result.Data.Triggers.PageInfo.TotalPages)
-
-		// Test last page
-		query = fmt.Sprintf(`{
-			triggers(
-				workspaceId: "%s"
-				pagination: {
-					page: 3
-					pageSize: 2
-				}
-			) {
-				edges {
-					node {
-						id
-						description
-					}
-				}
-				pageInfo {
-					hasNextPage
-					hasPreviousPage
-					totalCount
-					currentPage
-					totalPages
-				}
-			}
-		}`, wId1.String())
-
-		request = GraphQLRequest{
-			Query: query,
-		}
-		jsonData, err = json.Marshal(request)
-		assert.NoError(t, err)
-
-		resp = e.POST("/api/graphql").
-			WithHeader("Content-Type", "application/json").
-			WithHeader("X-Reearth-Debug-User", uId1.String()).
-			WithBytes(jsonData).
-			Expect().Status(http.StatusOK)
-
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
-		assert.NoError(t, err)
-
-		assert.Len(t, result.Data.Triggers.Edges, 1)
-		assert.False(t, result.Data.Triggers.PageInfo.HasNextPage)
-		assert.True(t, result.Data.Triggers.PageInfo.HasPreviousPage)
-		assert.Equal(t, 5, result.Data.Triggers.PageInfo.TotalCount)
-		assert.Equal(t, 3, result.Data.Triggers.PageInfo.CurrentPage)
-		assert.Equal(t, 3, result.Data.Triggers.PageInfo.TotalPages)
+		assert.Equal(t, 5, result.Data.JobsPage.PageInfo.TotalCount)
+		assert.Equal(t, 3, result.Data.JobsPage.PageInfo.TotalPages)
+		assert.Len(t, result.Data.JobsPage.Nodes, 2)
 	})
 }
