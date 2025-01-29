@@ -56,22 +56,20 @@ func baseSeederUser(ctx context.Context, r *repo.Container) error {
 	if err := r.User.Save(ctx, u3); err != nil {
 		return err
 	}
-	roleOwner := workspace.Member{
-		Role:      workspace.RoleOwner,
+	memberInvitedByUid1 := workspace.Member{
 		InvitedBy: uId1,
 	}
-	roleReader := workspace.Member{
-		Role:      workspace.RoleReader,
+	memberInvitedByUid2 := workspace.Member{
 		InvitedBy: uId2,
 	}
 
 	w := workspace.New().ID(wId1).
 		Name("e2e").
 		Members(map[idx.ID[accountdomain.User]]workspace.Member{
-			uId1: roleOwner,
+			uId1: memberInvitedByUid1,
 		}).
 		Integrations(map[idx.ID[accountdomain.Integration]]workspace.Member{
-			iId1: roleOwner,
+			iId1: memberInvitedByUid1,
 		}).
 		MustBuild()
 	if err := r.Workspace.Save(ctx, w); err != nil {
@@ -81,11 +79,11 @@ func baseSeederUser(ctx context.Context, r *repo.Container) error {
 	w2 := workspace.New().ID(wId2).
 		Name("e2e2").
 		Members(map[idx.ID[accountdomain.User]]workspace.Member{
-			uId1: roleOwner,
-			uId3: roleReader,
+			uId1: memberInvitedByUid1,
+			uId3: memberInvitedByUid2,
 		}).
 		Integrations(map[idx.ID[accountdomain.Integration]]workspace.Member{
-			iId1: roleOwner,
+			iId1: memberInvitedByUid1,
 		}).
 		MustBuild()
 	if err := r.Workspace.Save(ctx, w2); err != nil {
