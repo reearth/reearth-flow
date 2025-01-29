@@ -263,22 +263,22 @@ func TestJobsPagination(t *testing.T) {
 	// Test pagination
 	t.Run("test_pagination", func(t *testing.T) {
 		query := fmt.Sprintf(`{
-			jobs(
+			jobsPage(
 				workspaceId: "%s"
 				pagination: {
-					first: 2
+					page: 1
+					pageSize: 2
 				}
 			) {
-				edges {
-					node {
-						id
-						status
-					}
+				nodes {
+					id
+					status
 				}
 				pageInfo {
 					hasNextPage
-					endCursor
 					totalCount
+					currentPage
+					totalPages
 				}
 			}
 		}`, wId1.String())
@@ -297,19 +297,18 @@ func TestJobsPagination(t *testing.T) {
 
 		var result struct {
 			Data struct {
-				Jobs struct {
-					Edges []struct {
-						Node struct {
-							ID     string `json:"id"`
-							Status string `json:"status"`
-						} `json:"node"`
-					} `json:"edges"`
+				JobsPage struct {
+					Nodes []struct {
+						ID     string `json:"id"`
+						Status string `json:"status"`
+					} `json:"nodes"`
 					PageInfo struct {
-						HasNextPage bool   `json:"hasNextPage"`
-						EndCursor   string `json:"endCursor"`
-						TotalCount  int    `json:"totalCount"`
+						HasNextPage bool `json:"hasNextPage"`
+						TotalCount  int  `json:"totalCount"`
+						CurrentPage int  `json:"currentPage"`
+						TotalPages  int  `json:"totalPages"`
 					} `json:"pageInfo"`
-				} `json:"jobs"`
+				} `json:"jobsPage"`
 			} `json:"data"`
 		}
 
@@ -317,30 +316,30 @@ func TestJobsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Verify pagination results
-		assert.Len(t, result.Data.Jobs.Edges, 2, "Should return exactly 2 jobs")
-		assert.NotZero(t, result.Data.Jobs.PageInfo.TotalCount, "Total count should be greater than zero")
-		if result.Data.Jobs.PageInfo.TotalCount > 2 {
-			assert.True(t, result.Data.Jobs.PageInfo.HasNextPage, "Should have next page")
-			assert.NotEmpty(t, result.Data.Jobs.PageInfo.EndCursor, "End cursor should not be empty")
+		assert.Len(t, result.Data.JobsPage.Nodes, 2, "Should return exactly 2 jobs")
+		assert.NotZero(t, result.Data.JobsPage.PageInfo.TotalCount, "Total count should be greater than zero")
+		if result.Data.JobsPage.PageInfo.TotalCount > 2 {
+			assert.True(t, result.Data.JobsPage.PageInfo.HasNextPage, "Should have next page")
+			assert.Equal(t, 1, result.Data.JobsPage.PageInfo.CurrentPage, "Should be on first page")
+			assert.Greater(t, result.Data.JobsPage.PageInfo.TotalPages, 1, "Should have more than one page")
 		}
 	})
 
 	// Test sorting
 	t.Run("test_sorting", func(t *testing.T) {
 		query := fmt.Sprintf(`{
-			jobs(
+			jobsPage(
 				workspaceId: "%s"
 				pagination: {
-					first: 5
+					page: 1
+					pageSize: 5
 					orderBy: "startedAt"
 					orderDir: DESC
 				}
 			) {
-				edges {
-					node {
-						id
-						startedAt
-					}
+				nodes {
+					id
+					startedAt
 				}
 			}
 		}`, wId1.String())
@@ -359,25 +358,23 @@ func TestJobsPagination(t *testing.T) {
 
 		var result struct {
 			Data struct {
-				Jobs struct {
-					Edges []struct {
-						Node struct {
-							ID        string    `json:"id"`
-							StartedAt time.Time `json:"startedAt"`
-						} `json:"node"`
-					} `json:"edges"`
-				} `json:"jobs"`
+				JobsPage struct {
+					Nodes []struct {
+						ID        string    `json:"id"`
+						StartedAt time.Time `json:"startedAt"`
+					} `json:"nodes"`
+				} `json:"jobsPage"`
 			} `json:"data"`
 		}
 
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 		// Verify pagination results
-		assert.Len(t, result.Data.Jobs.Edges, 2, "Should return exactly 2 jobs")
+		assert.Len(t, result.Data.JobsPage.Nodes, 2, "Should return exactly 2 jobs")
 		// Verify sorting
-		for i := 1; i < len(result.Data.Jobs.Edges); i++ {
-			prev := result.Data.Jobs.Edges[i-1].Node.StartedAt
-			curr := result.Data.Jobs.Edges[i].Node.StartedAt
+		for i := 1; i < len(result.Data.JobsPage.Nodes); i++ {
+			prev := result.Data.JobsPage.Nodes[i-1].StartedAt
+			curr := result.Data.JobsPage.Nodes[i].StartedAt
 			assert.True(t, prev.After(curr), "Jobs should be sorted by startedAt in descending order")
 		}
 	})
@@ -385,19 +382,18 @@ func TestJobsPagination(t *testing.T) {
 	// Test sorting in ascending order
 	t.Run("test_sorting_ascending", func(t *testing.T) {
 		query := fmt.Sprintf(`{
-			jobs(
+			jobsPage(
 				workspaceId: "%s"
 				pagination: {
-					first: 5
+					page: 1
+					pageSize: 5
 					orderBy: "startedAt"
 					orderDir: ASC
 				}
 			) {
-				edges {
-					node {
-						id
-						startedAt
-					}
+				nodes {
+					id
+					startedAt
 				}
 			}
 		}`, wId1.String())
@@ -416,23 +412,21 @@ func TestJobsPagination(t *testing.T) {
 
 		var result struct {
 			Data struct {
-				Jobs struct {
-					Edges []struct {
-						Node struct {
-							ID        string    `json:"id"`
-							StartedAt time.Time `json:"startedAt"`
-						} `json:"node"`
-					} `json:"edges"`
-				} `json:"jobs"`
+				JobsPage struct {
+					Nodes []struct {
+						ID        string    `json:"id"`
+						StartedAt time.Time `json:"startedAt"`
+					} `json:"nodes"`
+				} `json:"jobsPage"`
 			} `json:"data"`
 		}
 
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 		// Verify sorting
-		for i := 1; i < len(result.Data.Jobs.Edges); i++ {
-			prev := result.Data.Jobs.Edges[i-1].Node.StartedAt
-			curr := result.Data.Jobs.Edges[i].Node.StartedAt
+		for i := 1; i < len(result.Data.JobsPage.Nodes); i++ {
+			prev := result.Data.JobsPage.Nodes[i-1].StartedAt
+			curr := result.Data.JobsPage.Nodes[i].StartedAt
 			assert.True(t, prev.Before(curr), "Jobs should be sorted by startedAt in ascending order")
 		}
 	})
@@ -441,18 +435,16 @@ func TestJobsPagination(t *testing.T) {
 	t.Run("test_page_pagination", func(t *testing.T) {
 		// Test first page
 		query := fmt.Sprintf(`{
-			jobs(
+			jobsPage(
 				workspaceId: "%s"
 				pagination: {
 					page: 1
 					pageSize: 2
 				}
 			) {
-				edges {
-					node {
-						id
-						status
-					}
+				nodes {
+					id
+					status
 				}
 				pageInfo {
 					hasNextPage
@@ -478,13 +470,11 @@ func TestJobsPagination(t *testing.T) {
 
 		var result struct {
 			Data struct {
-				Jobs struct {
-					Edges []struct {
-						Node struct {
-							ID     string `json:"id"`
-							Status string `json:"status"`
-						} `json:"node"`
-					} `json:"edges"`
+				JobsPage struct {
+					Nodes []struct {
+						ID     string `json:"id"`
+						Status string `json:"status"`
+					} `json:"nodes"`
 					PageInfo struct {
 						HasNextPage     bool `json:"hasNextPage"`
 						HasPreviousPage bool `json:"hasPreviousPage"`
@@ -492,7 +482,7 @@ func TestJobsPagination(t *testing.T) {
 						CurrentPage     int  `json:"currentPage"`
 						TotalPages      int  `json:"totalPages"`
 					} `json:"pageInfo"`
-				} `json:"jobs"`
+				} `json:"jobsPage"`
 			} `json:"data"`
 		}
 
@@ -500,24 +490,22 @@ func TestJobsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Verify first page results
-		assert.Len(t, result.Data.Jobs.Edges, 2)
-		assert.False(t, result.Data.Jobs.PageInfo.HasPreviousPage)
-		assert.Equal(t, 1, result.Data.Jobs.PageInfo.CurrentPage)
+		assert.Len(t, result.Data.JobsPage.Nodes, 2)
+		assert.False(t, result.Data.JobsPage.PageInfo.HasPreviousPage)
+		assert.Equal(t, 1, result.Data.JobsPage.PageInfo.CurrentPage)
 
 		// Test second page
 		query = fmt.Sprintf(`{
-			jobs(
+			jobsPage(
 				workspaceId: "%s"
 				pagination: {
 					page: 2
 					pageSize: 2
 				}
 			) {
-				edges {
-					node {
-						id
-						status
-					}
+				nodes {
+					id
+					status
 				}
 				pageInfo {
 					hasNextPage
@@ -545,8 +533,8 @@ func TestJobsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Verify second page results
-		assert.True(t, result.Data.Jobs.PageInfo.HasPreviousPage)
-		assert.Equal(t, 2, result.Data.Jobs.PageInfo.CurrentPage)
+		assert.True(t, result.Data.JobsPage.PageInfo.HasPreviousPage)
+		assert.Equal(t, 2, result.Data.JobsPage.PageInfo.CurrentPage)
 	})
 }
 
