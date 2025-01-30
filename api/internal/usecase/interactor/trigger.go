@@ -72,7 +72,7 @@ func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigg
 }
 
 func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerParam) (result *trigger.Trigger, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
 		return nil, err
 	}
 
@@ -120,7 +120,7 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 }
 
 func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPITriggerParam) (_ *job.Job, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
 		return nil, err
 	}
 
@@ -190,7 +190,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 }
 
 func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerParam) (_ *trigger.Trigger, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
 		return nil, err
 	}
 
@@ -241,7 +241,7 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 }
 
 func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionDelete); err != nil {
 		return err
 	}
 
