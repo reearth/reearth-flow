@@ -2836,7 +2836,9 @@
         "default"
       ],
       "outputPorts": [
-        "default"
+        "summary",
+        "required",
+        "target"
       ],
       "categories": [
         "PLATEAU"

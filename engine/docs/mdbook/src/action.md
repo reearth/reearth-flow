@@ -2802,7 +2802,9 @@ Detect missing attributes
 ### Input Ports
 * default
 ### Output Ports
-* default
+* summary
+* required
+* target
 ### Category
 * PLATEAU
 

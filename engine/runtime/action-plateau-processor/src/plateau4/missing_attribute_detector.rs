@@ -17,6 +17,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 
+static SUMMARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("summary"));
+static REQUIRED_PORT: Lazy<Port> = Lazy::new(|| Port::new("required"));
+static TARGET_PORT: Lazy<Port> = Lazy::new(|| Port::new("target"));
+
 static FEATURE_TYPE_TO_PART_XPATH: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     HashMap::from([
         ("bldg:Building", "bldg:consistsOfBuildingPart"),
@@ -51,7 +55,11 @@ impl ProcessorFactory for MissingAttributeDetectorFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![
+            SUMMARY_PORT.clone(),
+            REQUIRED_PORT.clone(),
+            TARGET_PORT.clone(),
+        ]
     }
 
     fn build(
@@ -143,7 +151,7 @@ impl Processor for MissingAttributeDetector {
         };
         let features = self.detect_missing_attributes(package, feature)?;
         for feature in features {
-            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature, REQUIRED_PORT.clone()));
         }
         if flush {
             self.process_group(ctx.as_context(), fw, package.to_string())?;
@@ -157,12 +165,14 @@ impl Processor for MissingAttributeDetector {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let features = self.sumary_features(None);
-        for feature in features {
-            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                &ctx,
-                feature,
-                DEFAULT_PORT.clone(),
-            ));
+        for (port, features) in features {
+            for feature in features {
+                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                    &ctx,
+                    feature,
+                    port.clone(),
+                ));
+            }
         }
         Ok(())
     }
@@ -173,8 +183,9 @@ impl Processor for MissingAttributeDetector {
 }
 
 impl MissingAttributeDetector {
-    fn sumary_features(&self, ignore_package: Option<String>) -> Vec<Feature> {
-        let mut result = Vec::new();
+    fn sumary_features(&self, ignore_package: Option<String>) -> HashMap<Port, Vec<Feature>> {
+        let mut summaries = Vec::new();
+        let mut targets = Vec::new();
         let ignore_package = ignore_package.unwrap_or_default();
         for (package, buffer) in self
             .buffer
@@ -194,22 +205,14 @@ impl MissingAttributeDetector {
                         "featureType".to_string(),
                         AttributeValue::String(feature_type.clone()),
                     );
-                    feature.insert(
-                        "resultType".to_string(),
-                        AttributeValue::String("target".to_string()),
-                    );
                     feature.insert("missing".to_string(), AttributeValue::String(name.clone()));
-                    result.push(feature);
+                    targets.push(feature);
                 }
             }
             let mut feature = Feature::new();
             feature.insert(
                 "package".to_string(),
                 AttributeValue::String(package.to_string()),
-            );
-            feature.insert(
-                "resultType".to_string(),
-                AttributeValue::String("sumary".to_string()),
             );
             feature.insert(
                 "dataFileData".to_string(),
@@ -226,9 +229,12 @@ impl MissingAttributeDetector {
                     ),
                 ])),
             );
-            result.push(feature);
+            summaries.push(feature);
         }
-        result
+        HashMap::from([
+            (SUMMARY_PORT.clone(), summaries),
+            (TARGET_PORT.clone(), targets),
+        ])
     }
 
     fn process_group(
@@ -239,12 +245,14 @@ impl MissingAttributeDetector {
     ) -> super::errors::Result<()> {
         let package = ignore_package.clone();
         let features = self.sumary_features(Some(ignore_package));
-        for feature in features {
-            fw.send(ExecutorContext::new_with_context_feature_and_port(
-                &ctx,
-                feature,
-                DEFAULT_PORT.clone(),
-            ));
+        for (port, features) in features {
+            for feature in features {
+                fw.send(ExecutorContext::new_with_context_feature_and_port(
+                    &ctx,
+                    feature,
+                    port.clone(),
+                ));
+            }
         }
         let keys = self
             .buffer
@@ -587,10 +595,6 @@ impl MissingAttributeDetector {
                 feature.insert(
                     "missing".to_string(),
                     AttributeValue::String(xpath.to_string()),
-                );
-                feature.insert(
-                    "resultType".to_string(),
-                    AttributeValue::String("required".to_string()),
                 );
                 feature
             })

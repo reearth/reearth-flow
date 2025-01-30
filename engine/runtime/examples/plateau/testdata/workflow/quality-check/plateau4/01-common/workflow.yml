@@ -85,9 +85,73 @@ graphs:
           packageAttribute: "package"
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        name: Noop
+        name: FileWriterBySummary
         type: action
-        action: NoopSink
+        action: FileWriter
+        with:
+          format: json
+          converter: |
+            if env.get("__features").is_empty() {
+              {}
+            } else {
+              let feature = env.get("__features")[0];
+              feature["dataFileData"]
+            }
+          output: |
+            file::join_path(env.get("outputPath"), "summary_" + env.get("__value")["package"] + ".json")
+
+      - id: 5b72220a-8816-4902-b437-792b5fd8910a
+        name: AttributeMapperRequired
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: package
+              valueAttribute: package
+            - attribute: dirs
+              valueAttribute: udxDirs
+            - attribute: filename
+              expr: |
+                file::extract_filename(env.get("__value")["path"])
+            - attribute: gml_id
+              valueAttribute: gmlId
+            - attribute: severity
+              valueAttribute: severity
+            - attribute: feature_type
+              valueAttribute: featureType
+            - attribute: name
+              valueAttribute: name
+
+      - id: 08554659-d080-47b4-8fdc-5e771b105bb9
+        name: FileWriterByRequired
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(env.get("outputPath"), "01-2_必須属性等_必須属性等の欠落_" + env.get("__value")["package"] + ".tsv")
+
+      - id: 3aeac126-b3f0-45fc-9007-f5c0f6c637d9
+        name: AttributeMapperTarget
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: package
+              valueAttribute: package
+            - attribute: feature_type
+              valueAttribute: featureType
+            - attribute: name
+              valueAttribute: missing
+
+      - id: 49cb6bf2-89b4-47c9-8240-369783a3d862
+        name: FileWriterByTarget
+        type: action
+        action: FileWriter
+        with:
+          format: tsv
+          output: |
+            file::join_path(env.get("outputPath"), "01-2_必須属性等_現われなかった属性等_" + env.get("__value")["package"] + ".tsv")
 
     edges:
       - id: 7c5a60ec-66cb-4ee0-9793-88c1f57b495c
@@ -128,5 +192,25 @@ graphs:
       - id: 4e9aba22-2076-43aa-b2e9-f4e360146c42
         from: 4f7ccbb6-6293-4d54-acc3-39b5db3f8970
         to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        fromPort: summary
+        toPort: default
+      - id: e4beeaa1-fd24-4c0c-b439-9631f6828ff8
+        from: 4f7ccbb6-6293-4d54-acc3-39b5db3f8970
+        to: 5b72220a-8816-4902-b437-792b5fd8910a
+        fromPort: required
+        toPort: default
+      - id: 23887e50-15e8-4dff-9ccf-73b2fe505863
+        from: 5b72220a-8816-4902-b437-792b5fd8910a
+        to: 08554659-d080-47b4-8fdc-5e771b105bb9
+        fromPort: default
+        toPort: default
+      - id: d3a7152c-aaeb-4b62-9add-06c31dbc2526
+        from: 4f7ccbb6-6293-4d54-acc3-39b5db3f8970
+        to: 3aeac126-b3f0-45fc-9007-f5c0f6c637d9
+        fromPort: target
+        toPort: default
+      - id: 43ab06bb-051d-4cbe-abce-2687c37dcccf
+        from: 3aeac126-b3f0-45fc-9007-f5c0f6c637d9
+        to: 49cb6bf2-89b4-47c9-8240-369783a3d862
         fromPort: default
         toPort: default
