@@ -646,3 +646,243 @@ func TestJobsPagination(t *testing.T) {
 		assert.Len(t, result.Data.JobsPage.Nodes, 2)
 	})
 }
+
+func TestTriggersPagination(t *testing.T) {
+	e, _ := StartGQLServer(t, &config.Config{
+		Origins: []string{"https://example.com"},
+		AuthSrv: config.AuthSrvConfig{
+			Disabled: true,
+		},
+	}, true, baseSeederUser)
+
+	// Create a test deployment first
+	deploymentId := createTestDeployment(t, e)
+	assert.NotEmpty(t, deploymentId)
+
+	// Create multiple triggers for testing
+	triggerIDs := make([]string, 5)
+	for i := 0; i < 5; i++ {
+		query := `mutation($input: CreateTriggerInput!) {
+			createTrigger(input: $input) {
+				id
+			}
+		}`
+
+		variables := map[string]interface{}{
+			"input": map[string]interface{}{
+				"workspaceId":  wId1.String(),
+				"deploymentId": deploymentId,
+				"description":  fmt.Sprintf("Test Trigger %d", i),
+				"timeDriverInput": map[string]interface{}{
+					"interval": "EVERY_DAY",
+				},
+			},
+		}
+
+		request := GraphQLRequest{
+			Query:     query,
+			Variables: variables,
+		}
+		jsonData, err := json.Marshal(request)
+		assert.NoError(t, err)
+
+		resp := e.POST("/api/graphql").
+			WithHeader("Content-Type", "application/json").
+			WithHeader("X-Reearth-Debug-User", uId1.String()).
+			WithBytes(jsonData).
+			Expect().Status(http.StatusOK)
+
+		var result struct {
+			Data struct {
+				CreateTrigger struct {
+					ID string `json:"id"`
+				} `json:"createTrigger"`
+			} `json:"data"`
+		}
+
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, result.Data.CreateTrigger.ID, "Trigger creation failed")
+		triggerIDs[i] = result.Data.CreateTrigger.ID
+
+		// Add a small delay between trigger creations
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// Verify all triggers were created
+	assert.Len(t, triggerIDs, 5, "Expected 5 triggers to be created")
+	for i, id := range triggerIDs {
+		assert.NotEmpty(t, id, fmt.Sprintf("Trigger %d was not created successfully", i))
+	}
+
+	// Test page-based pagination
+	t.Run("test_page_based_pagination", func(t *testing.T) {
+		query := fmt.Sprintf(`{
+			triggersPage(
+				workspaceId: "%s"
+				pagination: {
+					page: 1
+					pageSize: 2
+				}
+			) {
+				nodes {
+					id
+					description
+				}
+				pageInfo {
+					totalCount
+					totalPages
+					currentPage
+				}
+			}
+		}`, wId1.String())
+
+		request := GraphQLRequest{
+			Query: query,
+		}
+		jsonData, err := json.Marshal(request)
+		assert.NoError(t, err)
+
+		resp := e.POST("/api/graphql").
+			WithHeader("Content-Type", "application/json").
+			WithHeader("X-Reearth-Debug-User", uId1.String()).
+			WithBytes(jsonData).
+			Expect().Status(http.StatusOK)
+
+		var result struct {
+			Data struct {
+				TriggersPage struct {
+					Nodes []struct {
+						ID          string `json:"id"`
+						Description string `json:"description"`
+					} `json:"nodes"`
+					PageInfo struct {
+						TotalCount  int `json:"totalCount"`
+						TotalPages  int `json:"totalPages"`
+						CurrentPage int `json:"currentPage"`
+					} `json:"pageInfo"`
+				} `json:"triggersPage"`
+			} `json:"data"`
+		}
+
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+		assert.NoError(t, err)
+
+		assert.Len(t, result.Data.TriggersPage.Nodes, 2)
+		assert.Equal(t, 5, result.Data.TriggersPage.PageInfo.TotalCount)
+		assert.Equal(t, 3, result.Data.TriggersPage.PageInfo.TotalPages)
+		assert.Equal(t, 1, result.Data.TriggersPage.PageInfo.CurrentPage)
+	})
+
+	// Test sorting
+	t.Run("test_sorting", func(t *testing.T) {
+		query := fmt.Sprintf(`{
+			triggersPage(
+				workspaceId: "%s"
+				pagination: {
+					page: 1
+					pageSize: 5
+					orderBy: "description"
+					orderDir: ASC
+				}
+			) {
+				nodes {
+					id
+					description
+				}
+			}
+		}`, wId1.String())
+
+		request := GraphQLRequest{
+			Query: query,
+		}
+		jsonData, err := json.Marshal(request)
+		assert.NoError(t, err)
+
+		resp := e.POST("/api/graphql").
+			WithHeader("Content-Type", "application/json").
+			WithHeader("X-Reearth-Debug-User", uId1.String()).
+			WithBytes(jsonData).
+			Expect().Status(http.StatusOK)
+
+		var result struct {
+			Data struct {
+				TriggersPage struct {
+					Nodes []struct {
+						ID          string `json:"id"`
+						Description string `json:"description"`
+					} `json:"nodes"`
+				} `json:"triggersPage"`
+			} `json:"data"`
+		}
+
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+		assert.NoError(t, err)
+
+		// Verify sorting
+		for i := 1; i < len(result.Data.TriggersPage.Nodes); i++ {
+			prev := result.Data.TriggersPage.Nodes[i-1].Description
+			curr := result.Data.TriggersPage.Nodes[i].Description
+			assert.True(t, prev <= curr, "Triggers should be sorted by description in ascending order")
+		}
+	})
+
+	// Test last page
+	t.Run("test_last_page", func(t *testing.T) {
+		query := fmt.Sprintf(`{
+			triggersPage(
+				workspaceId: "%s"
+				pagination: {
+					page: 3
+					pageSize: 2
+				}
+			) {
+				nodes {
+					id
+					description
+				}
+				pageInfo {
+					totalCount
+					totalPages
+					currentPage
+				}
+			}
+		}`, wId1.String())
+
+		request := GraphQLRequest{
+			Query: query,
+		}
+		jsonData, err := json.Marshal(request)
+		assert.NoError(t, err)
+
+		resp := e.POST("/api/graphql").
+			WithHeader("Content-Type", "application/json").
+			WithHeader("X-Reearth-Debug-User", uId1.String()).
+			WithBytes(jsonData).
+			Expect().Status(http.StatusOK)
+
+		var result struct {
+			Data struct {
+				TriggersPage struct {
+					Nodes []struct {
+						ID          string `json:"id"`
+						Description string `json:"description"`
+					} `json:"nodes"`
+					PageInfo struct {
+						TotalCount  int `json:"totalCount"`
+						TotalPages  int `json:"totalPages"`
+						CurrentPage int `json:"currentPage"`
+					} `json:"pageInfo"`
+				} `json:"triggersPage"`
+			} `json:"data"`
+		}
+
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+		assert.NoError(t, err)
+
+		assert.Len(t, result.Data.TriggersPage.Nodes, 1) // Last page should have 1 item
+		assert.Equal(t, 5, result.Data.TriggersPage.PageInfo.TotalCount)
+		assert.Equal(t, 3, result.Data.TriggersPage.PageInfo.TotalPages)
+		assert.Equal(t, 3, result.Data.TriggersPage.PageInfo.CurrentPage)
+	})
+}

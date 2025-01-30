@@ -65,7 +65,7 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 	}
 
 	c := mongodoc.NewTriggerConsumer(r.f.Readable)
-	filter := bson.M{"workspace": id.String()}
+	filter := bson.M{"workspaceid": id.String()}
 
 	if pagination != nil && pagination.Page != nil {
 		// Page-based pagination
@@ -78,8 +78,17 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
 
-		// Execute find with skip and limit
+		// Set up sort options
 		opts := options.Find().SetSkip(skip).SetLimit(limit)
+		if pagination.Page.OrderBy != nil {
+			direction := 1 // default ascending
+			if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
+				direction = -1
+			}
+			opts.SetSort(bson.D{{Key: *pagination.Page.OrderBy, Value: direction}})
+		}
+
+		// Execute find with skip and limit
 		if err := r.client.Find(ctx, filter, c, opts); err != nil {
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
@@ -87,6 +96,7 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		return c.Result, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
 	}
 
+	// If no pagination, return all results
 	if err := r.client.Find(ctx, filter, c); err != nil {
 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 	}
