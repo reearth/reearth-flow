@@ -198,7 +198,7 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error
 }
 
 func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (started bool, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
 		return false, err
 	}
 
