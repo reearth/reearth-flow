@@ -347,7 +347,7 @@ func TestListProjects(t *testing.T) {
 	// Verify the response
 	projects := result.Data.ProjectsPage
 	assert.NotNil(t, projects.Nodes)
-	assert.Len(t, projects.Nodes, 2) // Should get 2 projects per page
+	assert.Len(t, projects.Nodes, 2)
 	for _, node := range projects.Nodes {
 		assert.NotEmpty(t, node.ID)
 		assert.NotEmpty(t, node.Name)
