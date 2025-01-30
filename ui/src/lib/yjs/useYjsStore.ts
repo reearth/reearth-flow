@@ -5,7 +5,7 @@ import { rebuildWorkflow } from "./conversions";
 import type { YWorkflow } from "./types";
 import useYEdge from "./useYEdge";
 import useYHistory from "./useYHistory";
-import useYNode from "./useYNode/useYNode";
+import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
 
 export default ({

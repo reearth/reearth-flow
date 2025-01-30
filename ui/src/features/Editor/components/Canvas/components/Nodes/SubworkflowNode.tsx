@@ -10,6 +10,8 @@ const SubworkflowNode: React.FC<Props> = ({ data, ...props }) => {
     [data.pseudoInputs, data.inputs],
   );
 
+  console.log("subworkflow data", data);
+
   const uiOutputs = useMemo(
     () => data.pseudoOutputs?.map((po) => po.portName) || data.outputs || [],
     [data.pseudoOutputs, data.outputs],

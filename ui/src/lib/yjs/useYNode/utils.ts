@@ -2,33 +2,14 @@ import * as Y from "yjs";
 
 import type { Edge, Node } from "@flow/types";
 
-import { yNodeConstructor } from "../conversions";
-import type { YNodesArray, YWorkflow } from "../types";
+import {
+  reassembleEdge,
+  yEdgeConstructor,
+  yNodeConstructor,
+} from "../conversions";
+import type { YEdge, YNodesArray, YWorkflow } from "../types";
 
-export function updateParentYWorkflow(
-  rawWorkflows: Record<string, string | Node[] | Edge[]>[],
-  yWorkflows: Y.Array<YWorkflow>,
-  currentYWorkflow: YWorkflow,
-  node: Node,
-  params: any,
-) {
-  // Find which workflow the current workflow is used
-  const workflowIndex = rawWorkflows.findIndex((w) => {
-    const nodes = w.nodes as Node[];
-    return nodes.some(
-      (n) => n.id === (currentYWorkflow.get("id")?.toJSON() as string),
-    );
-  });
-  const yParentWorkflow = yWorkflows.get(workflowIndex);
-
-  const currentWorkflowId = currentYWorkflow.get("id")?.toJSON() as string;
-
-  // From here we are updating pseudoInputs and pseudoOutputs.
-  // These only exist on subworkflow nodes.
-  updateParentYWorkflowNode(currentWorkflowId, yParentWorkflow, node, params);
-}
-
-function updateParentYWorkflowNode(
+export function updateParentYWorkflowNode(
   currentWorkflowId: string,
   yParentWorkflow: YWorkflow,
   node: Node,
@@ -44,12 +25,7 @@ function updateParentYWorkflowNode(
   const subworkflowNode = parentNodes.find((n) => n.id === currentWorkflowId);
   if (!subworkflowNode) return;
 
-  const updatedSubworkflowNode: Node = {
-    ...subworkflowNode,
-    data: {
-      ...subworkflowNode.data,
-    },
-  };
+  const updatedSubworkflowNode: Node = { ...subworkflowNode };
 
   const newPseudoPort = {
     nodeId: node.id,
@@ -179,81 +155,48 @@ function updateParentYWorkflowEdges(
   }
 }
 
-function cleanupRelatedEdges(
+function removeEdgePort(
   currentWorkflowId: string,
   yParentWorkflow: YWorkflow,
-  portName: string | undefined,
+  portName: string,
   type: "source" | "target",
 ) {
-  if (!portName || !currentWorkflowId) return;
-
   const yParentEdges = yParentWorkflow?.get("edges") as Y.Array<unknown>;
   if (!yParentEdges || yParentEdges.length === 0) return;
 
   try {
-    const edgesArray = Array.from(yParentEdges);
+    const edgesArray = yParentEdges.map((e) => reassembleEdge(e as YEdge));
 
-    // First convert all to plain objects and filter out edges to remove
-    const remainingEdgeObjects = edgesArray
-      .map((e) => (e as Y.Map<unknown>).toJSON() as Edge)
-      .filter((edgeObj) => {
-        if (type === "source") {
-          return !(
-            edgeObj.source === currentWorkflowId &&
-            edgeObj.sourceHandle === portName
-          );
-        }
+    const updatedEdges = edgesArray.filter((edgeObj) => {
+      if (type === "source") {
         return !(
-          edgeObj.target === currentWorkflowId &&
-          edgeObj.targetHandle === portName
+          edgeObj.source === currentWorkflowId &&
+          edgeObj.sourceHandle === portName
         );
-      });
-
-    // If we have any changes (length is different)
-    if (remainingEdgeObjects.length !== edgesArray.length) {
-      // Create fresh YMaps for all remaining edges
-      const newEdges = remainingEdgeObjects.map((edgeObj) => {
-        const newYMap = new Y.Map();
-        Object.entries(edgeObj).forEach(([key, value]) => {
-          console.log("key", key, "value", value);
-          if (value !== undefined && value !== null) {
-            newYMap.set(key, value);
-          }
-        });
-        return newYMap;
-      });
-
-      // Update the edges array
-      yParentEdges.delete(0, edgesArray.length);
-      if (newEdges.length > 0) {
-        yParentEdges.insert(0, newEdges);
       }
-    }
+      return !(
+        edgeObj.target === currentWorkflowId &&
+        edgeObj.targetHandle === portName
+      );
+    });
+
+    const newYEdges = updatedEdges.map((edgeObj) => yEdgeConstructor(edgeObj));
+
+    yParentEdges.delete(0, edgesArray.length);
+    yParentEdges.insert(0, newYEdges);
   } catch (error) {
     console.error("Error cleaning up edges:", error);
   }
 }
 
-const cleanupPseudoPortsHelper = (
+const splitPorts = (
   ports: { nodeId: string; portName: string }[],
-  edgeType: "source" | "target",
-  currentWorkflowId: string,
-  yParentWorkflow: YWorkflow,
   nodeToDelete: Node,
 ) => {
   const portToRemove = ports.find((port) => port.nodeId === nodeToDelete.id);
-  const updatedPorts = ports.filter((port) => port.nodeId !== nodeToDelete.id);
+  const portsToUpdate = ports.filter((port) => port.nodeId !== nodeToDelete.id);
 
-  if (portToRemove) {
-    cleanupRelatedEdges(
-      currentWorkflowId,
-      yParentWorkflow,
-      portToRemove.portName,
-      edgeType,
-    );
-  }
-
-  return updatedPorts;
+  return { portToRemove, portsToUpdate };
 };
 
 export function cleanupPseudoPorts(
@@ -276,23 +219,37 @@ export function cleanupPseudoPorts(
   };
 
   if (nodeToDelete.data.outputs?.length) {
-    updatedSubworkflowNode.data.pseudoInputs = cleanupPseudoPortsHelper(
+    const { portToRemove, portsToUpdate } = splitPorts(
       updatedSubworkflowNode.data.pseudoInputs ?? [],
-      "target",
-      currentWorkflowId,
-      yParentWorkflow,
       nodeToDelete,
     );
+    updatedSubworkflowNode.data.pseudoInputs = portsToUpdate;
+
+    if (portToRemove) {
+      removeEdgePort(
+        currentWorkflowId,
+        yParentWorkflow,
+        portToRemove.portName,
+        "target",
+      );
+    }
   }
 
   if (nodeToDelete.data.inputs?.length) {
-    updatedSubworkflowNode.data.pseudoOutputs = cleanupPseudoPortsHelper(
+    const { portToRemove, portsToUpdate } = splitPorts(
       updatedSubworkflowNode.data.pseudoOutputs ?? [],
-      "source",
-      currentWorkflowId,
-      yParentWorkflow,
       nodeToDelete,
     );
+    updatedSubworkflowNode.data.pseudoOutputs = portsToUpdate;
+
+    if (portToRemove) {
+      removeEdgePort(
+        currentWorkflowId,
+        yParentWorkflow,
+        portToRemove.portName,
+        "source",
+      );
+    }
   }
 
   const newParentNodes = parentNodes.map((node) =>
