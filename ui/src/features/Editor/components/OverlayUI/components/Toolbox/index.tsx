@@ -19,6 +19,7 @@ type ToolboxItem<T> = {
   id: T;
   name: string;
   icon: React.ReactNode;
+  disabled?: boolean;
 };
 
 type Tool = ToolboxItem<NodeType>;
@@ -49,6 +50,7 @@ const Toolbox: React.FC<Props> = ({
       id: "reader" as const,
       name: t("Reader Node"),
       icon: <Database weight="thin" />,
+      disabled: !isMainWorkflow || hasReader,
     },
     {
       id: "transformer" as const,
@@ -59,6 +61,7 @@ const Toolbox: React.FC<Props> = ({
       id: "writer" as const,
       name: t("Writer Node"),
       icon: <Disc weight="thin" />,
+      disabled: !isMainWorkflow,
     },
     {
       id: "note" as const,
@@ -69,22 +72,14 @@ const Toolbox: React.FC<Props> = ({
       id: "batch" as const,
       name: t("Batch Node"),
       icon: <RectangleDashed weight="thin" />,
+      disabled: true, // TODO: Enable batch node after fixing batch implementation
     },
     {
       id: "subworkflow" as const,
       name: t("Subworkflow Node"),
       icon: <Graph weight="thin" />,
     },
-  ].filter((tool) => {
-    if (!isMainWorkflow) {
-      return tool.id !== "reader" && tool.id !== "writer";
-    }
-
-    if (isMainWorkflow && hasReader) {
-      return tool.id !== "reader";
-    }
-    return true;
-  });
+  ];
 
   const availableActions: Action[] = [
     {
@@ -165,6 +160,7 @@ const Toolbox: React.FC<Props> = ({
               icon={tool.icon}
               onDragStart={(event) => onDragStart(event, tool.id)}
               draggable
+              disabled={tool.disabled}
             />
           ))}
           {availableActions && <div className="my-2 w-full border-t" />}

@@ -9,7 +9,7 @@ nodes:
       routingPort: default
 
   - id: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
-    name: XMLValidatorSuntaxAndNamespace
+    name: XMLValidatorSyntaxAndNamespace
     type: action
     action: XMLValidator
     with:

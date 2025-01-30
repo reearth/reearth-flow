@@ -1,6 +1,6 @@
 import { useRouterState } from "@tanstack/react-router";
 
-import { EndSection, TopSection } from "./components";
+import { BottomSection, TopSection } from "./components";
 
 export const routeOptions = [
   "projects",
@@ -28,7 +28,7 @@ const LeftPanel: React.FC = () => {
     <div className="flex w-[240px] flex-col justify-between gap-[8px] border-r border-primary bg-secondary">
       <div className="flex flex-1 flex-col">
         <TopSection route={route} />
-        <EndSection route={route} />
+        <BottomSection route={route} />
       </div>
     </div>
   );

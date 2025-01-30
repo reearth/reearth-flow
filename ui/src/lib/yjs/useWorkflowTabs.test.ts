@@ -1,28 +1,36 @@
 import { renderHook } from "@testing-library/react";
-import { useY } from "react-yjs";
 import * as Y from "yjs";
 
+import { rebuildWorkflow, yWorkflowConstructor } from "./conversions";
+import type { YWorkflow } from "./types";
 import useWorkflowTabs from "./useWorkflowTabs";
-import { YWorkflow, yWorkflowBuilder } from "./utils";
 
 describe("useWorkflowTabs", () => {
-  it("should initialize with the first workflow as active", () => {
-    const yDoc = new Y.Doc();
-    const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-    const yWorkflow = yWorkflowBuilder("1", "Workflow-1");
-    yWorkflows.push([yWorkflow]);
+  const yDoc = new Y.Doc();
+  const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+  const yWorkflowMain = yWorkflowConstructor("main", "Workflow-1");
+  const yWorkflow2 = yWorkflowConstructor("2", "Workflow-2");
+  yWorkflows.push([yWorkflowMain, yWorkflow2]);
+  const currentWorkflowId = "main";
 
-    const currentWorkflowId = "1";
-    const { result: result1 } = renderHook(() => useY(yWorkflows));
+  const { result: result1 } = renderHook(() =>
+    yWorkflows.map((w) => rebuildWorkflow(w)),
+  );
 
-    const { result: result2 } = renderHook(() =>
-      useWorkflowTabs({
-        currentWorkflowId,
-        rawWorkflows: result1.current,
-        handleCurrentWorkflowIdChange: vi.fn(),
-      }),
-    );
+  const { result: result2 } = renderHook(() =>
+    useWorkflowTabs({
+      currentWorkflowId,
+      rawWorkflows: result1.current,
+      setCurrentWorkflowId: vi.fn(),
+    }),
+  );
 
-    expect(result2.current.currentWorkflowIndex).toBe(0);
+  it("should set isMainWorkflow to true when main is currentWorkflowId", () => {
+    expect(result2.current.isMainWorkflow).toBe(true);
+  });
+  it("should set openWorkflows appropriately", () => {
+    expect(result2.current.openWorkflows).toEqual([
+      { id: "main", name: "Workflow-1" },
+    ]);
   });
 });

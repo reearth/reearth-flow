@@ -108,6 +108,7 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 
 	d := deployment.New().
 		NewID().
+		Description(dp.Description).
 		Workspace(dp.Workspace).
 		WorkflowURL(url.String())
 
@@ -132,10 +133,6 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 	} else {
 		d = d.Version("v0")
 		d = d.IsHead(false)
-	}
-
-	if dp.Description != nil {
-		d = d.Description(*dp.Description)
 	}
 
 	dep, err := d.Build()
@@ -292,18 +289,17 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		projectID = *d.Project()
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), projectID, d.Workspace())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), nil, projectID, d.Workspace())
 	if err != nil {
 		return nil, interfaces.ErrJobCreationFailed
 	}
-
 	j.SetGCPJobID(gcpJobID)
 
-	tx.Commit()
-
-	if err := i.job.StartMonitoring(ctx, j, operator); err != nil {
+	if err := i.job.StartMonitoring(ctx, j, nil, operator); err != nil {
 		return nil, fmt.Errorf("failed to start job monitoring: %v", err)
 	}
+
+	tx.Commit()
 
 	return j, nil
 }

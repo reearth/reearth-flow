@@ -36,13 +36,13 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   id,
   dragging,
 }) => {
-  const { officialName, customName, status, inputs, outputs, locked } = data;
+  const { officialName, customName, status, inputs, outputs } = data;
   const isDragging = useRef<boolean>(dragging);
 
   const { setNodes, getInternalNode } = useReactFlow<Node>();
   const { handleNodeDropInBatch } = useBatch();
 
-  const [hardSelect, setHardSelect] = useState<boolean>(!!locked);
+  const [hardSelect, setHardSelect] = useState<boolean>(false);
 
   const [_, handleDoubleClick] = useDoubleClick(undefined, () => {
     setHardSelect(!hardSelect);
@@ -94,7 +94,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
             className={`size-[8px] self-center rounded ${metaProps.style}`}
           />
         </div>
-        {selected && !locked && (
+        {selected && (
           <div className="absolute bottom-[25px] right-1/2 flex h-[25px] w-[95%] translate-x-1/2 items-center justify-center rounded-t-lg bg-secondary">
             <IconButton
               className="h-full flex-1 rounded-b-none"

@@ -22,7 +22,7 @@ type Props = {
   nodes: Node[];
   isOpen: boolean;
   onOpen: (panel?: "left" | "right" | "bottom") => void;
-  onNodesChange: (nodes: Node[]) => void;
+  onNodesAdd: (node: Node[]) => void;
   isMainWorkflow: boolean;
   hasReader?: boolean;
 };
@@ -31,7 +31,7 @@ const LeftPanel: React.FC<Props> = ({
   nodes,
   isOpen,
   onOpen,
-  onNodesChange,
+  onNodesAdd,
   isMainWorkflow,
   hasReader,
 }) => {
@@ -104,7 +104,7 @@ const LeftPanel: React.FC<Props> = ({
       component: (
         <ActionsList
           nodes={nodes}
-          onNodesChange={onNodesChange}
+          onNodesAdd={onNodesAdd}
           isMainWorkflow={isMainWorkflow}
           hasReader={hasReader}
         />

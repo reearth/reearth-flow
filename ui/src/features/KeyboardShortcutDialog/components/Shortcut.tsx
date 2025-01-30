@@ -12,7 +12,7 @@ const Shortcuts: React.FC<Props> = ({ shortcuts }) => (
       <li
         key={`${keyBinding?.key}${keyBinding?.commandKey}${keyBinding?.shiftKey}${keyBinding?.altKey}`}
         className={`flex items-center justify-between rounded-md p-1 ${idx % 2 === 0 ? "bg-primary/50" : undefined}`}>
-        <p className="dark:font-extralight">{description}</p>
+        <p className="text-sm dark:font-extralight">{description}</p>
         <div className="flex gap-1">
           <Shortcut keyBinding={keyBinding} />
         </div>

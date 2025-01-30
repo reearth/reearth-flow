@@ -1,4 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import type { Trigger } from "@flow/types";
 import { isDefined } from "@flow/utils";
@@ -15,6 +19,8 @@ export enum TriggerQueryKeys {
   GetTriggers = "getTriggers",
 }
 
+const TRIGGERS_FETCH_RATE = 15;
+
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
@@ -25,11 +31,13 @@ export const useQueries = () => {
       deploymentId,
       timeDriverInput,
       apiDriverInput,
+      description,
     }: {
       workspaceId: string;
       deploymentId: string;
       timeDriverInput?: TimeDriverInput;
       apiDriverInput?: ApiDriverInput;
+      description?: string;
     }) => {
       const data = await graphQLContext?.CreateTrigger({
         input: {
@@ -37,6 +45,7 @@ export const useQueries = () => {
           deploymentId,
           timeDriverInput,
           apiDriverInput,
+          description,
         },
       });
 
@@ -58,15 +67,18 @@ export const useQueries = () => {
       triggerId,
       apiDriverInput,
       timeDriverInput,
+      description,
     }: {
       triggerId: string;
       apiDriverInput?: ApiDriverInput;
       timeDriverInput?: TimeDriverInput;
+      description?: string;
     }) => {
       const input: UpdateTriggerInput = {
         triggerId,
         apiDriverInput,
         timeDriverInput,
+        description,
       };
 
       const data = await graphQLContext?.UpdateTrigger({
@@ -105,27 +117,42 @@ export const useQueries = () => {
     },
   });
 
-  const useGetTriggersQuery = (workspaceId?: string) =>
-    useQuery({
+  const useGetTriggersInfiniteQuery = (workspaceId?: string) =>
+    useInfiniteQuery({
       queryKey: [TriggerQueryKeys.GetTriggers, workspaceId],
-      queryFn: async () => {
+      initialPageParam: null,
+      queryFn: async ({ pageParam }) => {
         const data = await graphQLContext?.GetTriggers({
           workspaceId: workspaceId ?? "",
+          pagination: {
+            first: TRIGGERS_FETCH_RATE,
+            after: pageParam,
+          },
         });
         if (!data) return;
-
-        const triggers: Trigger[] = data.triggers
+        const {
+          triggers: {
+            nodes,
+            pageInfo: { endCursor, hasNextPage },
+          },
+        } = data;
+        const triggers: Trigger[] = nodes
           .filter(isDefined)
           .map((trigger) => toTrigger(trigger));
-        return { triggers };
+        return { triggers, endCursor, hasNextPage };
       },
       enabled: !!workspaceId,
+      getNextPageParam: (lastPage) => {
+        if (!lastPage) return undefined;
+        const { endCursor, hasNextPage } = lastPage;
+        return hasNextPage ? endCursor : undefined;
+      },
     });
 
   return {
     createTriggerMutation,
     updateTriggerMutation,
     deleteTriggerMutation,
-    useGetTriggersQuery,
+    useGetTriggersInfiniteQuery,
   };
 };
