@@ -90,8 +90,6 @@ export default ({
     currentYWorkflow.get("edges") ?? new YArray(),
   ) as Edge[];
 
-  console.log("rawEdges", rawEdges);
-
   const edges = useMemo(
     () =>
       rawEdges.map((edge) => ({
