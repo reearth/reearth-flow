@@ -440,4 +440,12 @@ impl Feature {
     pub fn feature_type(&self) -> Option<String> {
         self.metadata.feature_type.clone()
     }
+
+    pub fn update_feature_type(&mut self, feature_type: String) {
+        self.metadata.feature_type = Some(feature_type);
+    }
+
+    pub fn update_feature_id(&mut self, feature_id: String) {
+        self.metadata.feature_id = Some(feature_id);
+    }
 }

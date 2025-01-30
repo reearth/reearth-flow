@@ -170,8 +170,19 @@ impl ChannelManager {
 }
 
 impl ProcessorChannelForwarder for ChannelManager {
+    fn node_id(&self) -> String {
+        self.owner.id.clone().into_inner()
+    }
+
     fn send(&mut self, ctx: ExecutorContext) {
-        self.send_op(ctx)
-            .unwrap_or_else(|e| panic!("Failed to send operation: {e}"))
+        let feature_id = ctx.feature.id;
+        let port = ctx.port.clone();
+        let node_id = self.owner.id.clone().into_inner();
+        self.send_op(ctx).unwrap_or_else(|e| {
+            panic!(
+                "Failed to send operation: node_id = {:?}, feature_id = {:?}, port = {:?}, error = {:?}",
+                node_id, feature_id, port, e
+            )
+        })
     }
 }

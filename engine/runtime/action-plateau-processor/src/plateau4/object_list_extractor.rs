@@ -125,11 +125,32 @@ impl Processor for ObjectListExtractor {
         })?;
         feature.insert(
             "featureTypes",
-            AttributeValue::Array(feature_types.into_iter().map(Into::into).collect()),
+            AttributeValue::Map(
+                feature_types
+                    .into_iter()
+                    .map(|(prefix, feature_types)| {
+                        (
+                            prefix.clone(),
+                            AttributeValue::Array(
+                                feature_types
+                                    .iter()
+                                    .cloned()
+                                    .map(AttributeValue::String)
+                                    .collect(),
+                            ),
+                        )
+                    })
+                    .collect::<HashMap<String, AttributeValue>>(),
+            ),
         );
         feature.insert(
             "objectList",
-            AttributeValue::Array(object_list.into_iter().map(Into::into).collect()),
+            AttributeValue::Map(
+                object_list
+                    .into_iter()
+                    .map(|(prefix, object_list)| (prefix.clone(), object_list.into()))
+                    .collect::<HashMap<String, AttributeValue>>(),
+            ),
         );
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
