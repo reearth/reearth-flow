@@ -9,6 +9,7 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearthx/account/accountdomain"
+	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/stretchr/testify/assert"
 )
@@ -137,7 +138,7 @@ func TestAddMemberToWorkspace(t *testing.T) {
 	assert.Nil(t, err)
 	assert.False(t, w.Members().HasUser(uId2))
 
-	query := fmt.Sprintf(`mutation { addMemberToWorkspace(input: {workspaceId: "%s", userId: "%s" }){ workspace{ id } }}`, wId1, uId2)
+	query := fmt.Sprintf(`mutation { addMemberToWorkspace(input: {workspaceId: "%s", userId: "%s", role: READER}){ workspace{ id } }}`, wId1, uId2)
 	request := GraphQLRequest{
 		Query: query,
 	}
@@ -154,8 +155,9 @@ func TestAddMemberToWorkspace(t *testing.T) {
 	w, err = r.Workspace.FindByID(context.Background(), wId1)
 	assert.Nil(t, err)
 	assert.True(t, w.Members().HasUser(uId2))
+	assert.Equal(t, w.Members().User(uId2).Role, workspace.RoleReader)
 
-	query = fmt.Sprintf(`mutation { addMemberToWorkspace(input: {workspaceId: "%s", userId: "%s" }){ workspace{ id } }}`, wId1, uId2)
+	query = fmt.Sprintf(`mutation { addMemberToWorkspace(input: {workspaceId: "%s", userId: "%s", role: READER}){ workspace{ id } }}`, wId1, uId2)
 	request = GraphQLRequest{
 		Query: query,
 	}
