@@ -2810,6 +2810,39 @@
       ]
     },
     {
+      "name": "PLATEAU4.MissingAttributeDetector",
+      "type": "processor",
+      "description": "Detect missing attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "MissingAttributeDetectorParam",
+        "type": "object",
+        "required": [
+          "packageAttribute"
+        ],
+        "properties": {
+          "packageAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU4.ObjectListExtractor",
       "type": "processor",
       "description": "Extract object list",
