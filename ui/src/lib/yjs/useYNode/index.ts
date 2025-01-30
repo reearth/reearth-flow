@@ -3,10 +3,10 @@ import * as Y from "yjs";
 
 import type { Edge, Node, NodeChange } from "@flow/types";
 
-import { yNodeConstructor } from "../conversions";
+import { fromYjsText, yNodeConstructor } from "../conversions";
 import type { YNodesArray, YNodeValue, YWorkflow } from "../types";
 
-import { cleanupPseudoPorts, updateParentYWorkflow } from "./YNodeUtils";
+import { cleanupPseudoPorts, updateParentYWorkflowNode } from "./utils";
 
 export default ({
   currentYWorkflow,
@@ -96,7 +96,7 @@ export default ({
 
               if (existing) {
                 const index = Array.from(yNodes).findIndex(
-                  (yn) => yn.get("id")?.toString() === change.id,
+                  (yn) => fromYjsText(yn.get("id") as Y.Text) === change.id,
                 );
 
                 if (index !== -1) {
@@ -106,10 +106,7 @@ export default ({
 
                   if (nodeToDelete.type === "subworkflow") {
                     handleWorkflowsRemove([change.id]);
-                  } else if (
-                    nodeToDelete.data.inputs?.length ||
-                    nodeToDelete.data.outputs?.length
-                  ) {
+                  } else if (nodeToDelete.data.params?.routingPort) {
                     const workflowIndex = rawWorkflows.findIndex((w) => {
                       const nodes = w.nodes as Node[];
                       return nodes.some(
@@ -176,12 +173,23 @@ export default ({
 
         if (!node) return;
 
-        // if params.routingPort && currentWorkflow is a subworkflow.
+        // if params.routingPort exists, it is a subworkflow.
         if (params.routingPort) {
-          updateParentYWorkflow(
-            rawWorkflows,
-            yWorkflows,
-            currentYWorkflow,
+          const currentWorkflowId = currentYWorkflow
+            .get("id")
+            ?.toJSON() as string;
+
+          const parentWorkflowIndex = rawWorkflows.findIndex((w) => {
+            const nodes = w.nodes as Node[];
+            return nodes.some((n) => n.id === currentWorkflowId);
+          });
+          const yParentWorkflow = yWorkflows.get(parentWorkflowIndex);
+
+          // From here we are updating pseudoInputs and pseudoOutputs.
+          // These only exist on subworkflow nodes.
+          updateParentYWorkflowNode(
+            currentWorkflowId,
+            yParentWorkflow,
             node,
             params,
           );
