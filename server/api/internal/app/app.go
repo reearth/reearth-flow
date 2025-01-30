@@ -55,6 +55,12 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 
 	// auth config
 	authConfig := cfg.Config.JWTProviders()
+	// authConfig := []appx.JWTProvider{{
+	// 	ISS:     "https://reearth-oss-test.eu.auth0.com/",
+	// 	AUD:     []string{"https://api.test.reearth.dev"},
+	// 	JWKSURI: lo.ToPtr("https://reearth-oss-test.eu.auth0.com/.well-known/jwks.json"),
+	// 	}}
+
 	log.Infof("auth: config: %#v", authConfig)
 	authMiddleware := echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, true)))
 
