@@ -45,6 +45,7 @@ tokio.workspace = true
 tracing.workspace = true
 url.workspace = true
 uuid.workspace = true
+nutype.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
