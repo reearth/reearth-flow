@@ -3,7 +3,7 @@ FROM rust:1.81 as builder
 WORKDIR /usr/src/app
 COPY . .
 
-RUN cargo build --release --no-default-features
+RUN cargo build --release 
 
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
