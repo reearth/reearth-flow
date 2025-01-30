@@ -46,16 +46,16 @@ export default ({ workflowId }: { workflowId?: string }) => {
           },
         );
 
-      yWebSocketProvider.once("sync", () => {
-        if (yWorkflows.length === 0) {
-          yDoc.transact(() => {
-            const yWorkflow = yWorkflowConstructor(
-              DEFAULT_ENTRY_GRAPH_ID,
-              "Main Workflow",
-            );
-            yWorkflows.push([yWorkflow]);
-          });
-        }
+        yWebSocketProvider.once("sync", () => {
+          if (yWorkflows.length === 0) {
+            yDoc.transact(() => {
+              const yWorkflow = yWorkflowConstructor(
+                DEFAULT_ENTRY_GRAPH_ID,
+                "Main Workflow",
+              );
+              yWorkflows.push([yWorkflow]);
+            });
+          }
 
           setIsSynced(true); // Mark as synced
         });
