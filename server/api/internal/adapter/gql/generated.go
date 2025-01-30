@@ -183,6 +183,7 @@ type ComplexityRoot struct {
 		UnshareProject            func(childComplexity int, input gqlmodel.UnshareProjectInput) int
 		UpdateDeployment          func(childComplexity int, input gqlmodel.UpdateDeploymentInput) int
 		UpdateMe                  func(childComplexity int, input gqlmodel.UpdateMeInput) int
+		UpdateMemberOfWorkspace   func(childComplexity int, input gqlmodel.UpdateMemberOfWorkspaceInput) int
 		UpdateParameterOrder      func(childComplexity int, projectID gqlmodel.ID, input gqlmodel.UpdateParameterOrderInput) int
 		UpdateParameterValue      func(childComplexity int, paramID gqlmodel.ID, input gqlmodel.UpdateParameterValueInput) int
 		UpdateProject             func(childComplexity int, input gqlmodel.UpdateProjectInput) int
@@ -312,6 +313,10 @@ type ComplexityRoot struct {
 		Me func(childComplexity int) int
 	}
 
+	UpdateMemberOfWorkspacePayload struct {
+		Workspace func(childComplexity int) int
+	}
+
 	UpdateWorkspacePayload struct {
 		Workspace func(childComplexity int) int
 	}
@@ -333,6 +338,7 @@ type ComplexityRoot struct {
 	}
 
 	WorkspaceMember struct {
+		Role   func(childComplexity int) int
 		User   func(childComplexity int) int
 		UserID func(childComplexity int) int
 	}
@@ -382,6 +388,7 @@ type MutationResolver interface {
 	UpdateWorkspace(ctx context.Context, input gqlmodel.UpdateWorkspaceInput) (*gqlmodel.UpdateWorkspacePayload, error)
 	AddMemberToWorkspace(ctx context.Context, input gqlmodel.AddMemberToWorkspaceInput) (*gqlmodel.AddMemberToWorkspacePayload, error)
 	RemoveMemberFromWorkspace(ctx context.Context, input gqlmodel.RemoveMemberFromWorkspaceInput) (*gqlmodel.RemoveMemberFromWorkspacePayload, error)
+	UpdateMemberOfWorkspace(ctx context.Context, input gqlmodel.UpdateMemberOfWorkspaceInput) (*gqlmodel.UpdateMemberOfWorkspacePayload, error)
 }
 type ProjectResolver interface {
 	Deployment(ctx context.Context, obj *gqlmodel.Project) (*gqlmodel.Deployment, error)
@@ -1095,6 +1102,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.UpdateMe(childComplexity, args["input"].(gqlmodel.UpdateMeInput)), true
 
+	case "Mutation.updateMemberOfWorkspace":
+		if e.complexity.Mutation.UpdateMemberOfWorkspace == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateMemberOfWorkspace_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateMemberOfWorkspace(childComplexity, args["input"].(gqlmodel.UpdateMemberOfWorkspaceInput)), true
+
 	case "Mutation.updateParameterOrder":
 		if e.complexity.Mutation.UpdateParameterOrder == nil {
 			break
@@ -1722,6 +1741,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.UpdateMePayload.Me(childComplexity), true
 
+	case "UpdateMemberOfWorkspacePayload.workspace":
+		if e.complexity.UpdateMemberOfWorkspacePayload.Workspace == nil {
+			break
+		}
+
+		return e.complexity.UpdateMemberOfWorkspacePayload.Workspace(childComplexity), true
+
 	case "UpdateWorkspacePayload.workspace":
 		if e.complexity.UpdateWorkspacePayload.Workspace == nil {
 			break
@@ -1809,6 +1835,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Workspace.Projects(childComplexity, args["includeArchived"].(*bool), args["pagination"].(*gqlmodel.Pagination)), true
 
+	case "WorkspaceMember.role":
+		if e.complexity.WorkspaceMember.Role == nil {
+			break
+		}
+
+		return e.complexity.WorkspaceMember.Role(childComplexity), true
+
 	case "WorkspaceMember.user":
 		if e.complexity.WorkspaceMember.User == nil {
 			break
@@ -1859,6 +1892,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUnshareProjectInput,
 		ec.unmarshalInputUpdateDeploymentInput,
 		ec.unmarshalInputUpdateMeInput,
+		ec.unmarshalInputUpdateMemberOfWorkspaceInput,
 		ec.unmarshalInputUpdateParameterOrderInput,
 		ec.unmarshalInputUpdateParameterValueInput,
 		ec.unmarshalInputUpdateProjectInput,
@@ -2588,8 +2622,20 @@ extend type Mutation {
 }
 
 type WorkspaceMember {
+  role: Role!
   user: User
   userId: ID!
+}
+
+enum Role {
+  # a role who can maintain a project
+  MAINTAINER
+  # a eole who can have full controll of project
+  OWNER
+  # a role who can read project
+  READER
+  # a role who can read and write project
+  WRITER
 }
 
 # InputType
@@ -2606,11 +2652,18 @@ input UpdateWorkspaceInput {
 input AddMemberToWorkspaceInput {
   workspaceId: ID!
   userId: ID!
+  role: Role!
 }
 
 input RemoveMemberFromWorkspaceInput {
   workspaceId: ID!
   userId: ID!
+}
+
+input UpdateMemberOfWorkspaceInput {
+  workspaceId: ID!
+  userId: ID!
+  role: Role!
 }
 
 input DeleteWorkspaceInput {
@@ -2635,6 +2688,10 @@ type RemoveMemberFromWorkspacePayload {
   workspace: Workspace!
 }
 
+type UpdateMemberOfWorkspacePayload {
+  workspace: Workspace!
+}
+
 type DeleteWorkspacePayload {
   workspaceId: ID!
 }
@@ -2647,6 +2704,7 @@ extend type Mutation {
   updateWorkspace(input: UpdateWorkspaceInput!): UpdateWorkspacePayload
   addMemberToWorkspace(input: AddMemberToWorkspaceInput!): AddMemberToWorkspacePayload
   removeMemberFromWorkspace(input: RemoveMemberFromWorkspaceInput!): RemoveMemberFromWorkspacePayload
+  updateMemberOfWorkspace(input: UpdateMemberOfWorkspaceInput!): UpdateMemberOfWorkspacePayload
 }
 `, BuiltIn: false},
 }
@@ -3002,6 +3060,21 @@ func (ec *executionContext) field_Mutation_updateMe_args(ctx context.Context, ra
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNUpdateMeInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateMeInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateMemberOfWorkspace_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.UpdateMemberOfWorkspaceInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNUpdateMemberOfWorkspaceInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateMemberOfWorkspaceInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -7834,6 +7907,62 @@ func (ec *executionContext) fieldContext_Mutation_removeMemberFromWorkspace(ctx 
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateMemberOfWorkspace(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateMemberOfWorkspace(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateMemberOfWorkspace(rctx, fc.Args["input"].(gqlmodel.UpdateMemberOfWorkspaceInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.UpdateMemberOfWorkspacePayload)
+	fc.Result = res
+	return ec.marshalOUpdateMemberOfWorkspacePayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateMemberOfWorkspacePayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateMemberOfWorkspace(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "workspace":
+				return ec.fieldContext_UpdateMemberOfWorkspacePayload_workspace(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UpdateMemberOfWorkspacePayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateMemberOfWorkspace_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PageInfo_totalCount(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.PageInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_totalCount(ctx, field)
 	if err != nil {
@@ -11669,6 +11798,64 @@ func (ec *executionContext) fieldContext_UpdateMePayload_me(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _UpdateMemberOfWorkspacePayload_workspace(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UpdateMemberOfWorkspacePayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_UpdateMemberOfWorkspacePayload_workspace(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Workspace, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.Workspace)
+	fc.Result = res
+	return ec.marshalNWorkspace2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkspace(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_UpdateMemberOfWorkspacePayload_workspace(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "UpdateMemberOfWorkspacePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "assets":
+				return ec.fieldContext_Workspace_assets(ctx, field)
+			case "id":
+				return ec.fieldContext_Workspace_id(ctx, field)
+			case "members":
+				return ec.fieldContext_Workspace_members(ctx, field)
+			case "name":
+				return ec.fieldContext_Workspace_name(ctx, field)
+			case "personal":
+				return ec.fieldContext_Workspace_personal(ctx, field)
+			case "projects":
+				return ec.fieldContext_Workspace_projects(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UpdateWorkspacePayload_workspace(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.UpdateWorkspacePayload) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_UpdateWorkspacePayload_workspace(ctx, field)
 	if err != nil {
@@ -12046,6 +12233,8 @@ func (ec *executionContext) fieldContext_Workspace_members(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "role":
+				return ec.fieldContext_WorkspaceMember_role(ctx, field)
 			case "user":
 				return ec.fieldContext_WorkspaceMember_user(ctx, field)
 			case "userId":
@@ -12204,6 +12393,50 @@ func (ec *executionContext) fieldContext_Workspace_projects(ctx context.Context,
 	if fc.Args, err = ec.field_Workspace_projects_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkspaceMember_role(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkspaceMember) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_WorkspaceMember_role(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Role, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.Role)
+	fc.Result = res
+	return ec.marshalNRole2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRole(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_WorkspaceMember_role(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkspaceMember",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Role does not have child fields")
+		},
 	}
 	return fc, nil
 }
@@ -14110,7 +14343,7 @@ func (ec *executionContext) unmarshalInputAddMemberToWorkspaceInput(ctx context.
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceId", "userId"}
+	fieldsInOrder := [...]string{"workspaceId", "userId", "role"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -14131,6 +14364,13 @@ func (ec *executionContext) unmarshalInputAddMemberToWorkspaceInput(ctx context.
 				return it, err
 			}
 			it.UserID = data
+		case "role":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("role"))
+			data, err := ec.unmarshalNRole2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRole(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Role = data
 		}
 	}
 
@@ -15085,6 +15325,47 @@ func (ec *executionContext) unmarshalInputUpdateMeInput(ctx context.Context, obj
 				return it, err
 			}
 			it.Lang = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateMemberOfWorkspaceInput(ctx context.Context, obj interface{}) (gqlmodel.UpdateMemberOfWorkspaceInput, error) {
+	var it gqlmodel.UpdateMemberOfWorkspaceInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"workspaceId", "userId", "role"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "workspaceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkspaceID = data
+		case "userId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
+		case "role":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("role"))
+			data, err := ec.unmarshalNRole2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRole(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Role = data
 		}
 	}
 
@@ -16501,6 +16782,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_removeMemberFromWorkspace(ctx, field)
 			})
+		case "updateMemberOfWorkspace":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateMemberOfWorkspace(ctx, field)
+			})
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -17805,6 +18090,45 @@ func (ec *executionContext) _UpdateMePayload(ctx context.Context, sel ast.Select
 	return out
 }
 
+var updateMemberOfWorkspacePayloadImplementors = []string{"UpdateMemberOfWorkspacePayload"}
+
+func (ec *executionContext) _UpdateMemberOfWorkspacePayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.UpdateMemberOfWorkspacePayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, updateMemberOfWorkspacePayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("UpdateMemberOfWorkspacePayload")
+		case "workspace":
+			out.Values[i] = ec._UpdateMemberOfWorkspacePayload_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var updateWorkspacePayloadImplementors = []string{"UpdateWorkspacePayload"}
 
 func (ec *executionContext) _UpdateWorkspacePayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.UpdateWorkspacePayload) graphql.Marshaler {
@@ -18032,6 +18356,11 @@ func (ec *executionContext) _WorkspaceMember(ctx context.Context, sel ast.Select
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("WorkspaceMember")
+		case "role":
+			out.Values[i] = ec._WorkspaceMember_role(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "user":
 			field := field
 
@@ -19110,6 +19439,16 @@ func (ec *executionContext) unmarshalNRemoveParameterInput2githubᚗcomᚋreeart
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNRole2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRole(ctx context.Context, v interface{}) (gqlmodel.Role, error) {
+	var res gqlmodel.Role
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRole2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRole(ctx context.Context, sel ast.SelectionSet, v gqlmodel.Role) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNRunProjectInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRunProjectInput(ctx context.Context, v interface{}) (gqlmodel.RunProjectInput, error) {
 	res, err := ec.unmarshalInputRunProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -19274,6 +19613,11 @@ func (ec *executionContext) unmarshalNUpdateDeploymentInput2githubᚗcomᚋreear
 
 func (ec *executionContext) unmarshalNUpdateMeInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateMeInput(ctx context.Context, v interface{}) (gqlmodel.UpdateMeInput, error) {
 	res, err := ec.unmarshalInputUpdateMeInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateMemberOfWorkspaceInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateMemberOfWorkspaceInput(ctx context.Context, v interface{}) (gqlmodel.UpdateMemberOfWorkspaceInput, error) {
+	res, err := ec.unmarshalInputUpdateMemberOfWorkspaceInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -20049,6 +20393,13 @@ func (ec *executionContext) marshalOUpdateMePayload2ᚖgithubᚗcomᚋreearthᚋ
 		return graphql.Null
 	}
 	return ec._UpdateMePayload(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOUpdateMemberOfWorkspacePayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateMemberOfWorkspacePayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.UpdateMemberOfWorkspacePayload) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._UpdateMemberOfWorkspacePayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOUpdateWorkspacePayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateWorkspacePayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.UpdateWorkspacePayload) graphql.Marshaler {

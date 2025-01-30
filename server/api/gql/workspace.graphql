@@ -11,8 +11,20 @@ type Workspace implements Node {
 }
 
 type WorkspaceMember {
+  role: Role!
   user: User
   userId: ID!
+}
+
+enum Role {
+  # a role who can maintain a project
+  MAINTAINER
+  # a eole who can have full controll of project
+  OWNER
+  # a role who can read project
+  READER
+  # a role who can read and write project
+  WRITER
 }
 
 # InputType
@@ -29,11 +41,18 @@ input UpdateWorkspaceInput {
 input AddMemberToWorkspaceInput {
   workspaceId: ID!
   userId: ID!
+  role: Role!
 }
 
 input RemoveMemberFromWorkspaceInput {
   workspaceId: ID!
   userId: ID!
+}
+
+input UpdateMemberOfWorkspaceInput {
+  workspaceId: ID!
+  userId: ID!
+  role: Role!
 }
 
 input DeleteWorkspaceInput {
@@ -58,6 +77,10 @@ type RemoveMemberFromWorkspacePayload {
   workspace: Workspace!
 }
 
+type UpdateMemberOfWorkspacePayload {
+  workspace: Workspace!
+}
+
 type DeleteWorkspacePayload {
   workspaceId: ID!
 }
@@ -70,4 +93,5 @@ extend type Mutation {
   updateWorkspace(input: UpdateWorkspaceInput!): UpdateWorkspacePayload
   addMemberToWorkspace(input: AddMemberToWorkspaceInput!): AddMemberToWorkspacePayload
   removeMemberFromWorkspace(input: RemoveMemberFromWorkspaceInput!): RemoveMemberFromWorkspacePayload
+  updateMemberOfWorkspace(input: UpdateMemberOfWorkspaceInput!): UpdateMemberOfWorkspacePayload
 }

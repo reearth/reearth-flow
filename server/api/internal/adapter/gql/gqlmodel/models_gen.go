@@ -22,8 +22,9 @@ type APIDriverInput struct {
 }
 
 type AddMemberToWorkspaceInput struct {
-	WorkspaceID ID `json:"workspaceId"`
-	UserID      ID `json:"userId"`
+	WorkspaceID ID   `json:"workspaceId"`
+	UserID      ID   `json:"userId"`
+	Role        Role `json:"role"`
 }
 
 type AddMemberToWorkspacePayload struct {
@@ -393,6 +394,16 @@ type UpdateMePayload struct {
 	Me *Me `json:"me"`
 }
 
+type UpdateMemberOfWorkspaceInput struct {
+	WorkspaceID ID   `json:"workspaceId"`
+	UserID      ID   `json:"userId"`
+	Role        Role `json:"role"`
+}
+
+type UpdateMemberOfWorkspacePayload struct {
+	Workspace *Workspace `json:"workspace"`
+}
+
 type UpdateParameterOrderInput struct {
 	ParamID  ID  `json:"paramId"`
 	NewIndex int `json:"newIndex"`
@@ -452,6 +463,7 @@ func (Workspace) IsNode()        {}
 func (this Workspace) GetID() ID { return this.ID }
 
 type WorkspaceMember struct {
+	Role   Role  `json:"role"`
 	User   *User `json:"user,omitempty"`
 	UserID ID    `json:"userId"`
 }
@@ -735,6 +747,51 @@ func (e *ParameterType) UnmarshalGQL(v interface{}) error {
 }
 
 func (e ParameterType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type Role string
+
+const (
+	RoleMaintainer Role = "MAINTAINER"
+	RoleOwner      Role = "OWNER"
+	RoleReader     Role = "READER"
+	RoleWriter     Role = "WRITER"
+)
+
+var AllRole = []Role{
+	RoleMaintainer,
+	RoleOwner,
+	RoleReader,
+	RoleWriter,
+}
+
+func (e Role) IsValid() bool {
+	switch e {
+	case RoleMaintainer, RoleOwner, RoleReader, RoleWriter:
+		return true
+	}
+	return false
+}
+
+func (e Role) String() string {
+	return string(e)
+}
+
+func (e *Role) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = Role(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid Role", str)
+	}
+	return nil
+}
+
+func (e Role) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
