@@ -4,15 +4,18 @@ import (
 	"context"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 
 	"github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
+	cerbosClient "github.com/reearth/reearthx/cerbos/client"
 	"github.com/reearth/reearthx/log"
 	"golang.org/x/net/http2"
 )
@@ -45,14 +48,27 @@ func Start(debug bool, version string) {
 	// Init repositories
 	repos, gateways, acRepos, acGateways := initReposAndGateways(ctx, conf, debug)
 
+	// PermissionChecker
+	if conf.DashboardHost == "" {
+		log.Fatalf("dashboard host configuration is required")
+	}
+	if _, err := url.Parse(conf.DashboardHost); err != nil {
+		log.Fatalf("invalid dashboard host URL: %v", err)
+	}
+	permissionChecker := cerbosClient.NewPermissionChecker(rbac.ServiceName, conf.DashboardHost)
+	if permissionChecker == nil {
+		log.Fatalf("failed to initialize permission checker")
+	}
+
 	// Start web server
 	NewServer(ctx, &ServerConfig{
-		Config:          conf,
-		Debug:           debug,
-		Repos:           repos,
-		AccountRepos:    acRepos,
-		Gateways:        gateways,
-		AccountGateways: acGateways,
+		Config:            conf,
+		Debug:             debug,
+		Repos:             repos,
+		AccountRepos:      acRepos,
+		Gateways:          gateways,
+		AccountGateways:   acGateways,
+		PermissionChecker: permissionChecker,
 	}).Run()
 }
 
@@ -62,12 +78,13 @@ type WebServer struct {
 }
 
 type ServerConfig struct {
-	Config          *config.Config
-	Debug           bool
-	Repos           *repo.Container
-	AccountRepos    *accountrepo.Container
-	Gateways        *gateway.Container
-	AccountGateways *accountgateway.Container
+	Config            *config.Config
+	Debug             bool
+	Repos             *repo.Container
+	AccountRepos      *accountrepo.Container
+	Gateways          *gateway.Container
+	AccountGateways   *accountgateway.Container
+	PermissionChecker gateway.PermissionChecker
 }
 
 func NewServer(ctx context.Context, cfg *ServerConfig) *WebServer {

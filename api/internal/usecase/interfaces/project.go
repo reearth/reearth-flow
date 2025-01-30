@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
@@ -40,10 +39,10 @@ var (
 )
 
 type Project interface {
-	Fetch(context.Context, []id.ProjectID, *usecase.Operator) ([]*project.Project, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination, *usecase.Operator) ([]*project.Project, *usecasex.PageInfo, error)
-	Create(context.Context, CreateProjectParam, *usecase.Operator) (*project.Project, error)
-	Update(context.Context, UpdateProjectParam, *usecase.Operator) (*project.Project, error)
-	Delete(context.Context, id.ProjectID, *usecase.Operator) error
-	Run(context.Context, RunProjectParam, *usecase.Operator) (bool, error)
+	Fetch(context.Context, []id.ProjectID) ([]*project.Project, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination) ([]*project.Project, *usecasex.PageInfo, error)
+	Create(context.Context, CreateProjectParam) (*project.Project, error)
+	Update(context.Context, UpdateProjectParam) (*project.Project, error)
+	Delete(context.Context, id.ProjectID) error
+	Run(context.Context, RunProjectParam) (bool, error)
 }

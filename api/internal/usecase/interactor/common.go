@@ -2,13 +2,13 @@ package interactor
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/project"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/account/accountusecase"
@@ -17,6 +17,8 @@ import (
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 )
 
+var ErrPermissionDenied = fmt.Errorf("permission denied")
+
 type ContainerConfig struct {
 	SignupSecret    string
 	AuthSrvUIDomain string
@@ -24,6 +26,7 @@ type ContainerConfig struct {
 
 func NewContainer(r *repo.Container, g *gateway.Container,
 	ar *accountrepo.Container, ag *accountgateway.Container,
+	permissionChecker gateway.PermissionChecker,
 	config ContainerConfig,
 ) interfaces.Container {
 	job := NewJob(r, g)
@@ -33,41 +36,11 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Job:        job,
 		Deployment: NewDeployment(r, g, job),
 		Parameter:  NewParameter(r),
-		Project:    NewProject(r, g),
+		Project:    NewProject(r, g, permissionChecker),
 		Workspace:  accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
-		Trigger:    NewTrigger(r, g, job),
+		Trigger:    NewTrigger(r, g, job, permissionChecker),
 		User:       accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
 	}
-}
-
-// Deprecated: common will be deprecated. Please use the Usecase function instead.
-type common struct{}
-
-func (common) OnlyOperator(op *usecase.Operator) error {
-	if op == nil {
-		return interfaces.ErrOperationDenied
-	}
-	return nil
-}
-
-func (i common) CanReadWorkspace(t accountdomain.WorkspaceID, op *usecase.Operator) error {
-	if err := i.OnlyOperator(op); err != nil {
-		return err
-	}
-	if !op.IsReadableWorkspace(t) {
-		return interfaces.ErrOperationDenied
-	}
-	return nil
-}
-
-func (i common) CanWriteWorkspace(t accountdomain.WorkspaceID, op *usecase.Operator) error {
-	if err := i.OnlyOperator(op); err != nil {
-		return err
-	}
-	if !op.IsWritableWorkspace(t) {
-		return interfaces.ErrOperationDenied
-	}
-	return nil
 }
 
 type ProjectDeleter struct {
@@ -75,7 +48,7 @@ type ProjectDeleter struct {
 	Project repo.Project
 }
 
-func (d ProjectDeleter) Delete(ctx context.Context, prj *project.Project, force bool, operator *usecase.Operator) error {
+func (d ProjectDeleter) Delete(ctx context.Context, prj *project.Project, force bool) error {
 	if prj == nil {
 		return nil
 	}
@@ -92,4 +65,16 @@ func workspaceMemberCountEnforcer(_ *repo.Container) accountinteractor.Workspace
 	return func(ctx context.Context, ws *workspace.Workspace, _ user.List, op *accountusecase.Operator) error {
 		return nil
 	}
+}
+
+func checkPermission(ctx context.Context, permissionChecker gateway.PermissionChecker, resource string, action string) error {
+	authInfo := adapter.GetAuthInfo(ctx)
+	hasPermission, err := permissionChecker.CheckPermission(ctx, authInfo, resource, action)
+	if err != nil {
+		return fmt.Errorf("failed to check permission: %w", err)
+	}
+	if !hasPermission {
+		return ErrPermissionDenied
+	}
+	return nil
 }
