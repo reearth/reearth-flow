@@ -27,10 +27,6 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid request body"})
 	}
 
-	if err := req.Validate(); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-	}
-
 	var token string
 	authHeader := c.Request().Header.Get("Authorization")
 	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
@@ -43,14 +39,23 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "missing authentication token"})
 	}
 
+	if err := req.Validate(); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
 	triggerUsecase := adapter.Usecases(c.Request().Context()).Trigger
 	operator := adapter.Operator(c.Request().Context())
 
 	job, err := triggerUsecase.ExecuteAPITrigger(c.Request().Context(), interfaces.ExecuteAPITriggerParam{
 		AuthenticationToken: token,
-		TriggerID:           triggerID,
-		NotificationURL:     req.NotificationURL,
-		Variables:           req.With,
+		TriggerID:          triggerID,
+		NotificationURL:    func() *string {
+			if req.NotificationURL != "" {
+				return &req.NotificationURL
+			}
+			return nil
+		}(),
+		Variables:          req.With,
 	}, operator)
 
 	if err != nil {
@@ -68,5 +73,5 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 
 func SetupTriggerRoutes(e *echo.Echo) {
 	h := NewTriggerHandler()
-	e.POST("/api/trigger/:triggerId/run", h.ExecuteTrigger)
+	e.POST("/api/triggers/:triggerId/run", h.ExecuteTrigger)
 }

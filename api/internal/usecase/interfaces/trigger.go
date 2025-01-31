@@ -24,7 +24,7 @@ type CreateTriggerParam struct {
 type ExecuteAPITriggerParam struct {
 	AuthenticationToken string
 	TriggerID           id.TriggerID
-	NotificationURL     string
+    NotificationURL      *string                 
 	Variables           map[string]interface{}
 }
 

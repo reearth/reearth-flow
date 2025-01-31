@@ -11,31 +11,20 @@ func GenerateTriggerExecutionSchema() ([]byte, error) {
 		"type":    "object",
 		"properties": map[string]interface{}{
 			"authToken": map[string]interface{}{
-				"type": "string",
+				"type":        "string",
+				"description": "Authentication token for the execution",
 			},
 			"notificationUrl": map[string]interface{}{
-				"type":   "string",
-				"format": "uri",
+				"type":        "string",
+				"format":      "uri",
+				"description": "URL to notify upon completion",
 			},
 			"with": map[string]interface{}{
-				"type": "object",
-				"properties": map[string]interface{}{
-					"cityGmlPath":   map[string]interface{}{"type": "string"},
-					"cityCode":      map[string]interface{}{"type": "string"},
-					"codelistsPath": map[string]interface{}{"type": "string"},
-					"schemasPath":   map[string]interface{}{"type": "string"},
-					"schemaJson":    map[string]interface{}{"type": "string"},
-					"targetPackages": map[string]interface{}{
-						"type":  "array",
-						"items": map[string]interface{}{"type": "string"},
-					},
-					"addNsprefixToFeatureTypes":      map[string]interface{}{"type": "boolean"},
-					"extractDmGeometryAsXmlFragment": map[string]interface{}{"type": "boolean"},
-					"outputPath":                     map[string]interface{}{"type": "string"},
-				},
+				"type":                 "object",
+				"description":          "Execution parameters - can contain any valid JSON object properties",
+				"additionalProperties": true,
 			},
 		},
-		"required": []string{"notificationUrl", "authToken", "with"},
 	}
 
 	return json.MarshalIndent(schema, "", "  ")

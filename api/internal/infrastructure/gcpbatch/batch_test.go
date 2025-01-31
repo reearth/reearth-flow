@@ -80,7 +80,7 @@ func TestBatchRepo_SubmitJob(t *testing.T) {
 
 	mockClient.On("CreateJob", ctx, mock.AnythingOfType("*batchpb.CreateJobRequest")).Return(&batchpb.Job{Name: expectedJobName}, nil)
 
-	jobName, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, &variables, projectID, accountdomain.WorkspaceID(workspaceID))
+	jobName, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, variables, projectID, accountdomain.WorkspaceID(workspaceID))
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedJobName, jobName)

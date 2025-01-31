@@ -148,14 +148,14 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		projectID = *deployment.Project()
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), &p.Variables, projectID, deployment.Workspace())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), p.Variables, projectID, deployment.Workspace())
 	if err != nil {
 		return nil, interfaces.ErrJobCreationFailed
 	}
 
 	j.SetGCPJobID(gcpJobID)
 
-	if err := i.job.StartMonitoring(ctx, j, &p.NotificationURL, operator); err != nil {
+	if err := i.job.StartMonitoring(ctx, j, p.NotificationURL, operator); err != nil {
 		return nil, err
 	}
 
