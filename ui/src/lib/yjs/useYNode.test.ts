@@ -26,7 +26,7 @@ describe("useYNode", () => {
         rawWorkflows: [],
         setSelectedNodeIds: () => {},
         undoTrackerActionWrapper: (callback) => act(callback),
-        handleWorkflowsRemove: () => {},
+        handleYWorkflowsRemove: () => {},
       }),
     );
 
