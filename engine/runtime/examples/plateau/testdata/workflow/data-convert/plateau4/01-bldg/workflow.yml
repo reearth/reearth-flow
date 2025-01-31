@@ -3,8 +3,10 @@ id: 83307700-04b9-490c-b6a1-11b93e7f7a8a
 name: "PLATEAU4-DataConvert-01-bldg-workflow"
 entryGraphId: 34bf873b-3364-46b0-8153-efeb9568bb3c
 with:
-  cityGmlPath: "https://assets.cms.plateau.reearth.io/assets/76/6c7cd5-2d8c-4d26-83c9-8f0eb344a082/13229_nishitokyo-shi_pref_2023_citygml_1_op_codelists.zip"
-  cityCode: "13229"
+  cityGmlPath:
+  cityCode:
+  codelistsPath:
+  schemasPath:
   targetPackages:
     - bldg
   outputPath:
