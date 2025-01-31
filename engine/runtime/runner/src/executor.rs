@@ -51,7 +51,7 @@ pub fn run_dag_executor(
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
-    runtime: &Arc<Handle>,
+    async_runtime: Arc<Handle>,
     dag_executor: DagExecutor,
     shutdown: ShutdownReceiver,
     state: Arc<State>,
@@ -59,9 +59,9 @@ pub fn run_dag_executor(
 ) -> Result<(), Error> {
     let shutdown_future = shutdown.create_shutdown_future();
 
-    let mut join_handle = runtime.block_on(dag_executor.start(
+    let mut join_handle = async_runtime.block_on(dag_executor.start(
         SharedFuture::new(Box::pin(shutdown_future)),
-        runtime.clone(),
+        async_runtime.clone(),
         expr_engine,
         storage_resolver,
         kv_store,

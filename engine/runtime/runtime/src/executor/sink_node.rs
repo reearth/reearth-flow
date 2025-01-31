@@ -120,6 +120,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                 kv_store: self.kv_store.clone(),
                 storage_resolver: self.storage_resolver.clone(),
                 event_hub: self.event_hub.clone(),
+                async_runtime: self.runtime.clone(),
             })
             .map_err(ExecutionError::Sink)?;
         self.event_hub.info_log_with_node_handle(

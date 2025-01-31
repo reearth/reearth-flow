@@ -154,6 +154,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                 self.storage_resolver.clone(),
                 self.kv_store.clone(),
                 self.event_hub.clone(),
+                self.runtime.clone(),
             ))
             .map_err(ExecutionError::Processor)?;
 
@@ -185,6 +186,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         self.storage_resolver.clone(),
                         self.kv_store.clone(),
                         self.event_hub.clone(),
+                        self.runtime.clone(),
                     ))?;
                     return Ok(());
                 }

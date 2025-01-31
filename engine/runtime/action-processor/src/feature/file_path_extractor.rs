@@ -157,14 +157,30 @@ impl Processor for FeatureFilePathExtractor {
                     e
                 ))
             })?;
-            let bytes = storage
-                .get_sync(source_dataset.path().as_path())
-                .map_err(|e| {
-                    FeatureProcessorError::FilePathExtractor(format!(
-                        "Failed to get `source_dataset` content: {}",
-                        e
-                    ))
-                })?;
+            let async_runtime = ctx.async_runtime.clone();
+            let source = source_dataset.clone();
+            let bytes = {
+                async_runtime.block_on(async move {
+                    let bytes = storage
+                        .get(source_dataset.path().as_path())
+                        .await
+                        .map_err(|e| {
+                            FeatureProcessorError::FilePathExtractor(format!(
+                                "Failed to get `source_dataset` content: {}",
+                                e
+                            ))
+                        });
+                    match bytes {
+                        Ok(bytes) => bytes.bytes().await.map_err(|e| {
+                            FeatureProcessorError::FilePathExtractor(format!(
+                                "Failed to get `source_dataset` content: {}",
+                                e
+                            ))
+                        }),
+                        Err(e) => Err(e),
+                    }
+                })
+            }?;
             let root_output_storage = ctx
                 .storage_resolver
                 .resolve(&root_output_path)
@@ -172,7 +188,7 @@ impl Processor for FeatureFilePathExtractor {
             root_output_storage
                 .create_dir_sync(root_output_path.path().as_path())
                 .map_err(|e| FeatureProcessorError::FilePathExtractor(format!("{:?}", e)))?;
-            let features = if let Some(ext) = source_dataset.path().as_path().extension() {
+            let features = if let Some(ext) = source.path().as_path().extension() {
                 if let Some(ext) = ext.to_str() {
                     if ["7z", "7zip"].contains(&ext) {
                         extract_sevenz(bytes, root_output_path)?

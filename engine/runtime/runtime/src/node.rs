@@ -455,6 +455,7 @@ impl Processor for InputRouter {
             Arc::clone(&ctx.storage_resolver),
             Arc::clone(&ctx.kv_store),
             ctx.event_hub,
+            Arc::clone(&ctx.async_runtime),
         ));
         Ok(())
     }
@@ -537,6 +538,7 @@ impl Processor for OutputRouter {
             Arc::clone(&ctx.storage_resolver),
             Arc::clone(&ctx.kv_store),
             ctx.event_hub,
+            Arc::clone(&ctx.async_runtime),
         ));
         Ok(())
     }

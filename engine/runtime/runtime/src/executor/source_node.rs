@@ -55,6 +55,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                 Arc::clone(&self.storage_resolver),
                 Arc::clone(&self.kv_store),
                 self.event_hub.clone(),
+                self.runtime.clone(),
             );
             let span = self.span.clone();
             let event_hub = self.event_hub.clone();
@@ -88,6 +89,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                         Arc::clone(&self.storage_resolver),
                         Arc::clone(&self.kv_store),
                         self.event_hub.clone(),
+                        self.runtime.clone(),
                     );
                     send_to_all_nodes(&self.sources, ExecutorOperation::Terminate { ctx })?;
                     self.event_hub.send(Event::SourceFlushed);
@@ -111,6 +113,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                         Arc::clone(&self.storage_resolver),
                                         Arc::clone(&self.kv_store),
                                         self.event_hub.clone(),
+                                        self.runtime.clone(),
                                     );
                                     send_to_all_nodes(
                                         &self.sources,
@@ -138,6 +141,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                 Arc::clone(&self.storage_resolver),
                                 Arc::clone(&self.kv_store),
                                 self.event_hub.clone(),
+                                self.runtime.clone(),
                             ))?;
                         }
                     }

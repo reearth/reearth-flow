@@ -173,6 +173,7 @@ impl Processor for FeatureMerger {
         ctx: ExecutorContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        let context = ctx.as_context();
         match ctx.port {
             port if port == REQUESTOR_PORT.clone() => {
                 let feature = &ctx.feature;
@@ -202,15 +203,7 @@ impl Processor for FeatureMerger {
                                 let (complete_grouped, _) = entry.get_mut();
                                 *complete_grouped = true;
                             }
-                            self.change_group(
-                                Context {
-                                    expr_engine: ctx.expr_engine.clone(),
-                                    storage_resolver: ctx.storage_resolver.clone(),
-                                    kv_store: ctx.kv_store.clone(),
-                                    event_hub: ctx.event_hub.clone(),
-                                },
-                                fw,
-                            )?;
+                            self.change_group(context, fw)?;
                         }
                         self.requestor_before_value = Some(requestor_attribute_value.clone());
                     }
@@ -241,15 +234,7 @@ impl Processor for FeatureMerger {
                                 let (complete_grouped, _) = entry.get_mut();
                                 *complete_grouped = true;
                             }
-                            self.change_group(
-                                Context {
-                                    expr_engine: ctx.expr_engine.clone(),
-                                    storage_resolver: ctx.storage_resolver.clone(),
-                                    kv_store: ctx.kv_store.clone(),
-                                    event_hub: ctx.event_hub.clone(),
-                                },
-                                fw,
-                            )?;
+                            self.change_group(context, fw)?;
                         }
                         self.supplier_before_value = Some(supplier_attribute_value.clone());
                     }

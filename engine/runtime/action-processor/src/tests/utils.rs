@@ -10,6 +10,7 @@ use reearth_flow_runtime::{
 };
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Feature;
+use tokio::runtime::Handle;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct MockProcessorChannelForwarder {
@@ -36,5 +37,6 @@ pub(crate) fn create_default_execute_context(feature: &Feature) -> ExecutorConte
         Arc::new(StorageResolver::new()),
         Arc::new(kvs::create_kv_store()),
         EventHub::new(30),
+        Arc::new(Handle::current()),
     )
 }

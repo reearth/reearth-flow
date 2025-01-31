@@ -51,7 +51,14 @@ impl DagExecutor {
     ) -> Result<Self, ExecutionError> {
         let dag_schemas = DagSchemas::from_graphs(entry_graph_id, graphs, factories, global_params);
         let event_hub = EventHub::new(options.event_hub_capacity);
-        let ctx = NodeContext::new(expr_engine, storage_resolver, kv_store, event_hub);
+        let async_runtime = Arc::new(Handle::current());
+        let ctx = NodeContext::new(
+            expr_engine,
+            storage_resolver,
+            kv_store,
+            event_hub,
+            async_runtime,
+        );
         let builder_dag = BuilderDag::new(ctx, dag_schemas).await?;
         Ok(Self {
             builder_dag,
@@ -84,6 +91,7 @@ impl DagExecutor {
             Arc::clone(&storage_resolver),
             Arc::clone(&kv_store),
             execution_dag.event_hub().clone(),
+            Arc::clone(&runtime),
         );
         // Start the threads.
         let source_node = create_source_node(
@@ -114,6 +122,7 @@ impl DagExecutor {
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
+                        Arc::clone(&runtime),
                     );
                     let processor_node = ProcessorNode::new(
                         ctx,
@@ -131,6 +140,7 @@ impl DagExecutor {
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
+                        Arc::clone(&runtime),
                     );
                     let sink_node = SinkNode::new(
                         ctx,

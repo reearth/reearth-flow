@@ -3,6 +3,7 @@ use std::sync::Arc;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Feature;
+use tokio::runtime::Handle;
 use tracing::{error_span, info_span};
 
 use crate::{
@@ -23,6 +24,7 @@ pub struct Context {
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
+    pub async_runtime: Arc<Handle>,
 }
 
 impl From<ExecutorContext> for Context {
@@ -32,6 +34,7 @@ impl From<ExecutorContext> for Context {
             storage_resolver: ctx.storage_resolver,
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
+            async_runtime: ctx.async_runtime,
         }
     }
 }
@@ -43,6 +46,7 @@ impl From<NodeContext> for Context {
             storage_resolver: ctx.storage_resolver,
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
+            async_runtime: ctx.async_runtime,
         }
     }
 }
@@ -53,12 +57,14 @@ impl Context {
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         event_hub: EventHub,
+        async_runtime: Arc<Handle>,
     ) -> Self {
         Self {
             expr_engine,
             storage_resolver,
             kv_store,
             event_hub,
+            async_runtime,
         }
     }
 
@@ -70,6 +76,7 @@ impl Context {
             storage_resolver: self.storage_resolver.clone(),
             kv_store: self.kv_store.clone(),
             event_hub: self.event_hub.clone(),
+            async_runtime: self.async_runtime.clone(),
         }
     }
 }
@@ -82,6 +89,7 @@ pub struct ExecutorContext {
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
+    pub async_runtime: Arc<Handle>,
 }
 
 impl From<Context> for ExecutorContext {
@@ -93,6 +101,7 @@ impl From<Context> for ExecutorContext {
             storage_resolver: ctx.storage_resolver,
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
+            async_runtime: ctx.async_runtime,
         }
     }
 }
@@ -106,6 +115,7 @@ impl Default for ExecutorContext {
             storage_resolver: Arc::new(StorageResolver::new()),
             kv_store: Arc::new(crate::kvs::create_kv_store()),
             event_hub: EventHub::new(30),
+            async_runtime: Arc::new(Handle::current()),
         }
     }
 }
@@ -118,6 +128,7 @@ impl ExecutorContext {
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         event_hub: EventHub,
+        async_runtime: Arc<Handle>,
     ) -> Self {
         Self {
             feature,
@@ -126,6 +137,7 @@ impl ExecutorContext {
             storage_resolver,
             kv_store,
             event_hub,
+            async_runtime,
         }
     }
 
@@ -135,6 +147,7 @@ impl ExecutorContext {
             storage_resolver: self.storage_resolver.clone(),
             kv_store: self.kv_store.clone(),
             event_hub: self.event_hub.clone(),
+            async_runtime: self.async_runtime.clone(),
         }
     }
 
@@ -146,6 +159,7 @@ impl ExecutorContext {
             storage_resolver: Arc::clone(&self.storage_resolver),
             kv_store: Arc::clone(&self.kv_store),
             event_hub: self.event_hub.clone(),
+            async_runtime: Arc::clone(&self.async_runtime),
         }
     }
 
@@ -161,6 +175,7 @@ impl ExecutorContext {
             storage_resolver: Arc::clone(&ctx.storage_resolver),
             kv_store: Arc::clone(&ctx.kv_store),
             event_hub: ctx.event_hub.clone(),
+            async_runtime: Arc::clone(&ctx.async_runtime),
         }
     }
 
@@ -172,6 +187,7 @@ impl ExecutorContext {
             storage_resolver: Arc::clone(&ctx.storage_resolver),
             kv_store: Arc::clone(&ctx.kv_store),
             event_hub: ctx.event_hub.clone(),
+            async_runtime: Arc::clone(&ctx.async_runtime),
         }
     }
 
@@ -181,6 +197,7 @@ impl ExecutorContext {
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         event_hub: EventHub,
+        async_runtime: Arc<Handle>,
     ) -> Self {
         Self {
             feature,
@@ -189,6 +206,7 @@ impl ExecutorContext {
             storage_resolver,
             kv_store,
             event_hub,
+            async_runtime,
         }
     }
 
@@ -207,6 +225,7 @@ pub struct NodeContext {
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
+    pub async_runtime: Arc<Handle>,
 }
 
 impl From<Context> for NodeContext {
@@ -216,6 +235,7 @@ impl From<Context> for NodeContext {
             storage_resolver: ctx.storage_resolver,
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
+            async_runtime: ctx.async_runtime,
         }
     }
 }
@@ -227,6 +247,7 @@ impl From<ExecutorContext> for NodeContext {
             storage_resolver: ctx.storage_resolver,
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
+            async_runtime: ctx.async_runtime,
         }
     }
 }
@@ -238,6 +259,7 @@ impl Default for NodeContext {
             storage_resolver: Arc::new(StorageResolver::new()),
             kv_store: Arc::new(crate::kvs::create_kv_store()),
             event_hub: EventHub::new(30),
+            async_runtime: Arc::new(Handle::current()),
         }
     }
 }
@@ -248,12 +270,14 @@ impl NodeContext {
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         event_hub: EventHub,
+        async_runtime: Arc<Handle>,
     ) -> Self {
         Self {
             expr_engine,
             storage_resolver,
             kv_store,
             event_hub,
+            async_runtime,
         }
     }
 
@@ -271,6 +295,7 @@ impl NodeContext {
             storage_resolver: self.storage_resolver.clone(),
             kv_store: self.kv_store.clone(),
             event_hub: self.event_hub.clone(),
+            async_runtime: self.async_runtime.clone(),
         }
     }
 }

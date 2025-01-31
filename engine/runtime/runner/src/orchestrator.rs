@@ -98,7 +98,7 @@ impl Orchestrator {
                 expr_engine.clone(),
                 storage_resolver,
                 kv_store.clone(),
-                &runtime_clone,
+                runtime_clone,
                 dag_executor,
                 shutdown_clone,
                 state,
