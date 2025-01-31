@@ -2,8 +2,6 @@ import { Logs } from "@flow/components/Logs";
 import mockLogs from "@flow/mock_data/logsv2Data";
 
 const LogsConsole: React.FC = () => {
-  console.log("mockLogs", mockLogs);
-
   const props = {
     columns: [
       {

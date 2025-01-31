@@ -106,9 +106,24 @@ const Logs = <TData, TValue>({
   }, [columnFilters]);
   console.log("data", data);
   return (
-    <div className="w-full overflow-auto rounded">
+    <div className="flex size-full flex-col rounded">
       <div className="flex h-16 w-full items-center justify-between p-2">
-        <h2 className="text-lg">{t("Log")}</h2>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between p-2">
+            <h2 className="text-lg">{t("Log")}</h2>
+          </div>
+          <div className="flex items-center gap-4">
+            {showFiltering && (
+              <Input
+                placeholder={t("Search") + "..."}
+                value={globalFilter ?? ""}
+                onChange={(e) => setGlobalFilter(String(e.target.value))}
+                className="max-w-80"
+              />
+            )}
+          </div>
+        </div>
+
         <div className="flex gap-2">
           <IconButton
             size="icon"
@@ -166,69 +181,67 @@ const Logs = <TData, TValue>({
             onClick={handleResetTable}
             icon={<UpdateIcon />}
           />
+          {selectColumns && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="ml-auto">
+                  {t("Columns")}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {table
+                  .getAllColumns()
+                  .filter((column) => column.getCanHide())
+                  .map((column) => {
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        className="capitalize"
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) =>
+                          column.toggleVisibility(!!value)
+                        }>
+                        {column.id}
+                      </DropdownMenuCheckboxItem>
+                    );
+                  })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
-      <div className="flex items-center gap-4 p-4">
-        {showFiltering && (
-          <Input
-            placeholder={t("Search") + "..."}
-            value={globalFilter ?? ""}
-            onChange={(e) => setGlobalFilter(String(e.target.value))}
-            className="max-w-80"
-          />
-        )}
-        {selectColumns && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="ml-auto">
-                {t("Columns")}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }>
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
-      <div className="border-b border-gray-400" />
-      <Table>
-        <TableBody>
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() && "selected"}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell className="cursor-pointer" key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
+
+      <div className="h-[calc(100vh-6rem)] w-full overflow-auto rounded">
+        <div className="border-b border-gray-400 " />
+        <Table>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell className="cursor-pointer" key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center">
+                  {t("No Results")}
+                </TableCell>
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
-                {t("No Results")}
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };
