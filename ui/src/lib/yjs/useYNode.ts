@@ -3,8 +3,10 @@ import * as Y from "yjs";
 
 import type { Edge, Node, NodeChange } from "@flow/types";
 
-import { yNodeConstructor } from "./conversions";
+import { fromYjsText, yNodeConstructor } from "./conversions";
 import type { YNodesArray, YNodeValue, YWorkflow } from "./types";
+import { updateParentYWorkflow } from "./useParentYWorkflow";
+import { removeParentYWorkflowNodePseudoPort } from "./useParentYWorkflow/removeParentYWorkflowNodePseudoPort";
 
 export default ({
   currentYWorkflow,
@@ -12,14 +14,14 @@ export default ({
   rawWorkflows,
   setSelectedNodeIds,
   undoTrackerActionWrapper,
-  handleWorkflowsRemove,
+  handleYWorkflowsRemove,
 }: {
   currentYWorkflow: YWorkflow;
   yWorkflows: Y.Array<YWorkflow>;
   rawWorkflows: Record<string, string | Node[] | Edge[]>[];
   setSelectedNodeIds: Dispatch<SetStateAction<string[]>>;
   undoTrackerActionWrapper: (callback: () => void) => void;
-  handleWorkflowsRemove: (workflowId: string[]) => void;
+  handleYWorkflowsRemove: (workflowId: string[]) => void;
 }) => {
   const handleYNodesAdd = useCallback(
     (newNodes: Node[]) => {
@@ -45,6 +47,8 @@ export default ({
     [currentYWorkflow, setSelectedNodeIds, undoTrackerActionWrapper],
   );
 
+  // This is based off of react-flow node changes, which includes removal
+  // but not addtion. This is why we have a separate function for adding nodes.
   const handleYNodesChange = useCallback(
     (changes: NodeChange[]) => {
       const yNodes = currentYWorkflow?.get("nodes") as YNodesArray | undefined;
@@ -94,27 +98,38 @@ export default ({
 
               if (existing) {
                 const index = Array.from(yNodes).findIndex(
-                  (yn) => yn.get("id")?.toString() === change.id,
+                  (yn) => fromYjsText(yn.get("id") as Y.Text) === change.id,
                 );
 
                 if (index !== -1) {
-                  if (
-                    existing.yNode.get("type")?.toString() === "subworkflow"
-                  ) {
-                    handleWorkflowsRemove([change.id]);
+                  const nodeToDelete = Array.from(yNodes)[
+                    index
+                  ].toJSON() as Node;
+
+                  if (nodeToDelete.type === "subworkflow") {
+                    handleYWorkflowsRemove([change.id]);
+                  } else if (nodeToDelete.data.params?.routingPort) {
+                    const workflowIndex = rawWorkflows.findIndex((w) => {
+                      const nodes = w.nodes as Node[];
+                      return nodes.some(
+                        (n) =>
+                          n.id ===
+                          (currentYWorkflow.get("id")?.toJSON() as string),
+                      );
+                    });
+                    const parentYWorkflow = yWorkflows.get(workflowIndex);
+                    if (parentYWorkflow) {
+                      removeParentYWorkflowNodePseudoPort(
+                        currentYWorkflow.get("id")?.toJSON() as string,
+                        parentYWorkflow,
+                        nodeToDelete,
+                      );
+                    }
                   }
 
                   setSelectedNodeIds((snids) => {
                     return snids.filter((snid) => snid !== change.id);
                   });
-
-                  // TODO:
-                  // Currently here we are doing "cleanup" to
-                  // remove the subworkflow nodes that are not used anymore.
-                  // What we want is to have a cleanup function
-                  // that does this removal but also to update
-                  // any subworkflow nodes' pseudoInputs and pseudoOutputs
-                  // that are effected by the removal of the subworkflow node. @KaWaite
 
                   yNodes.delete(index, 1);
                 }
@@ -139,12 +154,14 @@ export default ({
       currentYWorkflow,
       setSelectedNodeIds,
       undoTrackerActionWrapper,
-      handleWorkflowsRemove,
+      handleYWorkflowsRemove,
+      rawWorkflows,
+      yWorkflows,
     ],
   );
 
   const handleYNodeParamsUpdate = useCallback(
-    (nodeId: string, params: any) =>
+    (nodeId: string, newParams: any) =>
       undoTrackerActionWrapper(() => {
         const yNodes = currentYWorkflow?.get("nodes") as
           | YNodesArray
@@ -154,23 +171,33 @@ export default ({
         const nodes = yNodes.toJSON() as Node[];
 
         const nodeIndex = nodes.findIndex((n) => n.id === nodeId);
-        const node = nodes[nodeIndex];
+        const prevNode = nodes[nodeIndex];
 
-        if (!node) return;
+        if (!prevNode) return;
 
-        // if params.routingPort && currentWorkflow is a subworkflow.
-        if (params.routingPort) {
+        // if params.routingPort exists, it's parent is a subworkflow and
+        // we need to update pseudoInputs and pseudoOutputs on the parent node.
+        if (newParams.routingPort) {
+          const currentWorkflowId = currentYWorkflow
+            .get("id")
+            ?.toJSON() as string;
+
+          const parentWorkflowIndex = rawWorkflows.findIndex((w) => {
+            const nodes = w.nodes as Node[];
+            return nodes.some((n) => n.id === currentWorkflowId);
+          });
+          const parentYWorkflow = yWorkflows.get(parentWorkflowIndex);
+
           updateParentYWorkflow(
-            rawWorkflows,
-            yWorkflows,
-            currentYWorkflow,
-            node,
-            params,
+            currentWorkflowId,
+            parentYWorkflow,
+            prevNode,
+            newParams,
           );
         }
 
         const yData = yNodes.get(nodeIndex)?.get("data") as Y.Map<YNodeValue>;
-        yData?.set("params", params);
+        yData?.set("params", newParams);
       }),
     [currentYWorkflow, rawWorkflows, yWorkflows, undoTrackerActionWrapper],
   );
@@ -181,162 +208,3 @@ export default ({
     handleYNodeParamsUpdate,
   };
 };
-
-function updateParentYWorkflow(
-  rawWorkflows: Record<string, string | Node[] | Edge[]>[],
-  yWorkflows: Y.Array<YWorkflow>,
-  currentYWorkflow: YWorkflow,
-  node: Node,
-  params: any,
-) {
-  // Find which workflow the current workflow is used
-  const workflowIndex = rawWorkflows.findIndex((w) => {
-    const nodes = w.nodes as Node[];
-    return nodes.some(
-      (n) => n.id === (currentYWorkflow.get("id")?.toJSON() as string),
-    );
-  });
-  const yParentWorkflow = yWorkflows.get(workflowIndex);
-
-  const currentWorkflowId = currentYWorkflow.get("id")?.toJSON() as string;
-
-  // From here we are updating pseudoInputs and pseudoOutputs.
-  // These only exist on subworkflow nodes.
-  updateParentYWorkflowNode(currentWorkflowId, yParentWorkflow, node, params);
-}
-
-function updateParentYWorkflowNode(
-  currentWorkflowId: string,
-  yParentWorkflow: YWorkflow,
-  node: Node,
-  params: any,
-) {
-  // Find the subworkflow node in that workflow.
-  const yParentNodes = yParentWorkflow?.get("nodes") as YNodesArray | undefined;
-  if (!yParentNodes) return;
-
-  const parentNodes = yParentNodes.toJSON() as Node[];
-
-  // Update the subworkflow node with the updated input/output
-  const subworkflowNode = parentNodes.find((n) => n.id === currentWorkflowId);
-  if (!subworkflowNode) return;
-
-  const updatedSubworkflowNode: Node = {
-    ...subworkflowNode,
-    data: {
-      ...subworkflowNode.data,
-    },
-  };
-
-  const newPseudoPort = {
-    nodeId: node.id,
-    portName: params.routingPort,
-  };
-
-  // Here we want to update pseudoInputs if the node is a RouterInput (RouterInputs only have outputs as default)
-  if (node.data.outputs?.length) {
-    const previousPseudoInputs = updatedSubworkflowNode.data.pseudoInputs ?? [];
-    const updatedPseudoInputs = [...previousPseudoInputs];
-
-    const toBeUpdatedPseudoInputIndex = updatedPseudoInputs.findIndex(
-      (upi) => upi.nodeId === node.id,
-    );
-
-    // If the pseudoInput already exists, we want to update it. Otherwise, we want to add it.
-    if (toBeUpdatedPseudoInputIndex !== -1) {
-      updatedPseudoInputs.splice(toBeUpdatedPseudoInputIndex, 1, newPseudoPort);
-    } else {
-      updatedPseudoInputs.push(newPseudoPort);
-    }
-    updatedSubworkflowNode.data.pseudoInputs = updatedPseudoInputs;
-
-    // Update edges effected
-    updateParentYWorkflowEdges(
-      currentWorkflowId,
-      yParentWorkflow,
-      params,
-      previousPseudoInputs[toBeUpdatedPseudoInputIndex]?.portName,
-      "target",
-    );
-
-    // Here we want to update pseudoOutputs if the node is a RouterOutput (RouterOutputs only have inputs as default)
-  } else if (node.data.inputs?.length) {
-    const previousPseudoOutputs =
-      updatedSubworkflowNode.data.pseudoOutputs ?? [];
-    const updatedPseudoOutputs = [...previousPseudoOutputs];
-
-    const toBeUpdatedPseudoOutputIndex = updatedPseudoOutputs.findIndex(
-      (upi) => upi.nodeId === node.id,
-    );
-
-    // If the pseudoOutput already exists, we want to update it. Otherwise, we want to add it.
-    if (toBeUpdatedPseudoOutputIndex !== -1) {
-      updatedPseudoOutputs.splice(
-        toBeUpdatedPseudoOutputIndex,
-        1,
-        newPseudoPort,
-      );
-    } else {
-      updatedPseudoOutputs.push(newPseudoPort);
-    }
-    updatedSubworkflowNode.data.pseudoOutputs = updatedPseudoOutputs;
-
-    // Update edges effected
-    updateParentYWorkflowEdges(
-      currentWorkflowId,
-      yParentWorkflow,
-      params,
-      previousPseudoOutputs[toBeUpdatedPseudoOutputIndex]?.portName,
-      "source",
-    );
-  }
-
-  const newParentNodes = [...parentNodes];
-  newParentNodes.splice(
-    parentNodes.indexOf(subworkflowNode),
-    1,
-    updatedSubworkflowNode,
-  );
-
-  const newParentYNode = newParentNodes.map((node) => yNodeConstructor(node));
-
-  yParentNodes.delete(0, parentNodes.length);
-  yParentNodes.insert(0, newParentYNode);
-}
-
-function updateParentYWorkflowEdges(
-  currentWorkflowId: string,
-  yParentWorkflow: YWorkflow,
-  params: any,
-  prevHandleName: string,
-  type: "source" | "target",
-) {
-  const yParentEdges = yParentWorkflow?.get("edges") as
-    | Y.Array<Edge>
-    | undefined;
-  if (!yParentEdges) return;
-
-  const parentEdges = yParentEdges.toJSON() as Edge[];
-
-  // Update the edges that are effected by the subworkflow node changes
-  const updatedEdges = parentEdges.map((e) => {
-    if (
-      e.source === currentWorkflowId &&
-      type === "source" &&
-      e.sourceHandle === prevHandleName
-    ) {
-      return { ...e, sourceHandle: params.routingPort };
-    }
-    if (
-      e.target === currentWorkflowId &&
-      type === "target" &&
-      e.targetHandle === prevHandleName
-    ) {
-      return { ...e, targetHandle: params.routingPort };
-    }
-    return e;
-  });
-
-  yParentEdges.delete(0, parentEdges.length);
-  yParentEdges.insert(0, updatedEdges);
-}

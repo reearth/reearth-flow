@@ -33,6 +33,9 @@ export const toYjsMap = <T>(
 };
 
 // YJS to JS
-export const fromYjsText = (yText: Y.Text) => yText.toString();
-export const fromYjsArray = (yArray: Y.Array<unknown>) => yArray.toArray();
-export const fromYjsMap = (yMap: Y.Map<unknown>) => yMap.toJSON();
+export const fromYjsText = (yText?: Y.Text) =>
+  yText ? yText.toString() : undefined;
+export const fromYjsArray = (yArray?: Y.Array<unknown>) =>
+  yArray ? yArray.toArray() : undefined;
+export const fromYjsMap = (yMap?: Y.Map<unknown>) =>
+  yMap ? yMap.toJSON() : undefined;
