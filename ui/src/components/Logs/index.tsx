@@ -211,8 +211,8 @@ const Logs = <TData, TValue>({
         </div>
       </div>
 
-      <div className="h-[calc(100vh-6rem)] w-full overflow-auto rounded">
-        <div className="border-b border-gray-400 " />
+      <div className="h-[calc(100vh-6rem)] w-full overflow-auto">
+        <div className="border-b" />
         <Table>
           <TableBody>
             {table.getRowModel().rows?.length ? (
