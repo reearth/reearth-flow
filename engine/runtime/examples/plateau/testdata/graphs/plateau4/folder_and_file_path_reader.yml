@@ -14,7 +14,7 @@ nodes:
     action: FeatureFilePathExtractor
     with:
       sourceDataset: |
-        env.get("cityGmlPath")
+        env.get("__value").cityGmlPath
       extractArchive: true
 
   - id: 9d04983e-e84e-4622-b0c6-827d7afad720

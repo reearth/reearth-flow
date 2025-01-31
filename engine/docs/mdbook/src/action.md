@@ -2773,6 +2773,41 @@ Extracts maxLod
 ### Category
 * PLATEAU
 
+## PLATEAU4.MissingAttributeDetector
+### Type
+* processor
+### Description
+Detect missing attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MissingAttributeDetectorParam",
+  "type": "object",
+  "required": [
+    "packageAttribute"
+  ],
+  "properties": {
+    "packageAttribute": {
+      "$ref": "#/definitions/Attribute"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* summary
+* required
+* target
+### Category
+* PLATEAU
+
 ## PLATEAU4.ObjectListExtractor
 ### Type
 * processor

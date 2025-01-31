@@ -21,6 +21,10 @@ pub(super) enum PlateauProcessorError {
     ObjectListExtractorFactory(String),
     #[error("ObjectList Extractor error: {0}")]
     ObjectListExtractor(String),
+    #[error("MissingAttributeDetector Factory error: {0}")]
+    MissingAttributeDetectorFactory(String),
+    #[error("MissingAttributeDetector error: {0}")]
+    MissingAttributeDetector(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;
