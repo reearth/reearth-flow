@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: f01ce0bb-e982-4dfa-94de-7a766156b4b3
-name: "PLATEAU4-QualityCheck-01-common-workflow"
+name: "PLATEAU4-qualityCheck-01-02-common-workflow"
 entryGraphId: 7f86c5d5-b375-4190-ab93-001e9a099d1e
 with:
   cityGmlPath:
