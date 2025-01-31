@@ -3,10 +3,10 @@ import * as Y from "yjs";
 
 import type { Edge, Node, NodeChange } from "@flow/types";
 
-import { fromYjsText, yNodeConstructor } from "../conversions";
-import type { YEdgesArray, YNodesArray, YNodeValue, YWorkflow } from "../types";
-
-import { cleanupPseudoPorts, updateParentYWorkflow } from "./utils";
+import { fromYjsText, yNodeConstructor } from "./conversions";
+import type { YNodesArray, YNodeValue, YWorkflow } from "./types";
+import { updateParentYWorkflow } from "./useParentYWorkflow";
+import { removeParentYWorkflowNodePseudoPort } from "./useParentYWorkflow/removeParentYWorkflowNodePseudoPort";
 
 export default ({
   currentYWorkflow,
@@ -14,14 +14,14 @@ export default ({
   rawWorkflows,
   setSelectedNodeIds,
   undoTrackerActionWrapper,
-  handleWorkflowsRemove,
+  handleYWorkflowsRemove,
 }: {
   currentYWorkflow: YWorkflow;
   yWorkflows: Y.Array<YWorkflow>;
   rawWorkflows: Record<string, string | Node[] | Edge[]>[];
   setSelectedNodeIds: Dispatch<SetStateAction<string[]>>;
   undoTrackerActionWrapper: (callback: () => void) => void;
-  handleWorkflowsRemove: (workflowId: string[]) => void;
+  handleYWorkflowsRemove: (workflowId: string[]) => void;
 }) => {
   const handleYNodesAdd = useCallback(
     (newNodes: Node[]) => {
@@ -47,6 +47,8 @@ export default ({
     [currentYWorkflow, setSelectedNodeIds, undoTrackerActionWrapper],
   );
 
+  // This is based off of react-flow node changes, which includes removal
+  // but not addtion. This is why we have a separate function for adding nodes.
   const handleYNodesChange = useCallback(
     (changes: NodeChange[]) => {
       const yNodes = currentYWorkflow?.get("nodes") as YNodesArray | undefined;
@@ -105,7 +107,7 @@ export default ({
                   ].toJSON() as Node;
 
                   if (nodeToDelete.type === "subworkflow") {
-                    handleWorkflowsRemove([change.id]);
+                    handleYWorkflowsRemove([change.id]);
                   } else if (nodeToDelete.data.params?.routingPort) {
                     const workflowIndex = rawWorkflows.findIndex((w) => {
                       const nodes = w.nodes as Node[];
@@ -115,11 +117,11 @@ export default ({
                           (currentYWorkflow.get("id")?.toJSON() as string),
                       );
                     });
-                    const yParentWorkflow = yWorkflows.get(workflowIndex);
-                    if (yParentWorkflow) {
-                      cleanupPseudoPorts(
+                    const parentYWorkflow = yWorkflows.get(workflowIndex);
+                    if (parentYWorkflow) {
+                      removeParentYWorkflowNodePseudoPort(
                         currentYWorkflow.get("id")?.toJSON() as string,
-                        yParentWorkflow,
+                        parentYWorkflow,
                         nodeToDelete,
                       );
                     }
@@ -152,7 +154,7 @@ export default ({
       currentYWorkflow,
       setSelectedNodeIds,
       undoTrackerActionWrapper,
-      handleWorkflowsRemove,
+      handleYWorkflowsRemove,
       rawWorkflows,
       yWorkflows,
     ],
@@ -185,13 +187,10 @@ export default ({
             return nodes.some((n) => n.id === currentWorkflowId);
           });
           const parentYWorkflow = yWorkflows.get(parentWorkflowIndex);
-          const parentYNodes = parentYWorkflow.get("nodes") as YNodesArray;
-          const parentYEdges = parentYWorkflow.get("edges") as YEdgesArray;
 
           updateParentYWorkflow(
             currentWorkflowId,
-            parentYNodes,
-            parentYEdges,
+            parentYWorkflow,
             prevNode,
             newParams,
           );

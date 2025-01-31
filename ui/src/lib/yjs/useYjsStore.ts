@@ -46,7 +46,7 @@ export default ({
       yWorkflows,
       setSelectedNodeIds,
       undoTrackerActionWrapper,
-      handleWorkflowsRemove: handleYWorkflowsRemove,
+      handleYWorkflowsRemove,
     });
 
   const { handleYEdgesAdd, handleYEdgesChange } = useYEdge({
