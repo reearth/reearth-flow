@@ -48,14 +48,14 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 
 	job, err := triggerUsecase.ExecuteAPITrigger(c.Request().Context(), interfaces.ExecuteAPITriggerParam{
 		AuthenticationToken: token,
-		TriggerID:          triggerID,
-		NotificationURL:    func() *string {
+		TriggerID:           triggerID,
+		NotificationURL: func() *string {
 			if req.NotificationURL != "" {
 				return &req.NotificationURL
 			}
 			return nil
 		}(),
-		Variables:          req.With,
+		Variables: req.With,
 	}, operator)
 
 	if err != nil {

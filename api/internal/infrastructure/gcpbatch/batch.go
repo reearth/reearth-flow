@@ -70,7 +70,7 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 	}
 
 	var varArgs []string
-	if variables != nil && len(variables) > 0 {
+	if len(variables) > 0 {
 		log.Debugfc(ctx, "gcpbatch: processing %d variables", len(variables))
 		for k, v := range variables {
 			varArgs = append(varArgs, fmt.Sprintf("--var=%s=%v", k, v))
