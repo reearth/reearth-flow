@@ -51,7 +51,7 @@ func NewBatch(ctx context.Context, config BatchConfig) (gateway.Batch, error) {
 	}, nil
 }
 
-func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL, metadataURL string, variables *map[string]interface{}, projectID id.ProjectID, workspaceID accountdomain.WorkspaceID) (string, error) {
+func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL, metadataURL string, variables map[string]interface{}, projectID id.ProjectID, workspaceID accountdomain.WorkspaceID) (string, error) {
 	log.Debugfc(ctx, "gcpbatch: starting job submission with jobID=%s projectID=%s workspaceID=%s", jobID, projectID, workspaceID)
 
 	formattedJobID := formatJobID(jobID.String())
@@ -70,9 +70,9 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 	}
 
 	var varArgs []string
-	if variables != nil {
-		log.Debugfc(ctx, "gcpbatch: processing %d variables", len(*variables))
-		for k, v := range *variables {
+	if len(variables) > 0 {
+		log.Debugfc(ctx, "gcpbatch: processing %d variables", len(variables))
+		for k, v := range variables {
 			varArgs = append(varArgs, fmt.Sprintf("--var=%s=%v", k, v))
 			log.Debugfc(ctx, "gcpbatch: added variable %s=%v", k, v)
 		}
