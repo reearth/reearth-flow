@@ -4,9 +4,9 @@ import * as Y from "yjs";
 import type { Edge, Node, NodeChange } from "@flow/types";
 
 import { fromYjsText, yNodeConstructor } from "../conversions";
-import type { YNodesArray, YNodeValue, YWorkflow } from "../types";
+import type { YEdgesArray, YNodesArray, YNodeValue, YWorkflow } from "../types";
 
-import { cleanupPseudoPorts, updateParentYWorkflowNode } from "./utils";
+import { cleanupPseudoPorts, updateParentYWorkflow } from "./utils";
 
 export default ({
   currentYWorkflow,
@@ -159,7 +159,7 @@ export default ({
   );
 
   const handleYNodeParamsUpdate = useCallback(
-    (nodeId: string, params: any) =>
+    (nodeId: string, newParams: any) =>
       undoTrackerActionWrapper(() => {
         const yNodes = currentYWorkflow?.get("nodes") as
           | YNodesArray
@@ -169,12 +169,13 @@ export default ({
         const nodes = yNodes.toJSON() as Node[];
 
         const nodeIndex = nodes.findIndex((n) => n.id === nodeId);
-        const node = nodes[nodeIndex];
+        const prevNode = nodes[nodeIndex];
 
-        if (!node) return;
+        if (!prevNode) return;
 
-        // if params.routingPort exists, it is a subworkflow.
-        if (params.routingPort) {
+        // if params.routingPort exists, it's parent is a subworkflow and
+        // we need to update pseudoInputs and pseudoOutputs on the parent node.
+        if (newParams.routingPort) {
           const currentWorkflowId = currentYWorkflow
             .get("id")
             ?.toJSON() as string;
@@ -183,20 +184,21 @@ export default ({
             const nodes = w.nodes as Node[];
             return nodes.some((n) => n.id === currentWorkflowId);
           });
-          const yParentWorkflow = yWorkflows.get(parentWorkflowIndex);
+          const parentYWorkflow = yWorkflows.get(parentWorkflowIndex);
+          const parentYNodes = parentYWorkflow.get("nodes") as YNodesArray;
+          const parentYEdges = parentYWorkflow.get("edges") as YEdgesArray;
 
-          // From here we are updating pseudoInputs and pseudoOutputs.
-          // These only exist on subworkflow nodes.
-          updateParentYWorkflowNode(
+          updateParentYWorkflow(
             currentWorkflowId,
-            yParentWorkflow,
-            node,
-            params,
+            parentYNodes,
+            parentYEdges,
+            prevNode,
+            newParams,
           );
         }
 
         const yData = yNodes.get(nodeIndex)?.get("data") as Y.Map<YNodeValue>;
-        yData?.set("params", params);
+        yData?.set("params", newParams);
       }),
     [currentYWorkflow, rawWorkflows, yWorkflows, undoTrackerActionWrapper],
   );
