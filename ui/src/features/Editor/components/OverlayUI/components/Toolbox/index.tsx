@@ -148,40 +148,38 @@ const Toolbox: React.FC<Props> = ({
     }, 0);
   };
   return (
-    <div className="pointer-events-none absolute bottom-1 left-2 top-2 flex shrink-0 gap-2 [&>*]:pointer-events-auto">
-      <div className="self-start rounded-md bg-secondary">
-        <div className="flex flex-col flex-wrap rounded-md border transition-all">
-          {availableTools.map((tool) => (
-            <IconButton
-              key={tool.id}
-              className={`dndnode-${tool.id} rounded-[4px]`}
-              tooltipPosition="right"
-              tooltipText={tool.name}
-              icon={tool.icon}
-              onDragStart={(event) => onDragStart(event, tool.id)}
-              draggable
-              disabled={tool.disabled}
-            />
-          ))}
-          {availableActions && <div className="my-2 w-full border-t" />}
-          {availableActions.map((action) => (
-            <IconButton
-              key={action.id}
-              className="rounded-[4px]"
-              tooltipPosition="right"
-              tooltipText={action.name}
-              icon={action.icon}
-              disabled={action.id === "undo" ? !canUndo : !canRedo}
-              onClick={() =>
-                action.id === "redo"
-                  ? onRedo?.()
-                  : action.id === "undo"
-                    ? onUndo?.()
-                    : undefined
-              }
-            />
-          ))}
-        </div>
+    <div className="self-start rounded-md bg-secondary">
+      <div className="flex flex-col flex-wrap rounded-md border transition-all">
+        {availableTools.map((tool) => (
+          <IconButton
+            key={tool.id}
+            className={`dndnode-${tool.id} rounded-[4px]`}
+            tooltipPosition="right"
+            tooltipText={tool.name}
+            icon={tool.icon}
+            onDragStart={(event) => onDragStart(event, tool.id)}
+            draggable
+            disabled={tool.disabled}
+          />
+        ))}
+        <div className="my-2 w-full border-t" />
+        {availableActions.map((action) => (
+          <IconButton
+            key={action.id}
+            className="rounded-[4px]"
+            tooltipPosition="right"
+            tooltipText={action.name}
+            icon={action.icon}
+            disabled={action.id === "undo" ? !canUndo : !canRedo}
+            onClick={() =>
+              action.id === "redo"
+                ? onRedo?.()
+                : action.id === "undo"
+                  ? onUndo?.()
+                  : undefined
+            }
+          />
+        ))}
       </div>
     </div>
   );

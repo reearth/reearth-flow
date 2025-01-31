@@ -54,20 +54,32 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
       <div className="relative flex flex-1 flex-col">
         {/* {devMode && <DevTools />} */}
         {canvas}
-        <Breadcrumb />
-        <Toolbox
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onRedo={onWorkflowRedo}
-          onUndo={onWorkflowUndo}
-          isMainWorkflow={isMainWorkflow}
-          hasReader={hasReader}
-        />
-        <ActionBar
-          allowedToDeploy={allowedToDeploy}
-          onWorkflowDeployment={onWorkflowDeployment}
-        />
-        <CanvasActionBar />
+        <div
+          id="top-middle"
+          className="pointer-events-none absolute inset-x-0 top-0 flex shrink-0 justify-center [&>*]:pointer-events-auto">
+          <Breadcrumb />
+        </div>
+        <div
+          id="left-top"
+          className="pointer-events-none absolute bottom-1 left-2 top-2 flex shrink-0 gap-2 [&>*]:pointer-events-auto">
+          <Toolbox
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onRedo={onWorkflowRedo}
+            onUndo={onWorkflowUndo}
+            isMainWorkflow={isMainWorkflow}
+            hasReader={hasReader}
+          />
+        </div>
+        <div id="right-top" className="absolute right-1 top-1 m-1">
+          <ActionBar
+            allowedToDeploy={allowedToDeploy}
+            onWorkflowDeployment={onWorkflowDeployment}
+          />
+        </div>
+        <div className="absolute bottom-2 right-2">
+          <CanvasActionBar />
+        </div>
         <Infobar hoveredDetails={hoveredDetails} />
       </div>
       {nodePickerOpen && (
