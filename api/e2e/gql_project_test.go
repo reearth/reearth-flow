@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/gavv/httpexpect/v2"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
@@ -230,34 +231,83 @@ func TestListProjects(t *testing.T) {
 		},
 	}, true, baseSeederUser)
 
-	query := fmt.Sprintf(`{
-		projects(
-			workspaceId: "%s"
-			includeArchived: true
-			first: 10
-		) {
-			edges {
-				node {
+	// Create test projects
+	projectIDs := make([]string, 3)
+	for i := 0; i < 3; i++ {
+		query := `mutation($input: CreateProjectInput!) {
+			createProject(input: $input) {
+				project {
 					id
-					name
-					description
-					isArchived
-					isBasicAuthActive
-					basicAuthUsername
-					basicAuthPassword
-					version
-					createdAt
-					updatedAt
-					workspaceId
 				}
 			}
-			pageInfo {
-				hasNextPage
-				hasPreviousPage
-				startCursor
-				endCursor
+		}`
+
+		variables := fmt.Sprintf(`{
+			"input": {
+				"workspaceId": "%s",
+				"name": "Test Project %d",
+				"description": "Test project description %d"
 			}
-			totalCount
+		}`, wId1.String(), i, i)
+
+		var variablesMap map[string]any
+		err := json.Unmarshal([]byte(variables), &variablesMap)
+		assert.NoError(t, err)
+
+		request := GraphQLRequest{
+			Query:     query,
+			Variables: variablesMap,
+		}
+		jsonData, err := json.Marshal(request)
+		assert.NoError(t, err)
+
+		resp := e.POST("/api/graphql").
+			WithHeader("authorization", "Bearer test").
+			WithHeader("Content-Type", "application/json").
+			WithHeader("X-Reearth-Debug-User", uId1.String()).
+			WithBytes(jsonData).
+			Expect().Status(http.StatusOK)
+
+		var result struct {
+			Data struct {
+				CreateProject struct {
+					Project struct {
+						ID string `json:"id"`
+					} `json:"project"`
+				} `json:"createProject"`
+			} `json:"data"`
+		}
+
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, result.Data.CreateProject.Project.ID, "Project creation failed")
+		projectIDs[i] = result.Data.CreateProject.Project.ID
+
+		// Add a small delay between project creations
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	// Test listing projects with pagination
+	query := fmt.Sprintf(`{
+		projectsPage(
+			workspaceId: "%s"
+			pagination: {
+				page: 1
+				pageSize: 2
+				orderBy: "name"
+				orderDir: ASC
+			}
+		) {
+			nodes {
+				id
+				name
+				description
+			}
+			pageInfo {
+				totalCount
+				totalPages
+				currentPage
+			}
 		}
 	}`, wId1.String())
 
@@ -276,24 +326,34 @@ func TestListProjects(t *testing.T) {
 
 	var result struct {
 		Data struct {
-			Projects struct {
-				Edges []struct {
-					Node struct {
-						ID string `json:"id"`
-					} `json:"node"`
-				} `json:"edges"`
+			ProjectsPage struct {
+				Nodes []struct {
+					ID          string `json:"id"`
+					Name        string `json:"name"`
+					Description string `json:"description"`
+				} `json:"nodes"`
 				PageInfo struct {
-					HasNextPage     bool    `json:"hasNextPage"`
-					HasPreviousPage bool    `json:"hasPreviousPage"`
-					StartCursor     *string `json:"startCursor"`
-					EndCursor       *string `json:"endCursor"`
+					TotalCount  int `json:"totalCount"`
+					TotalPages  int `json:"totalPages"`
+					CurrentPage int `json:"currentPage"`
 				} `json:"pageInfo"`
-				TotalCount int `json:"totalCount"`
-			} `json:"projects"`
+			} `json:"projectsPage"`
 		} `json:"data"`
 	}
 
 	err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 	assert.NoError(t, err)
-	assert.GreaterOrEqual(t, result.Data.Projects.TotalCount, 0)
+
+	// Verify the response
+	projects := result.Data.ProjectsPage
+	assert.NotNil(t, projects.Nodes)
+	assert.Len(t, projects.Nodes, 2)
+	for _, node := range projects.Nodes {
+		assert.NotEmpty(t, node.ID)
+		assert.NotEmpty(t, node.Name)
+		assert.NotEmpty(t, node.Description)
+	}
+	assert.Equal(t, 3, projects.PageInfo.TotalCount)
+	assert.Equal(t, 2, projects.PageInfo.TotalPages)
+	assert.Equal(t, 1, projects.PageInfo.CurrentPage)
 }

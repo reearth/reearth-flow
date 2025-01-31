@@ -2,13 +2,13 @@ package gql
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqldataloader"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/usecasex"
 	"github.com/reearth/reearthx/util"
 )
 
@@ -39,37 +39,50 @@ func (c *ProjectLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmod
 	return projects, nil
 }
 
-func (c *ProjectLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID, first *int, last *int, before *usecasex.Cursor, after *usecasex.Cursor) (*gqlmodel.ProjectConnection, error) {
+func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
 	tid, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
 	if err != nil {
 		return nil, err
 	}
 
-	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, usecasex.CursorPagination{
-		First:  intToInt64(first),
-		Last:   intToInt64(last),
-		Before: before,
-		After:  after,
-	}.Wrap(), getOperator(ctx))
+	fmt.Printf("DEBUG: Received pagination params: page=%d, pageSize=%d, orderBy=%v, orderDir=%v\n",
+		pagination.Page, pagination.PageSize, pagination.OrderBy, pagination.OrderDir)
+
+	// Convert pagination parameters using ToPageBasedPagination
+	paginationParam := gqlmodel.ToPageBasedPagination(pagination)
+
+	fmt.Printf("DEBUG: Converted pagination params: page=%d, pageSize=%d\n",
+		paginationParam.Page.Page, paginationParam.Page.PageSize)
+
+	// Use the pagination param for the usecase call
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	edges := make([]*gqlmodel.ProjectEdge, 0, len(res))
 	nodes := make([]*gqlmodel.Project, 0, len(res))
 	for _, p := range res {
-		prj := gqlmodel.ToProject(p)
-		edges = append(edges, &gqlmodel.ProjectEdge{
-			Node:   prj,
-			Cursor: usecasex.Cursor(prj.ID),
-		})
-		nodes = append(nodes, prj)
+		nodes = append(nodes, gqlmodel.ToProject(p))
+	}
+
+	pageInfo := gqlmodel.ToPageInfo(pi)
+	if pageInfo.CurrentPage == nil {
+		cp := pagination.Page
+		pageInfo.CurrentPage = &cp
+	}
+	if pageInfo.TotalPages == nil {
+		tp := (int(pi.TotalCount) + pagination.PageSize - 1) / pagination.PageSize
+		pageInfo.TotalPages = &tp
+	}
+
+	fmt.Printf("DEBUG: Returning %d nodes\n", len(nodes))
+	for _, n := range nodes {
+		fmt.Printf("DEBUG: Node name=%s\n", n.Name)
 	}
 
 	return &gqlmodel.ProjectConnection{
-		Edges:      edges,
 		Nodes:      nodes,
-		PageInfo:   gqlmodel.ToPageInfo(pi),
+		PageInfo:   pageInfo,
 		TotalCount: int(pi.TotalCount),
 	}, nil
 }

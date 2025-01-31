@@ -10,14 +10,14 @@ import (
 )
 
 type JobDocument struct {
-	ID           string
-	DeploymentID string
-	WorkspaceID  string
-	GCPJobID     string
-	Status       string
-	StartedAt    time.Time
-	CompletedAt  *time.Time
-	MetadataURL  string
+	ID           string     `bson:"id"`
+	DeploymentID string     `bson:"deploymentid"`
+	WorkspaceID  string     `bson:"workspaceid"`
+	GCPJobID     string     `bson:"gcpjobid"`
+	Status       string     `bson:"status"`
+	StartedAt    time.Time  `bson:"startedat"`
+	CompletedAt  *time.Time `bson:"completedat"`
+	MetadataURL  string     `bson:"metadataurl"`
 }
 
 type JobConsumer = Consumer[*JobDocument, *job.Job]
@@ -63,7 +63,8 @@ func (d *JobDocument) Model() (*job.Job, error) {
 		Workspace(wid).
 		Status(job.Status(d.Status)).
 		StartedAt(d.StartedAt).
-		MetadataURL(d.MetadataURL)
+		MetadataURL(d.MetadataURL).
+		GCPJobID(d.GCPJobID)
 
 	if d.CompletedAt != nil {
 		j = j.CompletedAt(d.CompletedAt)

@@ -6,15 +6,16 @@ import (
 	"regexp"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
-	"github.com/reearth/reearthx/usecasex"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -62,9 +63,9 @@ func (r *Asset) FindByIDs(ctx context.Context, ids id.AssetIDList) ([]*asset.Ass
 	return filterAssets(ids, res), nil
 }
 
-func (r *Asset) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, uFilter repo.AssetFilter) ([]*asset.Asset, *usecasex.PageInfo, error) {
+func (r *Asset) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, uFilter repo.AssetFilter) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(id) {
-		return nil, usecasex.EmptyPageInfo(), nil
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
 	var filter any = bson.M{
@@ -124,21 +125,37 @@ func (r *Asset) Remove(ctx context.Context, id id.AssetID) error {
 	}))
 }
 
-func (r *Asset) paginate(ctx context.Context, filter any, sort *asset.SortType, pagination *usecasex.Pagination) ([]*asset.Asset, *usecasex.PageInfo, error) {
-	var usort *usecasex.Sort
-	if sort != nil {
-		usort = &usecasex.Sort{
-			Key: string(*sort),
-		}
-	}
-
+func (r *Asset) paginate(ctx context.Context, filter any, sort *asset.SortType, pagination *interfaces.PaginationParam) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 	c := mongodoc.NewAssetConsumer(r.f.Readable)
-	pageInfo, err := r.client.Paginate(ctx, filter, usort, pagination, c)
-	if err != nil {
-		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+
+	if pagination != nil && pagination.Page != nil {
+		// Page-based pagination
+		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
+		limit := pagination.Page.PageSize
+
+		// Get total count for page info
+		total, err := r.client.Count(ctx, filter)
+		if err != nil {
+			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		// Add sorting
+		opts := options.Find()
+		if sort != nil {
+			opts.SetSort(bson.D{{Key: string(*sort), Value: 1}})
+		}
+
+		// Add pagination
+		opts.SetSkip(int64(skip)).SetLimit(int64(limit))
+
+		if err := r.client.Find(ctx, filter, c, opts); err != nil {
+			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		return c.Result, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
 	}
 
-	return c.Result, pageInfo, nil
+	return c.Result, interfaces.NewPageBasedInfo(int64(len(c.Result)), 1, len(c.Result)), nil
 }
 
 func (r *Asset) find(ctx context.Context, filter any) ([]*asset.Asset, error) {

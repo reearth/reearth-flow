@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
-	"github.com/reearth/reearthx/usecasex"
 )
 
 func (r *Resolver) Query() QueryResolver {
@@ -13,8 +12,8 @@ func (r *Resolver) Query() QueryResolver {
 
 type queryResolver struct{ *Resolver }
 
-func (r *queryResolver) Assets(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, sortType *gqlmodel.AssetSortType, pagination *gqlmodel.Pagination) (*gqlmodel.AssetConnection, error) {
-	return loaders(ctx).Asset.FindByWorkspace(ctx, workspaceID, keyword, gqlmodel.AssetSortTypeFrom(sortType), pagination)
+func (r *queryResolver) AssetsPage(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, sortType *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error) {
+	return loaders(ctx).Asset.FindByWorkspace(ctx, workspaceID, keyword, gqlmodel.AssetSortTypeFrom(sortType), &pagination)
 }
 
 func (r *queryResolver) Me(ctx context.Context) (*gqlmodel.Me, error) {
@@ -25,8 +24,8 @@ func (r *queryResolver) Me(ctx context.Context) (*gqlmodel.Me, error) {
 	return gqlmodel.ToMe(u), nil
 }
 
-func (r *queryResolver) Deployments(ctx context.Context, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.DeploymentConnection, error) {
-	return loaders(ctx).Deployment.FindByWorkspace(ctx, workspaceID, pagination)
+func (r *queryResolver) DeploymentsPage(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error) {
+	return loaders(ctx).Deployment.FindByWorkspacePage(ctx, workspaceID, pagination)
 }
 
 func (r *queryResolver) DeploymentByVersion(ctx context.Context, input gqlmodel.GetByVersionInput) (*gqlmodel.Deployment, error) {
@@ -45,8 +44,8 @@ func (r *queryResolver) Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job,
 	return loaders(ctx).Job.FindByID(ctx, id)
 }
 
-func (r *queryResolver) Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.JobConnection, error) {
-	return loaders(ctx).Job.FindByWorkspace(ctx, workspaceID, pagination)
+func (r *queryResolver) JobsPage(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error) {
+	return loaders(ctx).Job.FindByWorkspacePage(ctx, workspaceID, pagination)
 }
 
 func (r *queryResolver) Node(ctx context.Context, i gqlmodel.ID, typeArg gqlmodel.NodeType) (gqlmodel.Node, error) {
@@ -128,14 +127,14 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []gqlmodel.ID, typeArg gq
 	}
 }
 
-func (r *queryResolver) Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, first *int, last *int, after *usecasex.Cursor, before *usecasex.Cursor) (*gqlmodel.ProjectConnection, error) {
-	return loaders(ctx).Project.FindByWorkspace(ctx, workspaceID, first, last, before, after)
+func (r *queryResolver) ProjectsPage(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
+	return loaders(ctx).Project.FindByWorkspacePage(ctx, workspaceID, pagination)
 }
 
 func (r *queryResolver) SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error) {
 	return loaders(ctx).User.SearchUser(ctx, nameOrEmail)
 }
 
-func (r *queryResolver) Triggers(ctx context.Context, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.TriggerConnection, error) {
-	return loaders(ctx).Trigger.FindByWorkspace(ctx, workspaceID, pagination)
+func (r *queryResolver) TriggersPage(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error) {
+	return loaders(ctx).Trigger.FindByWorkspacePage(ctx, workspaceID, pagination)
 }

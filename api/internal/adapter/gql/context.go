@@ -9,7 +9,6 @@ import (
 	"github.com/reearth/reearthx/account/accountdomain/user"
 
 	"github.com/reearth/reearthx/account/accountusecase"
-	"github.com/samber/lo"
 )
 
 type ContextKey string
@@ -57,9 +56,9 @@ func dataloaders(ctx context.Context) *DataLoaders {
 	return ctx.Value(contextDataloaders).(*DataLoaders)
 }
 
-func intToInt64(i *int) *int64 {
-	if i == nil {
-		return nil
-	}
-	return lo.ToPtr(int64(*i))
-}
+// func intToInt64(i *int) *int64 {
+// 	if i == nil {
+// 		return nil
+// 	}
+// 	return lo.ToPtr(int64(*i))
+// }
