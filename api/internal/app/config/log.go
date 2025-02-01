@@ -15,8 +15,6 @@ func (r RedisLogConfig) IsConfigured() bool {
 	if r.DB < 0 || r.DB > 15 {
 		return false
 	}
-	// Basic format validation for Redis address
-	// Example: localhost:6379 or redis://localhost:6379
 	if !strings.Contains(r.Addr, ":") {
 		return false
 	}

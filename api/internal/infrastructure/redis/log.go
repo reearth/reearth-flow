@@ -34,7 +34,6 @@ type LogEntry struct {
 	Message    string    `json:"message"`
 }
 
-// Domain log.Log -> LogEntry conversion
 func ToLogEntry(l *log.Log) *LogEntry {
 	if l == nil {
 		return nil
@@ -55,7 +54,6 @@ func ToLogEntry(l *log.Log) *LogEntry {
 	}
 }
 
-// LogEntry -> domain log.Log conversion
 func (e *LogEntry) ToDomain() (*log.Log, error) {
 	wid, err := id.WorkflowIDFrom(e.WorkflowID)
 	if err != nil {
@@ -100,7 +98,6 @@ func (r *redisLog) GetLogs(
 	untilUTC := until.UTC()
 
 	for {
-		// count=100 is the limit of keys to be retrieved in one SCAN. Adjust as needed.
 		keys, newCursor, err := r.client.Scan(ctx, cursor, pattern, 100).Result()
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan redis keys: %w", err)
@@ -109,7 +106,6 @@ func (r *redisLog) GetLogs(
 		for _, key := range keys {
 			val, err := r.client.Get(ctx, key).Result()
 			if err == redis.Nil {
-				// Skip if key does not exist (deleted)
 				continue
 			} else if err != nil {
 				return nil, fmt.Errorf("failed to get redis value for key=%s: %w", key, err)
@@ -117,24 +113,19 @@ func (r *redisLog) GetLogs(
 
 			var entry LogEntry
 			if err := json.Unmarshal([]byte(val), &entry); err != nil {
-				// Skip if corrupted JSON
 				reearth_log.Warnfc(ctx, "gql: failed to unmarshal log entry: %s", val)
 				continue
 			}
 
-			// Convert entry.Timestamp to UTC and then check range
 			entryTimestampUTC := entry.Timestamp.UTC()
 
-			// Skip anything after since
 			if entryTimestampUTC.Before(sinceUTC) {
 				continue
 			}
-			// Skip anything after until
 			if entryTimestampUTC.After(untilUTC) {
 				continue
 			}
 
-			// Convert to domain log.Log
 			domainLog, err := entry.ToDomain()
 			if err != nil {
 				reearth_log.Warnfc(ctx, "gql: failed to convert log entry to domain: %v", err)
