@@ -9,6 +9,7 @@ import {
   DialogFooter,
   Input,
 } from "@flow/components";
+import { ALLOWED_WORKFLOW_FILE_EXTENSIONS } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
 import { Deployment } from "@flow/types";
 
@@ -43,7 +44,7 @@ const DeploymentEditDialog: React.FC<Props> = ({
             <Label>{t("Workflow file: ")}</Label>
             <Input
               type="file"
-              accept=".json"
+              accept={ALLOWED_WORKFLOW_FILE_EXTENSIONS}
               onChange={handleWorkflowFileUpload}
             />
             {invalidFile && (

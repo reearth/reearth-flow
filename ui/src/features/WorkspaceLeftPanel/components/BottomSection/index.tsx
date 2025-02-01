@@ -8,7 +8,7 @@ type Props = {
   route?: RouteOption;
 };
 
-const EndSection: React.FC<Props> = ({ route }) => {
+const BottomSection: React.FC<Props> = ({ route }) => {
   const { version } = config();
   const t = useT();
   return (
@@ -31,4 +31,4 @@ const EndSection: React.FC<Props> = ({ route }) => {
   );
 };
 
-export { EndSection };
+export { BottomSection };

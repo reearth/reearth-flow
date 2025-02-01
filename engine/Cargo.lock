@@ -5656,6 +5656,7 @@ dependencies = [
  "nusamai-citygml",
  "nusamai-plateau",
  "nusamai-projection",
+ "nutype",
  "once_cell",
  "parking_lot",
  "petgraph",

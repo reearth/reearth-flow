@@ -1,3 +1,4 @@
+import { Bug } from "@phosphor-icons/react";
 import {
   CaretSortIcon,
   ClockIcon,
@@ -5,6 +6,7 @@ import {
   ExclamationTriangleIcon,
   InfoCircledIcon,
   UpdateIcon,
+  MagnifyingGlassIcon,
 } from "@radix-ui/react-icons";
 import {
   ColumnDef,
@@ -26,9 +28,10 @@ import {
   DropdownMenuTrigger,
   Button,
   Input,
+  IconButton,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { LogStatus } from "@flow/types";
+import { LogLevel } from "@flow/types";
 
 import { Table, TableBody, TableCell, TableRow } from "../Table";
 
@@ -77,11 +80,11 @@ const Logs = <TData, TValue>({
     },
   });
 
-  const handleStatusChange = (status: LogStatus) => {
+  const handleStatusChange = (status: LogLevel) => {
     if (getStatusValue === status) {
       setColumnFilters([]);
     } else {
-      setColumnFilters([{ id: "status", value: status }]);
+      setColumnFilters([{ id: "logLevel", value: status }]);
     }
   };
 
@@ -98,118 +101,147 @@ const Logs = <TData, TValue>({
   };
 
   const getStatusValue = useMemo(() => {
-    const value = columnFilters.find((id) => id.id === "status");
+    const value = columnFilters.find((id) => id.id === "logLevel");
     return value?.value;
   }, [columnFilters]);
-
+  console.log("data", data);
   return (
-    <div className="w-full overflow-auto rounded">
+    <div className="flex size-full flex-col rounded">
       <div className="flex h-16 w-full items-center justify-between p-2">
-        <h2 className="text-lg">{t("Log")}</h2>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between p-2">
+            <h2 className="text-lg">{t("Log")}</h2>
+          </div>
+          <div className="flex items-center gap-4">
+            {showFiltering && (
+              <Input
+                placeholder={t("Search") + "..."}
+                value={globalFilter ?? ""}
+                onChange={(e) => setGlobalFilter(String(e.target.value))}
+                className="max-w-80"
+              />
+            )}
+          </div>
+        </div>
+
         <div className="flex gap-2">
-          <Button
+          <IconButton
+            size="icon"
             variant={getStatusValue === "ERROR" ? "default" : "outline"}
+            tooltipText={t("Error")}
+            onClick={() => handleStatusChange(LogLevel.ERROR)}
+            icon={<CrossCircledIcon />}
+          />
+          <IconButton
             size="icon"
-            onClick={() => handleStatusChange("ERROR")}
-          >
-            <CrossCircledIcon />
-          </Button>
-          <Button
-            variant={getStatusValue === "WARNING" ? "default" : "outline"}
+            variant={getStatusValue === "WARN" ? "default" : "outline"}
+            tooltipText={t("Warning")}
+            onClick={() => handleStatusChange(LogLevel.WARN)}
+            icon={<ExclamationTriangleIcon />}
+          />
+          <IconButton
             size="icon"
-            onClick={() => handleStatusChange("WARNING")}
-          >
-            <ExclamationTriangleIcon />
-          </Button>
-          <Button
+            variant={getStatusValue === "DEBUG" ? "default" : "outline"}
+            tooltipText={t("Debug")}
+            onClick={() => handleStatusChange(LogLevel.DEBUG)}
+            icon={<Bug />}
+          />
+          <IconButton
+            size="icon"
+            variant={getStatusValue === "TRACE" ? "default" : "outline"}
+            tooltipText={t("Trace")}
+            onClick={() => handleStatusChange(LogLevel.TRACE)}
+            icon={<MagnifyingGlassIcon />}
+          />
+          <IconButton
+            size="icon"
             variant={getStatusValue === "INFO" ? "default" : "outline"}
+            tooltipText={t("Info")}
+            onClick={() => handleStatusChange(LogLevel.INFO)}
+            icon={<InfoCircledIcon />}
+          />
+          <IconButton
             size="icon"
-            onClick={() => handleStatusChange("INFO")}
-          >
-            <InfoCircledIcon />
-          </Button>
-          <Button
             variant={
               table.getColumn("timestamp")?.getIsVisible()
                 ? "default"
                 : "outline"
             }
-            size="icon"
+            tooltipText={t("Include Timestamp")}
             onClick={handleTimeStampColumnVisibility}
-          >
-            <ClockIcon />
-          </Button>
+            icon={<ClockIcon />}
+          />
           <Button variant="ghost" size="icon">
             <CaretSortIcon />
           </Button>
-          <Button variant="ghost" size="icon" onClick={handleResetTable}>
-            <UpdateIcon />
-          </Button>
+          <IconButton
+            size="icon"
+            variant="ghost"
+            tooltipText={t("Reset Logs")}
+            onClick={handleResetTable}
+            icon={<UpdateIcon />}
+          />
+          {selectColumns && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="ml-auto">
+                  {t("Columns")}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {table
+                  .getAllColumns()
+                  .filter((column) => column.getCanHide())
+                  .map((column) => {
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={column.id}
+                        className="capitalize"
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) =>
+                          column.toggleVisibility(!!value)
+                        }>
+                        {column.id}
+                      </DropdownMenuCheckboxItem>
+                    );
+                  })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       </div>
-      <div className="flex items-center gap-4 p-4">
-        {showFiltering && (
-          <Input
-            placeholder={t("Search") + "..."}
-            value={globalFilter ?? ""}
-            onChange={(e) => setGlobalFilter(String(e.target.value))}
-            className="max-w-80"
-          />
-        )}
-        {selectColumns && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="ml-auto">
-                {t("Columns")}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-      </div>
-      <div className="border-b border-gray-400" />
-      <Table>
-        <TableBody>
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow
-                key={row.id}
-                data-state={row.getIsSelected() && "selected"}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell className="cursor-pointer" key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
-                ))}
+
+      <div className="h-[calc(100vh-6rem)] w-full overflow-auto">
+        <div className="border-b" />
+        <Table>
+          <TableBody>
+            {table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell className="cursor-pointer" key={cell.id}>
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center">
+                  {t("No Results")}
+                </TableCell>
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
-                {t("No Results")}
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };

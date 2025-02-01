@@ -12,13 +12,13 @@ import (
 
 type Project interface {
 	Filtered(WorkspaceFilter) Project
-	FindByIDs(context.Context, id.ProjectIDList) ([]*project.Project, error)
-	FindByID(context.Context, id.ProjectID) (*project.Project, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination) ([]*project.Project, *usecasex.PageInfo, error)
 	CountByWorkspace(context.Context, accountdomain.WorkspaceID) (int, error)
 	CountPublicByWorkspace(context.Context, accountdomain.WorkspaceID) (int, error)
-	Save(context.Context, *project.Project) error
+	FindByID(context.Context, id.ProjectID) (*project.Project, error)
+	FindByIDs(context.Context, id.ProjectIDList) ([]*project.Project, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination) ([]*project.Project, *usecasex.PageInfo, error)
 	Remove(context.Context, id.ProjectID) error
+	Save(context.Context, *project.Project) error
 }
 
 func IterateProjectsByWorkspace(repo Project, ctx context.Context, tid accountdomain.WorkspaceID, batch int64, callback func([]*project.Project) error) error {

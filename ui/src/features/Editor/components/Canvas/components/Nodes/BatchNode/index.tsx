@@ -1,6 +1,6 @@
 import { RectangleDashed } from "@phosphor-icons/react";
 import { NodeProps, NodeResizer, useReactFlow } from "@xyflow/react";
-import { memo, useState, useCallback } from "react";
+import { memo, useCallback } from "react";
 
 import { Node } from "@flow/types";
 
@@ -19,8 +19,6 @@ export const baseBatchNode = {
 const minSize = { width: 250, height: 150 };
 
 const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
-  const [_width, _setWidth] = useState(data.width ?? initialSize.width);
-  const [_height, _setHeight] = useState(data.height ?? initialSize.height);
   const { getNodes, setNodes } = useReactFlow<Node>();
   const { handleNodeDropInBatch } = useBatch();
 

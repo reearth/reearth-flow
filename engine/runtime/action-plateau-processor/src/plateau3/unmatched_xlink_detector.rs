@@ -3,6 +3,7 @@ use std::{
     str::FromStr,
 };
 
+use nusamai_citygml::GML31_NS;
 use once_cell::sync::Lazy;
 use reearth_flow_common::{
     uri::Uri,
@@ -288,7 +289,12 @@ fn extract_xlink_gml_element(
     node: &XmlRoNode,
 ) -> Result<Option<XlinkGmlElement>> {
     let gml_id = node
-        .get_attribute_ns("id", "http://www.opengis.net/gml")
+        .get_attribute_ns(
+            "id",
+            String::from_utf8(GML31_NS.into_inner().to_vec())
+                .map_err(|e| PlateauProcessorError::UnmatchedXlinkDetector(format!("{:?}", e)))?
+                .as_str(),
+        )
         .ok_or(PlateauProcessorError::UnmatchedXlinkDetector(
             "Failed to get gml id".to_string(),
         ))?;

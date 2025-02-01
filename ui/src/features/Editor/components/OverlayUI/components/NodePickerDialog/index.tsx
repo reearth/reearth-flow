@@ -9,7 +9,6 @@ import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
 import type { ActionNodeType, Node } from "@flow/types";
 
-import useBatch from "../../../Canvas/useBatch";
 import { useCreateNode } from "../../../Canvas/useCreateNode";
 
 type Props = {
@@ -17,16 +16,14 @@ type Props = {
     position: XYPosition;
     nodeType: ActionNodeType;
   };
-  nodes: Node[];
-  onNodesChange: (nodes: Node[]) => void;
+  onNodesAdd: (nodes: Node[]) => void;
   onClose: () => void;
   isMainWorkflow: boolean;
 };
 
 const NodePickerDialog: React.FC<Props> = ({
   openedActionType,
-  nodes,
-  onNodesChange,
+  onNodesAdd,
   onClose,
   isMainWorkflow,
 }) => {
@@ -34,7 +31,7 @@ const NodePickerDialog: React.FC<Props> = ({
   const [searchTerm, setSearchTerm] = useState<string>("");
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const { handleNodeDropInBatch } = useBatch();
+  // const { handleNodeDropInBatch } = useBatch();
 
   const { useGetActionsSegregated } = useAction(i18n.language);
   const { actions } = useGetActionsSegregated({
@@ -74,8 +71,9 @@ const NodePickerDialog: React.FC<Props> = ({
         type: name,
       });
       if (!newNode) return;
-      const newNodes = [...nodes, newNode];
-      onNodesChange(handleNodeDropInBatch(newNode, newNodes));
+      onNodesAdd([newNode]);
+      // TODO - add drop in batch support
+      // onNodesChange(handleNodeDropInBatch(newNode, newNodes));
       onClose();
     },
   );

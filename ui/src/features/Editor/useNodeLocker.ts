@@ -1,17 +1,14 @@
-import { useReactFlow } from "@xyflow/react";
 import { useCallback, useEffect, useState } from "react";
 
 import type { Node } from "@flow/types";
 
 export default ({
-  selectedNodes,
-  handleNodesUpdate,
+  nodes,
+  selectedNodeIds,
 }: {
-  selectedNodes: Node[];
-  handleNodesUpdate: (newNodes: Node[]) => void;
+  nodes: Node[];
+  selectedNodeIds: string[];
 }) => {
-  const { getNodes } = useReactFlow<Node>();
-
   // Will be used to keep track of all locked nodes, local and for other users (while collaborative editing)
   const [lockedNodeIds, setLockedNodeIds] = useState<string[]>([]);
 
@@ -20,44 +17,31 @@ export default ({
     undefined,
   );
 
+  // When a node is deselected on the canvas, we need to unlock it
   useEffect(() => {
-    if (!selectedNodes.length) {
+    if (locallyLockedNode && !selectedNodeIds.includes(locallyLockedNode.id)) {
       setLocallyLockedNode(undefined);
+      setLockedNodeIds((lln) =>
+        lln.filter((id) => id !== locallyLockedNode?.id),
+      );
     }
-  }, [selectedNodes]);
+  }, [selectedNodeIds, locallyLockedNode]);
 
-  // consider making a node context and supplying vars and functions like this to the nodes that way
   const handleNodeLocking = useCallback(
     (nodeId: string) => {
-      handleNodesUpdate(
-        getNodes().map((n) => {
-          if (n.id === nodeId) {
-            const newNode = {
-              ...n,
-              data: {
-                ...n.data,
-                locked: !n.data.locked,
-              },
-            };
+      setLockedNodeIds((ids) => {
+        if (ids.includes(nodeId)) {
+          return ids.filter((id) => id !== nodeId);
+        }
+        return [...ids, nodeId];
+      });
 
-            setLockedNodeIds((ids) => {
-              if (ids.includes(newNode.id)) {
-                return ids.filter((id) => id !== nodeId);
-              }
-              return [...ids, newNode.id];
-            });
-
-            setLocallyLockedNode((lln) =>
-              lln?.id === newNode.id ? undefined : newNode,
-            );
-
-            return newNode;
-          }
-          return n;
-        }),
+      setLocallyLockedNode((lln) =>
+        lln?.id === nodeId ? undefined : nodes.find((n) => n.id === nodeId),
       );
+      // handleNodesChange([{ id: nodeId, type: "locking", locked: !!locked }]);
     },
-    [getNodes, handleNodesUpdate],
+    [nodes],
   );
 
   return {

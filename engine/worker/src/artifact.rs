@@ -3,6 +3,8 @@ use std::{path::MAIN_SEPARATOR, str::FromStr, sync::Arc};
 use bytes::Bytes;
 use reearth_flow_common::{dir, uri::Uri};
 use reearth_flow_storage::resolve::StorageResolver;
+use tokio::sync::Semaphore;
+use tracing::info;
 use walkdir::WalkDir;
 
 use crate::types::metadata::Metadata;
@@ -33,7 +35,6 @@ pub(crate) async fn upload_artifact(
         .map(|entry| Uri::from_str(entry.as_str()))
         .flat_map(Result::ok)
         .collect::<Vec<_>>();
-
     let local_artifact_root_path = Uri::from_str(
         local_artifact_root_path
             .to_string_lossy()
@@ -41,11 +42,15 @@ pub(crate) async fn upload_artifact(
             .as_str(),
     )
     .map_err(crate::errors::Error::failed_to_upload_artifact)?;
+
+    let semaphore = Arc::new(Semaphore::new(5));
+
     let futures = uris
         .iter()
         .map(|uri| {
             let local_artifact_root_path = local_artifact_root_path.clone();
             let remote_artifact_root_path = remote_artifact_root_path.clone();
+            let permit = semaphore.clone().acquire_owned();
             async move {
                 let storage = storage_resolver
                     .resolve(uri)
@@ -71,6 +76,12 @@ pub(crate) async fn upload_artifact(
                 let root_storage = storage_resolver
                     .resolve(&location)
                     .map_err(crate::errors::Error::failed_to_upload_artifact)?;
+
+                let _permit_guard = permit
+                    .await
+                    .map_err(crate::errors::Error::failed_to_upload_artifact)?;
+
+                info!("Uploading artifact from {:?} to {:?}", uri, location);
                 root_storage
                     .put(location.path().as_path(), Bytes::from(bytes.to_vec()))
                     .await
