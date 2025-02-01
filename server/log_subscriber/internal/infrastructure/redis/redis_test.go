@@ -44,7 +44,7 @@ func TestRedisStorage_SaveLogToRedis(t *testing.T) {
 	expectedVal := `{"workflowId":"wf-123","jobId":"job-123","timestamp":"2025-01-11T09:12:54.487779Z","logLevel":"INFO","message":"Hello from test"}`
 
 	mClient.
-		On("Set", ctx, expectedKey, expectedVal, 60*time.Minute).
+		On("Set", ctx, expectedKey, expectedVal, 12*time.Hour).
 		Return(nil)
 
 	err := rStorage.SaveLogToRedis(ctx, event)
@@ -66,7 +66,7 @@ func TestRedisStorage_SaveLogToRedis_Error(t *testing.T) {
 	}
 
 	mClient.
-		On("Set", mock.Anything, mock.Anything, mock.Anything, 60*time.Minute).
+		On("Set", mock.Anything, mock.Anything, mock.Anything, 12*time.Hour).
 		Return(errors.New("redis set error"))
 
 	err := rStorage.SaveLogToRedis(ctx, event)
