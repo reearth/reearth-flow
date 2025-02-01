@@ -145,7 +145,7 @@ type ComplexityRoot struct {
 		Deployment   func(childComplexity int) int
 		DeploymentID func(childComplexity int) int
 		ID           func(childComplexity int) int
-		Logs         func(childComplexity int, since *time.Time) int
+		Logs         func(childComplexity int, since time.Time) int
 		StartedAt    func(childComplexity int) int
 		Status       func(childComplexity int) int
 		Workspace    func(childComplexity int) int
@@ -790,7 +790,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Job.Logs(childComplexity, args["since"].(*time.Time)), true
+		return e.complexity.Job.Logs(childComplexity, args["since"].(time.Time)), true
 
 	case "Job.startedAt":
 		if e.complexity.Job.StartedAt == nil {
@@ -2365,7 +2365,7 @@ extend type Mutation {
   status: JobStatus!
   workspace: Workspace
   workspaceId: ID!
-  logs(since: DateTime): [Log]
+  logs(since: DateTime!): [Log]
 }
 
 enum JobStatus {
@@ -2491,7 +2491,7 @@ extend type Mutation {
      updateParameterOrder(
         projectId: ID!
         input: UpdateParameterOrderInput!
-    ): [Parameter!]! 
+    ): [Parameter!]!
 
     removeParameter(input: RemoveParameterInput!): Boolean!
 }
@@ -2641,7 +2641,7 @@ input CreateTriggerInput {
 input UpdateTriggerInput {
     triggerId: ID!
     description: String
-    deploymentId: ID 
+    deploymentId: ID
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
 }
@@ -2848,10 +2848,10 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 func (ec *executionContext) field_Job_logs_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *time.Time
+	var arg0 time.Time
 	if tmp, ok := rawArgs["since"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("since"))
-		arg0, err = ec.unmarshalODateTime2ᚖtimeᚐTime(ctx, tmp)
+		arg0, err = ec.unmarshalNDateTime2timeᚐTime(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
