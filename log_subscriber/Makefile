@@ -6,4 +6,3 @@ run:
 
 lint:
 	golangci-lint run --fix
-	
