@@ -184,12 +184,12 @@ jobs:
       name: ${{ needs.ci-collect-info.outputs.name }}
       sha: ${{ github.sha }}
     secrets: inherit
-  docker-push-worker:
+  build-docker-push-worker:
       needs:
         - ci
         - ci-engine
         - ci-collect-info
-      uses: ./.github/workflows/docker_push_worker.yml
+      uses: ./.github/workflows/build_docker_push_worker.yml
       if: ${{ !failure() && needs.ci-engine.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
       with:
         sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}

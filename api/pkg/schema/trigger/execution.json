@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "TriggerExecution",
+    "type": "object",
+    "properties": {
+        "authToken": {
+            "type": "string",
+            "description": "Authentication token for the execution"
+        },
+        "notificationUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL to notify upon completion"
+        },
+        "with": {
+            "type": "object",
+            "description": "Execution parameters - can contain any valid JSON object properties",
+            "additionalProperties": true
+        }
+    }
+}

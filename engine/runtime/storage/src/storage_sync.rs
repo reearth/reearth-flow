@@ -65,7 +65,7 @@ impl Storage {
                 let result = location.to_str().unwrap();
                 let url = format!("{}{}", self.base_uri, result);
                 let client = reqwest::blocking::Client::builder()
-                    .timeout(Duration::from_secs(1))
+                    .timeout(Duration::from_secs(30))
                     .build()
                     .map_err(|err| object_store::Error::Generic {
                         store: "HttpError",

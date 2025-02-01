@@ -29,4 +29,8 @@ type File interface {
 	ReadMetadata(context.Context, string) (io.ReadCloser, error)
 	UploadMetadata(context.Context, string, []string) (*url.URL, error)
 	RemoveMetadata(context.Context, *url.URL) error
+	ReadArtifact(context.Context, string) (io.ReadCloser, error)
+	ListJobArtifacts(context.Context, string) ([]string, error)
+	GetJobLogURL(string) string
+	CheckJobLogExists(context.Context, string) (bool, error)
 }

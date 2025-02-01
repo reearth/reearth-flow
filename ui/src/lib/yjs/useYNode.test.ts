@@ -1,93 +1,82 @@
-// import { act, cleanup, renderHook } from "@testing-library/react";
-// import { describe, test, expect } from "vitest";
-// import * as Y from "yjs";
+import { act, cleanup, renderHook } from "@testing-library/react";
+import * as Y from "yjs";
 
-import { cleanup } from "@testing-library/react";
+import { Node } from "@flow/types";
 
-// import type { Node } from "@flow/types";
-
-// import useYNode from "./useYNode";
-// import {
-//   YEdgesArray,
-//   YNodesArray,
-//   YWorkflow,
-//   yWorkflowBuilder,
-// } from "./workflowBuilder";
+import { yWorkflowConstructor } from "./conversions";
+import type { YNodesArray, YWorkflow } from "./types";
+import useYNode from "./useYNode";
 
 afterEach(() => {
   cleanup();
 });
 
 describe("useYNode", () => {
-  test("should update nodes correctly", () => {
-    // const yDoc = new Y.Doc();
-    // const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-    // const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
-    // yWorkflows.push([yWorkflow]);
-    // const { result } = renderHook(() =>
-    //   useYNode({
-    //     currentYWorkflow: yWorkflow,
-    //     handleWorkflowsRemove: () => {},
-    //     undoTrackerActionWrapper: () => {},
-    //   }),
-    // );
-    // const initialNodes: Node[] = [
-    //   { id: "a", position: { x: 0, y: 0 }, data: { name: "Node A" } },
-    //   { id: "b", position: { x: 0, y: 0 }, data: { name: "Node B" } },
-    // ];
-    // const newNodes: Node[] = [
-    //   { id: "c", position: { x: 0, y: 0 }, data: { name: "Node C" } },
-    // ];
-    // const yNodes = yWorkflow.get("nodes") as YNodesArray;
-    // yNodes.insert(0, initialNodes);
-    // act(() => {
-    //   result.current.handleNodesUpdate(newNodes);
-    // });
-    // expect(yNodes.toJSON()).toEqual(newNodes);
-  });
+  test("should add nodes correctly", () => {
+    const yDoc = new Y.Doc();
+    const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+    const yWorkflow = yWorkflowConstructor("workflow-1", "My Workflow");
 
-  test("should not update edges if they are equal", () => {
-    // const yDoc = new Y.Doc();
-    // const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-    // const yWorkflow = yWorkflowBuilder("main", "Main Workflow");
-    // yWorkflows.push([yWorkflow]);
-    // const { result } = renderHook(() =>
-    //   useYNode({
-    //     currentYWorkflow: yWorkflow,
-    //     handleWorkflowsRemove: () => {},
-    //     undoTrackerActionWrapper: () => {},
-    //   }),
-    // );
-    // const initialNodes: Node[] = [
-    //   { id: "a", position: { x: 0, y: 0 }, data: { name: "Node A" } },
-    //   { id: "b", position: { x: 0, y: 0 }, data: { name: "Node B" } },
-    // ];
-    // const yNodes = yWorkflow.get("nodes") as YNodesArray;
-    // yNodes.insert(0, initialNodes);
-    // act(() => {
-    //   result.current.handleNodesUpdate(initialNodes);
-    // });
-    // expect(yNodes.toJSON()).toStrictEqual(initialNodes);
-  });
+    yWorkflows.push([yWorkflow]);
 
-  test("should do nothing if yEdges is undefined", () => {
-    // const yDoc = new Y.Doc();
-    // const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-    // const yWorkflow = new Y.Map<Y.Text | YNodesArray | YEdgesArray>();
-    // yWorkflows.push([yWorkflow]);
-    // const { result } = renderHook(() =>
-    //   useYNode({
-    //     currentYWorkflow: yWorkflow,
-    //     handleWorkflowsRemove: () => {},
-    //     undoTrackerActionWrapper: () => {},
-    //   }),
-    // );
-    // const newNodes: Node[] = [
-    //   { id: "c", position: { x: 0, y: 0 }, data: { name: "Node C" } },
-    // ];
-    // act(() => {
-    //   result.current.handleNodesUpdate(newNodes);
-    // });
-    // expect(yWorkflow.get("nodes")).toBeUndefined();
+    const { result } = renderHook(() =>
+      useYNode({
+        currentYWorkflow: yWorkflow,
+        yWorkflows,
+        rawWorkflows: [],
+        setSelectedNodeIds: () => {},
+        undoTrackerActionWrapper: (callback) => act(callback),
+        handleYWorkflowsRemove: () => {},
+      }),
+    );
+
+    const { handleYNodesAdd } = result.current;
+
+    const newNodes: Node[] = [
+      {
+        id: "node-1",
+        type: "batch",
+        position: { x: 0, y: 0 },
+        measured: { width: 0, height: 0 },
+        data: {
+          officialName: "officialName",
+          customName: "",
+          inputs: ["input1"],
+          outputs: ["output1"],
+          status: "idle",
+          params: {},
+          pseudoInputs: [],
+          pseudoOutputs: [],
+          content: "content",
+          backgroundColor: "backgroundColor",
+          textColor: "textColor",
+        },
+        style: { width: 0, height: 0 },
+      },
+    ];
+
+    handleYNodesAdd(newNodes);
+
+    const yNodes = yWorkflow.get("nodes") as YNodesArray;
+
+    const n = yNodes.toJSON() as Node[];
+
+    const expectedNodes = newNodes.map((node) => ({
+      ...node,
+      dragging: false,
+      data: {
+        // NOTE: we expect the empty fields to be omitted (customName, pseudoInputs, pseudoOutputs)
+        officialName: node.data.officialName,
+        inputs: node.data.inputs,
+        outputs: node.data.outputs,
+        status: node.data.status,
+        params: node.data.params,
+        content: node.data.content,
+        backgroundColor: node.data.backgroundColor,
+        textColor: node.data.textColor,
+      },
+    }));
+
+    expect(n).toEqual(expectedNodes);
   });
 });

@@ -11,10 +11,14 @@ import {
   DialogFooter,
   Input,
 } from "@flow/components";
+import { ALLOWED_WORKFLOW_FILE_EXTENSIONS } from "@flow/global-constants";
 import { useDeployment } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import { validateWorkflowJson } from "@flow/utils/engineWorkflowValidation";
+import {
+  validateWorkflowJson,
+  validateWorkflowYaml,
+} from "@flow/utils/engineWorkflowValidation";
 import { removeWhiteSpace } from "@flow/utils/removeWhiteSpace";
 
 type Props = {
@@ -42,26 +46,54 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      const reader = new FileReader();
 
-      reader.onload = (e2) => {
-        const results = e2.target?.result;
-        if (results && typeof results === "string") {
-          if (validateWorkflowJson(results).isValid) {
-            setInvalidFile(false);
-          } else {
-            setInvalidFile(true);
+      const fileExtension = file.name.split(".").pop();
+      if (fileExtension === "json") {
+        const reader = new FileReader();
+
+        reader.onload = (e2) => {
+          const results = e2.target?.result;
+
+          if (results && typeof results === "string") {
+            if (validateWorkflowJson(results).isValid) {
+              setInvalidFile(false);
+            } else {
+              setInvalidFile(true);
+            }
+            setWorkflowFile(e.target.files?.[0] || null);
           }
-          setWorkflowFile(e.target.files?.[0] || null);
-        }
-      };
+        };
 
-      reader.onerror = (e) => {
-        console.error("Error reading file:", e.target?.error);
-      };
+        reader.onerror = (e) => {
+          console.error("Error reading file:", e.target?.error);
+        };
 
-      // Read the file as text
-      reader.readAsText(file);
+        // Read the file as text
+        reader.readAsText(file);
+      } else if (fileExtension === "yaml" || fileExtension === "yml") {
+        const reader = new FileReader();
+
+        reader.onload = (e2) => {
+          const results = e2.target?.result;
+
+          if (results && typeof results === "string") {
+            if (validateWorkflowYaml(results).isValid) {
+              setInvalidFile(false);
+            } else {
+              setInvalidFile(true);
+            }
+            setWorkflowFile(e.target.files?.[0] || null);
+          }
+        };
+
+        reader.onerror = (e) => {
+          console.error("Error reading file:", e.target?.error);
+        };
+
+        // Read the file as text
+
+        reader.readAsText(file);
+      }
     },
     [],
   );
@@ -97,7 +129,7 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
             <Label>{t("Workflow file: ")}</Label>
             <Input
               type="file"
-              accept=".json"
+              accept={ALLOWED_WORKFLOW_FILE_EXTENSIONS}
               onChange={handleWorkflowFileUpload}
             />
             {invalidFile && (

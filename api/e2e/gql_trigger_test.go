@@ -297,3 +297,88 @@ func TestUpdateTrigger(t *testing.T) {
 	assert.Equal(t, "TIME_DRIVEN", trigger.EventSource)
 	assert.Equal(t, "EVERY_HOUR", trigger.TimeInterval)
 }
+
+func TestCreateAPIDrivenTrigger(t *testing.T) {
+	e, _ := StartGQLServer(t, &config.Config{
+		Origins: []string{"https://example.com"},
+		AuthSrv: config.AuthSrvConfig{
+			Disabled: true,
+		},
+	}, true, baseSeederUser)
+
+	deploymentId := createTestDeployment(t, e)
+	assert.NotEmpty(t, deploymentId)
+
+	query := `mutation($input: CreateTriggerInput!) {
+		createTrigger(input: $input) {
+			id
+			workspaceId
+			deploymentId
+			description
+			eventSource
+			authToken
+		}
+	}`
+
+	variables := map[string]interface{}{
+		"input": map[string]interface{}{
+			"workspaceId":  wId1.String(),
+			"deploymentId": deploymentId,
+			"description":  "API trigger test",
+			"apiDriverInput": map[string]interface{}{
+				"token": "test-api-token",
+			},
+		},
+	}
+
+	request := GraphQLRequest{
+		Query:     query,
+		Variables: variables,
+	}
+
+	jsonData, err := json.Marshal(request)
+	assert.NoError(t, err)
+
+	t.Log("Creating API-driven trigger...")
+	resp := e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithBytes(jsonData).
+		Expect().Status(http.StatusOK)
+
+	var result struct {
+		Data struct {
+			CreateTrigger struct {
+				ID           string `json:"id"`
+				WorkspaceID  string `json:"workspaceId"`
+				DeploymentID string `json:"deploymentId"`
+				Description  string `json:"description"`
+				EventSource  string `json:"eventSource"`
+				AuthToken    string `json:"authToken"`
+			} `json:"createTrigger"`
+		} `json:"data"`
+		Errors []struct {
+			Message string   `json:"message"`
+			Path    []string `json:"path"`
+		} `json:"errors"`
+	}
+
+	err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+	assert.NoError(t, err)
+
+	if len(result.Errors) > 0 {
+		t.Logf("GraphQL Errors: %+v", result.Errors)
+		t.FailNow()
+	}
+
+	trigger := result.Data.CreateTrigger
+	assert.NotEmpty(t, trigger.ID)
+	assert.Equal(t, wId1.String(), trigger.WorkspaceID)
+	assert.Equal(t, deploymentId, trigger.DeploymentID)
+	assert.Equal(t, "API trigger test", trigger.Description)
+	assert.Equal(t, "API_DRIVEN", trigger.EventSource)
+	assert.NotEmpty(t, trigger.AuthToken)
+
+	t.Logf("Created API trigger with ID: %s", trigger.ID)
+}

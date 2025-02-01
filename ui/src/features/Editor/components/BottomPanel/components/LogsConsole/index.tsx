@@ -1,5 +1,5 @@
 import { Logs } from "@flow/components/Logs";
-import { logData } from "@flow/mock_data/logsData";
+import mockLogs from "@flow/mock_data/logsv2Data";
 
 const LogsConsole: React.FC = () => {
   const props = {
@@ -9,7 +9,7 @@ const LogsConsole: React.FC = () => {
         header: "Timestamp",
       },
       {
-        accessorKey: "status",
+        accessorKey: "logLevel",
         header: "Status",
       },
       {
@@ -21,7 +21,7 @@ const LogsConsole: React.FC = () => {
         header: "message",
       },
     ],
-    data: logData,
+    data: mockLogs,
     selectColumns: true,
     showFiltering: true,
   };

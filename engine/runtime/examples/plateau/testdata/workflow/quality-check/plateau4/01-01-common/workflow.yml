@@ -1,15 +1,18 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: f01ce0bb-e982-4dfa-94de-7a766156b4b3
-name: "PLATEAU4-QualityCheck-01-common-workflow"
+name: "PLATEAU4-qualityCheck-01-01-common-workflow"
 entryGraphId: 7f86c5d5-b375-4190-ab93-001e9a099d1e
 with:
   cityGmlPath:
   codelistsPath:
   schemasPath:
+  schemaJson: !include ../../../config/schema.txt
+  addNsprefixToFeatureTypes: true
+  extractDmGeometryAsXmlFragment: false
   outputPath:
 graphs:
-  - !include ../../../graphs/plateau4/xml_validator.yml
-  - !include ../../../graphs/plateau4/domain_of_definition_validator.yml
+  - !include ../../../../graphs/plateau4/xml_validator.yml
+  - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
   - id: 7f86c5d5-b375-4190-ab93-001e9a099d1e
     name: entry_point
     nodes:
@@ -60,12 +63,12 @@ graphs:
           filePathAttribute: path
 
       - id: b16c4701-3b21-48f3-8b09-cf2fc6a51f1e
-        name: PLATEAU4.UDXFolderExtractor
+        name: PLATEAU3.UDXFolderExtractor
         type: action
-        action: PLATEAU4.UDXFolderExtractor
+        action: PLATEAU3.UDXFolderExtractor
         with:
           cityGmlPath: |
-            env.get("__value").path
+            env.get("__value")["path"]
 
       - id: f2d222e7-fc54-4bf8-b066-515fe1cfe328
         name: PLATEAU4.XMLValidator
@@ -106,7 +109,7 @@ graphs:
               outputPort: default
 
       - id: 2b51486a-7258-42a6-ac9d-41a4f9a48624
-        name: PLATEAU3.DomainOfDefinitionValidator
+        name: PLATEAU4.DomainOfDefinitionValidator
         type: subGraph
         subGraphId: b7396083-17d0-47dd-be86-83caf6c5ac63
 
@@ -316,7 +319,7 @@ graphs:
         to: f2d222e7-fc54-4bf8-b066-515fe1cfe328
         fromPort: default
         toPort: default
-      - id: d44adfb3-082e-4e31-8e27-ac3a4f36303c
+      - id: 9f855529-bc8b-46e3-a679-0b2c13d06092
         from: f2d222e7-fc54-4bf8-b066-515fe1cfe328
         to: d77027e9-535e-4a03-8ddd-dc5973e9b25a
         fromPort: summary
@@ -326,7 +329,7 @@ graphs:
         to: 2b51486a-7258-42a6-ac9d-41a4f9a48624
         fromPort: default
         toPort: default
-      - id: 9f855529-bc8b-46e3-a679-0b2c13d06092
+      - id: d44adfb3-082e-4e31-8e27-ac3a4f36303c
         from: f2d222e7-fc54-4bf8-b066-515fe1cfe328
         to: 993965e1-2bef-45e5-8afa-33efa633064e
         fromPort: summary
