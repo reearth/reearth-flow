@@ -21,18 +21,13 @@ func (m *mockLogStorage) SaveToRedis(ctx context.Context, event *domainLog.LogEv
 	return args.Error(0)
 }
 
-func (m *mockLogStorage) SaveToGCS(ctx context.Context, event *domainLog.LogEvent) error {
-	args := m.Called(ctx, event)
-	return args.Error(0)
-}
-
 func TestLogSubscriberUseCase_ProcessLogEvent(t *testing.T) {
 	ctx := context.Background()
 	mockStorage := new(mockLogStorage)
 
 	u := NewLogSubscriberUseCase(mockStorage)
 
-	t.Run("Success: storing to Redis and GCS both succeed", func(t *testing.T) {
+	t.Run("Success: storing to Redis succeed", func(t *testing.T) {
 		event := &domainLog.LogEvent{
 			WorkflowID: "wf-123",
 			JobID:      "job-123",
@@ -43,9 +38,6 @@ func TestLogSubscriberUseCase_ProcessLogEvent(t *testing.T) {
 
 		mockStorage.
 			On("SaveToRedis", ctx, event).
-			Return(nil)
-		mockStorage.
-			On("SaveToGCS", ctx, event).
 			Return(nil)
 
 		err := u.ProcessLogEvent(ctx, event)
@@ -74,29 +66,5 @@ func TestLogSubscriberUseCase_ProcessLogEvent(t *testing.T) {
 
 		err := u.ProcessLogEvent(ctx, event)
 		assert.ErrorContains(t, err, "failed to write to Redis: redis error")
-
-		mockStorage.AssertNotCalled(t, "SaveToGCS", ctx, event)
-	})
-
-	t.Run("Error: storing to GCS fails", func(t *testing.T) {
-		event := &domainLog.LogEvent{
-			WorkflowID: "wf-123",
-			JobID:      "job-123",
-			Timestamp:  time.Now(),
-			LogLevel:   domainLog.LogLevelInfo,
-			Message:    "Test message",
-		}
-
-		mockStorage.
-			On("SaveToRedis", ctx, event).
-			Return(nil)
-		mockStorage.
-			On("SaveToGCS", ctx, event).
-			Return(errors.New("gcs error"))
-
-		err := u.ProcessLogEvent(ctx, event)
-		assert.ErrorContains(t, err, "failed to write to GCS: gcs error")
-
-		mockStorage.AssertExpectations(t)
 	})
 }

@@ -21,7 +21,6 @@ func NewSubscriber(subscription Subscription, useCase interactor.LogSubscriberUs
 	}
 }
 
-// Subscribe and receive messages from Pub/Sub
 func (s *Subscriber) StartListening(ctx context.Context) error {
 	return s.sub.Receive(ctx, func(ctx context.Context, m Message) {
 		defer func() {

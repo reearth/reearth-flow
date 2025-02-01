@@ -1,10 +1,10 @@
 # Log Subscriber
 
-The log_subscriber is a Go application that subscribes to a Google Cloud Pub/Sub topic to pull and process workflow execution logs. Once a message (log event) is received, the application writes the log into both Redis and GCS. If either write fails, the subscriber lets Pub/Sub retry automatically.
+The log_subscriber is a Go application that subscribes to a Google Cloud Pub/Sub topic to pull and process workflow execution logs. Once a message (log event) is received, the application writes the log into Redis. If either write fails, the subscriber lets Pub/Sub retry automatically.
 
 ## Overview
 
-This subscriber listens to Pub/Sub messages containing workflow logs. By storing these logs in both Redis and GCS, users can view real-time logs via a web interface and later retrieve complete execution logs from long-term storage (GCS).
+This subscriber listens to Pub/Sub messages containing workflow logs. By storing these logs in Redis, users can view real-time logs via a web interface.
 
 A simplified diagram might look like this
 ```
@@ -13,18 +13,18 @@ A simplified diagram might look like this
 | worker (Rust)   | --> | (flow-log-stream) |  -->    | scriber   |
 | (workflow run)  |     |                   |         | (Go)      |
 +-----------------+     +-------------------+         +-----------+
-                                                       /       \
-                                                      /         \
-                                           (write) Redis       GCS (write)
+                                                       /
+                                                      /
+                                           (write) Redis
 ```
 
 ## Features & User Story
 ### Real-time Monitoring
 Users can watch the workflow’s execution status and logs in real time on a web-based dashboard.
 ### Centralized Log Storage
-Logs are stored both in Redis (for quick real-time access) and in GCS (for longer retention and detailed inspection).
+Logs are stored both in Redis for quick real-time access.
 ### Automatic Retry
-If any write (Redis/GCS) fails, the system relies on Pub/Sub’s retry mechanism to re-deliver the message until it’s successfully processed.
+If any write fails, the system relies on Pub/Sub’s retry mechanism to re-deliver the message until it’s successfully processed.
 
 ## Specifications
 
@@ -80,30 +80,19 @@ log:{workflowId}:{jobId}:{timestamp}
 log:00caad2a-9f7d-4189-b479-153fa9ea36dc:5566c900-9581-4c5c-be02-fd13e4d93669:2025-01-11T09:12:54.943837Z
 ```
 
-### GCS
 
-The same log entry is also stored as a JSON file on GCS
-
-**Path format**
-```
-gs://<your-bucket-name>/artifacts/logs/{yyyy}/{MM}/{dd}/{workflowId}/{jobId}/{timestamp}.json
-```
-**Example**
-```
-gs://reearth-flow-oss-bucket/artifacts/logs/2025/01/11/00caad2a-9f7d-4189-b479-153fa9ea36dc/5566c900-9581-4c5c-be02-fd13e4d93669/2025-01-11T09:12:54.943837Z.json
-```
 ### Retry Behavior
 
 Pub/Sub provides automatic retry. The subscriber logic is
 1.	Write to Redis
-2.	Write to GCS
-3.	If both succeed, `m.Ack();` otherwise `m.Nack()` and let Pub/Sub retry
+2.	If succeed, `m.Ack();` otherwise `m.Nack()` and let Pub/Sub retry
 
 
 **Note**
 
-This can lead to duplicate entries in Redis if the first write was successful but the second failed.
 Idempotency is not handled in this approach.
+This can lead to duplicate entries in Redis.
+
 
 ## Usage
 Create a network
@@ -134,8 +123,6 @@ The log_subscriber uses the following environment variables
 | `FLOW_LOG_SUBSCRIBER_SUBSCRIPTION_ID` | The Pub/Sub subscription ID to use for the subscription | `flow-log-stream-topic-sub` |
 | `FLOW_LOG_SUBSCRIBER_REDIS_ADDR`      | The Redis address to connect to (in host:port format)   | `localhost:6379`            |
 | `FLOW_LOG_SUBSCRIBER_REDIS_PASSWORD`  | Redis password                                          | `""`                        |
-| `FLOW_LOG_SUBSCRIBER_GCS_BUCKET_NAME` | The name of the GCS bucket to write the logs to         | `reearth-flow-oss-bucket`   |
-| `STORAGE_EMULATOR_HOST`               | GCS emulator endpoint                                   | `""`                        |
 
 
 ```
@@ -251,18 +238,6 @@ docker exec -it log-subscriber-redis redis-cli
 "{\"workflowId\":\"00caad2a-9f7d-4189-b479-153fa9ea36dc\",\"jobId\":\"5566c900-9581-4c5c-be02-fd13e4d93669\",\"nodeId\":\"f5e66920-24c0-4c70-ae16-6be1ed3b906c\",\"logLevel\":\"INFO\",\"timestamp\":\"2025-01-11T09:12:54.487779Z\",\"message\":\"\\\"FileWriter\\\" sink start...\"}"
 "{\"workflowId\":\"00caad2a-9f7d-4189-b479-153fa9ea36dc\",\"jobId\":\"5566c900-9581-4c5c-be02-fd13e4d93669\",\"nodeId\":\"\",\"logLevel\":\"INFO\",\"timestamp\":\"2025-01-11T09:12:54.602634Z\",\"message\":\"\\\"FeatureCreator\\\" finish source complete. elapsed = 855.334\xc2\xb5s\"}"
 "{\"workflowId\":\"00caad2a-9f7d-4189-b479-153fa9ea36dc\",\"jobId\":\"5566c900-9581-4c5c-be02-fd13e4d93669\",\"nodeId\":\"f5e66920-24c0-4c70-ae16-6be1ed3b906c\",\"logLevel\":\"INFO\",\"timestamp\":\"2025-01-11T09:12:54.943837Z\",\"message\":\"\\\"FileWriter\\\" sink finish. elapsed = 1.688292ms\"}"
-```
-### Confirm Logs in GCS
-```
-curl -X GET "http://localhost:4443/storage/v1/b/reearth-flow-oss-bucket/o?prefix=artifacts/logs"
-curl -o log.json "http://localhost:4443/download/storage/v1/b/reearth-flow-oss-bucket/o/artifacts%2Flogs%2F2025%2F01%2F11%2F00caad2a-9f7d-4189-b479-153fa9ea36dc%2F5566c900-9581-4c5c-be02-fd13e4d93669%2F2025-01-11T09:12:54.487779Z.json?alt=media"
-cat log.json
-```
-**Example Output**
-```
-{"workflowId":"00caad2a-9f7d-4189-b479-153fa9ea36dc","jobId":"5566c900-9581-4c5c-be02-fd13e4d93669","nodeId":"f5e66920-24c0-4c70-ae16-6be1ed3b906c","timestamp":"2025-01-11T09:12:54.487779Z","logLevel":"INFO","message":"\"FileWriter\" sink start..."}
-{"workflowId":"00caad2a-9f7d-4189-b479-153fa9ea36dc","jobId":"5566c900-9581-4c5c-be02-fd13e4d93669","timestamp":"2025-01-11T09:12:54.602634Z","logLevel":"INFO","message":"\"FeatureCreator\" finish source complete. elapsed = 855.334µs"}
-{"workflowId":"00caad2a-9f7d-4189-b479-153fa9ea36dc","jobId":"5566c900-9581-4c5c-be02-fd13e4d93669","nodeId":"f5e66920-24c0-4c70-ae16-6be1ed3b906c","timestamp":"2025-01-11T09:12:54.943837Z","logLevel":"INFO","message":"\"FileWriter\" sink finish. elapsed = 1.688292ms"}
 ```
 
 
