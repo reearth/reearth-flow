@@ -57,7 +57,6 @@ type (
 
 		// log
 		RedisLog RedisLogConfig `pp:",omitempty"`
-		GCSLog   GCSLogConfig   `pp:",omitempty"`
 
 		// auth
 		Auth          AuthConfigs   `pp:",omitempty"`

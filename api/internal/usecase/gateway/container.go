@@ -5,5 +5,4 @@ type Container struct {
 	File          File
 	Batch         Batch
 	LogRedis      Log
-	LogGCS        Log
 }

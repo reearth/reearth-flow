@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 
-	"cloud.google.com/go/storage"
 	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth0"
@@ -72,7 +71,6 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, debug bool) 
 	}
 	// Log
 	gateways.LogRedis = initLogRedis(ctx, conf)
-	gateways.LogGCS = initLogGCS(ctx, conf)
 
 	// File
 	gateways.File = initFile(ctx, conf)
@@ -143,23 +141,6 @@ func initLogRedis(ctx context.Context, conf *config.Config) gateway.Log {
 			log.Warnf("log: failed to init redis storage: %s\n", err.Error())
 		}
 		return logRedisRepo
-	}
-	return nil
-}
-
-func initLogGCS(ctx context.Context, conf *config.Config) gateway.Log {
-	if conf.GCSLog.IsConfigured() {
-		log.Infofc(ctx, "log: GCS storage is used: %s\n", conf.GCSLog.BucketName)
-		c, err := storage.NewClient(ctx)
-		if err != nil {
-			log.Warnf("log: failed to init GCS storage: %s\n", err.Error())
-		}
-		gcsClient := gcs.NewRealGCSClient(c)
-		logGCSRepo, err := gcs.NewGCSLog(gcsClient, conf.GCSLog.BucketName)
-		if err != nil {
-			log.Warnf("log: failed to init GCS storage: %s\n", err.Error())
-		}
-		return logGCSRepo
 	}
 	return nil
 }

@@ -20,12 +20,3 @@ func (r RedisLogConfig) IsConfigured() bool {
 	}
 	return true
 }
-
-type GCSLogConfig struct {
-	BucketName              string `pp:",omitempty"`
-	PublicationCacheControl string `pp:",omitempty"`
-}
-
-func (g GCSLogConfig) IsConfigured() bool {
-	return g.BucketName != ""
-}
