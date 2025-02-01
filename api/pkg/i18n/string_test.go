@@ -205,7 +205,6 @@ func TestString_Clone(t *testing.T) {
 		tc := tc
 		t.Run(tc.Name, func(t *testing.T) {
 			t.Parallel()
-
 			res := tc.Target.Clone()
 			assert.Equal(t, tc.Expected, res)
 			if len(tc.Target) != 0 {
