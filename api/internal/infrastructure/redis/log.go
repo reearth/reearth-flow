@@ -45,11 +45,11 @@ func ToLogEntry(l *log.Log) *LogEntry {
 	}
 
 	return &LogEntry{
-		JobID:      l.JobID().String(),
-		NodeID:     nid,
-		Timestamp:  l.Timestamp().UTC(),
-		LogLevel:   l.Level(),
-		Message:    l.Message(),
+		JobID:     l.JobID().String(),
+		NodeID:    nid,
+		Timestamp: l.Timestamp().UTC(),
+		LogLevel:  l.Level(),
+		Message:   l.Message(),
 	}
 }
 

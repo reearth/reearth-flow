@@ -14,10 +14,10 @@ func ToLog(d *log.Log) *Log {
 		nodeID = &id
 	}
 	return &Log{
-		JobID:      ID(d.JobID().String()),
-		NodeID:     nodeID,
-		Timestamp:  d.Timestamp(),
-		LogLevel:   LogLevel(d.Level()),
-		Message:    d.Message(),
+		JobID:     ID(d.JobID().String()),
+		NodeID:    nodeID,
+		Timestamp: d.Timestamp(),
+		LogLevel:  LogLevel(d.Level()),
+		Message:   d.Message(),
 	}
 }
