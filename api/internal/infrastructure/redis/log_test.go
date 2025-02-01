@@ -32,13 +32,11 @@ func TestNewRedisLog(t *testing.T) {
 
 func TestToLogEntry(t *testing.T) {
 	t.Run("valid log", func(t *testing.T) {
-		wid := id.NewWorkflowID()
 		jid := id.NewJobID()
 		nid := id.NewNodeID()
 		now := time.Now()
 
 		l := log.NewLog(
-			wid,
 			jid,
 			&nid,
 			now,
@@ -48,7 +46,6 @@ func TestToLogEntry(t *testing.T) {
 
 		entry := redis.ToLogEntry(l)
 		require.NotNil(t, entry)
-		assert.Equal(t, wid.String(), entry.WorkflowID)
 		assert.Equal(t, jid.String(), entry.JobID)
 		assert.NotNil(t, entry.NodeID)
 		assert.Equal(t, nid.String(), *entry.NodeID)
@@ -83,7 +80,6 @@ func TestLogEntry_ToDomain(t *testing.T) {
 
 		dl, err := entry.ToDomain()
 		require.NoError(t, err)
-		assert.Equal(t, wid, dl.WorkflowID().String())
 		assert.Equal(t, jid, dl.JobID().String())
 		assert.Equal(t, nid, dl.NodeID().String())
 
@@ -91,16 +87,6 @@ func TestLogEntry_ToDomain(t *testing.T) {
 		assert.Equal(t, now.UTC(), dl.Timestamp())
 		assert.Equal(t, log.LevelInfo, dl.Level())
 		assert.Equal(t, "hello", dl.Message())
-	})
-
-	t.Run("invalid workflow id", func(t *testing.T) {
-		entry := &redis.LogEntry{
-			WorkflowID: "invalid",
-			JobID:      id.NewJobID().String(),
-		}
-		dl, err := entry.ToDomain()
-		assert.Nil(t, dl)
-		assert.Error(t, err)
 	})
 
 	t.Run("invalid job id", func(t *testing.T) {
@@ -158,7 +144,7 @@ func TestRedisLog_GetLogs(t *testing.T) {
 	brokenJSON := `{"jobId":?????`
 
 	// 1st SCAN
-	mock.ExpectScan(uint64(0), "log:"+wid.String()+":"+jid.String()+":*", int64(100)).
+	mock.ExpectScan(uint64(0), "log:*:"+jid.String()+":*", int64(100)).
 		SetVal([]string{scanKey1, scanKey2}, 999)
 
 	// Next key 1 to get (JSON string)
@@ -168,11 +154,11 @@ func TestRedisLog_GetLogs(t *testing.T) {
 	mock.ExpectGet(scanKey2).SetVal(brokenJSON)
 
 	// 2nd SCAN -> no more keys
-	mock.ExpectScan(uint64(999), "log:"+wid.String()+":"+jid.String()+":*", int64(100)).
+	mock.ExpectScan(uint64(999), "log:*:"+jid.String()+":*", int64(100)).
 		SetVal([]string{}, 0)
 
 	// Test execution: Pass the since & until that you determined first.
-	result, getErr := r.GetLogs(ctx, since, until, wid, jid)
+	result, getErr := r.GetLogs(ctx, since, until, jid)
 	require.NoError(t, getErr)
 
 	// Assert
@@ -190,16 +176,15 @@ func TestRedisLog_GetLogs_Empty(t *testing.T) {
 	require.NotNil(t, r)
 
 	ctx := context.Background()
-	wid := id.NewWorkflowID()
 	jid := id.NewJobID()
 	since := time.Now().Add(-1 * time.Hour)
 	until := time.Now().UTC()
 
 	// SCAN returns no keys
-	mock.ExpectScan(uint64(0), "log:"+wid.String()+":"+jid.String()+":*", int64(100)).
+	mock.ExpectScan(uint64(0), "log:*:"+jid.String()+":*", int64(100)).
 		SetVal([]string{}, 0)
 
-	result, getErr := r.GetLogs(ctx, since, until, wid, jid)
+	result, getErr := r.GetLogs(ctx, since, until, jid)
 	require.NoError(t, getErr)
 	assert.Empty(t, result)
 }
@@ -220,7 +205,7 @@ func TestRedisLog_GetLogs_OldData(t *testing.T) {
 
 	scanKey := "log:" + wid.String() + ":" + jid.String() + ":key1"
 
-	mock.ExpectScan(uint64(0), "log:"+wid.String()+":"+jid.String()+":*", int64(100)).
+	mock.ExpectScan(uint64(0), "log:*:"+jid.String()+":*", int64(100)).
 		SetVal([]string{scanKey}, 0)
 
 	entry := redis.LogEntry{
@@ -234,7 +219,7 @@ func TestRedisLog_GetLogs_OldData(t *testing.T) {
 	bytes, _ := json.Marshal(entry)
 	mock.ExpectGet(scanKey).SetVal(string(bytes))
 
-	result, getErr := r.GetLogs(ctx, since, until, wid, jid)
+	result, getErr := r.GetLogs(ctx, since, until, jid)
 	require.NoError(t, getErr)
 	assert.Empty(t, result, "It's older than since so it shouldn't be returned.")
 }
@@ -247,13 +232,12 @@ func TestRedisLog_GetLogs_Error(t *testing.T) {
 	require.NotNil(t, r)
 
 	ctx := context.Background()
-	wid := id.NewWorkflowID()
 	jid := id.NewJobID()
 
-	mock.ExpectScan(uint64(0), "log:"+wid.String()+":"+jid.String()+":*", int64(100)).
+	mock.ExpectScan(uint64(0), "log:*:"+jid.String()+":*", int64(100)).
 		SetErr(errors.New("scan error"))
 
-	result, getErr := r.GetLogs(ctx, time.Now().UTC(), time.Now().UTC(), wid, jid)
+	result, getErr := r.GetLogs(ctx, time.Now().UTC(), time.Now().UTC(), jid)
 	assert.Nil(t, result)
 	assert.EqualError(t, getErr, "failed to scan redis keys: scan error")
 }
@@ -309,7 +293,7 @@ func TestRedisLog_GetLogs_Boundary(t *testing.T) {
 	}
 	bytes3, _ := json.Marshal(entry3)
 
-	mock.ExpectScan(uint64(0), "log:"+wid.String()+":"+jid.String()+":*", int64(100)).
+	mock.ExpectScan(uint64(0), "log:*:"+jid.String()+":*", int64(100)).
 		SetVal([]string{scanKey1, scanKey2, scanKey3}, 0)
 
 	mock.ExpectGet(scanKey1).SetVal(string(bytes1))
@@ -317,7 +301,7 @@ func TestRedisLog_GetLogs_Boundary(t *testing.T) {
 	mock.ExpectGet(scanKey3).SetVal(string(bytes3))
 
 	// execution
-	result, err := r.GetLogs(ctx, since, until, wid, jid)
+	result, err := r.GetLogs(ctx, since, until, jid)
 	require.NoError(t, err)
 	assert.Len(t, result, 2, "Only two matches should be included: since and until")
 

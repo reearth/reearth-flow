@@ -17,16 +17,12 @@ func NewLogLoader(usecase interfaces.Log) *LogLoader {
 	return &LogLoader{usecase: usecase}
 }
 
-func (l *LogLoader) GetLogs(ctx context.Context, since time.Time, workflowID gqlmodel.ID, jobID gqlmodel.ID) ([]*gqlmodel.Log, error) {
+func (l *LogLoader) GetLogs(ctx context.Context, since time.Time, jobID gqlmodel.ID) ([]*gqlmodel.Log, error) {
 	newJobID, err := id.JobIDFrom(string(jobID))
 	if err != nil {
 		return nil, err
 	}
-	newWorkflowID, err := id.WorkflowIDFrom(string(workflowID))
-	if err != nil {
-		return nil, err
-	}
-	res, err := l.usecase.GetLogs(ctx, since, newWorkflowID, newJobID, getOperator(ctx))
+	res, err := l.usecase.GetLogs(ctx, since, newJobID, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}

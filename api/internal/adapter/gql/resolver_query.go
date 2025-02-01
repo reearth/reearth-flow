@@ -50,8 +50,8 @@ func (r *queryResolver) Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagin
 	return loaders(ctx).Job.FindByWorkspace(ctx, workspaceID, pagination)
 }
 
-func (r *queryResolver) Logs(ctx context.Context, since time.Time, workflowId gqlmodel.ID, jobId gqlmodel.ID) ([]*gqlmodel.Log, error) {
-	return loaders(ctx).Log.GetLogs(ctx, since, workflowId, jobId)
+func (r *queryResolver) Logs(ctx context.Context, since time.Time, jobId gqlmodel.ID) ([]*gqlmodel.Log, error) {
+	return loaders(ctx).Log.GetLogs(ctx, since, jobId)
 }
 
 func (r *queryResolver) Node(ctx context.Context, i gqlmodel.ID, typeArg gqlmodel.NodeType) (gqlmodel.Node, error) {

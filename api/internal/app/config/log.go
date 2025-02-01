@@ -1,11 +1,13 @@
 package config
 
-import "strings"
+import (
+	"strings"
+)
 
 type RedisLogConfig struct {
-	Addr     string `pp:",omitempty"`
-	Password string `pp:",omitempty"`
-	DB       int    `pp:",omitempty"`
+	Addr     string `envconfig:"REEARTH_FLOW_REDIS_ADDR" pp:",omitempty"`
+	Password string `envconfig:"REEARTH_FLOW_REDIS_PASSWORD" pp:",omitempty"`
+	DB       int    `envconfig:"REEARTH_FLOW_REDIS_DB" pp:",omitempty"`
 }
 
 func (r RedisLogConfig) IsConfigured() bool {

@@ -23,7 +23,7 @@ func NewLogInteractor(lgRedis gateway.Log) interfaces.Log {
 	}
 }
 
-func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, workflowID id.WorkflowID, jobID id.JobID, operator *usecase.Operator) ([]*log.Log, error) {
+func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.JobID, operator *usecase.Operator) ([]*log.Log, error) {
 	// Add timeout to prevent long-running queries
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
@@ -32,7 +32,7 @@ func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, workflowI
 		reearth_log.Error("logsGatewayRedis is nil: unable to get logs from Redis")
 		return nil, fmt.Errorf("logsGatewayRedis is nil: unable to get logs from Redis")
 	}
-	logs, err := li.logsGatewayRedis.GetLogs(ctx, since, until, workflowID, jobID)
+	logs, err := li.logsGatewayRedis.GetLogs(ctx, since, until, jobID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get logs from Redis: %w", err)
 	}

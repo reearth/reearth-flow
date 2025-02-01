@@ -10,5 +10,5 @@ import (
 )
 
 type Log interface {
-	GetLogs(context.Context, time.Time, id.WorkflowID, id.JobID, *usecase.Operator) ([]*log.Log, error)
+	GetLogs(context.Context, time.Time, id.JobID, *usecase.Operator) ([]*log.Log, error)
 }

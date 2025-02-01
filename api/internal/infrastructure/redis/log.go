@@ -45,7 +45,6 @@ func ToLogEntry(l *log.Log) *LogEntry {
 	}
 
 	return &LogEntry{
-		WorkflowID: l.WorkflowID().String(),
 		JobID:      l.JobID().String(),
 		NodeID:     nid,
 		Timestamp:  l.Timestamp().UTC(),
@@ -55,10 +54,6 @@ func ToLogEntry(l *log.Log) *LogEntry {
 }
 
 func (e *LogEntry) ToDomain() (*log.Log, error) {
-	wid, err := id.WorkflowIDFrom(e.WorkflowID)
-	if err != nil {
-		return nil, err
-	}
 	jid, err := id.JobIDFrom(e.JobID)
 	if err != nil {
 		return nil, err
@@ -72,7 +67,6 @@ func (e *LogEntry) ToDomain() (*log.Log, error) {
 	}
 
 	return log.NewLog(
-		wid,
 		jid,
 		nodeID,
 		e.Timestamp.UTC(),
@@ -85,11 +79,10 @@ func (r *redisLog) GetLogs(
 	ctx context.Context,
 	since time.Time,
 	until time.Time,
-	workflowID id.WorkflowID,
 	jobID id.JobID,
 ) ([]*log.Log, error) {
 	// pattern: log:{workflowID}:{jobID}:*
-	pattern := fmt.Sprintf("log:%s:%s:*", workflowID.String(), jobID.String())
+	pattern := fmt.Sprintf("log:*:%s:*", jobID.String())
 
 	var cursor uint64
 	var result []*log.Log

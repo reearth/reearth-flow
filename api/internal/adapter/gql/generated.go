@@ -145,6 +145,7 @@ type ComplexityRoot struct {
 		Deployment   func(childComplexity int) int
 		DeploymentID func(childComplexity int) int
 		ID           func(childComplexity int) int
+		Logs         func(childComplexity int, since *time.Time) int
 		StartedAt    func(childComplexity int) int
 		Status       func(childComplexity int) int
 		Workspace    func(childComplexity int) int
@@ -168,12 +169,11 @@ type ComplexityRoot struct {
 	}
 
 	Log struct {
-		JobID      func(childComplexity int) int
-		LogLevel   func(childComplexity int) int
-		Message    func(childComplexity int) int
-		NodeID     func(childComplexity int) int
-		Timestamp  func(childComplexity int) int
-		WorkflowID func(childComplexity int) int
+		JobID     func(childComplexity int) int
+		LogLevel  func(childComplexity int) int
+		Message   func(childComplexity int) int
+		NodeID    func(childComplexity int) int
+		Timestamp func(childComplexity int) int
 	}
 
 	Me struct {
@@ -277,7 +277,7 @@ type ComplexityRoot struct {
 		Deployments         func(childComplexity int, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) int
 		Job                 func(childComplexity int, id gqlmodel.ID) int
 		Jobs                func(childComplexity int, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) int
-		Logs                func(childComplexity int, since time.Time, workflowID gqlmodel.ID, jobID gqlmodel.ID) int
+		Logs                func(childComplexity int, since time.Time, jobID gqlmodel.ID) int
 		Me                  func(childComplexity int) int
 		Node                func(childComplexity int, id gqlmodel.ID, typeArg gqlmodel.NodeType) int
 		Nodes               func(childComplexity int, id []gqlmodel.ID, typeArg gqlmodel.NodeType) int
@@ -431,7 +431,7 @@ type QueryResolver interface {
 	DeploymentVersions(ctx context.Context, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) ([]*gqlmodel.Deployment, error)
 	Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
-	Logs(ctx context.Context, since time.Time, workflowID gqlmodel.ID, jobID gqlmodel.ID) ([]*gqlmodel.Log, error)
+	Logs(ctx context.Context, since time.Time, jobID gqlmodel.ID) ([]*gqlmodel.Log, error)
 	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, first *int, last *int, after *usecasex.Cursor, before *usecasex.Cursor) (*gqlmodel.ProjectConnection, error)
 	Triggers(ctx context.Context, workspaceID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.TriggerConnection, error)
 	Me(ctx context.Context) (*gqlmodel.Me, error)
@@ -780,6 +780,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Job.ID(childComplexity), true
 
+	case "Job.logs":
+		if e.complexity.Job.Logs == nil {
+			break
+		}
+
+		args, err := ec.field_Job_logs_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Job.Logs(childComplexity, args["since"].(*time.Time)), true
+
 	case "Job.startedAt":
 		if e.complexity.Job.StartedAt == nil {
 			break
@@ -891,13 +903,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Log.Timestamp(childComplexity), true
-
-	case "Log.workflowId":
-		if e.complexity.Log.WorkflowID == nil {
-			break
-		}
-
-		return e.complexity.Log.WorkflowID(childComplexity), true
 
 	case "Me.auths":
 		if e.complexity.Me.Auths == nil {
@@ -1611,7 +1616,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Logs(childComplexity, args["since"].(time.Time), args["workflowId"].(gqlmodel.ID), args["jobId"].(gqlmodel.ID)), true
+		return e.complexity.Query.Logs(childComplexity, args["since"].(time.Time), args["jobId"].(gqlmodel.ID)), true
 
 	case "Query.me":
 		if e.complexity.Query.Me == nil {
@@ -2360,6 +2365,7 @@ extend type Mutation {
   status: JobStatus!
   workspace: Workspace
   workspaceId: ID!
+  logs(since: DateTime): [Log]
 }
 
 enum JobStatus {
@@ -2405,7 +2411,6 @@ extend type Query {
 }
 
 type Log {
-  workflowId: ID!
   jobId: ID!
   nodeId: ID
   timestamp: DateTime!
@@ -2414,7 +2419,7 @@ type Log {
 }
 
 extend type Query {
-  logs(since: DateTime!, workflowId: ID!, jobId: ID!): [Log!]!
+  logs(since: DateTime!, jobId: ID!): [Log]
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/parameter.graphql", Input: `type Parameter {
@@ -2486,7 +2491,7 @@ extend type Mutation {
      updateParameterOrder(
         projectId: ID!
         input: UpdateParameterOrderInput!
-    ): [Parameter!]!
+    ): [Parameter!]! 
 
     removeParameter(input: RemoveParameterInput!): Boolean!
 }
@@ -2636,7 +2641,7 @@ input CreateTriggerInput {
 input UpdateTriggerInput {
     triggerId: ID!
     description: String
-    deploymentId: ID
+    deploymentId: ID 
     timeDriverInput: TimeDriverInput
     apiDriverInput: APIDriverInput
 }
@@ -2839,6 +2844,21 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // endregion ************************** generated!.gotpl **************************
 
 // region    ***************************** args.gotpl *****************************
+
+func (ec *executionContext) field_Job_logs_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 *time.Time
+	if tmp, ok := rawArgs["since"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("since"))
+		arg0, err = ec.unmarshalODateTime2ᚖtimeᚐTime(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["since"] = arg0
+	return args, nil
+}
 
 func (ec *executionContext) field_Mutation_addMemberToWorkspace_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
@@ -3459,23 +3479,14 @@ func (ec *executionContext) field_Query_logs_args(ctx context.Context, rawArgs m
 	}
 	args["since"] = arg0
 	var arg1 gqlmodel.ID
-	if tmp, ok := rawArgs["workflowId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workflowId"))
+	if tmp, ok := rawArgs["jobId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jobId"))
 		arg1, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["workflowId"] = arg1
-	var arg2 gqlmodel.ID
-	if tmp, ok := rawArgs["jobId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jobId"))
-		arg2, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["jobId"] = arg2
+	args["jobId"] = arg1
 	return args, nil
 }
 
@@ -6144,6 +6155,70 @@ func (ec *executionContext) fieldContext_Job_workspaceId(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Job_logs(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Job_logs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Logs, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlmodel.Log)
+	fc.Result = res
+	return ec.marshalOLog2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐLog(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Job_logs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Job",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "jobId":
+				return ec.fieldContext_Log_jobId(ctx, field)
+			case "nodeId":
+				return ec.fieldContext_Log_nodeId(ctx, field)
+			case "timestamp":
+				return ec.fieldContext_Log_timestamp(ctx, field)
+			case "logLevel":
+				return ec.fieldContext_Log_logLevel(ctx, field)
+			case "message":
+				return ec.fieldContext_Log_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Log", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Job_logs_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _JobConnection_edges(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.JobConnection) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_JobConnection_edges(ctx, field)
 	if err != nil {
@@ -6249,6 +6324,8 @@ func (ec *executionContext) fieldContext_JobConnection_nodes(_ context.Context, 
 				return ec.fieldContext_Job_workspace(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Job_workspaceId(ctx, field)
+			case "logs":
+				return ec.fieldContext_Job_logs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -6450,6 +6527,8 @@ func (ec *executionContext) fieldContext_JobEdge_node(_ context.Context, field g
 				return ec.fieldContext_Job_workspace(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Job_workspaceId(ctx, field)
+			case "logs":
+				return ec.fieldContext_Job_logs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -6512,52 +6591,10 @@ func (ec *executionContext) fieldContext_JobPayload_job(_ context.Context, field
 				return ec.fieldContext_Job_workspace(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Job_workspaceId(ctx, field)
+			case "logs":
+				return ec.fieldContext_Job_logs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Log_workflowId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Log) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Log_workflowId(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.WorkflowID, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(gqlmodel.ID)
-	fc.Result = res
-	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Log_workflowId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Log",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
 		},
 	}
 	return fc, nil
@@ -11016,6 +11053,8 @@ func (ec *executionContext) fieldContext_Query_job(ctx context.Context, field gr
 				return ec.fieldContext_Job_workspace(ctx, field)
 			case "workspaceId":
 				return ec.fieldContext_Job_workspaceId(ctx, field)
+			case "logs":
+				return ec.fieldContext_Job_logs(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
@@ -11048,21 +11087,18 @@ func (ec *executionContext) _Query_logs(ctx context.Context, field graphql.Colle
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Logs(rctx, fc.Args["since"].(time.Time), fc.Args["workflowId"].(gqlmodel.ID), fc.Args["jobId"].(gqlmodel.ID))
+		return ec.resolvers.Query().Logs(rctx, fc.Args["since"].(time.Time), fc.Args["jobId"].(gqlmodel.ID))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.([]*gqlmodel.Log)
 	fc.Result = res
-	return ec.marshalNLog2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐLogᚄ(ctx, field.Selections, res)
+	return ec.marshalOLog2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐLog(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_logs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -11073,8 +11109,6 @@ func (ec *executionContext) fieldContext_Query_logs(ctx context.Context, field g
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "workflowId":
-				return ec.fieldContext_Log_workflowId(ctx, field)
 			case "jobId":
 				return ec.fieldContext_Log_jobId(ctx, field)
 			case "nodeId":
@@ -17383,6 +17417,8 @@ func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "logs":
+			out.Values[i] = ec._Job_logs(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -17551,11 +17587,6 @@ func (ec *executionContext) _Log(ctx context.Context, sel ast.SelectionSet, obj 
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Log")
-		case "workflowId":
-			out.Values[i] = ec._Log_workflowId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "jobId":
 			out.Values[i] = ec._Log_jobId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -18565,16 +18596,13 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 		case "logs":
 			field := field
 
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
 				defer func() {
 					if r := recover(); r != nil {
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
 				res = ec._Query_logs(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
 				return res
 			}
 
@@ -20464,60 +20492,6 @@ func (ec *executionContext) marshalNLang2golangᚗorgᚋxᚋtextᚋlanguageᚐTa
 	return res
 }
 
-func (ec *executionContext) marshalNLog2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐLogᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.Log) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNLog2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐLog(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNLog2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐLog(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.Log) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._Log(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNLogLevel2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐLogLevel(ctx context.Context, v interface{}) (gqlmodel.LogLevel, error) {
 	var res gqlmodel.LogLevel
 	err := res.UnmarshalGQL(v)
@@ -21652,6 +21626,54 @@ func (ec *executionContext) marshalOLang2ᚖgolangᚗorgᚋxᚋtextᚋlanguage�
 	}
 	res := gqlmodel.MarshalLang(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOLog2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐLog(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.Log) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalOLog2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐLog(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	return ret
+}
+
+func (ec *executionContext) marshalOLog2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐLog(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.Log) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._Log(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOMe2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐMe(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.Me) graphql.Marshaler {

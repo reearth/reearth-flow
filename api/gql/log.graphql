@@ -7,7 +7,6 @@ enum LogLevel {
 }
 
 type Log {
-  workflowId: ID!
   jobId: ID!
   nodeId: ID
   timestamp: DateTime!
@@ -16,5 +15,5 @@ type Log {
 }
 
 extend type Query {
-  logs(since: DateTime!, workflowId: ID!, jobId: ID!): [Log!]!
+  logs(since: DateTime!, jobId: ID!): [Log]
 }

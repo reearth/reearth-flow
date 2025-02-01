@@ -13,7 +13,6 @@ const (
 )
 
 type Log struct {
-	workflowID WorkflowID
 	jobID      JobID
 	nodeID     *NodeID
 	timestamp  time.Time
@@ -21,9 +20,8 @@ type Log struct {
 	message    string
 }
 
-func NewLog(workflowID WorkflowID, jobID JobID, nodeID *NodeID, time time.Time, level Level, message string) *Log {
+func NewLog(jobID JobID, nodeID *NodeID, time time.Time, level Level, message string) *Log {
 	return &Log{
-		workflowID: workflowID,
 		jobID:      jobID,
 		nodeID:     nodeID,
 		timestamp:  time,
@@ -32,9 +30,6 @@ func NewLog(workflowID WorkflowID, jobID JobID, nodeID *NodeID, time time.Time, 
 	}
 }
 
-func (l *Log) WorkflowID() WorkflowID {
-	return l.workflowID
-}
 func (l *Log) JobID() JobID {
 	return l.jobID
 }

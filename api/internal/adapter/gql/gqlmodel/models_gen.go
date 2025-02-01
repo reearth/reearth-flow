@@ -195,6 +195,7 @@ type Job struct {
 	Status       JobStatus   `json:"status"`
 	Workspace    *Workspace  `json:"workspace,omitempty"`
 	WorkspaceID  ID          `json:"workspaceId"`
+	Logs         []*Log      `json:"logs,omitempty"`
 }
 
 func (Job) IsNode()        {}
@@ -217,12 +218,11 @@ type JobPayload struct {
 }
 
 type Log struct {
-	WorkflowID ID        `json:"workflowId"`
-	JobID      ID        `json:"jobId"`
-	NodeID     *ID       `json:"nodeId,omitempty"`
-	Timestamp  time.Time `json:"timestamp"`
-	LogLevel   LogLevel  `json:"logLevel"`
-	Message    string    `json:"message"`
+	JobID     ID        `json:"jobId"`
+	NodeID    *ID       `json:"nodeId,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
+	LogLevel  LogLevel  `json:"logLevel"`
+	Message   string    `json:"message"`
 }
 
 type Me struct {

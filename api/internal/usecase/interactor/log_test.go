@@ -17,7 +17,7 @@ type mockLogGateway struct {
 	err  error
 }
 
-func (m *mockLogGateway) GetLogs(ctx context.Context, since time.Time, until time.Time, workflowID id.WorkflowID, jobID id.JobID) ([]*log.Log, error) {
+func (m *mockLogGateway) GetLogs(ctx context.Context, since time.Time, until time.Time, jobID id.JobID) ([]*log.Log, error) {
 	return m.logs, m.err
 }
 
@@ -31,11 +31,10 @@ func TestNewLogInteractor(t *testing.T) {
 
 func TestLogInteractor_GetLogs(t *testing.T) {
 	nodeID := log.NodeID(id.NewNodeID())
-	workflowID := id.NewWorkflowID()
 	jobID := id.NewJobID()
 	redisLogs := []*log.Log{
-		log.NewLog(workflowID, jobID, &nodeID, time.Now(), log.LevelInfo, "redis log 1"),
-		log.NewLog(workflowID, jobID, &nodeID, time.Now(), log.LevelInfo, "redis log 2"),
+		log.NewLog(jobID, &nodeID, time.Now(), log.LevelInfo, "redis log 1"),
+		log.NewLog(jobID, &nodeID, time.Now(), log.LevelInfo, "redis log 2"),
 	}
 	redisMock := &mockLogGateway{logs: redisLogs}
 
@@ -43,7 +42,7 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 		li := NewLogInteractor(redisMock)
 
 		since := time.Now().Add(-30 * time.Minute)
-		out, err := li.GetLogs(context.Background(), since, id.NewWorkflowID(), id.NewJobID(), &usecase.Operator{})
+		out, err := li.GetLogs(context.Background(), since, id.NewJobID(), &usecase.Operator{})
 		assert.NoError(t, err)
 		assert.Equal(t, redisLogs, out)
 	})
@@ -53,7 +52,7 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 		li := NewLogInteractor(brokenRedis)
 
 		since := time.Now()
-		out, err := li.GetLogs(context.Background(), since, id.NewWorkflowID(), id.NewJobID(), &usecase.Operator{})
+		out, err := li.GetLogs(context.Background(), since, id.NewJobID(), &usecase.Operator{})
 		assert.Nil(t, out)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get logs from Redis")
@@ -62,7 +61,7 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 	t.Run("redis gateway is nil", func(t *testing.T) {
 		li := NewLogInteractor(nil)
 		since := time.Now().Add(-30 * time.Minute)
-		out, err := li.GetLogs(context.Background(), since, workflowID, jobID, &usecase.Operator{})
+		out, err := li.GetLogs(context.Background(), since, jobID, &usecase.Operator{})
 		assert.Nil(t, out)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "logsGatewayRedis is nil")

@@ -14,7 +14,6 @@ func ToLog(d *log.Log) *Log {
 		nodeID = &id
 	}
 	return &Log{
-		WorkflowID: IDFrom(d.WorkflowID()),
 		JobID:      ID(d.JobID().String()),
 		NodeID:     nodeID,
 		Timestamp:  d.Timestamp(),

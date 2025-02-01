@@ -15,15 +15,13 @@ func TestToLog(t *testing.T) {
 	})
 
 	t.Run("success", func(t *testing.T) {
-		wfid := id.NewWorkflowID()
 		jid := id.NewJobID()
 		nid := id.NewNodeID()
 
-		d := log.NewLog(wfid, jid, &nid, time.Now(), log.LevelInfo, "message")
+		d := log.NewLog(jid, &nid, time.Now(), log.LevelInfo, "message")
 
 		got := ToLog(d)
 		assert.NotNil(t, got)
-		assert.Equal(t, IDFrom(wfid), got.WorkflowID)
 		assert.Equal(t, ID(jid.String()), got.JobID)
 		assert.Equal(t, ID(nid.String()), *got.NodeID)
 		assert.Equal(t, "message", got.Message)
