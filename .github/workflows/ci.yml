@@ -35,7 +35,7 @@ jobs:
         uses: tj-actions/changed-files@v41
         with:
             files: |
-              log_subscriber/**
+              server/log_subscriber/**
               .github/workflows/ci.yml
               .github/workflows/ci_log_subscriber.yml
               CHANGELOG.md
@@ -197,4 +197,4 @@ jobs:
         new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
         name: ${{ needs.ci-collect-info.outputs.name }}
         sha: ${{ github.sha }}
-      secrets: inherit  
+      secrets: inherit

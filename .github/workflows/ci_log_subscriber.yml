@@ -21,7 +21,7 @@ jobs:
         with:
           version: v1.59.1
           args: --timeout=10m
-          working-directory: log_subscriber
+          working-directory: server/log_subscriber
 
   ci-log-subscriber-test:
     runs-on: ubuntu-latest
@@ -32,10 +32,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache-dependency-path: log_subscriber/go.sum
+          cache-dependency-path: server/log_subscriber/go.sum
       - name: test
         run: go test ./... -v -race -coverprofile=coverage.txt -covermode=atomic -timeout 10m
-        working-directory: log_subscriber
+        working-directory: server/log_subscriber
       - name: Send coverage report
         uses: codecov/codecov-action@v4
         with:

@@ -2,5 +2,5 @@ go 1.22.3
 
 use (
     ./api
-    ./log_subscriber
+    ./server/log_subscriber
 )

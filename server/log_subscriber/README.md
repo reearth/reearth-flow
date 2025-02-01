@@ -126,7 +126,7 @@ The log_subscriber uses the following environment variables
 
 
 ```
-cd log_subscriber
+cd server/log_subscriber
 cp .env.example .env
 make run
 ```
