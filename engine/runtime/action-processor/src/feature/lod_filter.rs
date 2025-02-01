@@ -109,6 +109,10 @@ pub(crate) struct FeatureLodFilter {
 }
 
 impl Processor for FeatureLodFilter {
+    fn num_threads(&self) -> usize {
+        2
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -126,7 +130,7 @@ impl Processor for FeatureLodFilter {
             ))
         })?;
         if !self.buffer_features.contains_key(filter_key) {
-            self.flush_buffer(ctx.as_context(), fw);
+            self.flush_buffer(ctx.as_context(), fw, filter_key);
         }
         let features = self.buffer_features.entry(filter_key.clone()).or_default();
         features.push(feature.clone());
@@ -161,14 +165,34 @@ impl Processor for FeatureLodFilter {
 }
 
 impl FeatureLodFilter {
-    fn flush_buffer(&mut self, ctx: Context, fw: &mut dyn ProcessorChannelForwarder) {
-        for (key, features) in self.buffer_features.drain() {
+    fn flush_buffer(
+        &mut self,
+        ctx: Context,
+        fw: &mut dyn ProcessorChannelForwarder,
+        ignore_key: &AttributeValue,
+    ) {
+        for (key, features) in self
+            .buffer_features
+            .iter()
+            .filter(|(k, _)| *k != ignore_key)
+        {
             let lod_count = LodCount {
-                max_lod: self.max_lod.get(&key).cloned().unwrap_or(0),
+                max_lod: self.max_lod.get(key).cloned().unwrap_or(0),
             };
             for feature in features {
-                Self::routing_feature_by_lod(ctx.clone(), fw, &feature, &lod_count);
+                Self::routing_feature_by_lod(ctx.clone(), fw, feature, &lod_count);
             }
+        }
+
+        let keys: Vec<AttributeValue> = self
+            .buffer_features
+            .keys()
+            .filter(|k| *k != ignore_key)
+            .cloned()
+            .collect();
+        let buffer = &mut self.buffer_features;
+        for key in keys {
+            buffer.remove(&key);
         }
     }
 
