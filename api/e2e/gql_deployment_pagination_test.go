@@ -372,7 +372,7 @@ func TestDeploymentsPagination(t *testing.T) {
 				Deployments struct {
 					Nodes []struct {
 						ID        string    `json:"id"`
-						updatedAt time.Time `json:"updatedAt"`
+						UpdatedAt time.Time `json:"updatedAt"`
 					} `json:"nodes"`
 				} `json:"deployments"`
 			} `json:"data"`
@@ -383,8 +383,8 @@ func TestDeploymentsPagination(t *testing.T) {
 
 		// Verify sorting
 		for i := 1; i < len(result.Data.Deployments.Nodes); i++ {
-			prev := result.Data.Deployments.Nodes[i-1].updatedAt
-			curr := result.Data.Deployments.Nodes[i].updatedAt
+			prev := result.Data.Deployments.Nodes[i-1].UpdatedAt
+			curr := result.Data.Deployments.Nodes[i].UpdatedAt
 			assert.True(t, prev.After(curr) || prev.Equal(curr), "Deployments should be sorted by updatedAt in descending order")
 		}
 	})
