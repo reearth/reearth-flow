@@ -6,7 +6,7 @@ mutation CreateProject($input: CreateProjectInput!) {
   }
 }
 query GetProjects($workspaceId: ID!, $pagination: PageBasedPagination!) {
-  projectsPage(workspaceId: $workspaceId, pagination: $pagination) {
+  projects(workspaceId: $workspaceId, pagination: $pagination) {
     totalCount
     nodes {
       ...Project

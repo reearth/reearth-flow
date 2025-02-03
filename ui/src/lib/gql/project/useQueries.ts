@@ -58,7 +58,7 @@ export const useQueries = () => {
         });
         if (!data) throw new Error("No data returned");
         const {
-          projectsPage: {
+          projects: {
             nodes,
             pageInfo: { totalCount, currentPage, totalPages },
           },

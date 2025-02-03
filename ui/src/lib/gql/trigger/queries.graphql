@@ -15,7 +15,7 @@ mutation DeleteTrigger($triggerId: ID!) {
 }
 
 query GetTriggers($workspaceId: ID!, $pagination: PageBasedPagination!) {
-  triggersPage(workspaceId: $workspaceId, pagination: $pagination) {
+  triggers(workspaceId: $workspaceId, pagination: $pagination) {
     totalCount
     nodes {
       ...Trigger

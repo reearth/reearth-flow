@@ -168,7 +168,7 @@ export const useQueries = () => {
         });
         if (!data) return;
         const {
-          deploymentsPage: {
+          deployments: {
             nodes,
             pageInfo: { totalCount, currentPage, totalPages },
           },

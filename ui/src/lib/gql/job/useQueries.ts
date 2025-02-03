@@ -31,7 +31,7 @@ export const useQueries = () => {
         });
         if (!data) return;
         const {
-          jobsPage: {
+          jobs: {
             nodes,
             pageInfo: { totalCount, currentPage, totalPages },
           },

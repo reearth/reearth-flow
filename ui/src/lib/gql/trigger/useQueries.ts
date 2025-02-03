@@ -132,7 +132,7 @@ export const useQueries = () => {
         });
         if (!data) return;
         const {
-          triggersPage: {
+          triggers: {
             nodes,
             pageInfo: { totalCount, totalPages, currentPage },
           },
