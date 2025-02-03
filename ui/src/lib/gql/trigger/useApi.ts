@@ -26,9 +26,9 @@ export const useTrigger = () => {
   const createTrigger = async (
     workspaceId: string,
     deploymentId: string,
+    description: string,
     timeInterval?: TimeInterval,
     authToken?: string,
-    description?: string,
   ): Promise<CreateTrigger> => {
     const { mutateAsync, ...rest } = createTriggerMutation;
 
