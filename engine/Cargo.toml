@@ -76,7 +76,7 @@ async-recursion = "1.1.1"
 async-stream = "0.3.6"
 async-trait = "0.1.86"
 async_zip = { version = "0.0.17", features = ["full"] }
-atlas-packer = { git = "https://github.com/reearth/atlas-packer", tag = "v0.0.1" }
+atlas-packer = { git = "https://github.com/reearth/atlas-packer", tag = "v0.0.2" }
 base64 = "0.22.1"
 bincode = { version = "2.0.0-rc.3", default-features = false, features = ["serde", "std"] }
 bytemuck = { version = "1.21.0", features = ["derive"] }
