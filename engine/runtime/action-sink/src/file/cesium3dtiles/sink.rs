@@ -136,7 +136,8 @@ pub struct Cesium3DTilesWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
     pub(super) buffer: HashMap<(Uri, String), Vec<Feature>>,
-    pub(super) join_handles: Vec<Arc<parking_lot::Mutex<Receiver<()>>>>,
+    #[allow(clippy::type_complexity)]
+    pub(super) join_handles: Vec<Arc<parking_lot::Mutex<Receiver<Result<(), SinkError>>>>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -239,11 +240,12 @@ impl Sink for Cesium3DTilesWriter {
 }
 
 impl Cesium3DTilesWriter {
+    #[allow(clippy::type_complexity)]
     pub(crate) fn flush_buffer(
         &self,
         ctx: Context,
         ignore_key: Option<(Uri, String)>,
-    ) -> crate::errors::Result<Vec<Arc<parking_lot::Mutex<Receiver<()>>>>> {
+    ) -> crate::errors::Result<Vec<Arc<parking_lot::Mutex<Receiver<Result<(), SinkError>>>>>> {
         let mut result = Vec::new();
         let mut features = HashMap::<Uri, Vec<(String, Vec<Feature>)>>::new();
         for ((output, feature_type), buffer) in &self.buffer {
@@ -264,12 +266,13 @@ impl Cesium3DTilesWriter {
         Ok(result)
     }
 
+    #[allow(clippy::type_complexity)]
     pub(crate) fn write(
         &self,
         ctx: Context,
         upstream: &Vec<(String, Vec<Feature>)>,
         output: &Uri,
-    ) -> crate::errors::Result<Vec<Arc<parking_lot::Mutex<Receiver<()>>>>> {
+    ) -> crate::errors::Result<Vec<Arc<parking_lot::Mutex<Receiver<Result<(), SinkError>>>>>> {
         let tile_id_conv = TileIdMethod::Hilbert;
         let attach_texture = self.params.attach_texture.unwrap_or(false);
         let mut features = Vec::new();
@@ -311,7 +314,7 @@ impl Cesium3DTilesWriter {
                     name: "geometry_slicing_stage".to_string(),
                 });
             }
-            tx.send(()).unwrap();
+            tx.send(result).unwrap();
         });
         let fctx = ctx.clone();
         let (tx, rx) = channel();
@@ -327,7 +330,7 @@ impl Cesium3DTilesWriter {
                     name: "feature_sorting_stage".to_string(),
                 });
             }
-            tx.send(()).unwrap();
+            tx.send(result).unwrap();
         });
         let output = output.clone();
         let (tx, rx) = channel();
@@ -356,7 +359,7 @@ impl Cesium3DTilesWriter {
                         name: "tile_writing_stage".to_string(),
                     });
                 }
-                tx.send(()).unwrap();
+                tx.send(result).unwrap();
             })
         });
         Ok(result)
