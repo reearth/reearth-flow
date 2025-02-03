@@ -120,32 +120,35 @@ export const useQueries = () => {
   const useGetTriggersInfiniteQuery = (workspaceId?: string) =>
     useInfiniteQuery({
       queryKey: [TriggerQueryKeys.GetTriggers, workspaceId],
-      initialPageParam: null,
+      initialPageParam: 1,
       queryFn: async ({ pageParam }) => {
         const data = await graphQLContext?.GetTriggers({
           workspaceId: workspaceId ?? "",
           pagination: {
-            first: TRIGGERS_FETCH_RATE,
-            after: pageParam,
+            page: pageParam,
+            pageSize: TRIGGERS_FETCH_RATE,
+            // orderDir: "ASC",
           },
         });
         if (!data) return;
         const {
-          triggers: {
+          triggersPage: {
             nodes,
-            pageInfo: { endCursor, hasNextPage },
+            pageInfo: { totalCount, totalPages, currentPage },
           },
         } = data;
         const triggers: Trigger[] = nodes
           .filter(isDefined)
           .map((trigger) => toTrigger(trigger));
-        return { triggers, endCursor, hasNextPage };
+        return { triggers, totalCount, totalPages, currentPage };
       },
       enabled: !!workspaceId,
       getNextPageParam: (lastPage) => {
         if (!lastPage) return undefined;
-        const { endCursor, hasNextPage } = lastPage;
-        return hasNextPage ? endCursor : undefined;
+        if ((lastPage.currentPage ?? 0) < (lastPage.totalPages ?? 0)) {
+          return (lastPage.currentPage ?? 0) + 1;
+        }
+        return undefined;
       },
     });
 

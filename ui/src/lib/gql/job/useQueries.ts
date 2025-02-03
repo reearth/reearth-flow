@@ -19,30 +19,33 @@ export const useQueries = () => {
   const useGetJobsInfiniteQuery = (workspaceId?: string) =>
     useInfiniteQuery({
       queryKey: [JobQueryKeys.GetJobs, workspaceId],
-      initialPageParam: null,
+      initialPageParam: 1,
       queryFn: async ({ pageParam }) => {
         const data = await graphQLContext?.GetJobs({
           workspaceId: workspaceId ?? "",
           pagination: {
-            first: JOBS_FETCH_RATE,
-            after: pageParam,
+            page: pageParam,
+            pageSize: JOBS_FETCH_RATE,
+            // orderDir: "ASC",
           },
         });
         if (!data) return;
         const {
-          jobs: {
+          jobsPage: {
             nodes,
-            pageInfo: { endCursor, hasNextPage },
+            pageInfo: { totalCount, currentPage, totalPages },
           },
         } = data;
         const jobs: Job[] = nodes.filter(isDefined).map((job) => toJob(job));
-        return { jobs, endCursor, hasNextPage };
+        return { jobs, totalCount, currentPage, totalPages };
       },
       enabled: !!workspaceId,
       getNextPageParam: (lastPage) => {
         if (!lastPage) return undefined;
-        const { endCursor, hasNextPage } = lastPage;
-        return hasNextPage ? endCursor : undefined;
+        if ((lastPage.currentPage ?? 0) < (lastPage.totalPages ?? 0)) {
+          return (lastPage.currentPage ?? 0) + 1;
+        }
+        return undefined;
       },
     });
 
