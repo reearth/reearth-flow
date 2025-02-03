@@ -33,6 +33,6 @@ extend type Subscription {
 # Query and Mutation
 
 extend type Query {
-  jobsPage(workspaceId: ID!, pagination: PageBasedPagination!): JobConnection!
+  jobs(workspaceId: ID!, pagination: PageBasedPagination!): JobConnection!
   job(id: ID!): Job
 }

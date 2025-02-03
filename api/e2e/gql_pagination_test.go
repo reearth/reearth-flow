@@ -85,7 +85,7 @@ func TestProjectsPagination(t *testing.T) {
 	// Test page-based pagination
 	t.Run("test_page_based_pagination", func(t *testing.T) {
 		query := fmt.Sprintf(`{
-			projectsPage(
+			projects(
 				workspaceId: "%s"
 				pagination: {
 					page: 1
@@ -128,7 +128,7 @@ func TestProjectsPagination(t *testing.T) {
 						TotalPages  int `json:"totalPages"`
 						CurrentPage int `json:"currentPage"`
 					} `json:"pageInfo"`
-				} `json:"projectsPage"`
+				} `json:"projects"`
 			} `json:"data"`
 		}
 
@@ -144,7 +144,7 @@ func TestProjectsPagination(t *testing.T) {
 	// Test sorting
 	t.Run("test_sorting", func(t *testing.T) {
 		query := fmt.Sprintf(`{
-			projectsPage(
+			projects(
 				workspaceId: "%s"
 				pagination: {
 					page: 1
@@ -179,7 +179,7 @@ func TestProjectsPagination(t *testing.T) {
 						ID   string `json:"id"`
 						Name string `json:"name"`
 					} `json:"nodes"`
-				} `json:"projectsPage"`
+				} `json:"projects"`
 			} `json:"data"`
 		}
 
@@ -197,7 +197,7 @@ func TestProjectsPagination(t *testing.T) {
 	// Test last page
 	t.Run("test_last_page", func(t *testing.T) {
 		query := fmt.Sprintf(`{
-			projectsPage(
+			projects(
 				workspaceId: "%s"
 				pagination: {
 					page: 3
@@ -240,7 +240,7 @@ func TestProjectsPagination(t *testing.T) {
 						TotalPages  int `json:"totalPages"`
 						CurrentPage int `json:"currentPage"`
 					} `json:"pageInfo"`
-				} `json:"projectsPage"`
+				} `json:"projects"`
 			} `json:"data"`
 		}
 
