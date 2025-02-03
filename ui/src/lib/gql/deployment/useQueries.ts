@@ -37,7 +37,7 @@ export const useQueries = () => {
       workspaceId: string;
       projectId?: string;
       file: FormData;
-      description?: string;
+      description: string;
     }) => {
       const data = await graphQLContext?.CreateDeployment({
         input: {

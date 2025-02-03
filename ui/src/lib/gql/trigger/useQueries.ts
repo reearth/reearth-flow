@@ -37,7 +37,7 @@ export const useQueries = () => {
       deploymentId: string;
       timeDriverInput?: TimeDriverInput;
       apiDriverInput?: ApiDriverInput;
-      description?: string;
+      description: string;
     }) => {
       const data = await graphQLContext?.CreateTrigger({
         input: {
