@@ -113,8 +113,11 @@ export const useTrigger = () => {
     }
   };
 
-  const useGetTriggersInfinite = (workspaceId?: string) => {
-    const { data, ...rest } = useGetTriggersInfiniteQuery(workspaceId);
+  const useGetTriggersInfinite = (workspaceId?: string, fetchRate?: number) => {
+    const { data, ...rest } = useGetTriggersInfiniteQuery(
+      workspaceId,
+      fetchRate,
+    );
     return {
       pages: data?.pages,
       ...rest,

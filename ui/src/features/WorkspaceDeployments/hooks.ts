@@ -1,13 +1,15 @@
 import { useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { useDeployment } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Deployment } from "@flow/types";
 import { lastOfUrl as getDeploymentId } from "@flow/utils";
 
+import usePagination from "../hooks/usePagination";
 import { RouteOption } from "../WorkspaceLeftPanel";
 
+const DEPLOYMENT_FETCH_RATE = 10;
 export default () => {
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -21,12 +23,12 @@ export default () => {
   const [deploymentToBeDeleted, setDeploymentToBeDeleted] = useState<
     Deployment | undefined
   >(undefined);
-
+  const [currentPage, setCurrentPage] = useState<number>(0);
   const { useGetDeploymentsInfinite, useDeleteDeployment, executeDeployment } =
     useDeployment();
 
-  const { pages, hasNextPage, isFetching, fetchNextPage } =
-    useGetDeploymentsInfinite(currentWorkspace?.id);
+  const { pages, hasNextPage, isFetching, fetchNextPage, isFetchingNextPage } =
+    useGetDeploymentsInfinite(currentWorkspace?.id, DEPLOYMENT_FETCH_RATE);
 
   const {
     location: { pathname },
@@ -35,14 +37,8 @@ export default () => {
   const tab = getTab(pathname);
 
   const deployments: Deployment[] | undefined = useMemo(
-    () =>
-      pages?.reduce((deployments, page) => {
-        if (page?.deployments) {
-          deployments.push(...page.deployments);
-        }
-        return deployments;
-      }, [] as Deployment[]),
-    [pages],
+    () => pages?.[currentPage]?.deployments,
+    [pages, currentPage],
   );
 
   const selectedDeployment = useMemo(
@@ -93,33 +89,16 @@ export default () => {
     [selectedDeployment, currentWorkspace, navigate, executeDeployment],
   );
 
-  // Auto fills the page
-  useEffect(() => {
-    if (
-      ref.current &&
-      ref.current?.scrollHeight <= document.documentElement.clientHeight &&
-      hasNextPage &&
-      !isFetching
-    ) {
-      fetchNextPage();
-    }
-  }, [isFetching, hasNextPage, ref, fetchNextPage]);
-
-  // Loads more projects as scroll reaches the bottom
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop + 5 >=
-          document.documentElement.scrollHeight &&
-        !isFetching &&
-        hasNextPage
-      ) {
-        fetchNextPage();
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isFetching, fetchNextPage, hasNextPage]);
+  const { totalPages, handleNextPage, handlePrevPage, canGoNext } =
+    usePagination<Deployment>(
+      DEPLOYMENT_FETCH_RATE,
+      hasNextPage,
+      isFetchingNextPage,
+      pages,
+      fetchNextPage,
+      currentPage,
+      setCurrentPage,
+    );
 
   return {
     ref,
@@ -134,6 +113,13 @@ export default () => {
     handleDeploymentSelect,
     handleDeploymentDelete,
     handleDeploymentRun,
+    totalPages,
+    currentPage,
+    hasNextPage: canGoNext,
+    isFetching,
+    isFetchingNextPage,
+    handleNextPage,
+    handlePrevPage,
   };
 };
 
