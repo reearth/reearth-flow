@@ -235,19 +235,19 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		AssetsPage          func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
+		Assets              func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
 		DeploymentByVersion func(childComplexity int, input gqlmodel.GetByVersionInput) int
 		DeploymentHead      func(childComplexity int, input gqlmodel.GetHeadInput) int
 		DeploymentVersions  func(childComplexity int, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) int
-		DeploymentsPage     func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		Deployments         func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
 		Job                 func(childComplexity int, id gqlmodel.ID) int
-		JobsPage            func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		Jobs                func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
 		Me                  func(childComplexity int) int
 		Node                func(childComplexity int, id gqlmodel.ID, typeArg gqlmodel.NodeType) int
 		Nodes               func(childComplexity int, id []gqlmodel.ID, typeArg gqlmodel.NodeType) int
-		ProjectsPage        func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) int
+		Projects            func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) int
 		SearchUser          func(childComplexity int, nameOrEmail string) int
-		TriggersPage        func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		Triggers            func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
 	}
 
 	RemoveAssetPayload struct {
@@ -382,15 +382,15 @@ type ProjectResolver interface {
 type QueryResolver interface {
 	Node(ctx context.Context, id gqlmodel.ID, typeArg gqlmodel.NodeType) (gqlmodel.Node, error)
 	Nodes(ctx context.Context, id []gqlmodel.ID, typeArg gqlmodel.NodeType) ([]gqlmodel.Node, error)
-	AssetsPage(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error)
-	DeploymentsPage(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error)
+	Assets(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error)
+	Deployments(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error)
 	DeploymentByVersion(ctx context.Context, input gqlmodel.GetByVersionInput) (*gqlmodel.Deployment, error)
 	DeploymentHead(ctx context.Context, input gqlmodel.GetHeadInput) (*gqlmodel.Deployment, error)
 	DeploymentVersions(ctx context.Context, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) ([]*gqlmodel.Deployment, error)
-	JobsPage(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
+	Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
-	ProjectsPage(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
-	TriggersPage(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error)
+	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
+	Triggers(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error)
 	Me(ctx context.Context) (*gqlmodel.Me, error)
 	SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error)
 }
@@ -1341,17 +1341,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProjectPayload.Project(childComplexity), true
 
-	case "Query.assetsPage":
-		if e.complexity.Query.AssetsPage == nil {
+	case "Query.assets":
+		if e.complexity.Query.Assets == nil {
 			break
 		}
 
-		args, err := ec.field_Query_assetsPage_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_assets_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Query.AssetsPage(childComplexity, args["workspaceId"].(gqlmodel.ID), args["keyword"].(*string), args["sort"].(*gqlmodel.AssetSortType), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Assets(childComplexity, args["workspaceId"].(gqlmodel.ID), args["keyword"].(*string), args["sort"].(*gqlmodel.AssetSortType), args["pagination"].(gqlmodel.PageBasedPagination)), true
 
 	case "Query.deploymentByVersion":
 		if e.complexity.Query.DeploymentByVersion == nil {
@@ -1389,17 +1389,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.DeploymentVersions(childComplexity, args["workspaceId"].(gqlmodel.ID), args["projectId"].(*gqlmodel.ID)), true
 
-	case "Query.deploymentsPage":
-		if e.complexity.Query.DeploymentsPage == nil {
+	case "Query.deployments":
+		if e.complexity.Query.Deployments == nil {
 			break
 		}
 
-		args, err := ec.field_Query_deploymentsPage_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_deployments_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Query.DeploymentsPage(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Deployments(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
 
 	case "Query.job":
 		if e.complexity.Query.Job == nil {
@@ -1413,17 +1413,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Job(childComplexity, args["id"].(gqlmodel.ID)), true
 
-	case "Query.jobsPage":
-		if e.complexity.Query.JobsPage == nil {
+	case "Query.jobs":
+		if e.complexity.Query.Jobs == nil {
 			break
 		}
 
-		args, err := ec.field_Query_jobsPage_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_jobs_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Query.JobsPage(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Jobs(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
 
 	case "Query.me":
 		if e.complexity.Query.Me == nil {
@@ -1456,17 +1456,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Nodes(childComplexity, args["id"].([]gqlmodel.ID), args["type"].(gqlmodel.NodeType)), true
 
-	case "Query.projectsPage":
-		if e.complexity.Query.ProjectsPage == nil {
+	case "Query.projects":
+		if e.complexity.Query.Projects == nil {
 			break
 		}
 
-		args, err := ec.field_Query_projectsPage_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_projects_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Query.ProjectsPage(childComplexity, args["workspaceId"].(gqlmodel.ID), args["includeArchived"].(*bool), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Projects(childComplexity, args["workspaceId"].(gqlmodel.ID), args["includeArchived"].(*bool), args["pagination"].(gqlmodel.PageBasedPagination)), true
 
 	case "Query.searchUser":
 		if e.complexity.Query.SearchUser == nil {
@@ -1480,17 +1480,17 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.SearchUser(childComplexity, args["nameOrEmail"].(string)), true
 
-	case "Query.triggersPage":
-		if e.complexity.Query.TriggersPage == nil {
+	case "Query.triggers":
+		if e.complexity.Query.Triggers == nil {
 			break
 		}
 
-		args, err := ec.field_Query_triggersPage_args(context.TODO(), rawArgs)
+		args, err := ec.field_Query_triggers_args(context.TODO(), rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.complexity.Query.TriggersPage(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Triggers(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
 
 	case "RemoveAssetPayload.assetId":
 		if e.complexity.RemoveAssetPayload.AssetID == nil {
@@ -2042,7 +2042,7 @@ type AssetConnection {
 # Query and Mutation
 
 extend type Query {
-  assetsPage(
+  assets(
     workspaceId: ID!
     keyword: String
     sort: AssetSortType
@@ -2129,7 +2129,7 @@ type DeploymentConnection {
 # Query and Mutation
 
 extend type Query {
-  deploymentsPage(workspaceId: ID!, pagination: PageBasedPagination!): DeploymentConnection!
+  deployments(workspaceId: ID!, pagination: PageBasedPagination!): DeploymentConnection!
   deploymentByVersion(input: GetByVersionInput!): Deployment
   deploymentHead(input: GetHeadInput!): Deployment
   deploymentVersions(workspaceId: ID!, projectId: ID): [Deployment!]!
@@ -2177,7 +2177,7 @@ extend type Subscription {
 # Query and Mutation
 
 extend type Query {
-  jobsPage(workspaceId: ID!, pagination: PageBasedPagination!): JobConnection!
+  jobs(workspaceId: ID!, pagination: PageBasedPagination!): JobConnection!
   job(id: ID!): Job
 }
 `, BuiltIn: false},
@@ -2327,7 +2327,7 @@ type ProjectConnection {
 # Query and Mutation
 
 extend type Query {
-  projectsPage(
+  projects(
     workspaceId: ID!
     includeArchived: Boolean
     pagination: PageBasedPagination!
@@ -2407,7 +2407,7 @@ type TriggerConnection {
 # Query and Mutation
 
 extend type Query {
-    triggersPage(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!
+    triggers(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!
 }
 
 extend type Mutation {
@@ -3040,7 +3040,7 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_assetsPage_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_assets_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 gqlmodel.ID
@@ -3136,7 +3136,7 @@ func (ec *executionContext) field_Query_deploymentVersions_args(ctx context.Cont
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_deploymentsPage_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_deployments_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 gqlmodel.ID
@@ -3175,7 +3175,7 @@ func (ec *executionContext) field_Query_job_args(ctx context.Context, rawArgs ma
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_jobsPage_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_jobs_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 gqlmodel.ID
@@ -3247,7 +3247,7 @@ func (ec *executionContext) field_Query_nodes_args(ctx context.Context, rawArgs 
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_projectsPage_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_projects_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 gqlmodel.ID
@@ -3295,7 +3295,7 @@ func (ec *executionContext) field_Query_searchUser_args(ctx context.Context, raw
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_triggersPage_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+func (ec *executionContext) field_Query_triggers_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 gqlmodel.ID
@@ -9226,8 +9226,8 @@ func (ec *executionContext) fieldContext_Query_nodes(ctx context.Context, field 
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_assetsPage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_assetsPage(ctx, field)
+func (ec *executionContext) _Query_assets(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_assets(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9240,7 +9240,7 @@ func (ec *executionContext) _Query_assetsPage(ctx context.Context, field graphql
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().AssetsPage(rctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["sort"].(*gqlmodel.AssetSortType), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+		return ec.resolvers.Query().Assets(rctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["sort"].(*gqlmodel.AssetSortType), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -9257,7 +9257,7 @@ func (ec *executionContext) _Query_assetsPage(ctx context.Context, field graphql
 	return ec.marshalNAssetConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐAssetConnection(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_assetsPage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_assets(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -9282,15 +9282,15 @@ func (ec *executionContext) fieldContext_Query_assetsPage(ctx context.Context, f
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_assetsPage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_assets_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_deploymentsPage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_deploymentsPage(ctx, field)
+func (ec *executionContext) _Query_deployments(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_deployments(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9303,7 +9303,7 @@ func (ec *executionContext) _Query_deploymentsPage(ctx context.Context, field gr
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().DeploymentsPage(rctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+		return ec.resolvers.Query().Deployments(rctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -9320,7 +9320,7 @@ func (ec *executionContext) _Query_deploymentsPage(ctx context.Context, field gr
 	return ec.marshalNDeploymentConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeploymentConnection(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_deploymentsPage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_deployments(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -9345,7 +9345,7 @@ func (ec *executionContext) fieldContext_Query_deploymentsPage(ctx context.Conte
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_deploymentsPage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_deployments_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -9589,8 +9589,8 @@ func (ec *executionContext) fieldContext_Query_deploymentVersions(ctx context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_jobsPage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_jobsPage(ctx, field)
+func (ec *executionContext) _Query_jobs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_jobs(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9603,7 +9603,7 @@ func (ec *executionContext) _Query_jobsPage(ctx context.Context, field graphql.C
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().JobsPage(rctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+		return ec.resolvers.Query().Jobs(rctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -9620,7 +9620,7 @@ func (ec *executionContext) _Query_jobsPage(ctx context.Context, field graphql.C
 	return ec.marshalNJobConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJobConnection(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_jobsPage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_jobs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -9645,7 +9645,7 @@ func (ec *executionContext) fieldContext_Query_jobsPage(ctx context.Context, fie
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_jobsPage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_jobs_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -9722,8 +9722,8 @@ func (ec *executionContext) fieldContext_Query_job(ctx context.Context, field gr
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_projectsPage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_projectsPage(ctx, field)
+func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_projects(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9736,7 +9736,7 @@ func (ec *executionContext) _Query_projectsPage(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().ProjectsPage(rctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["includeArchived"].(*bool), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+		return ec.resolvers.Query().Projects(rctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["includeArchived"].(*bool), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -9753,7 +9753,7 @@ func (ec *executionContext) _Query_projectsPage(ctx context.Context, field graph
 	return ec.marshalNProjectConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectConnection(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_projectsPage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_projects(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -9778,15 +9778,15 @@ func (ec *executionContext) fieldContext_Query_projectsPage(ctx context.Context,
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_projectsPage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_projects_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_triggersPage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_triggersPage(ctx, field)
+func (ec *executionContext) _Query_triggers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_triggers(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9799,7 +9799,7 @@ func (ec *executionContext) _Query_triggersPage(ctx context.Context, field graph
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().TriggersPage(rctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+		return ec.resolvers.Query().Triggers(rctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -9816,7 +9816,7 @@ func (ec *executionContext) _Query_triggersPage(ctx context.Context, field graph
 	return ec.marshalNTriggerConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerConnection(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_triggersPage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_triggers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -9841,7 +9841,7 @@ func (ec *executionContext) fieldContext_Query_triggersPage(ctx context.Context,
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_triggersPage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_triggers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -16663,7 +16663,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "assetsPage":
+		case "assets":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -16672,7 +16672,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_assetsPage(ctx, field)
+				res = ec._Query_assets(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -16685,7 +16685,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "deploymentsPage":
+		case "deployments":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -16694,7 +16694,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_deploymentsPage(ctx, field)
+				res = ec._Query_deployments(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -16767,7 +16767,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "jobsPage":
+		case "jobs":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -16776,7 +16776,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_jobsPage(ctx, field)
+				res = ec._Query_jobs(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -16808,7 +16808,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "projectsPage":
+		case "projects":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -16817,7 +16817,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_projectsPage(ctx, field)
+				res = ec._Query_projects(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -16830,7 +16830,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "triggersPage":
+		case "triggers":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -16839,7 +16839,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_triggersPage(ctx, field)
+				res = ec._Query_triggers(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}

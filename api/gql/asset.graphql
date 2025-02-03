@@ -47,7 +47,7 @@ type AssetConnection {
 # Query and Mutation
 
 extend type Query {
-  assetsPage(
+  assets(
     workspaceId: ID!
     keyword: String
     sort: AssetSortType

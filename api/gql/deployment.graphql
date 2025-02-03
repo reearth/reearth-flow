@@ -72,7 +72,7 @@ type DeploymentConnection {
 # Query and Mutation
 
 extend type Query {
-  deploymentsPage(workspaceId: ID!, pagination: PageBasedPagination!): DeploymentConnection!
+  deployments(workspaceId: ID!, pagination: PageBasedPagination!): DeploymentConnection!
   deploymentByVersion(input: GetByVersionInput!): Deployment
   deploymentHead(input: GetHeadInput!): Deployment
   deploymentVersions(workspaceId: ID!, projectId: ID): [Deployment!]!
