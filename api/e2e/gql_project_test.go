@@ -289,7 +289,7 @@ func TestListProjects(t *testing.T) {
 
 	// Test listing projects with pagination
 	query := fmt.Sprintf(`{
-		projectsPage(
+		projects(
 			workspaceId: "%s"
 			pagination: {
 				page: 1
@@ -337,7 +337,7 @@ func TestListProjects(t *testing.T) {
 					TotalPages  int `json:"totalPages"`
 					CurrentPage int `json:"currentPage"`
 				} `json:"pageInfo"`
-			} `json:"projectsPage"`
+			} `json:"projects"`
 		} `json:"data"`
 	}
 

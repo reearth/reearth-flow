@@ -70,7 +70,7 @@ type ProjectConnection {
 # Query and Mutation
 
 extend type Query {
-  projectsPage(
+  projects(
     workspaceId: ID!
     includeArchived: Boolean
     pagination: PageBasedPagination!
