@@ -42,7 +42,7 @@ type LogProps<TData, TValue> = {
   showFiltering?: boolean;
 };
 
-const Logs = <TData, TValue>({
+const LogsTable = <TData, TValue>({
   columns,
   data,
   selectColumns = false,
@@ -104,7 +104,7 @@ const Logs = <TData, TValue>({
     const value = columnFilters.find((id) => id.id === "logLevel");
     return value?.value;
   }, [columnFilters]);
-  console.log("data", data);
+
   return (
     <div className="flex size-full flex-col rounded">
       <div className="flex h-16 w-full items-center justify-between p-2">
@@ -246,6 +246,6 @@ const Logs = <TData, TValue>({
   );
 };
 
-Logs.displayName = "Logs";
+LogsTable.displayName = "LogsTable";
 
-export { Logs };
+export { LogsTable };

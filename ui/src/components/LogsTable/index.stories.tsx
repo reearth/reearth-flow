@@ -2,16 +2,16 @@ import type { Meta, StoryObj } from "@storybook/react";
 
 import { logData } from "@flow/mock_data/logsData";
 
-import { Logs } from ".";
+import { LogsTable } from ".";
 
 const meta = {
-  component: Logs,
+  component: LogsTable,
   parameters: {
     layout: "centered",
   },
   tags: ["autodocs"],
   argTypes: {},
-} satisfies Meta<typeof Logs>;
+} satisfies Meta<typeof LogsTable>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

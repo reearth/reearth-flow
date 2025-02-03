@@ -61,6 +61,7 @@ export default ({ workflowId }: { workflowId?: string }) => {
     });
 
     return () => {
+      setIsSynced(false); // Mark as not synced
       yWebSocketProvider?.destroy(); // Cleanup on unmount
     };
   }, [projectId, workflowId]);

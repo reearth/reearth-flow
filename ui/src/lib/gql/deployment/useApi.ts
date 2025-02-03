@@ -60,14 +60,13 @@ export const useDeployment = () => {
   const createDeploymentFromFile = async (
     workspaceId: string,
     workflowFile: File,
-    customName?: string,
-    description?: string,
+    description: string,
   ): Promise<CreateDeployment> => {
     const { mutateAsync, ...rest } = createDeploymentMutation;
     const formData = new FormData();
     formData.append(
       "file",
-      new File([workflowFile], customName || workflowFile.name, {
+      new File([workflowFile], workflowFile.name, {
         type: workflowFile.type,
       }),
     );

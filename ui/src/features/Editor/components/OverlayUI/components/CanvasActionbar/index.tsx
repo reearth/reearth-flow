@@ -20,53 +20,52 @@ const CanvasActionBar = () => {
   const { isFullscreen, handleFullscreenToggle } = useFullscreen();
 
   return (
-    <div className="absolute bottom-2 right-2">
-      <div className="m-1 rounded-md border bg-secondary">
-        <div className="flex rounded-md">
-          <div className="flex flex-1 flex-col justify-end align-middle">
-            <IconButton
-              className="rounded-[4px]"
-              tooltipText={t("Zoom in")}
-              tooltipPosition="left"
-              tooltipOffset={tooltipOffset}
-              icon={<MagnifyingGlassPlus weight="thin" />}
-              onClick={() => zoomIn({ duration: 400 })}
-            />
-            <IconButton
-              className="rounded-[4px]"
-              tooltipText={t("Zoom out")}
-              tooltipOffset={tooltipOffset}
-              tooltipPosition="left"
-              icon={<MagnifyingGlassMinus weight="thin" />}
-              onClick={() => zoomOut({ duration: 400 })}
-            />
-            <IconButton
-              className="rounded-[4px]"
-              tooltipText={t("All nodes in viewport")}
-              tooltipOffset={tooltipOffset}
-              tooltipPosition="left"
-              icon={<FrameCorners weight="thin" />}
-              onClick={() => fitView({ duration: 400, padding: 0.5 })}
-            />
-            <IconButton
-              className="rounded-[4px]"
-              tooltipText={
-                isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")
-              }
-              tooltipOffset={tooltipOffset}
-              tooltipPosition="left"
-              icon={
-                isFullscreen ? (
-                  <CornersIn weight="thin" />
-                ) : (
-                  <CornersOut weight="thin" />
-                )
-              }
-              onClick={handleFullscreenToggle}
-            />
-            {/* <div className="border-l  mx-3" /> */}
-          </div>
-          {/* <div className="flex align-middle">
+    <div className="m-1 rounded-md border bg-secondary">
+      <div className="flex rounded-md">
+        <div className="flex flex-1 flex-col justify-end align-middle">
+          <IconButton
+            className="rounded-[4px]"
+            tooltipText={t("Zoom in")}
+            tooltipPosition="left"
+            tooltipOffset={tooltipOffset}
+            icon={<MagnifyingGlassPlus weight="thin" />}
+            onClick={() => zoomIn({ duration: 400 })}
+          />
+          <IconButton
+            className="rounded-[4px]"
+            tooltipText={t("Zoom out")}
+            tooltipOffset={tooltipOffset}
+            tooltipPosition="left"
+            icon={<MagnifyingGlassMinus weight="thin" />}
+            onClick={() => zoomOut({ duration: 400 })}
+          />
+          <IconButton
+            className="rounded-[4px]"
+            tooltipText={t("All nodes in viewport")}
+            tooltipOffset={tooltipOffset}
+            tooltipPosition="left"
+            icon={<FrameCorners weight="thin" />}
+            onClick={() => fitView({ duration: 400, padding: 0.5 })}
+          />
+          <IconButton
+            className="rounded-[4px]"
+            tooltipText={
+              isFullscreen ? t("Exit fullscreen") : t("Enter fullscreen")
+            }
+            tooltipOffset={tooltipOffset}
+            tooltipPosition="left"
+            icon={
+              isFullscreen ? (
+                <CornersIn weight="thin" />
+              ) : (
+                <CornersOut weight="thin" />
+              )
+            }
+            onClick={handleFullscreenToggle}
+          />
+          {/* <div className="border-l  mx-3" /> */}
+        </div>
+        {/* <div className="flex align-middle">
           <IconButton
             tooltipText={t("Publish workflow")}
             tooltipOffset={tooltipOffset}
@@ -78,7 +77,6 @@ const CanvasActionBar = () => {
             icon={<DownloadIcon />}
           />
         </div> */}
-        </div>
       </div>
     </div>
   );

@@ -19,7 +19,6 @@ import {
   validateWorkflowJson,
   validateWorkflowYaml,
 } from "@flow/utils/engineWorkflowValidation";
-import { removeWhiteSpace } from "@flow/utils/removeWhiteSpace";
 
 type Props = {
   setShowDialog: (show: boolean) => void;
@@ -30,17 +29,10 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   const [currentWorkspace] = useCurrentWorkspace();
   const { createDeploymentFromFile } = useDeployment();
 
-  const [name, setName] = useState<string>("");
-
   const [description, setDescription] = useState<string>("");
 
   const [workflowFile, setWorkflowFile] = useState<File | null>(null);
   const [invalidFile, setInvalidFile] = useState<boolean>(false);
-
-  const handleNameChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
-    const trimmedValue = removeWhiteSpace(e.target.value);
-    setName(trimmedValue);
-  }, []);
 
   const handleWorkflowFileUpload = useCallback(
     (e: ChangeEvent<HTMLInputElement>) => {
@@ -68,7 +60,6 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
           console.error("Error reading file:", e.target?.error);
         };
 
-        // Read the file as text
         reader.readAsText(file);
       } else if (fileExtension === "yaml" || fileExtension === "yml") {
         const reader = new FileReader();
@@ -90,8 +81,6 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
           console.error("Error reading file:", e.target?.error);
         };
 
-        // Read the file as text
-
         reader.readAsText(file);
       }
     },
@@ -103,17 +92,11 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
 
     if (!workspaceId || !workflowFile) return;
 
-    await createDeploymentFromFile(
-      workspaceId,
-      workflowFile,
-      name,
-      description,
-    );
+    await createDeploymentFromFile(workspaceId, workflowFile, description);
 
     setShowDialog(false);
   }, [
     currentWorkspace?.id,
-    name,
     description,
     workflowFile,
     setShowDialog,
@@ -141,14 +124,6 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
             )}
           </DialogContentSection>
           <div className="border-b border-primary text-center" />
-          <DialogContentSection className="flex flex-col">
-            <Label>{t("Name (optional): ")}</Label>
-            <Input
-              value={name}
-              onChange={handleNameChange}
-              placeholder={t("Give your deployment a unique name...")}
-            />
-          </DialogContentSection>
           <DialogContentSection className="flex flex-col">
             <Label>{t("Description")}</Label>
             <Input
