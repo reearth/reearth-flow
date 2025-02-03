@@ -53,12 +53,42 @@ func (r *Deployment) FindByWorkspace(_ context.Context, wid accountdomain.Worksp
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
-	// Sort by version in ascending order
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].Version() < result[j].Version()
-	})
-
+	// Apply sorting if pagination parameters are provided
 	if p != nil && p.Page != nil {
+		// Default sort by updatedAt desc if no sorting specified
+		field := "updatedAt"
+		if p.Page.OrderBy != nil {
+			field = *p.Page.OrderBy
+		}
+
+		ascending := false
+		if p.Page.OrderDir != nil && *p.Page.OrderDir == "ASC" {
+			ascending = true
+		}
+
+		sort.Slice(result, func(i, j int) bool {
+			// Helper function to handle both ascending and descending
+			compare := func(less bool) bool {
+				if ascending {
+					return less
+				}
+				return !less
+			}
+
+			switch field {
+			case "updatedAt":
+				return compare(result[i].UpdatedAt().Before(result[j].UpdatedAt()))
+			case "description":
+				return compare(result[i].Description() < result[j].Description())
+			case "version":
+				return compare(result[i].Version() < result[j].Version())
+			default:
+				// Default to updatedAt
+				return compare(result[i].UpdatedAt().Before(result[j].UpdatedAt()))
+			}
+		})
+
+		// Apply pagination
 		skip := (p.Page.Page - 1) * p.Page.PageSize
 		if skip >= len(result) {
 			return nil, interfaces.NewPageBasedInfo(total, p.Page.Page, p.Page.PageSize), nil

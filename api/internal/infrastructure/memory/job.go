@@ -38,7 +38,7 @@ func (r *Job) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID,
 	defer r.lock.Unlock()
 
 	if !r.f.CanRead(id) {
-		return nil, nil, nil
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
 	result := []*job.Job{}
@@ -53,55 +53,71 @@ func (r *Job) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID,
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
-	// Apply sorting
-	direction := 1 // default ascending
-	if pagination != nil && pagination.Page != nil && pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
-		direction = -1
-	}
+	// Apply sorting if pagination parameters are provided
+	if pagination != nil && pagination.Page != nil {
+		// Default sort by startedAt desc if no sorting specified
+		field := "startedAt"
+		if pagination.Page.OrderBy != nil {
+			field = *pagination.Page.OrderBy
+		}
 
-	sort.Slice(result, func(i, j int) bool {
-		if pagination != nil && pagination.Page != nil && pagination.Page.OrderBy != nil {
-			// Compare by specified field
-			switch *pagination.Page.OrderBy {
+		ascending := false
+		if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "ASC" {
+			ascending = true
+		}
+
+		sort.Slice(result, func(i, j int) bool {
+			// Helper function to handle both ascending and descending
+			compare := func(less bool) bool {
+				if ascending {
+					return less
+				}
+				return !less
+			}
+
+			switch field {
 			case "startedAt":
 				ti := result[i].StartedAt()
 				tj := result[j].StartedAt()
 				if !ti.Equal(tj) {
-					if direction == 1 {
-						return ti.Before(tj)
-					}
-					return ti.After(tj)
+					return compare(ti.Before(tj))
 				}
+				return compare(result[i].ID().String() < result[j].ID().String())
 			case "completedAt":
 				ti := result[i].CompletedAt()
 				tj := result[j].CompletedAt()
 				if ti == nil && tj == nil {
-					return result[i].ID().String() < result[j].ID().String()
+					return compare(result[i].ID().String() < result[j].ID().String())
 				}
 				if ti == nil {
-					return direction == 1
+					return compare(true)
 				}
 				if tj == nil {
-					return direction != 1
+					return compare(false)
 				}
 				if !ti.Equal(*tj) {
-					if direction == 1 {
-						return ti.Before(*tj)
-					}
-					return ti.After(*tj)
+					return compare(ti.Before(*tj))
 				}
+				return compare(result[i].ID().String() < result[j].ID().String())
+			case "status":
+				si := result[i].Status()
+				sj := result[j].Status()
+				if si != sj {
+					return compare(si < sj)
+				}
+				return compare(result[i].ID().String() < result[j].ID().String())
+			default:
+				// Default to startedAt
+				ti := result[i].StartedAt()
+				tj := result[j].StartedAt()
+				if !ti.Equal(tj) {
+					return compare(ti.Before(tj))
+				}
+				return compare(result[i].ID().String() < result[j].ID().String())
 			}
-		}
-		// Default sort or tie-breaker: by ID
-		return result[i].ID().String() < result[j].ID().String()
-	})
+		})
 
-	if pagination == nil {
-		return result, interfaces.NewPageBasedInfo(total, 1, int(total)), nil
-	}
-
-	if pagination.Page != nil {
-		// Page-based pagination
+		// Apply pagination
 		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
 		if skip >= len(result) {
 			return nil, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil

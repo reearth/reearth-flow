@@ -53,41 +53,58 @@ func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
-	// Apply sorting
-	direction := 1 // default ascending
-	if pagination != nil && pagination.Page != nil && pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
-		direction = -1
-	}
+	// Apply sorting if pagination parameters are provided
+	if pagination != nil && pagination.Page != nil {
+		// Default sort by createdAt desc if no sorting specified
+		field := "createdAt"
+		if pagination.Page.OrderBy != nil {
+			field = *pagination.Page.OrderBy
+		}
 
-	sort.Slice(result, func(i, j int) bool {
-		if pagination != nil && pagination.Page != nil && pagination.Page.OrderBy != nil {
-			switch *pagination.Page.OrderBy {
+		ascending := false
+		if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "ASC" {
+			ascending = true
+		}
+
+		sort.Slice(result, func(i, j int) bool {
+			// Helper function to handle both ascending and descending
+			compare := func(less bool) bool {
+				if ascending {
+					return less
+				}
+				return !less
+			}
+
+			switch field {
 			case "name":
 				ni, nj := result[i].Name(), result[j].Name()
 				if ni != nj {
-					if direction == 1 {
-						return ni < nj
-					}
-					return ni > nj
+					return compare(ni < nj)
 				}
+				return compare(result[i].ID().String() < result[j].ID().String())
 			case "createdAt":
 				ti, tj := result[i].CreatedAt(), result[j].CreatedAt()
 				if !ti.Equal(tj) {
-					if direction == 1 {
-						return ti.Before(tj)
-					}
-					return ti.After(tj)
+					return compare(ti.Before(tj))
 				}
+				return compare(result[i].ID().String() < result[j].ID().String())
+			case "updatedAt":
+				ti, tj := result[i].UpdatedAt(), result[j].UpdatedAt()
+				if !ti.Equal(tj) {
+					return compare(ti.Before(tj))
+				}
+				return compare(result[i].ID().String() < result[j].ID().String())
+			default:
+				// Default to createdAt
+				ti, tj := result[i].CreatedAt(), result[j].CreatedAt()
+				if !ti.Equal(tj) {
+					return compare(ti.Before(tj))
+				}
+				return compare(result[i].ID().String() < result[j].ID().String())
 			}
-		}
-		return result[i].ID().String() < result[j].ID().String()
-	})
+		})
 
-	if pagination == nil {
-		return result, interfaces.NewPageBasedInfo(total, 1, int(total)), nil
-	}
-
-	if pagination.Page != nil {
+		// Apply pagination
 		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
 		if skip >= len(result) {
 			return nil, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
