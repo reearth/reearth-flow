@@ -66,7 +66,7 @@ func (r *Deployment) FindByWorkspace(_ context.Context, wid accountdomain.Worksp
 			ascending = true
 		}
 
-		sort.Slice(result, func(i, j int) bool {
+		sort.SliceStable(result, func(i, j int) bool {
 			// Helper function to handle both ascending and descending
 			compare := func(less bool) bool {
 				if ascending {
@@ -77,13 +77,25 @@ func (r *Deployment) FindByWorkspace(_ context.Context, wid accountdomain.Worksp
 
 			switch field {
 			case "updatedAt":
+				if result[i].UpdatedAt().Equal(result[j].UpdatedAt()) {
+					return result[i].ID().String() < result[j].ID().String()
+				}
 				return compare(result[i].UpdatedAt().Before(result[j].UpdatedAt()))
 			case "description":
+				if result[i].Description() == result[j].Description() {
+					return result[i].ID().String() < result[j].ID().String()
+				}
 				return compare(result[i].Description() < result[j].Description())
 			case "version":
+				if result[i].Version() == result[j].Version() {
+					return result[i].ID().String() < result[j].ID().String()
+				}
 				return compare(result[i].Version() < result[j].Version())
 			default:
 				// Default to updatedAt
+				if result[i].UpdatedAt().Equal(result[j].UpdatedAt()) {
+					return result[i].ID().String() < result[j].ID().String()
+				}
 				return compare(result[i].UpdatedAt().Before(result[j].UpdatedAt()))
 			}
 		})
@@ -101,6 +113,10 @@ func (r *Deployment) FindByWorkspace(_ context.Context, wid accountdomain.Worksp
 
 		return result[skip:end], interfaces.NewPageBasedInfo(total, p.Page.Page, p.Page.PageSize), nil
 	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ID().String() < result[j].ID().String()
+	})
 
 	return result, interfaces.NewPageBasedInfo(total, 1, int(total)), nil
 }
