@@ -5755,6 +5755,7 @@ dependencies = [
  "nusamai-plateau",
  "nusamai-projection",
  "once_cell",
+ "parking_lot",
  "petgraph",
  "prost",
  "rayon",

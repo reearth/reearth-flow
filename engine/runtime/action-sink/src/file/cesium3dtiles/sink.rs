@@ -6,7 +6,10 @@ use std::{
     io::BufWriter,
     path::Path,
     str::FromStr,
-    sync::{mpsc, Arc, Mutex},
+    sync::{
+        mpsc::{self, channel, Receiver},
+        Arc, Mutex,
+    },
     vec,
 };
 
@@ -122,6 +125,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 max_zoom: params.max_zoom,
                 attach_texture: params.attach_texture,
             },
+            join_handles: Vec::new(),
         };
         Ok(Box::new(sink))
     }
@@ -132,6 +136,7 @@ pub struct Cesium3DTilesWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
     pub(super) buffer: HashMap<(Uri, String), Vec<Feature>>,
+    pub(super) join_handles: Vec<Arc<parking_lot::Mutex<Receiver<()>>>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -173,6 +178,7 @@ impl Sink for Cesium3DTilesWriter {
         ) {
             return Err(SinkError::Cesium3DTilesWriter("Unsupported input".to_string()).into());
         }
+        let context = ctx.as_context();
         let feature = ctx.feature;
         let output = self.params.output.clone();
         let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
@@ -180,6 +186,16 @@ impl Sink for Cesium3DTilesWriter {
             .eval_ast::<String>(&output)
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;
         let output = Uri::from_str(path.as_str())?;
+        if !self
+            .buffer
+            .contains_key(&(output.clone(), feature_type.clone()))
+        {
+            let result =
+                self.flush_buffer(context, Some((output.clone(), feature_type.clone())))?;
+            self.buffer
+                .retain(|k, _| k != &(output.clone(), feature_type.clone()));
+            self.join_handles.extend(result);
+        }
         let buffer = self
             .buffer
             .entry((output, feature_type.clone()))
@@ -187,29 +203,50 @@ impl Sink for Cesium3DTilesWriter {
         buffer.push(feature);
         Ok(())
     }
+
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let mut features = HashMap::<Uri, Vec<(String, Vec<Feature>)>>::new();
-        for ((output, feature_type), buffer) in &self.buffer {
-            features
-                .entry(output.clone())
-                .or_default()
-                .push((feature_type.clone(), buffer.clone()));
-        }
-        for (output, buffer) in &features {
-            self.write(ctx.as_context(), buffer, output)?;
+        let result = self.flush_buffer(ctx.as_context(), None)?;
+        let mut join_handles = self.join_handles.clone();
+        join_handles.extend(result);
+        for join in join_handles {
+            let _ = join.lock().recv();
         }
         Ok(())
     }
 }
 
 impl Cesium3DTilesWriter {
-    pub fn write(
+    pub(crate) fn flush_buffer(
+        &self,
+        ctx: Context,
+        ignore_key: Option<(Uri, String)>,
+    ) -> crate::errors::Result<Vec<Arc<parking_lot::Mutex<Receiver<()>>>>> {
+        let mut result = Vec::new();
+        let mut features = HashMap::<Uri, Vec<(String, Vec<Feature>)>>::new();
+        for ((output, feature_type), buffer) in &self.buffer {
+            if let Some((ignore_output, ignore_feature_type)) = &ignore_key {
+                if output == ignore_output && feature_type == ignore_feature_type {
+                    continue;
+                }
+            }
+            features
+                .entry(output.clone())
+                .or_default()
+                .push((feature_type.clone(), buffer.clone()));
+        }
+        for (output, buffer) in &features {
+            let res = self.write(ctx.clone(), buffer, output)?;
+            result.extend(res);
+        }
+        Ok(result)
+    }
+
+    pub(crate) fn write(
         &self,
         ctx: Context,
         upstream: &Vec<(String, Vec<Feature>)>,
         output: &Uri,
-    ) -> crate::errors::Result<()> {
-        let name = self.name().to_string();
+    ) -> crate::errors::Result<Vec<Arc<parking_lot::Mutex<Receiver<()>>>>> {
         let tile_id_conv = TileIdMethod::Hilbert;
         let attach_texture = self.params.attach_texture.unwrap_or(false);
         let mut features = Vec::new();
@@ -222,64 +259,84 @@ impl Cesium3DTilesWriter {
             schema.types.insert(feature_type.clone(), typedef);
             features.extend(upstream.clone().into_iter());
         }
-        std::thread::scope(|scope| {
-            let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
-            let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
-            scope.spawn(|| {
-                let result = geometry_slicing_stage(
-                    &features,
+
+        let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
+        let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
+        let min_zoom = self.params.min_zoom;
+        let max_zoom = self.params.max_zoom;
+        let gctx = ctx.clone();
+
+        let mut result = Vec::new();
+
+        let (tx, rx) = channel();
+        result.push(Arc::new(parking_lot::Mutex::new(rx)));
+        std::thread::spawn(move || {
+            let result = geometry_slicing_stage(
+                &features,
+                tile_id_conv,
+                sender_sliced,
+                min_zoom,
+                max_zoom,
+                attach_texture,
+            );
+            if let Err(e) = &result {
+                gctx.event_hub.error_log(
+                    None,
+                    format!("Failed to geometry_slicing_stage with error = {:?}", e),
+                );
+                gctx.event_hub.send(Event::SinkFinishFailed {
+                    name: "geometry_slicing_stage".to_string(),
+                });
+            }
+            tx.send(()).unwrap();
+        });
+        let fctx = ctx.clone();
+        let (tx, rx) = channel();
+        result.push(Arc::new(parking_lot::Mutex::new(rx)));
+        std::thread::spawn(move || {
+            let result = feature_sorting_stage(receiver_sliced, sender_sorted);
+            if let Err(e) = &result {
+                fctx.event_hub.error_log(
+                    None,
+                    format!("Failed to feature_sorting_stage with error = {:?}", e),
+                );
+                fctx.event_hub.send(Event::SinkFinishFailed {
+                    name: "feature_sorting_stage".to_string(),
+                });
+            }
+            tx.send(()).unwrap();
+        });
+        let output = output.clone();
+        let (tx, rx) = channel();
+        result.push(Arc::new(parking_lot::Mutex::new(rx)));
+        std::thread::spawn(move || {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .use_current_thread()
+                .build()
+                .unwrap();
+            pool.install(|| {
+                let result = tile_writing_stage(
+                    ctx.clone(),
+                    output,
+                    receiver_sorted,
                     tile_id_conv,
-                    sender_sliced,
-                    self.params.min_zoom,
-                    self.params.max_zoom,
-                    attach_texture,
+                    &schema,
+                    None,
                 );
                 if let Err(e) = &result {
+                    let ctx = ctx.clone();
                     ctx.event_hub.error_log(
                         None,
-                        format!("Failed to geometry_slicing_stage with error = {:?}", e),
+                        format!("Failed to tile_writing_stage with error = {:?}", e),
                     );
-                    ctx.event_hub
-                        .send(Event::SinkFinishFailed { name: name.clone() });
+                    ctx.event_hub.send(Event::SinkFinishFailed {
+                        name: "tile_writing_stage".to_string(),
+                    });
                 }
-            });
-            scope.spawn(|| {
-                let result = feature_sorting_stage(receiver_sliced, sender_sorted);
-                if let Err(e) = &result {
-                    ctx.event_hub.error_log(
-                        None,
-                        format!("Failed to feature_sorting_stage with error = {:?}", e),
-                    );
-                    ctx.event_hub
-                        .send(Event::SinkFinishFailed { name: name.clone() });
-                }
-            });
-            scope.spawn(|| {
-                let pool = rayon::ThreadPoolBuilder::new()
-                    .use_current_thread()
-                    .build()
-                    .unwrap();
-                pool.install(|| {
-                    let result = tile_writing_stage(
-                        ctx.clone(),
-                        output,
-                        receiver_sorted,
-                        tile_id_conv,
-                        &schema,
-                        None,
-                    );
-                    if let Err(e) = &result {
-                        ctx.event_hub.error_log(
-                            None,
-                            format!("Failed to tile_writing_stage with error = {:?}", e),
-                        );
-                        ctx.event_hub
-                            .send(Event::SinkFinishFailed { name: name.clone() });
-                    }
-                })
-            });
+                tx.send(()).unwrap();
+            })
         });
-        Ok(())
+        Ok(result)
     }
 }
 
@@ -389,7 +446,7 @@ fn feature_sorting_stage(
 
 fn tile_writing_stage(
     ctx: Context,
-    output_path: &Uri,
+    output_path: Uri,
     receiver_sorted: mpsc::Receiver<(u64, String, Vec<Vec<u8>>)>,
     tile_id_conv: TileIdMethod,
     schema: &Schema,
@@ -785,7 +842,7 @@ fn tile_writing_stage(
 
             let storage = ctx
                 .storage_resolver
-                .resolve(output_path)
+                .resolve(&output_path)
                 .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
             let output_path = output_path.path().join(Path::new(&content_path));
             storage
@@ -812,7 +869,7 @@ fn tile_writing_stage(
 
     let storage = ctx
         .storage_resolver
-        .resolve(output_path)
+        .resolve(&output_path)
         .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
 
     let root_tileset_path = output_path

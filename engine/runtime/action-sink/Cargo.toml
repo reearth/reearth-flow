@@ -64,6 +64,7 @@ tinymvt.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 url.workspace = true
+parking_lot.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
