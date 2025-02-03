@@ -5,16 +5,16 @@ mutation CreateProject($input: CreateProjectInput!) {
     }
   }
 }
-
-query GetProjects($workspaceId: ID!, $first: Int!, $after: Cursor) {
-  projects(workspaceId: $workspaceId, first: $first, after: $after) {
+query GetProjects($workspaceId: ID!, $pagination: PageBasedPagination!) {
+  projectsPage(workspaceId: $workspaceId, pagination: $pagination) {
     totalCount
     nodes {
       ...Project
     }
     pageInfo {
-      endCursor
-      hasNextPage
+      totalCount
+      currentPage
+      totalPages
     }
   }
 }

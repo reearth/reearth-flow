@@ -43,35 +43,48 @@ export const useQueries = () => {
       }),
   });
 
-  const useGetProjectsInfiniteQuery = (workspaceId?: string) =>
-    useInfiniteQuery({
+  const useGetProjectsInfiniteQuery = (workspaceId?: string) => {
+    return useInfiniteQuery({
       queryKey: [ProjectQueryKeys.GetWorkspaceProjects, workspaceId],
-      initialPageParam: null,
+      initialPageParam: 1,
       queryFn: async ({ pageParam }) => {
         const data = await graphQLContext?.GetProjects({
           workspaceId: workspaceId ?? "",
-          first: PROJECT_FETCH_AMOUNT,
-          after: pageParam,
+          pagination: {
+            page: pageParam,
+            pageSize: PROJECT_FETCH_AMOUNT,
+            // orderDir: "ASC",
+          },
         });
-        if (!data) return;
+        if (!data) throw new Error("No data returned");
         const {
-          projects: {
+          projectsPage: {
             nodes,
-            pageInfo: { endCursor, hasNextPage },
+            pageInfo: { totalCount, currentPage, totalPages },
           },
         } = data;
+
         const projects: Project[] = nodes
           .filter(isDefined)
           .map((project) => toProject(project));
-        return { projects, endCursor, hasNextPage };
+
+        return {
+          projects,
+          totalCount,
+          currentPage,
+          totalPages,
+        };
       },
-      enabled: !!workspaceId,
       getNextPageParam: (lastPage) => {
         if (!lastPage) return undefined;
-        const { endCursor, hasNextPage } = lastPage;
-        return hasNextPage ? endCursor : undefined;
+        if ((lastPage.currentPage ?? 0) < (lastPage.totalPages ?? 0)) {
+          return (lastPage.currentPage ?? 0) + 1;
+        }
+        return undefined;
       },
+      enabled: !!workspaceId,
     });
+  };
 
   const useGetProjectByIdQuery = (projectId?: string) =>
     useQuery({
