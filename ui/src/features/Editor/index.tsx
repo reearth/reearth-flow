@@ -7,6 +7,7 @@ import {
   Canvas,
   LeftPanel,
   OverlayUI,
+  ParamsPanel,
   RightPanel,
 } from "./components";
 import useHooks from "./hooks";
@@ -35,6 +36,10 @@ export default function Editor({
     canUndo,
     canRedo,
     allowedToDeploy,
+    isMainWorkflow,
+    hasReader,
+    rightPanelContent,
+    handleRightPanelOpen,
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handlePanelOpen,
@@ -53,8 +58,6 @@ export default function Editor({
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
-    isMainWorkflow,
-    hasReader,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
   return (
     <div className="flex h-screen flex-col">
@@ -79,6 +82,7 @@ export default function Editor({
             onWorkflowRedo={handleWorkflowRedo}
             onNodesAdd={handleNodesAdd}
             onNodePickerClose={handleNodePickerClose}
+            onRightPanelOpen={handleRightPanelOpen}
             isMainWorkflow={isMainWorkflow}
             hasReader={hasReader}>
             <Canvas
@@ -107,6 +111,10 @@ export default function Editor({
           />
         </div>
         <RightPanel
+          contentType={rightPanelContent}
+          onClose={() => handleRightPanelOpen(undefined)}
+        />
+        <ParamsPanel
           selected={locallyLockedNode}
           onParamsSubmit={handleNodeParamsUpdate}
         />

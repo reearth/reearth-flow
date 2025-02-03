@@ -1,4 +1,4 @@
-import { Logs } from "@flow/components/Logs";
+import { LogsTable } from "@flow/components/LogsTable";
 import mockLogs from "@flow/mock_data/logsv2Data";
 
 const LogsConsole: React.FC = () => {
@@ -25,7 +25,7 @@ const LogsConsole: React.FC = () => {
     selectColumns: true,
     showFiltering: true,
   };
-  return <Logs {...props} />;
+  return <LogsTable {...props} />;
 };
 
 export { LogsConsole };

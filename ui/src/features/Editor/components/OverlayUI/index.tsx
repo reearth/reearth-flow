@@ -9,8 +9,8 @@ import {
   Toolbox,
   Breadcrumb,
   Infobar,
+  NodePickerDialog,
 } from "./components";
-import NodePickerDialog from "./components/NodePickerDialog";
 
 type OverlayUIProps = {
   hoveredDetails: Node | Edge | undefined;
@@ -27,6 +27,7 @@ type OverlayUIProps = {
   ) => Promise<void>;
   onNodesAdd: (nodes: Node[]) => void;
   onNodePickerClose: () => void;
+  onRightPanelOpen: (content?: "version-history") => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
   isMainWorkflow: boolean;
@@ -43,6 +44,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onWorkflowDeployment,
   onNodesAdd,
   onNodePickerClose,
+  onRightPanelOpen,
   onWorkflowUndo,
   onWorkflowRedo,
   isMainWorkflow,
@@ -75,6 +77,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           <ActionBar
             allowedToDeploy={allowedToDeploy}
             onWorkflowDeployment={onWorkflowDeployment}
+            onRightPanelOpen={onRightPanelOpen}
           />
         </div>
         <div className="absolute bottom-2 right-2">

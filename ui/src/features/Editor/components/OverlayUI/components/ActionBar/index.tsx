@@ -27,11 +27,13 @@ type Props = {
     deploymentId?: string,
     description?: string,
   ) => Promise<void>;
+  onRightPanelOpen: (content?: "version-history") => void;
 };
 
 const ActionBar: React.FC<Props> = ({
   allowedToDeploy,
   onWorkflowDeployment,
+  onRightPanelOpen,
 }) => {
   const t = useT();
 
@@ -61,15 +63,8 @@ const ActionBar: React.FC<Props> = ({
               icon={<RocketLaunch weight="thin" />}
               onClick={() => setShowDialog(true)}
             />
-            {/* <IconButton
-              className="rounded-[4px]"
-              tooltipText={t("Download project workflow")}
-              tooltipOffset={tooltipOffset}
-              icon={<DownloadSimple weight="thin" />}
-            /> */}
-            <div className="border-l" />
             <DropdownMenu>
-              <DropdownMenuTrigger>
+              <DropdownMenuTrigger asChild>
                 <IconButton
                   className="w-[20px] rounded-l-none rounded-r-[4px]"
                   tooltipText={t("Additional actions")}
@@ -84,7 +79,9 @@ const ActionBar: React.FC<Props> = ({
                     {t("Export Project")}
                   </p>
                 </DropdownMenuItem>
-                <DropdownMenuItem className="flex gap-2">
+                <DropdownMenuItem
+                  className="flex gap-2"
+                  onClick={() => onRightPanelOpen("version-history")}>
                   <LetterCircleV weight="light" />
                   <p className="text-sm font-extralight">
                     {t("Version History")}
