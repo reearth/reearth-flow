@@ -49,6 +49,7 @@ image.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
 once_cell.workspace = true
+parking_lot.workspace = true
 petgraph.workspace = true
 prost.workspace = true
 rayon.workspace = true
@@ -64,7 +65,6 @@ tinymvt.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 url.workspace = true
-parking_lot.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]

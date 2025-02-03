@@ -208,9 +208,32 @@ impl Sink for Cesium3DTilesWriter {
         let result = self.flush_buffer(ctx.as_context(), None)?;
         let mut join_handles = self.join_handles.clone();
         join_handles.extend(result);
-        for join in join_handles {
-            let _ = join.lock().recv();
+
+        let timeout = std::time::Duration::from_secs(60 * 10);
+        let mut errors = Vec::new();
+
+        for (i, join) in join_handles.iter().enumerate() {
+            match join.lock().recv_timeout(timeout) {
+                Ok(_) => continue,
+                Err(mpsc::RecvTimeoutError::Timeout) => {
+                    errors.push(format!("Worker thread {} timed out after {:?}", i, timeout));
+                }
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    ctx.event_hub.warn_log(
+                        None,
+                        format!("Worker thread {} disconnected unexpectedly", i),
+                    );
+                }
+            }
         }
+        if !errors.is_empty() {
+            return Err(SinkError::Cesium3DTilesWriter(format!(
+                "Failed to complete all worker threads: {}",
+                errors.join("; ")
+            ))
+            .into());
+        }
+
         Ok(())
     }
 }
