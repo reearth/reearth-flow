@@ -1,10 +1,13 @@
 type Workspace implements Node {
-  assets(first: Int, last: Int, after: Cursor, before: Cursor): AssetConnection!
+  assets(pagination: Pagination): AssetConnection!
   id: ID!
   members: [WorkspaceMember!]!
   name: String!
   personal: Boolean!
-  projects(includeArchived: Boolean, first: Int, last: Int, after: Cursor, before: Cursor): ProjectConnection!
+  projects(
+    includeArchived: Boolean
+    pagination: Pagination
+  ): ProjectConnection!
 }
 
 type WorkspaceMember {

@@ -4,14 +4,15 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
-	"github.com/reearth/reearthx/usecasex"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -58,13 +59,49 @@ func (r *Trigger) FindByIDs(ctx context.Context, ids id.TriggerIDList) ([]*trigg
 	return filterTriggers(ids, res), nil
 }
 
-func (r *Trigger) FindByWorkspace(ctx context.Context, workspace accountdomain.WorkspaceID, pagination *usecasex.Pagination) ([]*trigger.Trigger, *usecasex.PageInfo, error) {
-	if !r.f.CanRead(workspace) {
-		return nil, usecasex.EmptyPageInfo(), nil
+func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
+	if !r.f.CanRead(id) {
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
-	return r.paginate(ctx, bson.M{
-		"workspaceid": workspace.String(),
-	}, pagination)
+
+	c := mongodoc.NewTriggerConsumer(r.f.Readable)
+	filter := bson.M{"workspaceid": id.String()}
+
+	if pagination != nil && pagination.Page != nil {
+		// Page-based pagination
+		skip := int64((pagination.Page.Page - 1) * pagination.Page.PageSize)
+		limit := int64(pagination.Page.PageSize)
+
+		// Get total count for page info
+		total, err := r.client.Count(ctx, filter)
+		if err != nil {
+			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		// Set up sort options
+		opts := options.Find().SetSkip(skip).SetLimit(limit)
+		if pagination.Page.OrderBy != nil {
+			direction := 1 // default ascending
+			if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
+				direction = -1
+			}
+			opts.SetSort(bson.D{{Key: *pagination.Page.OrderBy, Value: direction}})
+		}
+
+		// Execute find with skip and limit
+		if err := r.client.Find(ctx, filter, c, opts); err != nil {
+			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		return c.Result, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
+	}
+
+	// If no pagination, return all results
+	if err := r.client.Find(ctx, filter, c); err != nil {
+		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	total := int64(len(c.Result))
+	return c.Result, interfaces.NewPageBasedInfo(total, 1, len(c.Result)), nil
 }
 
 func (r *Trigger) Save(ctx context.Context, trigger *trigger.Trigger) error {
@@ -97,15 +134,6 @@ func (r *Trigger) findOne(ctx context.Context, filter any, filterByWorkspaces bo
 		return nil, err
 	}
 	return c.Result[0], nil
-}
-
-func (r *Trigger) paginate(ctx context.Context, filter bson.M, pagination *usecasex.Pagination) ([]*trigger.Trigger, *usecasex.PageInfo, error) {
-	c := mongodoc.NewTriggerConsumer(r.f.Readable)
-	pageInfo, err := r.client.Paginate(ctx, filter, nil, pagination, c)
-	if err != nil {
-		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-	}
-	return c.Result, pageInfo, nil
 }
 
 func filterTriggers(ids []id.TriggerID, rows []*trigger.Trigger) []*trigger.Trigger {

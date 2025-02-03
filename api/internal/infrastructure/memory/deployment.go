@@ -5,12 +5,12 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/rerror"
-	"github.com/reearth/reearthx/usecasex"
 )
 
 type Deployment struct {
@@ -33,36 +33,46 @@ func (r *Deployment) Filtered(f repo.WorkspaceFilter) repo.Deployment {
 	}
 }
 
-func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *usecasex.Pagination) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
+func (r *Deployment) FindByWorkspace(_ context.Context, wid accountdomain.WorkspaceID, p *interfaces.PaginationParam) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	if !r.f.CanRead(id) {
-		return nil, nil, nil
+	if !r.f.CanRead(wid) {
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
 	result := []*deployment.Deployment{}
 	for _, d := range r.data {
-		if d.Workspace() == id {
+		if d.Workspace() == wid {
 			result = append(result, d)
 		}
 	}
 
-	var startCursor, endCursor *usecasex.Cursor
-	if len(result) > 0 {
-		_startCursor := usecasex.Cursor(result[0].ID().String())
-		_endCursor := usecasex.Cursor(result[len(result)-1].ID().String())
-		startCursor = &_startCursor
-		endCursor = &_endCursor
+	total := int64(len(result))
+	if total == 0 {
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
-	return result, usecasex.NewPageInfo(
-		int64(len(result)),
-		startCursor,
-		endCursor,
-		true,
-		true,
-	), nil
+	// Sort by version in ascending order
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Version() < result[j].Version()
+	})
+
+	if p != nil && p.Page != nil {
+		skip := (p.Page.Page - 1) * p.Page.PageSize
+		if skip >= len(result) {
+			return nil, interfaces.NewPageBasedInfo(total, p.Page.Page, p.Page.PageSize), nil
+		}
+
+		end := skip + p.Page.PageSize
+		if end > len(result) {
+			end = len(result)
+		}
+
+		return result[skip:end], interfaces.NewPageBasedInfo(total, p.Page.Page, p.Page.PageSize), nil
+	}
+
+	return result, interfaces.NewPageBasedInfo(total, 1, int(total)), nil
 }
 
 func (r *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deployment.Deployment, error) {
