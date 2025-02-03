@@ -6,8 +6,8 @@ import (
 )
 
 type ExecutionRequest struct {
-	AuthToken       string                 `json:"authToken"`
-	NotificationURL string                 `json:"notificationUrl"`
+	AuthToken       string                 `json:"authToken,omitempty"`
+	NotificationURL string                 `json:"notificationUrl,omitempty"`
 	With            map[string]interface{} `json:"with,omitempty"`
 }
 

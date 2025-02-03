@@ -51,7 +51,7 @@ func NewBatch(ctx context.Context, config BatchConfig) (gateway.Batch, error) {
 	}, nil
 }
 
-func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL, metadataURL string, variables *map[string]interface{}, projectID id.ProjectID, workspaceID accountdomain.WorkspaceID) (string, error) {
+func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL, metadataURL string, variables map[string]interface{}, projectID id.ProjectID, workspaceID accountdomain.WorkspaceID) (string, error) {
 	log.Debugfc(ctx, "gcpbatch: starting job submission with jobID=%s projectID=%s workspaceID=%s", jobID, projectID, workspaceID)
 
 	formattedJobID := formatJobID(jobID.String())
@@ -70,9 +70,9 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 	}
 
 	var varArgs []string
-	if variables != nil {
-		log.Debugfc(ctx, "gcpbatch: processing %d variables", len(*variables))
-		for k, v := range *variables {
+	if len(variables) > 0 {
+		log.Debugfc(ctx, "gcpbatch: processing %d variables", len(variables))
+		for k, v := range variables {
 			varArgs = append(varArgs, fmt.Sprintf("--var=%s=%v", k, v))
 			log.Debugfc(ctx, "gcpbatch: added variable %s=%v", k, v)
 		}
@@ -100,7 +100,7 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		ImageUri: b.config.ImageURI,
 		Commands: commands,
 	}
-	log.Debugfc(ctx, "gcpbatch: created container config with image=%s", b.config.ImageURI)
+	log.Debugfc(ctx, "gcpbatch: created container config with image=%s and JSON logging enabled", b.config.ImageURI)
 
 	runnable := &batchpb.Runnable{
 		Executable: &batchpb.Runnable_Container_{
@@ -115,6 +115,12 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 	taskSpec := &batchpb.TaskSpec{
 		Runnables: []*batchpb.Runnable{
 			runnable,
+		},
+		Environment: &batchpb.Environment{
+			Variables: map[string]string{
+				"FLOW_RUNTIME_FEATURE_WRITER_DISABLE": "true",
+				"FLOW_WORKER_ENABLE_JSON_LOG":         "true",
+			},
 		},
 	}
 

@@ -4,29 +4,18 @@
     "type": "object",
     "properties": {
         "authToken": {
-            "type": "string"
+            "type": "string",
+            "description": "Authentication token for the execution"
         },
         "notificationUrl": {
             "type": "string",
-            "format": "uri"
+            "format": "uri",
+            "description": "URL to notify upon completion"
         },
         "with": {
             "type": "object",
-            "properties": {
-                "cityGmlPath": {"type": "string"},
-                "cityCode": {"type": "string"},
-                "codelistsPath": {"type": "string"}, 
-                "schemasPath": {"type": "string"},
-                "schemaJson": {"type": "string"},
-                "targetPackages": {
-                    "type": "array",
-                    "items": {"type": "string"}
-                },
-                "addNsprefixToFeatureTypes": {"type": "boolean"},
-                "extractDmGeometryAsXmlFragment": {"type": "boolean"},
-                "outputPath": {"type": "string"}
-            }
+            "description": "Execution parameters - can contain any valid JSON object properties",
+            "additionalProperties": true
         }
-    },
-    "required": ["notificationUrl", "authToken", "with"]
+    }
 }
