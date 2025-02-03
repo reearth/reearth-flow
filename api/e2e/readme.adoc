@@ -1,0 +1,129 @@
+= Reearth Flow GraphQL API Documentation
+
+This document provides an overview of the Reearth Flow GraphQL API and usage examples specifically for the front-end integration.
+
+== Introduction
+
+Reearth Flow provides a GraphQL API to manage projects, jobs, deployments, and triggers. This document is aimed at front-end developers who need to integrate with the system.
+
+== GraphQL Endpoint
+
+The main GraphQL endpoint is available at:
+
+  /api/graphql
+
+All API calls must include the appropriate headers (e.g., X-Reearth-Debug-User) for authentication and authorization.
+
+== Usage Examples
+
+Below are examples of how to interact with the API.
+
+=== Querying Projects
+
+To retrieve a paginated list of projects, you can use the `projects` query. It supports pagination, sorting, and filtering.
+
+[source, graphql]
+----
+{
+  projects(
+    workspaceId: "YOUR_WORKSPACE_ID",
+    pagination: {
+      page: 1,
+      pageSize: 2,
+      orderBy: "name",
+      orderDir: ASC
+    }
+  ) {
+    nodes {
+      id
+      name
+    }
+    pageInfo {
+      totalCount
+      totalPages
+      currentPage
+    }
+  }
+}
+----
+
+=== Querying Jobs
+
+Similarly, you can query jobs. This example uses the `jobs` query to sort by the `startedAt` field.
+
+[source, graphql]
+----
+{
+  jobs(
+    workspaceId: "YOUR_WORKSPACE_ID",
+    pagination: {
+      page: 1,
+      pageSize: 5,
+      orderBy: "startedAt",
+      orderDir: DESC
+    }
+  ) {
+    nodes {
+      id
+      status
+      startedAt
+    }
+    pageInfo {
+      totalCount
+      currentPage
+      totalPages
+    }
+  }
+}
+----
+
+=== Querying Triggers
+
+The `triggers` query allows you to fetch trigger data with pagination and sorting support. Below is an example:
+
+[source, graphql]
+----
+{
+  triggers(
+    workspaceId: "YOUR_WORKSPACE_ID",
+    pagination: {
+      page: 1,
+      pageSize: 2,
+      orderBy: "description",
+      orderDir: ASC
+    }
+  ) {
+    nodes {
+      id
+      description
+    }
+    pageInfo {
+      totalCount
+      totalPages
+      currentPage
+    }
+  }
+}
+----
+
+== Creating Resources
+
+The API supports mutations to create projects, deployments, and triggers. When creating resources, you must send the proper JSON payload in your request body.
+
+For instance, a project creation mutation might look like this:
+
+[source, graphql]
+----
+mutation($input: CreateProjectInput!) {
+  createProject(input: $input) {
+    project {
+      id
+    }
+  }
+}
+----
+
+Check the server-side tests (e.g., in api/e2e/gql_pagination_test.go) for detailed examples of using these mutations.
+
+
+
