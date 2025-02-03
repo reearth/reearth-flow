@@ -382,7 +382,7 @@ func TestJobsPagination(t *testing.T) {
 	// Test pagination
 	t.Run("test_pagination", func(t *testing.T) {
 		query := fmt.Sprintf(`{
-			jobsPage(
+			jobs(
 				workspaceId: "%s"
 				pagination: {
 					page: 1
@@ -415,7 +415,7 @@ func TestJobsPagination(t *testing.T) {
 
 		var result struct {
 			Data struct {
-				JobsPage struct {
+				Jobs struct {
 					Nodes []struct {
 						ID     string `json:"id"`
 						Status string `json:"status"`
@@ -425,7 +425,7 @@ func TestJobsPagination(t *testing.T) {
 						CurrentPage int `json:"currentPage"`
 						TotalPages  int `json:"totalPages"`
 					} `json:"pageInfo"`
-				} `json:"jobsPage"`
+				} `json:"jobs"`
 			} `json:"data"`
 		}
 
@@ -433,14 +433,14 @@ func TestJobsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Verify first page results
-		assert.Len(t, result.Data.JobsPage.Nodes, 2, "Should return exactly 2 jobs")
-		assert.Greater(t, result.Data.JobsPage.PageInfo.TotalCount, 0, "Total count should be greater than zero")
+		assert.Len(t, result.Data.Jobs.Nodes, 2, "Should return exactly 2 jobs")
+		assert.Greater(t, result.Data.Jobs.PageInfo.TotalCount, 0, "Total count should be greater than zero")
 	})
 
 	// Test sorting
 	t.Run("test_sorting", func(t *testing.T) {
 		query := fmt.Sprintf(`{
-			jobsPage(
+			jobs(
 				workspaceId: "%s"
 				pagination: {
 					page: 1
@@ -470,23 +470,23 @@ func TestJobsPagination(t *testing.T) {
 
 		var result struct {
 			Data struct {
-				JobsPage struct {
+				Jobs struct {
 					Nodes []struct {
 						ID        string    `json:"id"`
 						StartedAt time.Time `json:"startedAt"`
 					} `json:"nodes"`
-				} `json:"jobsPage"`
+				} `json:"jobs"`
 			} `json:"data"`
 		}
 
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 		// Verify pagination results
-		assert.Len(t, result.Data.JobsPage.Nodes, 5, "Should return exactly 5 jobs")
+		assert.Len(t, result.Data.Jobs.Nodes, 5, "Should return exactly 5 Jobs")
 		// Verify sorting
-		for i := 1; i < len(result.Data.JobsPage.Nodes); i++ {
-			prev := result.Data.JobsPage.Nodes[i-1].StartedAt
-			curr := result.Data.JobsPage.Nodes[i].StartedAt
+		for i := 1; i < len(result.Data.Jobs.Nodes); i++ {
+			prev := result.Data.Jobs.Nodes[i-1].StartedAt
+			curr := result.Data.Jobs.Nodes[i].StartedAt
 			assert.True(t, prev.After(curr), "Jobs should be sorted by startedAt in descending order")
 		}
 	})
@@ -494,7 +494,7 @@ func TestJobsPagination(t *testing.T) {
 	// Test sorting in ascending order
 	t.Run("test_sorting_ascending", func(t *testing.T) {
 		query := fmt.Sprintf(`{
-			jobsPage(
+			jobs(
 				workspaceId: "%s"
 				pagination: {
 					page: 1
@@ -524,21 +524,21 @@ func TestJobsPagination(t *testing.T) {
 
 		var result struct {
 			Data struct {
-				JobsPage struct {
+				Jobs struct {
 					Nodes []struct {
 						ID        string    `json:"id"`
 						StartedAt time.Time `json:"startedAt"`
 					} `json:"nodes"`
-				} `json:"jobsPage"`
+				} `json:"jobs"`
 			} `json:"data"`
 		}
 
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 		// Verify sorting
-		for i := 1; i < len(result.Data.JobsPage.Nodes); i++ {
-			prev := result.Data.JobsPage.Nodes[i-1].StartedAt
-			curr := result.Data.JobsPage.Nodes[i].StartedAt
+		for i := 1; i < len(result.Data.Jobs.Nodes); i++ {
+			prev := result.Data.Jobs.Nodes[i-1].StartedAt
+			curr := result.Data.Jobs.Nodes[i].StartedAt
 			assert.True(t, prev.Before(curr), "Jobs should be sorted by startedAt in ascending order")
 		}
 	})
@@ -547,7 +547,7 @@ func TestJobsPagination(t *testing.T) {
 	t.Run("test_page_pagination", func(t *testing.T) {
 		// Test first page
 		query := fmt.Sprintf(`{
-			jobsPage(
+			jobs(
 				workspaceId: "%s"
 				pagination: {
 					page: 1
@@ -580,7 +580,7 @@ func TestJobsPagination(t *testing.T) {
 
 		var result struct {
 			Data struct {
-				JobsPage struct {
+				Jobs struct {
 					Nodes []struct {
 						ID     string `json:"id"`
 						Status string `json:"status"`
@@ -590,7 +590,7 @@ func TestJobsPagination(t *testing.T) {
 						CurrentPage int `json:"currentPage"`
 						TotalPages  int `json:"totalPages"`
 					} `json:"pageInfo"`
-				} `json:"jobsPage"`
+				} `json:"jobs"`
 			} `json:"data"`
 		}
 
@@ -598,14 +598,14 @@ func TestJobsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Verify first page results
-		assert.Len(t, result.Data.JobsPage.Nodes, 2)
-		assert.Equal(t, 1, result.Data.JobsPage.PageInfo.CurrentPage)
-		assert.Equal(t, 5, result.Data.JobsPage.PageInfo.TotalCount)
-		assert.Equal(t, 3, result.Data.JobsPage.PageInfo.TotalPages)
+		assert.Len(t, result.Data.Jobs.Nodes, 2)
+		assert.Equal(t, 1, result.Data.Jobs.PageInfo.CurrentPage)
+		assert.Equal(t, 5, result.Data.Jobs.PageInfo.TotalCount)
+		assert.Equal(t, 3, result.Data.Jobs.PageInfo.TotalPages)
 
 		// Test second page
 		query = fmt.Sprintf(`{
-			jobsPage(
+			jobs(
 				workspaceId: "%s"
 				pagination: {
 					page: 2
@@ -640,10 +640,10 @@ func TestJobsPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Verify second page results
-		assert.Equal(t, 2, result.Data.JobsPage.PageInfo.CurrentPage)
-		assert.Equal(t, 5, result.Data.JobsPage.PageInfo.TotalCount)
-		assert.Equal(t, 3, result.Data.JobsPage.PageInfo.TotalPages)
-		assert.Len(t, result.Data.JobsPage.Nodes, 2)
+		assert.Equal(t, 2, result.Data.Jobs.PageInfo.CurrentPage)
+		assert.Equal(t, 5, result.Data.Jobs.PageInfo.TotalCount)
+		assert.Equal(t, 3, result.Data.Jobs.PageInfo.TotalPages)
+		assert.Len(t, result.Data.Jobs.Nodes, 2)
 	})
 }
 
@@ -718,7 +718,7 @@ func TestTriggersPagination(t *testing.T) {
 	// Test page-based pagination
 	t.Run("test_page_based_pagination", func(t *testing.T) {
 		query := fmt.Sprintf(`{
-			triggersPage(
+			triggers(
 				workspaceId: "%s"
 				pagination: {
 					page: 1
@@ -751,7 +751,7 @@ func TestTriggersPagination(t *testing.T) {
 
 		var result struct {
 			Data struct {
-				TriggersPage struct {
+				Triggers struct {
 					Nodes []struct {
 						ID          string `json:"id"`
 						Description string `json:"description"`
@@ -761,23 +761,23 @@ func TestTriggersPagination(t *testing.T) {
 						TotalPages  int `json:"totalPages"`
 						CurrentPage int `json:"currentPage"`
 					} `json:"pageInfo"`
-				} `json:"triggersPage"`
+				} `json:"triggers"`
 			} `json:"data"`
 		}
 
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 
-		assert.Len(t, result.Data.TriggersPage.Nodes, 2)
-		assert.Equal(t, 5, result.Data.TriggersPage.PageInfo.TotalCount)
-		assert.Equal(t, 3, result.Data.TriggersPage.PageInfo.TotalPages)
-		assert.Equal(t, 1, result.Data.TriggersPage.PageInfo.CurrentPage)
+		assert.Len(t, result.Data.Triggers.Nodes, 2)
+		assert.Equal(t, 5, result.Data.Triggers.PageInfo.TotalCount)
+		assert.Equal(t, 3, result.Data.Triggers.PageInfo.TotalPages)
+		assert.Equal(t, 1, result.Data.Triggers.PageInfo.CurrentPage)
 	})
 
 	// Test sorting
 	t.Run("test_sorting", func(t *testing.T) {
 		query := fmt.Sprintf(`{
-			triggersPage(
+			triggers(
 				workspaceId: "%s"
 				pagination: {
 					page: 1
@@ -807,12 +807,12 @@ func TestTriggersPagination(t *testing.T) {
 
 		var result struct {
 			Data struct {
-				TriggersPage struct {
+				Triggers struct {
 					Nodes []struct {
 						ID          string `json:"id"`
 						Description string `json:"description"`
 					} `json:"nodes"`
-				} `json:"triggersPage"`
+				} `json:"triggers"`
 			} `json:"data"`
 		}
 
@@ -820,9 +820,9 @@ func TestTriggersPagination(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Verify sorting
-		for i := 1; i < len(result.Data.TriggersPage.Nodes); i++ {
-			prev := result.Data.TriggersPage.Nodes[i-1].Description
-			curr := result.Data.TriggersPage.Nodes[i].Description
+		for i := 1; i < len(result.Data.Triggers.Nodes); i++ {
+			prev := result.Data.Triggers.Nodes[i-1].Description
+			curr := result.Data.Triggers.Nodes[i].Description
 			assert.True(t, prev <= curr, "Triggers should be sorted by description in ascending order")
 		}
 	})
@@ -830,7 +830,7 @@ func TestTriggersPagination(t *testing.T) {
 	// Test last page
 	t.Run("test_last_page", func(t *testing.T) {
 		query := fmt.Sprintf(`{
-			triggersPage(
+			triggers(
 				workspaceId: "%s"
 				pagination: {
 					page: 3
@@ -863,7 +863,7 @@ func TestTriggersPagination(t *testing.T) {
 
 		var result struct {
 			Data struct {
-				TriggersPage struct {
+				Triggers struct {
 					Nodes []struct {
 						ID          string `json:"id"`
 						Description string `json:"description"`
@@ -873,16 +873,16 @@ func TestTriggersPagination(t *testing.T) {
 						TotalPages  int `json:"totalPages"`
 						CurrentPage int `json:"currentPage"`
 					} `json:"pageInfo"`
-				} `json:"triggersPage"`
+				} `json:"triggers"`
 			} `json:"data"`
 		}
 
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
 
-		assert.Len(t, result.Data.TriggersPage.Nodes, 1) // Last page should have 1 item
-		assert.Equal(t, 5, result.Data.TriggersPage.PageInfo.TotalCount)
-		assert.Equal(t, 3, result.Data.TriggersPage.PageInfo.TotalPages)
-		assert.Equal(t, 3, result.Data.TriggersPage.PageInfo.CurrentPage)
+		assert.Len(t, result.Data.Triggers.Nodes, 1) // Last page should have 1 item
+		assert.Equal(t, 5, result.Data.Triggers.PageInfo.TotalCount)
+		assert.Equal(t, 3, result.Data.Triggers.PageInfo.TotalPages)
+		assert.Equal(t, 3, result.Data.Triggers.PageInfo.CurrentPage)
 	})
 }
