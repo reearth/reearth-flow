@@ -16,8 +16,8 @@ const tooltipOffset = 6;
 type Props = {
   allowedToDeploy: boolean;
   onWorkflowDeployment: (
+    description: string,
     deploymentId?: string,
-    description?: string,
   ) => Promise<void>;
 };
 

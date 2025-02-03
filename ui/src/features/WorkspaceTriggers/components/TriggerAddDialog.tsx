@@ -103,9 +103,9 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     await createTrigger(
       workspaceId,
       deploymentId,
+      description,
       eventSource === "TIME_DRIVEN" ? timeInterval : undefined,
       eventSource === "API_DRIVEN" ? authToken : undefined,
-      description,
     );
 
     setShowDialog(false);
