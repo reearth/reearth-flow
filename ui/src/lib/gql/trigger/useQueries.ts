@@ -1,10 +1,7 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { Trigger } from "@flow/types";
+import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
 import type {
@@ -117,16 +114,18 @@ export const useQueries = () => {
     },
   });
 
-  const useGetTriggersInfiniteQuery = (workspaceId?: string) =>
-    useInfiniteQuery({
+  const useGetTriggersQuery = (
+    workspaceId?: string,
+    paginationOptions?: PaginationOptions,
+  ) =>
+    useQuery({
       queryKey: [TriggerQueryKeys.GetTriggers, workspaceId],
-      initialPageParam: 1,
-      queryFn: async ({ pageParam }) => {
+      queryFn: async () => {
         const data = await graphQLContext?.GetTriggers({
           workspaceId: workspaceId ?? "",
           pagination: {
-            page: pageParam,
-            pageSize: TRIGGERS_FETCH_RATE,
+            page: paginationOptions?.page ?? 1,
+            pageSize: paginationOptions?.pageSize ?? TRIGGERS_FETCH_RATE,
             // orderDir: "ASC",
           },
         });
@@ -143,19 +142,12 @@ export const useQueries = () => {
         return { triggers, totalCount, totalPages, currentPage };
       },
       enabled: !!workspaceId,
-      getNextPageParam: (lastPage) => {
-        if (!lastPage) return undefined;
-        if ((lastPage.currentPage ?? 0) < (lastPage.totalPages ?? 0)) {
-          return (lastPage.currentPage ?? 0) + 1;
-        }
-        return undefined;
-      },
     });
 
   return {
     createTriggerMutation,
     updateTriggerMutation,
     deleteTriggerMutation,
-    useGetTriggersInfiniteQuery,
+    useGetTriggersQuery,
   };
 };

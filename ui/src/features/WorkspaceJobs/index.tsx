@@ -17,6 +17,10 @@ const JobsManager: React.FC = () => {
     openJobRunDialog,
     setOpenJobRunDialog,
     handleJobSelect,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    JOBS_FETCH_RATE_PER_PAGE,
   } = useHooks();
 
   const columns: ColumnDef<Job>[] = [
@@ -61,6 +65,10 @@ const JobsManager: React.FC = () => {
             enablePagination
             rowHeight={14}
             onRowClick={handleJobSelect}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            totalPages={totalPages}
+            resultsPerPage={JOBS_FETCH_RATE_PER_PAGE}
           />
         ) : (
           <BasicBoiler

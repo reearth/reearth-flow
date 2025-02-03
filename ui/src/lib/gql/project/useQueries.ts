@@ -1,12 +1,8 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useGraphQLContext } from "@flow/lib/gql";
 import { Project } from "@flow/types";
+import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
 import {
@@ -43,17 +39,19 @@ export const useQueries = () => {
       }),
   });
 
-  const useGetProjectsInfiniteQuery = (workspaceId?: string) => {
-    return useInfiniteQuery({
+  const useGetProjectsQuery = (
+    workspaceId?: string,
+    paginationOptions?: PaginationOptions,
+  ) => {
+    return useQuery({
       queryKey: [ProjectQueryKeys.GetWorkspaceProjects, workspaceId],
-      initialPageParam: 1,
-      queryFn: async ({ pageParam }) => {
+      queryFn: async () => {
         const data = await graphQLContext?.GetProjects({
           workspaceId: workspaceId ?? "",
           pagination: {
-            page: pageParam,
-            pageSize: PROJECT_FETCH_AMOUNT,
-            // orderDir: "ASC",
+            page: paginationOptions?.page ?? 1,
+            pageSize: paginationOptions?.pageSize ?? PROJECT_FETCH_AMOUNT,
+            // orderDir: paginationOptions?.orderDir,
           },
         });
         if (!data) throw new Error("No data returned");
@@ -74,13 +72,6 @@ export const useQueries = () => {
           currentPage,
           totalPages,
         };
-      },
-      getNextPageParam: (lastPage) => {
-        if (!lastPage) return undefined;
-        if ((lastPage.currentPage ?? 0) < (lastPage.totalPages ?? 0)) {
-          return (lastPage.currentPage ?? 0) + 1;
-        }
-        return undefined;
       },
       enabled: !!workspaceId,
     });
@@ -156,7 +147,7 @@ export const useQueries = () => {
     deleteProjectMutation,
     updateProjectMutation,
     runProjectMutation,
-    useGetProjectsInfiniteQuery,
+    useGetProjectsQuery,
     useGetProjectByIdQuery,
   };
 };

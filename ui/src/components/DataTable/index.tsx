@@ -16,7 +16,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   DropdownMenu,
@@ -44,9 +44,12 @@ type DataTableProps<TData, TValue> = {
   selectColumns?: boolean;
   showFiltering?: boolean;
   enablePagination?: boolean;
-  pageSize?: number;
+  totalPages?: number;
   rowHeight?: number;
   onRowClick?: (row: TData) => void;
+  currentPage?: number;
+  setCurrentPage?: (page: number) => void;
+  resultsPerPage?: number;
 };
 
 function DataTable<TData, TValue>({
@@ -55,9 +58,12 @@ function DataTable<TData, TValue>({
   selectColumns = false,
   showFiltering = false,
   enablePagination = false,
-  pageSize = 10,
+  totalPages = 1,
   rowHeight,
   onRowClick,
+  currentPage = 1,
+  setCurrentPage,
+  resultsPerPage,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -66,11 +72,12 @@ function DataTable<TData, TValue>({
   const [globalFilter, setGlobalFilter] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize,
+    pageSize: resultsPerPage ?? 10,
   });
 
+  const defaultData = useMemo(() => [], []);
   const table = useReactTable({
-    data,
+    data: data ? data : defaultData,
     columns,
     getCoreRowModel: getCoreRowModel(),
     // Sorting
@@ -95,6 +102,7 @@ function DataTable<TData, TValue>({
       globalFilter,
       pagination,
     },
+    manualPagination: true,
   });
 
   return (
@@ -197,35 +205,52 @@ function DataTable<TData, TValue>({
             <IconButton
               variant="outline"
               icon={<CaretDoubleLeft />}
-              onClick={() => table.firstPage()}
-              disabled={!table.getCanPreviousPage()}
+              onClick={() => {
+                if (currentPage > 1) {
+                  setCurrentPage?.(1);
+                  // table.setPageIndex(0);
+                }
+              }}
+              disabled={currentPage <= 1}
             />
             <IconButton
               variant="outline"
               icon={<CaretLeft />}
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
+              onClick={() => {
+                if (currentPage > 1) {
+                  setCurrentPage?.(currentPage - 1);
+                  // table.previousPage();
+                }
+              }}
+              disabled={currentPage <= 1}
             />
             <div className="flex min-w-10 items-center justify-center gap-1">
-              <p className="text-sm font-light">
-                {table.getState().pagination.pageIndex + 1}
-              </p>
+              <p className="text-sm font-light">{currentPage}</p>
               <p className="text-xs font-light">/</p>
-              <p className="text-sm font-light">
-                {table.getPageCount().toLocaleString()}
-              </p>
+              <p className="text-sm font-light">{totalPages}</p>
             </div>
             <IconButton
               className="rounded border p-1"
               icon={<CaretRight />}
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
+              onClick={() => {
+                if (currentPage < totalPages) {
+                  setCurrentPage?.(currentPage + 1);
+                  // table.nextPage();
+                }
+              }}
+              disabled={currentPage >= totalPages}
             />
+
             <IconButton
               className="rounded border p-1"
               icon={<CaretDoubleRight />}
-              onClick={() => table.lastPage()}
-              disabled={!table.getCanNextPage()}
+              onClick={() => {
+                if (currentPage < totalPages) {
+                  setCurrentPage?.(totalPages);
+                  // table.setPageIndex(totalPages - 1);
+                }
+              }}
+              disabled={currentPage >= totalPages}
             />
           </div>
         </div>

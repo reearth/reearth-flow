@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useProject } from "@flow/lib/gql";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
@@ -11,13 +11,22 @@ export default () => {
   const [workspace] = useCurrentWorkspace();
 
   const [currentProject, setCurrentProject] = useCurrentProject();
-
+  const PROJECTS_FETCH_RATE_PER_PAGE = 5;
   const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
-  const { useGetWorkspaceProjectsInfinite, deleteProject, updateProject } =
+  const { useGetWorkspaceProjects, deleteProject, updateProject } =
     useProject();
-  const { pages, hasNextPage, isFetching, fetchNextPage } =
-    useGetWorkspaceProjectsInfinite(workspace?.id);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
+  const { pages, refetch } = useGetWorkspaceProjects(workspace?.id, {
+    pageSize: PROJECTS_FETCH_RATE_PER_PAGE,
+    page: currentPage,
+  });
+
+  useEffect(() => {
+    refetch();
+  }, [currentPage, refetch]);
+
+  const totalPages = pages?.totalPages as number;
   const [openProjectAddDialog, setOpenProjectAddDialog] = useState(false);
   const [showError, setShowError] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
@@ -67,44 +76,7 @@ export default () => {
     return;
   };
 
-  const projects: Project[] | undefined = useMemo(
-    () =>
-      pages?.reduce((projects, page) => {
-        if (page?.projects) {
-          projects.push(...page.projects);
-        }
-        return projects;
-      }, [] as Project[]),
-    [pages],
-  );
-
-  // Auto fills the page
-  useEffect(() => {
-    if (
-      ref.current &&
-      ref.current?.scrollHeight <= document.documentElement.clientHeight &&
-      hasNextPage &&
-      !isFetching
-    ) {
-      fetchNextPage();
-    }
-  }, [isFetching, hasNextPage, ref, fetchNextPage]);
-
-  // Loads more projects as scroll reaches the bottom
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop + 5 >=
-          document.documentElement.scrollHeight &&
-        !isFetching &&
-        hasNextPage
-      ) {
-        fetchNextPage();
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isFetching, fetchNextPage, hasNextPage]);
+  const projects = pages?.projects;
 
   return {
     projects,
@@ -122,5 +94,9 @@ export default () => {
     handleDeleteProject,
     handleUpdateValue,
     handleUpdateProject,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    PROJECTS_FETCH_RATE_PER_PAGE,
   };
 };

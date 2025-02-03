@@ -32,6 +32,10 @@ const TriggerManager: React.FC = () => {
     setTriggerToBeDeleted,
     handleTriggerSelect,
     handleTriggerDelete,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    TRIGGERS_FETCH_RATE_PER_PAGE,
   } = useHooks();
   const columns: ColumnDef<Trigger>[] = [
     {
@@ -105,6 +109,10 @@ const TriggerManager: React.FC = () => {
                 enablePagination
                 rowHeight={14}
                 onRowClick={handleTriggerSelect}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+                totalPages={totalPages}
+                resultsPerPage={TRIGGERS_FETCH_RATE_PER_PAGE}
               />
             ) : (
               <BasicBoiler

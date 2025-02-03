@@ -1,6 +1,7 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import type { Job } from "@flow/types";
+import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
 import { toJob } from "../convert";
@@ -16,17 +17,18 @@ const JOBS_FETCH_RATE = 15;
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
 
-  const useGetJobsInfiniteQuery = (workspaceId?: string) =>
-    useInfiniteQuery({
+  const useGetJobsQuery = (
+    workspaceId?: string,
+    paginationOptions?: PaginationOptions,
+  ) =>
+    useQuery({
       queryKey: [JobQueryKeys.GetJobs, workspaceId],
-      initialPageParam: 1,
-      queryFn: async ({ pageParam }) => {
+      queryFn: async () => {
         const data = await graphQLContext?.GetJobs({
           workspaceId: workspaceId ?? "",
           pagination: {
-            page: pageParam,
-            pageSize: JOBS_FETCH_RATE,
-            // orderDir: "ASC",
+            page: paginationOptions?.page ?? 1,
+            pageSize: paginationOptions?.pageSize ?? JOBS_FETCH_RATE,
           },
         });
         if (!data) return;
@@ -40,15 +42,7 @@ export const useQueries = () => {
         return { jobs, totalCount, currentPage, totalPages };
       },
       enabled: !!workspaceId,
-      getNextPageParam: (lastPage) => {
-        if (!lastPage) return undefined;
-        if ((lastPage.currentPage ?? 0) < (lastPage.totalPages ?? 0)) {
-          return (lastPage.currentPage ?? 0) + 1;
-        }
-        return undefined;
-      },
     });
-
   const useGetJobQuery = (jobId: string) =>
     useQuery({
       queryKey: [JobQueryKeys.GetJob, jobId],
@@ -60,7 +54,7 @@ export const useQueries = () => {
     });
 
   return {
-    useGetJobsInfiniteQuery,
+    useGetJobsQuery,
     useGetJobQuery,
   };
 };

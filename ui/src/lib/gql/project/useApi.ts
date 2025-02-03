@@ -5,11 +5,11 @@ import {
   DeleteProject,
   EngineReadyWorkflow,
   GetProject,
-  GetWorkspaceProjects,
   Project,
   RunProject,
   UpdateProject,
 } from "@flow/types";
+import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { jsonToFormData } from "@flow/utils/jsonToFormData";
 
 import { CreateProjectInput, UpdateProjectInput } from "../__gen__/graphql";
@@ -25,7 +25,7 @@ export const useProject = () => {
     deleteProjectMutation,
     updateProjectMutation,
     runProjectMutation,
-    useGetProjectsInfiniteQuery,
+    useGetProjectsQuery,
     useGetProjectByIdQuery,
   } = useQueries();
 
@@ -45,12 +45,16 @@ export const useProject = () => {
     }
   };
 
-  const useGetWorkspaceProjectsInfinite = (
+  const useGetWorkspaceProjects = (
     workspaceId?: string,
-  ): GetWorkspaceProjects => {
-    const { data, ...rest } = useGetProjectsInfiniteQuery(workspaceId);
+    paginationOptions?: PaginationOptions,
+  ) => {
+    const { data, ...rest } = useGetProjectsQuery(
+      workspaceId,
+      paginationOptions,
+    );
     return {
-      pages: data?.pages,
+      pages: data,
       ...rest,
     };
   };
@@ -126,7 +130,7 @@ export const useProject = () => {
   };
 
   return {
-    useGetWorkspaceProjectsInfinite,
+    useGetWorkspaceProjects,
     useGetProject,
     createProject,
     updateProject,

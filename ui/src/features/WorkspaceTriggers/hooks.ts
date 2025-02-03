@@ -20,27 +20,24 @@ export default () => {
   const [triggerToBeDeleted, setTriggerToBeDeleted] = useState<
     Trigger | undefined
   >(undefined);
-  const { useGetTriggersInfinite, useDeleteTrigger } = useTrigger();
-
+  const { useGetTriggers, useDeleteTrigger } = useTrigger();
+  const TRIGGERS_FETCH_RATE_PER_PAGE = 15;
   const {
     location: { pathname },
   } = useRouterState();
 
   const tab = getTab(pathname);
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
-  const { pages, hasNextPage, isFetching, fetchNextPage } =
-    useGetTriggersInfinite(currentWorkspace?.id);
-
-  const triggers: Trigger[] | undefined = useMemo(
-    () =>
-      pages?.reduce((triggers, page) => {
-        if (page?.triggers) {
-          triggers.push(...page.triggers);
-        }
-        return triggers;
-      }, [] as Trigger[]),
-    [pages],
-  );
+  const { pages, refetch } = useGetTriggers(currentWorkspace?.id, {
+    pageSize: TRIGGERS_FETCH_RATE_PER_PAGE,
+    page: currentPage,
+  });
+  useEffect(() => {
+    refetch();
+  }, [currentPage, refetch]);
+  const totalPages = pages?.totalPages as number;
+  const triggers = pages?.triggers;
 
   const selectedTrigger = useMemo(
     () => triggers?.find((trigger) => trigger.id === tab),
@@ -67,32 +64,6 @@ export default () => {
     [currentWorkspace, triggerToBeDeleted, triggers, useDeleteTrigger],
   );
 
-  useEffect(() => {
-    if (
-      ref.current &&
-      ref.current?.scrollHeight <= document.documentElement.clientHeight &&
-      hasNextPage &&
-      !isFetching
-    ) {
-      fetchNextPage();
-    }
-  }, [isFetching, hasNextPage, ref, fetchNextPage]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop + 5 >=
-          document.documentElement.scrollHeight &&
-        !isFetching &&
-        hasNextPage
-      ) {
-        fetchNextPage();
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isFetching, fetchNextPage, hasNextPage]);
-
   return {
     ref,
     triggers,
@@ -105,6 +76,10 @@ export default () => {
     setTriggerToBeDeleted,
     handleTriggerSelect,
     handleTriggerDelete,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    TRIGGERS_FETCH_RATE_PER_PAGE,
   };
 };
 

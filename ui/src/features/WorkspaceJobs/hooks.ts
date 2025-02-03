@@ -14,29 +14,26 @@ export default () => {
 
   const [openJobRunDialog, setOpenJobRunDialog] = useState(false);
   const [currentWorkspace] = useCurrentWorkspace();
+  const [currentPage, setCurrentPage] = useState<number>(1);
 
-  const { useGetJobsInfinite } = useJob();
+  const { useGetJobs } = useJob();
+  const JOBS_FETCH_RATE_PER_PAGE = 15;
+  const { pages, refetch } = useGetJobs(currentWorkspace?.id, {
+    pageSize: JOBS_FETCH_RATE_PER_PAGE,
+    page: currentPage,
+  });
 
-  const { pages, hasNextPage, isFetching, fetchNextPage } = useGetJobsInfinite(
-    currentWorkspace?.id,
-  );
+  useEffect(() => {
+    refetch();
+  }, [currentPage, refetch]);
+  const totalPages = pages?.totalPages as number;
 
   const {
     location: { pathname },
   } = useRouterState();
 
   const tab = getTab(pathname);
-
-  const jobs: Job[] | undefined = useMemo(
-    () =>
-      pages?.reduce((jobs, page) => {
-        if (page?.jobs) {
-          jobs.push(...page.jobs);
-        }
-        return jobs;
-      }, [] as Job[]),
-    [pages],
-  );
+  const jobs = pages?.jobs;
 
   const selectedJob = useMemo(
     () => jobs?.find((job) => job.id === tab),
@@ -51,34 +48,6 @@ export default () => {
     [currentWorkspace, navigate],
   );
 
-  // Auto fills the page
-  useEffect(() => {
-    if (
-      ref.current &&
-      ref.current?.scrollHeight <= document.documentElement.clientHeight &&
-      hasNextPage &&
-      !isFetching
-    ) {
-      fetchNextPage();
-    }
-  }, [isFetching, hasNextPage, ref, fetchNextPage]);
-
-  // Loads more projects as scroll reaches the bottom
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop + 5 >=
-          document.documentElement.scrollHeight &&
-        !isFetching &&
-        hasNextPage
-      ) {
-        fetchNextPage();
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isFetching, fetchNextPage, hasNextPage]);
-
   return {
     ref,
     jobs,
@@ -86,6 +55,10 @@ export default () => {
     openJobRunDialog,
     setOpenJobRunDialog,
     handleJobSelect,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    JOBS_FETCH_RATE_PER_PAGE,
   };
 };
 
