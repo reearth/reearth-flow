@@ -20,19 +20,23 @@ var (
 	triggerUniqueIndexes = []string{"id"}
 )
 
+// Trigger represents a MongoDB repository implementation for managing triggers
 type Trigger struct {
 	client *mongox.ClientCollection
 	f      repo.WorkspaceFilter
 }
 
+// NewTrigger creates a new Trigger repository instance
 func NewTrigger(client *mongox.Client) *Trigger {
 	return &Trigger{client: client.WithCollection("trigger")}
 }
 
+// Init initializes the trigger collection by creating necessary indexes
 func (r *Trigger) Init(ctx context.Context) error {
 	return createIndexes(ctx, r.client, triggerIndexes, triggerUniqueIndexes)
 }
 
+// Filtered returns a filtered version of the trigger repository
 func (r *Trigger) Filtered(f repo.WorkspaceFilter) repo.Trigger {
 	return &Trigger{
 		client: r.client,
@@ -40,12 +44,14 @@ func (r *Trigger) Filtered(f repo.WorkspaceFilter) repo.Trigger {
 	}
 }
 
+// FindByID retrieves a single trigger by its ID
 func (r *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigger, error) {
 	return r.findOne(ctx, bson.M{
 		"id": id.String(),
 	}, true)
 }
 
+// FindByIDs retrieves multiple triggers by their IDs
 func (r *Trigger) FindByIDs(ctx context.Context, ids id.TriggerIDList) ([]*trigger.Trigger, error) {
 	filter := bson.M{
 		"id": bson.M{
@@ -59,6 +65,51 @@ func (r *Trigger) FindByIDs(ctx context.Context, ids id.TriggerIDList) ([]*trigg
 	return filterTriggers(ids, res), nil
 }
 
+// FindByWorkspace retrieves triggers for a given workspace with pagination support
+//
+// Parameters:
+//   - ctx: The context for the operation
+//   - id: The workspace ID to filter triggers
+//   - pagination: Optional pagination parameters
+//   - Page: The page number (1-based indexing)
+//   - PageSize: Number of items per page
+//   - OrderBy: Field to sort by (supported fields: "description", "createdAt", "updatedAt", "status")
+//   - OrderDir: Sort direction ("ASC" or "DESC")
+//
+// Returns:
+//   - []*trigger.Trigger: List of triggers for the given page
+//   - *interfaces.PageBasedInfo: Pagination information including:
+//   - TotalCount: Total number of triggers
+//   - CurrentPage: Current page number
+//   - TotalPages: Total number of pages
+//   - error: Any error that occurred during the operation
+//
+// Example GraphQL Query:
+//
+//	{
+//	  triggers(
+//	    workspaceId: "xxx",
+//	    pagination: {
+//	      page: 1,
+//	      pageSize: 10,
+//	      orderBy: "description",
+//	      orderDir: ASC
+//	    }
+//	  ) {
+//	    nodes {
+//	      id
+//	      description
+//	      status
+//	      createdAt
+//	      updatedAt
+//	    }
+//	    pageInfo {
+//	      totalCount
+//	      currentPage
+//	      totalPages
+//	    }
+//	  }
+//	}
 func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(id) {
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
@@ -85,7 +136,25 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 			if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
 				direction = -1
 			}
-			opts.SetSort(bson.D{{Key: *pagination.Page.OrderBy, Value: direction}})
+
+			// Map GraphQL field names to MongoDB field names
+			fieldNameMap := map[string]string{
+				"description": "description",
+				"createdAt":   "createdat",
+				"updatedAt":   "updatedat",
+				"status":      "status",
+				"id":          "id",
+				// Add other field mappings here
+			}
+
+			fieldName := *pagination.Page.OrderBy
+			if mongoField, ok := fieldNameMap[fieldName]; ok {
+				fieldName = mongoField
+			}
+			opts.SetSort(bson.D{{Key: fieldName, Value: direction}})
+		} else {
+			// Default sort by updatedAt desc
+			opts.SetSort(bson.D{{Key: "updatedat", Value: -1}})
 		}
 
 		// Execute find with skip and limit
@@ -104,6 +173,8 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 	return c.Result, interfaces.NewPageBasedInfo(total, 1, len(c.Result)), nil
 }
 
+// Save persists a trigger to the database
+// If the trigger already exists, it will be updated
 func (r *Trigger) Save(ctx context.Context, trigger *trigger.Trigger) error {
 	if !r.f.CanWrite(trigger.Workspace()) {
 		return repo.ErrOperationDenied
@@ -112,6 +183,7 @@ func (r *Trigger) Save(ctx context.Context, trigger *trigger.Trigger) error {
 	return r.client.SaveOne(ctx, id, doc)
 }
 
+// Remove deletes a trigger from the database by its ID
 func (r *Trigger) Remove(ctx context.Context, id id.TriggerID) error {
 	return r.client.RemoveOne(ctx, bson.M{"id": id.String()})
 }
