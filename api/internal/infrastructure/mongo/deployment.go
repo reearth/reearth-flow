@@ -115,7 +115,7 @@ func (r *DeploymentAdapter) FindByWorkspace(ctx context.Context, id accountdomai
 	}
 
 	c := mongodoc.NewDeploymentConsumer(r.f.Readable)
-	filter := bson.M{"workspace": id.String()}
+	filter := bson.M{"workspaceid": id.String()}
 
 	if pagination != nil && pagination.Page != nil {
 		// Page-based pagination
@@ -128,8 +128,33 @@ func (r *DeploymentAdapter) FindByWorkspace(ctx context.Context, id accountdomai
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
 
+		// Default sort by updatedAt desc
+		sort := bson.D{{Key: "updatedat", Value: -1}}
+
+		// Handle custom sorting
+		if pagination.Page.OrderBy != nil {
+			sortDir := -1 // default DESC
+			if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "ASC" {
+				sortDir = 1
+			}
+
+			// Map GraphQL field names to MongoDB field names
+			fieldNameMap := map[string]string{
+				"updatedAt":   "updatedat",
+				"description": "description",
+				"version":     "version",
+				"id":          "id",
+			}
+
+			fieldName := *pagination.Page.OrderBy
+			if mongoField, ok := fieldNameMap[fieldName]; ok {
+				fieldName = mongoField
+			}
+			sort = bson.D{{Key: fieldName, Value: sortDir}}
+		}
+
 		// Execute find with skip and limit
-		opts := options.Find().SetSkip(skip).SetLimit(limit)
+		opts := options.Find().SetSkip(skip).SetLimit(limit).SetSort(sort)
 		if err := r.client.Find(ctx, filter, c, opts); err != nil {
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
