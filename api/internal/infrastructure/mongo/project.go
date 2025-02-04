@@ -67,49 +67,6 @@ func (r *Project) FindByIDs(ctx context.Context, ids id.ProjectIDList) ([]*proje
 	return filterProjects(ids, res), nil
 }
 
-// Parameters:
-//   - ctx: The context for the operation
-//   - id: The workspace ID to filter projects
-//   - pagination: Optional pagination parameters
-//   - Page: The page number (1-based indexing)
-//   - PageSize: Number of items per page
-//   - OrderBy: Field to sort by (supported fields: "name", "createdAt", "updatedAt", "status")
-//   - OrderDir: Sort direction ("ASC" or "DESC")
-//
-// Returns:
-//   - []*project.Project: List of projects for the given page
-//   - *interfaces.PageBasedInfo: Pagination information including:
-//   - TotalCount: Total number of projects
-//   - CurrentPage: Current page number
-//   - TotalPages: Total number of pages
-//   - error: Any error that occurred during the operation
-//
-// Example GraphQL Query:
-//
-//	{
-//	  projects(
-//	    workspaceId: "xxx",
-//	    pagination: {
-//	      page: 1,
-//	      pageSize: 10,
-//	      orderBy: "name",
-//	      orderDir: ASC
-//	    }
-//	  ) {
-//	    nodes {
-//	      id
-//	      name
-//	      status
-//	      createdAt
-//	      updatedAt
-//	    }
-//	    pageInfo {
-//	      totalCount
-//	      currentPage
-//	      totalPages
-//	    }
-//	  }
-//	}
 func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(id) {
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil

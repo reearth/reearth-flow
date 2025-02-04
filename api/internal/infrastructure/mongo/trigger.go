@@ -59,49 +59,6 @@ func (r *Trigger) FindByIDs(ctx context.Context, ids id.TriggerIDList) ([]*trigg
 	return filterTriggers(ids, res), nil
 }
 
-// Parameters:
-//   - ctx: The context for the operation
-//   - id: The workspace ID to filter triggers
-//   - pagination: Optional pagination parameters
-//   - Page: The page number (1-based indexing)
-//   - PageSize: Number of items per page
-//   - OrderBy: Field to sort by (supported fields: "description", "createdAt", "updatedAt", "status")
-//   - OrderDir: Sort direction ("ASC" or "DESC")
-//
-// Returns:
-//   - []*trigger.Trigger: List of triggers for the given page
-//   - *interfaces.PageBasedInfo: Pagination information including:
-//   - TotalCount: Total number of triggers
-//   - CurrentPage: Current page number
-//   - TotalPages: Total number of pages
-//   - error: Any error that occurred during the operation
-//
-// Example GraphQL Query:
-//
-//	{
-//	  triggers(
-//	    workspaceId: "xxx",
-//	    pagination: {
-//	      page: 1,
-//	      pageSize: 10,
-//	      orderBy: "description",
-//	      orderDir: ASC
-//	    }
-//	  ) {
-//	    nodes {
-//	      id
-//	      description
-//	      status
-//	      createdAt
-//	      updatedAt
-//	    }
-//	    pageInfo {
-//	      totalCount
-//	      currentPage
-//	      totalPages
-//	    }
-//	  }
-//	}
 func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(id) {
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
