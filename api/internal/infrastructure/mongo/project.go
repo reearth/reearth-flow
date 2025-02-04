@@ -22,25 +22,21 @@ var (
 	projectUniqueIndexes = []string{"id"}
 )
 
-// Project represents a MongoDB repository implementation for managing projects
 type Project struct {
 	client *mongox.ClientCollection
 	f      repo.WorkspaceFilter
 }
 
-// NewProject creates a new Project repository instance
 func NewProject(client *mongox.Client) *Project {
 	return &Project{
 		client: client.WithCollection("project"),
 	}
 }
 
-// Init initializes the project collection by creating necessary indexes
 func (r *Project) Init(ctx context.Context) error {
 	return createIndexes(ctx, r.client, projectIndexes, projectUniqueIndexes)
 }
 
-// Filtered returns a filtered version of the project repository
 func (r *Project) Filtered(f repo.WorkspaceFilter) repo.Project {
 	return &Project{
 		client: r.client,
@@ -48,15 +44,12 @@ func (r *Project) Filtered(f repo.WorkspaceFilter) repo.Project {
 	}
 }
 
-// FindByID retrieves a single project by its ID
 func (r *Project) FindByID(ctx context.Context, id id.ProjectID) (*project.Project, error) {
 	return r.findOne(ctx, bson.M{
 		"id": id.String(),
 	}, true)
 }
 
-// FindByIDs retrieves multiple projects by their IDs
-// Returns nil if the ids list is empty
 func (r *Project) FindByIDs(ctx context.Context, ids id.ProjectIDList) ([]*project.Project, error) {
 	if len(ids) == 0 {
 		return nil, nil
@@ -193,8 +186,6 @@ func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 	return c.Result, interfaces.NewPageBasedInfo(total, 1, len(c.Result)), nil
 }
 
-// FindByPublicName retrieves a project by its public name
-// Returns ErrNotFound if name is empty
 func (r *Project) FindByPublicName(ctx context.Context, name string) (*project.Project, error) {
 	if name == "" {
 		return nil, rerror.ErrNotFound
@@ -213,7 +204,6 @@ func (r *Project) FindByPublicName(ctx context.Context, name string) (*project.P
 	return r.findOne(ctx, f, false)
 }
 
-// CountByWorkspace returns the total number of projects in a workspace
 func (r *Project) CountByWorkspace(ctx context.Context, ws accountdomain.WorkspaceID) (int, error) {
 	if !r.f.CanRead(ws) {
 		return 0, repo.ErrOperationDenied
@@ -225,7 +215,6 @@ func (r *Project) CountByWorkspace(ctx context.Context, ws accountdomain.Workspa
 	return int(count), err
 }
 
-// CountPublicByWorkspace returns the total number of public projects in a workspace
 func (r *Project) CountPublicByWorkspace(ctx context.Context, ws accountdomain.WorkspaceID) (int, error) {
 	if !r.f.CanRead(ws) {
 		return 0, repo.ErrOperationDenied

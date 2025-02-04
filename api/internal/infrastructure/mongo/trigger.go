@@ -20,23 +20,19 @@ var (
 	triggerUniqueIndexes = []string{"id"}
 )
 
-// Trigger represents a MongoDB repository implementation for managing triggers
 type Trigger struct {
 	client *mongox.ClientCollection
 	f      repo.WorkspaceFilter
 }
 
-// NewTrigger creates a new Trigger repository instance
 func NewTrigger(client *mongox.Client) *Trigger {
 	return &Trigger{client: client.WithCollection("trigger")}
 }
 
-// Init initializes the trigger collection by creating necessary indexes
 func (r *Trigger) Init(ctx context.Context) error {
 	return createIndexes(ctx, r.client, triggerIndexes, triggerUniqueIndexes)
 }
 
-// Filtered returns a filtered version of the trigger repository
 func (r *Trigger) Filtered(f repo.WorkspaceFilter) repo.Trigger {
 	return &Trigger{
 		client: r.client,
@@ -44,14 +40,12 @@ func (r *Trigger) Filtered(f repo.WorkspaceFilter) repo.Trigger {
 	}
 }
 
-// FindByID retrieves a single trigger by its ID
 func (r *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigger, error) {
 	return r.findOne(ctx, bson.M{
 		"id": id.String(),
 	}, true)
 }
 
-// FindByIDs retrieves multiple triggers by their IDs
 func (r *Trigger) FindByIDs(ctx context.Context, ids id.TriggerIDList) ([]*trigger.Trigger, error) {
 	filter := bson.M{
 		"id": bson.M{
@@ -173,8 +167,6 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 	return c.Result, interfaces.NewPageBasedInfo(total, 1, len(c.Result)), nil
 }
 
-// Save persists a trigger to the database
-// If the trigger already exists, it will be updated
 func (r *Trigger) Save(ctx context.Context, trigger *trigger.Trigger) error {
 	if !r.f.CanWrite(trigger.Workspace()) {
 		return repo.ErrOperationDenied
@@ -183,7 +175,6 @@ func (r *Trigger) Save(ctx context.Context, trigger *trigger.Trigger) error {
 	return r.client.SaveOne(ctx, id, doc)
 }
 
-// Remove deletes a trigger from the database by its ID
 func (r *Trigger) Remove(ctx context.Context, id id.TriggerID) error {
 	return r.client.RemoveOne(ctx, bson.M{"id": id.String()})
 }

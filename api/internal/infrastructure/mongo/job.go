@@ -20,30 +20,24 @@ var (
 	jobUniqueIndexes = []string{"id"}
 )
 
-// Job represents a MongoDB repository implementation for managing jobs
 type Job struct {
 	client *mongox.ClientCollection
 }
 
-// NewJob creates a new Job repository instance
 func NewJob(client *mongox.Client) repo.Job {
 	return &Job{
 		client: client.WithCollection("job"),
 	}
 }
 
-// Init initializes the job collection by creating necessary indexes
 func (r *Job) Init(ctx context.Context) error {
 	return createIndexes(ctx, r.client, jobIndexes, jobUniqueIndexes)
 }
 
-// Filtered returns a filtered version of the job repository
 func (r *Job) Filtered(f repo.WorkspaceFilter) repo.Job {
 	return r
 }
 
-// FindByIDs retrieves multiple jobs by their IDs
-// Returns nil if the ids list is empty
 func (r *Job) FindByIDs(ctx context.Context, ids id.JobIDList) ([]*job.Job, error) {
 	if len(ids) == 0 {
 		return nil, nil
@@ -67,7 +61,6 @@ func (r *Job) FindByIDs(ctx context.Context, ids id.JobIDList) ([]*job.Job, erro
 	return filterJobs(ids, res), nil
 }
 
-// FindByID retrieves a single job by its ID
 func (r *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
 	return r.findOne(ctx, bson.M{
 		"id": id.String(),
@@ -187,7 +180,6 @@ func (r *Job) FindByWorkspace(ctx context.Context, workspace accountdomain.Works
 	return c.Result, pageInfo, nil
 }
 
-// CountByWorkspace returns the total number of jobs in a workspace
 func (r *Job) CountByWorkspace(ctx context.Context, ws accountdomain.WorkspaceID) (int, error) {
 	count, err := r.client.Count(ctx, bson.M{
 		"workspaceid": ws.String(),
@@ -195,20 +187,16 @@ func (r *Job) CountByWorkspace(ctx context.Context, ws accountdomain.WorkspaceID
 	return int(count), err
 }
 
-// Save persists a job to the database
-// If the job already exists, it will be updated
 func (r *Job) Save(ctx context.Context, j *job.Job) error {
 	doc, id := mongodoc.NewJob(j)
 	err := r.client.SaveOne(ctx, id, doc)
 	return err
 }
 
-// Remove deletes a job from the database by its ID
 func (r *Job) Remove(ctx context.Context, id id.JobID) error {
 	return r.client.RemoveOne(ctx, bson.M{"id": id.String()})
 }
 
-// find is an internal helper method to find jobs based on a filter
 func (r *Job) find(ctx context.Context, filter interface{}) ([]*job.Job, error) {
 	c := mongodoc.NewJobConsumer(nil)
 	if err := r.client.Find(ctx, filter, c); err != nil {
@@ -217,7 +205,6 @@ func (r *Job) find(ctx context.Context, filter interface{}) ([]*job.Job, error) 
 	return c.Result, nil
 }
 
-// findOne is an internal helper method to find a single job based on a filter
 func (r *Job) findOne(ctx context.Context, filter any) (*job.Job, error) {
 	c := mongodoc.NewJobConsumer(nil)
 	if err := r.client.FindOne(ctx, filter, c); err != nil {
@@ -226,7 +213,6 @@ func (r *Job) findOne(ctx context.Context, filter any) (*job.Job, error) {
 	return c.Result[0], nil
 }
 
-// filterJobs is an internal helper method to filter jobs by their IDs
 func filterJobs(ids []id.JobID, rows []*job.Job) []*job.Job {
 	res := make([]*job.Job, 0, len(ids))
 	for _, id := range ids {
