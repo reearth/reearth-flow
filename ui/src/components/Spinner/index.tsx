@@ -1,9 +1,3 @@
-// type PaginationProps = {
-//   currentPage: number;
-//   totalPages: number;
-//   isFetchingNextPage?: boolean;
-//   setCurrentPage?: (page: number) => void;
-// };
 const Spinner: React.FC = () => {
   return (
     <div role="status" className="flex size-full items-center justify-center">
