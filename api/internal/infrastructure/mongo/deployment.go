@@ -75,40 +75,6 @@ func (r *Deployment) FindByIDs(ctx context.Context, ids id.DeploymentIDList) ([]
 	return filterDeployments(ids, c.Result), nil
 }
 
-// FindByWorkspace retrieves deployments for a given workspace with optional pagination support.
-//
-// Parameters:
-//   - ctx: The context for the operation
-//   - id: The workspace ID to filter deployments
-//   - pagination: Optional pagination parameters
-//   - Page: The page number (1-based indexing)
-//   - PageSize: Number of items per page
-//   - OrderBy: Field to sort by (e.g., "createdAt", "updatedAt")
-//   - OrderDir: Sort direction ("ASC" or "DESC")
-//
-// Returns:
-//   - []*deployment.Deployment: List of deployments for the given page
-//   - *interfaces.PageBasedInfo: Pagination information including:
-//   - TotalCount: Total number of deployments
-//   - CurrentPage: Current page number
-//   - TotalPages: Total number of pages
-//   - error: Any error that occurred during the operation
-//
-// Example GraphQL Query:
-//
-//	query {
-//	  deployments(workspaceId: "xxx", pagination: {page: 1, pageSize: 10}) {
-//	    nodes {
-//	      id
-//	      description
-//	    }
-//	    pageInfo {
-//	      totalCount
-//	      currentPage
-//	      totalPages
-//	    }
-//	  }
-//	}
 func (r *DeploymentAdapter) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(id) {
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
