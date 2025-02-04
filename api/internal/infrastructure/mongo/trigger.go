@@ -68,32 +68,27 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 	filter := bson.M{"workspaceid": id.String()}
 
 	if pagination != nil && pagination.Page != nil {
-		// Page-based pagination
 		skip := int64((pagination.Page.Page - 1) * pagination.Page.PageSize)
 		limit := int64(pagination.Page.PageSize)
 
-		// Get total count for page info
 		total, err := r.client.Count(ctx, filter)
 		if err != nil {
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
 
-		// Set up sort options
 		opts := options.Find().SetSkip(skip).SetLimit(limit)
 		if pagination.Page.OrderBy != nil {
-			direction := 1 // default ascending
+			direction := 1
 			if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
 				direction = -1
 			}
 
-			// Map GraphQL field names to MongoDB field names
 			fieldNameMap := map[string]string{
 				"description": "description",
 				"createdAt":   "createdat",
 				"updatedAt":   "updatedat",
 				"status":      "status",
 				"id":          "id",
-				// Add other field mappings here
 			}
 
 			fieldName := *pagination.Page.OrderBy
@@ -102,11 +97,9 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 			}
 			opts.SetSort(bson.D{{Key: fieldName, Value: direction}})
 		} else {
-			// Default sort by updatedAt desc
 			opts.SetSort(bson.D{{Key: "updatedat", Value: -1}})
 		}
 
-		// Execute find with skip and limit
 		if err := r.client.Find(ctx, filter, c, opts); err != nil {
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
@@ -114,7 +107,6 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		return c.Result, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
 	}
 
-	// If no pagination, return all results
 	if err := r.client.Find(ctx, filter, c); err != nil {
 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 	}

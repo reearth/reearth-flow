@@ -70,21 +70,17 @@ func (r *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
 func (r *Job) FindByWorkspace(ctx context.Context, workspace accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error) {
 	filter := bson.M{"workspaceid": workspace.String()}
 
-	// Get total count for page info
 	total, err := r.client.Count(ctx, filter)
 	if err != nil {
 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 	}
 
-	// Create consumer with workspace filter
 	c := mongodoc.NewJobConsumer([]accountdomain.WorkspaceID{workspace})
 
 	if pagination != nil && pagination.Page != nil {
-		// Page-based pagination
 		skip := int64((pagination.Page.Page - 1) * pagination.Page.PageSize)
 		limit := int64(pagination.Page.PageSize)
 
-		// Set up sort options
 		var sort bson.D
 		if pagination.Page.OrderBy != nil {
 			dir := 1
@@ -92,13 +88,11 @@ func (r *Job) FindByWorkspace(ctx context.Context, workspace accountdomain.Works
 				dir = -1
 			}
 
-			// Map GraphQL field names to MongoDB field names
 			fieldNameMap := map[string]string{
 				"startedAt":   "startedat",
 				"completedAt": "completedat",
 				"status":      "status",
 				"id":          "id",
-				// Add other field mappings here
 			}
 
 			fieldName := *pagination.Page.OrderBy
@@ -107,11 +101,9 @@ func (r *Job) FindByWorkspace(ctx context.Context, workspace accountdomain.Works
 			}
 			sort = bson.D{{Key: fieldName, Value: dir}}
 		} else {
-			// Default sort by startedAt desc for better UX
 			sort = bson.D{{Key: "startedat", Value: -1}}
 		}
 
-		// Find with pagination
 		opts := options.Find().
 			SetSkip(skip).
 			SetLimit(limit).
@@ -121,17 +113,14 @@ func (r *Job) FindByWorkspace(ctx context.Context, workspace accountdomain.Works
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
 
-		// Create page info
 		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
 		return c.Result, pageInfo, nil
 	}
 
-	// No pagination
 	if err := r.client.Find(ctx, filter, c); err != nil {
 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 	}
 
-	// Create page info without pagination
 	pageInfo := interfaces.NewPageBasedInfo(total, 1, int(total))
 	return c.Result, pageInfo, nil
 }

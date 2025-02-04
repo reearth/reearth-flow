@@ -53,9 +53,7 @@ func (r *Job) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID,
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
-	// Apply sorting if pagination parameters are provided
 	if pagination != nil && pagination.Page != nil {
-		// Default sort by startedAt desc if no sorting specified
 		field := "startedAt"
 		if pagination.Page.OrderBy != nil {
 			field = *pagination.Page.OrderBy
@@ -67,7 +65,6 @@ func (r *Job) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID,
 		}
 
 		sort.Slice(result, func(i, j int) bool {
-			// Helper function to handle both ascending and descending
 			compare := func(less bool) bool {
 				if ascending {
 					return less
@@ -107,7 +104,6 @@ func (r *Job) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID,
 				}
 				return compare(result[i].ID().String() < result[j].ID().String())
 			default:
-				// Default to startedAt
 				ti := result[i].StartedAt()
 				tj := result[j].StartedAt()
 				if !ti.Equal(tj) {

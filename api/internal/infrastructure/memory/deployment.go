@@ -27,7 +27,6 @@ func NewDeployment() *Deployment {
 
 func (r *Deployment) Filtered(f repo.WorkspaceFilter) repo.Deployment {
 	return &Deployment{
-		// note data is shared between the source repo and mutex cannot work well
 		data: r.data,
 		f:    r.f.Merge(f),
 	}
@@ -53,9 +52,7 @@ func (r *Deployment) FindByWorkspace(_ context.Context, wid accountdomain.Worksp
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
-	// Apply sorting if pagination parameters are provided
 	if p != nil && p.Page != nil {
-		// Default sort by updatedAt desc if no sorting specified
 		field := "updatedAt"
 		if p.Page.OrderBy != nil {
 			field = *p.Page.OrderBy
@@ -67,7 +64,6 @@ func (r *Deployment) FindByWorkspace(_ context.Context, wid accountdomain.Worksp
 		}
 
 		sort.SliceStable(result, func(i, j int) bool {
-			// Helper function to handle both ascending and descending
 			compare := func(less bool) bool {
 				if ascending {
 					return less
@@ -92,7 +88,6 @@ func (r *Deployment) FindByWorkspace(_ context.Context, wid accountdomain.Worksp
 				}
 				return compare(result[i].Version() < result[j].Version())
 			default:
-				// Default to updatedAt
 				if result[i].UpdatedAt().Equal(result[j].UpdatedAt()) {
 					return result[i].ID().String() < result[j].ID().String()
 				}
@@ -100,7 +95,6 @@ func (r *Deployment) FindByWorkspace(_ context.Context, wid accountdomain.Worksp
 			}
 		})
 
-		// Apply pagination
 		skip := (p.Page.Page - 1) * p.Page.PageSize
 		if skip >= len(result) {
 			return nil, interfaces.NewPageBasedInfo(total, p.Page.Page, p.Page.PageSize), nil

@@ -76,34 +76,28 @@ func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 	filter := bson.M{"workspace": id.String()}
 
 	if pagination != nil && pagination.Page != nil {
-		// Page-based pagination
 		skip := int64((pagination.Page.Page - 1) * pagination.Page.PageSize)
 		limit := int64(pagination.Page.PageSize)
 
-		// Get total count for page info
 		total, err := r.client.Count(ctx, filter)
 		if err != nil {
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
 
-		// Default sort by updatedAt desc
 		sort := bson.D{{Key: "updatedat", Value: -1}}
 
-		// Handle custom sorting
 		if pagination.Page.OrderBy != nil {
-			sortDir := -1 // default DESC
+			sortDir := -1
 			if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "ASC" {
 				sortDir = 1
 			}
 
-			// Map GraphQL field names to MongoDB field names
 			fieldNameMap := map[string]string{
 				"name":      "name",
 				"createdAt": "createdat",
 				"updatedAt": "updatedat",
 				"status":    "status",
 				"id":        "id",
-				// Add other field mappings here
 			}
 
 			fieldName := *pagination.Page.OrderBy
@@ -113,7 +107,6 @@ func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 			sort = bson.D{{Key: fieldName, Value: sortDir}}
 		}
 
-		// Execute find with skip and limit
 		opts := options.Find().
 			SetSort(sort).
 			SetSkip(skip).
@@ -123,17 +116,14 @@ func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
 
-		// Print debug info for results
 		fmt.Printf("DEBUG: Found %d results\n", len(c.Result))
 		for _, p := range c.Result {
 			fmt.Printf("DEBUG: Project name=%s\n", p.Name())
 		}
 
-		// Create page-based info
 		return c.Result, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
 	}
 
-	// No pagination
 	if err := r.client.Find(ctx, filter, c); err != nil {
 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 	}
@@ -215,48 +205,6 @@ func (r *Project) findOne(ctx context.Context, filter any, filterByWorkspaces bo
 	}
 	return c.Result[0], nil
 }
-
-// func (r *Project) paginate(ctx context.Context, filter bson.M, pagination *usecasex.Pagination) ([]*project.Project, *usecasex.PageInfo, error) {
-// 	c := mongodoc.NewProjectConsumer(r.f.Readable)
-
-// 	if pagination != nil && pagination.Offset != nil {
-// 		// Page-based pagination
-// 		skip := pagination.Offset.Offset
-// 		limit := pagination.Offset.Limit
-
-// 		// Get total count for page info
-// 		total, err := r.client.Count(ctx, filter)
-// 		if err != nil {
-// 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-// 		}
-
-// 		// Default sort by updatedAt desc
-// 		sort := bson.D{{Key: "updatedat", Value: -1}}
-
-// 		// Execute find with skip and limit
-// 		opts := options.Find().
-// 			SetSort(sort).
-// 			SetSkip(skip).
-// 			SetLimit(limit)
-
-// 		if err := r.client.Find(ctx, filter, c, opts); err != nil {
-// 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-// 		}
-
-// 		// Create page-based info
-// 		currentPage := int(skip/limit) + 1
-// 		pageInfo := interfaces.NewPageBasedInfo(total, currentPage, int(limit))
-
-// 		return c.Result, pageInfo.ToPageInfo(), nil
-// 	}
-
-// 	// Cursor-based pagination
-// 	pageInfo, err := r.client.Paginate(ctx, filter, nil, pagination, c)
-// 	if err != nil {
-// 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-// 	}
-// 	return c.Result, pageInfo, nil
-// }
 
 func filterProjects(ids []id.ProjectID, rows []*project.Project) []*project.Project {
 	res := make([]*project.Project, 0, len(ids))

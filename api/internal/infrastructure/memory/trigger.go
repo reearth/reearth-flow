@@ -40,7 +40,6 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
-	// Pre-allocate slice with estimated capacity
 	result := make([]*trigger.Trigger, 0, len(r.data))
 	for _, t := range r.data {
 		if t.Workspace() == id {
@@ -53,9 +52,7 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
-	// Apply sorting if pagination parameters are provided
 	if pagination != nil && pagination.Page != nil {
-		// Default sort by createdAt desc if no sorting specified
 		field := "createdAt"
 		if pagination.Page.OrderBy != nil {
 			field = *pagination.Page.OrderBy
@@ -67,7 +64,6 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		}
 
 		sort.Slice(result, func(i, j int) bool {
-			// Helper function to handle both ascending and descending
 			compare := func(less bool) bool {
 				if ascending {
 					return less
@@ -89,7 +85,6 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 				}
 				return compare(result[i].ID().String() < result[j].ID().String())
 			default:
-				// Default to createdAt
 				ti, tj := result[i].CreatedAt(), result[j].CreatedAt()
 				if !ti.Equal(tj) {
 					return compare(ti.Before(tj))
@@ -98,7 +93,6 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 			}
 		})
 
-		// Apply pagination
 		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
 		if skip >= len(result) {
 			return nil, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
