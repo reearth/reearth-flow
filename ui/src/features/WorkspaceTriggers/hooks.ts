@@ -30,11 +30,12 @@ export default () => {
   const tab = getTab(pathname);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
-    OrderDirection.Asc,
+    OrderDirection.Desc,
   );
   const { page, refetch, isFetching } = useGetTriggers(currentWorkspace?.id, {
     page: currentPage,
     orderDir: currentOrder,
+    orderBy: "lastTriggered",
   });
 
   useEffect(() => {

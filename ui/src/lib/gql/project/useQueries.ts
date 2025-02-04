@@ -21,7 +21,7 @@ export enum ProjectQueryKeys {
   GetProject = "getProject",
 }
 
-export const PROJECT_FETCH_AMOUNT = 5;
+export const PROJECT_FETCH_AMOUNT = 1;
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
@@ -54,7 +54,8 @@ export const useQueries = () => {
           pagination: {
             page: paginationOptions?.page ?? 1,
             pageSize: PROJECT_FETCH_AMOUNT,
-            orderDir: paginationOptions?.orderDir ?? OrderDirection.Asc,
+            orderDir: paginationOptions?.orderDir ?? OrderDirection.Desc,
+            orderBy: paginationOptions?.orderBy ?? "updatedAt",
           },
         });
         if (!data) throw new Error("No data returned");

@@ -3,13 +3,13 @@ import { Plus } from "@phosphor-icons/react";
 import {
   Button,
   FlowLogo,
+  Loading,
   Pagination,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Spinner,
 } from "@flow/components/";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
@@ -57,8 +57,8 @@ const ProjectsManager: React.FC = () => {
     );
   };
   const orderDirections: Record<OrderDirection, string> = {
-    ASC: t("Ascending"),
-    DESC: t("Descending"),
+    DESC: t("Newest"),
+    ASC: t("Oldest"),
   };
   return (
     <div className="flex h-full flex-1 flex-col">
@@ -91,7 +91,9 @@ const ProjectsManager: React.FC = () => {
             </Select>
           </div>
         )}
-        {projects && !isFetching && projects.length > 0 && (
+        {isFetching ? (
+          <Loading />
+        ) : projects && projects.length > 0 ? (
           <div
             className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
             ref={ref}>
@@ -106,10 +108,7 @@ const ProjectsManager: React.FC = () => {
               />
             ))}
           </div>
-        )}
-        {isFetching && <Spinner label={t("Loading")} />}
-
-        {!isFetching && projects && projects.length === 0 && (
+        ) : (
           <BasicBoiler
             text={t("No Projects")}
             icon={<FlowLogo className="size-16 text-accent" />}
