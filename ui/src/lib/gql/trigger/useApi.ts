@@ -123,7 +123,7 @@ export const useTrigger = () => {
       paginationOptions,
     );
     return {
-      pages: data,
+      page: data,
       ...rest,
     };
   };

@@ -60,7 +60,6 @@ const ProjectsManager: React.FC = () => {
     ASC: t("Ascending"),
     DESC: t("Descending"),
   };
-
   return (
     <div className="flex h-full flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pb-2 pt-4">

@@ -15,7 +15,7 @@ export enum JobQueryKeys {
   GetJob = "getJob",
 }
 
-const JOBS_FETCH_RATE = 15;
+export const JOBS_FETCH_RATE = 15;
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
@@ -31,7 +31,7 @@ export const useQueries = () => {
           workspaceId: workspaceId ?? "",
           pagination: {
             page: paginationOptions?.page ?? 1,
-            pageSize: paginationOptions?.pageSize ?? JOBS_FETCH_RATE,
+            pageSize: JOBS_FETCH_RATE,
             orderDir: paginationOptions?.orderDir ?? OrderDirection.Asc,
           },
         });

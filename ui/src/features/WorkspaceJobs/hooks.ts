@@ -20,10 +20,8 @@ export default () => {
     OrderDirection.Asc,
   );
   const { useGetJobs } = useJob();
-  const JOBS_FETCH_RATE_PER_PAGE = 15;
 
-  const { pages, refetch, isFetching } = useGetJobs(currentWorkspace?.id, {
-    pageSize: JOBS_FETCH_RATE_PER_PAGE,
+  const { page, refetch, isFetching } = useGetJobs(currentWorkspace?.id, {
     page: currentPage,
     orderDir: currentOrder,
   });
@@ -32,14 +30,14 @@ export default () => {
     refetch();
   }, [currentPage, currentOrder, refetch]);
 
-  const totalPages = pages?.totalPages as number;
+  const totalPages = page?.totalPages as number;
 
   const {
     location: { pathname },
   } = useRouterState();
 
   const tab = getTab(pathname);
-  const jobs = pages?.jobs;
+  const jobs = page?.jobs;
 
   const selectedJob = useMemo(
     () => jobs?.find((job) => job.id === tab),
@@ -65,7 +63,6 @@ export default () => {
     currentPage,
     setCurrentPage,
     totalPages,
-    JOBS_FETCH_RATE_PER_PAGE,
     currentOrder,
     setCurrentOrder,
   };

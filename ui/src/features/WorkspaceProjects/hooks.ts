@@ -15,26 +15,22 @@ export default () => {
   const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
     OrderDirection.Asc,
   );
-  const PROJECTS_FETCH_RATE_PER_PAGE = 6;
+
   const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
   const { useGetWorkspaceProjects, deleteProject, updateProject } =
     useProject();
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  const { pages, refetch, isFetching } = useGetWorkspaceProjects(
-    workspace?.id,
-    {
-      pageSize: PROJECTS_FETCH_RATE_PER_PAGE,
-      page: currentPage,
-      orderDir: currentOrder,
-    },
-  );
+  const { page, refetch, isFetching } = useGetWorkspaceProjects(workspace?.id, {
+    page: currentPage,
+    orderDir: currentOrder,
+  });
 
   useEffect(() => {
     refetch();
   }, [currentPage, currentOrder, refetch]);
 
-  const totalPages = pages?.totalPages as number;
+  const totalPages = page?.totalPages as number;
   const [openProjectAddDialog, setOpenProjectAddDialog] = useState(false);
   const [showError, setShowError] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
@@ -84,7 +80,7 @@ export default () => {
     return;
   };
 
-  const projects = pages?.projects;
+  const projects = page?.projects;
 
   return {
     projects,
@@ -105,7 +101,6 @@ export default () => {
     currentPage,
     setCurrentPage,
     totalPages,
-    PROJECTS_FETCH_RATE_PER_PAGE,
     currentOrder,
     setCurrentOrder,
     isFetching,

@@ -22,7 +22,7 @@ export default () => {
     Trigger | undefined
   >(undefined);
   const { useGetTriggers, useDeleteTrigger } = useTrigger();
-  const TRIGGERS_FETCH_RATE_PER_PAGE = 15;
+
   const {
     location: { pathname },
   } = useRouterState();
@@ -32,8 +32,7 @@ export default () => {
   const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
     OrderDirection.Asc,
   );
-  const { pages, refetch, isFetching } = useGetTriggers(currentWorkspace?.id, {
-    pageSize: TRIGGERS_FETCH_RATE_PER_PAGE,
+  const { page, refetch, isFetching } = useGetTriggers(currentWorkspace?.id, {
     page: currentPage,
     orderDir: currentOrder,
   });
@@ -42,8 +41,8 @@ export default () => {
     refetch();
   }, [currentPage, currentOrder, refetch]);
 
-  const totalPages = pages?.totalPages as number;
-  const triggers = pages?.triggers;
+  const totalPages = page?.totalPages as number;
+  const triggers = page?.triggers;
 
   const selectedTrigger = useMemo(
     () => triggers?.find((trigger) => trigger.id === tab),
@@ -85,7 +84,6 @@ export default () => {
     currentPage,
     setCurrentPage,
     totalPages,
-    TRIGGERS_FETCH_RATE_PER_PAGE,
     currentOrder,
     setCurrentOrder,
     isFetching,

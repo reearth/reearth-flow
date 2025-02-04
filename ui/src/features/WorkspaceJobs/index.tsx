@@ -2,6 +2,7 @@ import { ColumnDef } from "@tanstack/react-table";
 
 import { FlowLogo, Spinner, DataTable as Table } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
+import { JOBS_FETCH_RATE } from "@flow/lib/gql/job/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { Job } from "@flow/types";
 
@@ -21,7 +22,6 @@ const JobsManager: React.FC = () => {
     currentPage,
     setCurrentPage,
     totalPages,
-    JOBS_FETCH_RATE_PER_PAGE,
     currentOrder,
     setCurrentOrder,
   } = useHooks();
@@ -48,6 +48,7 @@ const JobsManager: React.FC = () => {
       header: t("Completed At"),
     },
   ];
+  const resultsPerPage = JOBS_FETCH_RATE;
 
   return selectedJob ? (
     <div className="flex flex-1">
@@ -71,7 +72,7 @@ const JobsManager: React.FC = () => {
             currentPage={currentPage}
             setCurrentPage={setCurrentPage}
             totalPages={totalPages}
-            resultsPerPage={JOBS_FETCH_RATE_PER_PAGE}
+            resultsPerPage={resultsPerPage}
             currentOrder={currentOrder}
             setCurrentOrder={setCurrentOrder}
           />

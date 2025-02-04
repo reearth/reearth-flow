@@ -11,7 +11,7 @@ export const useJob = () => {
   ) => {
     const { data, ...rest } = useGetJobsQuery(workspaceId, paginationOptions);
     return {
-      pages: data,
+      page: data,
       ...rest,
     };
   };

@@ -21,7 +21,7 @@ export enum ProjectQueryKeys {
   GetProject = "getProject",
 }
 
-const PROJECT_FETCH_AMOUNT = 5;
+export const PROJECT_FETCH_AMOUNT = 5;
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
@@ -53,7 +53,7 @@ export const useQueries = () => {
           workspaceId: workspaceId ?? "",
           pagination: {
             page: paginationOptions?.page ?? 1,
-            pageSize: paginationOptions?.pageSize ?? PROJECT_FETCH_AMOUNT,
+            pageSize: PROJECT_FETCH_AMOUNT,
             orderDir: paginationOptions?.orderDir ?? OrderDirection.Asc,
           },
         });

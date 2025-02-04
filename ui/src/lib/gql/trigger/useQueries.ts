@@ -19,7 +19,7 @@ export enum TriggerQueryKeys {
   GetTriggers = "getTriggers",
 }
 
-const TRIGGERS_FETCH_RATE = 15;
+export const TRIGGERS_FETCH_RATE = 15;
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
@@ -128,7 +128,7 @@ export const useQueries = () => {
           workspaceId: workspaceId ?? "",
           pagination: {
             page: paginationOptions?.page ?? 1,
-            pageSize: paginationOptions?.pageSize ?? TRIGGERS_FETCH_RATE,
+            pageSize: TRIGGERS_FETCH_RATE,
             orderDir: paginationOptions?.orderDir ?? OrderDirection.Asc,
           },
         });

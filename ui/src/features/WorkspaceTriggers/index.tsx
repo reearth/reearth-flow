@@ -9,6 +9,7 @@ import {
   DataTable as Table,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
+import { TRIGGERS_FETCH_RATE } from "@flow/lib/gql/trigger/useQueries";
 import { useT } from "@flow/lib/i18n";
 import { Trigger } from "@flow/types";
 
@@ -36,7 +37,6 @@ const TriggerManager: React.FC = () => {
     currentPage,
     setCurrentPage,
     totalPages,
-    TRIGGERS_FETCH_RATE_PER_PAGE,
     currentOrder,
     setCurrentOrder,
     isFetching,
@@ -81,7 +81,7 @@ const TriggerManager: React.FC = () => {
       ),
     },
   ];
-
+  const resultsPerPage = TRIGGERS_FETCH_RATE;
   return (
     <>
       {selectedTrigger ? (
@@ -116,7 +116,7 @@ const TriggerManager: React.FC = () => {
                 currentPage={currentPage}
                 setCurrentPage={setCurrentPage}
                 totalPages={totalPages}
-                resultsPerPage={TRIGGERS_FETCH_RATE_PER_PAGE}
+                resultsPerPage={resultsPerPage}
                 currentOrder={currentOrder}
                 setCurrentOrder={setCurrentOrder}
               />

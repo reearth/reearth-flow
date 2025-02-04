@@ -54,7 +54,7 @@ export const useProject = () => {
       paginationOptions,
     );
     return {
-      pages: data,
+      page: data,
       ...rest,
     };
   };
