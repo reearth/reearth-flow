@@ -254,61 +254,6 @@ func (r *Deployment) findOne(ctx context.Context, filter any, filterByWorkspaces
 	return c.Result[0], nil
 }
 
-// func (r *Deployment) paginate(ctx context.Context, filter bson.M, pagination *interfaces.PaginationParam) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
-// 	c := mongodoc.NewDeploymentConsumer(r.f.Readable)
-
-// 	if pagination != nil && pagination.Page != nil {
-// 		// Page-based pagination
-// 		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
-// 		limit := pagination.Page.PageSize
-
-// 		// Add sorting
-// 		var sort bson.D
-// 		if pagination.Page.OrderBy != nil {
-// 			direction := 1 // default ascending
-// 			if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
-// 				direction = -1
-// 			}
-// 			sort = bson.D{{Key: *pagination.Page.OrderBy, Value: direction}}
-// 		} else {
-// 			// Default sort by updatedAt desc
-// 			sort = bson.D{{Key: "updatedAt", Value: -1}}
-// 		}
-
-// 		// Get total count for page info
-// 		total, err := r.client.Count(ctx, filter)
-// 		if err != nil {
-// 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-// 		}
-
-// 		// Execute find with skip and limit
-// 		opts := options.Find().
-// 			SetSort(sort).
-// 			SetSkip(int64(skip)).
-// 			SetLimit(int64(limit))
-
-// 		if err := r.client.Find(ctx, filter, c, opts); err != nil {
-// 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-// 		}
-
-// 		// Create page-based info
-// 		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
-
-// 		return c.Result, pageInfo.ToPageInfo(), nil
-// 	}
-
-// 	// No pagination, return all results
-// 	if err := r.client.Find(ctx, filter, c); err != nil {
-// 		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-// 	}
-
-// 	return c.Result, &usecasex.PageInfo{
-// 		HasNextPage:     false,
-// 		HasPreviousPage: false,
-// 		TotalCount:      int64(len(c.Result)),
-// 	}, nil
-// }
-
 func filterDeployments(ids []id.DeploymentID, rows []*deployment.Deployment) []*deployment.Deployment {
 	res := make([]*deployment.Deployment, 0, len(ids))
 	for _, id := range ids {
