@@ -124,7 +124,11 @@ impl Sink for GeoJsonWriter {
         let output = Uri::from_str(path.as_str())?;
 
         for (key, features) in self.buffer.iter() {
-            let file_path = output.join(format!("{}.geojson", to_hash(key)))?;
+            let file_path = if key == "_all" {
+                output.clone()
+            } else {
+                output.join(format!("{}.geojson", to_hash(key)))?
+            };
             let storage = storage_resolver
                 .resolve(&file_path)
                 .map_err(crate::errors::SinkError::file_writer)?;
