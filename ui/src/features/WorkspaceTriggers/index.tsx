@@ -121,7 +121,7 @@ const TriggerManager: React.FC = () => {
                 setCurrentOrder={setCurrentOrder}
               />
             )}
-            {isFetching && <Spinner />}
+            {isFetching && <Spinner label={t("Loading")} />}
             {!isFetching && triggers && triggers.length === 0 && (
               <BasicBoiler
                 text={t("No Triggers")}

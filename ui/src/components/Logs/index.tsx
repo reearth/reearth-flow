@@ -84,12 +84,12 @@ const Logs = <TData, TValue>({
     if (getStatusValue === status) {
       setColumnFilters([]);
     } else {
-      setColumnFilters([{ id: "logLevel", value: status }]);
+      setColumnFilters([{ id: "level", value: status }]);
     }
   };
 
   const handleTimeStampColumnVisibility = () => {
-    const column = table.getColumn("timestamp");
+    const column = table.getColumn("ts");
 
     column?.toggleVisibility(!column.getIsVisible());
     return;
@@ -97,11 +97,11 @@ const Logs = <TData, TValue>({
 
   const handleResetTable = () => {
     setColumnFilters([]);
-    table.getColumn("timestamp")?.toggleVisibility(true);
+    table.getColumn("ts")?.toggleVisibility(true);
   };
 
   const getStatusValue = useMemo(() => {
-    const value = columnFilters.find((id) => id.id === "logLevel");
+    const value = columnFilters.find((id) => id.id === "level");
     return value?.value;
   }, [columnFilters]);
   return (
@@ -162,11 +162,9 @@ const Logs = <TData, TValue>({
           <IconButton
             size="icon"
             variant={
-              table.getColumn("timestamp")?.getIsVisible()
-                ? "default"
-                : "outline"
+              table.getColumn("ts")?.getIsVisible() ? "default" : "outline"
             }
-            tooltipText={t("Include Timestamp")}
+            tooltipText={t("Include ts")}
             onClick={handleTimeStampColumnVisibility}
             icon={<ClockIcon />}
           />

@@ -108,7 +108,7 @@ const ProjectsManager: React.FC = () => {
             ))}
           </div>
         )}
-        {isFetching && <Spinner />}
+        {isFetching && <Spinner label={t("Loading")} />}
 
         {!isFetching && projects && projects.length === 0 && (
           <BasicBoiler

@@ -77,7 +77,7 @@ const JobsManager: React.FC = () => {
           />
         )}
 
-        {isFetching && <Spinner />}
+        {isFetching && <Spinner label={t("Loading")} />}
         {!isFetching && jobs && jobs.length === 0 && (
           <BasicBoiler
             text={t("No Jobs")}

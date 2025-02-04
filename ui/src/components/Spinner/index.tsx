@@ -1,6 +1,12 @@
-const Spinner: React.FC = () => {
+type SpinnerProps = {
+  label?: string;
+};
+
+const Spinner: React.FC<SpinnerProps> = ({ label }) => {
   return (
-    <div role="status" className="flex size-full items-center justify-center">
+    <div
+      role="status"
+      className="flex size-full flex-col items-center justify-center gap-2">
       <svg
         aria-hidden="true"
         className="size-8 animate-spin fill-accent text-gray-200 dark:text-gray-600"
@@ -16,6 +22,7 @@ const Spinner: React.FC = () => {
           fill="currentFill"
         />
       </svg>
+      {label && <span className="text-sm dark:font-extralight">{label}</span>}
     </div>
   );
 };
