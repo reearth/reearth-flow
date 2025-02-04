@@ -1,10 +1,10 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { Trigger } from "@flow/types";
+import {
+  OrderDirection,
+  type PaginationOptions,
+} from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
 import type {
@@ -19,7 +19,7 @@ export enum TriggerQueryKeys {
   GetTriggers = "getTriggers",
 }
 
-const TRIGGERS_FETCH_RATE = 15;
+export const TRIGGERS_FETCH_RATE = 15;
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
@@ -37,7 +37,7 @@ export const useQueries = () => {
       deploymentId: string;
       timeDriverInput?: TimeDriverInput;
       apiDriverInput?: ApiDriverInput;
-      description?: string;
+      description: string;
     }) => {
       const data = await graphQLContext?.CreateTrigger({
         input: {
@@ -117,42 +117,40 @@ export const useQueries = () => {
     },
   });
 
-  const useGetTriggersInfiniteQuery = (workspaceId?: string) =>
-    useInfiniteQuery({
+  const useGetTriggersQuery = (
+    workspaceId?: string,
+    paginationOptions?: PaginationOptions,
+  ) =>
+    useQuery({
       queryKey: [TriggerQueryKeys.GetTriggers, workspaceId],
-      initialPageParam: null,
-      queryFn: async ({ pageParam }) => {
+      queryFn: async () => {
         const data = await graphQLContext?.GetTriggers({
           workspaceId: workspaceId ?? "",
           pagination: {
-            first: TRIGGERS_FETCH_RATE,
-            after: pageParam,
+            page: paginationOptions?.page ?? 1,
+            pageSize: TRIGGERS_FETCH_RATE,
+            orderDir: paginationOptions?.orderDir ?? OrderDirection.Asc,
           },
         });
         if (!data) return;
         const {
           triggers: {
             nodes,
-            pageInfo: { endCursor, hasNextPage },
+            pageInfo: { totalCount, totalPages, currentPage },
           },
         } = data;
         const triggers: Trigger[] = nodes
           .filter(isDefined)
           .map((trigger) => toTrigger(trigger));
-        return { triggers, endCursor, hasNextPage };
+        return { triggers, totalCount, totalPages, currentPage };
       },
       enabled: !!workspaceId,
-      getNextPageParam: (lastPage) => {
-        if (!lastPage) return undefined;
-        const { endCursor, hasNextPage } = lastPage;
-        return hasNextPage ? endCursor : undefined;
-      },
     });
 
   return {
     createTriggerMutation,
     updateTriggerMutation,
     deleteTriggerMutation,
-    useGetTriggersInfiniteQuery,
+    useGetTriggersQuery,
   };
 };

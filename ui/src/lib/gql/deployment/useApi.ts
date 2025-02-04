@@ -31,7 +31,7 @@ export const useDeployment = () => {
     workspaceId: string,
     projectId: string,
     engineReadyWorkflow: EngineReadyWorkflow,
-    description?: string,
+    description: string,
   ): Promise<CreateDeployment> => {
     const { mutateAsync, ...rest } = createDeploymentMutation;
 
@@ -60,8 +60,8 @@ export const useDeployment = () => {
   const createDeploymentFromFile = async (
     workspaceId: string,
     workflowFile: File,
+    description: string,
     customName?: string,
-    description?: string,
   ): Promise<CreateDeployment> => {
     const { mutateAsync, ...rest } = createDeploymentMutation;
     const formData = new FormData();

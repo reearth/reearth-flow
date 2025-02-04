@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTrigger } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Trigger } from "@flow/types";
+import { OrderDirection } from "@flow/types/paginationOptions";
 import { lastOfUrl as getTriggerId } from "@flow/utils";
 
 import { RouteOption } from "../WorkspaceLeftPanel";
@@ -20,27 +21,28 @@ export default () => {
   const [triggerToBeDeleted, setTriggerToBeDeleted] = useState<
     Trigger | undefined
   >(undefined);
-  const { useGetTriggersInfinite, useDeleteTrigger } = useTrigger();
+  const { useGetTriggers, useDeleteTrigger } = useTrigger();
 
   const {
     location: { pathname },
   } = useRouterState();
 
   const tab = getTab(pathname);
-
-  const { pages, hasNextPage, isFetching, fetchNextPage } =
-    useGetTriggersInfinite(currentWorkspace?.id);
-
-  const triggers: Trigger[] | undefined = useMemo(
-    () =>
-      pages?.reduce((triggers, page) => {
-        if (page?.triggers) {
-          triggers.push(...page.triggers);
-        }
-        return triggers;
-      }, [] as Trigger[]),
-    [pages],
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
+    OrderDirection.Asc,
   );
+  const { page, refetch, isFetching } = useGetTriggers(currentWorkspace?.id, {
+    page: currentPage,
+    orderDir: currentOrder,
+  });
+
+  useEffect(() => {
+    refetch();
+  }, [currentPage, currentOrder, refetch]);
+
+  const totalPages = page?.totalPages as number;
+  const triggers = page?.triggers;
 
   const selectedTrigger = useMemo(
     () => triggers?.find((trigger) => trigger.id === tab),
@@ -67,32 +69,6 @@ export default () => {
     [currentWorkspace, triggerToBeDeleted, triggers, useDeleteTrigger],
   );
 
-  useEffect(() => {
-    if (
-      ref.current &&
-      ref.current?.scrollHeight <= document.documentElement.clientHeight &&
-      hasNextPage &&
-      !isFetching
-    ) {
-      fetchNextPage();
-    }
-  }, [isFetching, hasNextPage, ref, fetchNextPage]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop + 5 >=
-          document.documentElement.scrollHeight &&
-        !isFetching &&
-        hasNextPage
-      ) {
-        fetchNextPage();
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isFetching, fetchNextPage, hasNextPage]);
-
   return {
     ref,
     triggers,
@@ -105,6 +81,12 @@ export default () => {
     setTriggerToBeDeleted,
     handleTriggerSelect,
     handleTriggerDelete,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    currentOrder,
+    setCurrentOrder,
+    isFetching,
   };
 };
 

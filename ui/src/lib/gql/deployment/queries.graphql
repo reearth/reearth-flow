@@ -28,15 +28,16 @@ mutation ExecuteDeployment($input: ExecuteDeploymentInput!) {
   }
 }
 
-query GetDeployments($workspaceId: ID!, $pagination: Pagination) {
+query GetDeployments($workspaceId: ID!, $pagination: PageBasedPagination!) {
   deployments(workspaceId: $workspaceId, pagination: $pagination) {
     totalCount
     nodes {
       ...Deployment
     }
     pageInfo {
-      endCursor
-      hasNextPage
+      totalCount
+      currentPage
+      totalPages
     }
   }
 }

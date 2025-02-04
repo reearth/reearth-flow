@@ -193,7 +193,7 @@ export default ({
   const { hoveredDetails, handleNodeHover, handleEdgeHover } = useHover();
 
   const handleWorkflowDeployment = useCallback(
-    async (deploymentId?: string, description?: string) => {
+    async (description: string, deploymentId?: string) => {
       const {
         name: projectName,
         workspaceId,

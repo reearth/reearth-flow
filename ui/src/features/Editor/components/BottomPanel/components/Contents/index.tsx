@@ -5,6 +5,8 @@ import {
   SupportedVisualizations,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import mockLogs from "@flow/mock_data/logsv2Data";
+import { Log } from "@flow/types";
 
 import { DataTable } from "../DataTable";
 import { LogsConsole } from "../LogsConsole";
@@ -47,7 +49,7 @@ const Contents: React.FC<Props> = ({ isOpen, selectedId }) => {
             </div>
           </div>
         ) : (
-          <LogsConsole />
+          <LogsConsole data={mockLogs as Log[]} />
         )}
       </div>
     </div>

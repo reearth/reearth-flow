@@ -18,8 +18,8 @@ import { useCurrentProject } from "@flow/stores";
 type Props = {
   allowedToDeploy: boolean;
   onWorkflowDeployment: (
+    description: string,
     deploymentId?: string,
-    description?: string,
   ) => Promise<void>;
   setShowDialog: (show: boolean) => void;
 };
@@ -42,7 +42,7 @@ const DeployDialog: React.FC<Props> = ({
   );
 
   const handleWorkflowDeployment = useCallback(async () => {
-    await onWorkflowDeployment(deployment?.id, description);
+    await onWorkflowDeployment(description, deployment?.id);
     if (allowedToDeploy) {
       setShowDialog(false);
     }

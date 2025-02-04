@@ -1,6 +1,10 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 import type { Job } from "@flow/types";
+import {
+  OrderDirection,
+  type PaginationOptions,
+} from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
 import { toJob } from "../convert";
@@ -11,41 +15,38 @@ export enum JobQueryKeys {
   GetJob = "getJob",
 }
 
-const JOBS_FETCH_RATE = 15;
+export const JOBS_FETCH_RATE = 15;
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
 
-  const useGetJobsInfiniteQuery = (workspaceId?: string) =>
-    useInfiniteQuery({
+  const useGetJobsQuery = (
+    workspaceId?: string,
+    paginationOptions?: PaginationOptions,
+  ) =>
+    useQuery({
       queryKey: [JobQueryKeys.GetJobs, workspaceId],
-      initialPageParam: null,
-      queryFn: async ({ pageParam }) => {
+      queryFn: async () => {
         const data = await graphQLContext?.GetJobs({
           workspaceId: workspaceId ?? "",
           pagination: {
-            first: JOBS_FETCH_RATE,
-            after: pageParam,
+            page: paginationOptions?.page ?? 1,
+            pageSize: JOBS_FETCH_RATE,
+            orderDir: paginationOptions?.orderDir ?? OrderDirection.Asc,
           },
         });
         if (!data) return;
         const {
           jobs: {
             nodes,
-            pageInfo: { endCursor, hasNextPage },
+            pageInfo: { totalCount, currentPage, totalPages },
           },
         } = data;
         const jobs: Job[] = nodes.filter(isDefined).map((job) => toJob(job));
-        return { jobs, endCursor, hasNextPage };
+        return { jobs, totalCount, currentPage, totalPages };
       },
       enabled: !!workspaceId,
-      getNextPageParam: (lastPage) => {
-        if (!lastPage) return undefined;
-        const { endCursor, hasNextPage } = lastPage;
-        return hasNextPage ? endCursor : undefined;
-      },
     });
-
   const useGetJobQuery = (jobId: string) =>
     useQuery({
       queryKey: [JobQueryKeys.GetJob, jobId],
@@ -57,7 +58,7 @@ export const useQueries = () => {
     });
 
   return {
-    useGetJobsInfiniteQuery,
+    useGetJobsQuery,
     useGetJobQuery,
   };
 };

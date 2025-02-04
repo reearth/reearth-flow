@@ -37,7 +37,7 @@ export const useQueries = () => {
       workspaceId: string;
       projectId?: string;
       file: FormData;
-      description?: string;
+      description: string;
     }) => {
       const data = await graphQLContext?.CreateDeployment({
         input: {
@@ -156,32 +156,35 @@ export const useQueries = () => {
   const useGetDeploymentsInfiniteQuery = (workspaceId?: string) =>
     useInfiniteQuery({
       queryKey: [DeploymentQueryKeys.GetDeployments, workspaceId],
-      initialPageParam: null,
+      initialPageParam: 1,
       queryFn: async ({ pageParam }) => {
         const data = await graphQLContext?.GetDeployments({
           workspaceId: workspaceId ?? "",
           pagination: {
-            first: DEPLOYMENT_FETCH_RATE,
-            after: pageParam,
+            page: pageParam,
+            pageSize: DEPLOYMENT_FETCH_RATE,
+            // orderDir: "ASC",
           },
         });
         if (!data) return;
         const {
           deployments: {
             nodes,
-            pageInfo: { endCursor, hasNextPage },
+            pageInfo: { totalCount, currentPage, totalPages },
           },
         } = data;
         const deployments: Deployment[] = nodes
           .filter(isDefined)
           .map((deployment) => toDeployment(deployment));
-        return { deployments, endCursor, hasNextPage };
+        return { deployments, totalCount, currentPage, totalPages };
       },
       enabled: !!workspaceId,
       getNextPageParam: (lastPage) => {
         if (!lastPage) return undefined;
-        const { endCursor, hasNextPage } = lastPage;
-        return hasNextPage ? endCursor : undefined;
+        if ((lastPage.currentPage ?? 0) < (lastPage.totalPages ?? 0)) {
+          return (lastPage.currentPage ?? 0) + 1;
+        }
+        return undefined;
       },
     });
 
