@@ -40,7 +40,6 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
-	// Pre-allocate slice with estimated capacity
 	result := make([]*trigger.Trigger, 0, len(r.data))
 	for _, t := range r.data {
 		if t.Workspace() == id {
@@ -53,37 +52,47 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
-	// Apply sorting
-	direction := 1 // default ascending
-	if pagination != nil && pagination.Page != nil && pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "DESC" {
-		direction = -1
-	}
+	if pagination != nil && pagination.Page != nil {
+		field := "createdAt"
+		if pagination.Page.OrderBy != nil {
+			field = *pagination.Page.OrderBy
+		}
 
-	sort.Slice(result, func(i, j int) bool {
-		if pagination != nil && pagination.Page != nil && pagination.Page.OrderBy != nil {
-			// Compare by specified field
-			switch *pagination.Page.OrderBy {
+		ascending := false
+		if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "ASC" {
+			ascending = true
+		}
+
+		sort.Slice(result, func(i, j int) bool {
+			compare := func(less bool) bool {
+				if ascending {
+					return less
+				}
+				return !less
+			}
+
+			switch field {
 			case "createdAt":
 				ti, tj := result[i].CreatedAt(), result[j].CreatedAt()
 				if !ti.Equal(tj) {
-					if direction == 1 {
-						return ti.Before(tj)
-					}
-					return ti.After(tj)
+					return compare(ti.Before(tj))
 				}
+				return compare(result[i].ID().String() < result[j].ID().String())
+			case "updatedAt":
+				ti, tj := result[i].UpdatedAt(), result[j].UpdatedAt()
+				if !ti.Equal(tj) {
+					return compare(ti.Before(tj))
+				}
+				return compare(result[i].ID().String() < result[j].ID().String())
+			default:
+				ti, tj := result[i].CreatedAt(), result[j].CreatedAt()
+				if !ti.Equal(tj) {
+					return compare(ti.Before(tj))
+				}
+				return compare(result[i].ID().String() < result[j].ID().String())
 			}
-		}
-		// Default sort or tie-breaker: by ID
-		return result[i].ID().String() < result[j].ID().String()
-	})
+		})
 
-	// Handle pagination
-	if pagination == nil {
-		return result, interfaces.NewPageBasedInfo(total, 1, int(total)), nil
-	}
-
-	if pagination.Page != nil {
-		// Page-based pagination
 		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
 		if skip >= len(result) {
 			return nil, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
@@ -94,13 +103,7 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 			end = len(result)
 		}
 
-		// Get the current page
-		pageResult := result[skip:end]
-
-		// Create page-based info
-		pageInfo := interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize)
-
-		return pageResult, pageInfo, nil
+		return result[skip:end], interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
 	}
 
 	return result, interfaces.NewPageBasedInfo(total, 1, int(total)), nil
