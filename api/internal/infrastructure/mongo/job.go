@@ -67,50 +67,6 @@ func (r *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
 	})
 }
 
-// FindByWorkspace retrieves jobs for a given workspace with pagination support
-//
-// Parameters:
-//   - ctx: The context for the operation
-//   - workspace: The workspace ID to filter jobs
-//   - pagination: Optional pagination parameters
-//   - Page: The page number (1-based indexing)
-//   - PageSize: Number of items per page
-//   - OrderBy: Field to sort by (supported fields: "startedAt", "completedAt")
-//   - OrderDir: Sort direction ("ASC" or "DESC")
-//
-// Returns:
-//   - []*job.Job: List of jobs for the given page
-//   - *interfaces.PageBasedInfo: Pagination information including:
-//   - TotalCount: Total number of jobs
-//   - CurrentPage: Current page number
-//   - TotalPages: Total number of pages
-//   - error: Any error that occurred during the operation
-//
-// Example GraphQL Query:
-//
-//	{
-//	  jobs(
-//	    workspaceId: "xxx",
-//	    pagination: {
-//	      page: 1,
-//	      pageSize: 10,
-//	      orderBy: "startedAt",
-//	      orderDir: DESC
-//	    }
-//	  ) {
-//	    nodes {
-//	      id
-//	      status
-//	      startedAt
-//	      completedAt
-//	    }
-//	    pageInfo {
-//	      totalCount
-//	      currentPage
-//	      totalPages
-//	    }
-//	  }
-//	}
 func (r *Job) FindByWorkspace(ctx context.Context, workspace accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error) {
 	filter := bson.M{"workspaceid": workspace.String()}
 

@@ -59,8 +59,6 @@ func (r *Trigger) FindByIDs(ctx context.Context, ids id.TriggerIDList) ([]*trigg
 	return filterTriggers(ids, res), nil
 }
 
-// FindByWorkspace retrieves triggers for a given workspace with pagination support
-//
 // Parameters:
 //   - ctx: The context for the operation
 //   - id: The workspace ID to filter triggers

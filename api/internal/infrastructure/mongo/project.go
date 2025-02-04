@@ -67,8 +67,6 @@ func (r *Project) FindByIDs(ctx context.Context, ids id.ProjectIDList) ([]*proje
 	return filterProjects(ids, res), nil
 }
 
-// FindByWorkspace retrieves projects for a given workspace with pagination support
-//
 // Parameters:
 //   - ctx: The context for the operation
 //   - id: The workspace ID to filter projects
