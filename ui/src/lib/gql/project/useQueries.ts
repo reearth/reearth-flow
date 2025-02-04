@@ -2,7 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useGraphQLContext } from "@flow/lib/gql";
 import { Project } from "@flow/types";
-import type { PaginationOptions } from "@flow/types/paginationOptions";
+import {
+  OrderDirection,
+  type PaginationOptions,
+} from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
 import {
@@ -51,7 +54,7 @@ export const useQueries = () => {
           pagination: {
             page: paginationOptions?.page ?? 1,
             pageSize: paginationOptions?.pageSize ?? PROJECT_FETCH_AMOUNT,
-            // orderDir: paginationOptions?.orderDir,
+            orderDir: paginationOptions?.orderDir ?? OrderDirection.Asc,
           },
         });
         if (!data) throw new Error("No data returned");

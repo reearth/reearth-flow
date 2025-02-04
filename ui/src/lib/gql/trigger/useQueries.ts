@@ -1,7 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { Trigger } from "@flow/types";
-import type { PaginationOptions } from "@flow/types/paginationOptions";
+import {
+  OrderDirection,
+  type PaginationOptions,
+} from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
 import type {
@@ -126,7 +129,7 @@ export const useQueries = () => {
           pagination: {
             page: paginationOptions?.page ?? 1,
             pageSize: paginationOptions?.pageSize ?? TRIGGERS_FETCH_RATE,
-            // orderDir: "ASC",
+            orderDir: paginationOptions?.orderDir ?? OrderDirection.Asc,
           },
         });
         if (!data) return;

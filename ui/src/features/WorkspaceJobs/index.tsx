@@ -21,6 +21,8 @@ const JobsManager: React.FC = () => {
     setCurrentPage,
     totalPages,
     JOBS_FETCH_RATE_PER_PAGE,
+    currentOrder,
+    setCurrentOrder,
   } = useHooks();
 
   const columns: ColumnDef<Job>[] = [
@@ -69,6 +71,8 @@ const JobsManager: React.FC = () => {
             setCurrentPage={setCurrentPage}
             totalPages={totalPages}
             resultsPerPage={JOBS_FETCH_RATE_PER_PAGE}
+            currentOrder={currentOrder}
+            setCurrentOrder={setCurrentOrder}
           />
         ) : (
           <BasicBoiler

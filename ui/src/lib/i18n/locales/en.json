@@ -1,5 +1,6 @@
 {
   "Search": "Search",
+  "By Ascending/Descending": "",
   "Columns": "Columns",
   "No Results": "No Results",
   "Time": "",
@@ -174,6 +175,8 @@
   "Project Description": "Project Description",
   "Your project description goes here...": "",
   "Failed to update project": "Failed to update project",
+  "Ascending": "",
+  "Descending": "",
   "New Project": "",
   "No Projects": "",
   "Delete Workspace": "Delete Workspace",

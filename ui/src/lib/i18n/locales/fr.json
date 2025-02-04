@@ -1,5 +1,6 @@
 {
   "Search": "Recherche",
+  "By Ascending/Descending": "",
   "Columns": "Colonnes",
   "No Results": "Aucun résultat",
   "Time": "Temps",
@@ -174,6 +175,8 @@
   "Project Description": "Description du projet",
   "Your project description goes here...": "La description de votre projet ici...",
   "Failed to update project": "Échec de la mise à jour du projet",
+  "Ascending": "",
+  "Descending": "",
   "New Project": "Nouveau projet",
   "No Projects": "Aucun projet",
   "Delete Workspace": "Supprimer l'espace de travail",

@@ -1,7 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 
 import type { Job } from "@flow/types";
-import type { PaginationOptions } from "@flow/types/paginationOptions";
+import {
+  OrderDirection,
+  type PaginationOptions,
+} from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
 import { toJob } from "../convert";
@@ -29,6 +32,7 @@ export const useQueries = () => {
           pagination: {
             page: paginationOptions?.page ?? 1,
             pageSize: paginationOptions?.pageSize ?? JOBS_FETCH_RATE,
+            orderDir: paginationOptions?.orderDir ?? OrderDirection.Asc,
           },
         });
         if (!data) return;

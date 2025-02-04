@@ -36,6 +36,8 @@ const TriggerManager: React.FC = () => {
     setCurrentPage,
     totalPages,
     TRIGGERS_FETCH_RATE_PER_PAGE,
+    currentOrder,
+    setCurrentOrder,
   } = useHooks();
   const columns: ColumnDef<Trigger>[] = [
     {
@@ -113,6 +115,8 @@ const TriggerManager: React.FC = () => {
                 setCurrentPage={setCurrentPage}
                 totalPages={totalPages}
                 resultsPerPage={TRIGGERS_FETCH_RATE_PER_PAGE}
+                currentOrder={currentOrder}
+                setCurrentOrder={setCurrentOrder}
               />
             ) : (
               <BasicBoiler

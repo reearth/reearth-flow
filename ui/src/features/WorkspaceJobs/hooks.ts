@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useJob } from "@flow/lib/gql/job";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { Job } from "@flow/types";
+import { OrderDirection } from "@flow/types/paginationOptions";
 import { lastOfUrl as getJobId } from "@flow/utils";
 
 import { RouteOption } from "../WorkspaceLeftPanel";
@@ -15,17 +16,22 @@ export default () => {
   const [openJobRunDialog, setOpenJobRunDialog] = useState(false);
   const [currentWorkspace] = useCurrentWorkspace();
   const [currentPage, setCurrentPage] = useState<number>(1);
-
+  const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
+    OrderDirection.Asc,
+  );
   const { useGetJobs } = useJob();
-  const JOBS_FETCH_RATE_PER_PAGE = 15;
+  const JOBS_FETCH_RATE_PER_PAGE = 1;
   const { pages, refetch } = useGetJobs(currentWorkspace?.id, {
     pageSize: JOBS_FETCH_RATE_PER_PAGE,
     page: currentPage,
+    orderDir: currentOrder,
   });
 
   useEffect(() => {
     refetch();
-  }, [currentPage, refetch]);
+  }, [currentPage, currentOrder, refetch]);
+
+  console.log(pages);
   const totalPages = pages?.totalPages as number;
 
   const {
@@ -59,6 +65,8 @@ export default () => {
     setCurrentPage,
     totalPages,
     JOBS_FETCH_RATE_PER_PAGE,
+    currentOrder,
+    setCurrentOrder,
   };
 };
 

@@ -4,6 +4,7 @@ import {
   CaretLeft,
   CaretRight,
 } from "@phosphor-icons/react";
+import { CaretSortIcon } from "@radix-ui/react-icons";
 import {
   ColumnDef,
   PaginationState,
@@ -28,6 +29,7 @@ import {
   IconButton,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { OrderDirection } from "@flow/types/paginationOptions";
 
 import {
   Table,
@@ -50,6 +52,8 @@ type DataTableProps<TData, TValue> = {
   currentPage?: number;
   setCurrentPage?: (page: number) => void;
   resultsPerPage?: number;
+  currentOrder?: OrderDirection;
+  setCurrentOrder?: (order: OrderDirection) => void;
 };
 
 function DataTable<TData, TValue>({
@@ -64,6 +68,8 @@ function DataTable<TData, TValue>({
   currentPage = 1,
   setCurrentPage,
   resultsPerPage,
+  currentOrder = OrderDirection.Asc,
+  setCurrentOrder,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -105,6 +111,15 @@ function DataTable<TData, TValue>({
     manualPagination: true,
   });
 
+  const handleOrderChange = () => {
+    setCurrentOrder?.(
+      currentOrder === OrderDirection.Asc
+        ? OrderDirection.Desc
+        : OrderDirection.Asc,
+    );
+  };
+
+  console.log("order", currentOrder);
   return (
     <div className="flex flex-col justify-between">
       <div>
@@ -115,6 +130,15 @@ function DataTable<TData, TValue>({
               value={globalFilter ?? ""}
               onChange={(e) => setGlobalFilter(String(e.target.value))}
               className="max-w-sm"
+            />
+          )}
+          {currentOrder && (
+            <IconButton
+              size="icon"
+              variant={"ghost"}
+              tooltipText={t("By Ascending/Descending")}
+              onClick={handleOrderChange}
+              icon={<CaretSortIcon />}
             />
           )}
           {selectColumns && (
@@ -145,6 +169,7 @@ function DataTable<TData, TValue>({
             </DropdownMenu>
           )}
         </div>
+
         <div className="rounded-md border">
           <Table>
             <TableHeader>

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useProject } from "@flow/lib/gql";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 import { Project } from "@flow/types";
+import { OrderDirection } from "@flow/types/paginationOptions";
 
 export default () => {
   const ref = useRef<HTMLDivElement>(null);
@@ -11,7 +12,10 @@ export default () => {
   const [workspace] = useCurrentWorkspace();
 
   const [currentProject, setCurrentProject] = useCurrentProject();
-  const PROJECTS_FETCH_RATE_PER_PAGE = 5;
+  const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
+    OrderDirection.Asc,
+  );
+  const PROJECTS_FETCH_RATE_PER_PAGE = 6;
   const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
   const { useGetWorkspaceProjects, deleteProject, updateProject } =
     useProject();
@@ -20,11 +24,12 @@ export default () => {
   const { pages, refetch } = useGetWorkspaceProjects(workspace?.id, {
     pageSize: PROJECTS_FETCH_RATE_PER_PAGE,
     page: currentPage,
+    orderDir: currentOrder,
   });
 
   useEffect(() => {
     refetch();
-  }, [currentPage, refetch]);
+  }, [currentPage, currentOrder, refetch]);
 
   const totalPages = pages?.totalPages as number;
   const [openProjectAddDialog, setOpenProjectAddDialog] = useState(false);
@@ -98,5 +103,7 @@ export default () => {
     setCurrentPage,
     totalPages,
     PROJECTS_FETCH_RATE_PER_PAGE,
+    currentOrder,
+    setCurrentOrder,
   };
 };

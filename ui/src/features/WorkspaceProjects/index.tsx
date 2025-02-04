@@ -1,8 +1,18 @@
 import { Plus } from "@phosphor-icons/react";
 
-import { Button, FlowLogo, Pagination } from "@flow/components/";
+import {
+  Button,
+  FlowLogo,
+  Pagination,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@flow/components/";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
+import { OrderDirection } from "@flow/types/paginationOptions";
 
 import {
   ProjectAddDialog,
@@ -34,7 +44,20 @@ const ProjectsManager: React.FC = () => {
     currentPage,
     setCurrentPage,
     totalPages,
+    currentOrder,
+    setCurrentOrder,
   } = useHooks();
+  const handleOrderChange = () => {
+    setCurrentOrder?.(
+      currentOrder === OrderDirection.Asc
+        ? OrderDirection.Desc
+        : OrderDirection.Asc,
+    );
+  };
+  const orderDirections: Record<OrderDirection, string> = {
+    ASC: t("Ascending"),
+    DESC: t("Descending"),
+  };
 
   return (
     <div className="flex h-full flex-1 flex-col">
@@ -49,6 +72,25 @@ const ProjectsManager: React.FC = () => {
             <p className="text-xs dark:font-light">{t("New Project")}</p>
           </Button>
         </div>
+        {currentOrder && (
+          <div className="flex w-[200px]">
+            <Select
+              value={currentOrder || "ASC"}
+              onValueChange={handleOrderChange}>
+              <SelectTrigger>
+                <SelectValue placeholder={orderDirections.ASC} />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(orderDirections).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {projects && projects?.length > 0 ? (
           <div
             className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"

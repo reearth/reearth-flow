@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTrigger } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Trigger } from "@flow/types";
+import { OrderDirection } from "@flow/types/paginationOptions";
 import { lastOfUrl as getTriggerId } from "@flow/utils";
 
 import { RouteOption } from "../WorkspaceLeftPanel";
@@ -28,14 +29,19 @@ export default () => {
 
   const tab = getTab(pathname);
   const [currentPage, setCurrentPage] = useState<number>(1);
-
+  const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
+    OrderDirection.Asc,
+  );
   const { pages, refetch } = useGetTriggers(currentWorkspace?.id, {
     pageSize: TRIGGERS_FETCH_RATE_PER_PAGE,
     page: currentPage,
+    orderDir: currentOrder,
   });
+
   useEffect(() => {
     refetch();
-  }, [currentPage, refetch]);
+  }, [currentPage, currentOrder, refetch]);
+
   const totalPages = pages?.totalPages as number;
   const triggers = pages?.triggers;
 
@@ -80,6 +86,8 @@ export default () => {
     setCurrentPage,
     totalPages,
     TRIGGERS_FETCH_RATE_PER_PAGE,
+    currentOrder,
+    setCurrentOrder,
   };
 };
 
