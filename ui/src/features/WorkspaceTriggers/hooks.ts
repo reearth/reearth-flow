@@ -32,7 +32,7 @@ export default () => {
   const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
     OrderDirection.Asc,
   );
-  const { pages, refetch } = useGetTriggers(currentWorkspace?.id, {
+  const { pages, refetch, isFetching } = useGetTriggers(currentWorkspace?.id, {
     pageSize: TRIGGERS_FETCH_RATE_PER_PAGE,
     page: currentPage,
     orderDir: currentOrder,
@@ -88,6 +88,7 @@ export default () => {
     TRIGGERS_FETCH_RATE_PER_PAGE,
     currentOrder,
     setCurrentOrder,
+    isFetching,
   };
 };
 

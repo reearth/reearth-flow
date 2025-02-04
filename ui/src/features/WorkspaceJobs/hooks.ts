@@ -20,8 +20,9 @@ export default () => {
     OrderDirection.Asc,
   );
   const { useGetJobs } = useJob();
-  const JOBS_FETCH_RATE_PER_PAGE = 1;
-  const { pages, refetch } = useGetJobs(currentWorkspace?.id, {
+  const JOBS_FETCH_RATE_PER_PAGE = 15;
+
+  const { pages, refetch, isFetching } = useGetJobs(currentWorkspace?.id, {
     pageSize: JOBS_FETCH_RATE_PER_PAGE,
     page: currentPage,
     orderDir: currentOrder,
@@ -31,7 +32,6 @@ export default () => {
     refetch();
   }, [currentPage, currentOrder, refetch]);
 
-  console.log(pages);
   const totalPages = pages?.totalPages as number;
 
   const {
@@ -61,6 +61,7 @@ export default () => {
     openJobRunDialog,
     setOpenJobRunDialog,
     handleJobSelect,
+    isFetching,
     currentPage,
     setCurrentPage,
     totalPages,

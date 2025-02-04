@@ -9,6 +9,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Spinner,
 } from "@flow/components/";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
@@ -46,6 +47,7 @@ const ProjectsManager: React.FC = () => {
     totalPages,
     currentOrder,
     setCurrentOrder,
+    isFetching,
   } = useHooks();
   const handleOrderChange = () => {
     setCurrentOrder?.(
@@ -90,8 +92,7 @@ const ProjectsManager: React.FC = () => {
             </Select>
           </div>
         )}
-
-        {projects && projects?.length > 0 ? (
+        {projects && !isFetching && projects.length > 0 && (
           <div
             className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
             ref={ref}>
@@ -106,7 +107,10 @@ const ProjectsManager: React.FC = () => {
               />
             ))}
           </div>
-        ) : (
+        )}
+        {isFetching && <Spinner />}
+
+        {!isFetching && projects && projects.length === 0 && (
           <BasicBoiler
             text={t("No Projects")}
             icon={<FlowLogo className="size-16 text-accent" />}

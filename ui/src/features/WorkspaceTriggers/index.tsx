@@ -5,6 +5,7 @@ import {
   Button,
   ButtonWithTooltip,
   FlowLogo,
+  Spinner,
   DataTable as Table,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
@@ -38,6 +39,7 @@ const TriggerManager: React.FC = () => {
     TRIGGERS_FETCH_RATE_PER_PAGE,
     currentOrder,
     setCurrentOrder,
+    isFetching,
   } = useHooks();
   const columns: ColumnDef<Trigger>[] = [
     {
@@ -102,7 +104,7 @@ const TriggerManager: React.FC = () => {
                 <p className="text-xs dark:font-light">{t("New Trigger")}</p>
               </Button>
             </div>
-            {triggers && triggers.length > 0 ? (
+            {triggers && !isFetching && triggers.length > 0 && (
               <Table
                 columns={columns}
                 data={triggers}
@@ -118,7 +120,9 @@ const TriggerManager: React.FC = () => {
                 currentOrder={currentOrder}
                 setCurrentOrder={setCurrentOrder}
               />
-            ) : (
+            )}
+            {isFetching && <Spinner />}
+            {!isFetching && triggers && triggers.length === 0 && (
               <BasicBoiler
                 text={t("No Triggers")}
                 icon={<FlowLogo className="size-16 text-accent" />}

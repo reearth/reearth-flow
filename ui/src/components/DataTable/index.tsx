@@ -119,7 +119,6 @@ function DataTable<TData, TValue>({
     );
   };
 
-  console.log("order", currentOrder);
   return (
     <div className="flex flex-col justify-between">
       <div>

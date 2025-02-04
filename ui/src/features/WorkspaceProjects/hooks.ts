@@ -21,11 +21,14 @@ export default () => {
     useProject();
   const [currentPage, setCurrentPage] = useState<number>(1);
 
-  const { pages, refetch } = useGetWorkspaceProjects(workspace?.id, {
-    pageSize: PROJECTS_FETCH_RATE_PER_PAGE,
-    page: currentPage,
-    orderDir: currentOrder,
-  });
+  const { pages, refetch, isFetching } = useGetWorkspaceProjects(
+    workspace?.id,
+    {
+      pageSize: PROJECTS_FETCH_RATE_PER_PAGE,
+      page: currentPage,
+      orderDir: currentOrder,
+    },
+  );
 
   useEffect(() => {
     refetch();
@@ -105,5 +108,6 @@ export default () => {
     PROJECTS_FETCH_RATE_PER_PAGE,
     currentOrder,
     setCurrentOrder,
+    isFetching,
   };
 };

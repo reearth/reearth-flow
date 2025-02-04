@@ -1,6 +1,6 @@
 import { ColumnDef } from "@tanstack/react-table";
 
-import { FlowLogo, DataTable as Table } from "@flow/components";
+import { FlowLogo, Spinner, DataTable as Table } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
 import type { Job } from "@flow/types";
@@ -17,6 +17,7 @@ const JobsManager: React.FC = () => {
     openJobRunDialog,
     setOpenJobRunDialog,
     handleJobSelect,
+    isFetching,
     currentPage,
     setCurrentPage,
     totalPages,
@@ -58,7 +59,7 @@ const JobsManager: React.FC = () => {
         <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg dark:font-extralight">{t("Jobs")}</p>
         </div>
-        {jobs && jobs.length > 0 ? (
+        {jobs && !isFetching && jobs.length > 0 && (
           <Table
             columns={columns}
             data={jobs}
@@ -74,7 +75,10 @@ const JobsManager: React.FC = () => {
             currentOrder={currentOrder}
             setCurrentOrder={setCurrentOrder}
           />
-        ) : (
+        )}
+
+        {isFetching && <Spinner />}
+        {!isFetching && jobs && jobs.length === 0 && (
           <BasicBoiler
             text={t("No Jobs")}
             icon={<FlowLogo className="size-16 text-accent" />}
