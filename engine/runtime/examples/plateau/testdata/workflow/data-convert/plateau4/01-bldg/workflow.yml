@@ -4,9 +4,8 @@ name: "PLATEAU4-DataConvert-01-bldg-workflow"
 entryGraphId: 34bf873b-3364-46b0-8153-efeb9568bb3c
 with:
   cityGmlPath:
-  cityCode:
-  codelistsPath:
-  schemasPath:
+  codelists:
+  schemas:
   targetPackages:
     - bldg
   outputPath:
@@ -24,7 +23,7 @@ graphs:
             [
               #{
                 cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode"),
+                cityCode: file::extract_filename(env.get("cityGmlPath"))[0..5],
               },
             ]
 
