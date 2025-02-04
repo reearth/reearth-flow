@@ -226,6 +226,7 @@ func TestDeploymentsPagination(t *testing.T) {
 
 	// Test sorting by description
 	t.Run("test_sorting_by_description", func(t *testing.T) {
+		// First test ASC order
 		query := fmt.Sprintf(`{
 			deployments(
 				workspaceId: "%s"
@@ -255,7 +256,7 @@ func TestDeploymentsPagination(t *testing.T) {
 			WithBytes(jsonData).
 			Expect().Status(http.StatusOK)
 
-		var result struct {
+		var resultAsc struct {
 			Data struct {
 				Deployments struct {
 					Nodes []struct {
@@ -266,14 +267,73 @@ func TestDeploymentsPagination(t *testing.T) {
 			} `json:"data"`
 		}
 
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &resultAsc)
 		assert.NoError(t, err)
 
-		// Verify sorting
-		for i := 1; i < len(result.Data.Deployments.Nodes); i++ {
-			prev := result.Data.Deployments.Nodes[i-1].Description
-			curr := result.Data.Deployments.Nodes[i].Description
+		// Verify ASC order
+		for i := 1; i < len(resultAsc.Data.Deployments.Nodes); i++ {
+			prev := resultAsc.Data.Deployments.Nodes[i-1].Description
+			curr := resultAsc.Data.Deployments.Nodes[i].Description
 			assert.True(t, prev <= curr, "Deployments should be sorted by description in ascending order")
+		}
+
+		// Now test DESC order
+		query = fmt.Sprintf(`{
+			deployments(
+				workspaceId: "%s"
+				pagination: {
+					page: 1
+					pageSize: 5
+					orderBy: "description"
+					orderDir: DESC
+				}
+			) {
+				nodes {
+					id
+					description
+				}
+			}
+		}`, wId1.String())
+
+		request = GraphQLRequest{
+			Query: query,
+		}
+		jsonData, err = json.Marshal(request)
+		assert.NoError(t, err)
+
+		resp = e.POST("/api/graphql").
+			WithHeader("Content-Type", "application/json").
+			WithHeader("X-Reearth-Debug-User", uId1.String()).
+			WithBytes(jsonData).
+			Expect().Status(http.StatusOK)
+
+		var resultDesc struct {
+			Data struct {
+				Deployments struct {
+					Nodes []struct {
+						ID          string `json:"id"`
+						Description string `json:"description"`
+					} `json:"nodes"`
+				} `json:"deployments"`
+			} `json:"data"`
+		}
+
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &resultDesc)
+		assert.NoError(t, err)
+
+		// Verify DESC order
+		for i := 1; i < len(resultDesc.Data.Deployments.Nodes); i++ {
+			prev := resultDesc.Data.Deployments.Nodes[i-1].Description
+			curr := resultDesc.Data.Deployments.Nodes[i].Description
+			assert.True(t, prev >= curr, "Deployments should be sorted by description in descending order")
+		}
+
+		// Verify that ASC and DESC orders are opposite of each other
+		if len(resultAsc.Data.Deployments.Nodes) > 0 && len(resultDesc.Data.Deployments.Nodes) > 0 {
+			assert.Equal(t,
+				resultAsc.Data.Deployments.Nodes[0].Description,
+				resultDesc.Data.Deployments.Nodes[len(resultDesc.Data.Deployments.Nodes)-1].Description,
+				"First element in ASC should equal last element in DESC")
 		}
 	})
 
