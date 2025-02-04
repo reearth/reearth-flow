@@ -10,7 +10,7 @@
   "Debug": "",
   "Trace": "",
   "Info": "",
-  "Include Timestamp": "",
+  "Include ts": "",
   "Reset Logs": "",
   "Invalid data": "Données invalid",
   "Error with the schema": "Erreur avec le schéma",

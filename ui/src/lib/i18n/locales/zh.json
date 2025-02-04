@@ -10,7 +10,7 @@
   "Debug": "",
   "Trace": "",
   "Info": "",
-  "Include Timestamp": "",
+  "Include ts": "",
   "Reset Logs": "",
   "Invalid data": "无效数据",
   "Error with the schema": "模式错误",
