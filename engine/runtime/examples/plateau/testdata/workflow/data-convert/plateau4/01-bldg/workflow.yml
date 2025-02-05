@@ -24,6 +24,8 @@ graphs:
               #{
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: file::extract_filename(env.get("cityGmlPath"))[0..5],
+                codelists: env.get("codelists"),
+                schemas: env.get("schemas"),
               },
             ]
 

@@ -99,9 +99,9 @@ impl Processor for DirectoryDecompressor {
             let Some(AttributeValue::String(source_dataset)) = feature.get(attribute) else {
                 continue;
             };
-            let source_dataset = Uri::from_str(source_dataset.as_str()).map_err(|_| {
-                super::errors::FileProcessorError::DirectoryDecompressor("Invalid path".to_string())
-            })?;
+            let Ok(source_dataset) = Uri::from_str(source_dataset.as_str()) else {
+                continue;
+            };
             if !crate::utils::decompressor::is_extractable_archive(&source_dataset) {
                 continue;
             }

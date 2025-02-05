@@ -37,6 +37,33 @@ pub fn metadata<P: AsRef<Path>>(path: &P) -> std::io::Result<Metadata> {
     }
 }
 
+pub fn copy_sync_tree<P, Q>(src: P, dest: Q) -> std::io::Result<()>
+where
+    P: AsRef<Path>,
+    Q: AsRef<Path>,
+{
+    let src = src.as_ref();
+    let dst = dest.as_ref();
+    if !dst.exists() {
+        std::fs::create_dir_all(dst)?;
+    }
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if entry.file_type()?.is_dir() {
+            copy_sync_tree(&src_path, &dst_path)?;
+        } else {
+            if dst_path.exists() {
+                std::fs::remove_file(&dst_path)?;
+            }
+            std::fs::copy(&src_path, &dst_path)?;
+        }
+    }
+    Ok(())
+}
+
 pub async fn empty_dir<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
     let mut entries = tokio::fs::read_dir(path).await?;
     while let Some(entry) = entries.next_entry().await? {
