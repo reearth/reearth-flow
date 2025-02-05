@@ -135,7 +135,7 @@ const DeploymentManager: React.FC = () => {
               />
             ) : (
               <BasicBoiler
-                text={t("No Jobs")}
+                text={t("No Deployment")}
                 icon={<FlowLogo className="size-16 text-accent" />}
               />
             )}

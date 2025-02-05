@@ -72,7 +72,7 @@ const JobRunDialog: React.FC<Props> = ({ setShowDialog }) => {
               onClick={() => setOpenSelectDeploymentsDialog(true)}>
               <Plus />
               {selectedDeployment
-                ? `${selectedDeployment.projectName} [${selectedDeployment.description}] @${selectedDeployment.version}`
+                ? `${selectedDeployment.description} @${selectedDeployment.version}`
                 : t("Select a deployment")}
             </Button>
           </DialogContentSection>

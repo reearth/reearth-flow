@@ -158,7 +158,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               onClick={() => setOpenSelectDeploymentsDialog(true)}>
               {!selectedDeployment && <Plus />}
               {selectedDeployment
-                ? `${selectedDeployment.projectName} [${selectedDeployment.description}] @${selectedDeployment.version}`
+                ? `${selectedDeployment.description} @${selectedDeployment.version}`
                 : t("Select a deployment")}
             </Button>
           </DialogContentSection>

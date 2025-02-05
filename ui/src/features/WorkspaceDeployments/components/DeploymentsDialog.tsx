@@ -62,7 +62,7 @@ const DeploymentsDialog: React.FC<Props> = ({
 
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
-      <DialogContent size="md" className="min-h-96">
+      <DialogContent size="xl" className="min-h-96">
         <DialogTitle> {t("Select a deployment")}</DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex-1">
@@ -89,7 +89,7 @@ const DeploymentsDialog: React.FC<Props> = ({
               />
             ) : (
               <BasicBoiler
-                text={t("No Jobs")}
+                text={t("No Deployments")}
                 icon={<FlowLogo className="size-16 text-accent" />}
               />
             )}

@@ -21,7 +21,7 @@ export enum ProjectQueryKeys {
   GetProject = "getProject",
 }
 
-export const PROJECT_FETCH_AMOUNT = 12;
+export const PROJECT_FETCH_AMOUNT = 16;
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();

@@ -13,7 +13,8 @@ export default () => {
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  const [openTriggerAddDialog, setOpenTriggerAddDialog] = useState(false);
+  const [openTriggerAddDialog, setOpenTriggerAddDialog] =
+    useState<boolean>(false);
   const [currentWorkspace] = useCurrentWorkspace();
   const [triggerToBeEdited, setTriggerToBeEdited] = useState<
     Trigger | undefined

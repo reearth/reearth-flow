@@ -1,4 +1,3 @@
-import { CaretSortIcon } from "@radix-ui/react-icons";
 import {
   ColumnDef,
   PaginationState,
@@ -20,8 +19,12 @@ import {
   DropdownMenuTrigger,
   Button,
   Input,
-  IconButton,
   Pagination,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { OrderDirection } from "@flow/types/paginationOptions";
@@ -114,6 +117,11 @@ function DataTable<TData, TValue>({
     );
   };
 
+  const orderDirections: Record<OrderDirection, string> = {
+    DESC: t("Newest"),
+    ASC: t("Oldest"),
+  };
+
   return (
     <div className="flex flex-col justify-between">
       <div>
@@ -127,13 +135,22 @@ function DataTable<TData, TValue>({
             />
           )}
           {currentOrder && (
-            <IconButton
-              size="icon"
-              variant={"ghost"}
-              tooltipText={t("By Ascending/Descending")}
-              onClick={handleOrderChange}
-              icon={<CaretSortIcon />}
-            />
+            <div className="flex w-[200px] [&_.flex]:h-[32px]">
+              <Select
+                value={currentOrder || "DESC"}
+                onValueChange={handleOrderChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder={orderDirections.ASC} />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(orderDirections).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           )}
           {selectColumns && (
             <DropdownMenu>

@@ -76,7 +76,7 @@ const ProjectsManager: React.FC = () => {
         {currentOrder && (
           <div className="flex w-[200px]">
             <Select
-              value={currentOrder || "ASC"}
+              value={currentOrder || "DESC"}
               onValueChange={handleOrderChange}>
               <SelectTrigger>
                 <SelectValue placeholder={orderDirections.ASC} />
