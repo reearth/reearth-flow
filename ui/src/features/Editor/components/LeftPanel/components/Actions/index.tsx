@@ -87,8 +87,8 @@ const ActionsList: React.FC<Props> = ({
       const { api } = config();
       const action = await fetcher<Action>(`${api}/actions/${name}`);
       if (!action) return;
-      const randomX = Math.floor(Math.random() * (400 - 200 + 1)) + 200;
-      const randomY = Math.floor(Math.random() * (400 - 200 + 1)) + 200;
+      const randomX = Math.floor(Math.random() * (400 - 100 + 1)) + 100;
+      const randomY = Math.floor(Math.random() * (400 - 100 + 1)) + 100;
       const newNode: Node = {
         id: generateUUID(),
         type: action.type,
