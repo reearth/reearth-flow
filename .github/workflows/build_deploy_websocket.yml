@@ -65,9 +65,12 @@ jobs:
     needs: build-websocket
     runs-on: ubuntu-latest
     if: ${{ inputs.name != 'blank' || inputs.new_tag != 'blank' }}
+    permissions:
+      contents: read
+      id-token: write
     env:
       IMAGE_NAME: reearth/reearth-flow-websocket
-      IMAGE_GCP: us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-websocket
+      IMAGE_GCP: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-websocket
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -87,7 +90,8 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Log in to DockerHub
         uses: docker/login-action@v3
@@ -149,15 +153,19 @@ jobs:
     needs: build-docker-image
     runs-on: ubuntu-latest
     if: ${{ inputs.name == 'nightly' }}
+    permissions:
+      contents: read
+      id-token: write
     env:
-      IMAGE: us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-websocket:nightly
+      IMAGE: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-websocket:nightly
       GCP_REGION: us-central1
       CLOUD_RUN_SERVICE: reearth-flow-websocket
     steps:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
