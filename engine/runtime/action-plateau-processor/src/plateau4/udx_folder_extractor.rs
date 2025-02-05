@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    fmt::format,
     path::{PathBuf, MAIN_SEPARATOR, MAIN_SEPARATOR_STR},
     str::FromStr,
     sync::Arc,
@@ -326,7 +327,10 @@ fn gen_codelists_and_schemas_path(
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{:?}", e)))?
         {
             let dir = Uri::for_test(&codelists_path.clone().ok_or(
-                PlateauProcessorError::UDXFolderExtractor("Invalid codelists path".to_string()),
+                PlateauProcessorError::UDXFolderExtractor(format!(
+                    "Invalid codelists path: {:?}",
+                    codelists_path,
+                )),
             )?);
             if storage
                 .exists_sync(dir.path().as_path())
@@ -344,7 +348,10 @@ fn gen_codelists_and_schemas_path(
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{:?}", e)))?
         {
             let dir = Uri::for_test(&schemas_path.clone().ok_or(
-                PlateauProcessorError::UDXFolderExtractor("Invalid codelists path".to_string()),
+                PlateauProcessorError::UDXFolderExtractor(format!(
+                    "Invalid schemas path: {:?}",
+                    schemas_path,
+                )),
             )?);
             if storage
                 .exists_sync(dir.path().as_path())
