@@ -35,13 +35,22 @@ graphs:
           groupBy:
           - postfix
 
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906b
+        name: GeoJsonWriter
+        type: action
+        action: GeoJsonWriter
+        with:
+          output: |
+            file::join_path(env.get("outputPath"), "buffer.geojson")
+
+
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: GeoJsonWriter
         type: action
         action: GeoJsonWriter
         with:
           output: |
-            file::join_path(env.get("outputPath"), "a001-7-buffer.geojson")
+            file::join_path(env.get("outputPath"), "convex-hull.geojson")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
@@ -55,17 +64,12 @@ graphs:
         fromPort: default
         toPort: default
       - id: c81ea200-9aa1-4522-9f72-10e8b9184cb8
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906b
+        fromPort: default
+        toPort: default
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb9
         from: 61e89fd2-ea66-4fa1-b426-6f84484a9d39
         to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         fromPort: default
         toPort: default
-      # - id: c064cf52-705f-443a-b2de-6795266c540d
-      #   from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
-      #   to: 61e89fd2-ea66-4fa1-b426-6f84484a9d39
-      #   fromPort: default
-      #   toPort: default
-      # - id: c81ea200-9aa1-4522-9f72-10e8b9184cb8
-      #   from: 61e89fd2-ea66-4fa1-b426-6f84484a9d39
-      #   to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-      #   fromPort: default
-      #   toPort: default
