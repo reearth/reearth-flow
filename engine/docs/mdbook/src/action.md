@@ -732,22 +732,18 @@ Decompresses a directory
   "title": "DirectoryDecompressorParam",
   "type": "object",
   "required": [
-    "archivePath",
-    "outputPathAttribute"
+    "archiveAttributes"
   ],
   "properties": {
-    "archivePath": {
-      "$ref": "#/definitions/Expr"
-    },
-    "outputPathAttribute": {
-      "$ref": "#/definitions/Attribute"
+    "archiveAttributes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
     }
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     }
   }
@@ -963,6 +959,12 @@ Extracts features by file path
     "sourceDataset"
   ],
   "properties": {
+    "destPrefix": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "extractArchive": {
       "type": "boolean"
     },
@@ -2978,9 +2980,32 @@ Extracts UDX folders from cityGML path
   "properties": {
     "cityGmlPath": {
       "$ref": "#/definitions/Expr"
+    },
+    "codelistsPath": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schemasPath": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
     "Expr": {
       "type": "string"
     }

@@ -8,15 +8,14 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr};
+use reearth_flow_storage::resolve::StorageResolver;
+use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::utils::decompressor::extract_archive;
-
 #[derive(Debug, Clone, Default)]
-pub struct DirectoryDecompressorFactory;
+pub(crate) struct DirectoryDecompressorFactory;
 
 impl ProcessorFactory for DirectoryDecompressorFactory {
     fn name(&self) -> &str {
@@ -45,7 +44,7 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
 
     fn build(
         &self,
-        ctx: NodeContext,
+        _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -71,21 +70,8 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
                 .into(),
             );
         };
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let archive_path = expr_engine
-            .compile(param.archive_path.as_ref())
-            .map_err(|e| {
-                super::errors::FileProcessorError::DirectoryDecompressorFactory(format!(
-                    "Failed to compile `archive_path` expression: {}",
-                    e
-                ))
-            })?;
         let process = DirectoryDecompressor {
-            params: DirectoryDecompressorCompiledParam {
-                archive_path,
-                output_path_attribute: param.output_path_attribute,
-            },
-            with,
+            archive_attributes: param.archive_attributes,
         };
         Ok(Box::new(process))
     }
@@ -93,21 +79,13 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct DirectoryDecompressorParam {
-    archive_path: Expr,
-    output_path_attribute: Attribute,
+struct DirectoryDecompressorParam {
+    archive_attributes: Vec<Attribute>,
 }
 
 #[derive(Debug, Clone)]
-pub struct DirectoryDecompressorCompiledParam {
-    archive_path: rhai::AST,
-    output_path_attribute: Attribute,
-}
-
-#[derive(Debug, Clone)]
-pub struct DirectoryDecompressor {
-    params: DirectoryDecompressorCompiledParam,
-    with: Option<HashMap<String, Value>>,
+struct DirectoryDecompressor {
+    archive_attributes: Vec<Attribute>,
 }
 
 impl Processor for DirectoryDecompressor {
@@ -116,47 +94,29 @@ impl Processor for DirectoryDecompressor {
         ctx: ExecutorContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let feature = &ctx.feature;
-        let expr_engine = Arc::clone(&ctx.expr_engine);
-        let scope = feature.new_scope(expr_engine, &self.with);
-        let source_dataset = scope
-            .eval_ast::<String>(&self.params.archive_path)
-            .map_err(|e| {
+        let mut feature = ctx.feature.clone();
+        for attribute in &self.archive_attributes {
+            let Some(AttributeValue::String(source_dataset)) = feature.get(attribute) else {
+                continue;
+            };
+            let Ok(source_dataset) = Uri::from_str(source_dataset.as_str()) else {
+                continue;
+            };
+            if !crate::utils::decompressor::is_extractable_archive(&source_dataset) {
+                continue;
+            }
+            let root_output_path = extract_archive(&source_dataset, ctx.storage_resolver.clone())
+                .map_err(|e| {
                 super::errors::FileProcessorError::DirectoryDecompressor(format!(
-                    "Failed to evaluate `source_dataset` expression: {}",
+                    "Failed to extract archive: {}",
                     e
                 ))
             })?;
-        let source_dataset = Uri::from_str(source_dataset.as_str()).map_err(|_| {
-            super::errors::FileProcessorError::DirectoryDecompressor("Invalid path".to_string())
-        })?;
-        let root_output_path = project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
-        let root_output_path = Uri::from_str(root_output_path.to_str().ok_or(
-            super::errors::FileProcessorError::DirectoryDecompressor("Invalid path".to_string()),
-        )?)
-        .map_err(|e| {
-            super::errors::FileProcessorError::DirectoryDecompressor(format!(
-                "Failed to convert `root_output_path` to URI: {}",
-                e
-            ))
-        })?;
-        let _ = extract_archive(
-            &source_dataset,
-            &root_output_path,
-            ctx.storage_resolver.clone(),
-        )
-        .map_err(|e| {
-            super::errors::FileProcessorError::DirectoryDecompressor(format!(
-                "Failed to extract archive: {}",
-                e
-            ))
-        })?;
-        let mut feature = ctx.feature.clone();
-        let root_output_path = get_single_subfolder_or_self(&root_output_path)?;
-        feature.insert(
-            self.params.output_path_attribute.clone(),
-            AttributeValue::String(root_output_path.to_string()),
-        );
+            feature.insert(
+                attribute.clone(),
+                AttributeValue::String(root_output_path.to_string()),
+            );
+        }
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
@@ -172,6 +132,41 @@ impl Processor for DirectoryDecompressor {
     fn name(&self) -> &str {
         "DirectoryDecompressor"
     }
+}
+
+fn extract_archive(
+    source_dataset: &Uri,
+    storage_resolver: Arc<StorageResolver>,
+) -> super::errors::Result<Uri> {
+    let root_output_path =
+        project_temp_dir(uuid::Uuid::new_v4().to_string().as_str()).map_err(|e| {
+            super::errors::FileProcessorError::DirectoryDecompressor(format!(
+                "Failed to create temp directory: {}",
+                e
+            ))
+        })?;
+    let root_output_path = Uri::from_str(root_output_path.to_str().ok_or(
+        super::errors::FileProcessorError::DirectoryDecompressor("Invalid path".to_string()),
+    )?)
+    .map_err(|e| {
+        super::errors::FileProcessorError::DirectoryDecompressor(format!(
+            "Failed to convert `root_output_path` to URI: {}",
+            e
+        ))
+    })?;
+    let _ = crate::utils::decompressor::extract_archive(
+        source_dataset,
+        &root_output_path,
+        storage_resolver.clone(),
+    )
+    .map_err(|e| {
+        super::errors::FileProcessorError::DirectoryDecompressor(format!(
+            "Failed to extract archive: {}",
+            e
+        ))
+    })?;
+    let root_output_path = get_single_subfolder_or_self(&root_output_path)?;
+    Ok(root_output_path)
 }
 
 fn get_single_subfolder_or_self(parent_dir: &Uri) -> super::errors::Result<Uri> {

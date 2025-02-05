@@ -1,4 +1,4 @@
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::{collections::HashMap, fs, str::FromStr, sync::Arc};
 
 use once_cell::sync::Lazy;
 use reearth_flow_common::{dir::project_temp_dir, uri::Uri};
@@ -87,6 +87,7 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
             params: FeatureFilePathExtractorCompiledParam {
                 source_dataset,
                 extract_archive: param.extract_archive,
+                dest_prefix: param.dest_prefix,
             },
             with,
         };
@@ -99,12 +100,14 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
 pub struct FeatureFilePathExtractorParam {
     source_dataset: Expr,
     extract_archive: bool,
+    dest_prefix: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FeatureFilePathExtractorCompiledParam {
     source_dataset: rhai::AST,
     extract_archive: bool,
+    dest_prefix: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -141,7 +144,16 @@ impl Processor for FeatureFilePathExtractor {
         })?;
 
         if self.is_extractable_archive(&source_dataset) {
-            let root_output_path = project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
+            let mut root_output_path = project_temp_dir(uuid::Uuid::new_v4().to_string().as_str())?;
+            if let Some(prefix) = &self.params.dest_prefix {
+                root_output_path = root_output_path.join(prefix.as_str());
+                fs::create_dir_all(&root_output_path).map_err(|e| {
+                    FeatureProcessorError::FilePathExtractor(format!(
+                        "Failed to create directory: {}",
+                        e
+                    ))
+                })?;
+            }
             let root_output_path = Uri::from_str(root_output_path.to_str().ok_or(
                 FeatureProcessorError::FilePathExtractor("Invalid path".to_string()),
             )?)
@@ -210,9 +222,6 @@ impl Processor for FeatureFilePathExtractor {
 
 impl FeatureFilePathExtractor {
     fn is_extractable_archive(&self, path: &Uri) -> bool {
-        self.params.extract_archive
-            && !path.is_dir()
-            && path.extension().is_some()
-            && matches!(path.extension().unwrap(), "zip" | "7z" | "7zip")
+        self.params.extract_archive && crate::utils::decompressor::is_extractable_archive(path)
     }
 }
