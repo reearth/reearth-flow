@@ -210,9 +210,6 @@ impl Processor for FeatureFilePathExtractor {
 
 impl FeatureFilePathExtractor {
     fn is_extractable_archive(&self, path: &Uri) -> bool {
-        self.params.extract_archive
-            && !path.is_dir()
-            && path.extension().is_some()
-            && matches!(path.extension().unwrap(), "zip" | "7z" | "7zip")
+        self.params.extract_archive && crate::utils::decompressor::is_extractable_archive(path)
     }
 }

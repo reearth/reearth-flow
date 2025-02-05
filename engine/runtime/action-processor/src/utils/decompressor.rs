@@ -9,6 +9,15 @@ use reearth_flow_sevenz::{decompress_with_extract_fn, default_entry_extract_fn};
 use reearth_flow_storage::{resolve::StorageResolver, storage::Storage};
 use reearth_flow_types::FilePath;
 
+pub(crate) fn is_extractable_archive(path: &Uri) -> bool {
+    if let Some(ext) = path.path().as_path().extension() {
+        if let Some(ext) = ext.to_str() {
+            return ["zip", "7z", "7zip"].contains(&ext);
+        }
+    }
+    false
+}
+
 pub(crate) fn extract_archive(
     source_dataset: &Uri,
     root_output_path: &Uri,
