@@ -51,6 +51,10 @@ pub(super) enum GeometryProcessorError {
     GeometryCoercerFactory(String),
     #[error("GeometryCoercer error: {0}")]
     GeometryCoercer(String),
+    #[error("ConvexHullConstructor Factory error: {0}")]
+    ConvexHullConstructorFactory(String),
+    #[error("ConvexHullConstructor error: {0}")]
+    ConvexHullConstructor(String),
     #[error("LineOnLineOverlayer Factory error: {0}")]
     LineOnLineOverlayerFactory(String),
     #[error("LineOnLineOverlayer error: {0}")]
