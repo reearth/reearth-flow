@@ -168,7 +168,7 @@ async fn main() {
     };
 
     let app = Router::new()
-        .route("/:doc_id", get(ws_handler))
+        .route("/{doc_id}", get(ws_handler))
         .with_state(state);
 
     tracing::info!("Starting server on 0.0.0.0:{}", PORT);

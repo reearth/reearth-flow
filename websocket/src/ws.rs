@@ -56,7 +56,7 @@ impl futures_util::Sink<Vec<u8>> for WarpSink {
     }
 
     fn start_send(mut self: Pin<&mut Self>, item: Vec<u8>) -> Result<(), Self::Error> {
-        if let Err(e) = Pin::new(&mut self.0).start_send(Message::Binary(item)) {
+        if let Err(e) = Pin::new(&mut self.0).start_send(Message::Binary(item.into())) {
             Err(Error::Other(e.into()))
         } else {
             Ok(())
@@ -104,7 +104,7 @@ impl Stream for WarpStream {
             Poll::Ready(None) => Poll::Ready(None),
             Poll::Ready(Some(res)) => match res {
                 Ok(msg) => match msg {
-                    Message::Binary(data) => Poll::Ready(Some(Ok(data))),
+                    Message::Binary(data) => Poll::Ready(Some(Ok(data.to_vec()))),
                     Message::Ping(_) | Message::Pong(_) | Message::Text(_) | Message::Close(_) => {
                         cx.waker().wake_by_ref();
                         Poll::Pending
