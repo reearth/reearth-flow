@@ -112,7 +112,7 @@ fn bench_doc_sync(c: &mut Criterion) {
                 // Send update message
                 let txn = doc.transact();
                 let update = txn.encode_diff_v1(&StateVector::default());
-                let msg = Message::Binary(update);
+                let msg = Message::Binary(update.into());
                 write.send(msg).await.expect("Failed to send message");
                 write.flush().await.expect("Failed to flush");
 
@@ -158,7 +158,7 @@ fn bench_text_operations(c: &mut Criterion) {
                 // Send update message
                 let txn = doc.transact();
                 let update = txn.encode_diff_v1(&StateVector::default());
-                let msg = Message::Binary(update);
+                let msg = Message::Binary(update.into());
                 write.send(msg).await.expect("Failed to send message");
                 write.flush().await.expect("Failed to flush");
 
@@ -207,7 +207,7 @@ fn bench_concurrent_clients(c: &mut Criterion) {
                         let update = txn.encode_diff_v1(&StateVector::default());
 
                         write
-                            .send(Message::Binary(update))
+                            .send(Message::Binary(update.into()))
                             .await
                             .expect("Failed to send message");
                         write.flush().await.expect("Failed to flush");
@@ -276,7 +276,7 @@ fn bench_broadcast(c: &mut Criterion) {
 
                 let txn = doc.transact();
                 let update = txn.encode_diff_v1(&StateVector::default());
-                let msg = Message::Binary(update);
+                let msg = Message::Binary(update.into());
 
                 sender_write
                     .send(msg)
@@ -334,7 +334,7 @@ fn bench_large_update(c: &mut Criterion) {
 
                 let txn = doc.transact();
                 let update = txn.encode_diff_v1(&StateVector::default());
-                let msg = Message::Binary(update);
+                let msg = Message::Binary(update.into());
                 write.send(msg).await.expect("Failed to send message");
                 write.flush().await.expect("Failed to flush");
 
@@ -373,7 +373,7 @@ fn bench_state_vector_sync(c: &mut Criterion) {
                 // Send update with current state
                 let txn = doc.transact();
                 let update = txn.encode_diff_v1(&state_vector);
-                let msg = Message::Binary(update);
+                let msg = Message::Binary(update.into());
                 write.send(msg).await.expect("Failed to send message");
                 write.flush().await.expect("Failed to flush");
 
@@ -422,7 +422,7 @@ fn bench_concurrent_clients_variable(c: &mut Criterion) {
                                 let update = txn.encode_diff_v1(&StateVector::default());
 
                                 ws_stream
-                                    .send(Message::Binary(update))
+                                    .send(Message::Binary(update.into()))
                                     .await
                                     .expect("Failed to send message");
                                 sleep(CONNECTION_DELAY).await;
@@ -465,7 +465,7 @@ fn bench_long_connection(c: &mut Criterion) {
                     let update = txn.encode_diff_v1(&StateVector::default());
 
                     ws_stream
-                        .send(Message::Binary(update))
+                        .send(Message::Binary(update.into()))
                         .await
                         .expect("Failed to send message");
                     sleep(CONNECTION_DELAY).await;
