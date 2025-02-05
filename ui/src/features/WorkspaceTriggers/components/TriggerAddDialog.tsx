@@ -157,13 +157,13 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               size="sm"
               onClick={() => setOpenSelectDeploymentsDialog(true)}>
               {!selectedDeployment && <Plus />}
-              {selectedDeployment
-                ? `${
-                    (selectedDeployment?.description?.length ?? 0) > 20
-                      ? `${selectedDeployment?.description?.substring(0, 20)}...`
-                      : selectedDeployment.description
-                  } @${selectedDeployment.version}`
-                : t("Select a deployment")}
+              {selectedDeployment ? (
+                <span className="truncate">
+                  {selectedDeployment.description} @{selectedDeployment.version}
+                </span>
+              ) : (
+                t("Select a deployment")
+              )}
             </Button>
           </DialogContentSection>
           <DialogContentSection className="flex-1">
