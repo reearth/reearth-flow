@@ -67,12 +67,16 @@ const JobRunDialog: React.FC<Props> = ({ setShowDialog }) => {
               {t("Select a deployment")}
             </Label>
             <Button
-              variant="outline"
+              variant={selectedDeployment ? "default" : "outline"}
               size="sm"
               onClick={() => setOpenSelectDeploymentsDialog(true)}>
-              <Plus />
+              {!selectedDeployment && <Plus />}
               {selectedDeployment
-                ? `${selectedDeployment.description} @${selectedDeployment.version}`
+                ? `${
+                    (selectedDeployment?.description?.length ?? 0) > 20
+                      ? `${selectedDeployment?.description?.substring(0, 20)}...`
+                      : selectedDeployment.description
+                  } @${selectedDeployment.version}`
                 : t("Select a deployment")}
             </Button>
           </DialogContentSection>
