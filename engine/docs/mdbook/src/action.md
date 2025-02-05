@@ -732,22 +732,18 @@ Decompresses a directory
   "title": "DirectoryDecompressorParam",
   "type": "object",
   "required": [
-    "archivePath",
-    "outputPathAttribute"
+    "archiveAttributes"
   ],
   "properties": {
-    "archivePath": {
-      "$ref": "#/definitions/Expr"
-    },
-    "outputPathAttribute": {
-      "$ref": "#/definitions/Attribute"
+    "archiveAttributes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
     }
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     }
   }
