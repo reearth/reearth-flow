@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use reearth_flow_geometry::algorithm::convex_hull::ConvexHull;
 use reearth_flow_geometry::types::geometry::Geometry2D;
+use reearth_flow_geometry::types::geometry_collection::GeometryCollection;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
@@ -10,7 +11,7 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Feature, Geometry, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -30,7 +31,7 @@ impl ProcessorFactory for ConvexHullConstructorFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(ConvexHullConstructor))
+        Some(schemars::schema_for!(ConvexHullConstructorParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -44,6 +45,7 @@ impl ProcessorFactory for ConvexHullConstructorFactory {
     fn get_output_ports(&self) -> Vec<Port> {
         vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
     }
+
     fn build(
         &self,
         _ctx: NodeContext,
@@ -51,7 +53,7 @@ impl ProcessorFactory for ConvexHullConstructorFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let convex_hull_constructor: ConvexHullConstructor = if let Some(with) = with {
+        let param: ConvexHullConstructorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::ConvexHullConstructorFactory(format!(
                     "Failed to serialize 'with' parameter: {}",
@@ -70,13 +72,33 @@ impl ProcessorFactory for ConvexHullConstructorFactory {
             )
             .into());
         };
-        Ok(Box::new(convex_hull_constructor))
+        let process = ConvexHullConstructor {
+            group_by: param.group_by,
+            buffer_2d: HashMap::new(),
+        };
+
+        Ok(Box::new(process))
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ConvexHullConstructor {}
+pub struct ConvexHullConstructorParam {
+    group_by: Option<Vec<Attribute>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConvexHullConstructor {
+    group_by: Option<Vec<Attribute>>,
+    buffer_2d: HashMap<String, Vec<Feature>>,
+}
+
+fn get_attributes(feature: &Feature, attributes: &[Attribute]) -> Vec<AttributeValue> {
+    attributes
+        .iter()
+        .filter_map(|attr| feature.get(&attr).cloned())
+        .collect::<Vec<_>>()
+}
 
 impl Processor for ConvexHullConstructor {
     fn process(
@@ -94,20 +116,49 @@ impl Processor for ConvexHullConstructor {
             GeometryValue::None => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
             }
-            GeometryValue::FlowGeometry2D(geos) => {
-                self.handle_2d_geometry(geos, feature, geometry, &ctx, fw);
+            GeometryValue::FlowGeometry2D(_) => {
+                let key = if let Some(group_by) = &self.group_by {
+                    get_attributes(feature, group_by)
+                        .iter()
+                        .map(|v| v.to_string())
+                        .collect::<Vec<_>>()
+                        .join("\t")
+                } else {
+                    "_all".to_string()
+                };
+
+                if !self.buffer_2d.contains_key(&key) {
+                    for hull in self.create_hull_2d() {
+                        fw.send(ctx.new_with_feature_and_port(hull, DEFAULT_PORT.clone()));
+                    }
+                    self.buffer_2d.clear();
+                }
+
+                self.buffer_2d
+                    .entry(key.clone())
+                    .or_default()
+                    .push(feature.clone());
             }
-            GeometryValue::FlowGeometry3D(_) => unimplemented!(),
-            GeometryValue::CityGmlGeometry(_) => unimplemented!(),
+            _ => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            }
         }
         Ok(())
     }
 
     fn finish(
         &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
+        ctx: NodeContext,
+        fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        for hull in self.create_hull_2d() {
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                hull,
+                DEFAULT_PORT.clone(),
+            ));
+        }
+
         Ok(())
     }
 
@@ -117,22 +168,42 @@ impl Processor for ConvexHullConstructor {
 }
 
 impl ConvexHullConstructor {
-    fn handle_2d_geometry(
-        &self,
-        geos: &Geometry2D,
-        feature: &Feature,
-        geometry: &Geometry,
-        ctx: &ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) {
-        let convex_hull = geos.convex_hull();
+    fn create_hull_2d(&self) -> Vec<Feature> {
+        let mut hulls = Vec::new();
+        for buffered_features in self.buffer_2d.values() {
+            let collection = GeometryCollection(
+                buffered_features
+                    .iter()
+                    .filter_map(|f| f.geometry.value.as_flow_geometry_2d().cloned())
+                    .collect::<Vec<_>>(),
+            );
+            let convex_hull = collection.convex_hull();
 
-        let mut feature = feature.clone();
-        let mut geometry = geometry.clone();
+            let mut feature = if let Some(last_feature) = buffered_features.last() {
+                last_feature.clone()
+            } else {
+                continue;
+            };
 
-        geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(convex_hull));
-        feature.geometry = geometry;
+            let mut geometry = feature.geometry.clone();
 
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(convex_hull));
+            feature.geometry = geometry;
+
+            if let Some(group_by) = &self.group_by {
+                let attributes_by_group = get_attributes(&feature, group_by);
+                feature.attributes = group_by
+                    .iter()
+                    .zip(attributes_by_group.iter())
+                    .map(|(attr, value)| (attr.clone(), value.clone()))
+                    .collect::<HashMap<_, _>>();
+            } else {
+                feature.attributes = HashMap::new();
+            }
+
+            hulls.push(feature);
+        }
+
+        hulls
     }
 }
