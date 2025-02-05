@@ -1,9 +1,3 @@
-import {
-  CaretDoubleLeft,
-  CaretDoubleRight,
-  CaretLeft,
-  CaretRight,
-} from "@phosphor-icons/react";
 import { CaretSortIcon } from "@radix-ui/react-icons";
 import {
   ColumnDef,
@@ -27,6 +21,7 @@ import {
   Button,
   Input,
   IconButton,
+  Pagination,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { OrderDirection } from "@flow/types/paginationOptions";
@@ -168,7 +163,6 @@ function DataTable<TData, TValue>({
             </DropdownMenu>
           )}
         </div>
-
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -224,60 +218,11 @@ function DataTable<TData, TValue>({
         </div>
       </div>
       {enablePagination && (
-        <div className="flex justify-center gap-4 pt-4">
-          <div className="flex gap-1">
-            <IconButton
-              variant="outline"
-              icon={<CaretDoubleLeft />}
-              onClick={() => {
-                if (currentPage > 1) {
-                  setCurrentPage?.(1);
-                  // table.setPageIndex(0);
-                }
-              }}
-              disabled={currentPage <= 1}
-            />
-            <IconButton
-              variant="outline"
-              icon={<CaretLeft />}
-              onClick={() => {
-                if (currentPage > 1) {
-                  setCurrentPage?.(currentPage - 1);
-                  // table.previousPage();
-                }
-              }}
-              disabled={currentPage <= 1}
-            />
-            <div className="flex min-w-10 items-center justify-center gap-1">
-              <p className="text-sm font-light">{currentPage}</p>
-              <p className="text-xs font-light">/</p>
-              <p className="text-sm font-light">{totalPages}</p>
-            </div>
-            <IconButton
-              className="rounded border p-1"
-              icon={<CaretRight />}
-              onClick={() => {
-                if (currentPage < totalPages) {
-                  setCurrentPage?.(currentPage + 1);
-                  // table.nextPage();
-                }
-              }}
-              disabled={currentPage >= totalPages}
-            />
-
-            <IconButton
-              className="rounded border p-1"
-              icon={<CaretDoubleRight />}
-              onClick={() => {
-                if (currentPage < totalPages) {
-                  setCurrentPage?.(totalPages);
-                  // table.setPageIndex(totalPages - 1);
-                }
-              }}
-              disabled={currentPage >= totalPages}
-            />
-          </div>
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          totalPages={totalPages}
+        />
       )}
     </div>
   );

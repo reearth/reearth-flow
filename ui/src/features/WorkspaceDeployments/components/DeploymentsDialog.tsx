@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DataTable as Table,
   FlowLogo,
+  Loading,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
@@ -61,12 +62,12 @@ const DeploymentsDialog: React.FC<Props> = ({
 
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
-      <DialogContent size="md">
+      <DialogContent size="md" className="min-h-96">
         <DialogTitle> {t("Select a deployment")}</DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex-1">
             {isFetching ? (
-              <span>{t("Loading")}</span>
+              <Loading className="h-[373px]" />
             ) : deployments && deployments.length > 0 ? (
               <Table
                 columns={columns}
