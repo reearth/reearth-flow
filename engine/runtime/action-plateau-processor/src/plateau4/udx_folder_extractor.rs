@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    fmt::format,
     path::{PathBuf, MAIN_SEPARATOR, MAIN_SEPARATOR_STR},
     str::FromStr,
     sync::Arc,
