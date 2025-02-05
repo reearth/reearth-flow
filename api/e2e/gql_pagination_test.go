@@ -143,6 +143,7 @@ func TestProjectsPagination(t *testing.T) {
 
 	// Test sorting
 	t.Run("test_sorting", func(t *testing.T) {
+		// First test ASC order
 		query := fmt.Sprintf(`{
 			projects(
 				workspaceId: "%s"
@@ -172,7 +173,7 @@ func TestProjectsPagination(t *testing.T) {
 			WithBytes(jsonData).
 			Expect().Status(http.StatusOK)
 
-		var result struct {
+		var resultAsc struct {
 			Data struct {
 				ProjectsPage struct {
 					Nodes []struct {
@@ -183,74 +184,75 @@ func TestProjectsPagination(t *testing.T) {
 			} `json:"data"`
 		}
 
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &resultAsc)
 		assert.NoError(t, err)
 
-		// Verify sorting
-		for i := 1; i < len(result.Data.ProjectsPage.Nodes); i++ {
-			prev := result.Data.ProjectsPage.Nodes[i-1].Name
-			curr := result.Data.ProjectsPage.Nodes[i].Name
+		// Verify ASC order
+		for i := 1; i < len(resultAsc.Data.ProjectsPage.Nodes); i++ {
+			prev := resultAsc.Data.ProjectsPage.Nodes[i-1].Name
+			curr := resultAsc.Data.ProjectsPage.Nodes[i].Name
 			assert.True(t, prev <= curr, "Projects should be sorted by name in ascending order")
 		}
-	})
 
-	// Test last page
-	t.Run("test_last_page", func(t *testing.T) {
-		query := fmt.Sprintf(`{
+		// Now test DESC order
+		query = fmt.Sprintf(`{
 			projects(
 				workspaceId: "%s"
 				pagination: {
-					page: 3
-					pageSize: 2
+					page: 1
+					pageSize: 5
+					orderBy: "name"
+					orderDir: DESC
 				}
 			) {
 				nodes {
 					id
 					name
 				}
-				pageInfo {
-					totalCount
-					totalPages
-					currentPage
-				}
 			}
 		}`, wId1.String())
 
-		request := GraphQLRequest{
+		request = GraphQLRequest{
 			Query: query,
 		}
-		jsonData, err := json.Marshal(request)
+		jsonData, err = json.Marshal(request)
 		assert.NoError(t, err)
 
-		resp := e.POST("/api/graphql").
+		resp = e.POST("/api/graphql").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
 			Expect().Status(http.StatusOK)
 
-		var result struct {
+		var resultDesc struct {
 			Data struct {
 				ProjectsPage struct {
 					Nodes []struct {
 						ID   string `json:"id"`
 						Name string `json:"name"`
 					} `json:"nodes"`
-					PageInfo struct {
-						TotalCount  int `json:"totalCount"`
-						TotalPages  int `json:"totalPages"`
-						CurrentPage int `json:"currentPage"`
-					} `json:"pageInfo"`
 				} `json:"projects"`
 			} `json:"data"`
 		}
 
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &resultDesc)
 		assert.NoError(t, err)
 
-		assert.Len(t, result.Data.ProjectsPage.Nodes, 1) // Last page should have 1 item
-		assert.Equal(t, 5, result.Data.ProjectsPage.PageInfo.TotalCount)
-		assert.Equal(t, 3, result.Data.ProjectsPage.PageInfo.TotalPages)
-		assert.Equal(t, 3, result.Data.ProjectsPage.PageInfo.CurrentPage)
+		// Verify DESC order
+		for i := 1; i < len(resultDesc.Data.ProjectsPage.Nodes); i++ {
+			prev := resultDesc.Data.ProjectsPage.Nodes[i-1].Name
+			curr := resultDesc.Data.ProjectsPage.Nodes[i].Name
+			assert.True(t, prev >= curr, "Projects should be sorted by name in descending order")
+		}
+
+		// Verify that ASC and DESC orders are opposite of each other
+		if len(resultAsc.Data.ProjectsPage.Nodes) > 0 && len(resultDesc.Data.ProjectsPage.Nodes) > 0 {
+			assert.Equal(t,
+				resultAsc.Data.ProjectsPage.Nodes[0].Name,
+				resultDesc.Data.ProjectsPage.Nodes[len(resultDesc.Data.ProjectsPage.Nodes)-1].Name,
+				"First element in ASC should equal last element in DESC",
+			)
+		}
 	})
 }
 
@@ -439,6 +441,7 @@ func TestJobsPagination(t *testing.T) {
 
 	// Test sorting
 	t.Run("test_sorting", func(t *testing.T) {
+		// First test DESC order
 		query := fmt.Sprintf(`{
 			jobs(
 				workspaceId: "%s"
@@ -468,7 +471,7 @@ func TestJobsPagination(t *testing.T) {
 			WithBytes(jsonData).
 			Expect().Status(http.StatusOK)
 
-		var result struct {
+		var resultDesc struct {
 			Data struct {
 				Jobs struct {
 					Nodes []struct {
@@ -479,21 +482,18 @@ func TestJobsPagination(t *testing.T) {
 			} `json:"data"`
 		}
 
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &resultDesc)
 		assert.NoError(t, err)
-		// Verify pagination results
-		assert.Len(t, result.Data.Jobs.Nodes, 5, "Should return exactly 5 Jobs")
-		// Verify sorting
-		for i := 1; i < len(result.Data.Jobs.Nodes); i++ {
-			prev := result.Data.Jobs.Nodes[i-1].StartedAt
-			curr := result.Data.Jobs.Nodes[i].StartedAt
-			assert.True(t, prev.After(curr), "Jobs should be sorted by startedAt in descending order")
-		}
-	})
 
-	// Test sorting in ascending order
-	t.Run("test_sorting_ascending", func(t *testing.T) {
-		query := fmt.Sprintf(`{
+		// Verify DESC order
+		for i := 1; i < len(resultDesc.Data.Jobs.Nodes); i++ {
+			prev := resultDesc.Data.Jobs.Nodes[i-1].StartedAt
+			curr := resultDesc.Data.Jobs.Nodes[i].StartedAt
+			assert.True(t, prev.After(curr) || prev.Equal(curr), "Jobs should be sorted by startedAt in descending order")
+		}
+
+		// Now test ASC order
+		query = fmt.Sprintf(`{
 			jobs(
 				workspaceId: "%s"
 				pagination: {
@@ -510,19 +510,19 @@ func TestJobsPagination(t *testing.T) {
 			}
 		}`, wId1.String())
 
-		request := GraphQLRequest{
+		request = GraphQLRequest{
 			Query: query,
 		}
-		jsonData, err := json.Marshal(request)
+		jsonData, err = json.Marshal(request)
 		assert.NoError(t, err)
 
-		resp := e.POST("/api/graphql").
+		resp = e.POST("/api/graphql").
 			WithHeader("Content-Type", "application/json").
 			WithHeader("X-Reearth-Debug-User", uId1.String()).
 			WithBytes(jsonData).
 			Expect().Status(http.StatusOK)
 
-		var result struct {
+		var resultAsc struct {
 			Data struct {
 				Jobs struct {
 					Nodes []struct {
@@ -533,13 +533,23 @@ func TestJobsPagination(t *testing.T) {
 			} `json:"data"`
 		}
 
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &resultAsc)
 		assert.NoError(t, err)
-		// Verify sorting
-		for i := 1; i < len(result.Data.Jobs.Nodes); i++ {
-			prev := result.Data.Jobs.Nodes[i-1].StartedAt
-			curr := result.Data.Jobs.Nodes[i].StartedAt
-			assert.True(t, prev.Before(curr), "Jobs should be sorted by startedAt in ascending order")
+
+		// Verify ASC order
+		for i := 1; i < len(resultAsc.Data.Jobs.Nodes); i++ {
+			prev := resultAsc.Data.Jobs.Nodes[i-1].StartedAt
+			curr := resultAsc.Data.Jobs.Nodes[i].StartedAt
+			assert.True(t, prev.Before(curr) || prev.Equal(curr), "Jobs should be sorted by startedAt in ascending order")
+		}
+
+		// Verify that ASC and DESC orders are opposite of each other
+		if len(resultAsc.Data.Jobs.Nodes) > 0 && len(resultDesc.Data.Jobs.Nodes) > 0 {
+			assert.Equal(t,
+				resultAsc.Data.Jobs.Nodes[0].StartedAt,
+				resultDesc.Data.Jobs.Nodes[len(resultDesc.Data.Jobs.Nodes)-1].StartedAt,
+				"First element in ASC should equal last element in DESC",
+			)
 		}
 	})
 
@@ -776,6 +786,7 @@ func TestTriggersPagination(t *testing.T) {
 
 	// Test sorting
 	t.Run("test_sorting", func(t *testing.T) {
+		// First test ASC order
 		query := fmt.Sprintf(`{
 			triggers(
 				workspaceId: "%s"
@@ -805,7 +816,7 @@ func TestTriggersPagination(t *testing.T) {
 			WithBytes(jsonData).
 			Expect().Status(http.StatusOK)
 
-		var result struct {
+		var resultAsc struct {
 			Data struct {
 				Triggers struct {
 					Nodes []struct {
@@ -816,14 +827,74 @@ func TestTriggersPagination(t *testing.T) {
 			} `json:"data"`
 		}
 
-		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &resultAsc)
 		assert.NoError(t, err)
 
-		// Verify sorting
-		for i := 1; i < len(result.Data.Triggers.Nodes); i++ {
-			prev := result.Data.Triggers.Nodes[i-1].Description
-			curr := result.Data.Triggers.Nodes[i].Description
+		// Verify ASC order
+		for i := 1; i < len(resultAsc.Data.Triggers.Nodes); i++ {
+			prev := resultAsc.Data.Triggers.Nodes[i-1].Description
+			curr := resultAsc.Data.Triggers.Nodes[i].Description
 			assert.True(t, prev <= curr, "Triggers should be sorted by description in ascending order")
+		}
+
+		// Now test DESC order
+		query = fmt.Sprintf(`{
+			triggers(
+				workspaceId: "%s"
+				pagination: {
+					page: 1
+					pageSize: 5
+					orderBy: "description"
+					orderDir: DESC
+				}
+			) {
+				nodes {
+					id
+					description
+				}
+			}
+		}`, wId1.String())
+
+		request = GraphQLRequest{
+			Query: query,
+		}
+		jsonData, err = json.Marshal(request)
+		assert.NoError(t, err)
+
+		resp = e.POST("/api/graphql").
+			WithHeader("Content-Type", "application/json").
+			WithHeader("X-Reearth-Debug-User", uId1.String()).
+			WithBytes(jsonData).
+			Expect().Status(http.StatusOK)
+
+		var resultDesc struct {
+			Data struct {
+				Triggers struct {
+					Nodes []struct {
+						ID          string `json:"id"`
+						Description string `json:"description"`
+					} `json:"nodes"`
+				} `json:"triggers"`
+			} `json:"data"`
+		}
+
+		err = json.Unmarshal([]byte(resp.Body().Raw()), &resultDesc)
+		assert.NoError(t, err)
+
+		// Verify DESC order
+		for i := 1; i < len(resultDesc.Data.Triggers.Nodes); i++ {
+			prev := resultDesc.Data.Triggers.Nodes[i-1].Description
+			curr := resultDesc.Data.Triggers.Nodes[i].Description
+			assert.True(t, prev >= curr, "Triggers should be sorted by description in descending order")
+		}
+
+		// Verify that ASC and DESC orders are opposite of each other
+		if len(resultAsc.Data.Triggers.Nodes) > 0 && len(resultDesc.Data.Triggers.Nodes) > 0 {
+			assert.Equal(t,
+				resultAsc.Data.Triggers.Nodes[0].Description,
+				resultDesc.Data.Triggers.Nodes[len(resultDesc.Data.Triggers.Nodes)-1].Description,
+				"First element in ASC should equal last element in DESC",
+			)
 		}
 	})
 

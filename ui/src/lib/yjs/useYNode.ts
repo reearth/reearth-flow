@@ -41,7 +41,8 @@ export default ({
         // NOTE: if node is batch, we need to put it at the front
         // If its not a batch, we need to do useBatch stuff to
         // find if it becomes a batch's child
-        yNodes.push(newYNodes);
+
+        yNodes.insert(yNodes.length, newYNodes);
       });
     },
     [currentYWorkflow, setSelectedNodeIds, undoTrackerActionWrapper],

@@ -1,10 +1,4 @@
-use std::{
-    collections::HashMap,
-    io::{Cursor, Read},
-    path::Path,
-    str::FromStr,
-    sync::Arc,
-};
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use once_cell::sync::Lazy;
 use reearth_flow_common::{dir::project_temp_dir, uri::Uri};
@@ -15,12 +9,12 @@ use reearth_flow_runtime::{
     executor_operation::{ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_sevenz::{decompress_with_extract_fn, default_entry_extract_fn};
-use reearth_flow_storage::storage::Storage;
 use reearth_flow_types::{AttributeValue, Expr, Feature, FilePath};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+use crate::utils::decompressor::extract_archive;
 
 use super::errors::FeatureProcessorError;
 
@@ -157,34 +151,19 @@ impl Processor for FeatureFilePathExtractor {
                     e
                 ))
             })?;
-            let bytes = storage
-                .get_sync(source_dataset.path().as_path())
-                .map_err(|e| {
-                    FeatureProcessorError::FilePathExtractor(format!(
-                        "Failed to get `source_dataset` content: {}",
-                        e
-                    ))
-                })?;
-            let root_output_storage = ctx
-                .storage_resolver
-                .resolve(&root_output_path)
-                .map_err(|e| FeatureProcessorError::FilePathExtractor(format!("{:?}", e)))?;
-            root_output_storage
-                .create_dir_sync(root_output_path.path().as_path())
-                .map_err(|e| FeatureProcessorError::FilePathExtractor(format!("{:?}", e)))?;
-            let features = if let Some(ext) = source_dataset.path().as_path().extension() {
-                if let Some(ext) = ext.to_str() {
-                    if ["7z", "7zip"].contains(&ext) {
-                        extract_sevenz(bytes, root_output_path)?
-                    } else {
-                        extract_zip(bytes, root_output_path, root_output_storage)?
-                    }
-                } else {
-                    extract_zip(bytes, root_output_path, root_output_storage)?
-                }
-            } else {
-                extract_zip(bytes, root_output_path, root_output_storage)?
-            };
+            let features = extract_archive(
+                &source_dataset,
+                &root_output_path,
+                ctx.storage_resolver.clone(),
+            )
+            .map_err(|e| FeatureProcessorError::FilePathExtractor(format!("{:?}", e)))?
+            .into_iter()
+            .map(|entry| {
+                let attribute_value = AttributeValue::try_from(entry)
+                    .map_err(|e| FeatureProcessorError::FilePathExtractor(format!("{:?}", e)))?;
+                Ok(Feature::from(attribute_value))
+            })
+            .collect::<super::errors::Result<Vec<_>>>()?;
             for mut feature in features {
                 feature.extend(
                     base_attributes
@@ -236,156 +215,4 @@ impl FeatureFilePathExtractor {
             && path.extension().is_some()
             && matches!(path.extension().unwrap(), "zip" | "7z" | "7zip")
     }
-}
-
-fn extract_zip(
-    bytes: bytes::Bytes,
-    root_output_path: Uri,
-    storage: Arc<Storage>,
-) -> super::errors::Result<Vec<Feature>> {
-    let mut zip_archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| {
-        FeatureProcessorError::FilePathExtractor(format!(
-            "Failed to open `source_dataset` as zip archive: {}",
-            e
-        ))
-    })?;
-    let mut features = Vec::<Feature>::new();
-    for i in 0..zip_archive.len() {
-        let mut entry = zip_archive.by_index(i).map_err(|e| {
-            FeatureProcessorError::FilePathExtractor(format!(
-                "Failed to get `source_dataset` entry: {}",
-                e
-            ))
-        })?;
-        let filename = entry.name();
-        let outpath = root_output_path.join(filename).map_err(|e| {
-            FeatureProcessorError::FilePathExtractor(format!(
-                "Output path join error with: error = {:?}",
-                e
-            ))
-        })?;
-        let filepath = Path::new(filename);
-        if filepath
-            .file_name()
-            .take_if(|s| s.to_string_lossy().starts_with("."))
-            .is_some()
-        {
-            continue;
-        }
-        if entry.is_dir() {
-            if storage.exists_sync(outpath.path().as_path()).map_err(|e| {
-                FeatureProcessorError::FilePathExtractor(format!(
-                    "Storage exists error with: error = {:?}",
-                    e
-                ))
-            })? {
-                continue;
-            }
-            storage
-                .create_dir_sync(outpath.path().as_path())
-                .map_err(|e| {
-                    FeatureProcessorError::FilePathExtractor(format!(
-                        "Failed to create directory: error = {:?}",
-                        e
-                    ))
-                })?;
-            continue;
-        }
-        if let Some(p) = outpath.parent() {
-            if !storage.exists_sync(p.path().as_path()).map_err(|e| {
-                FeatureProcessorError::FilePathExtractor(format!(
-                    "Storage exists error with: error = {:?}",
-                    e
-                ))
-            })? {
-                storage.create_dir_sync(p.path().as_path()).map_err(|e| {
-                    FeatureProcessorError::FilePathExtractor(format!(
-                        "Create dir error with: error = {:?}",
-                        e
-                    ))
-                })?;
-            }
-        }
-        let mut buf = Vec::<u8>::new();
-        entry.read_to_end(&mut buf).map_err(|e| {
-            FeatureProcessorError::FilePathExtractor(format!(
-                "Failed to read `source_dataset` entry: {}",
-                e
-            ))
-        })?;
-        let file_path = FilePath::try_from(outpath.clone()).map_err(|e| {
-            FeatureProcessorError::FilePathExtractor(format!(
-                "Filepath convert error with: error = {:?}",
-                e
-            ))
-        })?;
-        let attribute_value = AttributeValue::try_from(file_path).map_err(|e| {
-            FeatureProcessorError::FilePathExtractor(format!(
-                "Attribute Value convert error with: error = {:?}",
-                e
-            ))
-        })?;
-        storage
-            .put_sync(outpath.path().as_path(), bytes::Bytes::from(buf))
-            .map_err(|e| {
-                FeatureProcessorError::FilePathExtractor(format!(
-                    "Storage put error with: error = {:?}",
-                    e
-                ))
-            })?;
-        let feature = Feature::from(attribute_value);
-        features.push(feature);
-    }
-    Ok(features)
-}
-
-fn extract_sevenz(
-    bytes: bytes::Bytes,
-    root_output_path: Uri,
-) -> super::errors::Result<Vec<Feature>> {
-    let mut entries = Vec::<Uri>::new();
-    let cursor = Cursor::new(bytes);
-    decompress_with_extract_fn(cursor, root_output_path.as_path(), |entry, reader, dest| {
-        if !entry.is_directory {
-            let dest_uri = Uri::try_from(dest.clone()).map_err(|e| {
-                reearth_flow_sevenz::Error::Unknown(format!(
-                    "Failed to convert `dest` to URI: {}",
-                    e
-                ))
-            });
-            if let Ok(dest_uri) = dest_uri {
-                entries.push(dest_uri);
-            }
-        }
-        default_entry_extract_fn(entry, reader, dest)
-    })
-    .map_err(|e| {
-        FeatureProcessorError::FilePathExtractor(format!(
-            "Failed to extract `source_dataset` archive: {}",
-            e
-        ))
-    })?;
-    let features = entries
-        .iter()
-        .flat_map(|entry| {
-            let file_path = FilePath::try_from(entry.clone())
-                .map_err(|e| {
-                    FeatureProcessorError::FilePathExtractor(format!(
-                        "Filepath convert error with: error = {:?}",
-                        e
-                    ))
-                })
-                .ok()?;
-            let attribute_value = AttributeValue::try_from(file_path)
-                .map_err(|e| {
-                    FeatureProcessorError::FilePathExtractor(format!(
-                        "Attribute Value convert error with: error = {:?}",
-                        e
-                    ))
-                })
-                .ok()?;
-            Some(Feature::from(attribute_value))
-        })
-        .collect::<Vec<_>>();
-    Ok(features)
 }

@@ -720,6 +720,46 @@ Filters the dimension of features
 ### Category
 * Geometry
 
+## DirectoryDecompressor
+### Type
+* processor
+### Description
+Decompresses a directory
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DirectoryDecompressorParam",
+  "type": "object",
+  "required": [
+    "archivePath",
+    "outputPathAttribute"
+  ],
+  "properties": {
+    "archivePath": {
+      "$ref": "#/definitions/Expr"
+    },
+    "outputPathAttribute": {
+      "$ref": "#/definitions/Attribute"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* File
+
 ## EchoProcessor
 ### Type
 * processor

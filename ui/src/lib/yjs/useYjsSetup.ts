@@ -44,7 +44,7 @@ export default ({ workflowId }: { workflowId?: string }) => {
               DEFAULT_ENTRY_GRAPH_ID,
               "Main Workflow",
             );
-            yWorkflows.push([yWorkflow]);
+            yWorkflows.insert(0, [yWorkflow]);
           });
         }
 
