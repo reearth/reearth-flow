@@ -68,7 +68,7 @@ function DataTable<TData, TValue>({
   currentPage = 1,
   setCurrentPage,
   resultsPerPage,
-  currentOrder = OrderDirection.Asc,
+  currentOrder = OrderDirection.Desc,
   setCurrentOrder,
 }: DataTableProps<TData, TValue>) {
   const t = useT();

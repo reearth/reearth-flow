@@ -1,5 +1,6 @@
+import { Plus } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import {
   Button,
@@ -10,16 +11,13 @@ import {
   DialogTitle,
   Label,
   DialogFooter,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
 } from "@flow/components";
+import { DeploymentsDialog } from "@flow/features/WorkspaceDeployments/components/DeploymentsDialog";
 import { useDeployment } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import { Deployment } from "@flow/types";
+import type { Deployment } from "@flow/types";
+import { OrderDirection } from "@flow/types/paginationOptions";
 
 type Props = {
   setShowDialog: (show: boolean) => void;
@@ -28,32 +26,24 @@ type Props = {
 const JobRunDialog: React.FC<Props> = ({ setShowDialog }) => {
   const t = useT();
   const navigate = useNavigate();
-
-  const [currentWorkspace] = useCurrentWorkspace();
-
-  const { useGetDeploymentsInfinite, executeDeployment } = useDeployment();
-
-  const [selectDropDown, setSelectDropDown] = useState<
-    HTMLElement | undefined | null
-  >();
-
   const [selectedDeployment, selectDeployment] = useState<
     Deployment | undefined
   >(undefined);
-
-  const { pages, isFetching, fetchNextPage, hasNextPage } =
-    useGetDeploymentsInfinite(currentWorkspace?.id);
-
-  const deployments: Deployment[] | undefined = useMemo(
-    () =>
-      pages?.reduce((deployments, page) => {
-        if (page?.deployments) {
-          deployments.push(...page.deployments);
-        }
-        return deployments;
-      }, [] as Deployment[]),
-    [pages],
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
+    OrderDirection.Desc,
   );
+  const [openSelectDeploymentsDialog, setOpenSelectDeploymentsDialog] =
+    useState<boolean>(false);
+  const [currentWorkspace] = useCurrentWorkspace();
+
+  const { useGetDeployments, executeDeployment } = useDeployment();
+  const { page, isFetching, refetch } = useGetDeployments(currentWorkspace?.id);
+  useEffect(() => {
+    refetch();
+  }, [currentPage, currentOrder, refetch]);
+  const deployments = page?.deployments;
+  const totalPages = page?.totalPages as number;
 
   const handleJob = useCallback(async () => {
     if (!selectedDeployment || !currentWorkspace) return;
@@ -67,61 +57,24 @@ const JobRunDialog: React.FC<Props> = ({ setShowDialog }) => {
     }
   }, [currentWorkspace, selectedDeployment, navigate, executeDeployment]);
 
-  useEffect(() => {
-    if (
-      !selectDropDown ||
-      isFetching ||
-      !hasNextPage ||
-      selectDropDown.clientHeight === 0
-    )
-      return;
-
-    const { clientHeight, scrollHeight } = selectDropDown;
-
-    if (clientHeight === scrollHeight) {
-      fetchNextPage();
-      return;
-    }
-
-    const handleScrollEnd = () => !isFetching && hasNextPage && fetchNextPage();
-    selectDropDown.addEventListener("scrollend", handleScrollEnd);
-
-    return () =>
-      selectDropDown.removeEventListener("scrollend", handleScrollEnd);
-  }, [selectDropDown, isFetching, hasNextPage, fetchNextPage]);
-
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
       <DialogContent size="sm">
         <DialogTitle>{t("Run a deployment")}</DialogTitle>
         <DialogContentWrapper>
-          <DialogContentSection className="flex flex-col">
-            <Label htmlFor="manual-job-deployment">{t("Deployment")}</Label>
-            <Select
-              onValueChange={(pid) =>
-                selectDeployment(deployments?.find((p) => p.id === pid))
-              }>
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={t(
-                    "Select from the selected workspace's deployments",
-                  )}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                <div ref={(el) => setSelectDropDown(el?.parentElement)}>
-                  {deployments?.map((d) => (
-                    <SelectItem key={d.id} value={d.id}>
-                      {deploymentDisplay(
-                        d.projectName ?? t("Unknown project"),
-                        d.version,
-                        d.description,
-                      )}
-                    </SelectItem>
-                  ))}
-                </div>
-              </SelectContent>
-            </Select>
+          <DialogContentSection className="flex-1">
+            <Label htmlFor="deployments-selector">
+              {t("Select a deployment")}
+            </Label>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setOpenSelectDeploymentsDialog(true)}>
+              <Plus />
+              {selectedDeployment
+                ? `${selectedDeployment.projectName} [${selectedDeployment.description}] @${selectedDeployment.version}`
+                : t("Select a deployment")}
+            </Button>
           </DialogContentSection>
         </DialogContentWrapper>
         <DialogFooter>
@@ -134,18 +87,21 @@ const JobRunDialog: React.FC<Props> = ({ setShowDialog }) => {
           </Button>
         </DialogFooter>
       </DialogContent>
+      {openSelectDeploymentsDialog && (
+        <DeploymentsDialog
+          setShowDialog={() => setOpenSelectDeploymentsDialog(false)}
+          deployments={deployments}
+          handleSelectDeployment={selectDeployment}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          totalPages={totalPages}
+          currentOrder={currentOrder}
+          setCurrentOrder={setCurrentOrder}
+          isFetching={isFetching}
+        />
+      )}
     </Dialog>
   );
 };
 
 export { JobRunDialog };
-
-const deploymentDisplay = (
-  projectName: string,
-  version: string,
-  description?: string,
-) => {
-  return description
-    ? `${projectName} [${description}] @${version}`
-    : `${projectName}@${version}`;
-};

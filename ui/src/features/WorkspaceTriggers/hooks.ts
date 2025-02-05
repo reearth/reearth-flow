@@ -35,7 +35,7 @@ export default () => {
   const { page, refetch, isFetching } = useGetTriggers(currentWorkspace?.id, {
     page: currentPage,
     orderDir: currentOrder,
-    orderBy: "lastTriggered",
+    orderBy: "createdAt",
   });
 
   useEffect(() => {
