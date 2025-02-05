@@ -1,8 +1,8 @@
 export type PaginationOptions = {
+  page: number;
   pageSize?: number;
-  page?: number;
   orderBy?: string;
-  orderDir?: OrderDirection;
+  orderDir: OrderDirection;
 };
 
 export enum OrderDirection {

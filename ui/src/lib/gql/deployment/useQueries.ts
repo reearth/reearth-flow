@@ -1,15 +1,13 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { Deployment } from "@flow/types";
+import { PaginationOptions } from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
 import { ExecuteDeploymentInput } from "../__gen__/graphql";
 import {
   DeleteDeploymentInput,
+  OrderDirection,
   UpdateDeploymentInput,
 } from "../__gen__/plugins/graphql-request";
 import { toDeployment, toJob } from "../convert";
@@ -21,7 +19,7 @@ export enum DeploymentQueryKeys {
   GetDeployments = "getDeployments",
 }
 
-const DEPLOYMENT_FETCH_RATE = 10;
+export const DEPLOYMENT_FETCH_RATE = 10;
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
@@ -153,17 +151,20 @@ export const useQueries = () => {
       }),
   });
 
-  const useGetDeploymentsInfiniteQuery = (workspaceId?: string) =>
-    useInfiniteQuery({
+  const useGetDeploymentsQuery = (
+    workspaceId?: string,
+    paginationOptions?: PaginationOptions,
+  ) =>
+    useQuery({
       queryKey: [DeploymentQueryKeys.GetDeployments, workspaceId],
-      initialPageParam: 1,
-      queryFn: async ({ pageParam }) => {
+      queryFn: async () => {
         const data = await graphQLContext?.GetDeployments({
           workspaceId: workspaceId ?? "",
           pagination: {
-            page: pageParam,
+            page: paginationOptions?.page ?? 1,
             pageSize: DEPLOYMENT_FETCH_RATE,
-            // orderDir: "ASC",
+            orderDir: paginationOptions?.orderDir ?? OrderDirection.Desc,
+            orderBy: paginationOptions?.orderBy ?? "updatedAt",
           },
         });
         if (!data) return;
@@ -179,13 +180,6 @@ export const useQueries = () => {
         return { deployments, totalCount, currentPage, totalPages };
       },
       enabled: !!workspaceId,
-      getNextPageParam: (lastPage) => {
-        if (!lastPage) return undefined;
-        if ((lastPage.currentPage ?? 0) < (lastPage.totalPages ?? 0)) {
-          return (lastPage.currentPage ?? 0) + 1;
-        }
-        return undefined;
-      },
     });
 
   return {
@@ -193,6 +187,6 @@ export const useQueries = () => {
     updateDeploymentMutation,
     deleteDeploymentMutation,
     executeDeploymentMutation,
-    useGetDeploymentsInfiniteQuery,
+    useGetDeploymentsQuery,
   };
 };

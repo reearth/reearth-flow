@@ -6,9 +6,9 @@ import type {
   Deployment,
   EngineReadyWorkflow,
   ExecuteDeployment,
-  GetDeployments,
   UpdateDeployment,
 } from "@flow/types";
+import { PaginationOptions } from "@flow/types/paginationOptions";
 import { jsonToFormData } from "@flow/utils/jsonToFormData";
 
 import { ExecuteDeploymentInput } from "../__gen__/graphql";
@@ -24,7 +24,7 @@ export const useDeployment = () => {
     updateDeploymentMutation,
     deleteDeploymentMutation,
     executeDeploymentMutation,
-    useGetDeploymentsInfiniteQuery,
+    useGetDeploymentsQuery,
   } = useQueries();
 
   const createDeployment = async (
@@ -130,10 +130,16 @@ export const useDeployment = () => {
     }
   };
 
-  const useGetDeploymentsInfinite = (workspaceId?: string): GetDeployments => {
-    const { data, ...rest } = useGetDeploymentsInfiniteQuery(workspaceId);
+  const useGetDeployments = (
+    workspaceId?: string,
+    paginationOptions?: PaginationOptions,
+  ) => {
+    const { data, ...rest } = useGetDeploymentsQuery(
+      workspaceId,
+      paginationOptions,
+    );
     return {
-      pages: data?.pages,
+      page: data,
       ...rest,
     };
   };
@@ -157,7 +163,7 @@ export const useDeployment = () => {
   return {
     createDeployment,
     createDeploymentFromFile,
-    useGetDeploymentsInfinite,
+    useGetDeployments,
     useUpdateDeployment,
     useDeleteDeployment,
     executeDeployment,

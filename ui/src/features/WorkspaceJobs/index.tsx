@@ -1,6 +1,6 @@
 import { ColumnDef } from "@tanstack/react-table";
 
-import { FlowLogo, Spinner, DataTable as Table } from "@flow/components";
+import { FlowLogo, Loading, DataTable as Table } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { JOBS_FETCH_RATE } from "@flow/lib/gql/job/useQueries";
 import { useT } from "@flow/lib/i18n";
@@ -60,7 +60,9 @@ const JobsManager: React.FC = () => {
         <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg dark:font-extralight">{t("Jobs")}</p>
         </div>
-        {jobs && !isFetching && jobs.length > 0 && (
+        {isFetching ? (
+          <Loading />
+        ) : jobs && jobs.length > 0 ? (
           <Table
             columns={columns}
             data={jobs}
@@ -76,10 +78,7 @@ const JobsManager: React.FC = () => {
             currentOrder={currentOrder}
             setCurrentOrder={setCurrentOrder}
           />
-        )}
-
-        {isFetching && <Spinner label={t("Loading")} />}
-        {!isFetching && jobs && jobs.length === 0 && (
+        ) : (
           <BasicBoiler
             text={t("No Jobs")}
             icon={<FlowLogo className="size-16 text-accent" />}
