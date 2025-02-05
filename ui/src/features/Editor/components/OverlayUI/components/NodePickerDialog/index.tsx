@@ -70,14 +70,15 @@ const NodePickerDialog: React.FC<Props> = ({
     },
     async (name?: string) => {
       if (!name) return;
-      console.log("test", openedActionType.position, name);
       // If the position is 0,0 then place it in the center of the screen as this is using shortcut creation and not dnd
+      const randomX = Math.floor(Math.random() * (400 - 200 + 1)) + 200;
+      const randomY = Math.floor(Math.random() * (400 - 200 + 1)) + 200;
       const newNode = await createNode({
         position:
           openedActionType.position.x === 0 && openedActionType.position.y === 0
             ? screenToFlowPosition({
-                x: window.innerWidth / 2,
-                y: window.innerHeight / 2,
+                x: window.innerWidth / 2 + randomX,
+                y: window.innerHeight / 2 - randomY,
               })
             : openedActionType.position,
         type: name,
