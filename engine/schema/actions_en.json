@@ -682,6 +682,43 @@
       ]
     },
     {
+      "name": "ConvexHullConstructor",
+      "type": "processor",
+      "description": "Constructs a convex hull",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ConvexHullConstructorParam",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "CoordinateSystemSetter",
       "type": "processor",
       "description": "Sets the coordinate system of a feature",
