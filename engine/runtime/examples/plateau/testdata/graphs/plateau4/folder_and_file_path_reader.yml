@@ -8,11 +8,21 @@ nodes:
     with:
       routingPort: default
 
+  - id: c7315341-26b3-4405-9d02-039d721cd225
+    name: DirectoryDecompressor
+    type: action
+    action: DirectoryDecompressor
+    with:
+      archiveAttributes:
+        - codelists
+        - schemas
+
   - id: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
     name: FeatureFilePathExtractor
     type: action
     action: FeatureFilePathExtractor
     with:
+      destPrefix: "udx"
       sourceDataset: |
         env.get("__value").cityGmlPath
       extractArchive: true
@@ -34,6 +44,8 @@ nodes:
     with:
       cityGmlPath: |
         env.get("__value")["path"]
+      codelistsPath: "codelists"
+      schemasPath: "schemas"
 
   - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
     name: FeatureFilterByPackage
@@ -73,6 +85,11 @@ nodes:
 edges:
   - id: 5d700a9c-1537-442e-bfb2-0728a9e1ec9c
     from: 35038d96-5e81-4a21-a0e0-72f67eb71db5
+    to: c7315341-26b3-4405-9d02-039d721cd225
+    fromPort: default
+    toPort: default
+  - id: 749d8e90-dbc3-4fc9-bfee-046344f5f5b9
+    from: c7315341-26b3-4405-9d02-039d721cd225
     to: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
     fromPort: default
     toPort: default

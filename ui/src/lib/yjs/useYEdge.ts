@@ -30,7 +30,7 @@ export default ({
           }
         });
 
-        yEdges.push(newYEdges);
+        yEdges.insert(yEdges.length, newYEdges);
       });
     },
     [currentYWorkflow, setSelectedEdgeIds, undoTrackerActionWrapper],
@@ -53,7 +53,7 @@ export default ({
           switch (change.type) {
             case "add": {
               const newYEdge = yEdgeConstructor(change.item);
-              yEdges.push([newYEdge]);
+              yEdges.insert(yEdges.length, [newYEdge]);
               break;
             }
             case "replace": {
