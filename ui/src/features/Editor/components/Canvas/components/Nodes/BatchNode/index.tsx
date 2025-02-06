@@ -4,6 +4,8 @@ import { memo, useCallback } from "react";
 
 import { Node } from "@flow/types";
 
+import useBatch from "../../../useBatch";
+
 export type BatchNodeProps = NodeProps<Node>;
 
 export const initialSize = { width: 300, height: 200 };
@@ -17,8 +19,8 @@ export const baseBatchNode = {
 const minSize = { width: 250, height: 150 };
 
 const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
-  const { getNodes } = useReactFlow<Node>();
-  // const { handleNodeDropInBatch } = useBatch();
+  const { getNodes, updateNode } = useReactFlow<Node>();
+  const { handleNodesDropInBatch } = useBatch();
 
   const getChildNodesBoundary = useCallback(() => {
     const nodes = getNodes();
@@ -44,23 +46,26 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
     };
   }, [getNodes, id]);
 
-  // const handleOnEndResize = useCallback(() => {
-  //   const allNodes = getNodes();
-  //   let updatedNodes = allNodes;
-  //   const initialParentCount = allNodes.filter((node) => node.parentId).length;
+  const handleOnEndResize = useCallback(() => {
+    const allNodes = getNodes();
+    const initialParentCount = allNodes.filter((node) => node.parentId).length;
 
-  //   const nonBatchNodes = allNodes.filter((node) => node.type !== "batch");
-  //   nonBatchNodes.forEach((node) => {
-  //     updatedNodes = handleNodeDropInBatch(node, updatedNodes);
-  //   });
-  //   const finalParentCount = updatedNodes.filter(
-  //     (node) => node.parentId,
-  //   ).length;
+    const batchableNodes = allNodes.filter(
+      (node) => node.type !== "batch" && !node.parentId,
+    );
 
-  //   if (finalParentCount !== initialParentCount) {
-  //     setNodes(updatedNodes);
-  //   }
-  // }, [getNodes, setNodes, handleNodeDropInBatch]);
+    const updatedNodes = handleNodesDropInBatch(batchableNodes);
+    const finalParentCount = updatedNodes?.filter(
+      (node) => node.parentId,
+    ).length;
+
+    if (finalParentCount !== initialParentCount) {
+      updatedNodes?.forEach((node) => {
+        updateNode(node.id, node, { replace: true });
+      });
+    }
+  }, [getNodes, updateNode, handleNodesDropInBatch]);
+
   // No need to memoize as we want to update because bounds will change on resize
   const bounds = getChildNodesBoundary();
 
@@ -84,7 +89,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
           minWidth={bounds.width}
           minHeight={bounds.height}
           onResize={() => "asldfkjsadf"}
-          // onResizeEnd={handleOnEndResize}
+          onResizeEnd={handleOnEndResize}
         />
       )}
       <div
