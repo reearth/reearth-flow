@@ -66,7 +66,7 @@ const ActionBar: React.FC<Props> = ({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <IconButton
-                  className="w-[20px] rounded-l-none rounded-r-[4px]"
+                  className="w-[25px] rounded-l-none rounded-r-[4px]"
                   tooltipText={t("Additional actions")}
                   tooltipOffset={tooltipOffset}
                   icon={<DotsThreeVertical />}
