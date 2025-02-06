@@ -17,12 +17,13 @@ export default () => {
   const [currentWorkspace] = useCurrentWorkspace();
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
-    OrderDirection.Asc,
+    OrderDirection.Desc,
   );
   const { useGetJobs } = useJob();
 
   const { page, refetch, isFetching } = useGetJobs(currentWorkspace?.id, {
     page: currentPage,
+    orderBy: "completedAt",
     orderDir: currentOrder,
   });
 

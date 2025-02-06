@@ -13,7 +13,7 @@ export default () => {
 
   const [currentProject, setCurrentProject] = useCurrentProject();
   const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
-    OrderDirection.Asc,
+    OrderDirection.Desc,
   );
 
   const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
@@ -24,6 +24,7 @@ export default () => {
   const { page, refetch, isFetching } = useGetWorkspaceProjects(workspace?.id, {
     page: currentPage,
     orderDir: currentOrder,
+    orderBy: "updatedAt",
   });
 
   useEffect(() => {

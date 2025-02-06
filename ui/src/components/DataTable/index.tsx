@@ -1,11 +1,4 @@
 import {
-  CaretDoubleLeft,
-  CaretDoubleRight,
-  CaretLeft,
-  CaretRight,
-} from "@phosphor-icons/react";
-import { CaretSortIcon } from "@radix-ui/react-icons";
-import {
   ColumnDef,
   PaginationState,
   SortingState,
@@ -26,7 +19,12 @@ import {
   DropdownMenuTrigger,
   Button,
   Input,
-  IconButton,
+  Pagination,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { OrderDirection } from "@flow/types/paginationOptions";
@@ -68,7 +66,7 @@ function DataTable<TData, TValue>({
   currentPage = 1,
   setCurrentPage,
   resultsPerPage,
-  currentOrder = OrderDirection.Asc,
+  currentOrder = OrderDirection.Desc,
   setCurrentOrder,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
@@ -119,6 +117,11 @@ function DataTable<TData, TValue>({
     );
   };
 
+  const orderDirections: Record<OrderDirection, string> = {
+    DESC: t("Newest"),
+    ASC: t("Oldest"),
+  };
+
   return (
     <div className="flex flex-col justify-between">
       <div>
@@ -132,13 +135,20 @@ function DataTable<TData, TValue>({
             />
           )}
           {currentOrder && (
-            <IconButton
-              size="icon"
-              variant={"ghost"}
-              tooltipText={t("By Ascending/Descending")}
-              onClick={handleOrderChange}
-              icon={<CaretSortIcon />}
-            />
+            <Select
+              value={currentOrder || "DESC"}
+              onValueChange={handleOrderChange}>
+              <SelectTrigger className="h-[32px] w-[100px]">
+                <SelectValue placeholder={orderDirections.ASC} />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(orderDirections).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
           {selectColumns && (
             <DropdownMenu>
@@ -168,7 +178,6 @@ function DataTable<TData, TValue>({
             </DropdownMenu>
           )}
         </div>
-
         <div className="rounded-md border">
           <Table>
             <TableHeader>
@@ -224,60 +233,11 @@ function DataTable<TData, TValue>({
         </div>
       </div>
       {enablePagination && (
-        <div className="flex justify-center gap-4 pt-4">
-          <div className="flex gap-1">
-            <IconButton
-              variant="outline"
-              icon={<CaretDoubleLeft />}
-              onClick={() => {
-                if (currentPage > 1) {
-                  setCurrentPage?.(1);
-                  // table.setPageIndex(0);
-                }
-              }}
-              disabled={currentPage <= 1}
-            />
-            <IconButton
-              variant="outline"
-              icon={<CaretLeft />}
-              onClick={() => {
-                if (currentPage > 1) {
-                  setCurrentPage?.(currentPage - 1);
-                  // table.previousPage();
-                }
-              }}
-              disabled={currentPage <= 1}
-            />
-            <div className="flex min-w-10 items-center justify-center gap-1">
-              <p className="text-sm font-light">{currentPage}</p>
-              <p className="text-xs font-light">/</p>
-              <p className="text-sm font-light">{totalPages}</p>
-            </div>
-            <IconButton
-              className="rounded border p-1"
-              icon={<CaretRight />}
-              onClick={() => {
-                if (currentPage < totalPages) {
-                  setCurrentPage?.(currentPage + 1);
-                  // table.nextPage();
-                }
-              }}
-              disabled={currentPage >= totalPages}
-            />
-
-            <IconButton
-              className="rounded border p-1"
-              icon={<CaretDoubleRight />}
-              onClick={() => {
-                if (currentPage < totalPages) {
-                  setCurrentPage?.(totalPages);
-                  // table.setPageIndex(totalPages - 1);
-                }
-              }}
-              disabled={currentPage >= totalPages}
-            />
-          </div>
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          totalPages={totalPages}
+        />
       )}
     </div>
   );
