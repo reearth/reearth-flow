@@ -4,6 +4,7 @@ import { memo, useMemo } from "react";
 
 import { Tabs, TabsContent, SchemaForm } from "@flow/components";
 import { patchAnyOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
+import { batchNodeAction } from "@flow/features/Editor/components/Canvas/components/Nodes/BatchNode";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
@@ -28,8 +29,20 @@ const ParamEditor: React.FC<Props> = ({
 }) => {
   const t = useT();
   const { useGetActionById } = useAction(i18n.language);
-  const { action } = useGetActionById(nodeMeta.officialName);
+  let { action } = useGetActionById(nodeMeta.officialName);
 
+  if (!action) {
+    switch (nodeMeta.officialName) {
+      case "batch":
+        action = {
+          ...nodeMeta,
+          ...batchNodeAction,
+        };
+        break;
+      default:
+        action = undefined;
+    }
+  }
   // This is a patch for the `anyOf` type in JSON Schema.
   const patchedSchema = useMemo<RJSFSchema | undefined>(
     () =>

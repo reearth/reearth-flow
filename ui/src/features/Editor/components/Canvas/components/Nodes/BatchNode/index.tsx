@@ -7,6 +7,7 @@ import { cn } from "@flow/lib/utils";
 import { Node } from "@flow/types";
 
 import useBatch from "../../../useBatch";
+import { convertHextoRgba } from "../utils";
 
 export type BatchNodeProps = NodeProps<Node>;
 
@@ -22,6 +23,10 @@ const batchNodeSchema: RJSFSchema = {
       title: "Background Color",
     },
     textColor: { type: "string", format: "color", title: "Text Color" },
+    backgroundHasOpacity: {
+      type: "boolean",
+      title: "Background Has Opacity?",
+    },
   },
 };
 
@@ -97,9 +102,15 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
 
   // No need to memoize as we want to update because bounds will change on resize
   const bounds = getChildNodesBoundary();
+  // background color will always be a hex color, therefore needs to be converted to rgba
+  let backgroundColor: string = data.params?.backgroundColor || "";
+  const backgroundHasOpacity: boolean =
+    data.params?.backgroundHasOpacity || false;
 
-  const { backgroundColor, textColor } = data;
-
+  if (backgroundHasOpacity) {
+    const rgbaColor = convertHextoRgba(backgroundColor, 0.5);
+    backgroundColor = rgbaColor;
+  }
   return (
     <>
       {selected && (
@@ -128,21 +139,32 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
           "relative z-0 h-full rounded-b-sm bg-accent/20",
           selected ? "border-border" : undefined,
         )}
-        // TODO: Not sure why this is not working
-        style={{
-          backgroundColor: backgroundColor + " !important",
+        ref={(element) => {
+          if (element) {
+            element.style.setProperty(
+              "background-color",
+              backgroundColor,
+              "important",
+            );
+          }
         }}>
         <div
           className={cn(
             longClassName,
             selected ? "border-border" : "border-transparent",
-          )}
-          style={{
-            backgroundColor: backgroundColor + " !important",
-            color: textColor + " !important",
-          }}>
+          )}>
           <RectangleDashed />
-          <p>{data.customName || data.officialName}</p>
+          <p
+            ref={(element) => {
+              if (element)
+                element.style.setProperty(
+                  "color",
+                  data.params?.textColor || "",
+                  "important",
+                );
+            }}>
+            {data.params?.customName || data.officialName}
+          </p>
         </div>
       </div>
     </>
