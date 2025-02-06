@@ -55,6 +55,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 
 	// auth config
 	authConfig := cfg.Config.JWTProviders()
+
 	log.Infof("auth: config: %#v", authConfig)
 	authMiddleware := echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, true)))
 
@@ -94,6 +95,9 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	apiPrivate.Use(authMiddleware, attachOpMiddleware(cfg))
 	apiPrivate.POST("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev))
 	apiPrivate.POST("/signup", Signup())
+	apiPrivate.POST("/verify/ws-token", func(c echo.Context) error {
+		return c.JSON(http.StatusOK, echo.Map{"authorized": true})
+	})
 
 	if !cfg.Config.AuthSrv.Disabled {
 		apiPrivate.POST("/signup/verify", StartSignupVerify())
