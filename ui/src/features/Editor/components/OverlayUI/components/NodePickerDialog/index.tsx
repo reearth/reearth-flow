@@ -8,6 +8,7 @@ import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
 import type { ActionNodeType, Node } from "@flow/types";
+import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
 import { useCreateNode } from "../../../Canvas/useCreateNode";
 
@@ -71,8 +72,8 @@ const NodePickerDialog: React.FC<Props> = ({
     async (name?: string) => {
       if (!name) return;
       // If the position is 0,0 then place it in the center of the screen as this is using shortcut creation and not dnd
-      const randomX = Math.floor(Math.random() * (400 - 100 + 1)) + 100;
-      const randomY = Math.floor(Math.random() * (400 - 100 + 1)) + 100;
+      const randomX = getRandomNumberInRange(50, 200);
+      const randomY = getRandomNumberInRange(50, 200);
       const newNode = await createNode({
         position:
           openedActionType.position.x === 0 && openedActionType.position.y === 0

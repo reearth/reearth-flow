@@ -21,6 +21,7 @@ import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
 import type { Action, ActionsSegregated, Node } from "@flow/types";
 import { generateUUID } from "@flow/utils";
+import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
 import ActionComponent from "./Action";
 
@@ -87,8 +88,8 @@ const ActionsList: React.FC<Props> = ({
       const { api } = config();
       const action = await fetcher<Action>(`${api}/actions/${name}`);
       if (!action) return;
-      const randomX = Math.floor(Math.random() * (400 - 100 + 1)) + 100;
-      const randomY = Math.floor(Math.random() * (400 - 100 + 1)) + 100;
+      const randomX = getRandomNumberInRange(50, 200);
+      const randomY = getRandomNumberInRange(50, 200);
       const newNode: Node = {
         id: generateUUID(),
         type: action.type,
