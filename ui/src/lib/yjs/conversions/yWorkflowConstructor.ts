@@ -17,6 +17,7 @@ export const yNodeConstructor = (node: Node): YNode => {
     dragging: false,
     position: toYjsMap(node.position),
     measured: toYjsMap(node.measured),
+    parentId: toYjsText(node.parentId),
     // Reference src/types/node.ts for the NodeData type
     data: toYjsMap({
       officialName: toYjsText(node.data.officialName),
