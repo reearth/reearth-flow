@@ -114,7 +114,6 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 
 	if dp.Project != nil {
 		d = d.Project(dp.Project)
-
 		head, _ := i.deploymentRepo.FindHead(ctx, dp.Workspace, dp.Project)
 
 		d = d.IsHead(true)
@@ -131,7 +130,7 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 			d = d.Version("v1")
 		}
 	} else {
-		d = d.Version("v0")
+		d = d.Version("v1")
 		d = d.IsHead(false)
 	}
 
