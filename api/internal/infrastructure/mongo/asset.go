@@ -129,23 +129,19 @@ func (r *Asset) paginate(ctx context.Context, filter any, sort *asset.SortType, 
 	c := mongodoc.NewAssetConsumer(r.f.Readable)
 
 	if pagination != nil && pagination.Page != nil {
-		// Page-based pagination
 		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
 		limit := pagination.Page.PageSize
 
-		// Get total count for page info
 		total, err := r.client.Count(ctx, filter)
 		if err != nil {
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
 
-		// Add sorting
 		opts := options.Find()
 		if sort != nil {
 			opts.SetSort(bson.D{{Key: string(*sort), Value: 1}})
 		}
 
-		// Add pagination
 		opts.SetSkip(int64(skip)).SetLimit(int64(limit))
 
 		if err := r.client.Find(ctx, filter, c, opts); err != nil {

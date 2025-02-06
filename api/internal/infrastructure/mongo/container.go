@@ -43,12 +43,10 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 		User:        account.User,
 	}
 
-	// init
 	if err := Init(c); err != nil {
 		return nil, err
 	}
 
-	// migration
 	if err := migration.Do(ctx, client, c.Config); err != nil {
 		return nil, err
 	}

@@ -27,7 +27,6 @@ func NewDeployment() *Deployment {
 
 func (r *Deployment) Filtered(f repo.WorkspaceFilter) repo.Deployment {
 	return &Deployment{
-		// note data is shared between the source repo and mutex cannot work well
 		data: r.data,
 		f:    r.f.Merge(f),
 	}
@@ -53,12 +52,49 @@ func (r *Deployment) FindByWorkspace(_ context.Context, wid accountdomain.Worksp
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
-	// Sort by version in ascending order
-	sort.Slice(result, func(i, j int) bool {
-		return result[i].Version() < result[j].Version()
-	})
-
 	if p != nil && p.Page != nil {
+		field := "updatedAt"
+		if p.Page.OrderBy != nil {
+			field = *p.Page.OrderBy
+		}
+
+		ascending := false
+		if p.Page.OrderDir != nil && *p.Page.OrderDir == "ASC" {
+			ascending = true
+		}
+
+		sort.SliceStable(result, func(i, j int) bool {
+			compare := func(less bool) bool {
+				if ascending {
+					return less
+				}
+				return !less
+			}
+
+			switch field {
+			case "updatedAt":
+				if result[i].UpdatedAt().Equal(result[j].UpdatedAt()) {
+					return result[i].ID().String() < result[j].ID().String()
+				}
+				return compare(result[i].UpdatedAt().Before(result[j].UpdatedAt()))
+			case "description":
+				if result[i].Description() == result[j].Description() {
+					return result[i].ID().String() < result[j].ID().String()
+				}
+				return compare(result[i].Description() < result[j].Description())
+			case "version":
+				if result[i].Version() == result[j].Version() {
+					return result[i].ID().String() < result[j].ID().String()
+				}
+				return compare(result[i].Version() < result[j].Version())
+			default:
+				if result[i].UpdatedAt().Equal(result[j].UpdatedAt()) {
+					return result[i].ID().String() < result[j].ID().String()
+				}
+				return compare(result[i].UpdatedAt().Before(result[j].UpdatedAt()))
+			}
+		})
+
 		skip := (p.Page.Page - 1) * p.Page.PageSize
 		if skip >= len(result) {
 			return nil, interfaces.NewPageBasedInfo(total, p.Page.Page, p.Page.PageSize), nil
@@ -71,6 +107,10 @@ func (r *Deployment) FindByWorkspace(_ context.Context, wid accountdomain.Worksp
 
 		return result[skip:end], interfaces.NewPageBasedInfo(total, p.Page.Page, p.Page.PageSize), nil
 	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ID().String() < result[j].ID().String()
+	})
 
 	return result, interfaces.NewPageBasedInfo(total, 1, int(total)), nil
 }

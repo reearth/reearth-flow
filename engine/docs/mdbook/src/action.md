@@ -720,6 +720,42 @@ Filters the dimension of features
 ### Category
 * Geometry
 
+## DirectoryDecompressor
+### Type
+* processor
+### Description
+Decompresses a directory
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DirectoryDecompressorParam",
+  "type": "object",
+  "required": [
+    "archiveAttributes"
+  ],
+  "properties": {
+    "archiveAttributes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* File
+
 ## EchoProcessor
 ### Type
 * processor
@@ -923,6 +959,12 @@ Extracts features by file path
     "sourceDataset"
   ],
   "properties": {
+    "destPrefix": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "extractArchive": {
       "type": "boolean"
     },
@@ -2938,9 +2980,32 @@ Extracts UDX folders from cityGML path
   "properties": {
     "cityGmlPath": {
       "$ref": "#/definitions/Expr"
+    },
+    "codelistsPath": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schemasPath": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
     "Expr": {
       "type": "string"
     }

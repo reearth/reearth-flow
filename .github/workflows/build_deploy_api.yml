@@ -133,16 +133,20 @@ jobs:
     needs: build-docker-image
     runs-on: ubuntu-latest
     if: ${{ inputs.name == 'nightly' }}
+    permissions:
+      contents: read
+      id-token: write
     env:
       IMAGE: reearth/reearth-flow-api:nightly
-      IMAGE_GCP: us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-api:nightly
+      IMAGE_GCP: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-api:nightly
       GCP_REGION: us-central1
       CLOUD_RUN_SERVICE: reearth-flow-api
     steps:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
