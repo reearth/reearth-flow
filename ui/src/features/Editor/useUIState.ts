@@ -39,7 +39,7 @@ export default ({ hasReader }: { hasReader?: boolean }) => {
 
   const [rightPanelContent, setRightPanelContent] = useState<
     "version-history" | undefined
-  >("version-history");
+  >(undefined);
 
   const handleRightPanelOpen = useCallback(
     (content?: "version-history") => setRightPanelContent(content),
