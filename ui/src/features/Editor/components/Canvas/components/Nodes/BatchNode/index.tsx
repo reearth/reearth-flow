@@ -23,10 +23,6 @@ const batchNodeSchema: RJSFSchema = {
       title: "Background Color",
     },
     textColor: { type: "string", format: "color", title: "Text Color" },
-    backgroundHasOpacity: {
-      type: "boolean",
-      title: "Background Has Opacity?",
-    },
   },
 };
 
@@ -103,14 +99,9 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
   // No need to memoize as we want to update because bounds will change on resize
   const bounds = getChildNodesBoundary();
   // background color will always be a hex color, therefore needs to be converted to rgba
-  let backgroundColor: string = data.params?.backgroundColor || "";
-  const backgroundHasOpacity: boolean =
-    data.params?.backgroundHasOpacity || false;
+  const backgroundColor = data.params?.backgroundColor || "";
+  const rgbaColor = convertHextoRgba(backgroundColor, 0.5);
 
-  if (backgroundHasOpacity) {
-    const rgbaColor = convertHextoRgba(backgroundColor, 0.5);
-    backgroundColor = rgbaColor;
-  }
   return (
     <>
       {selected && (
@@ -143,7 +134,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
           if (element) {
             element.style.setProperty(
               "background-color",
-              backgroundColor,
+              rgbaColor,
               "important",
             );
           }
