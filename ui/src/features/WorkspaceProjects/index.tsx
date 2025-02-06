@@ -74,22 +74,20 @@ const ProjectsManager: React.FC = () => {
           </Button>
         </div>
         {currentOrder && (
-          <div className="flex w-[100px]">
-            <Select
-              value={currentOrder || "DESC"}
-              onValueChange={handleOrderChange}>
-              <SelectTrigger>
-                <SelectValue placeholder={orderDirections.ASC} />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(orderDirections).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Select
+            value={currentOrder || "DESC"}
+            onValueChange={handleOrderChange}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue placeholder={orderDirections.ASC} />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(orderDirections).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         )}
         {isFetching ? (
           <Loading />

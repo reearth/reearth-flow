@@ -135,22 +135,20 @@ function DataTable<TData, TValue>({
             />
           )}
           {currentOrder && (
-            <div className="flex w-[100px] [&_.flex]:h-[32px]">
-              <Select
-                value={currentOrder || "DESC"}
-                onValueChange={handleOrderChange}>
-                <SelectTrigger>
-                  <SelectValue placeholder={orderDirections.ASC} />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(orderDirections).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <Select
+              value={currentOrder || "DESC"}
+              onValueChange={handleOrderChange}>
+              <SelectTrigger className="h-[32px] w-[100px]">
+                <SelectValue placeholder={orderDirections.ASC} />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(orderDirections).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
           {selectColumns && (
             <DropdownMenu>
