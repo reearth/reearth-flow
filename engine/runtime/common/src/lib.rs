@@ -29,6 +29,9 @@ pub enum Error {
 
     #[error("CompressError: {0}")]
     Compress(String),
+
+    #[error("ZipError: {0}")]
+    Zip(String),
 }
 
 impl Error {
@@ -67,6 +70,10 @@ impl Error {
     pub fn compress<T: ToString>(message: T) -> Self {
         Self::Compress(message.to_string())
     }
+
+    pub fn zip<T: ToString>(message: T) -> Self {
+        Self::Zip(message.to_string())
+    }
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -85,3 +92,4 @@ pub mod str;
 pub mod texture;
 pub mod uri;
 pub mod xml;
+pub mod zip;
