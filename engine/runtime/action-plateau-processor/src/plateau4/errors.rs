@@ -13,6 +13,18 @@ pub(super) enum PlateauProcessorError {
     MaxLodExtractor(String),
     #[error("AttributeFlattener error: {0}")]
     AttributeFlattener(String),
+    #[error("CityCode Extractor Factory error: {0}")]
+    CityCodeExtractorFactory(String),
+    #[error("CityCode Extractor error: {0}")]
+    CityCodeExtractor(String),
+    #[error("ObjectList Extractor Factory error: {0}")]
+    ObjectListExtractorFactory(String),
+    #[error("ObjectList Extractor error: {0}")]
+    ObjectListExtractor(String),
+    #[error("MissingAttributeDetector Factory error: {0}")]
+    MissingAttributeDetectorFactory(String),
+    #[error("MissingAttributeDetector error: {0}")]
+    MissingAttributeDetector(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

@@ -6,7 +6,6 @@ use std::time::Duration;
 use bytes::Bytes;
 use object_store::ObjectMeta;
 use object_store::Result;
-use opendal::Metakey;
 use reearth_flow_common::uri::Protocol;
 use reearth_flow_common::uri::Uri;
 
@@ -66,7 +65,7 @@ impl Storage {
                 let result = location.to_str().unwrap();
                 let url = format!("{}{}", self.base_uri, result);
                 let client = reqwest::blocking::Client::builder()
-                    .timeout(Duration::from_secs(1))
+                    .timeout(Duration::from_secs(30))
                     .build()
                     .map_err(|err| object_store::Error::Generic {
                         store: "HttpError",
@@ -184,7 +183,6 @@ impl Storage {
             .blocking()
             .lister_with(&path)
             .recursive(recursive)
-            .metakey(Metakey::ContentLength | Metakey::LastModified)
             .call()
             .map_err(|err| format_object_store_error(err, ""))?;
         let result = ds

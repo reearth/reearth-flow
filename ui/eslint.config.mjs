@@ -17,7 +17,14 @@ const customTailwindConfig = [
       "tailwindcss/no-custom-classname": [
         "warn",
         {
-          whitelist: ["nopan", "nodrag", "nowheel", "destructive", "dndnode-"],
+          whitelist: [
+            "nopan",
+            "nodrag",
+            "nowheel",
+            "destructive",
+            "warning",
+            "dndnode-",
+          ],
         },
       ],
     },

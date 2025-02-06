@@ -16,8 +16,6 @@ models:
     model: github.com/99designs/gqlgen/graphql.Time
   FileSize:
     model: github.com/99designs/gqlgen/graphql.Int64
-  Cursor:
-    model: github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.Cursor
   URL:
     model: github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel.URL
   Lang:
@@ -59,6 +57,12 @@ models:
       deployment:
         resolver: true
       parameters:
+        resolver: true
+  Trigger:
+    fields:
+      workspace:
+        resolver: true
+      deployment:
         resolver: true
   Subscription:
     fields:

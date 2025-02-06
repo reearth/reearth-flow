@@ -13,12 +13,13 @@ import { createRoot } from "react-dom/client";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { type NodeType } from "@flow/types";
+import type { NodeType } from "@flow/types";
 
 type ToolboxItem<T> = {
   id: T;
   name: string;
   icon: React.ReactNode;
+  disabled?: boolean;
 };
 
 type Tool = ToolboxItem<NodeType>;
@@ -32,6 +33,7 @@ type Props = {
   onRedo?: () => void;
   onUndo?: () => void;
   isMainWorkflow: boolean;
+  hasReader?: boolean;
 };
 
 const Toolbox: React.FC<Props> = ({
@@ -40,14 +42,15 @@ const Toolbox: React.FC<Props> = ({
   onRedo,
   onUndo,
   isMainWorkflow,
+  hasReader,
 }) => {
   const t = useT();
-
   const availableTools: Tool[] = [
     {
       id: "reader" as const,
       name: t("Reader Node"),
       icon: <Database weight="thin" />,
+      disabled: !isMainWorkflow || hasReader,
     },
     {
       id: "transformer" as const,
@@ -58,6 +61,7 @@ const Toolbox: React.FC<Props> = ({
       id: "writer" as const,
       name: t("Writer Node"),
       icon: <Disc weight="thin" />,
+      disabled: !isMainWorkflow,
     },
     {
       id: "note" as const,
@@ -74,12 +78,7 @@ const Toolbox: React.FC<Props> = ({
       name: t("Subworkflow Node"),
       icon: <Graph weight="thin" />,
     },
-  ].filter((tool) => {
-    if (!isMainWorkflow) {
-      return tool.id !== "reader" && tool.id !== "writer";
-    }
-    return true;
-  });
+  ];
 
   const availableActions: Action[] = [
     {
@@ -148,39 +147,38 @@ const Toolbox: React.FC<Props> = ({
     }, 0);
   };
   return (
-    <div className="pointer-events-none absolute bottom-1 left-2 top-2 flex shrink-0 gap-2 [&>*]:pointer-events-auto">
-      <div className="self-start rounded-md bg-secondary">
-        <div className="flex flex-col flex-wrap rounded-md border transition-all">
-          {availableTools.map((tool) => (
-            <IconButton
-              key={tool.id}
-              className={`dndnode-${tool.id} rounded-[4px]`}
-              tooltipPosition="right"
-              tooltipText={tool.name}
-              icon={tool.icon}
-              onDragStart={(event) => onDragStart(event, tool.id)}
-              draggable
-            />
-          ))}
-          {availableActions && <div className="my-2 w-full border-t" />}
-          {availableActions.map((action) => (
-            <IconButton
-              key={action.id}
-              className="rounded-[4px]"
-              tooltipPosition="right"
-              tooltipText={action.name}
-              icon={action.icon}
-              disabled={action.id === "undo" ? !canUndo : !canRedo}
-              onClick={() =>
-                action.id === "redo"
-                  ? onRedo?.()
-                  : action.id === "undo"
-                    ? onUndo?.()
-                    : undefined
-              }
-            />
-          ))}
-        </div>
+    <div className="self-start rounded-md bg-secondary">
+      <div className="flex flex-col flex-wrap rounded-md border transition-all">
+        {availableTools.map((tool) => (
+          <IconButton
+            key={tool.id}
+            className={`dndnode-${tool.id} rounded-[4px]`}
+            tooltipPosition="right"
+            tooltipText={tool.name}
+            icon={tool.icon}
+            onDragStart={(event) => onDragStart(event, tool.id)}
+            draggable
+            disabled={tool.disabled}
+          />
+        ))}
+        <div className="my-2 w-full border-t" />
+        {availableActions.map((action) => (
+          <IconButton
+            key={action.id}
+            className="rounded-[4px]"
+            tooltipPosition="right"
+            tooltipText={action.name}
+            icon={action.icon}
+            disabled={action.id === "undo" ? !canUndo : !canRedo}
+            onClick={() =>
+              action.id === "redo"
+                ? onRedo?.()
+                : action.id === "undo"
+                  ? onUndo?.()
+                  : undefined
+            }
+          />
+        ))}
       </div>
     </div>
   );

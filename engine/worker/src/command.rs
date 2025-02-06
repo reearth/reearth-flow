@@ -137,6 +137,7 @@ impl RunWorkerCommand {
     }
 
     async fn run(&self) -> crate::errors::Result<()> {
+        tracing::info!("Starting worker");
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
         let (workflow, state, logger_factory, meta) = self.prepare(&storage_resolver).await?;
 
@@ -185,7 +186,9 @@ impl RunWorkerCommand {
                 .await
                 .map_err(crate::errors::Error::run),
             PubSubBackend::Noop(_) => Ok(()),
-        }
+        }?;
+        tracing::info!("Job completed");
+        Ok(())
     }
 
     async fn prepare(

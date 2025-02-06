@@ -2,14 +2,15 @@ package memory
 
 import (
 	"context"
+	"sort"
 	"sync"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/rerror"
-	"github.com/reearth/reearthx/usecasex"
 )
 
 type Deployment struct {
@@ -26,42 +27,92 @@ func NewDeployment() *Deployment {
 
 func (r *Deployment) Filtered(f repo.WorkspaceFilter) repo.Deployment {
 	return &Deployment{
-		// note data is shared between the source repo and mutex cannot work well
 		data: r.data,
 		f:    r.f.Merge(f),
 	}
 }
 
-func (r *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *usecasex.Pagination) ([]*deployment.Deployment, *usecasex.PageInfo, error) {
+func (r *Deployment) FindByWorkspace(_ context.Context, wid accountdomain.WorkspaceID, p *interfaces.PaginationParam) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
-	if !r.f.CanRead(id) {
-		return nil, nil, nil
+	if !r.f.CanRead(wid) {
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
 	result := []*deployment.Deployment{}
 	for _, d := range r.data {
-		if d.Workspace() == id {
+		if d.Workspace() == wid {
 			result = append(result, d)
 		}
 	}
 
-	var startCursor, endCursor *usecasex.Cursor
-	if len(result) > 0 {
-		_startCursor := usecasex.Cursor(result[0].ID().String())
-		_endCursor := usecasex.Cursor(result[len(result)-1].ID().String())
-		startCursor = &_startCursor
-		endCursor = &_endCursor
+	total := int64(len(result))
+	if total == 0 {
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
-	return result, usecasex.NewPageInfo(
-		int64(len(result)),
-		startCursor,
-		endCursor,
-		true,
-		true,
-	), nil
+	if p != nil && p.Page != nil {
+		field := "updatedAt"
+		if p.Page.OrderBy != nil {
+			field = *p.Page.OrderBy
+		}
+
+		ascending := false
+		if p.Page.OrderDir != nil && *p.Page.OrderDir == "ASC" {
+			ascending = true
+		}
+
+		sort.SliceStable(result, func(i, j int) bool {
+			compare := func(less bool) bool {
+				if ascending {
+					return less
+				}
+				return !less
+			}
+
+			switch field {
+			case "updatedAt":
+				if result[i].UpdatedAt().Equal(result[j].UpdatedAt()) {
+					return result[i].ID().String() < result[j].ID().String()
+				}
+				return compare(result[i].UpdatedAt().Before(result[j].UpdatedAt()))
+			case "description":
+				if result[i].Description() == result[j].Description() {
+					return result[i].ID().String() < result[j].ID().String()
+				}
+				return compare(result[i].Description() < result[j].Description())
+			case "version":
+				if result[i].Version() == result[j].Version() {
+					return result[i].ID().String() < result[j].ID().String()
+				}
+				return compare(result[i].Version() < result[j].Version())
+			default:
+				if result[i].UpdatedAt().Equal(result[j].UpdatedAt()) {
+					return result[i].ID().String() < result[j].ID().String()
+				}
+				return compare(result[i].UpdatedAt().Before(result[j].UpdatedAt()))
+			}
+		})
+
+		skip := (p.Page.Page - 1) * p.Page.PageSize
+		if skip >= len(result) {
+			return nil, interfaces.NewPageBasedInfo(total, p.Page.Page, p.Page.PageSize), nil
+		}
+
+		end := skip + p.Page.PageSize
+		if end > len(result) {
+			end = len(result)
+		}
+
+		return result[skip:end], interfaces.NewPageBasedInfo(total, p.Page.Page, p.Page.PageSize), nil
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].ID().String() < result[j].ID().String()
+	})
+
+	return result, interfaces.NewPageBasedInfo(total, 1, int(total)), nil
 }
 
 func (r *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deployment.Deployment, error) {
@@ -69,7 +120,7 @@ func (r *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deplo
 	defer r.lock.Unlock()
 
 	for _, d := range r.data {
-		if d.Project() == id && r.f.CanRead(d.Workspace()) {
+		if d.Project() != nil && *d.Project() == id && r.f.CanRead(d.Workspace()) {
 			return d, nil
 		}
 	}
@@ -99,6 +150,80 @@ func (r *Deployment) FindByIDs(ctx context.Context, ids id.DeploymentIDList) ([]
 		}
 		result = append(result, nil)
 	}
+	return result, nil
+}
+
+func (r *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID, version string) (*deployment.Deployment, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if !r.f.CanRead(wsID) {
+		return nil, nil
+	}
+
+	for _, d := range r.data {
+		if d.Workspace() == wsID && d.Version() == version {
+			if projectID != nil {
+				if d.Project() != nil && *d.Project() == *projectID {
+					return d, nil
+				}
+			} else if d.Project() == nil {
+				return d, nil
+			}
+		}
+	}
+
+	return nil, rerror.ErrNotFound
+}
+
+func (r *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID) (*deployment.Deployment, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if !r.f.CanRead(wsID) {
+		return nil, nil
+	}
+
+	for _, d := range r.data {
+		if d.Workspace() == wsID && d.IsHead() {
+			if projectID != nil {
+				if d.Project() != nil && *d.Project() == *projectID {
+					return d, nil
+				}
+			} else if d.Project() == nil {
+				return d, nil
+			}
+		}
+	}
+
+	return nil, rerror.ErrNotFound
+}
+
+func (r *Deployment) FindVersions(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID) ([]*deployment.Deployment, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if !r.f.CanRead(wsID) {
+		return nil, nil
+	}
+
+	var result []*deployment.Deployment
+	for _, d := range r.data {
+		if d.Workspace() == wsID {
+			if projectID != nil {
+				if d.Project() != nil && *d.Project() == *projectID {
+					result = append(result, d)
+				}
+			} else if d.Project() == nil {
+				result = append(result, d)
+			}
+		}
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Version() > result[j].Version()
+	})
+
 	return result, nil
 }
 

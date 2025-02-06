@@ -524,4 +524,150 @@ mod tests {
             ]
         )
     }
+
+    #[test]
+    fn test_find_readonly_nodes_by_xpath() {
+        let xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+        <bldg:Building xmlns:brid="http://www.opengis.net/citygml/bridge/2.0" xmlns:tran="http://www.opengis.net/citygml/transportation/2.0" xmlns:frn="http://www.opengis.net/citygml/cityfurniture/2.0" xmlns:wtr="http://www.opengis.net/citygml/waterbody/2.0" xmlns:sch="http://www.ascc.net/xml/schematron" xmlns:veg="http://www.opengis.net/citygml/vegetation/2.0" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:tun="http://www.opengis.net/citygml/tunnel/2.0" xmlns:tex="http://www.opengis.net/citygml/texturedsurface/2.0" xmlns:gml="http://www.opengis.net/gml" xmlns:app="http://www.opengis.net/citygml/appearance/2.0" xmlns:gen="http://www.opengis.net/citygml/generics/2.0" xmlns:dem="http://www.opengis.net/citygml/relief/2.0" xmlns:luse="http://www.opengis.net/citygml/landuse/2.0" xmlns:uro="https://www.geospatial.jp/iur/uro/3.1" xmlns:xAL="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0" xmlns:bldg="http://www.opengis.net/citygml/building/2.0" xmlns:smil20="http://www.w3.org/2001/SMIL20/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:smil20lang="http://www.w3.org/2001/SMIL20/Language" xmlns:pbase="http://www.opengis.net/citygml/profiles/base/2.0" xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:grp="http://www.opengis.net/citygml/cityobjectgroup/2.0" gml:id="bldg_6797d950-4b05-4a26-982c-ba3f4b221f6b">
+                                <core:creationDate>2025-03-21</core:creationDate>
+                                <bldg:class codeSpace="../../codelists/Building_class.xml">3003</bldg:class>
+                                <bldg:usage codeSpace="../../codelists/Building_usage.xml">461</bldg:usage>
+                                <bldg:measuredHeight uom="m">4.6</bldg:measuredHeight>
+                                <bldg:lod0RoofEdge>
+                                        <gml:MultiSurface>
+                                                <gml:surfaceMember>
+                                                        <gml:Polygon>
+                                                                <gml:exterior>
+                                                                        <gml:LinearRing>
+                                                                                <gml:posList>35.37504090912612 139.8985740681761 0 35.37501086437582 139.89859169739964 0 35.37501767875842 139.8986090041047 0 35.37504772351121 139.89859137488614 0 35.37504090912612 139.8985740681761 0</gml:posList>
+                                                                        </gml:LinearRing>
+                                                                </gml:exterior>
+                                                        </gml:Polygon>
+                                                </gml:surfaceMember>
+                                        </gml:MultiSurface>
+                                </bldg:lod0RoofEdge>
+                                <bldg:lod1Solid>
+                                        <gml:Solid>
+                                                <gml:exterior>
+                                                        <gml:CompositeSurface>
+                                                                <gml:surfaceMember>
+                                                                        <gml:Polygon>
+                                                                                <gml:exterior>
+                                                                                        <gml:LinearRing>
+                                                                                                <gml:posList>35.37504090912612 139.8985740681761 3.721 35.37504772351121 139.89859137488614 3.721 35.37501767875842 139.8986090041047 3.721 35.37501086437582 139.89859169739964 3.721 35.37504090912612 139.8985740681761 3.721</gml:posList>
+                                                                                        </gml:LinearRing>
+                                                                                </gml:exterior>
+                                                                        </gml:Polygon>
+                                                                </gml:surfaceMember>
+                                                                <gml:surfaceMember>
+                                                                        <gml:Polygon>
+                                                                                <gml:exterior>
+                                                                                        <gml:LinearRing>
+                                                                                                <gml:posList>35.37504090912612 139.8985740681761 3.721 35.37501086437582 139.89859169739964 3.721 35.37501086437582 139.89859169739964 8.186 35.37504090912612 139.8985740681761 8.186 35.37504090912612 139.8985740681761 3.721</gml:posList>
+                                                                                        </gml:LinearRing>
+                                                                                </gml:exterior>
+                                                                        </gml:Polygon>
+                                                                </gml:surfaceMember>
+                                                                <gml:surfaceMember>
+                                                                        <gml:Polygon>
+                                                                                <gml:exterior>
+                                                                                        <gml:LinearRing>
+                                                                                                <gml:posList>35.37501086437582 139.89859169739964 3.721 35.37501767875842 139.8986090041047 3.721 35.37501767875842 139.8986090041047 8.186 35.37501086437582 139.89859169739964 8.186 35.37501086437582 139.89859169739964 3.721</gml:posList>
+                                                                                        </gml:LinearRing>
+                                                                                </gml:exterior>
+                                                                        </gml:Polygon>
+                                                                </gml:surfaceMember>
+                                                                <gml:surfaceMember>
+                                                                        <gml:Polygon>
+                                                                                <gml:exterior>
+                                                                                        <gml:LinearRing>
+                                                                                                <gml:posList>35.37501767875842 139.8986090041047 3.721 35.37504772351121 139.89859137488614 3.721 35.37504772351121 139.89859137488614 8.186 35.37501767875842 139.8986090041047 8.186 35.37501767875842 139.8986090041047 3.721</gml:posList>
+                                                                                        </gml:LinearRing>
+                                                                                </gml:exterior>
+                                                                        </gml:Polygon>
+                                                                </gml:surfaceMember>
+                                                                <gml:surfaceMember>
+                                                                        <gml:Polygon>
+                                                                                <gml:exterior>
+                                                                                        <gml:LinearRing>
+                                                                                                <gml:posList>35.37504772351121 139.89859137488614 3.721 35.37504090912612 139.8985740681761 3.721 35.37504090912612 139.8985740681761 8.186 35.37504772351121 139.89859137488614 8.186 35.37504772351121 139.89859137488614 3.721</gml:posList>
+                                                                                        </gml:LinearRing>
+                                                                                </gml:exterior>
+                                                                        </gml:Polygon>
+                                                                </gml:surfaceMember>
+                                                                <gml:surfaceMember>
+                                                                        <gml:Polygon>
+                                                                                <gml:exterior>
+                                                                                        <gml:LinearRing>
+                                                                                                <gml:posList>35.37504090912612 139.8985740681761 8.186 35.37501086437582 139.89859169739964 8.186 35.37501767875842 139.8986090041047 8.186 35.37504772351121 139.89859137488614 8.186 35.37504090912612 139.8985740681761 8.186</gml:posList>
+                                                                                        </gml:LinearRing>
+                                                                                </gml:exterior>
+                                                                        </gml:Polygon>
+                                                                </gml:surfaceMember>
+                                                        </gml:CompositeSurface>
+                                                </gml:exterior>
+                                        </gml:Solid>
+                                </bldg:lod1Solid>
+                                <uro:bldgDataQualityAttribute>
+                                        <uro:DataQualityAttribute>
+                                                <uro:geometrySrcDescLod0 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod0>
+                                                <uro:geometrySrcDescLod1 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</uro:geometrySrcDescLod1>
+                                                <uro:geometrySrcDescLod2 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">999</uro:geometrySrcDescLod2>
+                                                <uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</uro:thematicSrcDesc>
+                                                <uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">201</uro:thematicSrcDesc>
+                                                <uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">400</uro:thematicSrcDesc>
+                                                <uro:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">700</uro:thematicSrcDesc>
+                                                <uro:appearanceSrcDescLod2 codeSpace="../../codelists/DataQualityAttribute_appearanceSrcDesc.xml">99</uro:appearanceSrcDescLod2>
+                                                <uro:lod1HeightType codeSpace="../../codelists/DataQualityAttribute_lod1HeightType.xml">2</uro:lod1HeightType>
+                                                <uro:publicSurveyDataQualityAttribute>
+                                                        <uro:PublicSurveyDataQualityAttribute>
+                                                                <uro:srcScaleLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod0>
+                                                                <uro:srcScaleLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">1</uro:srcScaleLod1>
+                                                                <uro:publicSurveySrcDescLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">003</uro:publicSurveySrcDescLod0>
+                                                                <uro:publicSurveySrcDescLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">012</uro:publicSurveySrcDescLod0>
+                                                                <uro:publicSurveySrcDescLod0 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">023</uro:publicSurveySrcDescLod0>
+                                                                <uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">003</uro:publicSurveySrcDescLod1>
+                                                                <uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">012</uro:publicSurveySrcDescLod1>
+                                                                <uro:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">023</uro:publicSurveySrcDescLod1>
+                                                        </uro:PublicSurveyDataQualityAttribute>
+                                                </uro:publicSurveyDataQualityAttribute>
+                                        </uro:DataQualityAttribute>
+                                </uro:bldgDataQualityAttribute>
+                                <uro:bldgDisasterRiskAttribute>
+                                        <uro:TsunamiRiskAttribute>
+                                                <uro:description codeSpace="../../codelists/TsunamiRiskAttribute_description.xml">1</uro:description>
+                                                <uro:rank codeSpace="../../codelists/TsunamiRiskAttribute_rank.xml">1</uro:rank>
+                                                <uro:depth uom="m">0.147</uro:depth>
+                                        </uro:TsunamiRiskAttribute>
+                                </uro:bldgDisasterRiskAttribute>
+                                <uro:buildingDetailAttribute>
+                                        <uro:BuildingDetailAttribute>
+                                                <uro:surveyYear>2021</uro:surveyYear>
+                                        </uro:BuildingDetailAttribute>
+                                </uro:buildingDetailAttribute>
+                                <uro:buildingIDAttribute>
+                                        <uro:BuildingIDAttribute>
+                                                <uro:buildingID>12206-bldg-51914</uro:buildingID>
+                                                <uro:prefecture codeSpace="../../codelists/Common_localPublicAuthorities.xml">12</uro:prefecture>
+                                                <uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">12206</uro:city>
+                                        </uro:BuildingIDAttribute>
+                                </uro:buildingIDAttribute>
+                                <uro:largeCustomerFacilityAttribute>
+                                        <uro:LargeCustomerFacilityAttribute>
+                                                <uro:surveyYear>2021</uro:surveyYear>
+                                        </uro:LargeCustomerFacilityAttribute>
+                                </uro:largeCustomerFacilityAttribute>
+                        </bldg:Building>
+        "#;
+        let document = parse(xml).unwrap();
+        let ctx = create_context(&document).unwrap();
+        let root = get_root_readonly_node(&document).unwrap();
+        let result = find_readonly_nodes_by_xpath(
+            &ctx,
+            ".//uro:buildingIDAttribute/uro:BuildingIDAttribute/uro:buildingID",
+            &root,
+        )
+        .unwrap();
+        assert_eq!(result.len(), 1);
+    }
 }

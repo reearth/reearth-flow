@@ -9,7 +9,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { memo, useEffect, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
-import { UserNavigation } from "@flow/features/WorkspaceTopNavigation/components";
+import { UserMenu } from "@flow/features/common";
 import { useShortcuts } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { Node } from "@flow/types";
@@ -22,16 +22,18 @@ type Props = {
   nodes: Node[];
   isOpen: boolean;
   onOpen: (panel?: "left" | "right" | "bottom") => void;
-  onNodesChange: (nodes: Node[]) => void;
+  onNodesAdd: (node: Node[]) => void;
   isMainWorkflow: boolean;
+  hasReader?: boolean;
 };
 
 const LeftPanel: React.FC<Props> = ({
   nodes,
   isOpen,
   onOpen,
-  onNodesChange,
+  onNodesAdd,
   isMainWorkflow,
+  hasReader,
 }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
@@ -102,8 +104,9 @@ const LeftPanel: React.FC<Props> = ({
       component: (
         <ActionsList
           nodes={nodes}
-          onNodesChange={onNodesChange}
+          onNodesAdd={onNodesAdd}
           isMainWorkflow={isMainWorkflow}
+          hasReader={hasReader}
         />
       ),
     },
@@ -158,7 +161,6 @@ const LeftPanel: React.FC<Props> = ({
           </p>
         </div>
         <div className="flex flex-col gap-2 overflow-auto">
-          {/* {content.title && <p>{content.title}</p>} */}
           {tabs?.find((tc) => tc.id === selectedTab)?.component}
         </div>
       </div>
@@ -191,16 +193,10 @@ const LeftPanel: React.FC<Props> = ({
                 )
               }
             /> */}
-            <UserNavigation
+            <UserMenu
               className="flex w-full justify-center"
-              iconOnly
               dropdownPosition="right"
             />
-            {/* <ProjectSettings
-              className="flex items-center justify-center cursor-pointer rounded  transition-colors hover: md:h-8 md:w-8"
-              dropdownPosition="right"
-              dropdownOffset={15}
-            /> */}
           </nav>
         </div>
       </aside>

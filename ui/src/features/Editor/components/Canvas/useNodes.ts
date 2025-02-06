@@ -1,9 +1,8 @@
 import {
-  Connection,
+  EdgeChange,
+  NodeChange,
   OnNodesChange,
   XYPosition,
-  addEdge,
-  applyNodeChanges,
   getBezierPath,
   getConnectedEdges,
   getIncomers,
@@ -21,8 +20,9 @@ type Props = {
   nodes: Node[];
   edges: Edge[];
   onWorkflowAdd: (position?: XYPosition) => void;
-  onNodesChange: (newNodes: Node[]) => void;
-  onEdgesChange: (edges: Edge[]) => void;
+  onNodesAdd: (newNode: Node[]) => void;
+  onNodesChange: (changes: NodeChange<Node>[]) => void;
+  onEdgesChange: (changes: EdgeChange[]) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
 
@@ -30,51 +30,56 @@ export default ({
   nodes,
   edges,
   onWorkflowAdd,
+  onNodesAdd,
   onNodesChange,
   onEdgesChange,
   onNodePickerOpen,
 }: Props) => {
   const { isNodeIntersecting } = useReactFlow();
-  const { handleNodeDropInBatch } = useBatch();
 
   const { handleNodeDragOver, handleNodeDrop } = useDnd({
-    nodes,
     onWorkflowAdd,
-    onNodesChange,
+    onNodesAdd,
     onNodePickerOpen,
-    handleNodeDropInBatch,
   });
 
+  const { handleNodesDropInBatch } = useBatch();
+
   const handleNodesChange: OnNodesChange<Node> = useCallback(
-    (changes) => onNodesChange(applyNodeChanges<Node>(changes, nodes)),
-    [nodes, onNodesChange],
+    (changes) => onNodesChange(changes),
+    [onNodesChange],
   );
 
   const handleNodesDelete = useCallback(
     (deleted: Node[]) => {
-      // If a deleted node is connected between two remaining nodes,
-      // on removal, create a new connection between those nodes
-      onEdgesChange(
-        deleted.reduce((acc, node) => {
-          const incomers = getIncomers(node, nodes, edges);
-          const outgoers = getOutgoers(node, nodes, edges);
-          const connectedEdges = getConnectedEdges([node], edges);
+      const changes: EdgeChange[] = deleted.reduce((acc, node) => {
+        const incomers = getIncomers(node, nodes, edges);
+        const outgoers = getOutgoers(node, nodes, edges);
+        const connectedEdges = getConnectedEdges([node], edges);
 
-          const remainingEdges = acc.filter(
-            (edge) => !connectedEdges.includes(edge),
-          );
+        // First, mark all connected edges for removal
+        const removals: EdgeChange[] = connectedEdges.map((edge) => ({
+          id: edge.id,
+          type: "remove" as const,
+        }));
 
-          const createdEdges = incomers.flatMap(({ id: source }) =>
-            outgoers.map(({ id: target }) => ({
+        // Then create new direct connections between incomers and outgoers
+        const additions: EdgeChange[] = incomers.flatMap(({ id: source }) =>
+          outgoers.map(({ id: target }) => ({
+            id: `${source}->${target}`,
+            type: "add" as const,
+            item: {
               id: `${source}->${target}`,
               source,
               target,
-            })),
-          );
+            },
+          })),
+        );
 
-          return [...remainingEdges, ...createdEdges];
-        }, edges),
-      );
+        return [...acc, ...removals, ...additions];
+      }, [] as EdgeChange[]);
+
+      onEdgesChange(changes);
     },
     [edges, nodes, onEdgesChange],
   );
@@ -154,56 +159,90 @@ export default ({
             true,
           )
         ) {
-          // remove previous edge
-          let newEdges = edges.filter((ed) => ed.id !== e.id);
-          // create new connection between original source node and dragged node
-          const newConnectionA: Connection = {
-            source: e.source,
-            sourceHandle: e.sourceHandle ?? null,
-            target: droppedNode.id,
-            targetHandle:
-              droppedNode.handles?.find((h) => h.type === "target")?.type ??
-              null,
-          };
-          newEdges = addEdge(newConnectionA, newEdges);
+          const removeChanges: EdgeChange[] = edges.reduce((acc, edge) => {
+            if (edge.source === e.source && edge.target === e.target) {
+              return [
+                ...acc,
+                {
+                  id: edge.id,
+                  type: "remove" as const,
+                },
+              ];
+            }
+            return acc;
+          }, [] as EdgeChange[]);
 
-          // create new connection between dragged node and original target node
-          const newConnectionB: Connection = {
-            source: droppedNode.id,
-            sourceHandle:
-              droppedNode.handles?.find((h) => h.type === "source")?.type ??
-              null,
-            target: e.target,
-            targetHandle: e.targetHandle ?? null,
-          };
-          newEdges = addEdge(newConnectionB, newEdges);
+          const addChanges: EdgeChange[] = [
+            {
+              type: "add" as const,
+              item: {
+                id: `${e.source}->${droppedNode.id}`,
+                source: e.source,
+                target: droppedNode.id,
+                sourceHandle: e.sourceHandle ?? null,
+                targetHandle:
+                  droppedNode.handles?.find((h) => h.type === "target")?.type ??
+                  null,
+              },
+            },
+            {
+              type: "add" as const,
+              item: {
+                id: `${droppedNode.id}->${e.target}`,
+                source: droppedNode.id,
+                target: e.target,
+                sourceHandle:
+                  droppedNode.handles?.find((h) => h.type === "source")?.type ??
+                  null,
+                targetHandle: e.targetHandle ?? null,
+              },
+            },
+          ];
 
-          onEdgesChange(newEdges);
+          onEdgesChange([...removeChanges, ...addChanges]);
 
           // Set edge creation complete to stop loop
           edgeCreationComplete = true;
         }
       }
     },
-    [edges, isNodeIntersecting, nodes, onEdgesChange],
+    [nodes, edges, isNodeIntersecting, onEdgesChange],
+  );
+
+  const handleDropInBatch = useCallback(
+    (selectedNodes: Node[]) => {
+      const updatedNodes = handleNodesDropInBatch(selectedNodes);
+
+      if (updatedNodes) {
+        const changes = updatedNodes.map((node) => ({
+          type: "replace" as const,
+          id: node.id,
+          item: node,
+        }));
+
+        handleNodesChange(changes);
+      }
+    },
+    [handleNodesDropInBatch, handleNodesChange],
   );
 
   const handleNodeDragStop = useCallback(
-    (_evt: MouseEvent, node: Node) => {
+    (_evt: MouseEvent, node: Node, selectedNodes: Node[]) => {
       if (node.type !== "batch") {
+        handleDropInBatch(selectedNodes);
         if (node.type !== "note") {
           handleNodeDropOnEdge(node);
         }
       }
     },
-    [handleNodeDropOnEdge],
+    [handleNodeDropOnEdge, handleDropInBatch],
   );
 
   return {
     handleNodesChange,
     handleNodesDelete,
+    handleNodeDragOver,
     handleNodeDragStop,
     handleNodeDrop,
-    handleNodeDragOver,
   };
 };

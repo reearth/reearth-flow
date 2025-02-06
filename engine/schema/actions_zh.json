@@ -148,6 +148,42 @@
       ]
     },
     {
+      "name": "AttributeBulkArrayJoiner",
+      "type": "processor",
+      "description": "Flattens features by attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeBulkArrayJoinerParam",
+        "type": "object",
+        "properties": {
+          "ignoreAttributes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
       "name": "AttributeDuplicateFilter",
       "type": "processor",
       "description": "筛选具有重复属性的实体",
@@ -212,6 +248,42 @@
       "outputPorts": [
         "default",
         "rejected"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
+      "name": "AttributeFlattener",
+      "type": "processor",
+      "description": "Flattens features by attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeFlattenerParam",
+        "type": "object",
+        "required": [
+          "attributes"
+        ],
+        "properties": {
+          "attributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
       ],
       "categories": [
         "Attribute"
@@ -543,6 +615,16 @@
               "null"
             ]
           },
+          "compressOutput": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "maxZoom": {
             "type": "integer",
             "format": "uint8",
@@ -655,6 +737,42 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "DirectoryDecompressor",
+      "type": "processor",
+      "description": "Decompresses a directory",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "DirectoryDecompressorParam",
+        "type": "object",
+        "required": [
+          "archiveAttributes"
+        ],
+        "properties": {
+          "archiveAttributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "File"
       ]
     },
     {
@@ -833,6 +951,22 @@
       ]
     },
     {
+      "name": "FeatureDuplicateFilter",
+      "type": "processor",
+      "description": "Filters features by duplicate feature",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
       "name": "FeatureFilePathExtractor",
       "type": "processor",
       "description": "Extracts features by file path",
@@ -845,6 +979,12 @@
           "sourceDataset"
         ],
         "properties": {
+          "destPrefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "extractArchive": {
             "type": "boolean"
           },
@@ -1120,6 +1260,24 @@
                 "minimum": 0.0
               }
             }
+          },
+          {
+            "type": "object",
+            "required": [
+              "dataset",
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "$ref": "#/definitions/Expr"
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "json"
+                ]
+              }
+            }
           }
         ],
         "definitions": {
@@ -1296,6 +1454,86 @@
       ]
     },
     {
+      "name": "FeatureWriter",
+      "type": "processor",
+      "description": "Writes features from various formats",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureWriterParam",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "format",
+              "output"
+            ],
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "csv"
+                ]
+              },
+              "output": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "format",
+              "output"
+            ],
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "tsv"
+                ]
+              },
+              "output": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "format",
+              "output"
+            ],
+            "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "json"
+                ]
+              },
+              "output": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          }
+        ],
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
       "name": "FilePathExtractor",
       "type": "source",
       "description": "从目录或归档文件中提取文件",
@@ -1371,17 +1609,33 @@
             "title": "CSV",
             "type": "object",
             "required": [
-              "dataset",
               "format"
             ],
             "properties": {
               "dataset": {
-                "$ref": "#/definitions/Expr"
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "format": {
                 "type": "string",
                 "enum": [
                   "csv"
+                ]
+              },
+              "inline": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "offset": {
@@ -1398,17 +1652,33 @@
             "title": "TSV",
             "type": "object",
             "required": [
-              "dataset",
               "format"
             ],
             "properties": {
               "dataset": {
-                "$ref": "#/definitions/Expr"
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "format": {
                 "type": "string",
                 "enum": [
                   "tsv"
+                ]
+              },
+              "inline": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "offset": {
@@ -1425,17 +1695,33 @@
             "title": "JSON",
             "type": "object",
             "required": [
-              "dataset",
               "format"
             ],
             "properties": {
               "dataset": {
-                "$ref": "#/definitions/Expr"
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "format": {
                 "type": "string",
                 "enum": [
                   "json"
+                ]
+              },
+              "inline": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               }
             }
@@ -1444,12 +1730,18 @@
             "title": "CityGML",
             "type": "object",
             "required": [
-              "dataset",
               "format"
             ],
             "properties": {
               "dataset": {
-                "$ref": "#/definitions/Expr"
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "flatten": {
                 "type": [
@@ -1461,6 +1753,51 @@
                 "type": "string",
                 "enum": [
                   "citygml"
+                ]
+              },
+              "inline": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "title": "GeoJSON",
+            "type": "object",
+            "required": [
+              "format"
+            ],
+            "properties": {
+              "dataset": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "format": {
+                "type": "string",
+                "enum": [
+                  "geojson"
+                ]
+              },
+              "inline": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               }
             }
@@ -2531,6 +2868,43 @@
       ]
     },
     {
+      "name": "PLATEAU4.CityCodeExtractor",
+      "type": "processor",
+      "description": "Extracts Codelist",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CityCodeExtractorParam",
+        "type": "object",
+        "required": [
+          "cityCodeAttribute",
+          "codelistsPathAttribute"
+        ],
+        "properties": {
+          "cityCodeAttribute": {
+            "$ref": "#/definitions/Attribute"
+          },
+          "codelistsPathAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU4.MaxLodExtractor",
       "type": "processor",
       "description": "Extracts maxLod",
@@ -2568,6 +2942,74 @@
       ]
     },
     {
+      "name": "PLATEAU4.MissingAttributeDetector",
+      "type": "processor",
+      "description": "Detect missing attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "MissingAttributeDetectorParam",
+        "type": "object",
+        "required": [
+          "packageAttribute"
+        ],
+        "properties": {
+          "packageAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "summary",
+        "required",
+        "target"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU4.ObjectListExtractor",
+      "type": "processor",
+      "description": "Extract object list",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ObjectListExtractorParam",
+        "type": "object",
+        "required": [
+          "objectListPathAttribute"
+        ],
+        "properties": {
+          "objectListPathAttribute": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
       "name": "PLATEAU4.UDXFolderExtractor",
       "type": "processor",
       "description": "Extracts UDX folders from cityGML path",
@@ -2581,9 +3023,32 @@
         "properties": {
           "cityGmlPath": {
             "$ref": "#/definitions/Expr"
+          },
+          "codelistsPath": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schemasPath": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
           "Expr": {
             "type": "string"
           }

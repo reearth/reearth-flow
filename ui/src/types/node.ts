@@ -1,11 +1,12 @@
-import type { NodeProps, Node as ReactFlowNode } from "@xyflow/react";
+import type {
+  NodeProps,
+  Node as ReactFlowNode,
+  NodeChange as ReactFlowNodeChange,
+} from "@xyflow/react";
 import { ComponentType } from "react";
 
 import type { Status } from "./shared";
 
-// type ParamValueType = string | number | boolean | object | null;
-
-// type NodeParam<T extends ParamValueType> = {
 type NodeParam = Record<string, any>;
 
 export type PseudoPort = {
@@ -20,14 +21,11 @@ export type NodeData = {
   outputs?: string[];
   status?: Status;
   params?: NodeParam;
-  locked?: boolean | undefined;
   // subworkflow nodes
   pseudoInputs?: PseudoPort[];
   pseudoOutputs?: PseudoPort[];
   // batch & note nodes
   content?: string;
-  width?: number;
-  height?: number;
   backgroundColor?: string;
   textColor?: string;
 };
@@ -63,3 +61,5 @@ export type NodeTypes = Record<
     }
   >
 >;
+
+export type NodeChange = ReactFlowNodeChange<Node>;

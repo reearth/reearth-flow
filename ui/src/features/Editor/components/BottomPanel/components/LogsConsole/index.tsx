@@ -1,31 +1,31 @@
-import { Logs } from "@flow/components/Logs";
-import { logData } from "@flow/mock_data/logsData";
+import { LogsTable } from "@flow/components/LogsTable";
+import type { Log } from "@flow/types";
 
-const LogsConsole: React.FC = () => {
+type LogsConsoleProps = {
+  data: Log[];
+};
+
+const LogsConsole: React.FC<LogsConsoleProps> = ({ data }) => {
   const props = {
     columns: [
       {
-        accessorKey: "timestamp",
+        accessorKey: "ts",
         header: "Timestamp",
       },
       {
-        accessorKey: "status",
+        accessorKey: "level",
         header: "Status",
       },
       {
-        accessorKey: "transformer",
-        header: "Transformer",
-      },
-      {
-        accessorKey: "message",
+        accessorKey: "msg",
         header: "message",
       },
     ],
-    data: logData,
+    data,
     selectColumns: true,
     showFiltering: true,
   };
-  return <Logs {...props} />;
+  return <LogsTable {...props} />;
 };
 
 export { LogsConsole };

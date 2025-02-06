@@ -16,7 +16,7 @@ nodes:
       transformers:
         - expr: |
             env.get("__value") + #{
-              meshCode: str::extract_single_by_regex("^(.+?)_.+$", file::extract_filename(env.get("__value").cityGmlPath))
+              meshCode: str::extract_single_by_regex("^(.+?)_.+$", file::extract_filename(env.get("__value")["path"]))
             }
 
   - id: 747d2fa3-2527-4324-b630-92fba84a548c

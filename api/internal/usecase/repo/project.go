@@ -3,33 +3,33 @@ package repo
 import (
 	"context"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/usecasex"
-	"github.com/samber/lo"
 )
 
 type Project interface {
 	Filtered(WorkspaceFilter) Project
-	FindByIDs(context.Context, id.ProjectIDList) ([]*project.Project, error)
-	FindByID(context.Context, id.ProjectID) (*project.Project, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination) ([]*project.Project, *usecasex.PageInfo, error)
 	CountByWorkspace(context.Context, accountdomain.WorkspaceID) (int, error)
 	CountPublicByWorkspace(context.Context, accountdomain.WorkspaceID) (int, error)
-	Save(context.Context, *project.Project) error
+	FindByID(context.Context, id.ProjectID) (*project.Project, error)
+	FindByIDs(context.Context, id.ProjectIDList) ([]*project.Project, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *interfaces.PaginationParam) ([]*project.Project, *interfaces.PageBasedInfo, error)
 	Remove(context.Context, id.ProjectID) error
+	Save(context.Context, *project.Project) error
 }
 
 func IterateProjectsByWorkspace(repo Project, ctx context.Context, tid accountdomain.WorkspaceID, batch int64, callback func([]*project.Project) error) error {
-	pagination := usecasex.CursorPagination{
-		Before: nil,
-		After:  nil,
-		First:  lo.ToPtr(batch),
-		Last:   nil,
-	}.Wrap()
-
+	page := 1
 	for {
+		pagination := &interfaces.PaginationParam{
+			Page: &interfaces.PageBasedPaginationParam{
+				Page:     page,
+				PageSize: int(batch),
+			},
+		}
+
 		projects, info, err := repo.FindByWorkspace(ctx, tid, pagination)
 		if err != nil {
 			return err
@@ -42,13 +42,11 @@ func IterateProjectsByWorkspace(repo Project, ctx context.Context, tid accountdo
 			return err
 		}
 
-		if !info.HasNextPage {
+		if info.TotalCount <= int64(page*int(batch)) {
 			break
 		}
 
-		c := usecasex.Cursor(projects[len(projects)-1].ID().String())
-		pagination.Cursor.After = &c
+		page++
 	}
-
 	return nil
 }

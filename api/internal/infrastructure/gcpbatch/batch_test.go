@@ -9,9 +9,9 @@ import (
 	"github.com/googleapis/gax-go/v2"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	// "google.golang.org/api/iterator"
 )
 
 type mockBatchClient struct {
@@ -71,14 +71,16 @@ func TestBatchRepo_SubmitJob(t *testing.T) {
 
 	jobID, _ := id.JobIDFrom("test-job-id")
 	projectID, _ := id.ProjectIDFrom("test-project-id")
+	workspaceID, _ := id.WorkspaceIDFrom("test-workspace-id")
 	workflowURL := "gs://test-bucket/test-workflow.yaml"
 	metadataURL := "gs://test-bucket/test-metadata.json"
+	var variables map[string]interface{}
 
 	expectedJobName := "projects/test-project/locations/us-central1/jobs/test-job-id"
 
 	mockClient.On("CreateJob", ctx, mock.AnythingOfType("*batchpb.CreateJobRequest")).Return(&batchpb.Job{Name: expectedJobName}, nil)
 
-	jobName, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, projectID)
+	jobName, err := batchRepo.SubmitJob(ctx, jobID, workflowURL, metadataURL, variables, projectID, accountdomain.WorkspaceID(workspaceID))
 
 	assert.NoError(t, err)
 	assert.Equal(t, expectedJobName, jobName)

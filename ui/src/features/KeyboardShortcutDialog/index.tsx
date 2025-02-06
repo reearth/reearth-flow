@@ -43,7 +43,7 @@ const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}
         onClick={(e) => e.stopPropagation()}>
-        <div className="relative flex h-[40px] items-center justify-center rounded-t-md border-y bg-primary">
+        <div className="relative flex h-[40px] items-center justify-center rounded-t-lg border-y border-b-primary">
           <p>{title}</p>
           <X
             className="absolute right-3 cursor-pointer"
@@ -52,19 +52,19 @@ const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
         </div>
         <div className="flex h-[352px] flex-wrap gap-4 p-4">
           <div className="flex h-[320px] flex-1 flex-col gap-1">
-            <p className="text-lg">{generalShortcuts.title}</p>
+            <p className="font-light">{generalShortcuts.title}</p>
             <div className="overflow-auto">
               <Shortcuts shortcuts={generalShortcuts.shortcuts} />
             </div>
           </div>
           <div className="flex h-[320px] flex-1 flex-col gap-1">
-            <p className="text-lg">{editorShortcuts.title}</p>
+            <p className="font-light">{editorShortcuts.title}</p>
             <div className="overflow-auto">
               <Shortcuts shortcuts={editorShortcuts.shortcuts} />
             </div>
           </div>
           <div className="flex h-[320px] flex-1 flex-col gap-1">
-            <p className="text-lg">{canvasShortcuts.title}</p>
+            <p className="font-light">{canvasShortcuts.title}</p>
             <div className="overflow-auto">
               <Shortcuts shortcuts={canvasShortcuts.shortcuts} />
             </div>

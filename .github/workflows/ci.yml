@@ -18,7 +18,7 @@ jobs:
 
       - name: changed files for api
         id: api
-        uses: tj-actions/changed-files@v41
+        uses: tj-actions/changed-files@v45
         with:
             files: |
               api/**
@@ -31,7 +31,7 @@ jobs:
 
       - name: changed files for ui
         id: ui
-        uses: tj-actions/changed-files@v41
+        uses: tj-actions/changed-files@v45
         with:
           files: |
             ui/**
@@ -43,7 +43,7 @@ jobs:
 
       - name: changed files for websocket
         id: websocket
-        uses: tj-actions/changed-files@v41
+        uses: tj-actions/changed-files@v45
         with:
           files: |
             websocket/**
@@ -53,7 +53,7 @@ jobs:
 
       - name: changed files for engine
         id: engine
-        uses: tj-actions/changed-files@v41
+        uses: tj-actions/changed-files@v45
         with:
           files: |
             engine/**
@@ -168,3 +168,17 @@ jobs:
       name: ${{ needs.ci-collect-info.outputs.name }}
       sha: ${{ github.sha }}
     secrets: inherit
+  build-docker-push-worker:
+      needs:
+        - ci
+        - ci-engine
+        - ci-collect-info
+      uses: ./.github/workflows/build_docker_push_worker.yml
+      if: ${{ !failure() && needs.ci-engine.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
+      with:
+        sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+        new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
+        new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
+        name: ${{ needs.ci-collect-info.outputs.name }}
+        sha: ${{ github.sha }}
+      secrets: inherit  

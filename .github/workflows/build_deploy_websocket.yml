@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -55,7 +55,7 @@ jobs:
         run: ls -l websocket/dist
 
       - name: Upload Websocket Artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: websocket-artifacts
           path: websocket/dist/*
@@ -65,32 +65,36 @@ jobs:
     needs: build-websocket
     runs-on: ubuntu-latest
     if: ${{ inputs.name != 'blank' || inputs.new_tag != 'blank' }}
+    permissions:
+      contents: read
+      id-token: write
     env:
       IMAGE_NAME: reearth/reearth-flow-websocket
-      IMAGE_GCP: us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-websocket
+      IMAGE_GCP: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-websocket
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download Websocket Artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: websocket-artifacts
           path: websocket/dist
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v1
+        uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Log in to DockerHub
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -123,7 +127,7 @@ jobs:
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
 
       - name: Build and Push Docker Image
-        uses: docker/build-push-action@v2
+        uses: docker/build-push-action@v6
         with:
           context: websocket
           file: websocket/Websocket.Dockerfile
@@ -149,18 +153,22 @@ jobs:
     needs: build-docker-image
     runs-on: ubuntu-latest
     if: ${{ inputs.name == 'nightly' }}
+    permissions:
+      contents: read
+      id-token: write
     env:
-      IMAGE: us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-websocket:nightly
+      IMAGE: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-websocket:nightly
       GCP_REGION: us-central1
       CLOUD_RUN_SERVICE: reearth-flow-websocket
     steps:
       - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v1
+        uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v1
+        uses: google-github-actions/setup-gcloud@v2
 
       - name: Deploy to Cloud Run
         run: |

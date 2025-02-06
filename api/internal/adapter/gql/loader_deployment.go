@@ -8,7 +8,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/usecasex"
+	"github.com/reearth/reearthx/idx"
 	"github.com/reearth/reearthx/util"
 )
 
@@ -39,34 +39,110 @@ func (c *DeploymentLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gql
 	return deployments, nil
 }
 
-func (c *DeploymentLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID, pagination *gqlmodel.Pagination) (*gqlmodel.DeploymentConnection, error) {
-	tid, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
+func (c *DeploymentLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error) {
+	wID, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
 	if err != nil {
 		return nil, err
 	}
 
-	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, gqlmodel.ToPagination(pagination), getOperator(ctx))
+	paginationParam := &interfaces.PaginationParam{
+		Page: &interfaces.PageBasedPaginationParam{
+			Page:     pagination.Page,
+			PageSize: pagination.PageSize,
+			OrderBy:  pagination.OrderBy,
+			OrderDir: gqlmodel.OrderDirectionToString(pagination.OrderDir),
+		},
+	}
+
+	res, pageInfo, err := c.usecase.FindByWorkspace(ctx, wID, paginationParam, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
 
-	edges := make([]*gqlmodel.DeploymentEdge, 0, len(res))
 	nodes := make([]*gqlmodel.Deployment, 0, len(res))
 	for _, d := range res {
-		dep := gqlmodel.ToDeployment(d)
-		edges = append(edges, &gqlmodel.DeploymentEdge{
-			Node:   dep,
-			Cursor: usecasex.Cursor(dep.ID),
-		})
-		nodes = append(nodes, dep)
+		nodes = append(nodes, gqlmodel.ToDeployment(d))
 	}
 
 	return &gqlmodel.DeploymentConnection{
-		Edges:      edges,
 		Nodes:      nodes,
-		PageInfo:   gqlmodel.ToPageInfo(pi),
-		TotalCount: int(pi.TotalCount),
+		PageInfo:   gqlmodel.ToPageInfo(pageInfo),
+		TotalCount: len(res),
 	}, nil
+}
+
+func (c *DeploymentLoader) FindByVersion(ctx context.Context, input *gqlmodel.GetByVersionInput) (*gqlmodel.Deployment, error) {
+	wsID, err := gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+
+	var pID *idx.ID[id.Project]
+	if input.ProjectID != nil {
+		pid, err := gqlmodel.ToID[id.Project](*input.ProjectID)
+		if err != nil {
+			return nil, err
+		}
+		pID = &pid
+	}
+
+	res, err := c.usecase.FindByVersion(ctx, wsID, pID, input.Version, getOperator(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	return gqlmodel.ToDeployment(res), nil
+}
+
+func (c *DeploymentLoader) FindHead(ctx context.Context, input *gqlmodel.GetHeadInput) (*gqlmodel.Deployment, error) {
+	wsID, err := gqlmodel.ToID[accountdomain.Workspace](input.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+
+	var pID *idx.ID[id.Project]
+	if input.ProjectID != nil {
+		pid, err := gqlmodel.ToID[id.Project](*input.ProjectID)
+		if err != nil {
+			return nil, err
+		}
+		pID = &pid
+	}
+
+	res, err := c.usecase.FindHead(ctx, wsID, pID, getOperator(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	return gqlmodel.ToDeployment(res), nil
+}
+
+func (c *DeploymentLoader) FindVersions(ctx context.Context, wsID gqlmodel.ID, pID *gqlmodel.ID) ([]*gqlmodel.Deployment, error) {
+	wID, err := gqlmodel.ToID[accountdomain.Workspace](wsID)
+	if err != nil {
+		return nil, err
+	}
+
+	var projectID *idx.ID[id.Project]
+	if pID != nil {
+		pid, err := gqlmodel.ToID[id.Project](*pID)
+		if err != nil {
+			return nil, err
+		}
+		projectID = &pid
+	}
+
+	res, err := c.usecase.FindVersions(ctx, wID, projectID, getOperator(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	deployments := make([]*gqlmodel.Deployment, 0, len(res))
+	for _, d := range res {
+		deployments = append(deployments, gqlmodel.ToDeployment(d))
+	}
+
+	return deployments, nil
 }
 
 func (c *DeploymentLoader) FindByProject(ctx context.Context, pID gqlmodel.ID) (*gqlmodel.Deployment, error) {

@@ -20,6 +20,20 @@ pub(crate) mod file_module {
             .to_string()
     }
 
+    pub fn extract_filename_without_ext(file_path: &str) -> String {
+        let uri = Uri::from_str(file_path);
+        if uri.is_err() {
+            return "".to_string();
+        }
+        if let Some(file_name) = uri.unwrap().file_name() {
+            let file_name = file_name.to_str().unwrap_or_default();
+            let file_name = file_name.split('.').next().unwrap_or_default();
+            file_name.to_string()
+        } else {
+            "".to_string()
+        }
+    }
+
     pub fn join_path(path1: &str, path2: &str) -> String {
         Uri::from_str(path1)
             .and_then(|uri| uri.join(path2))

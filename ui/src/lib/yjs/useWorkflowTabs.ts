@@ -1,36 +1,44 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import { useIsMainWorkflow } from "@flow/hooks";
 import { Edge, Node } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 export default ({
   currentWorkflowId,
   rawWorkflows,
-  handleCurrentWorkflowIdChange,
+  setCurrentWorkflowId,
 }: {
   currentWorkflowId: string;
   rawWorkflows: Record<string, string | Node[] | Edge[]>[];
-  handleCurrentWorkflowIdChange: (id?: string) => void;
+  setCurrentWorkflowId: (id: string) => void;
 }) => {
+  const isMainWorkflow = useIsMainWorkflow(currentWorkflowId);
+
   // This works as a semi-static base for the rest of the state in this hook.
   // Without this state (aka using rawWorkflows directly), performance drops
   // due to the state updating on every change to a node (which is a lot)
-  const [workflows, setWorkflows] = useState<{ id: string; name: string }[]>(
-    rawWorkflows.filter(isDefined).map((w2) => ({
-      id: w2.id as string,
-      name: w2.name as string,
-    })),
+  const workflows = useMemo(
+    () =>
+      rawWorkflows.filter(isDefined).map((w2) => ({
+        id: w2.id as string,
+        name: w2.name as string,
+      })),
+    [rawWorkflows.length], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  const handleCurrentWorkflowIdChange = useCallback(
+    (id?: string) => {
+      if (!id) return setCurrentWorkflowId(DEFAULT_ENTRY_GRAPH_ID);
+      setCurrentWorkflowId(id);
+    },
+    [setCurrentWorkflowId],
   );
 
   const [openWorkflowIds, setOpenWorkflowIds] = useState<string[]>([
     DEFAULT_ENTRY_GRAPH_ID,
   ]);
-
-  const currentWorkflowIndex = useMemo(
-    () => workflows.findIndex((w) => w.id === currentWorkflowId),
-    [currentWorkflowId, workflows],
-  );
 
   const openWorkflows: {
     id: string;
@@ -76,10 +84,9 @@ export default ({
 
   return {
     openWorkflows,
-    currentWorkflowIndex,
-    setWorkflows,
-    setOpenWorkflowIds,
+    isMainWorkflow,
     handleWorkflowOpen,
     handleWorkflowClose,
+    handleCurrentWorkflowIdChange,
   };
 };

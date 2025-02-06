@@ -27,6 +27,7 @@ type Container struct {
 	Job        Job
 	Parameter  Parameter
 	Project    Project
+	Trigger    Trigger
 	User       accountinterfaces.User
 	Workspace  accountinterfaces.Workspace
 }

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export type DebouncedFunction<T extends (...args: any[]) => void> = {
   (...args: Parameters<T>): void;
   cancel: () => void;
@@ -28,4 +27,3 @@ export function cancellableDebounce<T extends (...args: any[]) => void>(
 
   return debounced as DebouncedFunction<T>;
 }
-/* eslint-enable @typescript-eslint/no-explicit-any */

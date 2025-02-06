@@ -1,31 +1,16 @@
-use std::sync::Arc;
-
-use reearth_flow_common::uri::Uri;
+use bytes::Bytes;
 use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
-use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{AttributeValue, Feature};
 use tokio::sync::mpsc::Sender;
 
 pub(crate) async fn read_json(
-    input_path: Uri,
-    storage_resolver: Arc<StorageResolver>,
+    content: &Bytes,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), crate::errors::SourceError> {
-    let storage = storage_resolver
-        .resolve(&input_path)
-        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
-    let result = storage
-        .get(input_path.path().as_path())
-        .await
-        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
-    let byte = result
-        .bytes()
-        .await
-        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
-    let text = String::from_utf8(byte.to_vec())
-        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+    let text = String::from_utf8(content.to_vec())
+        .map_err(|e| crate::errors::SourceError::JsonFileReader(format!("{:?}", e)))?;
     let value: serde_json::Value = serde_json::from_str(&text)
-        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SourceError::JsonFileReader(format!("{:?}", e)))?;
     let features: AttributeValue = value.into();
     match features {
         AttributeValue::Array(features) => {
@@ -40,7 +25,7 @@ pub(crate) async fn read_json(
                         IngestionMessage::OperationEvent { feature },
                     ))
                     .await
-                    .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+                    .map_err(|e| crate::errors::SourceError::JsonFileReader(format!("{:?}", e)))?;
             }
         }
         AttributeValue::Map(_) => {
@@ -51,9 +36,9 @@ pub(crate) async fn read_json(
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await
-                .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+                .map_err(|e| crate::errors::SourceError::JsonFileReader(format!("{:?}", e)))?;
         }
-        _ => Err(crate::errors::SourceError::FileReader(
+        _ => Err(crate::errors::SourceError::JsonFileReader(
             "Invalid JSON format".to_string(),
         ))?,
     }

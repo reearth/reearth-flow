@@ -1,8 +1,15 @@
-export type YJsonPrimitive = string | number | boolean | null | Uint8Array;
+import * as Y from "yjs";
 
-export type YJsonValue =
-  | YJsonPrimitive
-  | YJsonValue[]
-  | {
-      [key: string]: YJsonValue;
-    };
+export type YNodeValue = Y.Text | Y.Map<unknown> | number | boolean; // add other possible types
+
+export type YNode = Y.Map<YNodeValue>;
+
+export type YEdgeValue = Y.Text;
+
+export type YEdge = Y.Map<YEdgeValue>;
+
+export type YNodesArray = Y.Array<YNode>;
+
+export type YEdgesArray = Y.Array<YEdge>;
+
+export type YWorkflow = Y.Map<Y.Text | YNodesArray | YEdgesArray>;

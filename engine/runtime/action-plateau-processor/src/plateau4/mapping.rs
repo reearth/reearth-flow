@@ -4,7 +4,10 @@ use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
-    attribute_flattener::AttributeFlattenerFactory, max_lod_extractor::MaxLodExtractorFactory,
+    attribute_flattener::AttributeFlattenerFactory, city_code_extractor::CityCodeExtractorFactory,
+    max_lod_extractor::MaxLodExtractorFactory,
+    missing_attribute_detector::MissingAttributeDetectorFactory,
+    object_list_extractor::ObjectListExtractorFactory,
     udx_folder_extractor::UDXFolderExtractorFactory,
 };
 
@@ -13,6 +16,9 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<UDXFolderExtractorFactory>::default(),
         Box::<MaxLodExtractorFactory>::default(),
         Box::<AttributeFlattenerFactory>::default(),
+        Box::<CityCodeExtractorFactory>::default(),
+        Box::<ObjectListExtractorFactory>::default(),
+        Box::<MissingAttributeDetectorFactory>::default(),
     ];
     factories
         .into_iter()

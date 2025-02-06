@@ -8,13 +8,23 @@ nodes:
     with:
       routingPort: default
 
+  - id: c7315341-26b3-4405-9d02-039d721cd225
+    name: DirectoryDecompressor
+    type: action
+    action: DirectoryDecompressor
+    with:
+      archiveAttributes:
+        - codelists
+        - schemas
+
   - id: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
     name: FeatureFilePathExtractor
     type: action
     action: FeatureFilePathExtractor
     with:
+      destPrefix: "udx"
       sourceDataset: |
-        env.get("cityGmlPath")
+        env.get("__value").cityGmlPath
       extractArchive: true
 
   - id: 9d04983e-e84e-4622-b0c6-827d7afad720
@@ -34,6 +44,8 @@ nodes:
     with:
       cityGmlPath: |
         env.get("__value")["path"]
+      codelistsPath: "codelists"
+      schemasPath: "schemas"
 
   - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
     name: FeatureFilterByPackage
@@ -55,6 +67,14 @@ nodes:
         - udxDirs
       outputAttribute: fileIndex
 
+  - id: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
+    name: CityCodeExtractor
+    type: action
+    action: PLATEAU4.CityCodeExtractor
+    with:
+      codelistsPathAttribute: dirCodelists
+      cityCodeAttribute: cityCode
+
   - id: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
     name: OutputRouter
     type: action
@@ -65,6 +85,11 @@ nodes:
 edges:
   - id: 5d700a9c-1537-442e-bfb2-0728a9e1ec9c
     from: 35038d96-5e81-4a21-a0e0-72f67eb71db5
+    to: c7315341-26b3-4405-9d02-039d721cd225
+    fromPort: default
+    toPort: default
+  - id: 749d8e90-dbc3-4fc9-bfee-046344f5f5b9
+    from: c7315341-26b3-4405-9d02-039d721cd225
     to: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
     fromPort: default
     toPort: default
@@ -88,8 +113,13 @@ edges:
     to: f3465c78-59fa-4307-bc02-67c46c2ddd98
     fromPort: default
     toPort: default
-  - id: 80462b53-a06a-4e0b-bed8-07dcda744a55
+  - id: 0f43aebf-caf7-4f07-be97-f23b9c2c585f
     from: f3465c78-59fa-4307-bc02-67c46c2ddd98
+    to: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
+    fromPort: default
+    toPort: default
+  - id: 80462b53-a06a-4e0b-bed8-07dcda744a55
+    from: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
     to: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
     fromPort: default
     toPort: default

@@ -4,9 +4,8 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { Deployment, EngineReadyWorkflow } from "@flow/types";
+import type { Deployment } from "@flow/types";
 import { isDefined } from "@flow/utils";
-import { jsonToFormData } from "@flow/utils/jsonToFormData";
 
 import { ExecuteDeploymentInput } from "../__gen__/graphql";
 import {
@@ -36,9 +35,9 @@ export const useQueries = () => {
       description,
     }: {
       workspaceId: string;
-      projectId: string;
+      projectId?: string;
       file: FormData;
-      description?: string;
+      description: string;
     }) => {
       const data = await graphQLContext?.CreateDeployment({
         input: {
@@ -79,21 +78,14 @@ export const useQueries = () => {
   const updateDeploymentMutation = useMutation({
     mutationFn: async ({
       deploymentId,
-      engineReadyWorkflow,
+      file,
       description,
     }: {
       deploymentId: string;
-      engineReadyWorkflow?: EngineReadyWorkflow;
+      file?: FormDataEntryValue;
       description?: string;
     }) => {
-      const input: UpdateDeploymentInput = { deploymentId, description };
-      if (engineReadyWorkflow) {
-        const formData = jsonToFormData(
-          engineReadyWorkflow,
-          engineReadyWorkflow.id,
-        );
-        input.file = formData.get("file");
-      }
+      const input: UpdateDeploymentInput = { deploymentId, description, file };
 
       const data = await graphQLContext?.UpdateDeployment({
         input,
@@ -164,32 +156,35 @@ export const useQueries = () => {
   const useGetDeploymentsInfiniteQuery = (workspaceId?: string) =>
     useInfiniteQuery({
       queryKey: [DeploymentQueryKeys.GetDeployments, workspaceId],
-      initialPageParam: null,
+      initialPageParam: 1,
       queryFn: async ({ pageParam }) => {
         const data = await graphQLContext?.GetDeployments({
           workspaceId: workspaceId ?? "",
           pagination: {
-            first: DEPLOYMENT_FETCH_RATE,
-            after: pageParam,
+            page: pageParam,
+            pageSize: DEPLOYMENT_FETCH_RATE,
+            // orderDir: "ASC",
           },
         });
         if (!data) return;
         const {
           deployments: {
             nodes,
-            pageInfo: { endCursor, hasNextPage },
+            pageInfo: { totalCount, currentPage, totalPages },
           },
         } = data;
         const deployments: Deployment[] = nodes
           .filter(isDefined)
           .map((deployment) => toDeployment(deployment));
-        return { deployments, endCursor, hasNextPage };
+        return { deployments, totalCount, currentPage, totalPages };
       },
       enabled: !!workspaceId,
       getNextPageParam: (lastPage) => {
         if (!lastPage) return undefined;
-        const { endCursor, hasNextPage } = lastPage;
-        return hasNextPage ? endCursor : undefined;
+        if ((lastPage.currentPage ?? 0) < (lastPage.totalPages ?? 0)) {
+          return (lastPage.currentPage ?? 0) + 1;
+        }
+        return undefined;
       },
     });
 

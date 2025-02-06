@@ -1,4 +1,11 @@
-import { DefaultEdgeOptions, XYPosition } from "@xyflow/react";
+import {
+  DefaultEdgeOptions,
+  EdgeChange,
+  NodeChange,
+  useReactFlow,
+  XYPosition,
+} from "@xyflow/react";
+import { useEffect } from "react";
 
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
@@ -9,8 +16,10 @@ type Props = {
   nodes: Node[];
   edges: Edge[];
   onWorkflowAdd: (position?: XYPosition) => void;
-  onNodesUpdate: (newNodes: Node[]) => void;
-  onEdgesUpdate: (newEdges: Edge[]) => void;
+  onNodesAdd: (newNode: Node[]) => void;
+  onNodesChange: (changes: NodeChange<Node>[]) => void;
+  onEdgesAdd: (newEdges: Edge[]) => void;
+  onEdgesChange: (changes: EdgeChange[]) => void;
   onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
 
@@ -35,28 +44,38 @@ export default ({
   nodes,
   edges,
   onWorkflowAdd,
-  onNodesUpdate,
-  onEdgesUpdate,
+  onNodesAdd,
+  onNodesChange,
+  onEdgesAdd,
+  onEdgesChange,
   onNodePickerOpen,
 }: Props) => {
+  const { fitView } = useReactFlow();
+
+  // Fit all nodes into view on mount
+  useEffect(() => {
+    fitView({ padding: 0.2 });
+  }, []); // eslint-disable-line
+
   const {
     handleNodesChange,
     handleNodesDelete,
+    handleNodeDragOver,
     handleNodeDragStop,
     handleNodeDrop,
-    handleNodeDragOver,
   } = useNodes({
     nodes,
     edges,
     onWorkflowAdd,
-    onNodesChange: onNodesUpdate,
-    onEdgesChange: onEdgesUpdate,
+    onNodesAdd,
+    onNodesChange,
+    onEdgesChange,
     onNodePickerOpen,
   });
 
   const { handleEdgesChange, handleConnect, handleReconnect } = useEdges({
-    edges,
-    onEdgeChange: onEdgesUpdate,
+    onEdgesAdd,
+    onEdgesChange,
   });
 
   return {

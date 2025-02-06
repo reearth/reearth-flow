@@ -4,7 +4,6 @@ scalar DateTime
 scalar URL
 scalar Lang
 scalar FileSize
-scalar Cursor
 scalar JSON
 
 # Meta Type
@@ -23,17 +22,29 @@ enum NodeType {
 # Pagination
 
 type PageInfo {
-  endCursor: Cursor
-  hasNextPage: Boolean!
-  hasPreviousPage: Boolean!
-  startCursor: Cursor
+  totalCount: Int!
+  currentPage: Int
+  totalPages: Int
 }
 
-input Pagination{
-  first: Int
-  last: Int
-  after: Cursor
-  before: Cursor
+input PageBasedPagination {
+  page: Int!
+  pageSize: Int!
+  orderBy: String
+  orderDir: OrderDirection
+}
+
+enum OrderDirection {
+  ASC
+  DESC
+}
+
+input Pagination {
+  # Page-based pagination
+  page: Int
+  pageSize: Int
+  orderBy: String
+  orderDir: OrderDirection
 }
 
 # Query & Mutation

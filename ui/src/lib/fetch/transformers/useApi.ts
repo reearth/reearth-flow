@@ -5,6 +5,7 @@ import {
   GetAction,
   GetActions,
   GetActionsSegregated,
+  Node,
 } from "@flow/types";
 
 import { useFetch } from "./useFetch";
@@ -45,6 +46,7 @@ export const useAction = (lang: string) => {
     isMainWorkflow: boolean;
     searchTerm?: string;
     type?: string;
+    nodes?: Node[];
   }): GetActionsSegregated => {
     const { data, ...rest } = useGetActionsSegregatedFetch(lang);
 
@@ -96,10 +98,20 @@ const combinedFilter = (
   filter?: {
     isMainWorkflow: boolean;
     searchTerm?: string;
+    nodes?: Node[];
   },
 ) => {
-  if (filter?.isMainWorkflow && action.name.toLowerCase().includes("router")) {
-    return false;
+  if (filter?.isMainWorkflow) {
+    if (action.name.toLowerCase().includes("router")) {
+      return false;
+    }
+    if (action.type === "reader") {
+      return !hasReader(filter.nodes);
+    }
+  } else {
+    if (action.type === "reader" || action.type === "writer") {
+      return false;
+    }
   }
 
   if (filter?.searchTerm) {
@@ -153,4 +165,8 @@ const filterBySearchTerm = (action: Action, searchTerm?: string) => {
         : String(value);
     return strValue.toLowerCase().includes(searchTerm?.toLowerCase() ?? "");
   });
+};
+
+export const hasReader = (nodes: Node[] | undefined) => {
+  return nodes?.some((node) => node.type === "reader");
 };

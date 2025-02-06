@@ -28,14 +28,16 @@ type Ordering = "default" | "categorically" | "byType";
 
 type Props = {
   nodes: Node[];
-  onNodesChange: (nodes: Node[]) => void;
+  onNodesAdd: (nodes: Node[]) => void;
   isMainWorkflow: boolean;
+  hasReader?: boolean;
 };
 
 const ActionsList: React.FC<Props> = ({
   nodes,
-  onNodesChange,
+  onNodesAdd,
   isMainWorkflow,
+  hasReader,
 }) => {
   const t = useT();
   const { useGetActions, useGetActionsSegregated } = useAction(i18n.language);
@@ -52,6 +54,7 @@ const ActionsList: React.FC<Props> = ({
   const { actions: actionsSegregated } = useGetActionsSegregated({
     isMainWorkflow,
     searchTerm: searchDone,
+    nodes,
   });
 
   const tabs: {
@@ -97,10 +100,9 @@ const ActionsList: React.FC<Props> = ({
           inputs: [...action.inputPorts],
           outputs: [...action.outputPorts],
           status: "idle",
-          locked: false,
         },
       };
-      onNodesChange(nodes.concat(newNode));
+      onNodesAdd([newNode]);
     },
   );
 
@@ -167,38 +169,49 @@ const ActionsList: React.FC<Props> = ({
             ) : (
               <Accordion type="single" collapsible>
                 {actions ? (
-                  Object.keys(actions).map((key) => (
-                    <AccordionItem key={key} value={key}>
-                      <AccordionTrigger>
-                        <p className="capitalize">{key}</p>
-                      </AccordionTrigger>
-                      <AccordionContent className="flex flex-col gap-1">
-                        {actions[key]?.map((action, index) => (
-                          <Fragment key={action.name}>
-                            <ActionComponent
-                              action={action}
-                              selected={selected === action.name}
-                              onTypeClick={(type) =>
-                                setSearchTerm((st) => (st === type ? "" : type))
-                              }
-                              onCategoryClick={(category) =>
-                                setSearchTerm((st) =>
-                                  st === category ? "" : category,
-                                )
-                              }
-                              onSingleClick={handleSingleClick}
-                              onDoubleClick={handleDoubleClick}
-                              onSelect={() => handleActionSelect(action.name)}
-                            />
-                            {actions[key] &&
-                              index !== actions[key].length - 1 && (
-                                <div className="border-b" />
-                              )}
-                          </Fragment>
-                        ))}
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))
+                  Object.entries(actions)
+                    .filter(([key]) => {
+                      if (isMainWorkflow) {
+                        if (key === "reader" && hasReader) return false;
+                        return true;
+                      } else {
+                        return key !== "reader" && key !== "writer";
+                      }
+                    })
+                    .map(([key, categoryActions]) => (
+                      <AccordionItem key={key} value={key}>
+                        <AccordionTrigger>
+                          <p className="capitalize">{key}</p>
+                        </AccordionTrigger>
+                        <AccordionContent className="flex flex-col gap-1">
+                          {categoryActions?.map((action, index) => (
+                            <Fragment key={action.name}>
+                              <ActionComponent
+                                action={action}
+                                selected={selected === action.name}
+                                onTypeClick={(type) =>
+                                  setSearchTerm((st) =>
+                                    st === type ? "" : type,
+                                  )
+                                }
+                                onCategoryClick={(category) =>
+                                  setSearchTerm((st) =>
+                                    st === category ? "" : category,
+                                  )
+                                }
+                                onSingleClick={handleSingleClick}
+                                onDoubleClick={handleDoubleClick}
+                                onSelect={() => handleActionSelect(action.name)}
+                              />
+                              {categoryActions &&
+                                index !== categoryActions.length - 1 && (
+                                  <div className="border-b" />
+                                )}
+                            </Fragment>
+                          ))}
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))
                 ) : (
                   <p className="mt-4 text-center">{t("Loading")}...</p>
                 )}
