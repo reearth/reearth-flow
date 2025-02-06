@@ -102,7 +102,16 @@ async fn ws_handler(
         }
     }
 
-    let bcast = state.pool.get_or_create_group(&doc_id).await;
+    let bcast = match state.pool.get_or_create_group(&doc_id).await {
+        Ok(group) => group,
+        Err(e) => {
+            tracing::error!("Failed to get or create group for {}: {}", doc_id, e);
+            return Response::builder()
+                .status(500)
+                .body(axum::body::Body::empty())
+                .unwrap();
+        }
+    };
     ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, state.pool.clone()))
 }
 

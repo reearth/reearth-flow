@@ -1,8 +1,8 @@
 use crate::broadcast::group::{BroadcastConfig, BroadcastGroup, RedisConfig};
-use crate::storage::kv::DocOps;
-//use crate::storage::sqlite::SqliteStore;
 use crate::storage::gcs::GcsStore;
+use crate::storage::kv::DocOps;
 use crate::AwarenessRef;
+use anyhow::{anyhow, Result};
 use dashmap::DashMap;
 use std::sync::Arc;
 use yrs::sync::Awareness;
@@ -39,9 +39,9 @@ impl BroadcastPool {
         }
     }
 
-    pub async fn get_or_create_group(&self, doc_id: &str) -> Arc<BroadcastGroup> {
+    pub async fn get_or_create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         if let Some(group) = self.groups.get(doc_id) {
-            return group.clone();
+            return Ok(group.clone());
         }
 
         // Create new document and broadcast group
@@ -56,11 +56,12 @@ impl BroadcastPool {
                         tracing::debug!("Successfully loaded existing document: {}", doc_id);
                     }
                     Err(e) => {
-                        tracing::warn!(
-                            "No existing document found or failed to load {}: {}",
-                            doc_id,
-                            e
-                        );
+                        if e.to_string().contains("not found") {
+                            tracing::info!("Creating new document: {}", doc_id);
+                        } else {
+                            tracing::error!("Failed to load document {}: {}", doc_id, e);
+                            return Err(anyhow!("Failed to load document: {}", e));
+                        }
                     }
                 }
             }
@@ -84,7 +85,7 @@ impl BroadcastPool {
         );
 
         self.groups.insert(doc_id.to_string(), group.clone());
-        group
+        Ok(group)
     }
 
     pub async fn cleanup_empty_groups(&self) {

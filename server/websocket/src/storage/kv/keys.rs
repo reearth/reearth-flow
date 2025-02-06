@@ -81,10 +81,16 @@ pub fn key_update(oid: OID, clock: u32) -> Result<Key<12>, std::io::Error> {
 }
 
 pub fn doc_meta_name(key: &[u8]) -> &[u8] {
+    if key.len() < 7 {
+        return &[];
+    }
     &key[7..(key.len() - 1)]
 }
 
 pub fn doc_oid_name(key: &[u8]) -> &[u8] {
+    if key.len() < 2 {
+        return &[];
+    }
     &key[2..(key.len() - 1)]
 }
 
