@@ -146,9 +146,10 @@ async fn main() {
         .expect("Failed to create GCS store");
 
     // Ensure bucket exists
-    ensure_bucket(&store.client)
-        .await
-        .expect("Failed to create bucket");
+    if let Err(e) = ensure_bucket(&store.client).await {
+        tracing::error!("Failed to ensure bucket exists: {}", e);
+        return;
+    }
 
     let store = Arc::new(store);
     tracing::info!("GCS store initialized");
