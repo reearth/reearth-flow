@@ -16,7 +16,6 @@ export type Scalars = {
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
   Any: { input: any; output: any; }
-  Cursor: { input: any; output: any; }
   DateTime: { input: any; output: any; }
   FileSize: { input: any; output: any; }
   JSON: { input: any; output: any; }
@@ -54,16 +53,9 @@ export type Asset = Node & {
 
 export type AssetConnection = {
   __typename?: 'AssetConnection';
-  edges: Array<AssetEdge>;
   nodes: Array<Maybe<Asset>>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
-};
-
-export type AssetEdge = {
-  __typename?: 'AssetEdge';
-  cursor: Scalars['Cursor']['output'];
-  node?: Maybe<Asset>;
 };
 
 export enum AssetSortType {
@@ -83,7 +75,7 @@ export type CreateAssetPayload = {
 };
 
 export type CreateDeploymentInput = {
-  description?: InputMaybe<Scalars['String']['input']>;
+  description: Scalars['String']['input'];
   file: Scalars['Upload']['input'];
   projectId?: InputMaybe<Scalars['ID']['input']>;
   workspaceId: Scalars['ID']['input'];
@@ -99,7 +91,7 @@ export type CreateProjectInput = {
 export type CreateTriggerInput = {
   apiDriverInput?: InputMaybe<ApiDriverInput>;
   deploymentId: Scalars['ID']['input'];
-  description?: InputMaybe<Scalars['String']['input']>;
+  description: Scalars['String']['input'];
   timeDriverInput?: InputMaybe<TimeDriverInput>;
   workspaceId: Scalars['ID']['input'];
 };
@@ -175,16 +167,9 @@ export type Deployment = Node & {
 
 export type DeploymentConnection = {
   __typename?: 'DeploymentConnection';
-  edges: Array<DeploymentEdge>;
   nodes: Array<Maybe<Deployment>>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
-};
-
-export type DeploymentEdge = {
-  __typename?: 'DeploymentEdge';
-  cursor: Scalars['Cursor']['output'];
-  node?: Maybe<Deployment>;
 };
 
 export type DeploymentPayload = {
@@ -226,16 +211,9 @@ export type Job = Node & {
 
 export type JobConnection = {
   __typename?: 'JobConnection';
-  edges: Array<JobEdge>;
   nodes: Array<Maybe<Job>>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
-};
-
-export type JobEdge = {
-  __typename?: 'JobEdge';
-  cursor: Scalars['Cursor']['output'];
-  node?: Maybe<Job>;
 };
 
 export type JobPayload = {
@@ -442,19 +420,30 @@ export enum NodeType {
   Workspace = 'WORKSPACE'
 }
 
+export enum OrderDirection {
+  Asc = 'ASC',
+  Desc = 'DESC'
+}
+
+export type PageBasedPagination = {
+  orderBy?: InputMaybe<Scalars['String']['input']>;
+  orderDir?: InputMaybe<OrderDirection>;
+  page: Scalars['Int']['input'];
+  pageSize: Scalars['Int']['input'];
+};
+
 export type PageInfo = {
   __typename?: 'PageInfo';
-  endCursor?: Maybe<Scalars['Cursor']['output']>;
-  hasNextPage: Scalars['Boolean']['output'];
-  hasPreviousPage: Scalars['Boolean']['output'];
-  startCursor?: Maybe<Scalars['Cursor']['output']>;
+  currentPage?: Maybe<Scalars['Int']['output']>;
+  totalCount: Scalars['Int']['output'];
+  totalPages?: Maybe<Scalars['Int']['output']>;
 };
 
 export type Pagination = {
-  after?: InputMaybe<Scalars['Cursor']['input']>;
-  before?: InputMaybe<Scalars['Cursor']['input']>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-  last?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<Scalars['String']['input']>;
+  orderDir?: InputMaybe<OrderDirection>;
+  page?: InputMaybe<Scalars['Int']['input']>;
+  pageSize?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type Parameter = {
@@ -508,16 +497,9 @@ export type Project = Node & {
 
 export type ProjectConnection = {
   __typename?: 'ProjectConnection';
-  edges: Array<ProjectEdge>;
   nodes: Array<Maybe<Project>>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
-};
-
-export type ProjectEdge = {
-  __typename?: 'ProjectEdge';
-  cursor: Scalars['Cursor']['output'];
-  node?: Maybe<Project>;
 };
 
 export type ProjectPayload = {
@@ -545,7 +527,7 @@ export type Query = {
 
 export type QueryAssetsArgs = {
   keyword?: InputMaybe<Scalars['String']['input']>;
-  pagination?: InputMaybe<Pagination>;
+  pagination: PageBasedPagination;
   sort?: InputMaybe<AssetSortType>;
   workspaceId: Scalars['ID']['input'];
 };
@@ -568,7 +550,7 @@ export type QueryDeploymentVersionsArgs = {
 
 
 export type QueryDeploymentsArgs = {
-  pagination?: InputMaybe<Pagination>;
+  pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -579,7 +561,7 @@ export type QueryJobArgs = {
 
 
 export type QueryJobsArgs = {
-  pagination?: InputMaybe<Pagination>;
+  pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -597,11 +579,8 @@ export type QueryNodesArgs = {
 
 
 export type QueryProjectsArgs = {
-  after?: InputMaybe<Scalars['Cursor']['input']>;
-  before?: InputMaybe<Scalars['Cursor']['input']>;
-  first?: InputMaybe<Scalars['Int']['input']>;
   includeArchived?: InputMaybe<Scalars['Boolean']['input']>;
-  last?: InputMaybe<Scalars['Int']['input']>;
+  pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -612,7 +591,7 @@ export type QuerySearchUserArgs = {
 
 
 export type QueryTriggersArgs = {
-  pagination?: InputMaybe<Pagination>;
+  pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
 };
 
@@ -702,7 +681,7 @@ export type Trigger = Node & {
   createdAt: Scalars['DateTime']['output'];
   deployment: Deployment;
   deploymentId: Scalars['ID']['output'];
-  description?: Maybe<Scalars['String']['output']>;
+  description: Scalars['String']['output'];
   eventSource: EventSourceType;
   id: Scalars['ID']['output'];
   lastTriggered?: Maybe<Scalars['DateTime']['output']>;
@@ -714,16 +693,9 @@ export type Trigger = Node & {
 
 export type TriggerConnection = {
   __typename?: 'TriggerConnection';
-  edges: Array<TriggerEdge>;
   nodes: Array<Maybe<Trigger>>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
-};
-
-export type TriggerEdge = {
-  __typename?: 'TriggerEdge';
-  cursor: Scalars['Cursor']['output'];
-  node?: Maybe<Trigger>;
 };
 
 export type UpdateDeploymentInput = {
@@ -813,19 +785,13 @@ export type Workspace = Node & {
 
 
 export type WorkspaceAssetsArgs = {
-  after?: InputMaybe<Scalars['Cursor']['input']>;
-  before?: InputMaybe<Scalars['Cursor']['input']>;
-  first?: InputMaybe<Scalars['Int']['input']>;
-  last?: InputMaybe<Scalars['Int']['input']>;
+  pagination?: InputMaybe<Pagination>;
 };
 
 
 export type WorkspaceProjectsArgs = {
-  after?: InputMaybe<Scalars['Cursor']['input']>;
-  before?: InputMaybe<Scalars['Cursor']['input']>;
-  first?: InputMaybe<Scalars['Int']['input']>;
   includeArchived?: InputMaybe<Scalars['Boolean']['input']>;
-  last?: InputMaybe<Scalars['Int']['input']>;
+  pagination?: InputMaybe<Pagination>;
 };
 
 export type WorkspaceMember = {
@@ -865,27 +831,27 @@ export type ExecuteDeploymentMutation = { __typename?: 'Mutation', executeDeploy
 
 export type GetDeploymentsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
-  pagination?: InputMaybe<Pagination>;
+  pagination: PageBasedPagination;
 }>;
 
 
-export type GetDeploymentsQuery = { __typename?: 'Query', deployments: { __typename?: 'DeploymentConnection', totalCount: number, nodes: Array<{ __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null>, pageInfo: { __typename?: 'PageInfo', endCursor?: any | null, hasNextPage: boolean } } };
+export type GetDeploymentsQuery = { __typename?: 'Query', deployments: { __typename?: 'DeploymentConnection', totalCount: number, nodes: Array<{ __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
 
 export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
 export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
 
-export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description?: string | null, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } };
+export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } };
 
 export type JobFragment = { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
 export type GetJobsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
-  pagination?: InputMaybe<Pagination>;
+  pagination: PageBasedPagination;
 }>;
 
 
-export type GetJobsQuery = { __typename?: 'Query', jobs: { __typename?: 'JobConnection', totalCount: number, nodes: Array<{ __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | null>, pageInfo: { __typename?: 'PageInfo', endCursor?: any | null, hasNextPage: boolean } } };
+export type GetJobsQuery = { __typename?: 'Query', jobs: { __typename?: 'JobConnection', totalCount: number, nodes: Array<{ __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
 
 export type GetJobQueryVariables = Exact<{
   id: Scalars['ID']['input'];
@@ -903,12 +869,11 @@ export type CreateProjectMutation = { __typename?: 'Mutation', createProject?: {
 
 export type GetProjectsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
-  first: Scalars['Int']['input'];
-  after?: InputMaybe<Scalars['Cursor']['input']>;
+  pagination: PageBasedPagination;
 }>;
 
 
-export type GetProjectsQuery = { __typename?: 'Query', projects: { __typename?: 'ProjectConnection', totalCount: number, nodes: Array<{ __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | null>, pageInfo: { __typename?: 'PageInfo', endCursor?: any | null, hasNextPage: boolean } } };
+export type GetProjectsQuery = { __typename?: 'Query', projects: { __typename?: 'ProjectConnection', totalCount: number, nodes: Array<{ __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
 
 export type GetProjectByIdQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
@@ -943,14 +908,14 @@ export type CreateTriggerMutationVariables = Exact<{
 }>;
 
 
-export type CreateTriggerMutation = { __typename?: 'Mutation', createTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description?: string | null, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } };
+export type CreateTriggerMutation = { __typename?: 'Mutation', createTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } };
 
 export type UpdateTriggerMutationVariables = Exact<{
   input: UpdateTriggerInput;
 }>;
 
 
-export type UpdateTriggerMutation = { __typename?: 'Mutation', updateTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description?: string | null, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } };
+export type UpdateTriggerMutation = { __typename?: 'Mutation', updateTrigger: { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } };
 
 export type DeleteTriggerMutationVariables = Exact<{
   triggerId: Scalars['ID']['input'];
@@ -961,11 +926,11 @@ export type DeleteTriggerMutation = { __typename?: 'Mutation', deleteTrigger: bo
 
 export type GetTriggersQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
-  pagination?: InputMaybe<Pagination>;
+  pagination: PageBasedPagination;
 }>;
 
 
-export type GetTriggersQuery = { __typename?: 'Query', triggers: { __typename?: 'TriggerConnection', totalCount: number, nodes: Array<{ __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description?: string | null, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } | null>, pageInfo: { __typename?: 'PageInfo', endCursor?: any | null, hasNextPage: boolean } } };
+export type GetTriggersQuery = { __typename?: 'Query', triggers: { __typename?: 'TriggerConnection', totalCount: number, nodes: Array<{ __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
 
 export type GetMeQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1151,29 +1116,31 @@ export const ExecuteDeploymentDocument = gql`
 }
     ${JobFragmentDoc}`;
 export const GetDeploymentsDocument = gql`
-    query GetDeployments($workspaceId: ID!, $pagination: Pagination) {
+    query GetDeployments($workspaceId: ID!, $pagination: PageBasedPagination!) {
   deployments(workspaceId: $workspaceId, pagination: $pagination) {
     totalCount
     nodes {
       ...Deployment
     }
     pageInfo {
-      endCursor
-      hasNextPage
+      totalCount
+      currentPage
+      totalPages
     }
   }
 }
     ${DeploymentFragmentDoc}`;
 export const GetJobsDocument = gql`
-    query GetJobs($workspaceId: ID!, $pagination: Pagination) {
+    query GetJobs($workspaceId: ID!, $pagination: PageBasedPagination!) {
   jobs(workspaceId: $workspaceId, pagination: $pagination) {
     totalCount
     nodes {
       ...Job
     }
     pageInfo {
-      endCursor
-      hasNextPage
+      totalCount
+      currentPage
+      totalPages
     }
   }
 }
@@ -1195,15 +1162,16 @@ export const CreateProjectDocument = gql`
 }
     ${ProjectFragmentDoc}`;
 export const GetProjectsDocument = gql`
-    query GetProjects($workspaceId: ID!, $first: Int!, $after: Cursor) {
-  projects(workspaceId: $workspaceId, first: $first, after: $after) {
+    query GetProjects($workspaceId: ID!, $pagination: PageBasedPagination!) {
+  projects(workspaceId: $workspaceId, pagination: $pagination) {
     totalCount
     nodes {
       ...Project
     }
     pageInfo {
-      endCursor
-      hasNextPage
+      totalCount
+      currentPage
+      totalPages
     }
   }
 }
@@ -1260,15 +1228,16 @@ export const DeleteTriggerDocument = gql`
 }
     `;
 export const GetTriggersDocument = gql`
-    query GetTriggers($workspaceId: ID!, $pagination: Pagination) {
+    query GetTriggers($workspaceId: ID!, $pagination: PageBasedPagination!) {
   triggers(workspaceId: $workspaceId, pagination: $pagination) {
     totalCount
     nodes {
       ...Trigger
     }
     pageInfo {
-      endCursor
-      hasNextPage
+      totalCount
+      currentPage
+      totalPages
     }
   }
 }

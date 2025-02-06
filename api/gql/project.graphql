@@ -62,15 +62,9 @@ type RunProjectPayload {
 # Connection
 
 type ProjectConnection {
-  edges: [ProjectEdge!]!
   nodes: [Project]!
   pageInfo: PageInfo!
   totalCount: Int!
-}
-
-type ProjectEdge {
-  cursor: Cursor!
-  node: Project
 }
 
 # Query and Mutation
@@ -79,10 +73,7 @@ extend type Query {
   projects(
     workspaceId: ID!
     includeArchived: Boolean
-    first: Int
-    last: Int
-    after: Cursor
-    before: Cursor
+    pagination: PageBasedPagination!
   ): ProjectConnection!
 }
 

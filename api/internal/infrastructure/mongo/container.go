@@ -43,12 +43,10 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 		User:        account.User,
 	}
 
-	// init
 	if err := Init(c); err != nil {
 		return nil, err
 	}
 
-	// migration
 	if err := migration.Do(ctx, client, c.Config); err != nil {
 		return nil, err
 	}
@@ -66,7 +64,7 @@ func Init(r *repo.Container) error {
 		func() error { return r.Asset.(*Asset).Init(ctx) },
 		func() error { return r.AuthRequest.(*authserver.Mongo).Init(ctx) },
 		func() error { return r.Workflow.(*Workflow).Init(ctx) },
-		func() error { return r.Deployment.(*Deployment).Init(ctx) },
+		func() error { return r.Deployment.(*DeploymentAdapter).Deployment.Init(ctx) },
 		func() error { return r.Job.(*Job).Init(ctx) },
 		func() error { return r.Parameter.(*Parameter).Init(ctx) },
 		func() error { return r.Project.(*Project).Init(ctx) },

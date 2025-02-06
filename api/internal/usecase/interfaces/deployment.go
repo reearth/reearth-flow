@@ -10,7 +10,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/usecasex"
 )
 
 type CreateDeploymentParam struct {
@@ -33,13 +32,14 @@ type ExecuteDeploymentParam struct {
 var (
 	ErrDeploymentNotFound error = errors.New("deployment not found")
 	ErrJobCreationFailed  error = errors.New("failed to create job for deployment")
+	ErrInvalidPagination  error = errors.New("invalid pagination parameters")
 )
 
 type Deployment interface {
 	Fetch(context.Context, []id.DeploymentID, *usecase.Operator) ([]*deployment.Deployment, error)
 	FindByProject(context.Context, id.ProjectID, *usecase.Operator) (*deployment.Deployment, error)
 	FindByVersion(context.Context, accountdomain.WorkspaceID, *id.ProjectID, string, *usecase.Operator) (*deployment.Deployment, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *usecasex.Pagination, *usecase.Operator) ([]*deployment.Deployment, *usecasex.PageInfo, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *PaginationParam, *usecase.Operator) ([]*deployment.Deployment, *PageBasedInfo, error)
 	FindHead(context.Context, accountdomain.WorkspaceID, *id.ProjectID, *usecase.Operator) (*deployment.Deployment, error)
 	FindVersions(context.Context, accountdomain.WorkspaceID, *id.ProjectID, *usecase.Operator) ([]*deployment.Deployment, error)
 	Create(context.Context, CreateDeploymentParam, *usecase.Operator) (*deployment.Deployment, error)

@@ -2,17 +2,19 @@ package mongo
 
 import (
 	"context"
+	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
-	"github.com/reearth/reearthx/usecasex"
 )
 
 var (
@@ -65,13 +67,68 @@ func (r *Project) FindByIDs(ctx context.Context, ids id.ProjectIDList) ([]*proje
 	return filterProjects(ids, res), nil
 }
 
-func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *usecasex.Pagination) ([]*project.Project, *usecasex.PageInfo, error) {
+func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(id) {
-		return nil, usecasex.EmptyPageInfo(), nil
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
-	return r.paginate(ctx, bson.M{
-		"workspace": id.String(),
-	}, pagination)
+
+	c := mongodoc.NewProjectConsumer(r.f.Readable)
+	filter := bson.M{"workspace": id.String()}
+
+	if pagination != nil && pagination.Page != nil {
+		skip := int64((pagination.Page.Page - 1) * pagination.Page.PageSize)
+		limit := int64(pagination.Page.PageSize)
+
+		total, err := r.client.Count(ctx, filter)
+		if err != nil {
+			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		sort := bson.D{{Key: "updatedat", Value: -1}}
+
+		if pagination.Page.OrderBy != nil {
+			sortDir := -1
+			if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "ASC" {
+				sortDir = 1
+			}
+
+			fieldNameMap := map[string]string{
+				"name":      "name",
+				"createdAt": "createdat",
+				"updatedAt": "updatedat",
+				"status":    "status",
+				"id":        "id",
+			}
+
+			fieldName := *pagination.Page.OrderBy
+			if mongoField, ok := fieldNameMap[fieldName]; ok {
+				fieldName = mongoField
+			}
+			sort = bson.D{{Key: fieldName, Value: sortDir}}
+		}
+
+		opts := options.Find().
+			SetSort(sort).
+			SetSkip(skip).
+			SetLimit(limit)
+
+		if err := r.client.Find(ctx, filter, c, opts); err != nil {
+			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+		}
+
+		fmt.Printf("DEBUG: Found %d results\n", len(c.Result))
+		for _, p := range c.Result {
+			fmt.Printf("DEBUG: Project name=%s\n", p.Name())
+		}
+
+		return c.Result, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
+	}
+
+	if err := r.client.Find(ctx, filter, c); err != nil {
+		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	total := int64(len(c.Result))
+	return c.Result, interfaces.NewPageBasedInfo(total, 1, len(c.Result)), nil
 }
 
 func (r *Project) FindByPublicName(ctx context.Context, name string) (*project.Project, error) {
@@ -147,15 +204,6 @@ func (r *Project) findOne(ctx context.Context, filter any, filterByWorkspaces bo
 		return nil, err
 	}
 	return c.Result[0], nil
-}
-
-func (r *Project) paginate(ctx context.Context, filter bson.M, pagination *usecasex.Pagination) ([]*project.Project, *usecasex.PageInfo, error) {
-	c := mongodoc.NewProjectConsumer(r.f.Readable)
-	pageInfo, err := r.client.Paginate(ctx, filter, nil, pagination, c)
-	if err != nil {
-		return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-	}
-	return c.Result, pageInfo, nil
 }
 
 func filterProjects(ids []id.ProjectID, rows []*project.Project) []*project.Project {

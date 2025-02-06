@@ -30,3 +30,5 @@ export * from "./RadioGroup";
 export * from "./SchemaForm";
 export * from "./BasicBoiler";
 export * from "./visualizations";
+export * from "./Pagination";
+export * from "./Spinner";

@@ -2,14 +2,15 @@ package memory
 
 import (
 	"context"
+	"sort"
 	"sync"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/rerror"
-	"github.com/reearth/reearthx/usecasex"
 )
 
 type Project struct {
@@ -26,42 +27,92 @@ func NewProject() repo.Project {
 
 func (r *Project) Filtered(f repo.WorkspaceFilter) repo.Project {
 	return &Project{
-		// note data is shared between the source repo and mutex cannot work well
 		data: r.data,
 		f:    r.f.Merge(f),
 	}
 }
 
-func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *usecasex.Pagination) ([]*project.Project, *usecasex.PageInfo, error) {
+func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
 	if !r.f.CanRead(id) {
-		return nil, nil, nil
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
-	result := []*project.Project{}
-	for _, d := range r.data {
-		if d.Workspace() == id {
-			result = append(result, d)
+	result := make([]*project.Project, 0, len(r.data))
+	for _, p := range r.data {
+		if p.Workspace() == id {
+			result = append(result, p)
 		}
 	}
 
-	var startCursor, endCursor *usecasex.Cursor
-	if len(result) > 0 {
-		_startCursor := usecasex.Cursor(result[0].ID().String())
-		_endCursor := usecasex.Cursor(result[len(result)-1].ID().String())
-		startCursor = &_startCursor
-		endCursor = &_endCursor
+	total := int64(len(result))
+	if total == 0 {
+		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
 
-	return result, usecasex.NewPageInfo(
-		int64(len(r.data)),
-		startCursor,
-		endCursor,
-		true,
-		true,
-	), nil
+	if pagination != nil && pagination.Page != nil {
+		field := "createdAt"
+		if pagination.Page.OrderBy != nil {
+			field = *pagination.Page.OrderBy
+		}
+
+		ascending := false
+		if pagination.Page.OrderDir != nil && *pagination.Page.OrderDir == "ASC" {
+			ascending = true
+		}
+
+		sort.Slice(result, func(i, j int) bool {
+			compare := func(less bool) bool {
+				if ascending {
+					return less
+				}
+				return !less
+			}
+
+			switch field {
+			case "name":
+				ni, nj := result[i].Name(), result[j].Name()
+				if ni != nj {
+					return compare(ni < nj)
+				}
+				return compare(result[i].ID().String() < result[j].ID().String())
+			case "createdAt":
+				ti, tj := result[i].CreatedAt(), result[j].CreatedAt()
+				if !ti.Equal(tj) {
+					return compare(ti.Before(tj))
+				}
+				return compare(result[i].ID().String() < result[j].ID().String())
+			case "updatedAt":
+				ti, tj := result[i].UpdatedAt(), result[j].UpdatedAt()
+				if !ti.Equal(tj) {
+					return compare(ti.Before(tj))
+				}
+				return compare(result[i].ID().String() < result[j].ID().String())
+			default:
+				ti, tj := result[i].CreatedAt(), result[j].CreatedAt()
+				if !ti.Equal(tj) {
+					return compare(ti.Before(tj))
+				}
+				return compare(result[i].ID().String() < result[j].ID().String())
+			}
+		})
+
+		skip := (pagination.Page.Page - 1) * pagination.Page.PageSize
+		if skip >= len(result) {
+			return nil, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
+		}
+
+		end := skip + pagination.Page.PageSize
+		if end > len(result) {
+			end = len(result)
+		}
+
+		return result[skip:end], interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
+	}
+
+	return result, interfaces.NewPageBasedInfo(total, 1, int(total)), nil
 }
 
 func (r *Project) FindIDsByWorkspace(ctx context.Context, id accountdomain.WorkspaceID) (res []project.ID, _ error) {

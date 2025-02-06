@@ -17,6 +17,7 @@ export const reassembleNode = (yNode: YNode): Node => {
     width: (yNode.get("measured") as Y.Map<any>)?.get("width"),
     height: (yNode.get("measured") as Y.Map<any>)?.get("height"),
   };
+  const parentId = yNode.get("parentId")?.toString();
 
   const data: NodeData = {
     officialName: (yNode.get("data") as Y.Map<any>)
@@ -88,6 +89,7 @@ export const reassembleNode = (yNode: YNode): Node => {
     id,
     position,
     measured,
+    parentId,
     type,
     dragging,
     data,

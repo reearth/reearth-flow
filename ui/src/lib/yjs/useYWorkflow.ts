@@ -139,9 +139,11 @@ export default ({
           const parentWorkflowNodes = parentWorkflow?.get("nodes") as
             | YNodesArray
             | undefined;
-          parentWorkflowNodes?.push([newSubworkflowNode]);
+          parentWorkflowNodes?.insert(parentWorkflowNodes.length, [
+            newSubworkflowNode,
+          ]);
 
-          yWorkflows.push([newYWorkflow]);
+          yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
         });
       } catch (error) {
         console.error("Failed to add workflow:", error);
@@ -243,7 +245,7 @@ export default ({
             newSubworkflowNode,
           ]);
 
-          yWorkflows.push([newYWorkflow]);
+          yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
         });
       } catch (error) {
         console.error("Failed to add workflow from selection:", error);
@@ -269,7 +271,7 @@ export default ({
         nodes,
         edges,
       );
-      yWorkflows.push([newYWorkflow]);
+      yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
     },
     [yWorkflows],
   );

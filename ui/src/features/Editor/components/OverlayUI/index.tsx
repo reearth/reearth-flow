@@ -22,8 +22,8 @@ type OverlayUIProps = {
   canUndo: boolean;
   canRedo: boolean;
   onWorkflowDeployment: (
+    description: string,
     deploymentId?: string,
-    description?: string,
   ) => Promise<void>;
   onNodesAdd: (nodes: Node[]) => void;
   onNodePickerClose: () => void;

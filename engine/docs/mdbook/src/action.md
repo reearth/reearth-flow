@@ -720,6 +720,42 @@ Filters the dimension of features
 ### Category
 * Geometry
 
+## DirectoryDecompressor
+### Type
+* processor
+### Description
+Decompresses a directory
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DirectoryDecompressorParam",
+  "type": "object",
+  "required": [
+    "archiveAttributes"
+  ],
+  "properties": {
+    "archiveAttributes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* File
+
 ## EchoProcessor
 ### Type
 * processor
@@ -923,6 +959,12 @@ Extracts features by file path
     "sourceDataset"
   ],
   "properties": {
+    "destPrefix": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "extractArchive": {
       "type": "boolean"
     },
@@ -1548,17 +1590,33 @@ Reads features from a file
       "title": "CSV",
       "type": "object",
       "required": [
-        "dataset",
         "format"
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "format": {
           "type": "string",
           "enum": [
             "csv"
+          ]
+        },
+        "inline": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "offset": {
@@ -1575,17 +1633,33 @@ Reads features from a file
       "title": "TSV",
       "type": "object",
       "required": [
-        "dataset",
         "format"
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "format": {
           "type": "string",
           "enum": [
             "tsv"
+          ]
+        },
+        "inline": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "offset": {
@@ -1602,17 +1676,33 @@ Reads features from a file
       "title": "JSON",
       "type": "object",
       "required": [
-        "dataset",
         "format"
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "format": {
           "type": "string",
           "enum": [
             "json"
+          ]
+        },
+        "inline": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       }
@@ -1621,12 +1711,18 @@ Reads features from a file
       "title": "CityGML",
       "type": "object",
       "required": [
-        "dataset",
         "format"
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "flatten": {
           "type": [
@@ -1639,6 +1735,16 @@ Reads features from a file
           "enum": [
             "citygml"
           ]
+        },
+        "inline": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -1646,17 +1752,33 @@ Reads features from a file
       "title": "GeoJSON",
       "type": "object",
       "required": [
-        "dataset",
         "format"
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "format": {
           "type": "string",
           "enum": [
             "geojson"
+          ]
+        },
+        "inline": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       }
@@ -2858,9 +2980,32 @@ Extracts UDX folders from cityGML path
   "properties": {
     "cityGmlPath": {
       "$ref": "#/definitions/Expr"
+    },
+    "codelistsPath": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schemasPath": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
     "Expr": {
       "type": "string"
     }

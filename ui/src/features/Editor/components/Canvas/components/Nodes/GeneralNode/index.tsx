@@ -4,15 +4,14 @@ import {
   DoubleArrowRightIcon,
   PlayIcon,
 } from "@radix-ui/react-icons";
-import { NodeProps, useReactFlow } from "@xyflow/react";
-import { memo, useEffect, useRef, useState } from "react";
+import { NodeProps } from "@xyflow/react";
+import { memo, useEffect, useState } from "react";
 
 import { IconButton } from "@flow/components";
 import { useDoubleClick } from "@flow/hooks";
 import { Node } from "@flow/types";
 import type { NodePosition, NodeType } from "@flow/types";
 
-import useBatch from "../../../useBatch";
 import { getPropsFrom } from "../utils";
 
 import { Handles } from "./components";
@@ -34,13 +33,8 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   type,
   selected,
   id,
-  dragging,
 }) => {
   const { officialName, customName, status, inputs, outputs } = data;
-  const isDragging = useRef<boolean>(dragging);
-
-  const { setNodes, getInternalNode } = useReactFlow<Node>();
-  const { handleNodeDropInBatch } = useBatch();
 
   const [hardSelect, setHardSelect] = useState<boolean>(false);
 
@@ -55,20 +49,6 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   }, [id, selected, hardSelect]);
 
   const metaProps = getPropsFrom(status);
-
-  useEffect(() => {
-    if (isDragging.current && !dragging) {
-      isDragging.current = false;
-
-      setNodes((nds) => {
-        const thisNode = getInternalNode(id);
-        if (!thisNode) return nds;
-        return handleNodeDropInBatch(thisNode, nds);
-      });
-    } else if (dragging && !isDragging.current) {
-      isDragging.current = true;
-    }
-  }, [id, dragging, handleNodeDropInBatch, setNodes, getInternalNode]);
 
   return (
     <div className="rounded-sm bg-secondary" onDoubleClick={handleDoubleClick}>

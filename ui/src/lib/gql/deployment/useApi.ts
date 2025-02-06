@@ -31,7 +31,7 @@ export const useDeployment = () => {
     workspaceId: string,
     projectId: string,
     engineReadyWorkflow: EngineReadyWorkflow,
-    description?: string,
+    description: string,
   ): Promise<CreateDeployment> => {
     const { mutateAsync, ...rest } = createDeploymentMutation;
 

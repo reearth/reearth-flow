@@ -120,25 +120,11 @@ impl ProcessorFactory for UDXFolderExtractorFactory {
                     e
                 ))
             })?;
-        let codelists_path = if let Some(with) = &with {
-            with.get("codelistsPath")
-                .map(|v| v.as_str().unwrap_or_default())
-                .map(String::from)
-        } else {
-            None
-        };
-        let schemas_path = if let Some(with) = &with {
-            with.get("schemasPath")
-                .map(|v| v.as_str().unwrap_or_default())
-                .map(String::from)
-        } else {
-            None
-        };
         let process = UDXFolderExtractor {
             global_params: with,
             city_gml_path,
-            codelists_path,
-            schemas_path,
+            codelists_path: params.codelists_path,
+            schemas_path: params.schemas_path,
         };
         Ok(Box::new(process))
     }
@@ -148,14 +134,16 @@ impl ProcessorFactory for UDXFolderExtractorFactory {
 pub struct UDXFolderExtractor {
     global_params: Option<HashMap<String, serde_json::Value>>,
     city_gml_path: rhai::AST,
-    codelists_path: Option<String>,
-    schemas_path: Option<String>,
+    codelists_path: Option<Attribute>,
+    schemas_path: Option<Attribute>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UDXFolderExtractorParam {
     city_gml_path: Expr,
+    codelists_path: Option<Attribute>,
+    schemas_path: Option<Attribute>,
 }
 
 impl Processor for UDXFolderExtractor {
@@ -208,8 +196,8 @@ fn process_feature(
     expr: &rhai::AST,
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
-    codelists_path: &Option<String>,
-    schemas_path: &Option<String>,
+    codelists_path: &Option<Attribute>,
+    schemas_path: &Option<Attribute>,
 ) -> super::errors::Result<Schema> {
     let city_gml_path = {
         let scope = feature.new_scope(expr_engine.clone(), global_params);
@@ -264,10 +252,28 @@ fn process_feature(
         }
         _ => (),
     };
+    let codelists_path = if let Some(AttributeValue::String(codelists_path)) = codelists_path
+        .clone()
+        .and_then(|codelists_path| feature.get(&codelists_path))
+    {
+        Some(codelists_path.clone())
+    } else {
+        None
+    };
+
+    let schemas_path = if let Some(AttributeValue::String(schemas_path)) = schemas_path
+        .clone()
+        .and_then(|schemas_path| feature.get(&schemas_path))
+    {
+        Some(schemas_path.clone())
+    } else {
+        None
+    };
+
     let (dir_root, dir_codelists, dir_schemas) = if !rtdir.as_os_str().is_empty() {
         let (dir_root, dir_codelists, dir_schemas) = gen_codelists_and_schemas_path(
-            codelists_path,
-            schemas_path,
+            &codelists_path,
+            &schemas_path,
             rtdir,
             pkg.clone(),
             Arc::clone(&storage_resolver),
@@ -320,15 +326,20 @@ fn gen_codelists_and_schemas_path(
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{:?}", e)))?
         {
             let dir = Uri::for_test(&codelists_path.clone().ok_or(
-                PlateauProcessorError::UDXFolderExtractor("Invalid codelists path".to_string()),
+                PlateauProcessorError::UDXFolderExtractor(format!(
+                    "Invalid codelists path: {:?}",
+                    codelists_path,
+                )),
             )?);
-            if !storage
+            if storage
                 .exists_sync(dir.path().as_path())
                 .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{:?}", e)))?
             {
-                storage
-                    .copy_sync(dir.path().as_path(), dir_codelists.path().as_path())
-                    .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{:?}", e)))?;
+                reearth_flow_common::fs::copy_sync_tree(
+                    dir.path().as_path(),
+                    dir_codelists.path().as_path(),
+                )
+                .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{:?}", e)))?;
             }
         }
         if !storage
@@ -336,15 +347,20 @@ fn gen_codelists_and_schemas_path(
             .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{:?}", e)))?
         {
             let dir = Uri::for_test(&schemas_path.clone().ok_or(
-                PlateauProcessorError::UDXFolderExtractor("Invalid codelists path".to_string()),
+                PlateauProcessorError::UDXFolderExtractor(format!(
+                    "Invalid schemas path: {:?}",
+                    schemas_path,
+                )),
             )?);
-            if !storage
+            if storage
                 .exists_sync(dir.path().as_path())
                 .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{:?}", e)))?
             {
-                storage
-                    .copy_sync(dir.path().as_path(), dir_schemas.path().as_path())
-                    .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{:?}", e)))?;
+                reearth_flow_common::fs::copy_sync_tree(
+                    dir.path().as_path(),
+                    dir_schemas.path().as_path(),
+                )
+                .map_err(|e| PlateauProcessorError::UDXFolderExtractor(format!("{:?}", e)))?;
             }
         }
     }

@@ -1,12 +1,11 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useGraphQLContext } from "@flow/lib/gql";
 import { Project } from "@flow/types";
+import {
+  OrderDirection,
+  type PaginationOptions,
+} from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
 import {
@@ -22,7 +21,7 @@ export enum ProjectQueryKeys {
   GetProject = "getProject",
 }
 
-const PROJECT_FETCH_AMOUNT = 5;
+export const PROJECT_FETCH_AMOUNT = 5;
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
@@ -43,35 +42,43 @@ export const useQueries = () => {
       }),
   });
 
-  const useGetProjectsInfiniteQuery = (workspaceId?: string) =>
-    useInfiniteQuery({
+  const useGetProjectsQuery = (
+    workspaceId?: string,
+    paginationOptions?: PaginationOptions,
+  ) => {
+    return useQuery({
       queryKey: [ProjectQueryKeys.GetWorkspaceProjects, workspaceId],
-      initialPageParam: null,
-      queryFn: async ({ pageParam }) => {
+      queryFn: async () => {
         const data = await graphQLContext?.GetProjects({
           workspaceId: workspaceId ?? "",
-          first: PROJECT_FETCH_AMOUNT,
-          after: pageParam,
+          pagination: {
+            page: paginationOptions?.page ?? 1,
+            pageSize: PROJECT_FETCH_AMOUNT,
+            orderDir: paginationOptions?.orderDir ?? OrderDirection.Asc,
+          },
         });
-        if (!data) return;
+        if (!data) throw new Error("No data returned");
         const {
           projects: {
             nodes,
-            pageInfo: { endCursor, hasNextPage },
+            pageInfo: { totalCount, currentPage, totalPages },
           },
         } = data;
+
         const projects: Project[] = nodes
           .filter(isDefined)
           .map((project) => toProject(project));
-        return { projects, endCursor, hasNextPage };
+
+        return {
+          projects,
+          totalCount,
+          currentPage,
+          totalPages,
+        };
       },
       enabled: !!workspaceId,
-      getNextPageParam: (lastPage) => {
-        if (!lastPage) return undefined;
-        const { endCursor, hasNextPage } = lastPage;
-        return hasNextPage ? endCursor : undefined;
-      },
     });
+  };
 
   const useGetProjectByIdQuery = (projectId?: string) =>
     useQuery({
@@ -143,7 +150,7 @@ export const useQueries = () => {
     deleteProjectMutation,
     updateProjectMutation,
     runProjectMutation,
-    useGetProjectsInfiniteQuery,
+    useGetProjectsQuery,
     useGetProjectByIdQuery,
   };
 };
