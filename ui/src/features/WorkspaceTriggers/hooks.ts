@@ -13,7 +13,8 @@ export default () => {
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  const [openTriggerAddDialog, setOpenTriggerAddDialog] = useState(false);
+  const [openTriggerAddDialog, setOpenTriggerAddDialog] =
+    useState<boolean>(false);
   const [currentWorkspace] = useCurrentWorkspace();
   const [triggerToBeEdited, setTriggerToBeEdited] = useState<
     Trigger | undefined
@@ -30,11 +31,12 @@ export default () => {
   const tab = getTab(pathname);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
-    OrderDirection.Asc,
+    OrderDirection.Desc,
   );
   const { page, refetch, isFetching } = useGetTriggers(currentWorkspace?.id, {
     page: currentPage,
     orderDir: currentOrder,
+    orderBy: "createdAt",
   });
 
   useEffect(() => {
@@ -65,8 +67,17 @@ export default () => {
 
       await useDeleteTrigger(t.id, currentWorkspace.id);
       setTriggerToBeDeleted(undefined);
+      navigate({
+        to: `/workspaces/${currentWorkspace.id}/triggers/all`,
+      });
     },
-    [currentWorkspace, triggerToBeDeleted, triggers, useDeleteTrigger],
+    [
+      currentWorkspace,
+      triggerToBeDeleted,
+      triggers,
+      useDeleteTrigger,
+      navigate,
+    ],
   );
 
   return {

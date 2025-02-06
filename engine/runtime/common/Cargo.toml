@@ -36,4 +36,6 @@ thiserror.workspace = true
 tokio.workspace = true
 url.workspace = true
 uuid.workspace = true
+walkdir.workspace = true
+zip.workspace = true
 zstd.workspace = true

@@ -95,9 +95,9 @@ graphs:
         type: action
         action: FileWriter
         with:
-          format: tsv
+          format: csv
           output: |
-            file::join_path(env.get("outputPath"), "maxLod.tsv")
+            file::join_path(env.get("outputPath"), "maxLod.csv")
 
       - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         name: AttributeFlattener
@@ -127,7 +127,9 @@ graphs:
           maxZoom: 18
           attachTexture: false
           output: |
-             file::join_path(env.get("outputPath"), "bldg_lod1")
+            file::join_path(env.get("outputPath"), "bldg_lod1")
+          compressOutput: |
+            file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod1.zip")
 
       - id: a61799d5-176e-4fb9-aa64-5d350adf0bb8
         name: cesium3DTilesWriterByLod2
@@ -138,7 +140,9 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output: |
-             file::join_path(env.get("outputPath"), "bldg_lod2")
+            file::join_path(env.get("outputPath"), "bldg_lod2")
+          compressOutput: |
+            file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod2.zip")
 
       - id: fc4c3817-6efe-4d6e-8e82-ebd84d5e6e19
         name: cesium3DTilesWriterByLod2NoTexture
@@ -149,7 +153,9 @@ graphs:
           maxZoom: 18
           attachTexture: false
           output: |
-             file::join_path(env.get("outputPath"), "bldg_lod2_no_texture")
+            file::join_path(env.get("outputPath"), "bldg_lod2_no_texture")
+          compressOutput: |
+            file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod2_no_texture.zip")
 
       - id: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
         name: cesium3DTilesWriterByLod3
@@ -160,7 +166,9 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output: |
-             file::join_path(env.get("outputPath"), "bldg_lod3")
+            file::join_path(env.get("outputPath"), "bldg_lod3")
+          compressOutput: |
+            file::join_path(env.get("outputPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod3.zip")
 
       - id: 990ff798-168a-496e-a20a-b428de6a9ec0
         name: cesium3DTilesWriterByLod3NoTexture
@@ -171,7 +179,9 @@ graphs:
           maxZoom: 18
           attachTexture: false
           output: |
-             file::join_path(env.get("outputPath"), "bldg_lod3_no_texture")
+            file::join_path(env.get("outputPath"), "bldg_lod3_no_texture")
+          compressOutput: |
+            file::join_path(env.get("outputPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod3_no_texture.zip")
 
       - id: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
         name: cesium3DTilesWriterByLod4
@@ -183,6 +193,8 @@ graphs:
           attachTexture: true
           output: |
              file::join_path(env.get("outputPath"), "bldg_lod4")
+          compressOutput: |
+            file::join_path(env.get("outputPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod4.zip")
 
       - id: 3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638
         name: cesium3DTilesWriterByLod4NoTexture
@@ -193,7 +205,9 @@ graphs:
           maxZoom: 18
           attachTexture: false
           output: |
-             file::join_path(env.get("outputPath"), "bldg_lod4_no_texture")
+            file::join_path(env.get("outputPath"), "bldg_lod4_no_texture")
+          compressOutput: |
+            file::join_path(env.get("outputPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod4_no_texture.zip")
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244

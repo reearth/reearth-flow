@@ -1,4 +1,4 @@
-import { Logs } from "@flow/components/Logs";
+import { LogsTable } from "@flow/components/LogsTable";
 import type { Log } from "@flow/types";
 
 type LogsConsoleProps = {
@@ -25,7 +25,7 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ data }) => {
     selectColumns: true,
     showFiltering: true,
   };
-  return <Logs {...props} />;
+  return <LogsTable {...props} />;
 };
 
 export { LogsConsole };
