@@ -8,6 +8,7 @@ use std::sync::Arc;
 use yrs::sync::Awareness;
 use yrs::{Doc, Transact};
 
+#[derive(Clone)]
 pub struct BroadcastPool {
     store: Arc<GcsStore>,
     redis_config: RedisConfig,
@@ -87,14 +88,31 @@ impl BroadcastPool {
     }
 
     pub async fn cleanup_empty_groups(&self) {
-        self.groups.retain(|_, group| group.connection_count() > 0);
+        // Only remove groups that still have zero connections when we check
+        // This prevents race conditions where a new connection was added
+        // between marking for cleanup and actual cleanup
+        self.groups.retain(|_, group| {
+            let count = group.connection_count();
+            if count == 0 {
+                tracing::debug!("Removing empty broadcast group");
+                false
+            } else {
+                true
+            }
+        });
     }
 
     pub async fn remove_connection(&self, doc_id: &str) {
         if let Some(group) = self.groups.get(doc_id) {
             let remaining = group.decrement_connections();
             if remaining == 0 {
-                self.cleanup_empty_groups().await;
+                // Add a small delay before cleanup to reduce likelihood of race conditions
+                // with new connections being established
+                let pool = self.clone();
+                tokio::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                    pool.cleanup_empty_groups().await;
+                });
             }
         }
     }
