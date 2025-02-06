@@ -130,8 +130,19 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 			d = d.Version("v1")
 		}
 	} else {
-		d = d.Version("v1")
-		d = d.IsHead(false)
+		head, _ := i.deploymentRepo.FindHead(ctx, dp.Workspace, nil)
+		d = d.IsHead(true)
+		if head != nil {
+			currentHeadID := head.ID()
+			d = d.HeadID(&currentHeadID)
+			d = d.Version(incrementVersion(head.Version()))
+			head.SetIsHead(false)
+			if err := i.deploymentRepo.Save(ctx, head); err != nil {
+				return nil, err
+			}
+		} else {
+			d = d.Version("v1")
+		}
 	}
 
 	dep, err := d.Build()
