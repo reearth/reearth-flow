@@ -1,4 +1,4 @@
-import { useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useDeployment } from "@flow/lib/gql";
@@ -12,7 +12,6 @@ import { RouteOption } from "../WorkspaceLeftPanel";
 export default () => {
   const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
-  const { history } = useRouter();
 
   const [openDeploymentAddDialog, setOpenDeploymentAddDialog] = useState(false);
   const [currentWorkspace] = useCurrentWorkspace();
@@ -73,13 +72,15 @@ export default () => {
       if (!d || !currentWorkspace) return;
       await useDeleteDeployment(d.id, currentWorkspace.id);
       setDeploymentToBeDeleted(undefined);
-      history.go(-1); // Go back to previous page
+      navigate({
+        to: `/workspaces/${currentWorkspace.id}/deployments/all`,
+      });
     },
     [
       currentWorkspace,
       deploymentToBeDeleted,
       deployments,
-      history,
+      navigate,
       useDeleteDeployment,
     ],
   );

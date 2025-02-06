@@ -74,7 +74,7 @@ const ProjectsManager: React.FC = () => {
           </Button>
         </div>
         {currentOrder && (
-          <div className="flex w-[200px]">
+          <div className="flex w-[100px]">
             <Select
               value={currentOrder || "DESC"}
               onValueChange={handleOrderChange}>

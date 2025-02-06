@@ -106,8 +106,8 @@ const DeploymentAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     await createDeploymentFromFile(
       workspaceId,
       workflowFile,
-      name,
       description,
+      name,
     );
 
     setShowDialog(false);

@@ -67,8 +67,17 @@ export default () => {
 
       await useDeleteTrigger(t.id, currentWorkspace.id);
       setTriggerToBeDeleted(undefined);
+      navigate({
+        to: `/workspaces/${currentWorkspace.id}/triggers/all`,
+      });
     },
-    [currentWorkspace, triggerToBeDeleted, triggers, useDeleteTrigger],
+    [
+      currentWorkspace,
+      triggerToBeDeleted,
+      triggers,
+      useDeleteTrigger,
+      navigate,
+    ],
   );
 
   return {

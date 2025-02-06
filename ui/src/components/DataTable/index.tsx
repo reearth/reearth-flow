@@ -135,7 +135,7 @@ function DataTable<TData, TValue>({
             />
           )}
           {currentOrder && (
-            <div className="flex w-[200px] [&_.flex]:h-[32px]">
+            <div className="flex w-[100px] [&_.flex]:h-[32px]">
               <Select
                 value={currentOrder || "DESC"}
                 onValueChange={handleOrderChange}>

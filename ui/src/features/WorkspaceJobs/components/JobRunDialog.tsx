@@ -1,4 +1,3 @@
-import { Plus } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 
@@ -62,23 +61,24 @@ const JobRunDialog: React.FC<Props> = ({ setShowDialog }) => {
       <DialogContent size="sm">
         <DialogTitle>{t("Run a deployment")}</DialogTitle>
         <DialogContentWrapper>
-          <DialogContentSection className="flex-1">
-            <Label htmlFor="deployments-selector">
-              {t("Select a deployment")}
-            </Label>
-            <Button
-              variant={selectedDeployment ? "default" : "outline"}
-              size="sm"
+          <DialogContentSection className="flex flex-col">
+            <Label>{t("Deployment: ")}</Label>
+            <div
+              className="flex h-8 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none "
               onClick={() => setOpenSelectDeploymentsDialog(true)}>
-              {!selectedDeployment && <Plus />}
+              <span className="cursor-default whitespace-nowrap pr-2 text-muted-foreground">
+                {t("Select Deployment: ")}
+              </span>
               {selectedDeployment ? (
-                <span className="truncate">
+                <span className="cursor-default truncate">
                   {selectedDeployment.description} @{selectedDeployment.version}
                 </span>
               ) : (
-                t("Select a deployment")
+                <span className="cursor-default">
+                  {t("No Deployment Selected")}
+                </span>
               )}
-            </Button>
+            </div>
           </DialogContentSection>
         </DialogContentWrapper>
         <DialogFooter>
