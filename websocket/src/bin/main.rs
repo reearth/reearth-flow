@@ -30,9 +30,6 @@ use google_cloud_storage::{
 use websocket::storage::gcs::GcsStore;
 use websocket::ws::WarpConn;
 
-//const DB_PATH: &str = "examples/code-mirror/yrs.db";
-//const REDIS_URL: &str = "redis://127.0.0.1:6379";
-//const REDIS_TTL: u64 = 3600; // Cache TTL in seconds
 const BUCKET_NAME: &str = "yrs-dev";
 const PORT: &str = "8000";
 
@@ -132,7 +129,13 @@ async fn main() {
         .with_line_number(true)
         .init();
 
-    let config = Config::load();
+    let config = match Config::load() {
+        Ok(config) => config,
+        Err(e) => {
+            tracing::error!("Failed to load config: {}", e);
+            return;
+        }
+    };
 
     // Initialize SQLite store
     //let store = Arc::new(SqliteStore::new(DB_PATH).expect("Failed to open SQLite database"));
