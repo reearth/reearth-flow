@@ -32,7 +32,8 @@ export const useQueries = () => {
           pagination: {
             page: paginationOptions?.page ?? 1,
             pageSize: JOBS_FETCH_RATE,
-            orderDir: paginationOptions?.orderDir ?? OrderDirection.Asc,
+            orderDir: paginationOptions?.orderDir ?? OrderDirection.Desc,
+            orderBy: "completedAt",
           },
         });
         if (!data) return;

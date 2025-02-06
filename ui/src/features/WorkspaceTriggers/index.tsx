@@ -5,7 +5,7 @@ import {
   Button,
   ButtonWithTooltip,
   FlowLogo,
-  Spinner,
+  Loading,
   DataTable as Table,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
@@ -104,7 +104,10 @@ const TriggerManager: React.FC = () => {
                 <p className="text-xs dark:font-light">{t("New Trigger")}</p>
               </Button>
             </div>
-            {triggers && !isFetching && triggers.length > 0 && (
+
+            {isFetching ? (
+              <Loading />
+            ) : triggers && triggers.length > 0 ? (
               <Table
                 columns={columns}
                 data={triggers}
@@ -120,9 +123,7 @@ const TriggerManager: React.FC = () => {
                 currentOrder={currentOrder}
                 setCurrentOrder={setCurrentOrder}
               />
-            )}
-            {isFetching && <Spinner label={t("Loading")} />}
-            {!isFetching && triggers && triggers.length === 0 && (
+            ) : (
               <BasicBoiler
                 text={t("No Triggers")}
                 icon={<FlowLogo className="size-16 text-accent" />}
