@@ -72,7 +72,6 @@ const Toolbox: React.FC<Props> = ({
       id: "batch" as const,
       name: t("Batch Node"),
       icon: <RectangleDashed weight="thin" />,
-      disabled: true, // TODO: Enable batch node after fixing batch implementation
     },
     {
       id: "subworkflow" as const,
