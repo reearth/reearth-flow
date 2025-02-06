@@ -64,7 +64,7 @@ const JobRunDialog: React.FC<Props> = ({ setShowDialog }) => {
           <DialogContentSection className="flex flex-col">
             <Label>{t("Deployment: ")}</Label>
             <div
-              className="flex h-8 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none "
+              className="flex h-8 w-full rounded-md border bg-transparent px-3 py-1 text-sm"
               onClick={() => setOpenSelectDeploymentsDialog(true)}>
               <span className="cursor-default whitespace-nowrap pr-2 text-muted-foreground">
                 {t("Select Deployment: ")}
