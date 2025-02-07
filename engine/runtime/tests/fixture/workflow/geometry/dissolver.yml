@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
-name: "convex-hull-accumulator-workflow"
+name: "dissolver-workflow"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
   geojson: !include "../../testdata/geometry/tsugaru_strait.geojson.txt"
@@ -19,9 +19,18 @@ graphs:
             env.get("geojson")
 
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d39
-        name: ConvexHullAccumulator
+        name: Bufferer
         type: action
-        action: ConvexHullAccumulator
+        action: Bufferer
+        with:
+          bufferType: area2d
+          distance: 0.01
+          interpolationAngle: 0.1
+      
+      - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
+        name: GeometryDissolver
+        type: action
+        action: GeometryDissolver
         with:
           groupBy:
             - municipality
@@ -32,7 +41,15 @@ graphs:
         action: GeoJsonWriter
         with:
           output: |
-            file::join_path(env.get("outputPath"), "convex-hull.geojson")
+            file::join_path(env.get("outputPath"), "buffer.geojson")
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906d
+        name: GeoJsonWriter
+        type: action
+        action: GeoJsonWriter
+        with:
+          output: |
+            file::join_path(env.get("outputPath"), "dissolver.geojson")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
@@ -44,4 +61,14 @@ graphs:
         from: 61e89fd2-ea66-4fa1-b426-6f84484a9d39
         to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         fromPort: default
+        toPort: default
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb8
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d39
+        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
+        fromPort: default
+        toPort: default
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb9
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906d
+        fromPort: area
         toPort: default
