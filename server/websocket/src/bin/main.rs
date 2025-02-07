@@ -5,7 +5,7 @@ use axum::{
     },
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::get,
+    routing::{get, post},
     Json, Router,
 };
 
@@ -28,7 +28,7 @@ use websocket::pool::BroadcastPool;
 use websocket::storage::gcs::GcsStore;
 use websocket::storage::kv::DocOps;
 use websocket::ws::WarpConn;
-use yrs::{ReadTxn, StateVector, Transact};
+use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 const BUCKET_NAME: &str = "yrs-dev";
 const PORT: &str = "8000";
@@ -161,13 +161,17 @@ async fn get_latest_doc(
     };
 
     let store = state.pool.get_store();
-    match store.flush_doc(&doc_id).await {
-        Ok(Some(doc)) => {
-            let txn = doc.transact();
-            let state = txn.encode_diff_v1(&StateVector::default());
+    let doc = Doc::new();
+    let mut txn = doc.transact_mut();
+
+    match store.load_doc(&doc_id, &mut txn).await {
+        Ok(true) => {
+            drop(txn);
+            let read_txn = doc.transact();
+            let state = read_txn.encode_diff_v1(&StateVector::default());
             (StatusCode::OK, Json(state)).into_response()
         }
-        Ok(None) => (StatusCode::NOT_FOUND, "Document not found").into_response(),
+        Ok(false) => (StatusCode::NOT_FOUND, "Document not found").into_response(),
         Err(e) => {
             tracing::error!("Failed to get document: {}", e);
             (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error").into_response()
