@@ -5,7 +5,7 @@ pub(crate) mod center_point_replacer;
 pub(crate) mod clipper;
 pub(crate) mod closed_curve_filter;
 pub(crate) mod coercer;
-pub(crate) mod convex_hull_constructor;
+pub(crate) mod convex_hull_accumulator;
 pub(crate) mod coordinate_system_setter;
 pub(crate) mod dimension_filter;
 pub(crate) mod dissolver;

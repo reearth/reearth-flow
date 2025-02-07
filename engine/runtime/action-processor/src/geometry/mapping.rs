@@ -7,7 +7,7 @@ use super::{
     area_on_area_overlayer::AreaOnAreaOverlayerFactory, bounds_extractor::BoundsExtractorFactory,
     bufferer::BuffererFactory, center_point_replacer::CenterPointReplacerFactory,
     clipper::ClipperFactory, closed_curve_filter::ClosedCurveFilterFactory,
-    coercer::GeometryCoercerFactory, convex_hull_constructor::ConvexHullConstructorFactory,
+    coercer::GeometryCoercerFactory, convex_hull_accumulator::ConvexHullAccumulatorFactory,
     coordinate_system_setter::CoordinateSystemSetterFactory,
     dimension_filter::DimensionFilterFactory, dissolver::GeometryDissolverFactory,
     elevation_extractor::ElevationExtractorFactory, extractor::GeometryExtractorFactory,
@@ -57,7 +57,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<GeometryDissolverFactory>::default(),
         Box::<DimensionFilterFactory>::default(),
         Box::<OffsetterFactory>::default(),
-        Box::<ConvexHullConstructorFactory>::default(),
+        Box::<ConvexHullAccumulatorFactory>::default(),
     ];
     factories
         .into_iter()

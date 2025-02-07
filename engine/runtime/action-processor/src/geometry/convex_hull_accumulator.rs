@@ -19,11 +19,11 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct ConvexHullConstructorFactory;
+pub struct ConvexHullAccumulatorFactory;
 
-impl ProcessorFactory for ConvexHullConstructorFactory {
+impl ProcessorFactory for ConvexHullAccumulatorFactory {
     fn name(&self) -> &str {
-        "ConvexHullConstructor"
+        "ConvexHullAccumulator"
     }
 
     fn description(&self) -> &str {
@@ -31,7 +31,7 @@ impl ProcessorFactory for ConvexHullConstructorFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(ConvexHullConstructorParam))
+        Some(schemars::schema_for!(ConvexHullAccumulatorParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -53,26 +53,26 @@ impl ProcessorFactory for ConvexHullConstructorFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let param: ConvexHullConstructorParam = if let Some(with) = with {
+        let param: ConvexHullAccumulatorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::ConvexHullConstructorFactory(format!(
+                GeometryProcessorError::ConvexHullAccumulatorFactory(format!(
                     "Failed to serialize 'with' parameter: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::ConvexHullConstructorFactory(format!(
+                GeometryProcessorError::ConvexHullAccumulatorFactory(format!(
                     "Failed to deserialize 'with' parameter: {}",
                     e
                 ))
             })?
         } else {
-            return Err(GeometryProcessorError::ConvexHullConstructorFactory(
+            return Err(GeometryProcessorError::ConvexHullAccumulatorFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
         };
-        let process = ConvexHullConstructor {
+        let process = ConvexHullAccumulator {
             group_by: param.group_by,
             buffer_2d: HashMap::new(),
         };
@@ -83,24 +83,17 @@ impl ProcessorFactory for ConvexHullConstructorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ConvexHullConstructorParam {
+pub struct ConvexHullAccumulatorParam {
     group_by: Option<Vec<Attribute>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct ConvexHullConstructor {
+pub struct ConvexHullAccumulator {
     group_by: Option<Vec<Attribute>>,
-    buffer_2d: HashMap<String, Vec<Feature>>,
+    buffer_2d: HashMap<AttributeValue, Vec<Feature>>,
 }
 
-fn get_attributes(feature: &Feature, attributes: &[Attribute]) -> Vec<AttributeValue> {
-    attributes
-        .iter()
-        .filter_map(|attr| feature.get(&attr).cloned())
-        .collect::<Vec<_>>()
-}
-
-impl Processor for ConvexHullConstructor {
+impl Processor for ConvexHullAccumulator {
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -109,22 +102,23 @@ impl Processor for ConvexHullConstructor {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
         if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
         };
         match &geometry.value {
             GeometryValue::None => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             }
             GeometryValue::FlowGeometry2D(_) => {
                 let key = if let Some(group_by) = &self.group_by {
-                    get_attributes(feature, group_by)
-                        .iter()
-                        .map(|v| v.to_string())
-                        .collect::<Vec<_>>()
-                        .join("\t")
+                    AttributeValue::Array(
+                        group_by
+                            .iter()
+                            .filter_map(|attr| feature.attributes.get(attr).cloned())
+                            .collect(),
+                    )
                 } else {
-                    "_all".to_string()
+                    AttributeValue::Null
                 };
 
                 if !self.buffer_2d.contains_key(&key) {
@@ -163,11 +157,11 @@ impl Processor for ConvexHullConstructor {
     }
 
     fn name(&self) -> &str {
-        "ConvexHullConstructor"
+        "ConvexHullAccumulator"
     }
 }
 
-impl ConvexHullConstructor {
+impl ConvexHullAccumulator {
     fn create_hull_2d(&self) -> Vec<Feature> {
         let mut hulls = Vec::new();
         for buffered_features in self.buffer_2d.values() {
@@ -179,24 +173,20 @@ impl ConvexHullConstructor {
             );
             let convex_hull = collection.convex_hull();
 
-            let mut feature = if let Some(last_feature) = buffered_features.last() {
-                last_feature.clone()
-            } else {
-                continue;
-            };
-
-            let mut geometry = feature.geometry.clone();
-
-            geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(convex_hull));
-            feature.geometry = geometry;
+            let mut feature = Feature::new();
+            feature.geometry.value =
+                GeometryValue::FlowGeometry2D(Geometry2D::Polygon(convex_hull));
 
             if let Some(group_by) = &self.group_by {
-                let attributes_by_group = get_attributes(&feature, group_by);
-                feature.attributes = group_by
-                    .iter()
-                    .zip(attributes_by_group.iter())
-                    .map(|(attr, value)| (attr.clone(), value.clone()))
-                    .collect::<HashMap<_, _>>();
+                if let Some(last) = buffered_features.last() {
+                    feature.attributes = group_by
+                        .iter()
+                        .filter_map(|attr| {
+                            let value = last.attributes.get(attr).cloned()?;
+                            Some((attr.clone(), value))
+                        })
+                        .collect::<HashMap<_, _>>();
+                }
             } else {
                 feature.attributes = HashMap::new();
             }
