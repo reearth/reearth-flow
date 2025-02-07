@@ -3,17 +3,20 @@ use axum::{
         ws::{WebSocket, WebSocketUpgrade},
         Path,
     },
-    response::Response,
+    http::StatusCode,
+    response::{IntoResponse, Response},
     routing::get,
-    Router,
+    Json, Router,
 };
 
 #[cfg(feature = "auth")]
 use axum::body::Bytes;
 #[cfg(feature = "auth")]
 use axum::extract::Query;
-#[cfg(feature = "auth")]
-use axum::response::IntoResponse;
+use google_cloud_storage::{
+    client::Client,
+    http::buckets::insert::{BucketCreationConfig, InsertBucketRequest},
+};
 #[cfg(feature = "auth")]
 use serde::Deserialize;
 use std::sync::Arc;
@@ -22,13 +25,10 @@ use websocket::auth::AuthService;
 use websocket::conf::Config;
 use websocket::group::BroadcastGroup;
 use websocket::pool::BroadcastPool;
-//use websocket::storage::sqlite::SqliteStore;
-use google_cloud_storage::{
-    client::Client,
-    http::buckets::insert::{BucketCreationConfig, InsertBucketRequest},
-};
 use websocket::storage::gcs::GcsStore;
+use websocket::storage::kv::DocOps;
 use websocket::ws::WarpConn;
+use yrs::{ReadTxn, StateVector, Transact};
 
 const BUCKET_NAME: &str = "yrs-dev";
 const PORT: &str = "8000";
@@ -129,6 +129,52 @@ async fn handle_socket(
     pool.remove_connection(&doc_id).await;
 }
 
+async fn get_latest_doc(
+    Path(doc_id): Path<String>,
+    #[cfg(feature = "auth")] Query(auth): Query<AuthQuery>,
+    axum::extract::State(state): axum::extract::State<AppState>,
+) -> impl IntoResponse {
+    #[cfg(feature = "auth")]
+    {
+        match state.auth.verify_token(&auth.token).await {
+            Ok(true) => (),
+            Ok(false) => {
+                tracing::warn!(
+                    "Authentication failed for doc_id: {}, token: {}",
+                    doc_id,
+                    auth.token
+                );
+                return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
+            }
+            Err(e) => {
+                tracing::error!("Authentication error: {}", e);
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error")
+                    .into_response();
+            }
+        }
+    }
+
+    let doc_id = if doc_id.ends_with(":main") {
+        doc_id[..doc_id.len() - 5].to_string()
+    } else {
+        doc_id.clone()
+    };
+
+    let store = state.pool.get_store();
+    match store.flush_doc(&doc_id).await {
+        Ok(Some(doc)) => {
+            let txn = doc.transact();
+            let state = txn.encode_diff_v1(&StateVector::default());
+            (StatusCode::OK, Json(state)).into_response()
+        }
+        Ok(None) => (StatusCode::NOT_FOUND, "Document not found").into_response(),
+        Err(e) => {
+            tracing::error!("Failed to get document: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error").into_response()
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     // Initialize tracing
@@ -182,6 +228,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/{doc_id}", get(ws_handler))
+        .route("/{doc_id}/latest", get(get_latest_doc))
         .with_state(state);
 
     tracing::info!("Starting server on 0.0.0.0:{}", PORT);
