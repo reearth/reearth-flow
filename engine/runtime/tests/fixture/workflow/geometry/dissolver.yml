@@ -28,9 +28,9 @@ graphs:
           interpolationAngle: 0.1
       
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
-        name: GeometryDissolver
+        name: Dissolver
         type: action
-        action: GeometryDissolver
+        action: Dissolver
         with:
           groupBy:
             - municipality

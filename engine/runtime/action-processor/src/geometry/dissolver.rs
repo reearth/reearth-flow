@@ -1,44 +1,39 @@
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
-use itertools::Itertools;
 use once_cell::sync::Lazy;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use reearth_flow_geometry::algorithm::bool_ops::BooleanOps;
-use reearth_flow_geometry::types::geometry::Geometry2D;
-use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
-use reearth_flow_geometry::types::polygon::Polygon2D;
-use reearth_flow_runtime::node::REJECTED_PORT;
+use reearth_flow_eval_expr::Value;
+use reearth_flow_geometry::{
+    algorithm::bool_ops::BooleanOps, types::multi_polygon::MultiPolygon2D,
+};
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Attribute, Feature, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
 
 pub static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
 
 #[derive(Debug, Clone, Default)]
-pub struct GeometryDissolverFactory;
+pub struct DissolverFactory;
 
-impl ProcessorFactory for GeometryDissolverFactory {
+impl ProcessorFactory for DissolverFactory {
     fn name(&self) -> &str {
-        "GeometryDissolver"
+        "Dissolver"
     }
 
     fn description(&self) -> &str {
-        "Dissolve geometries"
+        ""
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(GeometryDissolverParam))
+        Some(schemars::schema_for!(DissolverParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -60,16 +55,16 @@ impl ProcessorFactory for GeometryDissolverFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: GeometryDissolverParam = if let Some(with) = with {
+        let param: DissolverParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::DissolverFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
+                    "Failed to serialize 'with' parameter: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 GeometryProcessorError::DissolverFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
+                    "Failed to deserialize 'with' parameter: {}",
                     e
                 ))
             })?
@@ -79,31 +74,28 @@ impl ProcessorFactory for GeometryDissolverFactory {
             )
             .into());
         };
-        Ok(Box::new(GeometryDissolver {
-            group_by: params.group_by,
-            complete_grouped: params.complete_grouped.unwrap_or_default(),
+        let process = Dissolver {
+            group_by: param.group_by,
             buffer: HashMap::new(),
-            previous_group_key: None,
-        }))
+        };
+
+        Ok(Box::new(process))
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct GeometryDissolverParam {
+pub struct DissolverParam {
     group_by: Option<Vec<Attribute>>,
-    complete_grouped: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
-pub struct GeometryDissolver {
+pub struct Dissolver {
     group_by: Option<Vec<Attribute>>,
-    complete_grouped: bool,
-    buffer: HashMap<String, (bool, Vec<Feature>)>, // (complete_grouped, features)
-    previous_group_key: Option<String>,
+    buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
-impl Processor for GeometryDissolver {
+impl Processor for Dissolver {
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -116,46 +108,36 @@ impl Processor for GeometryDissolver {
             return Ok(());
         };
         match &geometry.value {
-            GeometryValue::FlowGeometry2D(_) | GeometryValue::FlowGeometry3D(_) => {
+            GeometryValue::None => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            }
+            GeometryValue::FlowGeometry2D(_) => {
                 let key = if let Some(group_by) = &self.group_by {
-                    group_by
-                        .iter()
-                        .map(|k| feature.get(&k).map(|v| v.to_string()).unwrap_or_default())
-                        .collect::<Vec<_>>()
-                        .join("\t")
+                    AttributeValue::Array(
+                        group_by
+                            .iter()
+                            .filter_map(|attr| feature.attributes.get(attr).cloned())
+                            .collect(),
+                    )
                 } else {
-                    "_all".to_string()
+                    AttributeValue::Null
                 };
 
-                if let Some((_, buffer)) = self.buffer.get(&key) {
-                    self.handle_geometry(feature, buffer, &ctx, fw);
+                if !self.buffer.contains_key(&key) {
+                    for dissolved in self.dissolve() {
+                        fw.send(ctx.new_with_feature_and_port(dissolved, DEFAULT_PORT.clone()));
+                    }
+                    self.buffer.clear();
                 }
 
-                match self.buffer.entry(key.clone()) {
-                    Entry::Occupied(mut entry) => {
-                        self.previous_group_key = Some(key.clone());
-                        {
-                            let (_, buffer) = entry.get_mut();
-                            buffer.push(feature.clone());
-                        }
-                    }
-                    Entry::Vacant(entry) => {
-                        entry.insert((false, vec![feature.clone()]));
-                        self.handle_geometry(feature, &[], &ctx, fw);
-                        if let Some(previous_group_key) = &self.previous_group_key {
-                            if let Entry::Occupied(mut entry) =
-                                self.buffer.entry(previous_group_key.clone())
-                            {
-                                let (complete_grouped_change, _) = entry.get_mut();
-                                *complete_grouped_change = true;
-                            }
-                            self.change_group();
-                        }
-                        self.previous_group_key = Some(key.clone());
-                    }
-                }
+                self.buffer
+                    .entry(key.clone())
+                    .or_default()
+                    .push(feature.clone());
             }
-            _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
+            _ => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            }
         }
         Ok(())
     }
@@ -165,135 +147,370 @@ impl Processor for GeometryDissolver {
         ctx: NodeContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        for (_, (_, features)) in self.buffer.iter() {
-            for feature in features {
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    feature.clone(),
-                    REJECTED_PORT.clone(),
-                ));
-            }
+        for dissolved in self.dissolve() {
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                dissolved,
+                DEFAULT_PORT.clone(),
+            ));
         }
         Ok(())
     }
 
     fn name(&self) -> &str {
-        "GeometryDissolver"
+        "Dissolver"
     }
 }
 
-impl GeometryDissolver {
-    fn handle_geometry(
-        &self,
-        feature: &Feature,
-        others: &[Feature],
-        ctx: &ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) {
-        let geometry = &feature.geometry;
-        if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
-            return;
-        };
-        match &geometry.value {
-            GeometryValue::FlowGeometry2D(geos) => {
-                let others = others
-                    .iter()
-                    .flat_map(|f| f.geometry.value.as_flow_geometry_2d().cloned())
-                    .collect::<Vec<_>>();
-                self.handle_2d_geometry(geos, &others, feature, ctx, fw);
-            }
-            _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
-        }
+impl Dissolver {
+    fn dissolve(&self) -> Vec<Feature> {
+        let mut dissolved = Vec::new();
+
+        let buffered_features_2d = self
+            .buffer
+            .values()
+            .flatten()
+            .filter(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry2D(_)))
+            .collect::<Vec<_>>();
+        let dissolved_2d = Self::dissolve_2d(buffered_features_2d);
+
+        dissolved.extend(dissolved_2d);
+        dissolved
     }
 
-    fn handle_2d_geometry(
-        &self,
-        geos: &Geometry2D,
-        others: &[Geometry2D],
-        feature: &Feature,
-        ctx: &ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) {
-        let mut target_polygons = others.iter().filter_map(|g| g.as_polygon()).collect_vec();
-        target_polygons.extend({
-            match others.len() {
-                0..=1000 => others
-                    .iter()
-                    .filter_map(|g| {
-                        g.as_multi_polygon()
-                            .map(|multi_polygon| multi_polygon.iter().cloned().collect_vec())
-                    })
-                    .flatten()
-                    .collect_vec(),
-                _ => others
-                    .par_iter()
-                    .flat_map(|g| {
-                        g.as_multi_polygon()
-                            .map(|multi_polygon| multi_polygon.iter().cloned().collect_vec())
-                    })
-                    .flatten()
-                    .collect::<Vec<_>>(),
-            }
-        });
-        match geos {
-            Geometry2D::MultiPolygon(mpolygons) => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), AREA_PORT.clone()));
-                if target_polygons.is_empty() {
-                    return;
-                }
-                self.handle_2d_polygons(mpolygons, target_polygons, feature, ctx, fw);
-            }
-            Geometry2D::Polygon(polygon) => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), AREA_PORT.clone()));
-                if target_polygons.is_empty() {
-                    return;
-                }
-                self.handle_2d_polygons(
-                    &MultiPolygon2D::new(vec![polygon.clone()]),
-                    target_polygons,
-                    feature,
-                    ctx,
-                    fw,
-                );
-            }
-            _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
-        }
-    }
+    fn dissolve_2d(buffered_features_2d: Vec<&Feature>) -> Vec<Feature> {
+        let mut dissolved = Vec::new();
 
-    fn handle_2d_polygons(
-        &self,
-        target: &MultiPolygon2D<f64>,
-        others: Vec<Polygon2D<f64>>,
-        feature: &Feature,
-        ctx: &ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) {
-        for polygon in target.iter() {
-            others.iter().for_each(|other_polygon| {
-                let multi_polygon = polygon.intersection(other_polygon);
-                for polygon in multi_polygon.iter() {
-                    let geometry = &feature.geometry;
-                    if geometry.is_empty() {
-                        continue;
+        let multi_polygon_2d = buffered_features_2d.iter().fold(
+            None,
+            |multi_polygon_acc: Option<_>, feature_incoming| {
+                let geometry_incoming = feature_incoming.geometry.value.as_flow_geometry_2d()?;
+                let multi_polygon_incoming =
+                    if let Some(multi_polygon) = geometry_incoming.as_multi_polygon() {
+                        multi_polygon
+                    } else if let Some(polygon) = geometry_incoming.as_polygon() {
+                        MultiPolygon2D::new(vec![polygon])
+                    } else {
+                        return multi_polygon_acc;
                     };
-                    let mut geometry = geometry.clone();
-                    let mut feature = feature.clone();
-                    feature.refresh_id();
-                    geometry.value =
-                        GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon.clone()));
-                    feature.geometry = geometry;
-                    fw.send(ctx.new_with_feature_and_port(feature, AREA_PORT.clone()));
-                }
-            });
-        }
-    }
 
-    fn change_group(&mut self) {
-        if !self.complete_grouped {
-            return;
+                let mutli_polygon_acc = if let Some(mutli_polygon_acc) = multi_polygon_acc {
+                    mutli_polygon_acc
+                } else {
+                    return Some(multi_polygon_incoming);
+                };
+
+                let intersected = multi_polygon_incoming.intersection(&mutli_polygon_acc);
+                Some(intersected)
+            },
+        );
+
+        if let Some(multi_polygon_2d) = multi_polygon_2d {
+            let mut feature = Feature::new();
+            feature.geometry.value = GeometryValue::FlowGeometry2D(multi_polygon_2d.into());
+            dissolved.push(feature);
         }
-        self.buffer
-            .retain(|_, (complete_grouped, _)| !*complete_grouped);
+
+        dissolved
     }
 }
+
+// use std::collections::hash_map::Entry;
+// use std::collections::HashMap;
+
+// use itertools::Itertools;
+// use once_cell::sync::Lazy;
+// use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+// use reearth_flow_geometry::algorithm::bool_ops::BooleanOps;
+// use reearth_flow_geometry::types::geometry::Geometry2D;
+// use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
+// use reearth_flow_geometry::types::polygon::Polygon2D;
+// use reearth_flow_runtime::node::REJECTED_PORT;
+// use reearth_flow_runtime::{
+//     channels::ProcessorChannelForwarder,
+//     errors::BoxedError,
+//     event::EventHub,
+//     executor_operation::{ExecutorContext, NodeContext},
+//     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+// };
+// use reearth_flow_types::{Attribute, Feature, GeometryValue};
+// use schemars::JsonSchema;
+// use serde::{Deserialize, Serialize};
+// use serde_json::Value;
+
+// use super::errors::GeometryProcessorError;
+
+// pub static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
+
+// #[derive(Debug, Clone, Default)]
+// pub struct DissolverFactory;
+
+// impl ProcessorFactory for DissolverFactory {
+//     fn name(&self) -> &str {
+//         "Dissolver"
+//     }
+
+//     fn description(&self) -> &str {
+//         "Dissolve geometries"
+//     }
+
+//     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+//         Some(schemars::schema_for!(DissolverParam))
+//     }
+
+//     fn categories(&self) -> &[&'static str] {
+//         &["Geometry"]
+//     }
+
+//     fn get_input_ports(&self) -> Vec<Port> {
+//         vec![DEFAULT_PORT.clone()]
+//     }
+
+//     fn get_output_ports(&self) -> Vec<Port> {
+//         vec![AREA_PORT.clone(), REJECTED_PORT.clone()]
+//     }
+
+//     fn build(
+//         &self,
+//         _ctx: NodeContext,
+//         _event_hub: EventHub,
+//         _action: String,
+//         with: Option<HashMap<String, Value>>,
+//     ) -> Result<Box<dyn Processor>, BoxedError> {
+//         let params: DissolverParam = if let Some(with) = with {
+//             let value: Value = serde_json::to_value(with).map_err(|e| {
+//                 GeometryProcessorError::DissolverFactory(format!(
+//                     "Failed to serialize `with` parameter: {}",
+//                     e
+//                 ))
+//             })?;
+//             serde_json::from_value(value).map_err(|e| {
+//                 GeometryProcessorError::DissolverFactory(format!(
+//                     "Failed to deserialize `with` parameter: {}",
+//                     e
+//                 ))
+//             })?
+//         } else {
+//             return Err(GeometryProcessorError::DissolverFactory(
+//                 "Missing required parameter `with`".to_string(),
+//             )
+//             .into());
+//         };
+//         Ok(Box::new(Dissolver {
+//             group_by: params.group_by,
+//             complete_grouped: params.complete_grouped.unwrap_or_default(),
+//             buffer: HashMap::new(),
+//             previous_group_key: None,
+//         }))
+//     }
+// }
+
+// #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+// #[serde(rename_all = "camelCase")]
+// pub struct DissolverParam {
+//     group_by: Option<Vec<Attribute>>,
+//     complete_grouped: Option<bool>,
+// }
+
+// #[derive(Debug, Clone)]
+// pub struct Dissolver {
+//     group_by: Option<Vec<Attribute>>,
+//     complete_grouped: bool,
+//     buffer: HashMap<String, (bool, Vec<Feature>)>, // (complete_grouped, features)
+//     previous_group_key: Option<String>,
+// }
+
+// impl Processor for Dissolver {
+//     fn process(
+//         &mut self,
+//         ctx: ExecutorContext,
+//         fw: &mut dyn ProcessorChannelForwarder,
+//     ) -> Result<(), BoxedError> {
+//         let feature = &ctx.feature;
+//         let geometry = &feature.geometry;
+//         if geometry.is_empty() {
+//             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+//             return Ok(());
+//         };
+//         match &geometry.value {
+//             GeometryValue::FlowGeometry2D(_) | GeometryValue::FlowGeometry3D(_) => {
+//                 let key = if let Some(group_by) = &self.group_by {
+//                     group_by
+//                         .iter()
+//                         .map(|k| feature.get(&k).map(|v| v.to_string()).unwrap_or_default())
+//                         .collect::<Vec<_>>()
+//                         .join("\t")
+//                 } else {
+//                     "_all".to_string()
+//                 };
+
+//                 if let Some((_, buffer)) = self.buffer.get(&key) {
+//                     self.handle_geometry(feature, buffer, &ctx, fw);
+//                 }
+
+//                 match self.buffer.entry(key.clone()) {
+//                     Entry::Occupied(mut entry) => {
+//                         self.previous_group_key = Some(key.clone());
+//                         {
+//                             let (_, buffer) = entry.get_mut();
+//                             buffer.push(feature.clone());
+//                         }
+//                     }
+//                     Entry::Vacant(entry) => {
+//                         entry.insert((false, vec![feature.clone()]));
+//                         self.handle_geometry(feature, &[], &ctx, fw);
+//                         if let Some(previous_group_key) = &self.previous_group_key {
+//                             if let Entry::Occupied(mut entry) =
+//                                 self.buffer.entry(previous_group_key.clone())
+//                             {
+//                                 let (complete_grouped_change, _) = entry.get_mut();
+//                                 *complete_grouped_change = true;
+//                             }
+//                             self.change_group();
+//                         }
+//                         self.previous_group_key = Some(key.clone());
+//                     }
+//                 }
+//             }
+//             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
+//         }
+//         Ok(())
+//     }
+
+//     fn finish(
+//         &self,
+//         ctx: NodeContext,
+//         fw: &mut dyn ProcessorChannelForwarder,
+//     ) -> Result<(), BoxedError> {
+//         for (_, (_, features)) in self.buffer.iter() {
+//             for feature in features {
+//                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+//                     &ctx,
+//                     feature.clone(),
+//                     REJECTED_PORT.clone(),
+//                 ));
+//             }
+//         }
+//         Ok(())
+//     }
+
+//     fn name(&self) -> &str {
+//         "Dissolver"
+//     }
+// }
+
+// impl Dissolver {
+//     fn handle_geometry(
+//         &self,
+//         feature: &Feature,
+//         others: &[Feature],
+//         ctx: &ExecutorContext,
+//         fw: &mut dyn ProcessorChannelForwarder,
+//     ) {
+//         let geometry = &feature.geometry;
+//         if geometry.is_empty() {
+//             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+//             return;
+//         };
+//         match &geometry.value {
+//             GeometryValue::FlowGeometry2D(geos) => {
+//                 let others = others
+//                     .iter()
+//                     .flat_map(|f| f.geometry.value.as_flow_geometry_2d().cloned())
+//                     .collect::<Vec<_>>();
+//                 self.handle_2d_geometry(geos, &others, feature, ctx, fw);
+//             }
+//             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
+//         }
+//     }
+
+//     fn handle_2d_geometry(
+//         &self,
+//         geos: &Geometry2D,
+//         others: &[Geometry2D],
+//         feature: &Feature,
+//         ctx: &ExecutorContext,
+//         fw: &mut dyn ProcessorChannelForwarder,
+//     ) {
+//         let mut target_polygons = others.iter().filter_map(|g| g.as_polygon()).collect_vec();
+//         target_polygons.extend({
+//             match others.len() {
+//                 0..=1000 => others
+//                     .iter()
+//                     .filter_map(|g| {
+//                         g.as_multi_polygon()
+//                             .map(|multi_polygon| multi_polygon.iter().cloned().collect_vec())
+//                     })
+//                     .flatten()
+//                     .collect_vec(),
+//                 _ => others
+//                     .par_iter()
+//                     .flat_map(|g| {
+//                         g.as_multi_polygon()
+//                             .map(|multi_polygon| multi_polygon.iter().cloned().collect_vec())
+//                     })
+//                     .flatten()
+//                     .collect::<Vec<_>>(),
+//             }
+//         });
+//         match geos {
+//             Geometry2D::MultiPolygon(mpolygons) => {
+//                 fw.send(ctx.new_with_feature_and_port(feature.clone(), AREA_PORT.clone()));
+//                 if target_polygons.is_empty() {
+//                     return;
+//                 }
+//                 self.handle_2d_polygons(mpolygons, target_polygons, feature, ctx, fw);
+//             }
+//             Geometry2D::Polygon(polygon) => {
+//                 fw.send(ctx.new_with_feature_and_port(feature.clone(), AREA_PORT.clone()));
+//                 if target_polygons.is_empty() {
+//                     return;
+//                 }
+//                 self.handle_2d_polygons(
+//                     &MultiPolygon2D::new(vec![polygon.clone()]),
+//                     target_polygons,
+//                     feature,
+//                     ctx,
+//                     fw,
+//                 );
+//             }
+//             _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
+//         }
+//     }
+
+//     fn handle_2d_polygons(
+//         &self,
+//         target: &MultiPolygon2D<f64>,
+//         others: Vec<Polygon2D<f64>>,
+//         feature: &Feature,
+//         ctx: &ExecutorContext,
+//         fw: &mut dyn ProcessorChannelForwarder,
+//     ) {
+//         for polygon in target.iter() {
+//             others.iter().for_each(|other_polygon| {
+//                 let multi_polygon = polygon.intersection(other_polygon);
+//                 for polygon in multi_polygon.iter() {
+//                     let geometry = &feature.geometry;
+//                     if geometry.is_empty() {
+//                         continue;
+//                     };
+//                     let mut geometry = geometry.clone();
+//                     let mut feature = feature.clone();
+//                     feature.refresh_id();
+//                     geometry.value =
+//                         GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon.clone()));
+//                     feature.geometry = geometry;
+//                     fw.send(ctx.new_with_feature_and_port(feature, AREA_PORT.clone()));
+//                 }
+//             });
+//         }
+//     }
+
+//     fn change_group(&mut self) {
+//         if !self.complete_grouped {
+//             return;
+//         }
+//         self.buffer
+//             .retain(|_, (complete_grouped, _)| !*complete_grouped);
+//     }
+// }
