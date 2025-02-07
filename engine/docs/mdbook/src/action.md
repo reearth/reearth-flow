@@ -614,6 +614,16 @@ Writes features to a file
         "null"
       ]
     },
+    "compressOutput": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "maxZoom": {
       "type": "integer",
       "format": "uint8",

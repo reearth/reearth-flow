@@ -60,9 +60,9 @@ export default ({
   const {
     handleNodesChange,
     handleNodesDelete,
+    handleNodeDragOver,
     handleNodeDragStop,
     handleNodeDrop,
-    handleNodeDragOver,
   } = useNodes({
     nodes,
     edges,

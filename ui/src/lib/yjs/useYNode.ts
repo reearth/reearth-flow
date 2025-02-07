@@ -38,11 +38,12 @@ export default ({
           }
         });
 
-        // NOTE: if node is batch, we need to put it at the front
-        // If its not a batch, we need to do useBatch stuff to
-        // find if it becomes a batch's child
+        // If any new nodes are batches, we need to put it at the front
+        const insertIndex = newNodes.some((n) => n.type === "batch")
+          ? 0
+          : yNodes.length;
 
-        yNodes.insert(yNodes.length, newYNodes);
+        yNodes.insert(insertIndex, newYNodes);
       });
     },
     [currentYWorkflow, setSelectedNodeIds, undoTrackerActionWrapper],
@@ -73,6 +74,16 @@ export default ({
                 newPosition.set("x", change.position.x);
                 newPosition.set("y", change.position.y);
                 existing?.yNode.set("position", newPosition);
+              }
+              break;
+            }
+            case "replace": {
+              const existing = existingNodesMap.get(change.id);
+
+              if (existing && change.item) {
+                const newNode = yNodeConstructor(change.item);
+                yNodes.delete(existing.index, 1);
+                yNodes.insert(existing.index, [newNode]);
               }
               break;
             }

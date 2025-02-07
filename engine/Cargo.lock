@@ -5951,6 +5951,8 @@ dependencies = [
  "tokio",
  "url",
  "uuid",
+ "walkdir",
+ "zip",
  "zstd",
 ]
 

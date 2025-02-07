@@ -11,7 +11,6 @@ import { IconButton } from "../buttons";
 type PaginationProps = {
   currentPage: number;
   totalPages: number;
-  isFetchingNextPage?: boolean;
   setCurrentPage?: (page: number) => void;
 };
 const Pagination: React.FC<PaginationProps> = ({
