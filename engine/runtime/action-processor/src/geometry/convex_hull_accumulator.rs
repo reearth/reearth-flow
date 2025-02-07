@@ -74,7 +74,7 @@ impl ProcessorFactory for ConvexHullAccumulatorFactory {
         };
         let process = ConvexHullAccumulator {
             group_by: param.group_by,
-            buffer_2d: HashMap::new(),
+            buffer: HashMap::new(),
         };
 
         Ok(Box::new(process))
@@ -90,7 +90,7 @@ pub struct ConvexHullAccumulatorParam {
 #[derive(Debug, Clone)]
 pub struct ConvexHullAccumulator {
     group_by: Option<Vec<Attribute>>,
-    buffer_2d: HashMap<AttributeValue, Vec<Feature>>,
+    buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
 impl Processor for ConvexHullAccumulator {
@@ -121,14 +121,14 @@ impl Processor for ConvexHullAccumulator {
                     AttributeValue::Null
                 };
 
-                if !self.buffer_2d.contains_key(&key) {
-                    for hull in self.create_hull_2d() {
+                if !self.buffer.contains_key(&key) {
+                    for hull in self.create_hull() {
                         fw.send(ctx.new_with_feature_and_port(hull, DEFAULT_PORT.clone()));
                     }
-                    self.buffer_2d.clear();
+                    self.buffer.clear();
                 }
 
-                self.buffer_2d
+                self.buffer
                     .entry(key.clone())
                     .or_default()
                     .push(feature.clone());
@@ -145,7 +145,7 @@ impl Processor for ConvexHullAccumulator {
         ctx: NodeContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        for hull in self.create_hull_2d() {
+        for hull in self.create_hull() {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 hull,
@@ -162,38 +162,41 @@ impl Processor for ConvexHullAccumulator {
 }
 
 impl ConvexHullAccumulator {
-    fn create_hull_2d(&self) -> Vec<Feature> {
+    fn create_hull(&self) -> Vec<Feature> {
         let mut hulls = Vec::new();
-        for buffered_features in self.buffer_2d.values() {
-            let collection = GeometryCollection(
-                buffered_features
-                    .iter()
-                    .filter_map(|f| f.geometry.value.as_flow_geometry_2d().cloned())
-                    .collect::<Vec<_>>(),
-            );
-            let convex_hull = collection.convex_hull();
-
-            let mut feature = Feature::new();
-            feature.geometry.value =
-                GeometryValue::FlowGeometry2D(Geometry2D::Polygon(convex_hull));
-
-            if let Some(group_by) = &self.group_by {
-                if let Some(last) = buffered_features.last() {
-                    feature.attributes = group_by
-                        .iter()
-                        .filter_map(|attr| {
-                            let value = last.attributes.get(attr).cloned()?;
-                            Some((attr.clone(), value))
-                        })
-                        .collect::<HashMap<_, _>>();
-                }
-            } else {
-                feature.attributes = HashMap::new();
-            }
-
-            hulls.push(feature);
+        for buffer in self.buffer.values() {
+            let buffered_features_2d = buffer
+                .iter()
+                .filter(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry2D(_)))
+                .collect::<Vec<_>>();
+            hulls.push(self.create_hull_2d(buffered_features_2d));
         }
-
         hulls
+    }
+
+    fn create_hull_2d(&self, buffered_features_2d: Vec<&Feature>) -> Feature {
+        let collection = GeometryCollection(
+            buffered_features_2d
+                .iter()
+                .filter_map(|f| f.geometry.value.as_flow_geometry_2d().cloned())
+                .collect::<Vec<_>>(),
+        );
+        let convex_hull = collection.convex_hull();
+
+        let mut feature = Feature::new();
+        if let (Some(group_by), Some(last_feature)) = (&self.group_by, buffered_features_2d.last())
+        {
+            feature.attributes = group_by
+                .iter()
+                .filter_map(|attr| {
+                    let value = last_feature.attributes.get(attr).cloned()?;
+                    Some((attr.clone(), value))
+                })
+                .collect::<HashMap<_, _>>();
+        } else {
+            feature.attributes = HashMap::new();
+        }
+        feature.geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(convex_hull));
+        feature
     }
 }

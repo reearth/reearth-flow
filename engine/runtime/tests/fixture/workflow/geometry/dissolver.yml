@@ -17,15 +17,6 @@ graphs:
           format: geojson
           inline: |
             env.get("geojson")
-
-      - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d39
-        name: Bufferer
-        type: action
-        action: Bufferer
-        with:
-          bufferType: area2d
-          distance: 0.01
-          interpolationAngle: 0.1
       
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
         name: Dissolver
@@ -34,14 +25,7 @@ graphs:
         with:
           groupBy:
             - municipality
-
-      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        name: GeoJsonWriter
-        type: action
-        action: GeoJsonWriter
-        with:
-          output: |
-            file::join_path(env.get("outputPath"), "buffer.geojson")
+            - boundary
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906d
         name: GeoJsonWriter
@@ -54,16 +38,6 @@ graphs:
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
         from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
-        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d39
-        fromPort: default
-        toPort: default
-      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb9
-        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d39
-        to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        fromPort: default
-        toPort: default
-      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb8
-        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d39
         to: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
         fromPort: default
         toPort: default

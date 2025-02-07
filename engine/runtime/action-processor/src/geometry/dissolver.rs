@@ -170,15 +170,15 @@ impl Dissolver {
                 .iter()
                 .filter(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry2D(_)))
                 .collect::<Vec<_>>();
-            let dissolved_2d = Self::dissolve_2d(buffered_features_2d);
-            dissolved.extend(dissolved_2d);
+
+            if let Some(dissolved_2d) = self.dissolve_2d(buffered_features_2d) {
+                dissolved.push(dissolved_2d);
+            }
         }
         dissolved
     }
 
-    fn dissolve_2d(buffered_features_2d: Vec<&Feature>) -> Vec<Feature> {
-        let mut dissolved = Vec::new();
-
+    fn dissolve_2d(&self, buffered_features_2d: Vec<&Feature>) -> Option<Feature> {
         let multi_polygon_2d = buffered_features_2d.iter().fold(
             None,
             |multi_polygon_acc: Option<_>, feature_incoming| {
@@ -205,10 +205,23 @@ impl Dissolver {
 
         if let Some(multi_polygon_2d) = multi_polygon_2d {
             let mut feature = Feature::new();
+            if let (Some(group_by), Some(last_feature)) =
+                (&self.group_by, buffered_features_2d.last())
+            {
+                feature.attributes = group_by
+                    .iter()
+                    .filter_map(|attr| {
+                        let value = last_feature.attributes.get(attr).cloned()?;
+                        Some((attr.clone(), value))
+                    })
+                    .collect::<HashMap<_, _>>();
+            } else {
+                feature.attributes = HashMap::new();
+            }
             feature.geometry.value = GeometryValue::FlowGeometry2D(multi_polygon_2d.into());
-            dissolved.push(feature);
+            Some(feature)
+        } else {
+            None
         }
-
-        dissolved
     }
 }
