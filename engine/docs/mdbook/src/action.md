@@ -684,7 +684,7 @@ Checks if curves form closed loops
 ### Category
 * Geometry
 
-## ConvexHullConstructor
+## ConvexHullAccumulator
 ### Type
 * processor
 ### Description
@@ -693,7 +693,7 @@ Constructs a convex hull
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ConvexHullConstructorParam",
+  "title": "ConvexHullAccumulatorParam",
   "type": "object",
   "properties": {
     "groupBy": {
