@@ -304,7 +304,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 
 	tx.Commit()
 
-	if err := i.job.StartMonitoring(ctx, j, nil, operator); err != nil {
+	if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
 		return nil, fmt.Errorf("failed to start job monitoring: %v", err)
 	}
 

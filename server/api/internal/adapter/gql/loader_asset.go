@@ -40,7 +40,7 @@ func (c *AssetLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID, key
 		return nil, err
 	}
 
-	assets, pi, err := c.usecase.FindByWorkspace(ctx, tid, keyword, sort, gqlmodel.ToPagination(pagination))
+	assets, pi, err := c.usecase.FindByWorkspace(ctx, tid, keyword, sort, gqlmodel.ToPageBasedPagination(*pagination))
 	if err != nil {
 		return nil, err
 	}
