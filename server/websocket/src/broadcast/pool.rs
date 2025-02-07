@@ -39,6 +39,10 @@ impl BroadcastPool {
         }
     }
 
+    pub fn get_store(&self) -> Arc<GcsStore> {
+        self.store.clone()
+    }
+
     pub async fn get_or_create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         if let Some(group) = self.groups.get(doc_id) {
             return Ok(group.clone());
