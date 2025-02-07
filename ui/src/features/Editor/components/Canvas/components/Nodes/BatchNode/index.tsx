@@ -3,7 +3,6 @@ import { RJSFSchema } from "@rjsf/utils";
 import { NodeProps, NodeResizer, useReactFlow } from "@xyflow/react";
 import { memo, useCallback } from "react";
 
-import { cn } from "@flow/lib/utils";
 import { Node } from "@flow/types";
 
 import useBatch from "../../../useBatch";
@@ -42,9 +41,6 @@ export const baseBatchNode = {
   style: { width: initialSize.width + "px", height: initialSize.height + "px" },
   zIndex: -1001,
 };
-
-const longClassName =
-  "absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t bg-accent/50 px-2 py-1";
 
 const minSize = { width: 250, height: 150 };
 
@@ -113,8 +109,8 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
           lineClassName="border border-border rounded"
           handleStyle={{
             background: "none",
-            width: 0,
-            height: 0,
+            width: 8,
+            height: 8,
             border: "none",
             borderRadius: "80%",
             zIndex: 0,
@@ -125,11 +121,9 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
           onResizeEnd={handleOnEndResize}
         />
       )}
+
       <div
-        className={cn(
-          "relative z-0 h-full rounded-b-sm bg-accent/20",
-          selected ? "border-border" : undefined,
-        )}
+        className={`relative z-0 h-full rounded-b-sm bg-accent/20 ${selected ? "border-border" : undefined}`}
         ref={(element) => {
           if (element) {
             element.style.setProperty(
@@ -140,22 +134,17 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
           }
         }}>
         <div
-          className={cn(
-            longClassName,
-            selected ? "border-border" : "border-transparent",
-          )}>
+          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t bg-accent/50 px-2 py-1 ${selected ? "border-border" : "border-transparent"}`}
+          ref={(element) => {
+            if (element)
+              element.style.setProperty(
+                "color",
+                data.params?.textColor || "",
+                "important",
+              );
+          }}>
           <RectangleDashed />
-          <p
-            ref={(element) => {
-              if (element)
-                element.style.setProperty(
-                  "color",
-                  data.params?.textColor || "",
-                  "important",
-                );
-            }}>
-            {data.params?.customName || data.officialName}
-          </p>
+          <p>{data.customName || data.officialName}</p>
         </div>
       </div>
     </>
