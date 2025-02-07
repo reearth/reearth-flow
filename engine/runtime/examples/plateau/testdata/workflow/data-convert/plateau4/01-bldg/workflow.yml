@@ -111,12 +111,66 @@ graphs:
         with:
           reprojectorType: jgd2011ToWgs84
 
+      - id: 3e637368-48dc-48c2-aade-253d5b0cfeeb
+        name: AttributeManagerRemoveUnnecessaryAttributes
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: meshcode
+              method: create
+              value: |
+                file::extract_filename_without_ext(env.get("__value")["path"]).split("_")[0]
+            - attribute: type
+              method: rename
+              value: "feature_type"
+            - attribute: path
+              method: rename
+              value: "_path"
+            - attribute: cityCode
+              method: rename
+              value: "city_code"
+            - attribute: cityName
+              method: rename
+              value: "city_name"
+            - attribute: gmlId
+              method: rename
+              value: "gml_id"
+            - attribute: package
+              method: remove
+            - attribute: fileIndex
+              method: remove
+            - attribute: extension
+              method: remove
+            - attribute: root
+              method: remove
+            - attribute: gmlRootId
+              method: remove
+            - attribute: udxDirs
+              method: remove
+            - attribute: cityGmlPath
+              method: remove
+            - attribute: schemas
+              method: remove
+            - attribute: dirCodelists
+              method: remove
+            - attribute: dirSchemas
+              method: remove
+            - attribute: gmlName
+              method: remove
+            - attribute: codelists
+              method: remove
+            - attribute: maxLod
+              method: remove
+            - attribute: dirRoot
+              method: remove
+
       - id: c32a279d-97be-4584-b282-4d65627b1132
         name: FeatureLodFilter
         type: action
         action: FeatureLodFilter
         with:
-          filterKey: path
+          filterKey: _path
 
       - id: 41d69f1f-2a4d-4bc1-a5d0-175698273571
         name: cesium3DTilesWriterByLod1
@@ -252,6 +306,11 @@ graphs:
         toPort: default
       - id: fddd597c-3e9c-400c-abd9-02b6c2214459
         from: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
+        to: 3e637368-48dc-48c2-aade-253d5b0cfeeb
+        fromPort: default
+        toPort: default
+      - id: 64540b5c-066e-449f-ace1-4af29c0e3b3c
+        from: 3e637368-48dc-48c2-aade-253d5b0cfeeb
         to: c32a279d-97be-4584-b282-4d65627b1132
         fromPort: default
         toPort: default
