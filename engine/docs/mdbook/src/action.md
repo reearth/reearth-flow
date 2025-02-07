@@ -684,6 +684,43 @@ Checks if curves form closed loops
 ### Category
 * Geometry
 
+## ConvexHullAccumulator
+### Type
+* processor
+### Description
+Creates a convex hull based on a group of input features.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ConvexHullAccumulatorParam",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Geometry
+
 ## CoordinateSystemSetter
 ### Type
 * processor

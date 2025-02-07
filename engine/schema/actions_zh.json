@@ -692,6 +692,43 @@
       ]
     },
     {
+      "name": "ConvexHullAccumulator",
+      "type": "processor",
+      "description": "Creates a convex hull based on a group of input features.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ConvexHullAccumulatorParam",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "CoordinateSystemSetter",
       "type": "processor",
       "description": "设置实体的坐标系",
