@@ -1,3 +1,4 @@
+use core::panic;
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
@@ -125,7 +126,7 @@ impl Processor for Dissolver {
 
                 if !self.buffer.contains_key(&key) {
                     for dissolved in self.dissolve() {
-                        fw.send(ctx.new_with_feature_and_port(dissolved, DEFAULT_PORT.clone()));
+                        fw.send(ctx.new_with_feature_and_port(dissolved, AREA_PORT.clone()));
                     }
                     self.buffer.clear();
                 }
@@ -151,7 +152,7 @@ impl Processor for Dissolver {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 dissolved,
-                DEFAULT_PORT.clone(),
+                AREA_PORT.clone(),
             ));
         }
         Ok(())
@@ -165,16 +166,14 @@ impl Processor for Dissolver {
 impl Dissolver {
     fn dissolve(&self) -> Vec<Feature> {
         let mut dissolved = Vec::new();
-
-        let buffered_features_2d = self
-            .buffer
-            .values()
-            .flatten()
-            .filter(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry2D(_)))
-            .collect::<Vec<_>>();
-        let dissolved_2d = Self::dissolve_2d(buffered_features_2d);
-
-        dissolved.extend(dissolved_2d);
+        for buffer in self.buffer.values() {
+            let buffered_features_2d = buffer
+                .iter()
+                .filter(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry2D(_)))
+                .collect::<Vec<_>>();
+            let dissolved_2d = Self::dissolve_2d(buffered_features_2d);
+            dissolved.extend(dissolved_2d);
+        }
         dissolved
     }
 
@@ -200,8 +199,8 @@ impl Dissolver {
                     return Some(multi_polygon_incoming);
                 };
 
-                let intersected = multi_polygon_incoming.intersection(&mutli_polygon_acc);
-                Some(intersected)
+                let unite = multi_polygon_incoming.union(&mutli_polygon_acc);
+                Some(unite)
             },
         );
 
