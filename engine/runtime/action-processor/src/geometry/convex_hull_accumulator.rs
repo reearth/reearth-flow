@@ -27,7 +27,7 @@ impl ProcessorFactory for ConvexHullAccumulatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Constructs a convex hull"
+        "Creates a convex hull based on a group of input features."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

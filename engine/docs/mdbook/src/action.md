@@ -688,7 +688,7 @@ Checks if curves form closed loops
 ### Type
 * processor
 ### Description
-Constructs a convex hull
+Creates a convex hull based on a group of input features.
 ### Parameters
 ```json
 {
