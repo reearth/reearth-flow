@@ -5,7 +5,7 @@ use axum::{
     },
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, post},
+    routing::get,
     Json, Router,
 };
 
@@ -28,6 +28,7 @@ use websocket::pool::BroadcastPool;
 use websocket::storage::gcs::GcsStore;
 use websocket::storage::kv::DocOps;
 use websocket::ws::WarpConn;
+use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 const BUCKET_NAME: &str = "yrs-dev";
@@ -179,6 +180,55 @@ async fn get_latest_doc(
     }
 }
 
+async fn get_doc_history(
+    Path(doc_id): Path<String>,
+    #[cfg(feature = "auth")] Query(auth): Query<AuthQuery>,
+    axum::extract::State(state): axum::extract::State<AppState>,
+) -> impl IntoResponse {
+    #[cfg(feature = "auth")]
+    {
+        match state.auth.verify_token(&auth.token).await {
+            Ok(true) => (),
+            Ok(false) => {
+                tracing::warn!(
+                    "Authentication failed for doc_id: {}, token: {}",
+                    doc_id,
+                    auth.token
+                );
+                return (StatusCode::UNAUTHORIZED, "Unauthorized").into_response();
+            }
+            Err(e) => {
+                tracing::error!("Authentication error: {}", e);
+                return (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error")
+                    .into_response();
+            }
+        }
+    }
+
+    let doc_id = if doc_id.ends_with(":main") {
+        doc_id[..doc_id.len() - 5].to_string()
+    } else {
+        doc_id.clone()
+    };
+
+    let store = state.pool.get_store();
+
+    // Get all updates for this document
+    match store.get_updates(&doc_id).await {
+        Ok(updates) => {
+            let updates: Vec<Vec<u8>> = updates
+                .into_iter()
+                .map(|update| update.encode_v1())
+                .collect();
+            (StatusCode::OK, Json(updates)).into_response()
+        }
+        Err(e) => {
+            tracing::error!("Failed to get document history: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, "Internal Server Error").into_response()
+        }
+    }
+}
+
 #[tokio::main]
 async fn main() {
     // Initialize tracing
@@ -192,13 +242,9 @@ async fn main() {
         Ok(config) => config,
         Err(e) => {
             tracing::error!("Failed to load config: {}", e);
-            return;
+            std::process::exit(1);
         }
     };
-
-    // Initialize SQLite store
-    //let store = Arc::new(SqliteStore::new(DB_PATH).expect("Failed to open SQLite database"));
-    //tracing::info!("SQLite store initialized at: {}", DB_PATH);
 
     let store = GcsStore::new_with_config(config.gcs)
         .await
@@ -207,7 +253,7 @@ async fn main() {
     // Ensure bucket exists
     if let Err(e) = ensure_bucket(&store.client).await {
         tracing::error!("Failed to ensure bucket exists: {}", e);
-        return;
+        std::process::exit(1);
     }
 
     let store = Arc::new(store);
@@ -233,11 +279,56 @@ async fn main() {
     let app = Router::new()
         .route("/{doc_id}", get(ws_handler))
         .route("/{doc_id}/latest", get(get_latest_doc))
+        .route("/{doc_id}/history", get(get_doc_history))
         .with_state(state);
 
     tracing::info!("Starting server on 0.0.0.0:{}", PORT);
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", PORT))
         .await
+        .map_err(|e| {
+            tracing::error!("Failed to bind to port {}: {}", PORT, e);
+            std::process::exit(1);
+        })
         .unwrap();
-    axum::serve(listener, app).await.unwrap();
+
+    // Setup shutdown signal handler
+    let (tx, _) = tokio::sync::broadcast::channel(1);
+    let shutdown_signal = tx.clone();
+
+    tokio::spawn(async move {
+        let ctrl_c = async {
+            tokio::signal::ctrl_c()
+                .await
+                .expect("Failed to install Ctrl+C handler");
+        };
+
+        #[cfg(unix)]
+        let terminate = async {
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+                .expect("Failed to install signal handler")
+                .recv()
+                .await;
+        };
+
+        #[cfg(not(unix))]
+        let terminate = std::future::pending::<()>();
+
+        tokio::select! {
+            _ = ctrl_c => {},
+            _ = terminate => {},
+        }
+
+        tracing::info!("Shutdown signal received");
+        let _ = shutdown_signal.send(());
+    });
+
+    if let Err(e) = axum::serve(listener, app)
+        .with_graceful_shutdown(async move {
+            let _ = tx.subscribe().recv().await;
+        })
+        .await
+    {
+        tracing::error!("Server error: {}", e);
+        std::process::exit(1);
+    }
 }
