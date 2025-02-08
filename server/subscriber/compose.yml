@@ -5,18 +5,18 @@ networks:
 services:
   redis:
     image: redis:7
-    container_name: log-subscriber-redis
+    container_name: subscriber-redis
     restart: always
     ports:
       - "6379:6379"
     networks:
       - reearth-flow-net
 
-  subscriber:
+  log-subscriber:
     build:
       context: .
-      dockerfile: ./Dockerfile.subscriber
-    container_name: reearth-flow-subscriber
+      dockerfile: ./Dockerfile.log-subscriber
+    container_name: log-subscriber
     restart: always
     depends_on:
       - redis

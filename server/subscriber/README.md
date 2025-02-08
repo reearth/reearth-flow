@@ -226,7 +226,7 @@ cargo run --package reearth-flow-worker \
 ```
 ### Confirm Logs in Redis
 ```
-docker exec -it log-subscriber-redis redis-cli
+docker exec -it subscriber-redis redis-cli
 127.0.0.1:6379> KEYS *
  1) "log:00caad2a-9f7d-4189-b479-153fa9ea36dc:5566c900-9581-4c5c-be02-fd13e4d93669:2025-01-11T09:12:54.943837Z"
  2) "log:00caad2a-9f7d-4189-b479-153fa9ea36dc:5566c900-9581-4c5c-be02-fd13e4d93669:2025-01-11T09:12:54.602634Z"

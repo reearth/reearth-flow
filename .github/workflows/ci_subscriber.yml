@@ -5,7 +5,7 @@ env:
   GO_VERSION: "1.22"
 
 jobs:
-  ci-log-subscriber-lint:
+  ci-subscriber-lint:
     runs-on: ubuntu-latest
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'v')
     steps:
@@ -23,7 +23,7 @@ jobs:
           args: --timeout=10m
           working-directory: server/subscriber
 
-  ci-log-subscriber-test:
+  ci-subscriber-test:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
