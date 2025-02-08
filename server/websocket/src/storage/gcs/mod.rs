@@ -3,7 +3,7 @@
 //! persistent backend.
 
 pub use super::kv as store;
-use super::kv::keys::{key_doc, key_oid, key_update, KEYSPACE_DOC, OID, SUB_UPDATE, V1};
+use super::kv::keys::{KEYSPACE_DOC, SUB_UPDATE, V1};
 use super::kv::{DocOps, KVEntry, KVStore};
 use futures::future::join_all;
 use google_cloud_storage::{
@@ -14,22 +14,11 @@ use google_cloud_storage::{
     http::objects::list::ListObjectsRequest,
     http::objects::upload::{Media, UploadObjectRequest, UploadType},
     http::objects::Object,
-    http::Error as GcsError,
 };
 use hex;
 use serde::Deserialize;
-use std::io;
-use thiserror::Error;
 use tracing::debug;
 use yrs::{updates::decoder::Decode, Update};
-
-#[derive(Debug, Error)]
-pub enum Error {
-    #[error("GCS error: {0}")]
-    Gcs(#[from] GcsError),
-    #[error("IO error: {0}")]
-    Io(#[from] io::Error),
-}
 
 /// Type wrapper around GCS Client struct. Used to extend GCS with [DocOps]
 /// methods used for convenience when working with Yrs documents.
@@ -80,23 +69,23 @@ impl GcsStore {
         Self { client, bucket }
     }
 
-    pub async fn get_updates(&self, doc_id: &str) -> Result<Vec<Update>, Error> {
+    pub async fn get_updates(&self, doc_id: &str) -> Result<Vec<Update>, anyhow::Error> {
         // Get the OID for this document
-        let oid = match self.get_oid(doc_id.as_bytes()).await? {
+        let oid = match super::kv::get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => return Ok(Vec::new()),
         };
 
-        // Get all updates for this OID
-        let mut updates = Vec::new();
-
         // Create prefix that matches all updates for this OID
-        let mut prefix_bytes = vec![V1, KEYSPACE_DOC];
-        prefix_bytes.extend_from_slice(&oid.to_be_bytes());
-        prefix_bytes.push(SUB_UPDATE);
+        let prefix_bytes = [V1, KEYSPACE_DOC]
+            .iter()
+            .chain(&oid.to_be_bytes())
+            .chain(&[SUB_UPDATE])
+            .copied()
+            .collect::<Vec<_>>();
         let prefix_str = hex::encode(&prefix_bytes);
 
-        // Now try to find objects with our prefix
+        // List objects with the specified prefix
         let request = ListObjectsRequest {
             bucket: self.bucket.clone(),
             prefix: Some(prefix_str),
@@ -107,15 +96,15 @@ impl GcsStore {
             .client
             .list_objects(&request)
             .await
-            .map_err(Error::Gcs)?
+            .map_err(anyhow::Error::new)?
             .items
             .unwrap_or_default();
 
-        for obj in &objects {
-            let obj_name = &obj.name;
+        // Download and decode updates
+        let updates = join_all(objects.iter().map(|obj| async {
             let request = GetObjectRequest {
                 bucket: self.bucket.clone(),
-                object: obj_name.clone(),
+                object: obj.name.clone(),
                 ..Default::default()
             };
 
@@ -124,33 +113,19 @@ impl GcsStore {
                 .download_object(&request, &Range::default())
                 .await
             {
-                Ok(data) => {
-                    if let Ok(update) = Update::decode_v1(&data) {
-                        updates.push(update);
-                    }
-                }
+                Ok(data) => Update::decode_v1(&data).ok(),
                 Err(e) => {
-                    tracing::error!("Failed to download update from {}: {}", obj_name, e);
+                    tracing::error!("Failed to download update from {}: {}", obj.name, e);
+                    None
                 }
             }
-        }
+        }))
+        .await
+        .into_iter()
+        .flatten()
+        .collect();
 
         Ok(updates)
-    }
-
-    async fn get_oid(&self, name: &[u8]) -> Result<Option<OID>, Error> {
-        let key = key_oid(name).map_err(Error::Io)?;
-        let value = self.get(&key).await.map_err(Error::Gcs)?;
-        if let Some(value) = value {
-            let slice: &[u8] = value.as_slice();
-            let bytes: [u8; 4] = slice
-                .try_into()
-                .map_err(|_| io::Error::new(io::ErrorKind::InvalidData, "Invalid OID length"))?;
-            let oid = OID::from_be_bytes(bytes);
-            Ok(Some(oid))
-        } else {
-            Ok(None)
-        }
     }
 }
 
