@@ -1,4 +1,4 @@
-name: ci-log-subscriber
+name: ci-subscriber
 on:
   workflow_call:
 env:
