@@ -7,6 +7,7 @@ import type {
   Trigger,
   UpdateTrigger,
 } from "@flow/types";
+import { PaginationOptions } from "@flow/types/paginationOptions";
 
 import { TimeDriverInput } from "../__gen__/graphql";
 
@@ -20,15 +21,15 @@ export const useTrigger = () => {
     createTriggerMutation,
     updateTriggerMutation,
     deleteTriggerMutation,
-    useGetTriggersInfiniteQuery,
+    useGetTriggersQuery,
   } = useQueries();
 
   const createTrigger = async (
     workspaceId: string,
     deploymentId: string,
+    description: string,
     timeInterval?: TimeInterval,
     authToken?: string,
-    description?: string,
   ): Promise<CreateTrigger> => {
     const { mutateAsync, ...rest } = createTriggerMutation;
 
@@ -113,17 +114,23 @@ export const useTrigger = () => {
     }
   };
 
-  const useGetTriggersInfinite = (workspaceId?: string) => {
-    const { data, ...rest } = useGetTriggersInfiniteQuery(workspaceId);
+  const useGetTriggers = (
+    workspaceId?: string,
+    paginationOptions?: PaginationOptions,
+  ) => {
+    const { data, ...rest } = useGetTriggersQuery(
+      workspaceId,
+      paginationOptions,
+    );
     return {
-      pages: data?.pages,
+      page: data,
       ...rest,
     };
   };
 
   return {
     createTrigger,
-    useGetTriggersInfinite,
+    useGetTriggers,
     useUpdateTrigger,
     useDeleteTrigger,
   };

@@ -5,9 +5,11 @@ import {
   Button,
   ButtonWithTooltip,
   FlowLogo,
+  Loading,
   DataTable as Table,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
+import { TRIGGERS_FETCH_RATE } from "@flow/lib/gql/trigger/useQueries";
 import { useT } from "@flow/lib/i18n";
 import { Trigger } from "@flow/types";
 
@@ -32,6 +34,12 @@ const TriggerManager: React.FC = () => {
     setTriggerToBeDeleted,
     handleTriggerSelect,
     handleTriggerDelete,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    currentOrder,
+    setCurrentOrder,
+    isFetching,
   } = useHooks();
   const columns: ColumnDef<Trigger>[] = [
     {
@@ -73,7 +81,7 @@ const TriggerManager: React.FC = () => {
       ),
     },
   ];
-
+  const resultsPerPage = TRIGGERS_FETCH_RATE;
   return (
     <>
       {selectedTrigger ? (
@@ -96,7 +104,10 @@ const TriggerManager: React.FC = () => {
                 <p className="text-xs dark:font-light">{t("New Trigger")}</p>
               </Button>
             </div>
-            {triggers && triggers.length > 0 ? (
+
+            {isFetching ? (
+              <Loading />
+            ) : triggers && triggers.length > 0 ? (
               <Table
                 columns={columns}
                 data={triggers}
@@ -105,6 +116,12 @@ const TriggerManager: React.FC = () => {
                 enablePagination
                 rowHeight={14}
                 onRowClick={handleTriggerSelect}
+                currentPage={currentPage}
+                setCurrentPage={setCurrentPage}
+                totalPages={totalPages}
+                resultsPerPage={resultsPerPage}
+                currentOrder={currentOrder}
+                setCurrentOrder={setCurrentOrder}
               />
             ) : (
               <BasicBoiler

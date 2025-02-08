@@ -64,21 +64,15 @@ type JobPayload {
 # Connection
 
 type DeploymentConnection {
-  edges: [DeploymentEdge!]!
   nodes: [Deployment]!
   pageInfo: PageInfo!
   totalCount: Int!
 }
 
-type DeploymentEdge {
-  cursor: Cursor!
-  node: Deployment
-}
-
 # Query and Mutation
 
 extend type Query {
-  deployments(workspaceId: ID!, pagination: Pagination): DeploymentConnection!
+  deployments(workspaceId: ID!, pagination: PageBasedPagination!): DeploymentConnection!
   deploymentByVersion(input: GetByVersionInput!): Deployment
   deploymentHead(input: GetHeadInput!): Deployment
   deploymentVersions(workspaceId: ID!, projectId: ID): [Deployment!]!

@@ -42,7 +42,7 @@ type LogProps<TData, TValue> = {
   showFiltering?: boolean;
 };
 
-const Logs = <TData, TValue>({
+const LogsTable = <TData, TValue>({
   columns,
   data,
   selectColumns = false,
@@ -84,12 +84,12 @@ const Logs = <TData, TValue>({
     if (getStatusValue === status) {
       setColumnFilters([]);
     } else {
-      setColumnFilters([{ id: "logLevel", value: status }]);
+      setColumnFilters([{ id: "level", value: status }]);
     }
   };
 
   const handleTimeStampColumnVisibility = () => {
-    const column = table.getColumn("timestamp");
+    const column = table.getColumn("ts");
 
     column?.toggleVisibility(!column.getIsVisible());
     return;
@@ -97,14 +97,14 @@ const Logs = <TData, TValue>({
 
   const handleResetTable = () => {
     setColumnFilters([]);
-    table.getColumn("timestamp")?.toggleVisibility(true);
+    table.getColumn("ts")?.toggleVisibility(true);
   };
 
   const getStatusValue = useMemo(() => {
-    const value = columnFilters.find((id) => id.id === "logLevel");
+    const value = columnFilters.find((id) => id.id === "level");
     return value?.value;
   }, [columnFilters]);
-  console.log("data", data);
+
   return (
     <div className="flex size-full flex-col rounded">
       <div className="flex h-16 w-full items-center justify-between p-2">
@@ -163,11 +163,9 @@ const Logs = <TData, TValue>({
           <IconButton
             size="icon"
             variant={
-              table.getColumn("timestamp")?.getIsVisible()
-                ? "default"
-                : "outline"
+              table.getColumn("ts")?.getIsVisible() ? "default" : "outline"
             }
-            tooltipText={t("Include Timestamp")}
+            tooltipText={t("Include ts")}
             onClick={handleTimeStampColumnVisibility}
             icon={<ClockIcon />}
           />
@@ -246,6 +244,6 @@ const Logs = <TData, TValue>({
   );
 };
 
-Logs.displayName = "Logs";
+LogsTable.displayName = "LogsTable";
 
-export { Logs };
+export { LogsTable };

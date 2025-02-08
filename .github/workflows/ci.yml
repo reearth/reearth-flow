@@ -19,7 +19,7 @@ jobs:
 
       - name: changed files for api
         id: api
-        uses: tj-actions/changed-files@v41
+        uses: tj-actions/changed-files@v45
         with:
             files: |
               api/**
@@ -42,7 +42,7 @@ jobs:
 
       - name: changed files for ui
         id: ui
-        uses: tj-actions/changed-files@v41
+        uses: tj-actions/changed-files@v45
         with:
           files: |
             ui/**
@@ -54,7 +54,7 @@ jobs:
 
       - name: changed files for websocket
         id: websocket
-        uses: tj-actions/changed-files@v41
+        uses: tj-actions/changed-files@v45
         with:
           files: |
             websocket/**
@@ -64,7 +64,7 @@ jobs:
 
       - name: changed files for engine
         id: engine
-        uses: tj-actions/changed-files@v41
+        uses: tj-actions/changed-files@v45
         with:
           files: |
             engine/**

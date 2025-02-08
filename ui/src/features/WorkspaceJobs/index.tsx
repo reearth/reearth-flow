@@ -1,7 +1,8 @@
 import { ColumnDef } from "@tanstack/react-table";
 
-import { FlowLogo, DataTable as Table } from "@flow/components";
+import { FlowLogo, Loading, DataTable as Table } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
+import { JOBS_FETCH_RATE } from "@flow/lib/gql/job/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { Job } from "@flow/types";
 
@@ -17,6 +18,12 @@ const JobsManager: React.FC = () => {
     openJobRunDialog,
     setOpenJobRunDialog,
     handleJobSelect,
+    isFetching,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    currentOrder,
+    setCurrentOrder,
   } = useHooks();
 
   const columns: ColumnDef<Job>[] = [
@@ -41,6 +48,7 @@ const JobsManager: React.FC = () => {
       header: t("Completed At"),
     },
   ];
+  const resultsPerPage = JOBS_FETCH_RATE;
 
   return selectedJob ? (
     <div className="flex flex-1">
@@ -52,7 +60,9 @@ const JobsManager: React.FC = () => {
         <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg dark:font-extralight">{t("Jobs")}</p>
         </div>
-        {jobs && jobs.length > 0 ? (
+        {isFetching ? (
+          <Loading />
+        ) : jobs && jobs.length > 0 ? (
           <Table
             columns={columns}
             data={jobs}
@@ -61,6 +71,12 @@ const JobsManager: React.FC = () => {
             enablePagination
             rowHeight={14}
             onRowClick={handleJobSelect}
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            totalPages={totalPages}
+            resultsPerPage={resultsPerPage}
+            currentOrder={currentOrder}
+            setCurrentOrder={setCurrentOrder}
           />
         ) : (
           <BasicBoiler

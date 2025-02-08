@@ -1,12 +1,17 @@
+import type { PaginationOptions } from "@flow/types/paginationOptions";
+
 import { useQueries } from "./useQueries";
 
 export const useJob = () => {
-  const { useGetJobsInfiniteQuery, useGetJobQuery } = useQueries();
+  const { useGetJobsQuery, useGetJobQuery } = useQueries();
 
-  const useGetJobsInfinite = (workspaceId?: string) => {
-    const { data, ...rest } = useGetJobsInfiniteQuery(workspaceId);
+  const useGetJobs = (
+    workspaceId?: string,
+    paginationOptions?: PaginationOptions,
+  ) => {
+    const { data, ...rest } = useGetJobsQuery(workspaceId, paginationOptions);
     return {
-      pages: data?.pages,
+      page: data,
       ...rest,
     };
   };
@@ -21,6 +26,6 @@ export const useJob = () => {
 
   return {
     useGetJob,
-    useGetJobsInfinite,
+    useGetJobs,
   };
 };

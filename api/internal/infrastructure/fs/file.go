@@ -1,18 +1,23 @@
 package fs
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 
 	"github.com/kennygrant/sanitize"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/workflow"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/spf13/afero"
 )
@@ -23,32 +28,98 @@ type fileRepo struct {
 	workflowUrlBase *url.URL
 }
 
-func (f *fileRepo) CheckJobLogExists(context.Context, string) (bool, error) {
-	panic("unimplemented")
+func (f *fileRepo) CheckJobLogExists(ctx context.Context, jobID string) (bool, error) {
+	logPath := filepath.Join(metadataDir, fmt.Sprintf("job-%s.log", jobID))
+	exists, err := afero.Exists(f.fs, logPath)
+	if err != nil {
+		return false, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	return exists, nil
 }
 
-func (f *fileRepo) GetJobLogURL(string) string {
-	panic("unimplemented")
+func (f *fileRepo) GetJobLogURL(jobID string) string {
+	return fmt.Sprintf("file://%s/job-%s.log", metadataDir, jobID)
 }
 
-func (f *fileRepo) ListJobArtifacts(context.Context, string) ([]string, error) {
-	panic("unimplemented")
+func (f *fileRepo) ListJobArtifacts(ctx context.Context, jobID string) ([]string, error) {
+	artifactsPath := filepath.Join(metadataDir, fmt.Sprintf("job-%s-artifacts", jobID))
+	files, err := afero.ReadDir(f.fs, artifactsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []string{}, nil
+		}
+		return nil, rerror.ErrInternalByWithContext(ctx, err)
+	}
+
+	var artifacts []string
+	for _, file := range files {
+		artifacts = append(artifacts, file.Name())
+	}
+	return artifacts, nil
 }
 
-func (f *fileRepo) ReadArtifact(context.Context, string) (io.ReadCloser, error) {
-	panic("unimplemented")
+func (f *fileRepo) ReadArtifact(ctx context.Context, path string) (io.ReadCloser, error) {
+	return f.read(ctx, path)
 }
 
-func (f *fileRepo) ReadMetadata(context.Context, string) (io.ReadCloser, error) {
-	panic("unimplemented")
+func (f *fileRepo) ReadMetadata(ctx context.Context, name string) (io.ReadCloser, error) {
+	return f.read(ctx, filepath.Join(metadataDir, sanitize.Path(name)))
 }
 
-func (f *fileRepo) RemoveMetadata(context.Context, *url.URL) error {
-	panic("unimplemented")
+func (f *fileRepo) RemoveMetadata(ctx context.Context, u *url.URL) error {
+	if u == nil {
+		return nil
+	}
+	p := sanitize.Path(u.Path)
+	if p == "" || !f.validateURL(u, f.workflowUrlBase) {
+		return gateway.ErrInvalidFile
+	}
+	return f.delete(ctx, filepath.Join(metadataDir, filepath.Base(p)))
 }
 
-func (f *fileRepo) UploadMetadata(context.Context, string, []string) (*url.URL, error) {
-	panic("unimplemented")
+func (f *fileRepo) UploadMetadata(ctx context.Context, jobID string, assets []string) (*url.URL, error) {
+	metadataFile, err := f.generateMetadata(jobID, assets)
+	if err != nil {
+		return nil, err
+	}
+
+	filename := filepath.Join(metadataDir, sanitize.Path(metadataFile.Path))
+	_, err = f.upload(ctx, filename, metadataFile.Content)
+	if err != nil {
+		return nil, err
+	}
+
+	return getFileURL(f.workflowUrlBase, metadataFile.Path), nil
+}
+
+func (f *fileRepo) generateMetadata(jobID string, assets []string) (*file.File, error) {
+	artifactBaseUrl := "file://artifacts"
+	assetBaseUrl := "file://assets"
+	created := time.Now()
+
+	metadata := &workflow.Metadata{
+		ArtifactBaseUrl: artifactBaseUrl,
+		Assets: workflow.Asset{
+			BaseUrl: assetBaseUrl,
+			Files:   assets,
+		},
+		JobID: jobID,
+		Timestamps: workflow.Timestamp{
+			Created: created,
+		},
+	}
+
+	metadataJSON, err := json.Marshal(metadata)
+	if err != nil {
+		return nil, err
+	}
+
+	return &file.File{
+		Content:     io.NopCloser(bytes.NewReader(metadataJSON)),
+		Path:        fmt.Sprintf("metadata-%s.json", jobID),
+		Size:        int64(len(metadataJSON)),
+		ContentType: "application/json",
+	}, nil
 }
 
 func NewFile(fs afero.Fs, assetUrlBase string, workflowUrlBase string) (gateway.File, error) {

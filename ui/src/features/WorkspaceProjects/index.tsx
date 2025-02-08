@@ -1,8 +1,19 @@
 import { Plus } from "@phosphor-icons/react";
 
-import { Button, FlowLogo, ScrollArea } from "@flow/components/";
+import {
+  Button,
+  FlowLogo,
+  Loading,
+  Pagination,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@flow/components/";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
+import { OrderDirection } from "@flow/types/paginationOptions";
 
 import {
   ProjectAddDialog,
@@ -31,8 +42,24 @@ const ProjectsManager: React.FC = () => {
     handleDeleteProject,
     handleUpdateValue,
     handleUpdateProject,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    currentOrder,
+    setCurrentOrder,
+    isFetching,
   } = useHooks();
-
+  const handleOrderChange = () => {
+    setCurrentOrder?.(
+      currentOrder === OrderDirection.Asc
+        ? OrderDirection.Desc
+        : OrderDirection.Asc,
+    );
+  };
+  const orderDirections: Record<OrderDirection, string> = {
+    DESC: t("Newest"),
+    ASC: t("Oldest"),
+  };
   return (
     <div className="flex h-full flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pb-2 pt-4">
@@ -46,29 +73,52 @@ const ProjectsManager: React.FC = () => {
             <p className="text-xs dark:font-light">{t("New Project")}</p>
           </Button>
         </div>
-        {projects && projects?.length > 0 ? (
-          <ScrollArea>
-            <div
-              className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
-              ref={ref}>
-              {projects?.map((p) => (
-                <ProjectCard
-                  key={p.id}
-                  project={p}
-                  currentProject={currentProject}
-                  setEditProject={setEditProject}
-                  setProjectToBeDeleted={setProjectToBeDeleted}
-                  onProjectSelect={handleProjectSelect}
-                />
+        {currentOrder && (
+          <Select
+            value={currentOrder || "DESC"}
+            onValueChange={handleOrderChange}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue placeholder={orderDirections.ASC} />
+            </SelectTrigger>
+            <SelectContent>
+              {Object.entries(orderDirections).map(([value, label]) => (
+                <SelectItem key={value} value={value}>
+                  {label}
+                </SelectItem>
               ))}
-            </div>
-          </ScrollArea>
+            </SelectContent>
+          </Select>
+        )}
+        {isFetching ? (
+          <Loading />
+        ) : projects && projects.length > 0 ? (
+          <div
+            className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
+            ref={ref}>
+            {projects?.map((p) => (
+              <ProjectCard
+                key={p.id}
+                project={p}
+                currentProject={currentProject}
+                setEditProject={setEditProject}
+                setProjectToBeDeleted={setProjectToBeDeleted}
+                onProjectSelect={handleProjectSelect}
+              />
+            ))}
+          </div>
         ) : (
           <BasicBoiler
             text={t("No Projects")}
             icon={<FlowLogo className="size-16 text-accent" />}
           />
         )}
+      </div>
+      <div className="mb-3">
+        <Pagination
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          totalPages={totalPages}
+        />
       </div>
       <ProjectAddDialog
         isOpen={openProjectAddDialog}

@@ -37,6 +37,43 @@ pub fn metadata<P: AsRef<Path>>(path: &P) -> std::io::Result<Metadata> {
     }
 }
 
+/// Synchronously copies a directory tree from source to destination.
+///
+/// # Arguments
+///
+/// * `src` - Source directory path
+/// * `dest` - Destination directory path
+///
+/// # Returns
+///
+/// Returns `std::io::Result<()>` indicating success or failure
+pub fn copy_sync_tree<P, Q>(src: P, dest: Q) -> std::io::Result<()>
+where
+    P: AsRef<Path>,
+    Q: AsRef<Path>,
+{
+    let src = src.as_ref();
+    let dst = dest.as_ref();
+    if !dst.exists() {
+        std::fs::create_dir_all(dst)?;
+    }
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let src_path = entry.path();
+        let dst_path = dst.join(entry.file_name());
+
+        if entry.file_type()?.is_dir() {
+            copy_sync_tree(&src_path, &dst_path)?;
+        } else {
+            if dst_path.exists() {
+                std::fs::remove_file(&dst_path)?;
+            }
+            std::fs::copy(&src_path, &dst_path)?;
+        }
+    }
+    Ok(())
+}
+
 pub async fn empty_dir<P: AsRef<Path>>(path: P) -> std::io::Result<()> {
     let mut entries = tokio::fs::read_dir(path).await?;
     while let Some(entry) = entries.next_entry().await? {
@@ -246,6 +283,38 @@ mod tests {
 
         let dest_subfile_path = dest_subdir.join("subfile");
         assert!(tokio::fs::metadata(&dest_subfile_path).await.is_ok());
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_copy_sync_tree() -> std::io::Result<()> {
+        let temp_dir = Builder::new().prefix("foobar").tempdir_in(".")?;
+        let src_dir = temp_dir.path().join("src");
+        let dest_dir = temp_dir.path().join("dest");
+
+        std::fs::create_dir(&src_dir)?;
+        std::fs::create_dir(&dest_dir)?;
+
+        let file_path = src_dir.join("file");
+        std::fs::File::create(&file_path)?;
+
+        let subdir = src_dir.join("subdir");
+        std::fs::create_dir(&subdir)?;
+
+        let subfile_path = subdir.join("subfile");
+        std::fs::File::create(&subfile_path)?;
+
+        copy_sync_tree(&src_dir, &dest_dir)?;
+
+        let dest_file_path = dest_dir.join("file");
+        assert!(std::fs::metadata(&dest_file_path).is_ok());
+
+        let dest_subdir = dest_dir.join("subdir");
+        assert!(std::fs::metadata(&dest_subdir).is_ok());
+
+        let dest_subfile_path = dest_subdir.join("subfile");
+        assert!(std::fs::metadata(&dest_subfile_path).is_ok());
 
         Ok(())
     }

@@ -39,15 +39,9 @@ type RemoveAssetPayload {
 # Connection
 
 type AssetConnection {
-  edges: [AssetEdge!]!
   nodes: [Asset]!
   pageInfo: PageInfo!
   totalCount: Int!
-}
-
-type AssetEdge {
-  cursor: Cursor!
-  node: Asset
 }
 
 # Query and Mutation
@@ -57,7 +51,7 @@ extend type Query {
     workspaceId: ID!
     keyword: String
     sort: AssetSortType
-    pagination: Pagination
+    pagination: PageBasedPagination!
   ): AssetConnection!
 }
 
