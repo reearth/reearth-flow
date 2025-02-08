@@ -368,7 +368,7 @@ where
     }
 }
 
-async fn get_oid<'a, DB: DocOps<'a>>(db: &DB, name: &[u8]) -> Result<Option<OID>, Error>
+pub async fn get_oid<'a, DB: DocOps<'a>>(db: &DB, name: &[u8]) -> Result<Option<OID>, Error>
 where
     Error: From<<DB as KVStore>::Error>,
 {
