@@ -4,8 +4,8 @@ use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::{
-    attribute_flattener::AttributeFlattenerFactory, city_code_extractor::CityCodeExtractorFactory,
-    max_lod_extractor::MaxLodExtractorFactory,
+    attribute_flattener::processor::AttributeFlattenerFactory,
+    city_code_extractor::CityCodeExtractorFactory, max_lod_extractor::MaxLodExtractorFactory,
     missing_attribute_detector::MissingAttributeDetectorFactory,
     object_list_extractor::ObjectListExtractorFactory,
     udx_folder_extractor::UDXFolderExtractorFactory,
