@@ -131,6 +131,10 @@ func (r *queryResolver) Projects(ctx context.Context, workspaceID gqlmodel.ID, i
 	return loaders(ctx).Project.FindByWorkspacePage(ctx, workspaceID, pagination)
 }
 
+// func (r *queryResolver) SharedProject(ctx context.Context, token string) (*gqlmodel.SharedProjectPayload, error) {
+// 	return loaders(ctx).ProjectAccess.Fetch(ctx, token)
+// }
+
 func (r *queryResolver) SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error) {
 	return loaders(ctx).User.SearchUser(ctx, nameOrEmail)
 }
