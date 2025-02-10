@@ -4,7 +4,7 @@
 
 pub use super::kv as store;
 use super::kv::keys::{KEYSPACE_DOC, SUB_UPDATE, V1};
-use super::kv::{DocOps, KVEntry, KVStore};
+use super::kv::{get_oid, DocOps, KVEntry, KVStore};
 use futures::future::join_all;
 use google_cloud_storage::{
     client::{Client, ClientConfig},
@@ -17,8 +17,9 @@ use google_cloud_storage::{
 };
 use hex;
 use serde::Deserialize;
+use time::OffsetDateTime;
 use tracing::debug;
-use yrs::{updates::decoder::Decode, Update};
+use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 
 /// Type wrapper around GCS Client struct. Used to extend GCS with [DocOps]
 /// methods used for convenience when working with Yrs documents.
@@ -40,6 +41,13 @@ impl std::fmt::Debug for GcsStore {
             .field("bucket", &self.bucket)
             .finish_non_exhaustive()
     }
+}
+
+#[derive(Debug)]
+pub struct UpdateInfo {
+    pub update: Update,
+    pub clock: u32,
+    pub timestamp: OffsetDateTime,
 }
 
 impl GcsStore {
@@ -69,9 +77,9 @@ impl GcsStore {
         Self { client, bucket }
     }
 
-    pub async fn get_updates(&self, doc_id: &str) -> Result<Vec<Update>, anyhow::Error> {
+    pub async fn get_updates(&self, doc_id: &str) -> Result<Vec<UpdateInfo>, anyhow::Error> {
         // Get the OID for this document
-        let oid = match super::kv::get_oid(self, doc_id.as_bytes()).await? {
+        let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => return Ok(Vec::new()),
         };
@@ -95,37 +103,124 @@ impl GcsStore {
         let objects = self
             .client
             .list_objects(&request)
-            .await
-            .map_err(anyhow::Error::new)?
+            .await?
             .items
             .unwrap_or_default();
 
         // Download and decode updates
-        let updates = join_all(objects.iter().map(|obj| async {
+        let mut updates = Vec::new();
+        for obj in objects {
             let request = GetObjectRequest {
                 bucket: self.bucket.clone(),
                 object: obj.name.clone(),
                 ..Default::default()
             };
 
-            match self
+            if let Ok(data) = self
                 .client
                 .download_object(&request, &Range::default())
                 .await
             {
-                Ok(data) => Update::decode_v1(&data).ok(),
-                Err(e) => {
-                    tracing::error!("Failed to download update from {}: {}", obj.name, e);
-                    None
+                if let Ok(update) = Update::decode_v1(&data) {
+                    // Extract clock from object name
+                    if let Ok(key_bytes) = hex::decode(&obj.name) {
+                        if key_bytes.len() >= 12 {
+                            let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+                            let clock = u32::from_be_bytes(clock_bytes);
+
+                            // Get timestamp from object metadata or use current time
+                            let timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
+
+                            updates.push(UpdateInfo {
+                                clock,
+                                timestamp,
+                                update,
+                            });
+                        }
+                    }
                 }
+            } else {
+                tracing::error!("Failed to download update from {}", obj.name);
             }
-        }))
-        .await
-        .into_iter()
-        .flatten()
-        .collect();
+        }
+
+        // Sort updates by clock
+        updates.sort_unstable_by_key(|info| info.clock);
 
         Ok(updates)
+    }
+
+    pub async fn rollback_to(&self, doc_id: &str, target_clock: u32) -> anyhow::Result<Doc> {
+        // Get the OID for this document
+        let oid = match get_oid(self, doc_id.as_bytes()).await? {
+            Some(oid) => oid,
+            None => anyhow::bail!("Document not found"),
+        };
+
+        // Create prefix that matches all updates for this OID
+        let prefix_bytes = [V1, KEYSPACE_DOC]
+            .iter()
+            .chain(&oid.to_be_bytes())
+            .chain(&[SUB_UPDATE])
+            .copied()
+            .collect::<Vec<_>>();
+        let prefix_str = hex::encode(&prefix_bytes);
+
+        // List objects with the specified prefix
+        let request = ListObjectsRequest {
+            bucket: self.bucket.clone(),
+            prefix: Some(prefix_str),
+            ..Default::default()
+        };
+
+        let objects = self
+            .client
+            .list_objects(&request)
+            .await?
+            .items
+            .unwrap_or_default();
+
+        // Create a new document
+        let doc = Doc::new();
+        let mut txn = doc.transact_mut();
+
+        // Download and apply updates up to target_clock
+        for obj in objects {
+            // Extract clock from object name
+            let key_bytes = hex::decode(&obj.name)
+                .map_err(|e| anyhow::anyhow!("Failed to decode hex: {}", e))?;
+
+            if key_bytes.len() < 12 {
+                continue;
+            }
+
+            let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+            let clock = u32::from_be_bytes(clock_bytes);
+
+            if clock > target_clock {
+                continue;
+            }
+
+            // Download and apply update
+            let request = GetObjectRequest {
+                bucket: self.bucket.clone(),
+                object: obj.name,
+                ..Default::default()
+            };
+
+            if let Ok(data) = self
+                .client
+                .download_object(&request, &Range::default())
+                .await
+            {
+                if let Ok(update) = Update::decode_v1(&data) {
+                    let _ = txn.apply_update(update);
+                }
+            }
+        }
+
+        drop(txn);
+        Ok(doc)
     }
 }
 
