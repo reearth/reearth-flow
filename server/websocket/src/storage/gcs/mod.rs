@@ -250,7 +250,7 @@ impl KVStore for GcsStore {
             ..Default::default()
         };
 
-        let response = self.client.list_objects(&request).await.unwrap();
+        let response = self.client.list_objects(&request).await?;
         let from_hex = hex::encode(from);
         let to_hex = hex::encode(to);
 
