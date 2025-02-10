@@ -4,7 +4,7 @@ use reearth_flow_common::uri::Uri;
 
 #[export_module]
 pub(crate) mod file_module {
-    use std::str::FromStr;
+    use std::{path::MAIN_SEPARATOR_STR, str::FromStr};
 
     use rhai::plugin::*;
 
@@ -39,6 +39,11 @@ pub(crate) mod file_module {
             .and_then(|uri| uri.join(path2))
             .map(|uri| uri.to_string())
             .unwrap_or_default()
+    }
+
+    pub fn convert_slice_to_slash(path: &str) -> String {
+        let path = path.replace("\\", MAIN_SEPARATOR_STR);
+        path.replace("/", MAIN_SEPARATOR_STR)
     }
 }
 #[cfg(test)]

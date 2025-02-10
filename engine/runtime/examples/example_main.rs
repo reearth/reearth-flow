@@ -118,10 +118,16 @@ pub fn create_workflow(workflow: &str) -> Workflow {
     let current_dir = env::current_dir().unwrap().to_str().unwrap().to_string();
     let current_dir = Path::new(&current_dir);
     let absolute_path = fs::canonicalize(current_dir.join("runtime/examples").join(workflow));
-    let path = absolute_path.unwrap();
+    let path = absolute_path.expect("Failed to get absolute path.");
+    tracing::info!("workflow_path: {:?}", path);
     let yaml = Transformer::new(path, false).unwrap();
     let yaml = yaml.to_string();
-    Workflow::try_from(yaml.as_str()).expect("Failed to parse workflow.")
+    let mut workflow = Workflow::try_from(yaml.as_str()).expect("Failed to parse workflow.");
+    let curent_dir = current_dir.to_str().unwrap().to_string();
+    workflow
+        .extend_with(HashMap::from([("currentPath".to_string(), curent_dir)]))
+        .expect("Failed to merge workflow.");
+    workflow
 }
 
 pub fn setup_logging_and_tracing() {
