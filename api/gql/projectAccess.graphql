@@ -1,0 +1,42 @@
+# InputType
+
+input ShareProjectInput {
+  projectId: ID!
+}
+
+input UnshareProjectInput {
+  projectId: ID!
+}
+
+# Payload
+
+# type SharedProjectPayload {
+#   project: Project!
+#   accessLevel: AccessLevel!
+# }
+
+# enum AccessLevel {
+#   READ_ONLY
+#   READ_WRITE
+#   ADMIN
+# }
+
+type ShareProjectPayload {
+  projectId: ID!
+  sharingUrl: String!
+}
+
+type UnshareProjectPayload {
+  projectId: ID!
+}
+
+# Query and Mutation
+
+# extend type Query {
+#   sharedProject(token: String!): SharedProjectPayload!
+# }
+
+extend type Mutation {
+  shareProject(input: ShareProjectInput!): ShareProjectPayload
+  unshareProject(input: UnshareProjectInput!): UnshareProjectPayload
+}
