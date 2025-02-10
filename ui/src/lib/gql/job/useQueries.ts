@@ -13,6 +13,7 @@ import { useGraphQLContext } from "../provider";
 export enum JobQueryKeys {
   GetJobs = "getJobs",
   GetJob = "getJob",
+  GetJobStatus = "getJobStatus",
 }
 
 export const JOBS_FETCH_RATE = 15;

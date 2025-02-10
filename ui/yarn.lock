@@ -3892,6 +3892,7 @@ __metadata:
     eslint-plugin-tailwindcss: "npm:3.17.5"
     graphql: "npm:16.10.0"
     graphql-request: "npm:7.1.2"
+    graphql-ws: "npm:^6.0.3"
     i18next: "npm:24.2.0"
     i18next-browser-languagedetector: "npm:8.0.2"
     i18next-parser: "npm:9.1.0"
@@ -9449,6 +9450,25 @@ __metadata:
   peerDependencies:
     graphql: ">=0.11 <=16"
   checksum: 10c0/5e538c3460ca997a1634bd0f64236d8d7aa6ac75c58aba549b49953faf0dd2497f4fa43eedb0bc82cfff50426c7ce47682a670d2571fd7f3af5dcf00911c9e1b
+  languageName: node
+  linkType: hard
+
+"graphql-ws@npm:^6.0.3":
+  version: 6.0.3
+  resolution: "graphql-ws@npm:6.0.3"
+  peerDependencies:
+    "@fastify/websocket": ^10 || ^11
+    graphql: ^15.10.1 || ^16
+    uWebSockets.js: ^20
+    ws: ^8
+  peerDependenciesMeta:
+    "@fastify/websocket":
+      optional: true
+    uWebSockets.js:
+      optional: true
+    ws:
+      optional: true
+  checksum: 10c0/d2ab30bc6d773e79901ef3b9b52fdfacebca89933cd54778ffb81fe88cb11391f6c610b32562cf276a67659e24626007b41e0094a215d286385ed379d89c2d02
   languageName: node
   linkType: hard
 
