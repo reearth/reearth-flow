@@ -19,7 +19,9 @@ use google_cloud_storage::{
 };
 #[cfg(feature = "auth")]
 use serde::Deserialize;
+use serde::Serialize;
 use std::sync::Arc;
+use time::OffsetDateTime;
 #[cfg(feature = "auth")]
 use websocket::auth::AuthService;
 use websocket::conf::Config;
@@ -39,6 +41,13 @@ const PORT: &str = "8000";
 struct AuthQuery {
     #[serde(default)]
     token: String,
+}
+
+#[derive(Serialize)]
+struct UpdateHistoryEntry {
+    update: Vec<u8>,
+    clock: u32,
+    timestamp: OffsetDateTime,
 }
 
 async fn ensure_bucket(client: &Client) -> Result<(), anyhow::Error> {
@@ -216,11 +225,15 @@ async fn get_doc_history(
     // Get all updates for this document
     match store.get_updates(&doc_id).await {
         Ok(updates) => {
-            let updates: Vec<Vec<u8>> = updates
+            let history: Vec<UpdateHistoryEntry> = updates
                 .into_iter()
-                .map(|update| update.encode_v1())
+                .map(|info| UpdateHistoryEntry {
+                    update: info.update.encode_v1(),
+                    clock: info.clock,
+                    timestamp: info.timestamp,
+                })
                 .collect();
-            (StatusCode::OK, Json(updates)).into_response()
+            (StatusCode::OK, Json(history)).into_response()
         }
         Err(e) => {
             tracing::error!("Failed to get document history: {}", e);
