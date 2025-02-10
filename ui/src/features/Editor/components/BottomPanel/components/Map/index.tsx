@@ -1,32 +1,17 @@
-import { Button, Map as MapComponent, type MapMode } from "@flow/components";
-import { useT } from "@flow/lib/i18n";
+import {
+  // Map as MapComponent,
+  CesiumViewer,
+} from "@flow/components";
 
 type Props = {
-  mapMode: MapMode;
-  setMapMode?: (mode: MapMode) => void;
+  className?: string;
 };
 
-const Map: React.FC<Props> = ({ mapMode, setMapMode }) => {
-  const t = useT();
-  const mapModes: { key: MapMode; value: string }[] = [
-    { key: "2d-map", value: t("2D") },
-    { key: "3d-map", value: t("3D") },
-  ];
+const Map: React.FC<Props> = ({ className }) => {
   return (
-    <div className="relative w-full">
-      <div className="absolute left-2 top-2 z-10 flex flex-col flex-wrap rounded-md border bg-background transition-all">
-        {mapModes.map((b) => (
-          <Button
-            className={`cursor-pointer rounded-none transition-all ${mapMode === b.key ? "bg-accent text-accent-foreground" : ""}`}
-            variant="ghost"
-            size="icon"
-            key={b.key}
-            onClick={() => mapMode !== b.key && setMapMode?.(b.key)}>
-            {b.value}
-          </Button>
-        ))}
-      </div>
-      <MapComponent mapMode={mapMode} />
+    <div className={`relative w-full ${className}`}>
+      {/* <MapComponent mapMode={mapMode} /> */}
+      <CesiumViewer />
     </div>
   );
 };

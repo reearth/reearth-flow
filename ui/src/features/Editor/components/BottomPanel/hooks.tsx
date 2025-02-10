@@ -31,12 +31,12 @@ export default ({
   const panelContentOptions: PanelContent[] = [
     {
       id: "output-log",
-      icon: <Terminal className="size-[20px]" weight="thin" />,
+      button: <Terminal className="size-[20px]" weight="thin" />,
       title: t("Log"),
     },
     {
       id: "visual-preview",
-      icon: <Globe className="size-[20px]" weight="thin" />,
+      button: <Globe className="size-[20px]" weight="thin" />,
       title: t("Preview"),
     },
   ];
