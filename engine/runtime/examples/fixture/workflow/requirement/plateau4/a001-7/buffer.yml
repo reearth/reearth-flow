@@ -1,50 +1,48 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
-id: 00caad2a-9f7d-4189-b479-153fa9ea36dc
-name: "SimpleWorkflow"
+id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
+name: "PLATEAU4-A001-7-buffer-workflow"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+with:
+  geojson: !include ./files/buffer.geojson.txt
+  outputPath:
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
     nodes:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
-        name: FeatureCreator
+        name: FileReader
         type: action
-        action: FeatureCreator
+        action: FileReader
         with:
-          creator: |
-            [
-              #{
-                testAttribute: "test01"
-              },
-              #{
-                testAttribute: "test02"
-              },
-            ]
+          format: geojson
+          inline: |
+            env.get("geojson")
 
-      - id: d2b4977d-e218-4628-96f2-d26407aeea14
-        name: attributeManager_01
+      - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        name: Buffer
         type: action
-        action: AttributeManager
+        action: Bufferer
         with:
-          operations:
-            - attribute: addAttribute
-              method: create
-              value: |
-                "createValue"
+          bufferType: area2d
+          distance: 0.02
+          interpolationAngle: 0.01
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        name: Echo
+        name: GeoJsonWriter
         type: action
-        action: EchoSink
+        action: GeoJsonWriter
+        with:
+          output: |
+            file::join_path(env.get("outputPath"), "a001-7-buffer.geojson")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
         from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
-        to: d2b4977d-e218-4628-96f2-d26407aeea14
+        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
         fromPort: default
         toPort: default
       - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
-        from: d2b4977d-e218-4628-96f2-d26407aeea14
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
         to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         fromPort: default
         toPort: default
