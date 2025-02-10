@@ -1,9 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
-name: "FeatureCreatorExample"
+name: "PLATEAU4-A001-6-workflow"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
-with:
-  outputPath:
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
@@ -16,45 +14,51 @@ graphs:
           creator: |
             [
               #{
-                "name": "Tokyo",
-                "capital": "admin",
-                "population": 13929286
+                testAttribute01: "test01-01",
+                testAttribute02: "test01-02",
+                testAttribute03: 3,
+                testAttribute04: 4,
               },
               #{
-                "name": "Yokohama",
-                "capital": "no",
-                "population": 3726167
+                testAttribute01: "test02-01",
+                testAttribute02: "test02-02",
+                testAttribute03: 30,
+                testAttribute04: 40,
               },
             ]
 
-      - id: d2b4977d-e218-4628-96f2-d26407aeea14
-        name: AttributeManager01
+      - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        name: AttributeManager
         type: action
         action: AttributeManager
         with:
           operations:
-            - attribute: creator
-              method: create
-              value: |
-                "featureCreator"
+          - attribute: result
+            method: create
+            value: |
+              env.get("__value").testAttribute03 + env.get("__value").testAttribute04
+          - attribute: testAttribute01
+            method: remove
+          - attribute: testAttribute02
+            method: convert
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        name: FileWriter
+        name: FileWriterCSV
         type: action
         action: FileWriter
         with:
           format: csv
           output: |
-            env.get("outputPath") + "sample.csv"
+            file::join_path(env.get("currentPath"), "a001-6.csv")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
         from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
-        to: d2b4977d-e218-4628-96f2-d26407aeea14
+        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
         fromPort: default
         toPort: default
       - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
-        from: d2b4977d-e218-4628-96f2-d26407aeea14
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
         to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         fromPort: default
         toPort: default

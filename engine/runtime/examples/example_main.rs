@@ -21,6 +21,17 @@ use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Workflow;
 
+static TARGET_WORKFLOW: Lazy<String> = Lazy::new(|| {
+    let Ok(workflow) = env::var("FLOW_EXAMPLE_TARGET_WORKFLOW") else {
+        panic!("FLOW_EXAMPLE_TARGET_WORKFLOW is not set. please set FLOW_EXAMPLE_TARGET_WORKFLOW for environment variables.");
+    };
+    workflow
+});
+
+fn main() {
+    execute(TARGET_WORKFLOW.clone().as_str());
+}
+
 pub(crate) static BUILTIN_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let mut common = HashMap::new();
     let sink = SINK_MAPPINGS.clone();
@@ -106,15 +117,17 @@ pub(crate) fn execute(workflow: &str) {
 pub fn create_workflow(workflow: &str) -> Workflow {
     let current_dir = env::current_dir().unwrap().to_str().unwrap().to_string();
     let current_dir = Path::new(&current_dir);
-    let absolute_path = fs::canonicalize(
-        current_dir
-            .join("runtime/examples/plateau/testdata/workflow")
-            .join(workflow),
-    );
-    let path = absolute_path.unwrap();
+    let absolute_path = fs::canonicalize(current_dir.join("runtime/examples").join(workflow));
+    let path = absolute_path.expect("Failed to get absolute path.");
+    tracing::info!("workflow_path: {:?}", path);
     let yaml = Transformer::new(path, false).unwrap();
     let yaml = yaml.to_string();
-    Workflow::try_from(yaml.as_str()).expect("Failed to parse workflow.")
+    let mut workflow = Workflow::try_from(yaml.as_str()).expect("Failed to parse workflow.");
+    let curent_dir = current_dir.to_str().unwrap().to_string();
+    workflow
+        .extend_with(HashMap::from([("currentPath".to_string(), curent_dir)]))
+        .expect("Failed to merge workflow.");
+    workflow
 }
 
 pub fn setup_logging_and_tracing() {
