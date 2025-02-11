@@ -18,10 +18,9 @@ type Loaders struct {
 	Deployment *DeploymentLoader
 	Job        *JobLoader
 	Project    *ProjectLoader
-	// ProjectAccess *ProjectAccessLoader
-	Trigger   *TriggerLoader
-	User      *UserLoader
-	Workspace *WorkspaceLoader
+	Trigger    *TriggerLoader
+	User       *UserLoader
+	Workspace  *WorkspaceLoader
 }
 
 type DataLoaders struct {
