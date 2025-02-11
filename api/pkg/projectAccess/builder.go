@@ -1,9 +1,5 @@
 package projectAccess
 
-import (
-	"time"
-)
-
 type Builder struct {
 	pa *ProjectAccess
 }
@@ -15,10 +11,6 @@ func New() *Builder {
 func (b *Builder) Build() (*ProjectAccess, error) {
 	if b.pa.id.IsNil() {
 		return nil, ErrInvalidID
-	}
-
-	if b.pa.updatedAt.IsZero() {
-		b.pa.updatedAt = b.pa.CreatedAt()
 	}
 	return b.pa, nil
 }
@@ -53,10 +45,5 @@ func (b *Builder) IsPublic(isPublic bool) *Builder {
 
 func (b *Builder) Token(token string) *Builder {
 	b.pa.token = token
-	return b
-}
-
-func (b *Builder) UpdatedAt(updatedAt time.Time) *Builder {
-	b.pa.updatedAt = updatedAt
 	return b
 }

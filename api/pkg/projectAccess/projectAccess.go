@@ -5,23 +5,22 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"time"
 )
 
 var (
-	ErrAlreadyPublic  = errors.New("project is already public")
-	ErrAlreadyPrivate = errors.New("project is already private")
-	ErrNotPublic      = errors.New("project is not public")
-	ErrEmptyBaseURL   = errors.New("baseURL is empty")
-	ErrEmptyToken     = errors.New("token is empty")
+	ErrAlreadyPublic   = errors.New("project is already public")
+	ErrAlreadyPrivate  = errors.New("project is already private")
+	ErrNotPublic       = errors.New("project is not public")
+	ErrEmptyBaseURL    = errors.New("baseURL is empty")
+	ErrEmptySharedPath = errors.New("sharedPath is empty")
+	ErrEmptyToken      = errors.New("token is empty")
 )
 
 type ProjectAccess struct {
-	id        ID
-	project   ProjectID
-	isPublic  bool
-	token     string
-	updatedAt time.Time
+	id       ID
+	project  ProjectID
+	isPublic bool
+	token    string
 }
 
 func (pa *ProjectAccess) ID() ID {
@@ -40,33 +39,12 @@ func (pa *ProjectAccess) Token() string {
 	return pa.token
 }
 
-func (pa *ProjectAccess) CreatedAt() time.Time {
-	return pa.id.Timestamp()
-}
-
-func (pa *ProjectAccess) UpdatedAt() time.Time {
-	return pa.updatedAt
-}
-
 func (pa *ProjectAccess) SetIsPublic(isPublic bool) {
 	pa.isPublic = isPublic
 }
 
 func (pa *ProjectAccess) SetToken(token string) {
 	pa.token = token
-}
-
-func (pa *ProjectAccess) SharingURL(baseURL string) (url string, err error) {
-	if !pa.IsPublic() {
-		return "", ErrNotPublic
-	}
-	if baseURL == "" {
-		return "", ErrEmptyBaseURL
-	}
-	if pa.token == "" {
-		return "", ErrEmptyToken
-	}
-	return fmt.Sprintf("%s/shared/%s", baseURL, pa.token), nil
 }
 
 func (pa *ProjectAccess) MakePublic() error {
@@ -82,8 +60,6 @@ func (pa *ProjectAccess) MakePublic() error {
 	}
 	pa.token = token
 
-	pa.updatedAt = time.Now()
-
 	return nil
 }
 
@@ -95,9 +71,23 @@ func (pa *ProjectAccess) MakePrivate() error {
 	pa.isPublic = false
 	pa.token = ""
 
-	pa.updatedAt = time.Now()
-
 	return nil
+}
+
+func (pa *ProjectAccess) SharingURL(baseURL string, sharedUrl string) (url string, err error) {
+	if !pa.IsPublic() {
+		return "", ErrNotPublic
+	}
+	if baseURL == "" {
+		return "", ErrEmptyBaseURL
+	}
+	if sharedUrl == "" {
+		return "", ErrEmptySharedPath
+	}
+	if pa.token == "" {
+		return "", ErrEmptyToken
+	}
+	return fmt.Sprintf("%s/%s/%s", baseURL, sharedUrl, pa.token), nil
 }
 
 func generateToken() (string, error) {
