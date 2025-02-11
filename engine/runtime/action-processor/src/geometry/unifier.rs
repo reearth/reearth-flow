@@ -2,7 +2,10 @@ use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::{
-    algorithm::bool_ops::BooleanOps, types::multi_polygon::MultiPolygon2D,
+    algorithm::bool_ops::BooleanOps,
+    types::{
+        coordinate::Coordinate2D, coordnum::CoordNum, multi_polygon::MultiPolygon2D, rect::Rect2D,
+    },
 };
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
@@ -124,7 +127,6 @@ impl Processor for Unifier {
                 };
 
                 if !self.buffer.contains_key(&key) {
-                    // グループが切り替わったタイミングで、バッファ内の地物について Unite 処理を実行
                     for unified in self.unify() {
                         fw.send(ctx.new_with_feature_and_port(unified, AREA_PORT.clone()));
                     }
@@ -163,6 +165,44 @@ impl Processor for Unifier {
     }
 }
 
+fn calculate_mbr<T: CoordNum>(multi_polygon: &MultiPolygon2D<T>) -> Option<Rect2D<T>> {
+    let coords = multi_polygon
+        .iter()
+        .flat_map(|polygon| {
+            polygon
+                .rings()
+                .into_iter()
+                .flat_map(|ring| ring.into_iter().map(|point| (point.x, point.y)))
+        })
+        .collect::<Vec<_>>();
+
+    if coords.is_empty() {
+        return None;
+    }
+
+    let (mut min_x, mut min_y) = coords[0];
+    let (mut max_x, mut max_y) = coords[0];
+
+    for coord in coords.iter().skip(1) {
+        let (x, y) = coord;
+        if *x < min_x {
+            min_x = *x;
+        } else if *x > max_x {
+            max_x = *x;
+        }
+        if *y < min_y {
+            min_y = *y;
+        } else if *y > max_y {
+            max_y = *y;
+        }
+    }
+
+    Some(Rect2D::new(
+        Coordinate2D::from((min_x, min_y)),
+        Coordinate2D::from((max_x, max_y)),
+    ))
+}
+
 impl Unifier {
     fn unify(&self) -> Vec<Feature> {
         let mut unified = Vec::new();
@@ -179,63 +219,61 @@ impl Unifier {
     }
 
     fn unify_2d(&self, buffered_features_2d: Vec<&Feature>) -> Vec<Feature> {
-        // let multi_polygon_2d = buffered_features_2d.iter().fold(
-        //     None,
-        //     |multi_polygon_acc: Option<_>, feature_incoming| {
-        //         let geometry_incoming = feature_incoming.geometry.value.as_flow_geometry_2d()?;
-        //         let multi_polygon_incoming =
-        //             if let Some(multi_polygon) = geometry_incoming.as_multi_polygon() {
-        //                 multi_polygon
-        //             } else if let Some(polygon) = geometry_incoming.as_polygon() {
-        //                 MultiPolygon2D::new(vec![polygon])
-        //             } else {
-        //                 return multi_polygon_acc;
-        //             };
-
-        //         let mutli_polygon_acc = if let Some(mutli_polygon_acc) = multi_polygon_acc {
-        //             mutli_polygon_acc
-        //         } else {
-        //             return Some(multi_polygon_incoming);
-        //         };
-
-        //         let unite = multi_polygon_incoming.union(&mutli_polygon_acc);
-        //         Some(unite)
-        //     },
-        // );
-
-        let mut unified_polygons = Vec::new();
-        for geometry_incoming in buffered_features_2d
+        let multi_polygons_incoming = buffered_features_2d
             .iter()
             .filter_map(|f| f.geometry.value.as_flow_geometry_2d())
-        {
-            let multi_polygon_incoming =
-                if let Some(multi_polygon) = geometry_incoming.as_multi_polygon() {
-                    multi_polygon
-                } else if let Some(polygon) = geometry_incoming.as_polygon() {
-                    MultiPolygon2D::new(vec![polygon])
-                } else {
-                    continue;
-                };
+            .filter_map(|g| {
+                g.as_polygon()
+                    .map(|polygon| MultiPolygon2D::new(vec![polygon]))
+            })
+            .collect::<Vec<_>>();
+
+        let multi_polygon_mbrs = multi_polygons_incoming
+            .iter()
+            .map(calculate_mbr)
+            .collect::<Vec<_>>();
+
+        let mut unified_polygons = Vec::new();
+
+        for i in 0..multi_polygons_incoming.len() {
+            let multi_polygon_incoming = &multi_polygons_incoming[i];
+            let multi_polygon_mbr = if let Some(multi_polygon_mbr) = &multi_polygon_mbrs[i] {
+                multi_polygon_mbr
+            } else {
+                continue;
+            };
 
             let mut new_unified_polygons = Vec::new();
 
             if unified_polygons.is_empty() {
-                new_unified_polygons.push(multi_polygon_incoming);
+                new_unified_polygons.push(multi_polygon_incoming.clone());
             } else {
-                let mut multi_polygon_incoming_rest = multi_polygon_incoming.clone();
                 for unified_polygon in &unified_polygons {
-                    multi_polygon_incoming_rest =
-                        multi_polygon_incoming_rest.difference(unified_polygon);
+                    let unified_mbr = calculate_mbr(unified_polygon);
+                    if unified_mbr.is_none() {
+                        continue;
+                    }
+                    if multi_polygon_mbr.overlap(&unified_mbr.unwrap()) {
+                        let intersected = multi_polygon_incoming.intersection(unified_polygon);
+                        new_unified_polygons.push(intersected);
+                        let difference = unified_polygon.difference(multi_polygon_incoming);
+                        new_unified_polygons.push(difference);
+                    } else {
+                        new_unified_polygons.push(unified_polygon.clone());
+                    }
                 }
-                new_unified_polygons.push(multi_polygon_incoming_rest);
-                for unified_polygon in &unified_polygons {
-                    let intersected = multi_polygon_incoming.intersection(unified_polygon);
-                    new_unified_polygons.push(intersected);
-                    let difference = unified_polygon.difference(&multi_polygon_incoming);
-                    new_unified_polygons.push(difference);
-                }
-            }
 
+                let mut rest = multi_polygon_incoming.clone();
+
+                for j in 0..i {
+                    let mbr = &multi_polygon_mbrs[j];
+                    if mbr.is_none() || !multi_polygon_mbr.overlap(&mbr.unwrap()) {
+                        continue;
+                    }
+                    rest = rest.difference(&multi_polygons_incoming[j]);
+                }
+                new_unified_polygons.push(rest);
+            }
             unified_polygons = new_unified_polygons;
         }
 

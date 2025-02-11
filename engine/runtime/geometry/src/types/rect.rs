@@ -98,6 +98,13 @@ impl<T: CoordNum, Z: CoordNum> Rect<T, Z> {
         ]
     }
 
+    pub fn overlap(&self, other: &Rect<T, Z>) -> bool {
+        self.min.x <= other.max.x
+            && self.max.x >= other.min.x
+            && self.min.y <= other.max.y
+            && self.max.y >= other.min.y
+    }
+
     pub fn has_valid_bounds(&self) -> bool {
         self.min.x <= self.max.x && self.min.y <= self.max.y && self.min.z <= self.max.z
     }
@@ -267,5 +274,21 @@ mod test {
     fn rect_width() {
         let rect = Rect::new((10, 10), (20, 20));
         assert_eq!(rect.width(), 10);
+    }
+
+    #[test]
+    fn rect_overlap() {
+        let rect1 = Rect::new((10, 10), (20, 20));
+        let rect2 = Rect::new((15, 15), (25, 25));
+        assert!(rect1.overlap(&rect2));
+
+        let rect3 = Rect::new((20, 20), (30, 30));
+        assert!(!rect1.overlap(&rect3));
+
+        let rect4 = Rect::new((5, 5), (15, 15));
+        assert!(rect1.overlap(&rect4));
+
+        let rect5 = Rect::new((0, 0), (5, 5));
+        assert!(!rect1.overlap(&rect5));
     }
 }
