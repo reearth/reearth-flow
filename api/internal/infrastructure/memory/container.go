@@ -8,14 +8,15 @@ import (
 
 func New() *repo.Container {
 	return &repo.Container{
-		Asset:       NewAsset(),
-		Config:      NewConfig(),
-		Workflow:    NewWorkflow(),
-		Deployment:  NewDeployment(),
-		Project:     NewProject(),
-		Trigger:     NewTrigger(),
-		Workspace:   accountmemory.NewWorkspace(),
-		Lock:        NewLock(),
-		Transaction: &usecasex.NopTransaction{},
+		Asset:         NewAsset(),
+		Config:        NewConfig(),
+		Workflow:      NewWorkflow(),
+		Deployment:    NewDeployment(),
+		Project:       NewProject(),
+		ProjectAccess: NewProjectAccess(),
+		Trigger:       NewTrigger(),
+		Workspace:     accountmemory.NewWorkspace(),
+		Lock:          NewLock(),
+		Transaction:   &usecasex.NopTransaction{},
 	}
 }

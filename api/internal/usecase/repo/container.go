@@ -13,19 +13,20 @@ import (
 var ErrOperationDenied = errors.New("operation denied")
 
 type Container struct {
-	Asset       Asset
-	AuthRequest authserver.RequestRepo
-	Config      Config
-	Deployment  Deployment
-	Job         Job
-	Lock        Lock
-	Parameter   Parameter
-	Project     Project
-	Transaction usecasex.Transaction
-	Trigger     Trigger
-	User        accountrepo.User
-	Workflow    Workflow
-	Workspace   accountrepo.Workspace
+	Asset         Asset
+	AuthRequest   authserver.RequestRepo
+	Config        Config
+	Deployment    Deployment
+	Job           Job
+	Lock          Lock
+	Parameter     Parameter
+	Project       Project
+	ProjectAccess ProjectAccess
+	Transaction   usecasex.Transaction
+	Trigger       Trigger
+	User          accountrepo.User
+	Workflow      Workflow
+	Workspace     accountrepo.Workspace
 }
 
 func (c *Container) AccountRepos() *accountrepo.Container {

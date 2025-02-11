@@ -9,5 +9,6 @@ import (
 
 type ProjectAccess interface {
 	FindByProjectID(context.Context, id.ProjectID) (*projectAccess.ProjectAccess, error)
+	FindByToken(context.Context, string) (*projectAccess.ProjectAccess, error)
 	Save(context.Context, *projectAccess.ProjectAccess) error
 }

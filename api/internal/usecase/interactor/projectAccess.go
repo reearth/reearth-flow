@@ -11,6 +11,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/projectAccess"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -19,14 +20,70 @@ type ProjectAccess struct {
 	projectRepo       repo.Project
 	projectAccessRepo repo.ProjectAccess
 	transaction       usecasex.Transaction
+	config            ContainerConfig
 }
 
-func NewProjectAccess(r *repo.Container, gr *gateway.Container) interfaces.Project {
-	return &Project{
-		projectRepo: r.Project,
-		transaction: r.Transaction,
+func NewProjectAccess(r *repo.Container, gr *gateway.Container, config ContainerConfig) interfaces.ProjectAccess {
+	return &ProjectAccess{
+		projectRepo:       r.Project,
+		projectAccessRepo: r.ProjectAccess,
+		transaction:       r.Transaction,
+		config:            config,
 	}
 }
+
+// func (i *GetSharedProjectInteractor) Execute(ctx context.Context, input GetSharedProjectInput) (*GetSharedProjectOutput, err error) {
+// 	// トランザクション開始
+// 	tx, err := i.transaction.Begin(ctx)
+// 	if err != nil {
+// 			return nil, err
+// 	}
+// 	ctx = tx.Context()
+// 	defer func() {
+// 			if err2 := tx.End(ctx); err == nil && err2 != nil {
+// 					err = err2
+// 			}
+// 	}()
+
+// 	// トークンからProjectAccessを取得
+// 	pa, err := i.projectAccessRepo.FindByToken(ctx, input.Token)
+// 	if err != nil {
+// 			return nil, fmt.Errorf("failed to find project access: %w", err)
+// 	}
+// 	if pa == nil {
+// 			return nil, errors.New("invalid sharing token")
+// 	}
+
+// 	// プロジェクトの取得
+// 	prj, err := i.projectRepo.FindByID(ctx, pa.Project())
+// 	if err != nil {
+// 			return nil, fmt.Errorf("failed to find project: %w", err)
+// 	}
+
+// 	// アクセスレベルの決定
+// 	accessLevel := i.determineAccessLevel(ctx, prj)
+
+// 	return &GetSharedProjectOutput{
+// 			Project:     prj,
+// 			AccessLevel: accessLevel,
+// 	}, nil
+// }
+
+// func (i *GetSharedProjectInteractor) determineAccessLevel(ctx context.Context, prj *project.Project) AccessLevel {
+// 	// 未認証ユーザー（operatorがnil）は読み取り専用
+// 	if i.operator == nil {
+// 			return AccessLevelReadOnly
+// 	}
+
+// 	// ワークスペースへの権限チェック
+// 	if err := i.CanWriteWorkspace(prj.Workspace(), i.operator); err == nil {
+// 			return AccessLevelReadWrite
+// 	}
+
+// 	// デフォルトは読み取り専用
+// 	return AccessLevelReadOnly
+// }
+
 func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID, operator *usecase.Operator) (sharingUrl string, err error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
@@ -50,8 +107,8 @@ func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID, opera
 
 	var pa *projectAccess.ProjectAccess
 	pa, err = i.projectAccessRepo.FindByProjectID(ctx, projectID)
-	if err != nil {
-		return "", fmt.Errorf("failed to find project access: %w", err)
+	if err != nil && !errors.Is(err, rerror.ErrNotFound) {
+		return "", err
 	}
 
 	if pa == nil {
@@ -74,7 +131,7 @@ func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID, opera
 		return "", err
 	}
 
-	sharingUrl, err = pa.SharingURL("https://your-domain.com")
+	sharingUrl, err = pa.SharingURL(i.config.Host, i.config.SharedPath)
 	if err != nil {
 		return "", err
 	}
@@ -110,7 +167,10 @@ func (i *ProjectAccess) Unshare(ctx context.Context, projectID id.ProjectID, ope
 		return errors.New("project access not found")
 	}
 
-	pa.MakePrivate()
+	err = pa.MakePrivate()
+	if err != nil {
+		return err
+	}
 
 	err = i.projectAccessRepo.Save(ctx, pa)
 	if err != nil {
