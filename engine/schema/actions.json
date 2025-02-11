@@ -3370,6 +3370,43 @@
       ]
     },
     {
+      "name": "Unifier",
+      "type": "processor",
+      "description": "Unifies features grouped by specified attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "UnifierParam",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "area",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "VertexRemover",
       "type": "processor",
       "description": "Removes specific vertices from a feature’s geometry",

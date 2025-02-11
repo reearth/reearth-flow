@@ -3327,6 +3327,43 @@ Forces a geometry to be two dimensional.
 ### Category
 * Geometry
 
+## Unifier
+### Type
+* processor
+### Description
+Unifies features grouped by specified attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UnifierParam",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* area
+* rejected
+### Category
+* Geometry
+
 ## VertexRemover
 ### Type
 * processor

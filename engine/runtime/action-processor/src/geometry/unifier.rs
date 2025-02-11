@@ -29,7 +29,7 @@ impl ProcessorFactory for UnifierFactory {
     }
 
     fn description(&self) -> &str {
-        "unifies features grouped by specified attributes"
+        "Unifies features grouped by specified attributes"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
