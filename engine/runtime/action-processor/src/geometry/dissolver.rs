@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
-use reearth_flow_eval_expr::Value;
 use reearth_flow_geometry::{
     algorithm::bool_ops::BooleanOps, types::multi_polygon::MultiPolygon2D,
 };
@@ -15,6 +14,7 @@ use reearth_flow_runtime::{
 use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
 
