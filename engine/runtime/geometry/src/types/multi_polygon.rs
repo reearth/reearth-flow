@@ -109,7 +109,7 @@ impl<T: CoordNum, Z: CoordNum> MultiPolygon<T, Z> {
 
     pub fn bounding_box(&self) -> Option<Rect<T, Z>> {
         let rects = self.0.iter().map(|p| p.bounding_box());
-        let mut rects = rects.filter_map(|r| r);
+        let mut rects = rects.flatten();
         let first = rects.next()?;
 
         Some(rects.fold(first, |acc, r| acc.merge(r)))
