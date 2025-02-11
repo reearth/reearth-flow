@@ -92,7 +92,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	// authenticated routes
 	apiPrivate := api.Group("", privateCache)
 	apiPrivate.Use(authMiddleware, attachOpMiddleware(cfg))
-	apiPrivate.POST("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev))
+	apiPrivate.Any("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev, origins))
 	apiPrivate.POST("/signup", Signup())
 
 	if !cfg.Config.AuthSrv.Disabled {
