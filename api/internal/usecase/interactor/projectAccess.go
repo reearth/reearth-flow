@@ -10,6 +10,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearth-flow/api/pkg/projectAccess"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
@@ -32,57 +33,21 @@ func NewProjectAccess(r *repo.Container, gr *gateway.Container, config Container
 	}
 }
 
-// func (i *GetSharedProjectInteractor) Execute(ctx context.Context, input GetSharedProjectInput) (*GetSharedProjectOutput, err error) {
-// 	// トランザクション開始
-// 	tx, err := i.transaction.Begin(ctx)
-// 	if err != nil {
-// 			return nil, err
-// 	}
-// 	ctx = tx.Context()
-// 	defer func() {
-// 			if err2 := tx.End(ctx); err == nil && err2 != nil {
-// 					err = err2
-// 			}
-// 	}()
+func (i *ProjectAccess) Fetch(ctx context.Context, token string) (project *project.Project, err error) {
+	pa, err := i.projectAccessRepo.FindByToken(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+	if pa == nil {
+		return nil, errors.New("invalid sharing token")
+	}
 
-// 	// トークンからProjectAccessを取得
-// 	pa, err := i.projectAccessRepo.FindByToken(ctx, input.Token)
-// 	if err != nil {
-// 			return nil, fmt.Errorf("failed to find project access: %w", err)
-// 	}
-// 	if pa == nil {
-// 			return nil, errors.New("invalid sharing token")
-// 	}
+	if !pa.IsPublic() {
+		return nil, errors.New("project access is not public")
+	}
 
-// 	// プロジェクトの取得
-// 	prj, err := i.projectRepo.FindByID(ctx, pa.Project())
-// 	if err != nil {
-// 			return nil, fmt.Errorf("failed to find project: %w", err)
-// 	}
-
-// 	// アクセスレベルの決定
-// 	accessLevel := i.determineAccessLevel(ctx, prj)
-
-// 	return &GetSharedProjectOutput{
-// 			Project:     prj,
-// 			AccessLevel: accessLevel,
-// 	}, nil
-// }
-
-// func (i *GetSharedProjectInteractor) determineAccessLevel(ctx context.Context, prj *project.Project) AccessLevel {
-// 	// 未認証ユーザー（operatorがnil）は読み取り専用
-// 	if i.operator == nil {
-// 			return AccessLevelReadOnly
-// 	}
-
-// 	// ワークスペースへの権限チェック
-// 	if err := i.CanWriteWorkspace(prj.Workspace(), i.operator); err == nil {
-// 			return AccessLevelReadWrite
-// 	}
-
-// 	// デフォルトは読み取り専用
-// 	return AccessLevelReadOnly
-// }
+	return i.projectRepo.FindByID(ctx, pa.Project())
+}
 
 func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID, operator *usecase.Operator) (sharingUrl string, err error) {
 	tx, err := i.transaction.Begin(ctx)
