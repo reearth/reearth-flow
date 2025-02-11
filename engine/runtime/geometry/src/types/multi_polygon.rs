@@ -17,6 +17,7 @@ use super::coordnum::{CoordFloat, CoordNum};
 use super::line_string::LineString;
 use super::no_value::NoValue;
 use super::polygon::{Polygon, Polygon2D};
+use super::rect::Rect;
 use super::traits::Elevation;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Clone, Debug, Hash)]
@@ -104,6 +105,14 @@ impl<T: CoordNum, Z: CoordNum> MultiPolygon<T, Z> {
 
     pub fn range(&self, range: Range<usize>) -> Vec<Polygon<T, Z>> {
         self.0[range].to_vec()
+    }
+
+    pub fn bounding_box(&self) -> Option<Rect<T, Z>> {
+        let rects = self.0.iter().map(|p| p.bounding_box());
+        let mut rects = rects.filter_map(|r| r);
+        let first = rects.next()?;
+
+        Some(rects.fold(first, |acc, r| acc.merge(r)))
     }
 }
 

@@ -2,10 +2,7 @@ use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::{
-    algorithm::bool_ops::BooleanOps,
-    types::{
-        coordinate::Coordinate2D, coordnum::CoordNum, multi_polygon::MultiPolygon2D, rect::Rect2D,
-    },
+    algorithm::bool_ops::BooleanOps, types::multi_polygon::MultiPolygon2D,
 };
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
@@ -165,44 +162,6 @@ impl Processor for Unifier {
     }
 }
 
-fn calculate_mbr<T: CoordNum>(multi_polygon: &MultiPolygon2D<T>) -> Option<Rect2D<T>> {
-    let coords = multi_polygon
-        .iter()
-        .flat_map(|polygon| {
-            polygon
-                .rings()
-                .into_iter()
-                .flat_map(|ring| ring.into_iter().map(|point| (point.x, point.y)))
-        })
-        .collect::<Vec<_>>();
-
-    if coords.is_empty() {
-        return None;
-    }
-
-    let (mut min_x, mut min_y) = coords[0];
-    let (mut max_x, mut max_y) = coords[0];
-
-    for coord in coords.iter().skip(1) {
-        let (x, y) = coord;
-        if *x < min_x {
-            min_x = *x;
-        } else if *x > max_x {
-            max_x = *x;
-        }
-        if *y < min_y {
-            min_y = *y;
-        } else if *y > max_y {
-            max_y = *y;
-        }
-    }
-
-    Some(Rect2D::new(
-        Coordinate2D::from((min_x, min_y)),
-        Coordinate2D::from((max_x, max_y)),
-    ))
-}
-
 impl Unifier {
     fn unify(&self) -> Vec<Feature> {
         let mut unified = Vec::new();
@@ -230,10 +189,10 @@ impl Unifier {
 
         let multi_polygon_mbrs = multi_polygons_incoming
             .iter()
-            .map(calculate_mbr)
+            .map(|multi_polygon| multi_polygon.bounding_box())
             .collect::<Vec<_>>();
 
-        let mut unified_polygons = Vec::new();
+        let mut unified_polygons: Vec<MultiPolygon2D<f64>> = Vec::new();
 
         for i in 0..multi_polygons_incoming.len() {
             let multi_polygon_incoming = &multi_polygons_incoming[i];
@@ -249,7 +208,7 @@ impl Unifier {
                 new_unified_polygons.push(multi_polygon_incoming.clone());
             } else {
                 for unified_polygon in &unified_polygons {
-                    let unified_mbr = calculate_mbr(unified_polygon);
+                    let unified_mbr = unified_polygon.bounding_box();
                     if unified_mbr.is_none() {
                         continue;
                     }

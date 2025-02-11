@@ -98,6 +98,43 @@ impl<T: CoordNum, Z: CoordNum> Rect<T, Z> {
         ]
     }
 
+    pub fn merge(self, other: Self) -> Self {
+        let min_x = if self.min.x < other.min.x {
+            self.min.x
+        } else {
+            other.min.x
+        };
+        let min_y = if self.min.y < other.min.y {
+            self.min.y
+        } else {
+            other.min.y
+        };
+        let min_z = if self.min.z < other.min.z {
+            self.min.z
+        } else {
+            other.min.z
+        };
+        let max_x = if self.max.x > other.max.x {
+            self.max.x
+        } else {
+            other.max.x
+        };
+        let max_y = if self.max.y > other.max.y {
+            self.max.y
+        } else {
+            other.max.y
+        };
+        let max_z = if self.max.z > other.max.z {
+            self.max.z
+        } else {
+            other.max.z
+        };
+        Self {
+            min: Coordinate::new__(min_x, min_y, min_z),
+            max: Coordinate::new__(max_x, max_y, max_z),
+        }
+    }
+
     pub fn overlap(&self, other: &Rect<T, Z>) -> bool {
         self.min.x <= other.max.x
             && self.max.x >= other.min.x
