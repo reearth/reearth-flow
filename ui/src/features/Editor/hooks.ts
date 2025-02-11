@@ -51,7 +51,7 @@ export default ({
     rawWorkflows,
     currentYWorkflow,
     handleYWorkflowAdd,
-    handleYWorkflowAddFromSelection,
+    // handleYWorkflowAddFromSelection,
     handleYWorkflowUpdate,
     handleYNodesAdd,
     handleYNodesChange,
@@ -252,10 +252,10 @@ export default ({
       keyBinding: { key: "z", commandKey: true },
       callback: handleYWorkflowUndo,
     },
-    {
-      keyBinding: { key: "s", commandKey: false },
-      callback: () => handleYWorkflowAddFromSelection(nodes, edges),
-    },
+    // {
+    //   keyBinding: { key: "s", commandKey: false },
+    //   callback: () => handleYWorkflowAddFromSelection(nodes, edges),
+    // },
   ]);
 
   return {

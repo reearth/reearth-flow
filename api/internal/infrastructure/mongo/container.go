@@ -28,19 +28,20 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 	}
 
 	c := &repo.Container{
-		Asset:       NewAsset(client),
-		AuthRequest: authserver.NewMongo(client.WithCollection("authRequest")),
-		Config:      NewConfig(db.Collection("config"), lock),
-		Deployment:  NewDeployment(client),
-		Job:         NewJob(client),
-		Workflow:    NewWorkflow(client),
-		Parameter:   NewParameter(client),
-		Project:     NewProject(client),
-		Lock:        lock,
-		Transaction: client.Transaction(),
-		Trigger:     NewTrigger(client),
-		Workspace:   account.Workspace,
-		User:        account.User,
+		Asset:         NewAsset(client),
+		AuthRequest:   authserver.NewMongo(client.WithCollection("authRequest")),
+		Config:        NewConfig(db.Collection("config"), lock),
+		Deployment:    NewDeployment(client),
+		Job:           NewJob(client),
+		Workflow:      NewWorkflow(client),
+		Parameter:     NewParameter(client),
+		Project:       NewProject(client),
+		ProjectAccess: NewProjectAccess(client),
+		Lock:          lock,
+		Transaction:   client.Transaction(),
+		Trigger:       NewTrigger(client),
+		Workspace:     account.Workspace,
+		User:          account.User,
 	}
 
 	if err := Init(c); err != nil {
@@ -68,6 +69,7 @@ func Init(r *repo.Container) error {
 		func() error { return r.Job.(*Job).Init(ctx) },
 		func() error { return r.Parameter.(*Parameter).Init(ctx) },
 		func() error { return r.Project.(*Project).Init(ctx) },
+		func() error { return r.ProjectAccess.(*ProjectAccess).Init(ctx) },
 		func() error { return r.Trigger.(*Trigger).Init(ctx) },
 		func() error { return r.User.(*accountmongo.User).Init() },
 		func() error { return r.Workspace.(*accountmongo.Workspace).Init() },

@@ -178,6 +178,21 @@ impl AttributeValue {
             _ => Err(error::Error::internal_runtime("Cannot extend")),
         }
     }
+
+    pub fn flatten(self) -> Self {
+        let mut result = HashMap::new();
+        match self {
+            AttributeValue::Array(map) => {
+                for value in map {
+                    if let AttributeValue::Map(v) = value {
+                        result.extend(v);
+                    }
+                }
+            }
+            _ => return self,
+        }
+        AttributeValue::Map(result)
+    }
 }
 
 impl Eq for AttributeValue {}
@@ -476,6 +491,77 @@ pub(crate) fn all_attribute_keys(items: &HashMap<String, AttributeValue>) -> Vec
     keys
 }
 
+impl AttributeValue {
+    pub fn get_recursive<T: AsRef<str>>(
+        key: T,
+        items: &HashMap<String, AttributeValue>,
+    ) -> Vec<AttributeValue> {
+        let mut values = Vec::new();
+        for (k, v) in items {
+            if k.as_str() == key.as_ref() {
+                values.push(v.clone());
+            }
+            if let AttributeValue::Array(array) = v {
+                for item in array {
+                    if let AttributeValue::Map(map) = item {
+                        values.extend(Self::get_recursive(key.as_ref(), map));
+                    }
+                }
+            }
+            if let AttributeValue::Map(map) = v {
+                values.extend(Self::get_recursive(key.as_ref(), map));
+            }
+        }
+        values
+    }
+
+    pub fn convert_array_attributes(
+        attributes: &HashMap<String, AttributeValue>,
+    ) -> HashMap<String, AttributeValue> {
+        let mut result = HashMap::new();
+        for (k, v) in attributes.iter() {
+            match v {
+                AttributeValue::Array(arr) if arr.len() == 1 => {
+                    let value = arr.first().cloned().unwrap_or(AttributeValue::Null);
+                    match value {
+                        AttributeValue::Map(map) => {
+                            result.insert(
+                                k.clone(),
+                                AttributeValue::Map(Self::convert_array_attributes(&map)),
+                            );
+                        }
+                        _ => {
+                            result.insert(k.clone(), value);
+                        }
+                    }
+                }
+                AttributeValue::Array(arr) => {
+                    let mut new_arr = Vec::new();
+                    for item in arr.iter() {
+                        new_arr.push(match item {
+                            AttributeValue::Map(map) => {
+                                AttributeValue::Map(Self::convert_array_attributes(map))
+                            }
+                            _ => item.clone(),
+                        });
+                    }
+                    result.insert(k.clone(), AttributeValue::Array(new_arr));
+                }
+                AttributeValue::Map(map) => {
+                    result.insert(
+                        k.clone(),
+                        AttributeValue::Map(Self::convert_array_attributes(map)),
+                    );
+                }
+                _ => {
+                    result.insert(k.clone(), v.clone());
+                }
+            }
+        }
+        result
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -572,5 +658,24 @@ mod tests {
             keys,
             vec!["key1".to_string(), "key2".to_string(), "nested".to_string()]
         );
+    }
+
+    // generate get_recursive test
+    #[test]
+    fn test_get_recursive() {
+        let mut map = HashMap::new();
+        map.insert(
+            "key1".to_string(),
+            AttributeValue::String("value1".to_string()),
+        );
+        let mut nested_map = HashMap::new();
+        nested_map.insert(
+            "key2".to_string(),
+            AttributeValue::String("value2".to_string()),
+        );
+        map.insert("nested".to_string(), AttributeValue::Map(nested_map));
+
+        let values = AttributeValue::get_recursive("key2", &map);
+        assert_eq!(values, vec![AttributeValue::String("value2".to_string())]);
     }
 }

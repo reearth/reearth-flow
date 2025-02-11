@@ -80,6 +80,8 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	e.Use(UsecaseMiddleware(cfg.Repos, cfg.Gateways, cfg.AccountRepos, cfg.AccountGateways, interactor.ContainerConfig{
 		SignupSecret:    cfg.Config.SignupSecret,
 		AuthSrvUIDomain: cfg.Config.Host_Web,
+		Host:            cfg.Config.Host,
+		SharedPath:      cfg.Config.SharedPath,
 	}))
 
 	// auth srv
@@ -92,7 +94,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	// authenticated routes
 	apiPrivate := api.Group("", privateCache)
 	apiPrivate.Use(authMiddleware, attachOpMiddleware(cfg))
-	apiPrivate.POST("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev))
+	apiPrivate.Any("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev, origins))
 	apiPrivate.POST("/signup", Signup())
 
 	if !cfg.Config.AuthSrv.Disabled {
