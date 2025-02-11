@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"net/http"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql"
@@ -9,6 +10,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/extension"
 	"github.com/99designs/gqlgen/graphql/handler/lru"
 	"github.com/99designs/gqlgen/graphql/handler/transport"
+	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"github.com/ravilushqa/otelgqlgen"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
@@ -23,16 +25,36 @@ const (
 	maxMemorySize     = 100 * 1024 * 1024       // 100MB
 )
 
-func GraphqlAPI(conf config.GraphQLConfig, dev bool) echo.HandlerFunc {
+func GraphqlAPI(conf config.GraphQLConfig, dev bool, origins []string) echo.HandlerFunc {
 	schema := gql.NewExecutableSchema(gql.Config{
 		Resolvers: gql.NewResolver(),
 	})
 
 	srv := handler.New(schema)
 
-	srv.AddTransport(transport.Websocket{
+	srv.AddTransport(transport.SSE{})
+	srv.AddTransport(&transport.Websocket{
 		KeepAlivePingInterval: 10 * time.Second,
+		PingPongInterval:      10 * time.Second,
+		Upgrader: websocket.Upgrader{
+			CheckOrigin: func(r *http.Request) bool {
+				origin := r.Header.Get("Origin")
+				if origin == "" || origin == r.Header.Get("Host") {
+					return true
+				}
+				for _, allowed := range origins {
+					if allowed == origin {
+						return true
+					}
+				}
+				return false
+			},
+			EnableCompression: true,
+			ReadBufferSize:    1024,
+			WriteBufferSize:   1024,
+		},
 	})
+
 	srv.AddTransport(transport.Options{})
 	srv.AddTransport(transport.GET{})
 	srv.AddTransport(transport.POST{})
@@ -58,12 +80,7 @@ func GraphqlAPI(conf config.GraphQLConfig, dev bool) echo.HandlerFunc {
 		srv.Use(extension.Introspection{})
 	}
 
-	srv.Use(extension.AutomaticPersistedQuery{
-		Cache: lru.New(30),
-	})
-
 	srv.SetErrorPresenter(
-		// show more detailed error messgage in debug mode
 		func(ctx context.Context, e error) *gqlerror.Error {
 			if dev {
 				return gqlerror.ErrorPathf(graphql.GetFieldContext(ctx).Path(), "%s", e.Error())
