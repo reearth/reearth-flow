@@ -42,19 +42,20 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 		return c
 	}
 	return &Container{
-		Asset:       c.Asset.Filtered(workspace),
-		AuthRequest: c.AuthRequest,
-		Config:      c.Config,
-		Deployment:  c.Deployment.Filtered(workspace),
-		Job:         c.Job.Filtered(workspace),
-		Lock:        c.Lock,
-		Workflow:    c.Workflow.Filtered(workspace),
-		Parameter:   c.Parameter,
-		Project:     c.Project.Filtered(workspace),
-		Transaction: c.Transaction,
-		Trigger:     c.Trigger,
-		User:        c.User,
-		Workspace:   c.Workspace,
+		Asset:         c.Asset.Filtered(workspace),
+		AuthRequest:   c.AuthRequest,
+		Config:        c.Config,
+		Deployment:    c.Deployment.Filtered(workspace),
+		Job:           c.Job.Filtered(workspace),
+		Lock:          c.Lock,
+		Workflow:      c.Workflow.Filtered(workspace),
+		Parameter:     c.Parameter,
+		Project:       c.Project.Filtered(workspace),
+		ProjectAccess: c.ProjectAccess,
+		Transaction:   c.Transaction,
+		Trigger:       c.Trigger,
+		User:          c.User,
+		Workspace:     c.Workspace,
 	}
 }
 

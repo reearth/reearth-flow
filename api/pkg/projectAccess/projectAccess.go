@@ -49,7 +49,7 @@ func (pa *ProjectAccess) SetToken(token string) {
 
 func (pa *ProjectAccess) MakePublic() error {
 	if pa.isPublic {
-		return ErrAlreadyPrivate
+		return ErrAlreadyPublic
 	}
 
 	pa.isPublic = true
@@ -65,7 +65,7 @@ func (pa *ProjectAccess) MakePublic() error {
 
 func (pa *ProjectAccess) MakePrivate() error {
 	if !pa.isPublic {
-		return ErrAlreadyPublic
+		return ErrAlreadyPrivate
 	}
 
 	pa.isPublic = false
