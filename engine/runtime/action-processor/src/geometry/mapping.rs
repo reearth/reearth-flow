@@ -18,9 +18,9 @@ use super::{
     refiner::RefinerFactory, replacer::GeometryReplacerFactory, splitter::GeometrySplitterFactory,
     three_dimension_box_replacer::ThreeDimensionBoxReplacerFactory,
     three_dimension_rotator::ThreeDimensionRotatorFactory,
-    two_dimension_forcer::TwoDimensionForcerFactory, validator::GeometryValidatorFactory,
-    value_filter::GeometryValueFilterFactory, vertex_remover::VertexRemoverFactory,
-    vertical_reprojector::VerticalReprojectorFactory,
+    two_dimension_forcer::TwoDimensionForcerFactory, unifier::UnifierFactory,
+    validator::GeometryValidatorFactory, value_filter::GeometryValueFilterFactory,
+    vertex_remover::VertexRemoverFactory, vertical_reprojector::VerticalReprojectorFactory,
 };
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -58,6 +58,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<DimensionFilterFactory>::default(),
         Box::<OffsetterFactory>::default(),
         Box::<ConvexHullAccumulatorFactory>::default(),
+        Box::<UnifierFactory>::default(),
     ];
     factories
         .into_iter()
