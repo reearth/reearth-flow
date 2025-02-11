@@ -1,231 +1,145 @@
 package projectAccess
 
-// import (
-// 	"testing"
-// 	"time"
+import (
+	"testing"
 
-// 	"github.com/reearth/reearthx/account/accountdomain"
-// 	"github.com/stretchr/testify/assert"
-// )
+	"github.com/stretchr/testify/assert"
+)
 
-// func TestBuilder_New(t *testing.T) {
-// 	tb := New()
-// 	assert.NotNil(t, tb)
-// }
+func TestBuilder_New(t *testing.T) {
+	var tb = New()
+	assert.NotNil(t, tb)
+}
 
-// func TestBuilder_Build(t *testing.T) {
-// 	d := time.Date(1900, 1, 1, 00, 0o0, 0, 1, time.UTC)
-// 	pid := NewID()
-// 	tid := accountdomain.NewWorkspaceID()
+func TestBuilder_Build(t *testing.T) {
+	paid := NewID()
 
-// 	type args struct {
-// 		name, description string
-// 		id                ID
-// 		isArchived        bool
-// 		updatedAt         time.Time
-// 		workspace         WorkspaceID
-// 	}
+	type args struct {
+		id ID
+	}
 
-// 	tests := []struct {
-// 		name     string
-// 		args     args
-// 		expected *Project
-// 		err      error
-// 	}{
-// 		{
-// 			name: "build normal project",
-// 			args: args{
-// 				name:        "xxx.aaa",
-// 				description: "ddd",
-// 				id:          pid,
-// 				isArchived:  false,
-// 				updatedAt:   d,
-// 				workspace:   tid,
-// 			},
-// 			expected: &Project{
-// 				id:          pid,
-// 				description: "ddd",
-// 				name:        "xxx.aaa",
-// 				isArchived:  false,
-// 				updatedAt:   d,
-// 				workspace:   tid,
-// 			},
-// 		},
-// 		{
-// 			name: "zero updated at",
-// 			args: args{
-// 				id: pid,
-// 			},
-// 			expected: &Project{
-// 				id:        pid,
-// 				updatedAt: pid.Timestamp(),
-// 			},
-// 		},
-// 		{
-// 			name: "failed invalid id",
-// 			err:  ErrInvalidID,
-// 		},
-// 	}
+	tests := []struct {
+		Name     string
+		Args     args
+		Expected *ProjectAccess
+		Err      error
+	}{
+		{
+			Name: "fail nil id",
+			Args: args{
+				id: ID{},
+			},
+			Err: ErrInvalidID,
+		},
+		{
+			Name: "success build new project access",
+			Args: args{
+				id: paid,
+			},
+			Expected: &ProjectAccess{
+				id: paid,
+			},
+		},
+	}
 
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			t.Parallel()
-// 			p, err := New().
-// 				ID(tt.args.id).
-// 				UpdatedAt(tt.args.updatedAt).
-// 				Workspace(tt.args.workspace).
-// 				Name(tt.args.name).
-// 				UpdatedAt(tt.args.updatedAt).
-// 				Description(tt.args.description).
-// 				Build()
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			t.Parallel()
+			res, err := New().
+				ID(tt.Args.id).
+				Build()
 
-// 			if tt.err == nil {
-// 				assert.Equal(t, tt.expected, p)
-// 			} else {
-// 				assert.Equal(t, tt.err, err)
-// 			}
-// 		})
-// 	}
-// }
+			if tt.Err == nil {
+				assert.Equal(t, tt.Expected, res)
+			} else {
+				assert.Equal(t, tt.Err, err)
+			}
+		})
+	}
+}
 
-// func TestBuilder_MustBuild(t *testing.T) {
-// 	tb := New().NewID()
-// 	res := tb.MustBuild()
-// 	assert.NotNil(t, res)
-// }
+func TestBuilder_MustBuild(t *testing.T) {
+	paid := NewID()
 
-// func TestBuilder_ID(t *testing.T) {
-// 	tb := New()
-// 	id := NewID()
-// 	res := tb.ID(id).MustBuild()
-// 	assert.Equal(t, id, res.ID())
-// }
+	type args struct {
+		id ID
+	}
 
-// func TestBuilder_NewID(t *testing.T) {
-// 	tb := New()
-// 	res := tb.NewID().MustBuild()
-// 	assert.NotNil(t, res.ID())
-// }
+	tests := []struct {
+		Name     string
+		Args     args
+		Expected *ProjectAccess
+		Err      error
+	}{
+		{
+			Name: "fail nil id",
+			Args: args{
+				id: ID{},
+			},
+			Err: ErrInvalidID,
+		},
+		{
+			Name: "success build new project access",
+			Args: args{
+				id: paid,
+			},
+			Expected: &ProjectAccess{
+				id: paid,
+			},
+		},
+	}
 
-// // func TestBuilder_Project(t *testing.T) {
-// // 	tb := New().NewID()
-// // 	res := tb.Name("foo").MustBuild()
-// // 	assert.Equal(t, "foo", res.Name())
-// // }
+	for _, tt := range tests {
+		t.Run(tt.Name, func(t *testing.T) {
+			t.Parallel()
 
-// // func TestBuilder_Description(t *testing.T) {
-// // 	tb := New().NewID()
-// // 	res := tb.Description("desc").MustBuild()
-// // 	assert.Equal(t, "desc", res.Description())
-// // }
+			build := func() *ProjectAccess {
+				t.Helper()
+				return New().
+					ID(tt.Args.id).
+					MustBuild()
+			}
 
-// // func TestBuilder_IsArchived(t *testing.T) {
-// // 	tb := New().NewID()
-// // 	res := tb.IsArchived(true).MustBuild()
-// // 	assert.True(t, res.IsArchived())
-// // }
+			if tt.Err != nil {
+				assert.PanicsWithValue(t, tt.Err, func() { _ = build() })
+			} else {
+				assert.Equal(t, tt.Expected, build())
+			}
+		})
+	}
+}
 
-// // func TestBuilder_BasicAuthUsername(t *testing.T) {
-// // 	tb := New().NewID()
-// // 	res := tb.BasicAuthUsername("username").MustBuild()
-// // 	assert.Equal(t, "username", res.BasicAuthUsername())
-// // }
+func TestBuilder_ID(t *testing.T) {
+	var tb = New()
+	res := tb.ID(NewID()).MustBuild()
+	assert.NotNil(t, res.ID())
+}
 
-// // func TestBuilder_BasicAuthPassword(t *testing.T) {
-// // 	tb := New().NewID()
-// // 	res := tb.BasicAuthPassword("password").MustBuild()
-// // 	assert.Equal(t, "password", res.BasicAuthPassword())
-// // }
+func TestBuilder_NewID(t *testing.T) {
+	var tb = New()
+	res := tb.NewID().MustBuild()
+	assert.NotNil(t, res.ID())
+}
 
-// // func TestBuilder_Workspace(t *testing.T) {
-// // 	tb := New().NewID()
-// // 	res := tb.Workspace(accountdomain.NewWorkspaceID()).MustBuild()
-// // 	assert.NotNil(t, res.Workspace())
-// // }
+func TestBuilder_Project(t *testing.T) {
+	var tb = New().NewID()
+	pid := NewProjectID()
+	res := tb.Project(pid).MustBuild()
+	assert.Equal(t, pid, res.Project())
+}
 
-// // func TestBuilder_UpdatedAt(t *testing.T) {
-// // 	tb := New().NewID()
-// // 	d := time.Date(1900, 1, 1, 00, 0o0, 0, 1, time.UTC)
-// // 	res := tb.UpdatedAt(d).MustBuild()
-// // 	assert.True(t, reflect.DeepEqual(res.UpdatedAt(), d))
-// // }
+func TestBuilder_IsPublic(t *testing.T) {
+	var tb = New().NewID()
 
-// // func TestBuilder_MustBuild(t *testing.T) {
-// // 	d := time.Date(1900, 1, 1, 00, 00, 0, 1, time.UTC)
-// // 	pid := NewID()
-// // 	tid := accountdomain.NewWorkspaceID()
+	res := tb.IsPublic(true).MustBuild()
+	assert.True(t, res.IsPublic())
 
-// // 	type args struct {
-// // 		name, description string
-// // 		id                ID
-// // 		isArchived        bool
-// // 		updatedAt         time.Time
-// // 		workspace         WorkspaceID
-// // 	}
+	res = tb.IsPublic(false).MustBuild()
+	assert.False(t, res.IsPublic())
+}
 
-// // 	tests := []struct {
-// // 		name     string
-// // 		args     args
-// // 		expected *Project
-// // 		err      error
-// // 	}{
-// // 		{
-// // 			name: "build normal project",
-// // 			args: args{
-// // 				name:        "xxx.aaa",
-// // 				description: "ddd",
-// // 				id:          pid,
-// // 				isArchived:  false,
-// // 				updatedAt:   d,
-// // 				workspace:   tid,
-// // 			},
-// // 			expected: &Project{
-// // 				id:          pid,
-// // 				description: "ddd",
-// // 				name:        "xxx.aaa",
-// // 				isArchived:  false,
-// // 				updatedAt:   d,
-// // 				workspace:   tid,
-// // 			},
-// // 		},
-// // 		{
-// // 			name: "zero updated at",
-// // 			args: args{
-// // 				id: pid,
-// // 			},
-// // 			expected: &Project{
-// // 				id:        pid,
-// // 				updatedAt: pid.Timestamp(),
-// // 			},
-// // 		},
-// // 		{
-// // 			name: "failed invalid id",
-// // 			err:  ErrInvalidID,
-// // 		},
-// // 	}
-
-// // 	for _, tt := range tests {
-// // 		tt := tt
-// // 		t.Run(tt.name, func(t *testing.T) {
-// // 			t.Parallel()
-
-// // 			build := func() *Project {
-// // 				t.Helper()
-// // 				return New().
-// // 					ID(tt.args.id).
-// // 					UpdatedAt(tt.args.updatedAt).
-// // 					Workspace(tt.args.workspace).
-// // 					Name(tt.args.name).
-// // 					UpdatedAt(tt.args.updatedAt).
-// // 					Description(tt.args.description).
-// // 					MustBuild()
-// // 			}
-
-// // 			if tt.err != nil {
-// // 				assert.PanicsWithValue(t, tt.err, func() { _ = build() })
-// // 			} else {
-// // 				assert.Equal(t, tt.expected, build())
-// // 			}
-// // 		})
-// // 	}
-// // }
+func TestBuilder_Token(t *testing.T) {
+	var tb = New().NewID()
+	res := tb.Token("token").MustBuild()
+	assert.Equal(t, "token", res.Token())
+}
