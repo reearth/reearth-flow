@@ -1,10 +1,7 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
-name: "PLATEAU4-A001-7-buffer-workflow"
+name: "PLATEAU4-A009-7-workflow"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
-with:
-  geojson: !include ./fixtures/buffer.geojson.txt
-  outputPath:
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
@@ -14,26 +11,27 @@ graphs:
         type: action
         action: FileReader
         with:
-          format: geojson
-          inline: |
-            env.get("geojson")
+          format: citygml
+          dataset: |
+            file::join_path(env.get("currentPath"), file::convert_slice_to_slash("runtime/examples/fixture/workflow/requirement/plateau4/a009-7/files/52310614_bldg_6697_op.gml"))
 
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
-        name: Buffer
+        name: VerticalReprojector
         type: action
-        action: Bufferer
+        action: VerticalReprojector
         with:
-          bufferType: area2d
-          distance: 0.02
-          interpolationAngle: 0.01
+          reprojectorType: jgd2011ToWgs84
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        name: GeoJsonWriter
+        name: cesium3DTilesWriterByLod3NoTexture
         type: action
-        action: GeoJsonWriter
+        action: Cesium3DTilesWriter
         with:
+          minZoom: 15
+          maxZoom: 18
+          attachTexture: false
           output: |
-            file::join_path(env.get("outputPath"), "a001-7-buffer.geojson")
+            file::join_path(env.get("currentPath"), "bldg")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
