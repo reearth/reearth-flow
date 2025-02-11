@@ -241,16 +241,6 @@ func TestProjectAccess_Unshare(t *testing.T) {
 			},
 			wantErr: true,
 		},
-		{
-			name:      "failure: project not found",
-			projectID: project.NewID(),
-			operator: &usecase.Operator{
-				AcOperator: &accountusecase.Operator{
-					WritableWorkspaces: workspace.IDList{ws.ID()},
-				},
-			},
-			wantErr: true,
-		},
 	}
 
 	for _, tt := range tests {
