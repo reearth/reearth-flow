@@ -321,6 +321,10 @@ type ShareProjectPayload struct {
 	SharingURL string `json:"sharingUrl"`
 }
 
+type SharedProjectPayload struct {
+	Project *Project `json:"project"`
+}
+
 type SignupInput struct {
 	UserID      *ID           `json:"userId,omitempty"`
 	Lang        *language.Tag `json:"lang,omitempty"`

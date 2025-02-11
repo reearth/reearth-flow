@@ -249,6 +249,7 @@ type ComplexityRoot struct {
 		Nodes               func(childComplexity int, id []gqlmodel.ID, typeArg gqlmodel.NodeType) int
 		Projects            func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) int
 		SearchUser          func(childComplexity int, nameOrEmail string) int
+		SharedProject       func(childComplexity int, token string) int
 		Triggers            func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
 	}
 
@@ -268,6 +269,10 @@ type ComplexityRoot struct {
 	ShareProjectPayload struct {
 		ProjectID  func(childComplexity int) int
 		SharingURL func(childComplexity int) int
+	}
+
+	SharedProjectPayload struct {
+		Project func(childComplexity int) int
 	}
 
 	SignupPayload struct {
@@ -403,6 +408,7 @@ type QueryResolver interface {
 	Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
 	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
+	SharedProject(ctx context.Context, token string) (*gqlmodel.SharedProjectPayload, error)
 	Triggers(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error)
 	Me(ctx context.Context) (*gqlmodel.Me, error)
 	SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error)
@@ -1517,6 +1523,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.SearchUser(childComplexity, args["nameOrEmail"].(string)), true
 
+	case "Query.sharedProject":
+		if e.complexity.Query.SharedProject == nil {
+			break
+		}
+
+		args, err := ec.field_Query_sharedProject_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.SharedProject(childComplexity, args["token"].(string)), true
+
 	case "Query.triggers":
 		if e.complexity.Query.Triggers == nil {
 			break
@@ -1570,6 +1588,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ShareProjectPayload.SharingURL(childComplexity), true
+
+	case "SharedProjectPayload.project":
+		if e.complexity.SharedProjectPayload.Project == nil {
+			break
+		}
+
+		return e.complexity.SharedProjectPayload.Project(childComplexity), true
 
 	case "SignupPayload.user":
 		if e.complexity.SignupPayload.User == nil {
@@ -2413,16 +2438,9 @@ input UnshareProjectInput {
 
 # Payload
 
-# type SharedProjectPayload {
-#   project: Project!
-#   accessLevel: AccessLevel!
-# }
-
-# enum AccessLevel {
-#   READ_ONLY
-#   READ_WRITE
-#   ADMIN
-# }
+type SharedProjectPayload {
+  project: Project!
+}
 
 type ShareProjectPayload {
   projectId: ID!
@@ -2435,9 +2453,9 @@ type UnshareProjectPayload {
 
 # Query and Mutation
 
-# extend type Query {
-#   sharedProject(token: String!): SharedProjectPayload!
-# }
+extend type Query {
+  sharedProject(token: String!): SharedProjectPayload!
+}
 
 extend type Mutation {
   shareProject(input: ShareProjectInput!): ShareProjectPayload
@@ -3425,6 +3443,21 @@ func (ec *executionContext) field_Query_searchUser_args(ctx context.Context, raw
 		}
 	}
 	args["nameOrEmail"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_sharedProject_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["token"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("token"))
+		arg0, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["token"] = arg0
 	return args, nil
 }
 
@@ -10032,6 +10065,65 @@ func (ec *executionContext) fieldContext_Query_projects(ctx context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_sharedProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_sharedProject(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().SharedProject(rctx, fc.Args["token"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.SharedProjectPayload)
+	fc.Result = res
+	return ec.marshalNSharedProjectPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐSharedProjectPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_sharedProject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "project":
+				return ec.fieldContext_SharedProjectPayload_project(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SharedProjectPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_sharedProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_triggers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_triggers(ctx, field)
 	if err != nil {
@@ -10618,6 +10710,80 @@ func (ec *executionContext) fieldContext_ShareProjectPayload_sharingUrl(_ contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SharedProjectPayload_project(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.SharedProjectPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_SharedProjectPayload_project(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Project, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.Project)
+	fc.Result = res
+	return ec.marshalNProject2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProject(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_SharedProjectPayload_project(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SharedProjectPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "basicAuthPassword":
+				return ec.fieldContext_Project_basicAuthPassword(ctx, field)
+			case "basicAuthUsername":
+				return ec.fieldContext_Project_basicAuthUsername(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Project_createdAt(ctx, field)
+			case "description":
+				return ec.fieldContext_Project_description(ctx, field)
+			case "deployment":
+				return ec.fieldContext_Project_deployment(ctx, field)
+			case "id":
+				return ec.fieldContext_Project_id(ctx, field)
+			case "isArchived":
+				return ec.fieldContext_Project_isArchived(ctx, field)
+			case "isBasicAuthActive":
+				return ec.fieldContext_Project_isBasicAuthActive(ctx, field)
+			case "name":
+				return ec.fieldContext_Project_name(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Project_parameters(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "version":
+				return ec.fieldContext_Project_version(ctx, field)
+			case "workspace":
+				return ec.fieldContext_Project_workspace(ctx, field)
+			case "workspaceId":
+				return ec.fieldContext_Project_workspaceId(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
 		},
 	}
 	return fc, nil
@@ -17271,6 +17437,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "sharedProject":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_sharedProject(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "triggers":
 			field := field
 
@@ -17502,6 +17690,45 @@ func (ec *executionContext) _ShareProjectPayload(ctx context.Context, sel ast.Se
 			}
 		case "sharingUrl":
 			out.Values[i] = ec._ShareProjectPayload_sharingUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var sharedProjectPayloadImplementors = []string{"SharedProjectPayload"}
+
+func (ec *executionContext) _SharedProjectPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.SharedProjectPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, sharedProjectPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SharedProjectPayload")
+		case "project":
+			out.Values[i] = ec._SharedProjectPayload_project(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -19230,6 +19457,20 @@ func (ec *executionContext) unmarshalNRunProjectInput2githubᚗcomᚋreearthᚋr
 func (ec *executionContext) unmarshalNShareProjectInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐShareProjectInput(ctx context.Context, v interface{}) (gqlmodel.ShareProjectInput, error) {
 	res, err := ec.unmarshalInputShareProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNSharedProjectPayload2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐSharedProjectPayload(ctx context.Context, sel ast.SelectionSet, v gqlmodel.SharedProjectPayload) graphql.Marshaler {
+	return ec._SharedProjectPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSharedProjectPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐSharedProjectPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.SharedProjectPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SharedProjectPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNSignupInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐSignupInput(ctx context.Context, v interface{}) (gqlmodel.SignupInput, error) {

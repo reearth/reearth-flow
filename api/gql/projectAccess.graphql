@@ -10,16 +10,9 @@ input UnshareProjectInput {
 
 # Payload
 
-# type SharedProjectPayload {
-#   project: Project!
-#   accessLevel: AccessLevel!
-# }
-
-# enum AccessLevel {
-#   READ_ONLY
-#   READ_WRITE
-#   ADMIN
-# }
+type SharedProjectPayload {
+  project: Project!
+}
 
 type ShareProjectPayload {
   projectId: ID!
@@ -32,9 +25,9 @@ type UnshareProjectPayload {
 
 # Query and Mutation
 
-# extend type Query {
-#   sharedProject(token: String!): SharedProjectPayload!
-# }
+extend type Query {
+  sharedProject(token: String!): SharedProjectPayload!
+}
 
 extend type Mutation {
   shareProject(input: ShareProjectInput!): ShareProjectPayload
