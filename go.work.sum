@@ -12,8 +12,6 @@ cloud.google.com/go/asset v1.18.1/go.mod h1:QXivw0mVqwrhZyuX6iqFbyfCdzYE9AFCJVG4
 cloud.google.com/go/assuredworkloads v1.11.6/go.mod h1:1dlhWKocQorGYkspt+scx11kQCI9qVHOi1Au6Rw9srg=
 cloud.google.com/go/automl v1.13.6/go.mod h1:/0VtkKis6KhFJuPzi45e0E+e9AdQE09SNieChjJqU18=
 cloud.google.com/go/baremetalsolution v1.2.5/go.mod h1:CImy7oNMC/7vLV1Ig68Og6cgLWuVaghDrm+sAhYSSxA=
-cloud.google.com/go/batch v1.8.3 h1:b9fVZDxxp4LWMhXV7uAhyMGmPuzlzPrsZ0uh+RM92h8=
-cloud.google.com/go/batch v1.8.3/go.mod h1:mnDskkuz1h+6i/ra8IMhTf8HwG8GOswSRKPJdAOgSbE=
 cloud.google.com/go/beyondcorp v1.0.5/go.mod h1:lFRWb7i/w4QBFW3MbM/P9wX15eLjwri/HYvQnZuk4Fw=
 cloud.google.com/go/bigquery v1.60.0/go.mod h1:Clwk2OeC0ZU5G5LDg7mo+h8U7KlAa5v06z5rptKdM3g=
 cloud.google.com/go/billing v1.18.4/go.mod h1:hECVHwfls2hhA/wrNVAvZ48GQzMxjWkQRq65peAnxyc=
@@ -118,6 +116,7 @@ github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XL
 github.com/chzyer/readline v1.5.1/go.mod h1:Eh+b79XXUwfKfcPLepksvw2tcLE/Ct21YObkaSkeBlk=
 github.com/cncf/xds/go v0.0.0-20231128003011-0fa0005c9caa/go.mod h1:x/1Gn8zydmfq8dk6e9PdstVsDgu9RuyIIJqAaF//0IM=
 github.com/envoyproxy/go-control-plane v0.12.0/go.mod h1:ZBTaoJ23lqITozF0M6G4/IragXCQKCnYbmlmtHvwRG0=
+github.com/envoyproxy/protoc-gen-validate v1.0.4 h1:gVPz/FMfvh57HdSJQyvBtF00j8JU4zdyUgIUNhlgg0A=
 github.com/envoyproxy/protoc-gen-validate v1.0.4/go.mod h1:qys6tmnRsYrQqIhm2bvKZH4Blx/1gTIZ2UKVY1M+Yew=
 github.com/fasthttp/websocket v1.4.3-rc.6/go.mod h1:43W9OM2T8FeXpCWMsBd9Cb7nE2CACNqNvCqQCoty/Lc=
 github.com/golang/glog v1.2.0/go.mod h1:6AhwSGph0fcJtXVM/PEHPqZlFeoLxhs7/t5UDAwmO+w=
