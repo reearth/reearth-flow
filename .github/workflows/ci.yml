@@ -35,7 +35,7 @@ jobs:
         uses: tj-actions/changed-files@v41
         with:
           files: |
-            api/internal/rbac/**
+            server/api/internal/rbac/**
             .github/workflows/ci.yml
             .github/workflows/check_cerbos_policies.yml
             .github/workflows/update_cerbos_policies.yml

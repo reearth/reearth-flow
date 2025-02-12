@@ -23,7 +23,7 @@ jobs:
             echo "Policy generation failed"
             exit 1
           fi
-        working-directory: api
+        working-directory: server/api
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
@@ -77,4 +77,4 @@ jobs:
 
           echo "Sync completed. All files in bucket:"
           gsutil ls "${GCS_BUCKET_PATH}/" || true
-        working-directory: api
+        working-directory: server/api
