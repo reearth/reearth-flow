@@ -21,7 +21,7 @@ jobs:
         uses: tj-actions/changed-files@v45
         with:
             files: |
-              api/**
+              server/api/**
               engine/schema/**
               .github/workflows/ci.yml
               .github/workflows/ci_api.yml
