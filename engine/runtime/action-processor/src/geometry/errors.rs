@@ -107,6 +107,10 @@ pub(super) enum GeometryProcessorError {
     UnifierFactory(String),
     #[error("Unifier error: {0}")]
     Unifier(String),
+    #[error("SymmetricalDifferencer Factory error: {0}")]
+    SymmetricalDifferencerFactory(String),
+    #[error("SymmetricalDifferencer error: {0}")]
+    SymmetricalDifferencer(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

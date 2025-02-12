@@ -29,7 +29,7 @@ impl ProcessorFactory for SymmetricalDifferencerFactory {
     }
 
     fn description(&self) -> &str {
-        ""
+        "Symmetrical difference of features grouped by specified attributes"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -124,8 +124,13 @@ impl Processor for SymmetricalDifferencer {
                 };
 
                 if !self.buffer.contains_key(&key) {
-                    for unified in self.unify() {
-                        fw.send(ctx.new_with_feature_and_port(unified, AREA_PORT.clone()));
+                    for symmetrical_differenced in self.symmetrical_difference() {
+                        fw.send(
+                            ctx.new_with_feature_and_port(
+                                symmetrical_differenced,
+                                AREA_PORT.clone(),
+                            ),
+                        );
                     }
                     self.buffer.clear();
                 }
@@ -147,10 +152,10 @@ impl Processor for SymmetricalDifferencer {
         ctx: NodeContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        for unified in self.unify() {
+        for symmetrical_differenced in self.symmetrical_difference() {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
-                unified,
+                symmetrical_differenced,
                 AREA_PORT.clone(),
             ));
         }
@@ -162,28 +167,22 @@ impl Processor for SymmetricalDifferencer {
     }
 }
 
-#[derive(Debug, Clone)]
-struct UnifiedPolygon {
-    polygon: MultiPolygon2D<f64>,
-    parents: Vec<usize>,
-}
-
 impl SymmetricalDifferencer {
-    fn unify(&self) -> Vec<Feature> {
-        let mut unified = Vec::new();
+    fn symmetrical_difference(&self) -> Vec<Feature> {
+        let mut symmetrical_differenced = Vec::new();
         for buffer in self.buffer.values() {
             let buffered_features_2d = buffer
                 .iter()
                 .filter(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry2D(_)))
                 .collect::<Vec<_>>();
 
-            let features = self.unify_2d(buffered_features_2d);
-            unified.extend(features);
+            let features = self.symmetrical_difference_2d(buffered_features_2d);
+            symmetrical_differenced.extend(features);
         }
-        unified
+        symmetrical_differenced
     }
 
-    fn unify_2d(&self, buffered_features_2d: Vec<&Feature>) -> Vec<Feature> {
+    fn symmetrical_difference_2d(&self, buffered_features_2d: Vec<&Feature>) -> Vec<Feature> {
         let multi_polygons_incoming = buffered_features_2d
             .iter()
             .filter_map(|f| f.geometry.value.as_flow_geometry_2d())
@@ -198,7 +197,7 @@ impl SymmetricalDifferencer {
             .map(|multi_polygon| multi_polygon.bounding_box())
             .collect::<Vec<_>>();
 
-        let mut unifieds: Vec<UnifiedPolygon> = Vec::new();
+        let mut polygons_out = Vec::new();
 
         for i in 0..multi_polygons_incoming.len() {
             let multi_polygon_incoming = &multi_polygons_incoming[i];
@@ -207,72 +206,37 @@ impl SymmetricalDifferencer {
             } else {
                 continue;
             };
+            let mut rest = multi_polygon_incoming.clone();
 
-            let mut new_unifieds = Vec::new();
-
-            if unifieds.is_empty() {
-                new_unifieds.push(UnifiedPolygon {
-                    polygon: multi_polygon_incoming.clone(),
-                    parents: vec![i],
-                });
-            } else {
-                for unified in &unifieds {
-                    let unified_mbr = if let Some(unified_mbr) = unified.polygon.bounding_box() {
-                        unified_mbr
-                    } else {
-                        continue;
-                    };
-                    if multi_polygon_mbr.overlap(&unified_mbr) {
-                        let intersected = multi_polygon_incoming.intersection(&unified.polygon);
-                        new_unifieds.push(UnifiedPolygon {
-                            polygon: intersected,
-                            parents: unified.parents.clone().into_iter().chain(vec![i]).collect(),
-                        });
-                        let difference = unified.polygon.difference(multi_polygon_incoming);
-                        new_unifieds.push(UnifiedPolygon {
-                            polygon: difference,
-                            parents: unified.parents.clone(),
-                        });
-                    } else {
-                        new_unifieds.push(unified.clone());
-                    }
+            for j in 0..multi_polygons_incoming.len() {
+                if j == i {
+                    continue;
                 }
-
-                let mut rest = multi_polygon_incoming.clone();
-
-                for j in 0..i {
-                    let mbr = &multi_polygon_mbrs[j];
-                    if mbr.is_none() || !multi_polygon_mbr.overlap(&mbr.unwrap()) {
-                        continue;
-                    }
-                    rest = rest.difference(&multi_polygons_incoming[j]);
+                let mbr = &multi_polygon_mbrs[j];
+                if mbr.is_none() || !multi_polygon_mbr.overlap(&mbr.unwrap()) {
+                    continue;
                 }
-                new_unifieds.push(UnifiedPolygon {
-                    polygon: rest,
-                    parents: vec![i],
-                });
+                rest = rest.difference(&multi_polygons_incoming[j]);
             }
-            unifieds = new_unifieds;
+
+            polygons_out.push((rest, i));
         }
 
         let mut features = Vec::new();
-        for unified in unifieds {
+        for (polygon, parent) in polygons_out {
             let mut feature = Feature::new();
             if let Some(group_by) = &self.group_by {
                 feature.attributes = group_by
                     .iter()
                     .filter_map(|attr| {
-                        let value = buffered_features_2d[unified.parents[0]]
-                            .attributes
-                            .get(attr)
-                            .cloned()?;
+                        let value = buffered_features_2d[parent].attributes.get(attr).cloned()?;
                         Some((attr.clone(), value))
                     })
                     .collect::<HashMap<_, _>>();
             } else {
                 feature.attributes = HashMap::new();
             }
-            feature.geometry.value = GeometryValue::FlowGeometry2D(unified.polygon.into());
+            feature.geometry.value = GeometryValue::FlowGeometry2D(polygon.into());
             features.push(feature);
         }
         features
