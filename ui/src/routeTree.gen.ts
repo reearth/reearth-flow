@@ -26,6 +26,9 @@ import { Route as WorkspacesWorkspaceIdDeploymentsTabImport } from './routes/wor
 const WorkspacesWorkspaceIdProjectsProjectIdLazyImport = createFileRoute(
   '/workspaces_/$workspaceId_/projects_/$projectId',
 )()
+const WorkspacesWorkspaceIdProjectsProjectIdPreviewLazyImport = createFileRoute(
+  '/workspaces_/$workspaceId_/projects_/$projectId_/preview',
+)()
 
 // Create/Update Routes
 
@@ -85,6 +88,17 @@ const WorkspacesWorkspaceIdDeploymentsTabRoute =
     path: '/$workspaceId/deployments/$tab',
     getParentRoute: () => WorkspacesRoute,
   } as any)
+
+const WorkspacesWorkspaceIdProjectsProjectIdPreviewLazyRoute =
+  WorkspacesWorkspaceIdProjectsProjectIdPreviewLazyImport.update({
+    id: '/workspaces_/$workspaceId_/projects_/$projectId_/preview',
+    path: '/workspaces/$workspaceId/projects/$projectId/preview',
+    getParentRoute: () => rootRoute,
+  } as any).lazy(() =>
+    import(
+      './routes/workspaces_.$workspaceId_.projects_.$projectId_.preview.lazy'
+    ).then((d) => d.Route),
+  )
 
 // Populate the FileRoutesByPath interface
 
@@ -146,6 +160,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WorkspacesWorkspaceIdProjectsProjectIdLazyImport
       parentRoute: typeof rootRoute
     }
+    '/workspaces_/$workspaceId_/projects_/$projectId_/preview': {
+      id: '/workspaces_/$workspaceId_/projects_/$projectId_/preview'
+      path: '/workspaces/$workspaceId/projects/$projectId/preview'
+      fullPath: '/workspaces/$workspaceId/projects/$projectId/preview'
+      preLoaderRoute: typeof WorkspacesWorkspaceIdProjectsProjectIdPreviewLazyImport
+      parentRoute: typeof rootRoute
+    }
   }
 }
 
@@ -181,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/workspaces/$workspaceId/settings/$tab': typeof WorkspacesWorkspaceIdSettingsTabRoute
   '/workspaces/$workspaceId/triggers/$tab': typeof WorkspacesWorkspaceIdTriggersTabRoute
   '/workspaces/$workspaceId/projects/$projectId': typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
+  '/workspaces/$workspaceId/projects/$projectId/preview': typeof WorkspacesWorkspaceIdProjectsProjectIdPreviewLazyRoute
 }
 
 export interface FileRoutesByTo {
@@ -192,6 +214,7 @@ export interface FileRoutesByTo {
   '/workspaces/$workspaceId/settings/$tab': typeof WorkspacesWorkspaceIdSettingsTabRoute
   '/workspaces/$workspaceId/triggers/$tab': typeof WorkspacesWorkspaceIdTriggersTabRoute
   '/workspaces/$workspaceId/projects/$projectId': typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
+  '/workspaces/$workspaceId/projects/$projectId/preview': typeof WorkspacesWorkspaceIdProjectsProjectIdPreviewLazyRoute
 }
 
 export interface FileRoutesById {
@@ -204,6 +227,7 @@ export interface FileRoutesById {
   '/workspaces/$workspaceId_/settings/$tab': typeof WorkspacesWorkspaceIdSettingsTabRoute
   '/workspaces/$workspaceId_/triggers/$tab': typeof WorkspacesWorkspaceIdTriggersTabRoute
   '/workspaces_/$workspaceId_/projects_/$projectId': typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
+  '/workspaces_/$workspaceId_/projects_/$projectId_/preview': typeof WorkspacesWorkspaceIdProjectsProjectIdPreviewLazyRoute
 }
 
 export interface FileRouteTypes {
@@ -217,6 +241,7 @@ export interface FileRouteTypes {
     | '/workspaces/$workspaceId/settings/$tab'
     | '/workspaces/$workspaceId/triggers/$tab'
     | '/workspaces/$workspaceId/projects/$projectId'
+    | '/workspaces/$workspaceId/projects/$projectId/preview'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -227,6 +252,7 @@ export interface FileRouteTypes {
     | '/workspaces/$workspaceId/settings/$tab'
     | '/workspaces/$workspaceId/triggers/$tab'
     | '/workspaces/$workspaceId/projects/$projectId'
+    | '/workspaces/$workspaceId/projects/$projectId/preview'
   id:
     | '__root__'
     | '/'
@@ -237,6 +263,7 @@ export interface FileRouteTypes {
     | '/workspaces/$workspaceId_/settings/$tab'
     | '/workspaces/$workspaceId_/triggers/$tab'
     | '/workspaces_/$workspaceId_/projects_/$projectId'
+    | '/workspaces_/$workspaceId_/projects_/$projectId_/preview'
   fileRoutesById: FileRoutesById
 }
 
@@ -244,6 +271,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   WorkspacesRoute: typeof WorkspacesRouteWithChildren
   WorkspacesWorkspaceIdProjectsProjectIdLazyRoute: typeof WorkspacesWorkspaceIdProjectsProjectIdLazyRoute
+  WorkspacesWorkspaceIdProjectsProjectIdPreviewLazyRoute: typeof WorkspacesWorkspaceIdProjectsProjectIdPreviewLazyRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
@@ -251,6 +279,8 @@ const rootRouteChildren: RootRouteChildren = {
   WorkspacesRoute: WorkspacesRouteWithChildren,
   WorkspacesWorkspaceIdProjectsProjectIdLazyRoute:
     WorkspacesWorkspaceIdProjectsProjectIdLazyRoute,
+  WorkspacesWorkspaceIdProjectsProjectIdPreviewLazyRoute:
+    WorkspacesWorkspaceIdProjectsProjectIdPreviewLazyRoute,
 }
 
 export const routeTree = rootRoute
@@ -265,7 +295,8 @@ export const routeTree = rootRoute
       "children": [
         "/",
         "/workspaces",
-        "/workspaces_/$workspaceId_/projects_/$projectId"
+        "/workspaces_/$workspaceId_/projects_/$projectId",
+        "/workspaces_/$workspaceId_/projects_/$projectId_/preview"
       ]
     },
     "/": {
@@ -303,6 +334,9 @@ export const routeTree = rootRoute
     },
     "/workspaces_/$workspaceId_/projects_/$projectId": {
       "filePath": "workspaces_.$workspaceId_.projects_.$projectId.lazy.tsx"
+    },
+    "/workspaces_/$workspaceId_/projects_/$projectId_/preview": {
+      "filePath": "workspaces_.$workspaceId_.projects_.$projectId_.preview.lazy.tsx"
     }
   }
 }
