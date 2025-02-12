@@ -6,6 +6,7 @@ with:
   cityGmlPath:
   codelists:
   schemas:
+  cityCode:
   targetPackages:
     - bldg
   outputPath:
@@ -23,7 +24,7 @@ graphs:
             [
               #{
                 cityGmlPath: env.get("cityGmlPath"),
-                cityCode: file::extract_filename(env.get("cityGmlPath"))[0..5],
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 codelists: env.get("codelists"),
                 schemas: env.get("schemas"),
               },
