@@ -29,7 +29,7 @@
   },
   "packageManager": "yarn@4.5.1",
   "graphql": {
-    "schema": "../api/gql/*.graphql"
+    "schema": "../server/api/gql/*.graphql"
   },
   "dependencies": {
     "@auth0/auth0-react": "2.3.0",

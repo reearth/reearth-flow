@@ -9,6 +9,7 @@ jobs:
     outputs:
       ui: ${{ steps.ui.outputs.any_changed }}
       api: ${{ steps.api.outputs.any_changed }}
+      policies: ${{ steps.policies.outputs.any_changed }}
       engine: ${{ steps.engine.outputs.any_changed }}
       websocket: ${{ steps.websocket.outputs.any_changed }}
     steps:
@@ -20,14 +21,25 @@ jobs:
         id: api
         uses: tj-actions/changed-files@v45
         with:
-            files: |
-              api/**
-              engine/schema/**
-              .github/workflows/ci.yml
-              .github/workflows/ci_api.yml
-              .github/workflows/build_api.yml
-              .github/workflows/deploy_api_nightly.yml
-              CHANGELOG.md
+          files: |
+            server/api/**
+            engine/schema/**
+            .github/workflows/ci.yml
+            .github/workflows/ci_api.yml
+            .github/workflows/build_api.yml
+            .github/workflows/deploy_api_nightly.yml
+            CHANGELOG.md
+
+      - name: changed files for policies
+        id: policies
+        uses: tj-actions/changed-files@v41
+        with:
+          files: |
+            server/api/internal/rbac/**
+            .github/workflows/ci.yml
+            .github/workflows/check_cerbos_policies.yml
+            .github/workflows/update_cerbos_policies.yml
+            CHANGELOG.md
 
       - name: changed files for ui
         id: ui
@@ -64,14 +76,18 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.api == 'true'
     uses: ./.github/workflows/ci_api.yml
+  ci-policies:
+    needs: prepare
+    if: needs.prepare.outputs.policies == 'true'
+    uses: ./.github/workflows/ci_policies.yml
   ci-ui:
     needs: prepare
     if: needs.prepare.outputs.ui == 'true'
     uses: ./.github/workflows/ci_ui.yml
   ci-websocket:
-      needs: prepare
-      if: needs.prepare.outputs.websocket == 'true'
-      uses: ./.github/workflows/ci_websocket.yml
+    needs: prepare
+    if: needs.prepare.outputs.websocket == 'true'
+    uses: ./.github/workflows/ci_websocket.yml
   ci-engine:
     needs: prepare
     if: needs.prepare.outputs.engine == 'true'
@@ -80,6 +96,7 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - ci-api
+      - ci-policies
       - ci-ui
       - ci-websocket
       - ci-engine
@@ -139,7 +156,15 @@ jobs:
       new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
       name: ${{ needs.ci-collect-info.outputs.name }}
       sha: ${{ github.sha }}
-    secrets: inherit  
+    secrets: inherit
+  update-policies:
+    needs:
+      - ci
+      - ci-policies
+      - ci-collect-info
+    uses: ./.github/workflows/update_policies.yml
+    if: ${{ !failure() && needs.ci-policies.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
+    secrets: inherit
   build-and-deploy-ui:
     needs:
       - ci

@@ -1,7 +1,8 @@
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
-use num_traits::Zero;
+use num_traits::{Bounded, Zero};
 use nusamai_projection::vshift::Jgd2011ToWgs84;
+use rstar::{RTreeNum, RTreeObject, AABB};
 use serde::{Deserialize, Serialize};
 
 use crate::polygon;
@@ -144,6 +145,14 @@ impl<T: CoordNum, Z: CoordNum> Rect<T, Z> {
 
     pub fn has_valid_bounds(&self) -> bool {
         self.min.x <= self.max.x && self.min.y <= self.max.y && self.min.z <= self.max.z
+    }
+}
+
+impl<T: CoordNum + Bounded + RTreeNum> RTreeObject for Rect2D<T> {
+    type Envelope = AABB<[T; 2]>;
+
+    fn envelope(&self) -> Self::Envelope {
+        AABB::from_corners([self.min.x, self.min.y], [self.max.x, self.max.y])
     }
 }
 

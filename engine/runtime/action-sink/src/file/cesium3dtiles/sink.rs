@@ -109,13 +109,16 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
     }
 }
 
+type BufferKey = (Uri, String, Option<Uri>); // (output, feature_type, compress_output)
+type JoinHandle = Arc<parking_lot::Mutex<Receiver<Result<(), SinkError>>>>;
+
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
-    pub(super) buffer: HashMap<(Uri, String, Option<Uri>), Vec<Feature>>,
+    pub(super) buffer: HashMap<BufferKey, Vec<Feature>>,
     #[allow(clippy::type_complexity)]
-    pub(super) join_handles: Vec<Arc<parking_lot::Mutex<Receiver<Result<(), SinkError>>>>>,
+    pub(super) join_handles: Vec<JoinHandle>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -228,10 +231,7 @@ impl Sink for Cesium3DTilesWriter {
 
 impl Cesium3DTilesWriter {
     #[allow(clippy::type_complexity)]
-    pub(crate) fn flush_buffer(
-        &self,
-        ctx: Context,
-    ) -> crate::errors::Result<Vec<Arc<parking_lot::Mutex<Receiver<Result<(), SinkError>>>>>> {
+    pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<Vec<JoinHandle>> {
         let mut result = Vec::new();
         let mut features = HashMap::<(Uri, Option<Uri>), Vec<(String, Vec<Feature>)>>::new();
         for ((output, feature_type, compress_output), buffer) in &self.buffer {
@@ -254,7 +254,7 @@ impl Cesium3DTilesWriter {
         upstream: &Vec<(String, Vec<Feature>)>,
         output: &Uri,
         compress_output: &Option<Uri>,
-    ) -> crate::errors::Result<Vec<Arc<parking_lot::Mutex<Receiver<Result<(), SinkError>>>>>> {
+    ) -> crate::errors::Result<Vec<JoinHandle>> {
         let tile_id_conv = TileIdMethod::Hilbert;
         let attach_texture = self.params.attach_texture.unwrap_or(false);
         let mut features = Vec::new();
@@ -348,43 +348,50 @@ impl Cesium3DTilesWriter {
                         let buffer = Vec::new();
                         let mut cursor = Cursor::new(buffer);
                         let writer = BufWriter::new(&mut cursor);
-                        if let Err(e) = reearth_flow_common::zip::write(
+                        let zip_result = reearth_flow_common::zip::write(
                             writer,
                             output.path().as_path(),
                             output.path().as_path(),
                         )
-                        .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()))
-                        {
-                            ctx.event_hub.error_log(
-                                None,
-                                format!("Failed to write zip file with error = {:?}", e),
-                            );
-                        } else {
-                            match storage
-                                .put_sync(
-                                    compress_output.path().as_path(),
-                                    bytes::Bytes::from(cursor.into_inner()),
-                                )
-                                .map_err(crate::errors::SinkError::cesium3dtiles_writer)
-                            {
-                                Ok(_) => match std::fs::remove_dir_all(output.path().as_path()) {
-                                    Ok(_) => {}
+                        .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()));
+                        match zip_result {
+                            Ok(_) => {
+                                match storage
+                                    .put_sync(
+                                        compress_output.path().as_path(),
+                                        bytes::Bytes::from(cursor.into_inner()),
+                                    )
+                                    .map_err(crate::errors::SinkError::cesium3dtiles_writer)
+                                {
+                                    Ok(_) => match std::fs::remove_dir_all(output.path().as_path())
+                                    {
+                                        Ok(_) => {}
+                                        Err(e) => {
+                                            ctx.event_hub.error_log(
+                                                None,
+                                                format!(
+                                                    "Failed to remove directory with error = {:?}",
+                                                    e
+                                                ),
+                                            );
+                                        }
+                                    },
                                     Err(e) => {
                                         ctx.event_hub.error_log(
                                             None,
                                             format!(
-                                                "Failed to remove directory with error = {:?}",
+                                                "Failed to write zip file with error = {:?}",
                                                 e
                                             ),
                                         );
                                     }
-                                },
-                                Err(e) => {
-                                    ctx.event_hub.error_log(
-                                        None,
-                                        format!("Failed to write zip file with error = {:?}", e),
-                                    );
                                 }
+                            }
+                            Err(e) => {
+                                ctx.event_hub.error_log(
+                                    None,
+                                    format!("Failed to write zip file with error = {:?}", e),
+                                );
                             }
                         }
                     }
