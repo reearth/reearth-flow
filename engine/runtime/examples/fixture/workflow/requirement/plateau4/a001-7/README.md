@@ -12,7 +12,7 @@ cargo run --package reearth-flow-examples --example example_main
 #### convex_hull
 ``` sh
 ## Specify the workflow yaml you want to run
-export FLOW_EXAMPLE_TARGET_WORKFLOW=fixture/workflow/requirement/plateau4/a001-7/convex_hull_accumulator.yml
+export FLOW_EXAMPLE_TARGET_WORKFLOW=fixture/workflow/requirement/plateau4/a001-7/convex_hull.yml
 cargo run --package reearth-flow-examples --example example_main
 ```
 
@@ -20,5 +20,26 @@ cargo run --package reearth-flow-examples --example example_main
 ``` sh
 ## Specify the workflow yaml you want to run
 export FLOW_EXAMPLE_TARGET_WORKFLOW=fixture/workflow/requirement/plateau4/a001-7/dissolver.yml
+cargo run --package reearth-flow-examples --example example_main
+```
+
+#### intersection
+``` sh
+## Specify the workflow yaml you want to run
+export FLOW_EXAMPLE_TARGET_WORKFLOW=fixture/workflow/requirement/plateau4/a001-7/intersection.yml
+cargo run --package reearth-flow-examples --example example_main
+```
+
+#### union
+``` sh
+## Specify the workflow yaml you want to run
+export FLOW_EXAMPLE_TARGET_WORKFLOW=fixture/workflow/requirement/plateau4/a001-7/union.yml
+cargo run --package reearth-flow-examples --example example_main
+```
+
+#### symmetrical_difference
+``` sh
+## Specify the workflow yaml you want to run
+export FLOW_EXAMPLE_TARGET_WORKFLOW=fixture/workflow/requirement/plateau4/a001-7/symmetrical_difference.yml
 cargo run --package reearth-flow-examples --example example_main
 ```

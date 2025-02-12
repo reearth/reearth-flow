@@ -11,9 +11,6 @@ Overlays an area on another area
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AreaOnAreaOverlayerParam",
   "type": "object",
-  "required": [
-    "outputAttribute"
-  ],
   "properties": {
     "groupBy": {
       "type": [
@@ -23,9 +20,6 @@ Overlays an area on another area
       "items": {
         "$ref": "#/definitions/Attribute"
       }
-    },
-    "outputAttribute": {
-      "$ref": "#/definitions/Attribute"
     }
   },
   "definitions": {
@@ -3334,43 +3328,6 @@ Forces a geometry to be two dimensional.
 * default
 ### Output Ports
 * default
-### Category
-* Geometry
-
-## Unifier
-### Type
-* processor
-### Description
-Unifies features grouped by specified attributes
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "UnifierParam",
-  "type": "object",
-  "properties": {
-    "groupBy": {
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/Attribute"
-      }
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* area
-* rejected
 ### Category
 * Geometry
 
