@@ -1,10 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
-name: "dissolver-workflow"
+name: "PLATEAU4-A001-7-dissolver-workflow"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
   geojson: !include ./files/tsugaru_strait.geojson.txt
-  outputPath:
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
@@ -17,7 +16,7 @@ graphs:
           format: geojson
           inline: |
             env.get("geojson")
-      
+
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
         name: Dissolver
         type: action
@@ -33,7 +32,7 @@ graphs:
         action: GeoJsonWriter
         with:
           output: |
-            file::join_path(env.get("outputPath"), "dissolver.geojson")
+            file::join_path(env.get("currentPath"), "a001-7-dissolver.geojson")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
