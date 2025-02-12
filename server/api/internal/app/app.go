@@ -95,7 +95,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	// authenticated routes
 	apiPrivate := api.Group("", privateCache)
 	apiPrivate.Use(authMiddleware, attachOpMiddleware(cfg))
-	apiPrivate.POST("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev))
+	apiPrivate.POST("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev, origins))
 	apiPrivate.POST("/signup", Signup())
 	apiPrivate.POST("/verify/ws-token", func(c echo.Context) error {
 		return c.JSON(http.StatusOK, echo.Map{"authorized": true})
