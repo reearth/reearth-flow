@@ -17,7 +17,6 @@ import {
   Label,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { useCurrentProject } from "@flow/stores";
 
 type Props = {
   onProjectShare: (share: boolean) => void;
@@ -28,7 +27,7 @@ type SharingState = "sharing" | "notSharing";
 
 const ShareDialog: React.FC<Props> = ({ onProjectShare, setShowDialog }) => {
   const t = useT();
-  const [currentProject] = useCurrentProject();
+  // const [currentProject] = useCurrentProject();
 
   const [hasBeenEdited, setHasBeenEdited] = useState(false);
   const [isSharing, setIsSharing] = useState<SharingState>("notSharing");
@@ -78,15 +77,17 @@ const ShareDialog: React.FC<Props> = ({ onProjectShare, setShowDialog }) => {
               </SelectContent>
             </Select>
           </DialogContentSection>
-          <DialogContentSection className="break-all">
-            <Label>{t("URL: ")}</Label>
-            <p className="text-wrap font-thin">
-              https://someUrl.reearth.flow.io/preview/project/alskdfjasldfkjasldkfj
-            </p>
-          </DialogContentSection>
+          {isSharing === "sharing" && (
+            <DialogContentSection className="break-all">
+              <Label>{t("URL: ")}</Label>
+              <p className="text-wrap font-thin">
+                https://someUrl.reearth.flow.io/preview/project/alskdfjasldfkjasldkfj
+              </p>
+            </DialogContentSection>
+          )}
         </DialogContentWrapper>
         <DialogFooter>
-          <Button disabled={hasBeenEdited} onClick={handleProjectShare}>
+          <Button disabled={!hasBeenEdited} onClick={handleProjectShare}>
             {t("Submit")}
           </Button>
         </DialogFooter>

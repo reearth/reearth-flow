@@ -1,5 +1,5 @@
-import { DotsThreeVertical } from "@phosphor-icons/react";
-import { useState } from "react";
+import { DotsThreeVertical, ShareFat } from "@phosphor-icons/react";
+import { useMemo, useState } from "react";
 
 import {
   Card,
@@ -12,9 +12,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   FlowLogo,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
+import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 type Props = {
   project: Project;
@@ -35,6 +39,15 @@ const ProjectCard: React.FC<Props> = ({
   const { id, name, description, updatedAt } = project;
 
   const [persistOverlay, setPersistOverlay] = useState(false);
+
+  // TODO: isShared and sharedURL are temp values.
+  const isShared = useMemo(() => Math.random() < 0.5, []);
+  const sharedURL = "https://flow.org";
+
+  const handleCopyURLToClipBoard = () => {
+    if (!isShared) return;
+    copyToClipboard(sharedURL);
+  };
 
   return (
     <Card
@@ -71,25 +84,32 @@ const ProjectCard: React.FC<Props> = ({
               onClick={(e) => e.stopPropagation()}>
               <DotsThreeVertical className="size-[24px]" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditProject({ ...project });
-                }}>
+            <DropdownMenuContent
+              align="end"
+              onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={() => setEditProject({ ...project })}>
                 {t("Edit Details")}
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setProjectToBeDeleted(id);
-                }}>
+                disabled={!isShared}
+                onClick={handleCopyURLToClipBoard}>
+                {t("Copy Share URL")}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setProjectToBeDeleted(id)}>
                 {t("Delete Project")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
+      {isShared && (
+        <Tooltip>
+          <TooltipTrigger className="absolute right-2 top-2 text-muted-foreground group-hover:text-white">
+            <ShareFat />
+          </TooltipTrigger>
+          <TooltipContent>{t("Public Read Access")}</TooltipContent>
+        </Tooltip>
+      )}
     </Card>
   );
 };
