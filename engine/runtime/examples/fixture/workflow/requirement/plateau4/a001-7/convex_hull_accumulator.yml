@@ -31,7 +31,7 @@ graphs:
         action: GeoJsonWriter
         with:
           output: |
-            file::join_path(env.get("currentPath"), "a001-7-converx-hull.geojson")
+            file::join_path(env.get("currentPath"), "a001-7-convex-hull.geojson")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
