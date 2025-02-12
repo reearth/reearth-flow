@@ -4,9 +4,9 @@ name: "PLATEAU4-DataConvert-04-luse-lsld-workflow"
 entryGraphId: 0e500d5a-7882-4835-9285-9763ba8b5b65
 with:
   cityGmlPath:
+  codelists:
+  schemas:
   cityCode:
-  codelistsPath:
-  schemasPath:
   targetPackages:
     - luse
     - lsld
@@ -25,7 +25,9 @@ graphs:
             [
               #{
                 cityGmlPath: env.get("cityGmlPath"),
-                cityCode: env.get("cityCode"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                codelists: env.get("codelists"),
+                schemas: env.get("schemas"),
               },
             ]
 
@@ -95,9 +97,9 @@ graphs:
         type: action
         action: FileWriter
         with:
-          format: tsv
+          format: csv
           output: |
-            file::join_path(env.get("outputPath"), "maxLod.tsv")
+            file::join_path(env.get("outputPath"), "maxLod.csv")
 
       - id: 8510992d-2546-4e89-a09b-f31ff435bbb7
         name: FeatureFilterByPackage
@@ -142,7 +144,9 @@ graphs:
           minZoom: 8
           maxZoom: 16
           output: |
-             file::join_path(env.get("outputPath"), "luse")
+            file::join_path(env.get("outputPath"), "luse")
+          compressOutput: |
+            file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_luse_mvt.zip")
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
