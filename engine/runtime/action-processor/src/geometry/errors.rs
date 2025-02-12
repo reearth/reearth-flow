@@ -103,14 +103,6 @@ pub(super) enum GeometryProcessorError {
     OffsetterFactory(String),
     #[error("Offsetter error: {0}")]
     Offsetter(String),
-    #[error("Unifier Factory error: {0}")]
-    UnifierFactory(String),
-    #[error("Unifier error: {0}")]
-    Unifier(String),
-    #[error("SymmetricalDifferencer Factory error: {0}")]
-    SymmetricalDifferencerFactory(String),
-    #[error("SymmetricalDifferencer error: {0}")]
-    SymmetricalDifferencer(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;
