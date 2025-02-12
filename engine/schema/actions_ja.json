@@ -3238,43 +3238,6 @@
       ]
     },
     {
-      "name": "SymmetricalDifferencer",
-      "type": "processor",
-      "description": "Symmetrical difference of features grouped by specified attributes",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "SymmetricalDifferencerParam",
-        "type": "object",
-        "properties": {
-          "groupBy": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "area",
-        "rejected"
-      ],
-      "categories": [
-        "Geometry"
-      ]
-    },
-    {
       "name": "ThreeDimensionBoxReplacer",
       "type": "processor",
       "description": "3次元ボックスをポリゴンで置き換える",
@@ -3395,43 +3358,6 @@
       ],
       "outputPorts": [
         "default"
-      ],
-      "categories": [
-        "Geometry"
-      ]
-    },
-    {
-      "name": "Unifier",
-      "type": "processor",
-      "description": "Unifies features grouped by specified attributes",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "UnifierParam",
-        "type": "object",
-        "properties": {
-          "groupBy": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "area",
-        "rejected"
       ],
       "categories": [
         "Geometry"
