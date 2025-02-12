@@ -1,7 +1,4 @@
-import {
-  // Map as MapComponent,
-  CesiumViewer,
-} from "@flow/components";
+import { CesiumViewer } from "@flow/components";
 
 type Props = {
   className?: string;
@@ -9,8 +6,7 @@ type Props = {
 
 const Map: React.FC<Props> = ({ className }) => {
   return (
-    <div className={`relative w-full ${className}`}>
-      {/* <MapComponent mapMode={mapMode} /> */}
+    <div className={`relative size-full ${className}`}>
       <CesiumViewer />
     </div>
   );

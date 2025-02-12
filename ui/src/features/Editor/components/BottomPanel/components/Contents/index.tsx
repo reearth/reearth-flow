@@ -35,9 +35,9 @@ const Contents: React.FC<Props> = ({ isOpen, selectedId }) => {
       <div className="flex flex-1">
         {selectedId === "visual-preview" ? (
           <ResizablePanelGroup
-            className="flex h-full justify-between overflow-scroll"
+            className="flex h-full justify-between"
             direction="horizontal">
-            <ResizablePanel defaultSize={65} className="h-full">
+            <ResizablePanel defaultSize={65} className="">
               <DataTable />
             </ResizablePanel>
             <ResizableHandle className="bg-accent p-px" withHandle />

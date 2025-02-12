@@ -26,7 +26,7 @@ const CesiumViewer: React.FC = () => {
   }, [isLoaded]);
 
   return (
-    <Viewer className="h-[247px]" {...defaultCesiumProps}>
+    <Viewer full {...defaultCesiumProps}>
       <CesiumContents isLoaded={isLoaded} />
     </Viewer>
   );
