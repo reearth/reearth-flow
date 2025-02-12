@@ -75,7 +75,6 @@ const DeploymentsDialog: React.FC<Props> = ({
                 selectColumns
                 showFiltering
                 enablePagination
-                rowHeight={14}
                 onRowClick={(deployment) => {
                   handleSelectDeployment(deployment);
                   setShowDialog(false);

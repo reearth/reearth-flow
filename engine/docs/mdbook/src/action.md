@@ -2533,6 +2533,16 @@ Writes features to a file
     "output"
   ],
   "properties": {
+    "compressOutput": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "layerName": {
       "$ref": "#/definitions/Expr"
     },

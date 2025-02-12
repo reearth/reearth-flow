@@ -59,6 +59,8 @@ export default function Editor({
     handleWorkflowUndo,
     handleWorkflowRename,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
+  console.log("nodes", nodes);
+  console.log("edges", edges);
   return (
     <div className="flex h-screen flex-col">
       <div className="relative flex flex-1">

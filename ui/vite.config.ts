@@ -8,6 +8,7 @@ import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
 import react from "@vitejs/plugin-react";
 import { readEnv } from "read-env";
 import { Plugin, UserConfig, defineConfig, loadEnv } from "vite";
+import cesium from "vite-plugin-cesium";
 
 import pkg from "./package.json";
 
@@ -17,7 +18,7 @@ export default defineConfig(() => {
       port: 3000,
     },
     envPrefix: "FLOW_",
-    plugins: [react(), TanStackRouterVite(), config()],
+    plugins: [react(), TanStackRouterVite(), cesium(), config()],
     build: {
       target: "esnext",
       assetsDir: "static", // avoid conflicts with backend asset endpoints
