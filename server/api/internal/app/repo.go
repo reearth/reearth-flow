@@ -9,6 +9,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpbatch"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcs"
 	mongorepo "github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
+	"github.com/reearth/reearth-flow/api/internal/usecase/document"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmongo"
@@ -25,6 +26,9 @@ import (
 const databaseName = "reearth-flow"
 
 func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
+	// Initialize document package
+	document.Init(conf.Document)
+
 	gateways := &gateway.Container{}
 	acGateways := &accountgateway.Container{}
 
