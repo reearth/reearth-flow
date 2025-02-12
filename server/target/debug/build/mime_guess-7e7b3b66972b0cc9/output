@@ -1,1 +1,0 @@
-cargo:rustc-env=MIME_TYPES_GENERATED_PATH=/Users/xy/work/reearth-flow/server/target/debug/build/mime_guess-7e7b3b66972b0cc9/out/mime_types_generated.rs
