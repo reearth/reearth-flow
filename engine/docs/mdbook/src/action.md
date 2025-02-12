@@ -3203,6 +3203,43 @@ Calculates statistics of features
 ### Category
 * Attribute
 
+## SymmetricalDifferencer
+### Type
+* processor
+### Description
+Symmetrical difference of features grouped by specified attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SymmetricalDifferencerParam",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* area
+* rejected
+### Category
+* Geometry
+
 ## ThreeDimensionBoxReplacer
 ### Type
 * processor

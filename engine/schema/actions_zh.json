@@ -3244,6 +3244,43 @@
       ]
     },
     {
+      "name": "SymmetricalDifferencer",
+      "type": "processor",
+      "description": "Symmetrical difference of features grouped by specified attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "SymmetricalDifferencerParam",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "area",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "ThreeDimensionBoxReplacer",
       "type": "processor",
       "description": "用多边形替换三维盒子",
