@@ -44,7 +44,7 @@ const BottomPanel: React.FC<Props> = ({
 
   return (
     <div
-      className="box-content flex flex-col justify-end border-t bg-secondary backdrop-blur-md duration-300 ease-in-out"
+      className="box-content flex flex-col justify-end bg-secondary backdrop-blur-md duration-300 ease-in-out"
       style={{
         height: isOpen
           ? windowSize === "max"
@@ -55,32 +55,30 @@ const BottomPanel: React.FC<Props> = ({
       {isOpen && (
         <div
           id="top-edge"
-          className="flex h-[29px] shrink-0 items-center justify-end gap-2">
+          className="flex h-[29px] shrink-0 items-center justify-end gap-1 border-t">
           <BaseActionButtons
             panelContentOptions={panelContentOptions}
             selectedId={selectedId}
             onSelection={handleSelection}
           />
-          {isOpen && (
-            <div className="flex h-[29px] items-center px-1">
-              <IconButton
-                className="h-4/5 w-[55px]"
-                icon={windowSize === "min" ? <CornersOut /> : <CornersIn />}
-                tooltipPosition="top"
-                onClick={() =>
-                  windowSize === "min"
-                    ? setWindowSize("max")
-                    : setWindowSize("min")
-                }
-              />
-            </div>
-          )}
+          <div className="flex h-[29px] items-center px-1">
+            <IconButton
+              className="h-4/5 w-[55px]"
+              icon={windowSize === "min" ? <CornersOut /> : <CornersIn />}
+              tooltipPosition="top"
+              onClick={() =>
+                windowSize === "min"
+                  ? setWindowSize("max")
+                  : setWindowSize("min")
+              }
+            />
+          </div>
         </div>
       )}
       <Contents isOpen={isOpen} selectedId={selectedId} />
       <div
         id="bottom-edge"
-        className="mx-1 flex h-[29px] shrink-0 items-center justify-between gap-2 bg-secondary">
+        className="flex h-[29px] shrink-0 items-center justify-between gap-2 border-t bg-secondary px-1">
         <WorkflowTabs
           currentWorkflowId={currentWorkflowId}
           openWorkflows={openWorkflows}

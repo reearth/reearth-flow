@@ -83,7 +83,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         <div className="absolute bottom-2 right-2">
           <CanvasActionBar />
         </div>
-        <Infobar hoveredDetails={hoveredDetails} />
+        {hoveredDetails && <Infobar hoveredDetails={hoveredDetails} />}
       </div>
       {nodePickerOpen && (
         <NodePickerDialog

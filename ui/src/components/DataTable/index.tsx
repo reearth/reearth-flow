@@ -45,7 +45,7 @@ type DataTableProps<TData, TValue> = {
   showFiltering?: boolean;
   enablePagination?: boolean;
   totalPages?: number;
-  rowHeight?: number;
+  condensed?: boolean;
   onRowClick?: (row: TData) => void;
   currentPage?: number;
   setCurrentPage?: (page: number) => void;
@@ -61,7 +61,7 @@ function DataTable<TData, TValue>({
   showFiltering = false,
   enablePagination = false,
   totalPages = 1,
-  rowHeight,
+  condensed,
   onRowClick,
   currentPage = 1,
   setCurrentPage,
@@ -123,9 +123,10 @@ function DataTable<TData, TValue>({
   };
 
   return (
-    <div className="flex flex-col justify-between">
-      <div>
-        <div className="flex items-center gap-4 py-4">
+    <div className="flex h-full flex-col justify-between">
+      <div className="flex h-full flex-col">
+        <div
+          className={`flex items-center gap-4 ${condensed ? "py-1" : "py-3"}`}>
           {showFiltering && (
             <Input
               placeholder={t("Search") + "..."}
@@ -185,7 +186,9 @@ function DataTable<TData, TValue>({
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
                     return (
-                      <TableHead key={header.id}>
+                      <TableHead
+                        key={header.id}
+                        className={`${condensed ? "h-8" : "h-10"}`}>
                         {header.isPlaceholder
                           ? null
                           : flexRender(
@@ -203,14 +206,16 @@ function DataTable<TData, TValue>({
                 table.getRowModel().rows.map((row) => (
                   <TableRow
                     key={row.id}
-                    className={`${rowHeight ? "h-" + rowHeight : "h-10"} cursor-pointer`}
+                    className="cursor-pointer"
                     data-state={row.getIsSelected() && "selected"}
                     onClick={() => {
                       row.toggleSelected();
                       onRowClick?.(row.original);
                     }}>
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell
+                        key={cell.id}
+                        className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext(),

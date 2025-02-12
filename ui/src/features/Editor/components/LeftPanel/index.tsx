@@ -1,10 +1,4 @@
-import {
-  Database,
-  Disc,
-  HardDrive,
-  Lightning,
-  TreeView,
-} from "@phosphor-icons/react";
+import { Database, Disc, Lightning, TreeView } from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
 import { memo, useEffect, useState } from "react";
 
@@ -14,7 +8,7 @@ import { useShortcuts } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { Node } from "@flow/types";
 
-import { ActionsList, Resources } from "./components";
+import { ActionsList } from "./components";
 
 type Tab = "navigator" | "actions-list" | "resources";
 
@@ -110,12 +104,12 @@ const LeftPanel: React.FC<Props> = ({
         />
       ),
     },
-    {
-      id: "resources",
-      title: "Resources",
-      icon: <HardDrive className="size-5" weight="thin" />,
-      component: <Resources />,
-    },
+    // {
+    //   id: "resources",
+    //   title: "Resources",
+    //   icon: <HardDrive className="size-5" weight="thin" />,
+    //   component: <Resources />,
+    // },
   ];
 
   const handleTabChange = (tab: Tab) => {
