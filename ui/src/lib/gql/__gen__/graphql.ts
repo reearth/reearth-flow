@@ -259,7 +259,9 @@ export type Mutation = {
   removeMyAuth?: Maybe<UpdateMePayload>;
   removeParameter: Scalars['Boolean']['output'];
   runProject?: Maybe<RunProjectPayload>;
+  shareProject?: Maybe<ShareProjectPayload>;
   signup?: Maybe<SignupPayload>;
+  unshareProject?: Maybe<UnshareProjectPayload>;
   updateDeployment?: Maybe<DeploymentPayload>;
   updateMe?: Maybe<UpdateMePayload>;
   updateMemberOfWorkspace?: Maybe<UpdateMemberOfWorkspacePayload>;
@@ -362,8 +364,18 @@ export type MutationRunProjectArgs = {
 };
 
 
+export type MutationShareProjectArgs = {
+  input: ShareProjectInput;
+};
+
+
 export type MutationSignupArgs = {
   input: SignupInput;
+};
+
+
+export type MutationUnshareProjectArgs = {
+  input: UnshareProjectInput;
 };
 
 
@@ -520,6 +532,7 @@ export type Query = {
   nodes: Array<Maybe<Node>>;
   projects: ProjectConnection;
   searchUser?: Maybe<User>;
+  sharedProject: SharedProjectPayload;
   triggers: TriggerConnection;
 };
 
@@ -589,6 +602,11 @@ export type QuerySearchUserArgs = {
 };
 
 
+export type QuerySharedProjectArgs = {
+  token: Scalars['String']['input'];
+};
+
+
 export type QueryTriggersArgs = {
   pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
@@ -638,6 +656,21 @@ export type RunProjectPayload = {
   __typename?: 'RunProjectPayload';
   projectId: Scalars['ID']['output'];
   started: Scalars['Boolean']['output'];
+};
+
+export type ShareProjectInput = {
+  projectId: Scalars['ID']['input'];
+};
+
+export type ShareProjectPayload = {
+  __typename?: 'ShareProjectPayload';
+  projectId: Scalars['ID']['output'];
+  sharingUrl: Scalars['String']['output'];
+};
+
+export type SharedProjectPayload = {
+  __typename?: 'SharedProjectPayload';
+  project: Project;
 };
 
 export type SignupInput = {
@@ -695,6 +728,15 @@ export type TriggerConnection = {
   nodes: Array<Maybe<Trigger>>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
+};
+
+export type UnshareProjectInput = {
+  projectId: Scalars['ID']['input'];
+};
+
+export type UnshareProjectPayload = {
+  __typename?: 'UnshareProjectPayload';
+  projectId: Scalars['ID']['output'];
 };
 
 export type UpdateDeploymentInput = {
