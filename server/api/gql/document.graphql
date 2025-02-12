@@ -1,0 +1,22 @@
+type Document implements Node {
+  id: ID!
+  update: [Int!]!
+  clock: Int!
+  timestamp: DateTime!
+}
+
+type DocumentHistory {
+  update: [Int!]!
+  clock: Int!
+  timestamp: DateTime!
+}
+
+# Query
+
+extend type Query {
+  # Get the latest state of a document
+  documentLatest(id: ID!): Document
+
+  # Get the history of updates for a document
+  documentHistory(id: ID!): [DocumentHistory!]!
+} 
