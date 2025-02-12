@@ -1,4 +1,9 @@
-use std::{collections::HashMap, fmt::Display, sync::Arc};
+use std::{
+    collections::HashMap,
+    fmt::Display,
+    hash::{Hash, Hasher},
+    sync::Arc,
+};
 
 use nutype::nutype;
 use reearth_flow_common::{str, xml::XmlXpathValue};
@@ -67,6 +72,12 @@ impl From<HashMap<String, AttributeValue>> for Feature {
             metadata: Default::default(),
             geometry: Default::default(),
         }
+    }
+}
+
+impl Hash for Feature {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
     }
 }
 
@@ -148,6 +159,13 @@ impl From<&Feature> for nusamai_citygml::schema::TypeDef {
             .iter()
             .filter(|(_, v)| v.convertible_nusamai_type_ref())
         {
+            if let AttributeValue::Number(value) = v {
+                attributes.insert(
+                    k.to_string(),
+                    AttributeValue::String(value.to_string()).into(),
+                );
+                continue;
+            }
             attributes.insert(k.to_string(), v.clone().into());
         }
         nusamai_citygml::schema::TypeDef::Feature(nusamai_citygml::schema::FeatureTypeDef {
@@ -421,5 +439,13 @@ impl Feature {
 
     pub fn feature_type(&self) -> Option<String> {
         self.metadata.feature_type.clone()
+    }
+
+    pub fn update_feature_type(&mut self, feature_type: String) {
+        self.metadata.feature_type = Some(feature_type);
+    }
+
+    pub fn update_feature_id(&mut self, feature_id: String) {
+        self.metadata.feature_id = Some(feature_id);
     }
 }

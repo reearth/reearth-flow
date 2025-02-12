@@ -5,7 +5,7 @@
 import { cleanup } from "@testing-library/react";
 
 // import useYWorkflow from "./useYWorkflow"; // Adjust the import according to your file structure
-// import { YWorkflow, yWorkflowBuilder } from "./workflowBuilder";
+// import { YWorkflow, yWorkflowConstructor } from "./workflowBuilder";
 
 afterEach(() => {
   cleanup();
@@ -45,7 +45,7 @@ describe("useWorkflowFunctions", () => {
   test("should remove workflows", () => {
     // const yDoc = new Y.Doc();
     // const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-    // const yWorkflow = yWorkflowBuilder("sub-workflow1", "Sub Workflow 1");
+    // const yWorkflow = yWorkflowConstructor("sub-workflow1", "Sub Workflow 1");
     // yWorkflows.push([yWorkflow]);
     // const workflows = [{ id: "sub-workflow1", name: "Sub Workflow 1" }];
     // const setWorkflows = vi.fn();

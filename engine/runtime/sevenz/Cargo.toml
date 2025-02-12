@@ -1,0 +1,24 @@
+[package]
+description = "Re:Earth Flow sevenz"
+name = "reearth-flow-sevenz"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+bit-set = "0.8.0"
+byteorder = "1.5.0"
+crc = "3.2.1"
+filetime_creation = "0.2.0"
+lzma-rust = "0.1.7"
+nt-time = "0.10.4"
+rand.workspace = true
+regex.workspace = true
+ring = "0.17.8"
+tempfile.workspace = true
+thiserror.workspace = true

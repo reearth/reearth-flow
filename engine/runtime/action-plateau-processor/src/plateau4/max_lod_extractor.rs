@@ -96,6 +96,10 @@ pub(crate) struct MaxLodExtractor {
 }
 
 impl Processor for MaxLodExtractor {
+    fn num_threads(&self) -> usize {
+        2
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -176,9 +180,13 @@ impl MaxLodExtractor {
         fw: &mut dyn ProcessorChannelForwarder,
         ignore_key: String,
     ) {
-        let value = self.buffer.remove(&ignore_key);
-        for (_, buffer) in self.buffer.drain() {
-            for mut feature in buffer.features.into_iter() {
+        for (_, buffer) in self
+            .buffer
+            .iter()
+            .filter(|(k, _)| (*k).clone() != ignore_key)
+        {
+            for feature in buffer.features.iter() {
+                let mut feature = feature.clone();
                 feature.attributes.insert(
                     self.max_lod_attribute.clone(),
                     AttributeValue::Number(serde_json::Number::from(buffer.max_lod)),
@@ -186,8 +194,15 @@ impl MaxLodExtractor {
                 fw.send(ctx.as_executor_context(feature, DEFAULT_PORT.clone()));
             }
         }
-        if let Some(value) = value {
-            self.buffer.insert(ignore_key, value);
+        let keys: Vec<String> = self
+            .buffer
+            .keys()
+            .filter(|k| **k != ignore_key)
+            .cloned()
+            .collect();
+        let buffer = &mut self.buffer;
+        for key in keys {
+            buffer.remove(&key);
         }
     }
 }

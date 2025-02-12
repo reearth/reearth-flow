@@ -2,7 +2,7 @@ import { addEdge } from "@xyflow/react";
 import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
-import { Edge, Node } from "@flow/types";
+import type { Edge, Node, NodeChange } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
 export default ({
@@ -10,8 +10,9 @@ export default ({
   edges,
   rawWorkflows,
   handleWorkflowUpdate,
-  handleNodesUpdate,
-  handleEdgesUpdate,
+  handleNodesAdd,
+  handleNodesChange,
+  handleEdgesAdd,
 }: {
   nodes: Node[];
   edges: Edge[];
@@ -21,8 +22,9 @@ export default ({
     nodes?: Node[],
     edges?: Edge[],
   ) => void;
-  handleNodesUpdate: (newNodes: Node[]) => void;
-  handleEdgesUpdate: (newEdges: Edge[]) => void;
+  handleNodesAdd: (newNodes: Node[]) => void;
+  handleNodesChange: (changes: NodeChange[]) => void;
+  handleEdgesAdd: (newEdges: Edge[]) => void;
 }) => {
   const { copy, paste } = useCopyPaste<
     { nodeIds: string[]; edges: Edge[] } | undefined
@@ -57,7 +59,6 @@ export default ({
         selected: true, // select pasted nodes
         data: {
           ...n.data,
-          // customName: n.data.customName + "-copy",
         },
       };
 
@@ -91,7 +92,7 @@ export default ({
       return rbn;
     });
 
-    let newEdges: Edge[] = edges;
+    let newEdges: Edge[] = [];
     for (const e of pe) {
       const sourceNode =
         reBatchedNodes[pn?.findIndex((n) => n.id === e.source)];
@@ -119,12 +120,18 @@ export default ({
       edges: newEdges.filter((e) => !edges.find((e2) => e2.id === e.id)),
     });
 
-    handleNodesUpdate([
-      ...nodes.map((n) => ({ ...n, selected: false })), // deselect all previously selected nodes
-      ...reBatchedNodes,
-    ]);
+    // deselect all previously selected nodes
+    const nodeChanges: NodeChange[] = nodes.map((n) => ({
+      id: n.id,
+      type: "select",
+      selected: false,
+    }));
 
-    handleEdgesUpdate(newEdges);
+    handleNodesChange(nodeChanges);
+
+    handleNodesAdd([...reBatchedNodes]);
+
+    handleEdgesAdd(newEdges);
   }, [
     nodes,
     edges,
@@ -132,8 +139,9 @@ export default ({
     copy,
     paste,
     handleWorkflowUpdate,
-    handleNodesUpdate,
-    handleEdgesUpdate,
+    handleNodesAdd,
+    handleNodesChange,
+    handleEdgesAdd,
   ]);
 
   return {

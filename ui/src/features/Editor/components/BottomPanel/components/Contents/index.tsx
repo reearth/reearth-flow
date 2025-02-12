@@ -1,10 +1,15 @@
 import { useState } from "react";
 
 import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
   supportedVisualizations,
   SupportedVisualizations,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import mockLogs from "@flow/mock_data/logsv2Data";
+import { Log } from "@flow/types";
 
 import { DataTable } from "../DataTable";
 import { LogsConsole } from "../LogsConsole";
@@ -20,8 +25,8 @@ type Props = {
 const Contents: React.FC<Props> = ({ isOpen, selectedId }) => {
   const t = useT();
 
-  const [visualizationMode, setVisualizationMode] =
-    useState<SupportedVisualizations>("2d-map");
+  const [visualizationMode, _setVisualizationMode] =
+    useState<SupportedVisualizations>("3d-map");
 
   return (
     <div
@@ -29,9 +34,14 @@ const Contents: React.FC<Props> = ({ isOpen, selectedId }) => {
       className={`flex h-[calc(100%-64px)] flex-1 bg-background ${isOpen ? "flex" : "hidden"}`}>
       <div className="flex flex-1">
         {selectedId === "visual-preview" ? (
-          <div className="flex w-full justify-between">
-            <DataTable />
-            <div className="flex w-1/2">
+          <ResizablePanelGroup
+            className="flex h-full justify-between"
+            direction="horizontal">
+            <ResizablePanel defaultSize={65} className="">
+              <DataTable />
+            </ResizablePanel>
+            <ResizableHandle className="bg-accent p-px" withHandle />
+            <ResizablePanel defaultSize={35}>
               {!supportedVisualizations.includes(visualizationMode) ? (
                 <div>
                   <p className="text-center text-accent-foreground">
@@ -39,15 +49,12 @@ const Contents: React.FC<Props> = ({ isOpen, selectedId }) => {
                   </p>
                 </div>
               ) : (
-                <Map
-                  mapMode={visualizationMode}
-                  setMapMode={setVisualizationMode}
-                />
+                <Map />
               )}
-            </div>
-          </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         ) : (
-          <LogsConsole />
+          <LogsConsole data={mockLogs as Log[]} />
         )}
       </div>
     </div>

@@ -1,95 +1,73 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useJob } from "@flow/lib/gql/job";
-import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import { Job } from "@flow/types";
+import type { Job } from "@flow/types";
+import { OrderDirection } from "@flow/types/paginationOptions";
 import { lastOfUrl as getJobId } from "@flow/utils";
 
 import { RouteOption } from "../WorkspaceLeftPanel";
 
 export default () => {
-  const t = useT();
+  const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
-  const { useGetJobsInfinite } = useJob();
-
+  const [openJobRunDialog, setOpenJobRunDialog] = useState(false);
   const [currentWorkspace] = useCurrentWorkspace();
-
-  // const { pages, hasNextPage, isFetching, fetchNextPage } = useGetJobsInfinite(
-  const { pages } = useGetJobsInfinite(currentWorkspace?.id); // TODO: Add pagination
-
-  const rawJobs: Job[] | undefined = useMemo(
-    () =>
-      pages?.reduce((jobs, page) => {
-        if (page?.jobs) {
-          jobs.push(...page.jobs);
-        }
-        return jobs;
-      }, [] as Job[]),
-    [pages],
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
+    OrderDirection.Desc,
   );
+  const { useGetJobs } = useJob();
+
+  const { page, refetch, isFetching } = useGetJobs(currentWorkspace?.id, {
+    page: currentPage,
+    orderBy: "completedAt",
+    orderDir: currentOrder,
+  });
+
+  useEffect(() => {
+    refetch();
+  }, [currentPage, currentOrder, refetch]);
+
+  const totalPages = page?.totalPages as number;
 
   const {
     location: { pathname },
   } = useRouterState();
 
   const tab = getTab(pathname);
+  const jobs = page?.jobs;
 
   const selectedJob = useMemo(
-    () => rawJobs?.find((job) => job.id === tab),
-    [tab, rawJobs],
+    () => jobs?.find((job) => job.id === tab),
+    [tab, jobs],
   );
 
   const handleJobSelect = useCallback(
-    (jobId: string) =>
+    (job: Job) =>
       navigate({
-        to: `/workspaces/${currentWorkspace?.id}/jobs/${jobId}`,
+        to: `/workspaces/${currentWorkspace?.id}/jobs/${job.id}`,
       }),
     [currentWorkspace, navigate],
   );
 
-  const jobs = useMemo(
-    () =>
-      rawJobs?.filter((job) => {
-        if (tab === "running") return job.status === "running";
-        if (tab === "queued") return job.status === "queued";
-        if (tab === "completed")
-          return job.status === "completed" || job.status === "failed";
-        return true;
-      }),
-    [tab, rawJobs],
-  );
-
-  const statusLabels = useMemo(
-    () => ({
-      completed: t("Completed jobs"),
-      running: t("Ongoing jobs"),
-      queued: t("Queued jobs"),
-      all: t("All jobs"),
-    }),
-    [t],
-  );
-
   return {
-    tab,
-    statusLabels,
-    selectedJob,
+    ref,
     jobs,
+    selectedJob,
+    openJobRunDialog,
+    setOpenJobRunDialog,
     handleJobSelect,
+    isFetching,
+    currentPage,
+    setCurrentPage,
+    totalPages,
+    currentOrder,
+    setCurrentOrder,
   };
 };
 
 const getTab = (pathname: string): RouteOption =>
-  pathname.includes("running")
-    ? "running"
-    : pathname.includes("new")
-      ? "new"
-      : pathname.includes("queued")
-        ? "queued"
-        : pathname.includes("completed")
-          ? "completed"
-          : pathname.includes("all")
-            ? "all"
-            : getJobId(pathname);
+  pathname.includes("all") ? "all" : getJobId(pathname);

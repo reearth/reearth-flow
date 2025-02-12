@@ -4,14 +4,13 @@ import {
   Disc,
   HardDrive,
   Lightning,
-  MagnifyingGlass,
   TreeView,
 } from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
 import { memo, useEffect, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
-import { UserNavigation } from "@flow/features/WorkspaceTopNavigation/components";
+import { UserMenu } from "@flow/features/common";
 import { useShortcuts } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { Node } from "@flow/types";
@@ -24,14 +23,18 @@ type Props = {
   nodes: Node[];
   isOpen: boolean;
   onOpen: (panel?: "left" | "right" | "bottom") => void;
-  onNodesChange: (nodes: Node[]) => void;
+  onNodesAdd: (node: Node[]) => void;
+  isMainWorkflow: boolean;
+  hasReader?: boolean;
 };
 
 const LeftPanel: React.FC<Props> = ({
   nodes,
   isOpen,
   onOpen,
-  onNodesChange,
+  onNodesAdd,
+  isMainWorkflow,
+  hasReader,
 }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
@@ -111,8 +114,21 @@ const LeftPanel: React.FC<Props> = ({
       id: "actions-list",
       title: t("Actions list"),
       icon: <Lightning className="size-5" weight="thin" />,
-      component: <ActionsList nodes={nodes} onNodesChange={onNodesChange} />,
+      component: (
+        <ActionsList
+          nodes={nodes}
+          onNodesAdd={onNodesAdd}
+          isMainWorkflow={isMainWorkflow}
+          hasReader={hasReader}
+        />
+      ),
     },
+    // {
+    //   id: "resources",
+    //   title: "Resources",
+    //   icon: <HardDrive className="size-5" weight="thin" />,
+    //   component: <Resources />,
+    // },
   ];
 
   const handleTabChange = (tab: Tab) => {
@@ -157,8 +173,7 @@ const LeftPanel: React.FC<Props> = ({
             {tabs?.find((tc) => tc.id === selectedTab)?.title}
           </p>
         </div>
-        <div className="flex flex-1 flex-col gap-2 overflow-auto">
-          {/* {content.title && <p>{content.title}</p>} */}
+        <div className="flex flex-col gap-2 overflow-auto">
           {tabs?.find((tc) => tc.id === selectedTab)?.component}
         </div>
       </div>
@@ -181,7 +196,8 @@ const LeftPanel: React.FC<Props> = ({
             ))}
           </nav>
           <nav className="mt-auto flex flex-col items-center gap-4 p-2">
-            <MagnifyingGlass
+            {/* TODO: Implement global search */}
+            {/* <MagnifyingGlass
               className="size-6 cursor-pointer text-popover-foreground/50 hover:text-popover-foreground"
               weight="thin"
               onClick={() =>
@@ -189,17 +205,11 @@ const LeftPanel: React.FC<Props> = ({
                   "Need to implement a global search and assign a shortcut as well",
                 )
               }
-            />
-            <UserNavigation
-              className="flex w-full justify-center"
-              iconOnly
-              dropdownPosition="right"
-            />
-            {/* <ProjectSettings
-              className="flex items-center justify-center cursor-pointer rounded  transition-colors hover: md:h-8 md:w-8"
-              dropdownPosition="right"
-              dropdownOffset={15}
             /> */}
+            <UserMenu
+              className="flex w-full justify-center"
+              dropdownPosition="right"
+            />
           </nav>
         </div>
       </aside>

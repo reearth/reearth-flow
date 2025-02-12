@@ -1,7 +1,11 @@
 use crate::types::{
-    coordinate::Coordinate, coordnum::CoordFloat, line_string::LineString,
-    multi_line_string::MultiLineString, multi_polygon::MultiPolygon, point::Point,
-    polygon::Polygon,
+    coordinate::{Coordinate2D, Coordinate3D},
+    coordnum::CoordFloat,
+    line_string::{LineString2D, LineString3D},
+    multi_line_string::{MultiLineString, MultiLineString2D, MultiLineString3D},
+    multi_polygon::{MultiPolygon, MultiPolygon2D, MultiPolygon3D},
+    point::{Point2D, Point3D},
+    polygon::{Polygon, Polygon2D, Polygon3D},
 };
 
 pub(crate) fn create_point_type<T, Z>(
@@ -15,10 +19,10 @@ where
     let y: f64 = point.y().to_f64().expect("Failed to convert y to f64");
 
     if point.z().is_nan() {
-        vec![x, y]
+        vec![y, x]
     } else {
         let z: f64 = point.z().to_f64().expect("Failed to convert z to f64");
-        vec![x, y, z]
+        vec![y, x, z]
     }
 }
 
@@ -117,99 +121,150 @@ where
         .collect()
 }
 
-pub(crate) fn create_geo_coordinate<T, Z>(point_type: &geojson::PointType) -> Coordinate<T, Z>
-where
-    T: CoordFloat,
-    Z: CoordFloat,
-{
-    Coordinate::new__(
-        T::from(point_type[0]).expect("Failed to convert x to f64"),
-        T::from(point_type[1]).expect("Failed to convert y to f64"),
-        if point_type.len() > 2 {
-            Z::from(point_type[2]).expect("Failed to convert z to f64")
-        } else {
-            Z::zero()
-        },
-    )
+pub(crate) fn create_geo_coordinate_2d(point_type: &geojson::PointType) -> Coordinate2D<f64> {
+    Coordinate2D::new_(point_type[1], point_type[0])
 }
 
-pub(crate) fn create_geo_point<T, Z>(point_type: &geojson::PointType) -> Point<T, Z>
-where
-    T: CoordFloat,
-    Z: CoordFloat,
-{
-    Point::new(
-        T::from(point_type[0]).expect("Failed to convert x to T"),
-        T::from(point_type[1]).expect("Failed to convert y to T"),
-        if point_type.len() > 2 {
-            Z::from(point_type[2]).expect("Failed to convert z to T")
-        } else {
-            Z::zero()
-        },
-    )
+pub(crate) fn create_geo_coordinate_3d(point_type: &geojson::PointType) -> Coordinate3D<f64> {
+    Coordinate3D::new__(point_type[1], point_type[0], point_type[2])
 }
 
-pub(crate) fn create_geo_line_string<T, Z>(line_type: &geojson::LineStringType) -> LineString<T, Z>
-where
-    T: CoordFloat,
-    Z: CoordFloat,
-{
-    LineString::new(
-        line_type
+pub fn is_2d(point_type: &geojson::PointType) -> bool {
+    point_type.len() == 2
+}
+
+pub fn is_3d(point_type: &geojson::PointType) -> bool {
+    point_type.len() == 3
+}
+
+pub fn is_2d_geojson_value(value: &geojson::Value) -> bool {
+    match value {
+        geojson::Value::Point(point_type) => is_2d(point_type),
+        geojson::Value::LineString(line_type) => line_type.iter().all(is_2d),
+        geojson::Value::Polygon(polygon_type) => {
+            polygon_type.iter().all(|line| line.iter().all(is_2d))
+        }
+        geojson::Value::MultiPoint(multi_point_type) => multi_point_type.iter().all(is_2d),
+        geojson::Value::MultiLineString(multi_line_type) => {
+            multi_line_type.iter().all(|line| line.iter().all(is_2d))
+        }
+        geojson::Value::MultiPolygon(multi_polygon_type) => multi_polygon_type
             .iter()
-            .map(|point_type| create_geo_coordinate(point_type))
-            .collect(),
-    )
+            .all(|polygon| polygon.iter().all(|line| line.iter().all(is_2d))),
+        _ => false,
+    }
 }
 
-pub(crate) fn create_geo_multi_line_string<T, Z>(
+pub fn is_3d_geojson_value(value: &geojson::Value) -> bool {
+    match value {
+        geojson::Value::Point(point_type) => is_3d(point_type),
+        geojson::Value::LineString(line_type) => line_type.iter().all(is_3d),
+        geojson::Value::Polygon(polygon_type) => {
+            polygon_type.iter().all(|line| line.iter().all(is_3d))
+        }
+        geojson::Value::MultiPoint(multi_point_type) => multi_point_type.iter().all(is_3d),
+        geojson::Value::MultiLineString(multi_line_type) => {
+            multi_line_type.iter().all(|line| line.iter().all(is_3d))
+        }
+        geojson::Value::MultiPolygon(multi_polygon_type) => multi_polygon_type
+            .iter()
+            .all(|polygon| polygon.iter().all(|line| line.iter().all(is_3d))),
+        _ => false,
+    }
+}
+
+pub(crate) fn create_geo_point_2d(point_type: &geojson::PointType) -> Point2D<f64> {
+    Point2D::from((point_type[1], point_type[0]))
+}
+
+pub(crate) fn create_geo_point_3d(point_type: &geojson::PointType) -> Point3D<f64> {
+    Point3D::new(point_type[1], point_type[0], point_type[2])
+}
+
+pub(crate) fn create_geo_line_string_2d(line_type: &geojson::LineStringType) -> LineString2D<f64> {
+    LineString2D::new(line_type.iter().map(create_geo_coordinate_2d).collect())
+}
+
+pub(crate) fn create_geo_line_string_3d(line_type: &geojson::LineStringType) -> LineString3D<f64> {
+    LineString3D::new(line_type.iter().map(create_geo_coordinate_3d).collect())
+}
+
+pub(crate) fn create_geo_multi_line_string_2d(
     multi_line_type: &[geojson::LineStringType],
-) -> MultiLineString<T, Z>
-where
-    T: CoordFloat,
-    Z: CoordFloat,
-{
-    MultiLineString::new(
+) -> MultiLineString2D<f64> {
+    MultiLineString2D::new(
         multi_line_type
             .iter()
-            .map(|point_type| create_geo_line_string(point_type))
+            .map(create_geo_line_string_2d)
             .collect(),
     )
 }
 
-pub(crate) fn create_geo_polygon<T, Z>(polygon_type: &geojson::PolygonType) -> Polygon<T, Z>
-where
-    T: CoordFloat,
-    Z: CoordFloat,
-{
+pub(crate) fn create_geo_multi_line_string_3d(
+    multi_line_type: &[geojson::LineStringType],
+) -> MultiLineString3D<f64> {
+    MultiLineString3D::new(
+        multi_line_type
+            .iter()
+            .map(create_geo_line_string_3d)
+            .collect(),
+    )
+}
+
+pub(crate) fn create_geo_polygon_2d(polygon_type: &geojson::PolygonType) -> Polygon2D<f64> {
     let exterior = polygon_type
         .first()
-        .map(|e| create_geo_line_string(e))
-        .unwrap_or_else(|| create_geo_line_string(&vec![]));
+        .map(create_geo_line_string_2d)
+        .unwrap_or_else(|| create_geo_line_string_2d(&vec![]));
 
     let interiors = if polygon_type.len() < 2 {
         vec![]
     } else {
         polygon_type[1..]
             .iter()
-            .map(|line_string_type| create_geo_line_string(line_string_type))
+            .map(create_geo_line_string_2d)
             .collect()
     };
 
-    Polygon::new(exterior, interiors)
+    Polygon2D::new(exterior, interiors)
 }
 
-pub(crate) fn create_geo_multi_polygon<T, Z>(
+pub(crate) fn create_geo_polygon_3d(polygon_type: &geojson::PolygonType) -> Polygon3D<f64> {
+    let exterior = polygon_type
+        .first()
+        .map(create_geo_line_string_3d)
+        .unwrap_or_else(|| create_geo_line_string_3d(&vec![]));
+
+    let interiors = if polygon_type.len() < 2 {
+        vec![]
+    } else {
+        polygon_type[1..]
+            .iter()
+            .map(create_geo_line_string_3d)
+            .collect()
+    };
+
+    Polygon3D::new(exterior, interiors)
+}
+
+pub(crate) fn create_geo_multi_polygon_2d(
     multi_polygon_type: &[geojson::PolygonType],
-) -> MultiPolygon<T, Z>
-where
-    T: CoordFloat,
-    Z: CoordFloat,
-{
-    MultiPolygon::new(
+) -> MultiPolygon2D<f64> {
+    MultiPolygon2D::new(
         multi_polygon_type
             .iter()
-            .map(|polygon_type| create_geo_polygon(polygon_type))
+            .map(create_geo_polygon_2d)
+            .collect(),
+    )
+}
+
+pub(crate) fn create_geo_multi_polygon_3d(
+    multi_polygon_type: &[geojson::PolygonType],
+) -> MultiPolygon3D<f64> {
+    MultiPolygon3D::new(
+        multi_polygon_type
+            .iter()
+            .map(create_geo_polygon_3d)
             .collect(),
     )
 }
@@ -221,5 +276,33 @@ pub(crate) fn mismatch_geom_err(
     crate::error::Error::InvalidGeoJsonConversion {
         expected_type,
         found_type: found.type_name(),
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::types::conversion::geojson::*;
+    use crate::types::no_value::NoValue;
+
+    // generate create_geo_point test
+    #[test]
+    fn test_create_geo_point() {
+        use geojson::PointType;
+
+        let point_type: PointType = vec![1.0, 2.0];
+        assert!(is_2d(&point_type));
+        assert!(!is_3d(&point_type));
+        let point = create_geo_point_2d(&point_type);
+        assert_eq!(point.x(), 2.0);
+        assert_eq!(point.y(), 1.0);
+        assert_eq!(point.z(), NoValue);
+
+        let point_type: PointType = vec![1.0, 2.0, 1.0];
+        assert!(!is_2d(&point_type));
+        assert!(is_3d(&point_type));
+        let point = create_geo_point_3d(&point_type);
+        assert_eq!(point.x(), 2.0);
+        assert_eq!(point.y(), 1.0);
+        assert_eq!(point.z(), 1.0);
     }
 }

@@ -16,24 +16,22 @@ const Breadcrumb: React.FC = () => {
   }, [isHovered]);
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-0 flex shrink-0 justify-center [&>*]:pointer-events-auto">
-      <div
-        className="flex cursor-default select-none items-center gap-3 rounded-br-md px-2 py-1"
-        onMouseLeave={() => setIsHovered(undefined)}>
-        <p
-          className={`max-w-[100px] truncate transition-all delay-0 duration-500 dark:font-extralight ${isHovered?.includes("workspace") ? "max-w-[50vw] select-text delay-500" : undefined}`}
-          onMouseEnter={() => setIsHovered((h) => [...(h ?? []), "workspace"])}>
-          {currentWorkspace?.name}
-        </p>
-        <p className="dark:font-extralight">
-          <CaretRight />
-        </p>
-        <p
-          className={`max-w-[100px] truncate transition-all delay-0 duration-500 dark:font-extralight ${isHovered?.includes("project") ? "max-w-[50vw] select-text delay-500" : undefined}`}
-          onMouseEnter={() => setIsHovered((h) => [...(h ?? []), "project"])}>
-          {currentProject?.name}
-        </p>
-      </div>
+    <div
+      className="flex cursor-default select-none items-center gap-3 rounded-br-md px-2 py-1"
+      onMouseLeave={() => setIsHovered(undefined)}>
+      <p
+        className={`max-w-[100px] truncate transition-all delay-0 duration-500 dark:font-extralight ${isHovered?.includes("workspace") ? "max-w-[50vw] select-text delay-500" : undefined}`}
+        onMouseEnter={() => setIsHovered((h) => [...(h ?? []), "workspace"])}>
+        {currentWorkspace?.name}
+      </p>
+      <p className="dark:font-extralight">
+        <CaretRight />
+      </p>
+      <p
+        className={`max-w-[100px] truncate transition-all delay-0 duration-500 dark:font-extralight ${isHovered?.includes("project") ? "max-w-[50vw] select-text delay-500" : undefined}`}
+        onMouseEnter={() => setIsHovered((h) => [...(h ?? []), "project"])}>
+        {currentProject?.name}
+      </p>
     </div>
   );
 };

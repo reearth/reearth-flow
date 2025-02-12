@@ -1,4 +1,4 @@
-import { CaretLeft } from "@phosphor-icons/react";
+import { CaretLeft, PencilLine, Play, Trash } from "@phosphor-icons/react";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 
@@ -8,39 +8,25 @@ import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { useT } from "@flow/lib/i18n";
 import type { Deployment } from "@flow/types";
 
+import { DeploymentEditDialog } from "./DeploymentEditDialog";
+
 type Props = {
   selectedDeployment?: Deployment;
-  setDeploymentToBeDeleted: (deployment: string | undefined) => void;
-  onDeploymentUpdate: (description?: string) => Promise<void>;
+  setDeploymentToBeDeleted: (deployment?: Deployment) => void;
+  onDeploymentRun: () => void;
 };
 
 const DeploymentDetails: React.FC<Props> = ({
   selectedDeployment,
   setDeploymentToBeDeleted,
-  onDeploymentUpdate,
+  onDeploymentRun,
 }) => {
   const t = useT();
   const { history } = useRouter();
-
-  const [updatedDescription, setUpdatedDescription] = useState(
-    selectedDeployment?.description || "",
-  );
+  const [openDeploymentEditDialog, setOpenDeploymentEditDialog] =
+    useState(false);
 
   const handleBack = useCallback(() => history.go(-1), [history]); // Go back to previous page
-
-  const handleUpdate = useCallback(
-    () => onDeploymentUpdate(updatedDescription),
-    [onDeploymentUpdate, updatedDescription],
-  );
-
-  const handleDelete = useCallback(() => {
-    if (!selectedDeployment) return;
-    setDeploymentToBeDeleted(selectedDeployment.id);
-  }, [selectedDeployment, setDeploymentToBeDeleted]);
-
-  const handleDescriptionChange = useCallback((content: DetailsBoxContent) => {
-    setUpdatedDescription(content.value);
-  }, []);
 
   const details: DetailsBoxContent[] | undefined = useMemo(
     () =>
@@ -49,13 +35,13 @@ const DeploymentDetails: React.FC<Props> = ({
             {
               id: "id",
               name: t("ID"),
-              value: selectedDeployment.id,
+              value:
+                selectedDeployment.id || t("Unknown or deleted deployment"),
             },
             {
               id: "description",
               name: t("Description"),
-              value: updatedDescription,
-              type: "textbox",
+              value: selectedDeployment.description || t("N/A"),
             },
             {
               id: "project",
@@ -67,57 +53,75 @@ const DeploymentDetails: React.FC<Props> = ({
             {
               id: "version",
               name: t("Version"),
-              value: selectedDeployment.version,
+              value: selectedDeployment.version || "",
             },
             {
               id: "createdAt",
               name: t("Created At"),
-              value: selectedDeployment.createdAt,
+              value: selectedDeployment.createdAt || t("N/A") || "",
             },
             {
               id: "updatedAt",
               name: t("Updated At"),
-              value: selectedDeployment.updatedAt,
+              value: selectedDeployment.updatedAt || t("Never") || "",
             },
             {
               id: "workflowUrl",
+              name: t("Workflow Url"),
+              value: selectedDeployment.workflowUrl || t("N/A") || "",
+            },
+            {
+              id: "workflowDownload",
               name: t("Workflow Url"),
               value: selectedDeployment.workflowUrl,
               type: "download",
             },
           ]
         : undefined,
-    [t, selectedDeployment, updatedDescription],
+    [t, selectedDeployment],
   );
 
   return (
-    selectedDeployment && (
+    <>
       <div className="flex flex-1 flex-col gap-4 px-6 pb-2 pt-6">
         <div className="flex justify-between">
           <Button size="icon" variant="ghost" onClick={handleBack}>
             <CaretLeft />
           </Button>
-          <Button variant="destructive" onClick={handleDelete}>
-            {t("Delete Deployment")}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="default" size="sm" onClick={onDeploymentRun}>
+              <Play />
+              {t("Run")}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!selectedDeployment}
+              onClick={() => setOpenDeploymentEditDialog(true)}>
+              <PencilLine />
+              {t("Edit Deployment")}
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setDeploymentToBeDeleted(selectedDeployment)}>
+              <Trash />
+              {t("Delete")}
+            </Button>
+          </div>
         </div>
         <div className="w-full border-b" />
         <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
-          <DetailsBox
-            title={t("Deployment Details")}
-            content={details}
-            onContentChange={handleDescriptionChange}
-          />
-          <Button
-            variant="default"
-            className="self-end"
-            disabled={updatedDescription === selectedDeployment.description}
-            onClick={handleUpdate}>
-            {t("Update Deployment")}
-          </Button>
+          <DetailsBox title={t("Deployment Details")} content={details} />
         </div>
       </div>
-    )
+      {openDeploymentEditDialog && selectedDeployment && (
+        <DeploymentEditDialog
+          selectedDeployment={selectedDeployment}
+          onDialogClose={() => setOpenDeploymentEditDialog(false)}
+        />
+      )}
+    </>
   );
 };
 

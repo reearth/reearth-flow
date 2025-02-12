@@ -5,11 +5,7 @@ import { useT } from "@flow/lib/i18n";
 
 import { RouteOption } from "../WorkspaceLeftPanel";
 
-import {
-  GeneralSettings,
-  // IntegrationsSettings,
-  MembersSettings,
-} from "./components";
+import { GeneralSettings, MembersSettings } from "./components";
 
 type Tab = "general" | "integrations" | "members";
 
@@ -43,17 +39,11 @@ const WorkspaceSettings: React.FC = () => {
       icon: <UsersThree weight="light" />,
       component: <MembersSettings />,
     },
-    // {
-    //   id: "integrations",
-    //   name: t("Integrations"),
-    //   icon: <PlugsConnected weight="light" />,
-    //   component: <IntegrationsSettings />,
-    // },
   ];
 
   return (
-    <div className="flex flex-1">
-      <div className="flex-1 p-8">
+    <div className="flex h-full flex-1 flex-col">
+      <div className="flex flex-1 flex-col gap-4 px-6 pb-2 pt-4">
         {content.find((c) => c.id === selectedTab)?.component}
       </div>
     </div>

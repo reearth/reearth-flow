@@ -13,12 +13,13 @@ import { createRoot } from "react-dom/client";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { type NodeType } from "@flow/types";
+import type { NodeType } from "@flow/types";
 
 type ToolboxItem<T> = {
   id: T;
   name: string;
   icon: React.ReactNode;
+  disabled?: boolean;
 };
 
 type Tool = ToolboxItem<NodeType>;
@@ -31,39 +32,49 @@ type Props = {
   canRedo: boolean;
   onRedo?: () => void;
   onUndo?: () => void;
+  isMainWorkflow: boolean;
+  hasReader?: boolean;
 };
 
-const Toolbox: React.FC<Props> = ({ canUndo, canRedo, onRedo, onUndo }) => {
+const Toolbox: React.FC<Props> = ({
+  canUndo,
+  canRedo,
+  onRedo,
+  onUndo,
+  isMainWorkflow,
+  hasReader,
+}) => {
   const t = useT();
-
   const availableTools: Tool[] = [
     {
-      id: "reader",
+      id: "reader" as const,
       name: t("Reader Node"),
       icon: <Database weight="thin" />,
+      disabled: !isMainWorkflow || hasReader,
     },
     {
-      id: "transformer",
+      id: "transformer" as const,
       name: t("Transformer Node"),
       icon: <Lightning weight="thin" />,
     },
     {
-      id: "writer",
+      id: "writer" as const,
       name: t("Writer Node"),
       icon: <Disc weight="thin" />,
+      disabled: !isMainWorkflow,
     },
     {
-      id: "note",
+      id: "note" as const,
       name: t("Note"),
       icon: <Note weight="thin" />,
     },
     {
-      id: "batch",
+      id: "batch" as const,
       name: t("Batch Node"),
       icon: <RectangleDashed weight="thin" />,
     },
     {
-      id: "subworkflow",
+      id: "subworkflow" as const,
       name: t("Subworkflow Node"),
       icon: <Graph weight="thin" />,
     },
@@ -97,7 +108,7 @@ const Toolbox: React.FC<Props> = ({ canUndo, canRedo, onRedo, onUndo }) => {
       <div className="flex size-12 rounded bg-secondary">
         <div
           className={`
-          flex w-full justify-center rounded align-middle 
+          flex w-full justify-center rounded align-middle
           ${
             nodeType === "reader"
               ? "bg-node-reader/60"
@@ -135,41 +146,39 @@ const Toolbox: React.FC<Props> = ({ canUndo, canRedo, onRedo, onUndo }) => {
       document.body.removeChild(dragPreviewContainer);
     }, 0);
   };
-
   return (
-    <div className="pointer-events-none absolute bottom-1 left-2 top-2 flex shrink-0 gap-2 [&>*]:pointer-events-auto">
-      <div className="self-start rounded-md bg-secondary">
-        <div className="flex flex-col flex-wrap rounded-md border transition-all">
-          {availableTools.map((tool) => (
-            <IconButton
-              key={tool.id}
-              className={`dndnode-${tool.id} rounded-[4px]`}
-              tooltipPosition="right"
-              tooltipText={tool.name}
-              icon={tool.icon}
-              onDragStart={(event) => onDragStart(event, tool.id)}
-              draggable
-            />
-          ))}
-          {availableActions && <div className="my-2 w-full border-t" />}
-          {availableActions.map((action) => (
-            <IconButton
-              key={action.id}
-              className="rounded-[4px]"
-              tooltipPosition="right"
-              tooltipText={action.name}
-              icon={action.icon}
-              disabled={action.id === "undo" ? !canUndo : !canRedo}
-              onClick={() =>
-                action.id === "redo"
-                  ? onRedo?.()
-                  : action.id === "undo"
-                    ? onUndo?.()
-                    : undefined
-              }
-            />
-          ))}
-        </div>
+    <div className="self-start rounded-md bg-secondary">
+      <div className="flex flex-col flex-wrap rounded-md border transition-all">
+        {availableTools.map((tool) => (
+          <IconButton
+            key={tool.id}
+            className={`dndnode-${tool.id} rounded-[4px]`}
+            tooltipPosition="right"
+            tooltipText={tool.name}
+            icon={tool.icon}
+            onDragStart={(event) => onDragStart(event, tool.id)}
+            draggable
+            disabled={tool.disabled}
+          />
+        ))}
+        <div className="my-2 w-full border-t" />
+        {availableActions.map((action) => (
+          <IconButton
+            key={action.id}
+            className="rounded-[4px]"
+            tooltipPosition="right"
+            tooltipText={action.name}
+            icon={action.icon}
+            disabled={action.id === "undo" ? !canUndo : !canRedo}
+            onClick={() =>
+              action.id === "redo"
+                ? onRedo?.()
+                : action.id === "undo"
+                  ? onUndo?.()
+                  : undefined
+            }
+          />
+        ))}
       </div>
     </div>
   );

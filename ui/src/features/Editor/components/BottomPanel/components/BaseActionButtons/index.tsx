@@ -5,7 +5,7 @@ import { ContentID } from "../Contents";
 export type PanelContent = {
   id: ContentID;
   title?: string;
-  icon?: React.ReactNode;
+  button?: React.ReactNode;
 };
 
 const BaseActionButtons: React.FC<{
@@ -18,13 +18,13 @@ const BaseActionButtons: React.FC<{
       {panelContentOptions?.map((content, idx) => (
         <div
           key={content.id}
-          className={`flex h-4/5 min-w-[140px] cursor-pointer items-center justify-center gap-2 rounded hover:bg-popover hover:text-popover-foreground ${
+          className={`flex h-4/5 min-w-[120px] cursor-pointer items-center justify-center gap-2 rounded hover:bg-popover hover:text-popover-foreground ${
             (!selectedId && idx === 0) || selectedId === content.id
               ? "bg-popover text-popover-foreground"
-              : "bg-card"
+              : undefined
           }`}
           onClick={() => onSelection?.(content.id)}>
-          {content.icon}
+          {content.button}
           <p className="text-sm dark:font-thin">{content.title}</p>
         </div>
       ))}

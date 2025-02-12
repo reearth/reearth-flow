@@ -7,8 +7,9 @@ use super::{
     area_on_area_overlayer::AreaOnAreaOverlayerFactory, bounds_extractor::BoundsExtractorFactory,
     bufferer::BuffererFactory, center_point_replacer::CenterPointReplacerFactory,
     clipper::ClipperFactory, closed_curve_filter::ClosedCurveFilterFactory,
-    coercer::GeometryCoercerFactory, coordinate_system_setter::CoordinateSystemSetterFactory,
-    dimension_filter::DimensionFilterFactory, dissolver::GeometryDissolverFactory,
+    coercer::GeometryCoercerFactory, convex_hull_accumulator::ConvexHullAccumulatorFactory,
+    coordinate_system_setter::CoordinateSystemSetterFactory,
+    dimension_filter::DimensionFilterFactory, dissolver::DissolverFactory,
     elevation_extractor::ElevationExtractorFactory, extractor::GeometryExtractorFactory,
     extruder::ExtruderFactory, filter::GeometryFilterFactory, hole_counter::HoleCounterFactory,
     hole_extractor::HoleExtractorFactory, horizontal_reprojector::HorizontalReprojectorFactory,
@@ -53,9 +54,10 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<RefinerFactory>::default(),
         Box::<GeometryValueFilterFactory>::default(),
         Box::<ElevationExtractorFactory>::default(),
-        Box::<GeometryDissolverFactory>::default(),
+        Box::<DissolverFactory>::default(),
         Box::<DimensionFilterFactory>::default(),
         Box::<OffsetterFactory>::default(),
+        Box::<ConvexHullAccumulatorFactory>::default(),
     ];
     factories
         .into_iter()

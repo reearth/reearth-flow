@@ -1,16 +1,13 @@
-import {
-  useInfiniteQuery,
-  useMutation,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { Deployment } from "@flow/types";
+import type { Deployment } from "@flow/types";
+import { PaginationOptions } from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
-import { yamlToFormData } from "@flow/utils/yamlToFormData";
 
 import { ExecuteDeploymentInput } from "../__gen__/graphql";
 import {
   DeleteDeploymentInput,
+  OrderDirection,
   UpdateDeploymentInput,
 } from "../__gen__/plugins/graphql-request";
 import { toDeployment, toJob } from "../convert";
@@ -22,7 +19,7 @@ export enum DeploymentQueryKeys {
   GetDeployments = "getDeployments",
 }
 
-const DEPLOYMENT_FETCH_RATE = 10;
+export const DEPLOYMENT_FETCH_RATE = 10;
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
@@ -36,9 +33,9 @@ export const useQueries = () => {
       description,
     }: {
       workspaceId: string;
-      projectId: string;
+      projectId?: string;
       file: FormData;
-      description?: string;
+      description: string;
     }) => {
       const data = await graphQLContext?.CreateDeployment({
         input: {
@@ -79,20 +76,14 @@ export const useQueries = () => {
   const updateDeploymentMutation = useMutation({
     mutationFn: async ({
       deploymentId,
-      workflowYaml,
-      workflowId,
+      file,
       description,
     }: {
       deploymentId: string;
-      workflowId?: string;
-      workflowYaml?: string;
+      file?: FormDataEntryValue;
       description?: string;
     }) => {
-      const input: UpdateDeploymentInput = { deploymentId, description };
-      if (workflowYaml) {
-        const formData = yamlToFormData(workflowYaml, workflowId);
-        input.file = formData.get("file");
-      }
+      const input: UpdateDeploymentInput = { deploymentId, description, file };
 
       const data = await graphQLContext?.UpdateDeployment({
         input,
@@ -160,36 +151,35 @@ export const useQueries = () => {
       }),
   });
 
-  const useGetDeploymentsInfiniteQuery = (workspaceId?: string) =>
-    useInfiniteQuery({
+  const useGetDeploymentsQuery = (
+    workspaceId?: string,
+    paginationOptions?: PaginationOptions,
+  ) =>
+    useQuery({
       queryKey: [DeploymentQueryKeys.GetDeployments, workspaceId],
-      initialPageParam: null,
-      queryFn: async ({ pageParam }) => {
+      queryFn: async () => {
         const data = await graphQLContext?.GetDeployments({
           workspaceId: workspaceId ?? "",
           pagination: {
-            first: DEPLOYMENT_FETCH_RATE,
-            after: pageParam,
+            page: paginationOptions?.page ?? 1,
+            pageSize: DEPLOYMENT_FETCH_RATE,
+            orderDir: paginationOptions?.orderDir ?? OrderDirection.Desc,
+            orderBy: paginationOptions?.orderBy ?? "updatedAt",
           },
         });
         if (!data) return;
         const {
           deployments: {
             nodes,
-            pageInfo: { endCursor, hasNextPage },
+            pageInfo: { totalCount, currentPage, totalPages },
           },
         } = data;
         const deployments: Deployment[] = nodes
           .filter(isDefined)
           .map((deployment) => toDeployment(deployment));
-        return { deployments, endCursor, hasNextPage };
+        return { deployments, totalCount, currentPage, totalPages };
       },
       enabled: !!workspaceId,
-      getNextPageParam: (lastPage) => {
-        if (!lastPage) return undefined;
-        const { endCursor, hasNextPage } = lastPage;
-        return hasNextPage ? endCursor : undefined;
-      },
     });
 
   return {
@@ -197,6 +187,6 @@ export const useQueries = () => {
     updateDeploymentMutation,
     deleteDeploymentMutation,
     executeDeploymentMutation,
-    useGetDeploymentsInfiniteQuery,
+    useGetDeploymentsQuery,
   };
 };

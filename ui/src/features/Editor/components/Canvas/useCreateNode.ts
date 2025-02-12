@@ -20,7 +20,6 @@ const createBaseNode = ({ position, type }: CreateNodeOptions): Node => ({
   data: {
     officialName: type,
     status: "idle",
-    locked: false,
   },
 });
 
@@ -34,10 +33,7 @@ const createSpecializedNode = ({
     case "batch":
       return { ...node, ...baseBatchNode };
     case "note":
-      return {
-        ...node,
-        data: { ...node.data, ...baseNoteNode },
-      };
+      return { ...node, ...baseNoteNode };
     default:
       return node;
   }
@@ -64,7 +60,6 @@ const createActionNode = async (
       inputs: [...action.inputPorts],
       outputs: [...action.outputPorts],
       status: "idle",
-      locked: false,
     },
   };
 };

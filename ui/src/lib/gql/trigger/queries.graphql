@@ -1,0 +1,29 @@
+mutation CreateTrigger($input: CreateTriggerInput!) {
+  createTrigger(input: $input) {
+    ...Trigger
+  }
+}
+
+mutation UpdateTrigger($input: UpdateTriggerInput!) {
+  updateTrigger(input: $input) {
+    ...Trigger
+  }
+}
+
+mutation DeleteTrigger($triggerId: ID!) {
+  deleteTrigger(triggerId: $triggerId)
+}
+
+query GetTriggers($workspaceId: ID!, $pagination: PageBasedPagination!) {
+  triggers(workspaceId: $workspaceId, pagination: $pagination) {
+    totalCount
+    nodes {
+      ...Trigger
+    }
+    pageInfo {
+      totalCount
+      currentPage
+      totalPages
+    }
+  }
+}

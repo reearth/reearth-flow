@@ -10,9 +10,9 @@ use serde::{Deserialize, Serialize};
 
 use flatgeom::{MultiLineString2 as NMultiLineString2, MultiLineString3 as NMultiLineString3};
 
-use super::conversion::geojson::{
-    create_geo_multi_line_string, create_multi_line_string_type, mismatch_geom_err,
-};
+use super::conversion::geojson::create_geo_multi_line_string_2d;
+use super::conversion::geojson::create_geo_multi_line_string_3d;
+use super::conversion::geojson::{create_multi_line_string_type, mismatch_geom_err};
 use super::coordnum::{CoordFloat, CoordNum};
 use super::line::Line;
 use super::line_string::LineString;
@@ -143,17 +143,26 @@ impl<T: CoordFloat, Z: CoordFloat> From<MultiLineString<T, Z>> for geojson::Valu
     }
 }
 
-impl<T, Z> TryFrom<geojson::Value> for MultiLineString<T, Z>
-where
-    T: CoordFloat,
-    Z: CoordFloat,
-{
+impl TryFrom<geojson::Value> for MultiLineString2D<f64> {
     type Error = crate::error::Error;
 
     fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
         match value {
             geojson::Value::MultiLineString(multi_line_string_type) => {
-                Ok(create_geo_multi_line_string(&multi_line_string_type))
+                Ok(create_geo_multi_line_string_2d(&multi_line_string_type))
+            }
+            other => Err(mismatch_geom_err("MultiLineString", &other)),
+        }
+    }
+}
+
+impl TryFrom<geojson::Value> for MultiLineString3D<f64> {
+    type Error = crate::error::Error;
+
+    fn try_from(value: geojson::Value) -> crate::error::Result<Self> {
+        match value {
+            geojson::Value::MultiLineString(multi_line_string_type) => {
+                Ok(create_geo_multi_line_string_3d(&multi_line_string_type))
             }
             other => Err(mismatch_geom_err("MultiLineString", &other)),
         }

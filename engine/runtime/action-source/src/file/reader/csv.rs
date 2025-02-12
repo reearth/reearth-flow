@@ -1,8 +1,8 @@
-use std::{collections::HashMap, io::Cursor, sync::Arc};
+use std::{collections::HashMap, io::Cursor};
 
-use reearth_flow_common::{csv::Delimiter, uri::Uri};
+use bytes::Bytes;
+use reearth_flow_common::csv::Delimiter;
 use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
-use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -16,23 +16,11 @@ pub struct CsvReaderParam {
 
 pub(crate) async fn read_csv(
     delimiter: Delimiter,
-    input_path: Uri,
+    content: &Bytes,
     props: &CsvReaderParam,
-    storage_resolver: Arc<StorageResolver>,
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), crate::errors::SourceError> {
-    let storage = storage_resolver
-        .resolve(&input_path)
-        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
-    let result = storage
-        .get(input_path.path().as_path())
-        .await
-        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
-    let byte = result
-        .bytes()
-        .await
-        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
-    let cursor = Cursor::new(byte);
+    let cursor = Cursor::new(content);
     let mut rdr = csv::ReaderBuilder::new()
         .flexible(true)
         .has_headers(false)
@@ -43,10 +31,10 @@ pub(crate) async fn read_csv(
         .deserialize()
         .nth(offset)
         .unwrap_or(Ok(Vec::<String>::new()))
-        .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SourceError::CsvFileReader(format!("{:?}", e)))?;
     for rd in rdr.deserialize() {
         let record: Vec<String> =
-            rd.map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+            rd.map_err(|e| crate::errors::SourceError::CsvFileReader(format!("{:?}", e)))?;
         let row = record
             .iter()
             .enumerate()
@@ -59,7 +47,7 @@ pub(crate) async fn read_csv(
                 IngestionMessage::OperationEvent { feature },
             ))
             .await
-            .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+            .map_err(|e| crate::errors::SourceError::CsvFileReader(format!("{:?}", e)))?;
     }
     Ok(())
 }

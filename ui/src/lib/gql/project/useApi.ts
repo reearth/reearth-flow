@@ -3,13 +3,14 @@ import { useT } from "@flow/lib/i18n";
 import {
   CreateProject,
   DeleteProject,
+  EngineReadyWorkflow,
   GetProject,
-  GetWorkspaceProjects,
   Project,
   RunProject,
   UpdateProject,
 } from "@flow/types";
-import { yamlToFormData } from "@flow/utils/yamlToFormData";
+import type { PaginationOptions } from "@flow/types/paginationOptions";
+import { jsonToFormData } from "@flow/utils/jsonToFormData";
 
 import { CreateProjectInput, UpdateProjectInput } from "../__gen__/graphql";
 
@@ -24,7 +25,7 @@ export const useProject = () => {
     deleteProjectMutation,
     updateProjectMutation,
     runProjectMutation,
-    useGetProjectsInfiniteQuery,
+    useGetProjectsQuery,
     useGetProjectByIdQuery,
   } = useQueries();
 
@@ -44,12 +45,16 @@ export const useProject = () => {
     }
   };
 
-  const useGetWorkspaceProjectsInfinite = (
+  const useGetWorkspaceProjects = (
     workspaceId?: string,
-  ): GetWorkspaceProjects => {
-    const { data, ...rest } = useGetProjectsInfiniteQuery(workspaceId);
+    paginationOptions?: PaginationOptions,
+  ) => {
+    const { data, ...rest } = useGetProjectsQuery(
+      workspaceId,
+      paginationOptions,
+    );
     return {
-      pages: data?.pages,
+      page: data,
       ...rest,
     };
   };
@@ -97,12 +102,15 @@ export const useProject = () => {
   const runProject = async (
     projectId: string,
     workspaceId: string,
-    workflow: string,
+    engineReadyWorkflow: EngineReadyWorkflow,
   ): Promise<RunProject> => {
     const { mutateAsync, ...rest } = runProjectMutation;
 
     try {
-      const formData = yamlToFormData(workflow, "debug-run-workflow");
+      const formData = jsonToFormData(
+        engineReadyWorkflow,
+        engineReadyWorkflow.id,
+      );
       const data = await mutateAsync({
         projectId,
         workspaceId,
@@ -122,7 +130,7 @@ export const useProject = () => {
   };
 
   return {
-    useGetWorkspaceProjectsInfinite,
+    useGetWorkspaceProjects,
     useGetProject,
     createProject,
     updateProject,

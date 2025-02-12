@@ -11,7 +11,7 @@ use reearth_flow_types::Workflow;
 use crate::{
     artifact::upload_artifact,
     asset::download_asset,
-    event_handler::EventHandler,
+    event_handler::{EventHandler, NodeFailureHandler},
     factory::ALL_ACTION_FACTORIES,
     pubsub::{backend::PubSubBackend, publisher::Publisher},
     types::{
@@ -137,6 +137,7 @@ impl RunWorkerCommand {
     }
 
     async fn run(&self) -> crate::errors::Result<()> {
+        tracing::info!("Starting worker");
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
         let (workflow, state, logger_factory, meta) = self.prepare(&storage_resolver).await?;
 
@@ -153,6 +154,7 @@ impl RunWorkerCommand {
             }
         };
         let workflow_id = workflow.id;
+        let node_failure_handler = Arc::new(NodeFailureHandler::new());
         let result = AsyncRunner::run_with_event_handler(
             meta.job_id,
             workflow,
@@ -160,13 +162,18 @@ impl RunWorkerCommand {
             logger_factory,
             storage_resolver.clone(),
             state,
-            vec![handler],
+            vec![handler, node_failure_handler.clone()],
         )
         .await;
         let job_result = match result {
             Ok(_) => {
-                self.cleanup(&meta, &storage_resolver).await?;
-                JobResult::Success
+                if node_failure_handler.all_success() {
+                    self.cleanup(&meta, &storage_resolver).await?;
+                    JobResult::Success
+                } else {
+                    tracing::error!("Failed nodes: {:?}", node_failure_handler.failed_nodes());
+                    JobResult::Failed
+                }
             }
             Err(_) => JobResult::Failed,
         };
@@ -179,7 +186,9 @@ impl RunWorkerCommand {
                 .await
                 .map_err(crate::errors::Error::run),
             PubSubBackend::Noop(_) => Ok(()),
-        }
+        }?;
+        tracing::info!("Job completed");
+        Ok(())
     }
 
     async fn prepare(

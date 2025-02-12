@@ -1,6 +1,6 @@
 import { useReactFlow } from "@xyflow/react";
 import { debounce } from "lodash-es";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 
 import {
   Accordion,
@@ -19,8 +19,9 @@ import { useAction } from "@flow/lib/fetch";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
-import type { Action, ActionsSegregated, Node, Segregated } from "@flow/types";
+import type { Action, ActionsSegregated, Node } from "@flow/types";
 import { generateUUID } from "@flow/utils";
+import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
 import ActionComponent from "./Action";
 
@@ -28,30 +29,34 @@ type Ordering = "default" | "categorically" | "byType";
 
 type Props = {
   nodes: Node[];
-  onNodesChange: (nodes: Node[]) => void;
+  onNodesAdd: (nodes: Node[]) => void;
+  isMainWorkflow: boolean;
+  hasReader?: boolean;
 };
 
-const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
+const ActionsList: React.FC<Props> = ({
+  nodes,
+  onNodesAdd,
+  isMainWorkflow,
+  hasReader,
+}) => {
   const t = useT();
   const { useGetActions, useGetActionsSegregated } = useAction(i18n.language);
-
   const { screenToFlowPosition } = useReactFlow();
-
   const [selected, setSelected] = useState<string | undefined>(undefined);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [searchDone, setSearchDone] = useState<string>("");
 
-  const [actions, setActions] = useState<Action[] | undefined>();
+  const { actions } = useGetActions({
+    isMainWorkflow,
+    searchTerm: searchDone,
+  });
 
-  const [actionsSegregated, setActionsSegregated] = useState<
-    Segregated | undefined
-  >();
-
-  const { actions: actionsData } = useGetActions();
-  const { actions: actionsSegregatedData } = useGetActionsSegregated();
-
-  useEffect(() => {
-    if (actionsData) setActions(actionsData);
-    if (actionsSegregatedData) setActionsSegregated(actionsSegregatedData);
-  }, [actionsData, actionsSegregatedData]);
+  const { actions: actionsSegregated } = useGetActionsSegregated({
+    isMainWorkflow,
+    searchTerm: searchDone,
+    nodes,
+  });
 
   const tabs: {
     title: string;
@@ -83,23 +88,23 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
       const { api } = config();
       const action = await fetcher<Action>(`${api}/actions/${name}`);
       if (!action) return;
-
+      const randomX = getRandomNumberInRange(50, 200);
+      const randomY = getRandomNumberInRange(50, 200);
       const newNode: Node = {
         id: generateUUID(),
         type: action.type,
         position: screenToFlowPosition({
-          x: window.innerWidth / 2,
-          y: window.innerHeight / 2,
+          x: window.innerWidth / 2 + randomX,
+          y: window.innerHeight / 2 - randomY,
         }),
         data: {
           officialName: action.name,
           inputs: [...action.inputPorts],
           outputs: [...action.outputPorts],
           status: "idle",
-          locked: false,
         },
       };
-      onNodesChange(nodes.concat(newNode));
+      onNodesAdd([newNode]);
     },
   );
 
@@ -107,58 +112,7 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
     setSelected((prevName) => (prevName === name ? undefined : name));
   };
 
-  const getFilteredActions = useCallback(
-    (filter: string, actions?: Action[]): Action[] | undefined =>
-      actions?.filter((action) =>
-        (
-          Object.values(action).reduce(
-            (result, value) =>
-              (result += (
-                Array.isArray(value)
-                  ? value.join()
-                  : typeof value === "string"
-                    ? value
-                    : ""
-              ).toLowerCase()),
-            "",
-          ) as string
-        ).includes(filter.toLowerCase()),
-      ),
-    [],
-  );
-
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const [searchDone, setSearchDone] = useState<string>("");
-
-  // Don't worry too much about this implementation. It's only placeholder till we get an actual one using API
   const handleSearch = debounce((filter: string) => {
-    if (!filter) {
-      setActions(actionsData);
-      setActionsSegregated(actionsSegregatedData);
-      return;
-    }
-
-    const filteredActions =
-      actionsData && getFilteredActions(filter, actionsData);
-    setActions(filteredActions);
-
-    const actionsSegregated =
-      actionsSegregatedData &&
-      Object.keys(actionsSegregatedData).reduce((obj, rootKey) => {
-        obj[rootKey] = Object.keys(actionsSegregatedData[rootKey]).reduce(
-          (obj: Record<string, Action[] | undefined>, key) => {
-            obj[key] = getFilteredActions(
-              filter,
-              actionsSegregatedData[rootKey][key],
-            );
-            return obj;
-          },
-          {},
-        );
-        return obj;
-      }, {} as Segregated);
-
-    setActionsSegregated(actionsSegregated);
     setSearchDone(filter);
   }, 200);
 
@@ -196,7 +150,7 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
             key={order}
             value={order}>
             {Array.isArray(actions) ? (
-              actions.map((action, index) => (
+              actions?.map((action, index) => (
                 <Fragment key={action.name}>
                   <ActionComponent
                     action={action}
@@ -217,38 +171,49 @@ const ActionsList: React.FC<Props> = ({ nodes, onNodesChange }) => {
             ) : (
               <Accordion type="single" collapsible>
                 {actions ? (
-                  Object.keys(actions).map((key) => (
-                    <AccordionItem key={key} value={key}>
-                      <AccordionTrigger>
-                        <p className="capitalize">{key}</p>
-                      </AccordionTrigger>
-                      <AccordionContent className="flex flex-col gap-1">
-                        {actions[key]?.map((action, index) => (
-                          <Fragment key={action.name}>
-                            <ActionComponent
-                              action={action}
-                              selected={selected === action.name}
-                              onTypeClick={(type) =>
-                                setSearchTerm((st) => (st === type ? "" : type))
-                              }
-                              onCategoryClick={(category) =>
-                                setSearchTerm((st) =>
-                                  st === category ? "" : category,
-                                )
-                              }
-                              onSingleClick={handleSingleClick}
-                              onDoubleClick={handleDoubleClick}
-                              onSelect={() => handleActionSelect(action.name)}
-                            />
-                            {actions[key] &&
-                              index !== actions[key].length - 1 && (
-                                <div className="border-b" />
-                              )}
-                          </Fragment>
-                        ))}
-                      </AccordionContent>
-                    </AccordionItem>
-                  ))
+                  Object.entries(actions)
+                    .filter(([key]) => {
+                      if (isMainWorkflow) {
+                        if (key === "reader" && hasReader) return false;
+                        return true;
+                      } else {
+                        return key !== "reader" && key !== "writer";
+                      }
+                    })
+                    .map(([key, categoryActions]) => (
+                      <AccordionItem key={key} value={key}>
+                        <AccordionTrigger>
+                          <p className="capitalize">{key}</p>
+                        </AccordionTrigger>
+                        <AccordionContent className="flex flex-col gap-1">
+                          {categoryActions?.map((action, index) => (
+                            <Fragment key={action.name}>
+                              <ActionComponent
+                                action={action}
+                                selected={selected === action.name}
+                                onTypeClick={(type) =>
+                                  setSearchTerm((st) =>
+                                    st === type ? "" : type,
+                                  )
+                                }
+                                onCategoryClick={(category) =>
+                                  setSearchTerm((st) =>
+                                    st === category ? "" : category,
+                                  )
+                                }
+                                onSingleClick={handleSingleClick}
+                                onDoubleClick={handleDoubleClick}
+                                onSelect={() => handleActionSelect(action.name)}
+                              />
+                              {categoryActions &&
+                                index !== categoryActions.length - 1 && (
+                                  <div className="border-b" />
+                                )}
+                            </Fragment>
+                          ))}
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))
                 ) : (
                   <p className="mt-4 text-center">{t("Loading")}...</p>
                 )}

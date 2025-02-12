@@ -6,7 +6,8 @@ import * as Y from "yjs";
 import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 
-import { YWorkflow, yWorkflowBuilder } from "./utils";
+import { yWorkflowConstructor } from "./conversions";
+import type { YWorkflow } from "./types";
 
 export default ({ workflowId }: { workflowId?: string }) => {
   const { projectId }: { projectId: string } = useParams({
@@ -39,11 +40,11 @@ export default ({ workflowId }: { workflowId?: string }) => {
       yWebSocketProvider.once("sync", () => {
         if (yWorkflows.length === 0) {
           yDoc.transact(() => {
-            const yWorkflow = yWorkflowBuilder(
+            const yWorkflow = yWorkflowConstructor(
               DEFAULT_ENTRY_GRAPH_ID,
               "Main Workflow",
             );
-            yWorkflows.push([yWorkflow]);
+            yWorkflows.insert(0, [yWorkflow]);
           });
         }
 
@@ -60,6 +61,7 @@ export default ({ workflowId }: { workflowId?: string }) => {
     });
 
     return () => {
+      setIsSynced(false); // Mark as not synced
       yWebSocketProvider?.destroy(); // Cleanup on unmount
     };
   }, [projectId, workflowId]);

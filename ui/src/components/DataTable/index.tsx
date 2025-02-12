@@ -1,10 +1,4 @@
 import {
-  CaretDoubleLeft,
-  CaretDoubleRight,
-  CaretLeft,
-  CaretRight,
-} from "@phosphor-icons/react";
-import {
   ColumnDef,
   PaginationState,
   SortingState,
@@ -16,7 +10,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   DropdownMenu,
@@ -25,9 +19,15 @@ import {
   DropdownMenuTrigger,
   Button,
   Input,
-  IconButton,
+  Pagination,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { OrderDirection } from "@flow/types/paginationOptions";
 
 import {
   Table,
@@ -44,9 +44,14 @@ type DataTableProps<TData, TValue> = {
   selectColumns?: boolean;
   showFiltering?: boolean;
   enablePagination?: boolean;
-  pageSize?: number;
-  rowHeight?: number;
+  totalPages?: number;
+  condensed?: boolean;
   onRowClick?: (row: TData) => void;
+  currentPage?: number;
+  setCurrentPage?: (page: number) => void;
+  resultsPerPage?: number;
+  currentOrder?: OrderDirection;
+  setCurrentOrder?: (order: OrderDirection) => void;
 };
 
 function DataTable<TData, TValue>({
@@ -55,9 +60,14 @@ function DataTable<TData, TValue>({
   selectColumns = false,
   showFiltering = false,
   enablePagination = false,
-  pageSize = 10,
-  rowHeight,
+  totalPages = 1,
+  condensed,
   onRowClick,
+  currentPage = 1,
+  setCurrentPage,
+  resultsPerPage,
+  currentOrder = OrderDirection.Desc,
+  setCurrentOrder,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -66,11 +76,12 @@ function DataTable<TData, TValue>({
   const [globalFilter, setGlobalFilter] = useState("");
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
-    pageSize,
+    pageSize: resultsPerPage ?? 10,
   });
 
+  const defaultData = useMemo(() => [], []);
   const table = useReactTable({
-    data,
+    data: data ? data : defaultData,
     columns,
     getCoreRowModel: getCoreRowModel(),
     // Sorting
@@ -95,12 +106,27 @@ function DataTable<TData, TValue>({
       globalFilter,
       pagination,
     },
+    manualPagination: true,
   });
 
+  const handleOrderChange = () => {
+    setCurrentOrder?.(
+      currentOrder === OrderDirection.Asc
+        ? OrderDirection.Desc
+        : OrderDirection.Asc,
+    );
+  };
+
+  const orderDirections: Record<OrderDirection, string> = {
+    DESC: t("Newest"),
+    ASC: t("Oldest"),
+  };
+
   return (
-    <div className="flex flex-col justify-between">
-      <div>
-        <div className="flex items-center gap-4 py-4">
+    <div className="flex h-full flex-col justify-between">
+      <div className="flex h-full flex-col">
+        <div
+          className={`flex items-center gap-4 ${condensed ? "py-1" : "py-3"}`}>
           {showFiltering && (
             <Input
               placeholder={t("Search") + "..."}
@@ -108,6 +134,22 @@ function DataTable<TData, TValue>({
               onChange={(e) => setGlobalFilter(String(e.target.value))}
               className="max-w-sm"
             />
+          )}
+          {currentOrder && (
+            <Select
+              value={currentOrder || "DESC"}
+              onValueChange={handleOrderChange}>
+              <SelectTrigger className="h-[32px] w-[100px]">
+                <SelectValue placeholder={orderDirections.ASC} />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(orderDirections).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>
+                    {label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           )}
           {selectColumns && (
             <DropdownMenu>
@@ -144,7 +186,9 @@ function DataTable<TData, TValue>({
                 <TableRow key={headerGroup.id}>
                   {headerGroup.headers.map((header) => {
                     return (
-                      <TableHead key={header.id}>
+                      <TableHead
+                        key={header.id}
+                        className={`${condensed ? "h-8" : "h-10"}`}>
                         {header.isPlaceholder
                           ? null
                           : flexRender(
@@ -162,14 +206,16 @@ function DataTable<TData, TValue>({
                 table.getRowModel().rows.map((row) => (
                   <TableRow
                     key={row.id}
-                    className={`${rowHeight ? "h-" + rowHeight : "h-10"} cursor-pointer`}
+                    className="cursor-pointer"
                     data-state={row.getIsSelected() && "selected"}
                     onClick={() => {
                       row.toggleSelected();
                       onRowClick?.(row.original);
                     }}>
                     {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
+                      <TableCell
+                        key={cell.id}
+                        className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
                         {flexRender(
                           cell.column.columnDef.cell,
                           cell.getContext(),
@@ -192,43 +238,11 @@ function DataTable<TData, TValue>({
         </div>
       </div>
       {enablePagination && (
-        <div className="flex justify-center gap-4 pt-4">
-          <div className="flex gap-1">
-            <IconButton
-              variant="outline"
-              icon={<CaretDoubleLeft />}
-              onClick={() => table.firstPage()}
-              disabled={!table.getCanPreviousPage()}
-            />
-            <IconButton
-              variant="outline"
-              icon={<CaretLeft />}
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            />
-            <div className="flex min-w-10 items-center justify-center gap-1">
-              <p className="text-sm font-light">
-                {table.getState().pagination.pageIndex + 1}
-              </p>
-              <p className="text-xs font-light">/</p>
-              <p className="text-sm font-light">
-                {table.getPageCount().toLocaleString()}
-              </p>
-            </div>
-            <IconButton
-              className="rounded border p-1"
-              icon={<CaretRight />}
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            />
-            <IconButton
-              className="rounded border p-1"
-              icon={<CaretDoubleRight />}
-              onClick={() => table.lastPage()}
-              disabled={!table.getCanNextPage()}
-            />
-          </div>
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          totalPages={totalPages}
+        />
       )}
     </div>
   );

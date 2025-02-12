@@ -1,14 +1,26 @@
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 
 import { Edge, Node } from "@flow/types";
 
 type Props = {
-  hoveredDetails: Node | Edge | undefined;
+  hoveredDetails: Node | Edge;
 };
 
 const Infobar: React.FC<Props> = ({ hoveredDetails }) => {
-  return hoveredDetails ? (
-    <div className="absolute bottom-1 left-1/2 z-10 -translate-x-1/2 rounded-md border bg-background">
+  const [isHovered, setIsHovered] = useState(false);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      setIsHovered(true);
+    }, 1000);
+
+    return () => {
+      clearTimeout(timeout);
+      setIsHovered(false);
+    };
+  }, []);
+  return isHovered ? (
+    <div className="absolute bottom-1 left-1/2 z-10 -translate-x-1/2 rounded-md border bg-primary">
       <div className="flex justify-center gap-5 rounded-md px-4 py-2">
         {"source" in hoveredDetails ? (
           <>

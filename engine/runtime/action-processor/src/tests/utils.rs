@@ -18,6 +18,10 @@ pub(crate) struct MockProcessorChannelForwarder {
 }
 
 impl ProcessorChannelForwarder for MockProcessorChannelForwarder {
+    fn node_id(&self) -> String {
+        "mock".to_string()
+    }
+
     fn send(&mut self, ctx: ExecutorContext) {
         self.send_features.push(ctx.feature);
         self.send_ports.push(ctx.port);

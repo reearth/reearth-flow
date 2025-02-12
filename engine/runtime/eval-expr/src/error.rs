@@ -1,40 +1,44 @@
+#[allow(clippy::enum_variant_names)]
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Error while running engine: {0}")]
-    InternalRuntime(String),
+    ExprInternalRuntime(String),
+
+    #[error("Error while compile engine: {0}")]
+    ExprCompile(String),
 
     #[error("InputError: {0}")]
-    Input(String),
+    ExprInput(String),
 
     #[error("OutputError: {0}")]
-    Output(String),
+    ExprOutput(String),
 
     #[error("Failed to initialize engine: {0}")]
-    Init(String),
+    ExprInit(String),
 
     #[error("Failed to convert value: {0}")]
-    Convert(String),
+    ExprConvert(String),
 }
 
 impl Error {
     pub fn internal_runtime_error<T: ToString>(message: T) -> Self {
-        Self::InternalRuntime(message.to_string())
+        Self::ExprInternalRuntime(message.to_string())
     }
 
     pub fn input_error<T: ToString>(message: T) -> Self {
-        Self::Input(message.to_string())
+        Self::ExprInput(message.to_string())
     }
 
     pub fn output_error<T: ToString>(message: T) -> Self {
-        Self::Output(message.to_string())
+        Self::ExprOutput(message.to_string())
     }
 
     pub fn init_error<T: ToString>(message: T) -> Self {
-        Self::Init(message.to_string())
+        Self::ExprInit(message.to_string())
     }
 
     pub fn convert_error<T: ToString>(message: T) -> Self {
-        Self::Convert(message.to_string())
+        Self::ExprConvert(message.to_string())
     }
 }
 
@@ -42,11 +46,11 @@ impl Error {
 impl PartialEq for Error {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::InternalRuntime(a), Self::InternalRuntime(b)) => a == b,
-            (Self::Input(a), Self::Input(b)) => a == b,
-            (Self::Output(a), Self::Output(b)) => a == b,
-            (Self::Init(a), Self::Init(b)) => a == b,
-            (Self::Convert(a), Self::Convert(b)) => a == b,
+            (Self::ExprInternalRuntime(a), Self::ExprInternalRuntime(b)) => a == b,
+            (Self::ExprInput(a), Self::ExprInput(b)) => a == b,
+            (Self::ExprOutput(a), Self::ExprOutput(b)) => a == b,
+            (Self::ExprInit(a), Self::ExprInit(b)) => a == b,
+            (Self::ExprConvert(a), Self::ExprConvert(b)) => a == b,
             _ => false,
         }
     }

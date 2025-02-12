@@ -1,2 +1,2 @@
-export * from "./Map";
+export * from "./Cesium";
 export * from "./supportedVisualizations";

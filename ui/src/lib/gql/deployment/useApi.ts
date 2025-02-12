@@ -4,11 +4,12 @@ import type {
   CreateDeployment,
   DeleteDeployment,
   Deployment,
+  EngineReadyWorkflow,
   ExecuteDeployment,
-  GetDeployments,
   UpdateDeployment,
 } from "@flow/types";
-import { yamlToFormData } from "@flow/utils/yamlToFormData";
+import { PaginationOptions } from "@flow/types/paginationOptions";
+import { jsonToFormData } from "@flow/utils/jsonToFormData";
 
 import { ExecuteDeploymentInput } from "../__gen__/graphql";
 
@@ -23,20 +24,22 @@ export const useDeployment = () => {
     updateDeploymentMutation,
     deleteDeploymentMutation,
     executeDeploymentMutation,
-    useGetDeploymentsInfiniteQuery,
+    useGetDeploymentsQuery,
   } = useQueries();
 
   const createDeployment = async (
     workspaceId: string,
     projectId: string,
-    workflowId: string,
-    workflow: string,
-    description?: string,
+    engineReadyWorkflow: EngineReadyWorkflow,
+    description: string,
   ): Promise<CreateDeployment> => {
     const { mutateAsync, ...rest } = createDeploymentMutation;
 
     try {
-      const formData = yamlToFormData(workflow, workflowId);
+      const formData = jsonToFormData(
+        engineReadyWorkflow,
+        engineReadyWorkflow.id,
+      );
 
       const data = await mutateAsync({
         workspaceId,
@@ -54,18 +57,46 @@ export const useDeployment = () => {
     }
   };
 
+  const createDeploymentFromFile = async (
+    workspaceId: string,
+    workflowFile: File,
+    description: string,
+  ): Promise<CreateDeployment> => {
+    const { mutateAsync, ...rest } = createDeploymentMutation;
+    const formData = new FormData();
+    formData.append(
+      "file",
+      new File([workflowFile], workflowFile.name, {
+        type: workflowFile.type,
+      }),
+    );
+
+    try {
+      const data = await mutateAsync({
+        workspaceId,
+        file: formData,
+        description,
+      });
+      toast({
+        title: t("Deployment Created"),
+        description: t("Deployment has been successfully created."),
+      });
+      return { deployment: data?.deployment, ...rest };
+    } catch (_err) {
+      return { deployment: undefined, ...rest };
+    }
+  };
+
   const useUpdateDeployment = async (
     deploymentId: string,
-    workflowId?: string,
-    workflowYaml?: string,
+    file?: FormDataEntryValue,
     description?: string,
   ): Promise<UpdateDeployment> => {
     const { mutateAsync, ...rest } = updateDeploymentMutation;
     try {
       const deployment: Deployment | undefined = await mutateAsync({
         deploymentId,
-        workflowId,
-        workflowYaml,
+        file,
         description,
       });
       toast({
@@ -98,10 +129,16 @@ export const useDeployment = () => {
     }
   };
 
-  const useGetDeploymentsInfinite = (workspaceId?: string): GetDeployments => {
-    const { data, ...rest } = useGetDeploymentsInfiniteQuery(workspaceId);
+  const useGetDeployments = (
+    workspaceId?: string,
+    paginationOptions?: PaginationOptions,
+  ) => {
+    const { data, ...rest } = useGetDeploymentsQuery(
+      workspaceId,
+      paginationOptions,
+    );
     return {
-      pages: data?.pages,
+      page: data,
       ...rest,
     };
   };
@@ -124,7 +161,8 @@ export const useDeployment = () => {
 
   return {
     createDeployment,
-    useGetDeploymentsInfinite,
+    createDeploymentFromFile,
+    useGetDeployments,
     useUpdateDeployment,
     useDeleteDeployment,
     executeDeployment,

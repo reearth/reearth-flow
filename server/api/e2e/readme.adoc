@@ -1,0 +1,245 @@
+= Reearth Flow GraphQL API Documentation
+
+This document provides an overview of the Reearth Flow GraphQL API and usage examples specifically for the front-end integration.
+
+== Introduction
+
+Reearth Flow provides a GraphQL API to manage projects, jobs, deployments, and triggers. This document is aimed at front-end developers who need to integrate with the system.
+
+== GraphQL Endpoint
+
+The main GraphQL endpoint is available at:
+
+  /api/graphql
+
+All API calls must include the appropriate headers (e.g., X-Reearth-Debug-User) for authentication and authorization.
+
+== Pagination Overview
+
+All list queries in the API support pagination with consistent behavior. The pagination system is page-based and includes the following features:
+
+=== Pagination Parameters
+* `page`: Current page number (1-based indexing)
+* `pageSize`: Number of items per page
+* `orderBy`: Field to sort by
+* `orderDir`: Sort direction ("ASC" or "DESC")
+
+=== Page Info Response
+All paginated queries return a `pageInfo` object containing:
+* `totalCount`: Total number of items
+* `currentPage`: Current page number
+* `totalPages`: Total number of pages
+
+== Usage Examples
+
+Below are examples of how to interact with the API.
+
+=== Querying Deployments
+
+The deployments query supports pagination and sorting. Here are some common use cases:
+
+[source, graphql]
+----
+# Basic paginated query
+{
+  deployments(
+    workspaceId: "YOUR_WORKSPACE_ID",
+    pagination: {
+      page: 1,
+      pageSize: 10
+    }
+  ) {
+    nodes {
+      id
+      description
+      workflowUrl
+      version
+    }
+    pageInfo {
+      totalCount
+      currentPage
+      totalPages
+    }
+  }
+}
+
+# Sorted query with custom page size
+{
+  deployments(
+    workspaceId: "YOUR_WORKSPACE_ID",
+    pagination: {
+      page: 1,
+      pageSize: 5,
+      orderBy: "createdAt",
+      orderDir: DESC
+    }
+  ) {
+    nodes {
+      id
+      description
+      createdAt
+    }
+    pageInfo {
+      totalCount
+      currentPage
+      totalPages
+    }
+  }
+}
+----
+
+=== Querying Projects
+
+To retrieve a paginated list of projects, you can use the `projects` query. It supports pagination, sorting, and filtering.
+
+[source, graphql]
+----
+{
+  projects(
+    workspaceId: "YOUR_WORKSPACE_ID",
+    pagination: {
+      page: 1,
+      pageSize: 2,
+      orderBy: "name",
+      orderDir: ASC
+    }
+  ) {
+    nodes {
+      id
+      name
+    }
+    pageInfo {
+      totalCount
+      totalPages
+      currentPage
+    }
+  }
+}
+----
+
+=== Querying Jobs
+
+Similarly, you can query jobs. This example uses the `jobs` query to sort by the `startedAt` field.
+
+[source, graphql]
+----
+{
+  jobs(
+    workspaceId: "YOUR_WORKSPACE_ID",
+    pagination: {
+      page: 1,
+      pageSize: 5,
+      orderBy: "startedAt",
+      orderDir: DESC
+    }
+  ) {
+    nodes {
+      id
+      status
+      startedAt
+    }
+    pageInfo {
+      totalCount
+      currentPage
+      totalPages
+    }
+  }
+}
+----
+
+=== Querying Triggers
+
+The `triggers` query allows you to fetch trigger data with pagination and sorting support. Below is an example:
+
+[source, graphql]
+----
+{
+  triggers(
+    workspaceId: "YOUR_WORKSPACE_ID",
+    pagination: {
+      page: 1,
+      pageSize: 2,
+      orderBy: "description",
+      orderDir: ASC
+    }
+  ) {
+    nodes {
+      id
+      description
+    }
+    pageInfo {
+      totalCount
+      totalPages
+      currentPage
+    }
+  }
+}
+----
+
+== Creating Resources
+
+The API supports mutations to create projects, deployments, and triggers. When creating resources, you must send the proper JSON payload in your request body.
+
+For instance, a project creation mutation might look like this:
+
+[source, graphql]
+----
+mutation($input: CreateProjectInput!) {
+  createProject(input: $input) {
+    project {
+      id
+    }
+  }
+}
+----
+
+== Pagination Implementation Tips
+
+=== Frontend Implementation
+
+1. State Management:
+```typescript
+interface PaginationState {
+  page: number;
+  pageSize: number;
+  orderBy?: string;
+  orderDir?: 'ASC' | 'DESC';
+}
+```
+
+2. Handling Page Changes:
+```typescript
+const handlePageChange = (newPage: number) => {
+  setPagination(prev => ({
+    ...prev,
+    page: newPage
+  }));
+};
+```
+
+3. Sorting Implementation:
+```typescript
+const handleSort = (field: string) => {
+  setPagination(prev => ({
+    ...prev,
+    orderBy: field,
+    orderDir: prev.orderDir === 'ASC' ? 'DESC' : 'ASC'
+  }));
+};
+```
+
+=== Error Handling
+
+Always check for errors in the GraphQL response:
+```typescript
+if (error) {
+  // Handle error appropriately
+  console.error('Error fetching data:', error);
+  return <ErrorComponent message={error.message} />;
+}
+```
+
+Check the server-side tests (e.g., in api/e2e/gql_pagination_test.go) for detailed examples of using these queries and mutations.
+
+
+
