@@ -10,23 +10,19 @@ import (
 
 var (
 	defaultClient *Client
-	clientMu      sync.RWMutex
+	cfg           Config
+	clientOnce    sync.Once
 )
 
-func getDefaultClient() *Client {
-	clientMu.RLock()
-	if defaultClient != nil {
-		defer clientMu.RUnlock()
-		return defaultClient
-	}
-	clientMu.RUnlock()
+func Init(c Config) {
+	cfg = c
+}
 
-	clientMu.Lock()
-	defer clientMu.Unlock()
-	if defaultClient == nil {
-		log.Infof("Creating new document client with WebSocket URL: %s", config.WebsocketServerURL)
-		defaultClient = NewClient(config.WebsocketServerURL)
-	}
+func getDefaultClient() *Client {
+	clientOnce.Do(func() {
+		log.Infof("Creating new document client with WebSocket URL: %s", cfg.WebsocketServerURL)
+		defaultClient = NewClient(cfg.WebsocketServerURL)
+	})
 	return defaultClient
 }
 
