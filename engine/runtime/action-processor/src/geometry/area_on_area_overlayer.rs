@@ -1,8 +1,9 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::{
-    algorithm::bool_ops::BooleanOps, types::multi_polygon::MultiPolygon2D,
+    algorithm::{bool_ops::BooleanOps, bounding_rect::BoundingRect},
+    types::{multi_polygon::MultiPolygon2D, rect::Rect2D},
 };
 use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
@@ -12,6 +13,7 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
+use rstar::{RTree, RTreeObject, AABB};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -183,24 +185,24 @@ impl Processor for AreaOnAreaOverlayer {
 
 /// Polygon that is created in the middle of the overlay process.
 #[derive(Debug, Clone)]
-struct SubPolygon {
+struct MiddlePolygon {
     polygon: MultiPolygon2D<f64>,
     parents: Vec<usize>,
 }
 
 /// Type of the subpolygon and its parents.
-enum SubPolygonType {
+enum MiddlePolygonType {
     None,
     Area(Vec<usize>),
     Remnant(usize),
 }
 
-impl SubPolygon {
-    fn get_type(&self) -> SubPolygonType {
+impl MiddlePolygon {
+    fn get_type(&self) -> MiddlePolygonType {
         match self.parents.len() {
-            0 => SubPolygonType::None,
-            1 => SubPolygonType::Remnant(self.parents[0]),
-            _ => SubPolygonType::Area(self.parents.clone()),
+            0 => MiddlePolygonType::None,
+            1 => MiddlePolygonType::Remnant(self.parents[0]),
+            _ => MiddlePolygonType::Area(self.parents.clone()),
         }
     }
 }
@@ -228,82 +230,126 @@ impl AreaOnAreaOverlayer {
             })
             .collect::<Vec<_>>();
 
-        let polygon_mbrs = polygons_incoming
-            .iter()
-            .map(|polygon| polygon.bounding_box())
-            .collect::<Vec<_>>();
+        let overlay_graph = OverlayGraph::bulk_load(&polygons_incoming);
 
-        let mut subpolygons: Vec<SubPolygon> = Vec::new();
+        let mut midpolygons = Vec::new();
 
+        // this loop can be parallelized
         for i in 0..polygons_incoming.len() {
-            let polygon_incoming = &polygons_incoming[i];
-            let polygon_mbr = if let Some(polygon_mbr) = &polygon_mbrs[i] {
-                polygon_mbr
-            } else {
-                continue;
-            };
+            let mut polygon_target = polygons_incoming[i].clone();
 
-            let mut new_subpolygons = Vec::new();
+            // cut off the target polygon by above overlayed polygons
+            for j in overlay_graph.overlayed_iter(i).copied() {
+                if i < j {
+                    polygon_target = polygon_target.difference(&polygons_incoming[j]);
+                }
+            }
 
-            if subpolygons.is_empty() {
-                new_subpolygons.push(SubPolygon {
-                    polygon: polygon_incoming.clone(),
-                    parents: vec![i],
-                });
-            } else {
-                for overlayed in &subpolygons {
-                    let overlayed_mbr =
-                        if let Some(overlayed_mbr) = overlayed.polygon.bounding_box() {
-                            overlayed_mbr
-                        } else {
-                            continue;
-                        };
-                    if polygon_mbr.overlap(&overlayed_mbr) {
-                        let intersected = polygon_incoming.intersection(&overlayed.polygon);
-                        new_subpolygons.push(SubPolygon {
+            let mut queue = vec![MiddlePolygon {
+                polygon: polygon_target,
+                parents: vec![i],
+            }];
+
+            // divide the target polygon by below overlayed polygons
+            for j in overlay_graph.overlayed_iter(i).copied() {
+                if i > j {
+                    let mut new_queue = Vec::new();
+                    for subpolygon in queue {
+                        let intersected = subpolygon.polygon.intersection(&polygons_incoming[j]);
+                        new_queue.push(MiddlePolygon {
                             polygon: intersected,
-                            parents: overlayed
+                            parents: subpolygon
                                 .parents
                                 .clone()
                                 .into_iter()
-                                .chain(vec![i])
+                                .chain(vec![j])
                                 .collect(),
                         });
-                        let difference = overlayed.polygon.difference(polygon_incoming);
-                        new_subpolygons.push(SubPolygon {
+
+                        let difference = subpolygon.polygon.difference(&polygons_incoming[j]);
+                        new_queue.push(MiddlePolygon {
                             polygon: difference,
-                            parents: overlayed.parents.clone(),
+                            parents: subpolygon.parents.clone(),
                         });
-                    } else {
-                        new_subpolygons.push(overlayed.clone());
                     }
+                    queue = new_queue;
                 }
-
-                let mut rest = polygon_incoming.clone();
-
-                for j in 0..i {
-                    let mbr = &polygon_mbrs[j];
-                    if mbr.is_none() || !polygon_mbr.overlap(&mbr.unwrap()) {
-                        continue;
-                    }
-                    rest = rest.difference(&polygons_incoming[j]);
-                }
-                new_subpolygons.push(SubPolygon {
-                    polygon: rest,
-                    parents: vec![i],
-                });
             }
-            subpolygons = new_subpolygons;
+
+            midpolygons.extend(queue);
         }
 
-        OverlayedFeatures::from_subpolygons(
-            subpolygons,
+        OverlayedFeatures::from_midpolygons(
+            midpolygons,
             buffered_features_2d
                 .iter()
                 .map(|f| f.attributes.clone())
                 .collect(),
             &self.group_by,
         )
+    }
+}
+
+struct PolygonWithMbr2D {
+    index: usize,
+    mbr: Rect2D<f64>,
+}
+
+impl PolygonWithMbr2D {
+    fn new(mbr: Rect2D<f64>, index: usize) -> Option<Self> {
+        Some(Self { index, mbr })
+    }
+}
+
+impl rstar::RTreeObject for PolygonWithMbr2D {
+    type Envelope = AABB<[f64; 2]>;
+
+    fn envelope(&self) -> Self::Envelope {
+        self.mbr.envelope()
+    }
+}
+
+struct OverlayGraph {
+    graph: Vec<HashSet<usize>>,
+}
+
+impl OverlayGraph {
+    fn bulk_load(polygons: &[MultiPolygon2D<f64>]) -> Self {
+        let polygon_mbrs = polygons
+            .iter()
+            .map(|p| p.bounding_box())
+            .collect::<Vec<_>>();
+
+        let polygon_tree = RTree::bulk_load(
+            polygon_mbrs
+                .iter()
+                .enumerate()
+                .filter_map(|(i, mbr)| mbr.as_ref().and_then(|mbr| PolygonWithMbr2D::new(*mbr, i)))
+                .collect::<Vec<_>>(),
+        );
+
+        let mut graph = vec![HashSet::new(); polygons.len()];
+
+        for i in 0..polygons.len() {
+            let mbr_i = if let Some(polygon_mbr) = &polygon_mbrs[i] {
+                polygon_mbr
+            } else {
+                continue;
+            };
+
+            let overlayeds =
+                polygon_tree.locate_in_envelope_intersecting(&mbr_i.bounding_rect().envelope());
+
+            for overlayed in overlayeds {
+                graph[i].insert(overlayed.index);
+            }
+        }
+
+        Self { graph }
+    }
+
+    fn overlayed_iter(&self, i: usize) -> impl Iterator<Item = &usize> {
+        self.graph[i].iter()
     }
 }
 
@@ -321,17 +367,17 @@ impl OverlayedFeatures {
         }
     }
 
-    fn from_subpolygons(
-        subpolygons: Vec<SubPolygon>,
+    fn from_midpolygons(
+        midpolygons: Vec<MiddlePolygon>,
         base_attributes: Vec<HashMap<Attribute, AttributeValue>>,
         group_by: &Option<Vec<Attribute>>,
     ) -> Self {
         let mut area = Vec::new();
         let mut remnant = Vec::new();
-        for subpolygon in subpolygons {
+        for subpolygon in midpolygons {
             match subpolygon.get_type() {
-                SubPolygonType::None => {}
-                SubPolygonType::Area(parents) => {
+                MiddlePolygonType::None => {}
+                MiddlePolygonType::Area(parents) => {
                     let mut feature = Feature::new();
                     let last_feature = &base_attributes[*parents.last().unwrap()];
                     if let Some(group_by) = group_by {
@@ -350,7 +396,7 @@ impl OverlayedFeatures {
                         GeometryValue::FlowGeometry2D(subpolygon.polygon.into());
                     area.push(feature);
                 }
-                SubPolygonType::Remnant(parent) => {
+                MiddlePolygonType::Remnant(parent) => {
                     let mut feature = Feature::new();
                     feature.attributes = base_attributes[parent].clone();
                     feature.geometry.value =
