@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use once_cell::sync::Lazy;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reearth_flow_geometry::{
     algorithm::{bool_ops::BooleanOps, bounding_rect::BoundingRect},
     types::{multi_polygon::MultiPolygon2D, rect::Rect2D},
@@ -217,6 +218,7 @@ impl AreaOnAreaOverlayer {
                 .collect::<Vec<_>>();
             overlayed.extend(self.overlay_2d(buffered_features_2d));
         }
+
         overlayed
     }
 
@@ -232,52 +234,54 @@ impl AreaOnAreaOverlayer {
 
         let overlay_graph = OverlayGraph::bulk_load(&polygons_incoming);
 
-        let mut midpolygons = Vec::new();
+        let midpolygons = (0..polygons_incoming.len())
+            .into_par_iter()
+            .map(|i| {
+                let mut polygon_target = polygons_incoming[i].clone();
 
-        // this loop can be parallelized
-        for i in 0..polygons_incoming.len() {
-            let mut polygon_target = polygons_incoming[i].clone();
-
-            // cut off the target polygon by above overlayed polygons
-            for j in overlay_graph.overlayed_iter(i).copied() {
-                if i < j {
-                    polygon_target = polygon_target.difference(&polygons_incoming[j]);
-                }
-            }
-
-            let mut queue = vec![MiddlePolygon {
-                polygon: polygon_target,
-                parents: vec![i],
-            }];
-
-            // divide the target polygon by below overlayed polygons
-            for j in overlay_graph.overlayed_iter(i).copied() {
-                if i > j {
-                    let mut new_queue = Vec::new();
-                    for subpolygon in queue {
-                        let intersected = subpolygon.polygon.intersection(&polygons_incoming[j]);
-                        new_queue.push(MiddlePolygon {
-                            polygon: intersected,
-                            parents: subpolygon
-                                .parents
-                                .clone()
-                                .into_iter()
-                                .chain(vec![j])
-                                .collect(),
-                        });
-
-                        let difference = subpolygon.polygon.difference(&polygons_incoming[j]);
-                        new_queue.push(MiddlePolygon {
-                            polygon: difference,
-                            parents: subpolygon.parents.clone(),
-                        });
+                // cut off the target polygon by above overlayed polygons
+                for j in overlay_graph.overlayed_iter(i).copied() {
+                    if i < j {
+                        polygon_target = polygon_target.difference(&polygons_incoming[j]);
                     }
-                    queue = new_queue;
                 }
-            }
 
-            midpolygons.extend(queue);
-        }
+                let mut queue = vec![MiddlePolygon {
+                    polygon: polygon_target,
+                    parents: vec![i],
+                }];
+
+                // divide the target polygon by below overlayed polygons
+                for j in overlay_graph.overlayed_iter(i).copied() {
+                    if i > j {
+                        let mut new_queue = Vec::new();
+                        for subpolygon in queue {
+                            let intersected =
+                                subpolygon.polygon.intersection(&polygons_incoming[j]);
+                            new_queue.push(MiddlePolygon {
+                                polygon: intersected,
+                                parents: subpolygon
+                                    .parents
+                                    .clone()
+                                    .into_iter()
+                                    .chain(vec![j])
+                                    .collect(),
+                            });
+
+                            let difference = subpolygon.polygon.difference(&polygons_incoming[j]);
+                            new_queue.push(MiddlePolygon {
+                                polygon: difference,
+                                parents: subpolygon.parents.clone(),
+                            });
+                        }
+                        queue = new_queue;
+                    }
+                }
+
+                queue
+            })
+            .flatten()
+            .collect::<Vec<_>>();
 
         OverlayedFeatures::from_midpolygons(
             midpolygons,
