@@ -3,7 +3,7 @@ on:
   workflow_call:
 env:
   GO_VERSION: '1.22'
-  GCS_BUCKET_PATH: gs://cerbos-oss-policyfile-bucket
+  GCS_BUCKET_PATH: gs://cerbos-policy-reearth-oss/policies
 
 jobs:
   update-policies:
