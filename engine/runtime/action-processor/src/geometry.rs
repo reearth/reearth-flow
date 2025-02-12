@@ -29,7 +29,7 @@ pub(crate) mod three_dimension_box_replacer;
 pub(crate) mod three_dimension_rotator;
 pub(crate) mod two_dimension_forcer;
 pub(super) mod types;
-pub(crate) mod unifier;
+pub(crate) mod symmetrical_differencer;
 pub mod validator;
 pub(crate) mod value_filter;
 pub(crate) mod vertex_remover;
