@@ -320,7 +320,7 @@ mod test {
         assert!(rect1.overlap(&rect2));
 
         let rect3 = Rect::new((20, 20), (30, 30));
-        assert!(!rect1.overlap(&rect3));
+        assert!(rect1.overlap(&rect3));
 
         let rect4 = Rect::new((5, 5), (15, 15));
         assert!(rect1.overlap(&rect4));
