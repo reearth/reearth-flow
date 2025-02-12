@@ -8,9 +8,6 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AreaOnAreaOverlayerParam",
         "type": "object",
-        "required": [
-          "outputAttribute"
-        ],
         "properties": {
           "groupBy": {
             "type": [
@@ -20,9 +17,6 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
-          },
-          "outputAttribute": {
-            "$ref": "#/definitions/Attribute"
           }
         },
         "definitions": {

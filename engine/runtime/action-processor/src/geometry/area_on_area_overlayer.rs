@@ -181,12 +181,14 @@ impl Processor for AreaOnAreaOverlayer {
     }
 }
 
+/// Polygon that is created in the middle of the overlay process.
 #[derive(Debug, Clone)]
 struct SubPolygon {
     polygon: MultiPolygon2D<f64>,
     parents: Vec<usize>,
 }
 
+/// Type of the subpolygon and its parents.
 enum SubPolygonType {
     None,
     Area(Vec<usize>),
@@ -305,6 +307,7 @@ impl AreaOnAreaOverlayer {
     }
 }
 
+/// Features that are created as the result of the overlay process.
 struct OverlayedFeatures {
     area: Vec<Feature>,
     remnant: Vec<Feature>,
