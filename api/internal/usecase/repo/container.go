@@ -13,19 +13,20 @@ import (
 var ErrOperationDenied = errors.New("operation denied")
 
 type Container struct {
-	Asset       Asset
-	AuthRequest authserver.RequestRepo
-	Config      Config
-	Deployment  Deployment
-	Job         Job
-	Lock        Lock
-	Parameter   Parameter
-	Project     Project
-	Transaction usecasex.Transaction
-	Trigger     Trigger
-	User        accountrepo.User
-	Workflow    Workflow
-	Workspace   accountrepo.Workspace
+	Asset         Asset
+	AuthRequest   authserver.RequestRepo
+	Config        Config
+	Deployment    Deployment
+	Job           Job
+	Lock          Lock
+	Parameter     Parameter
+	Project       Project
+	ProjectAccess ProjectAccess
+	Transaction   usecasex.Transaction
+	Trigger       Trigger
+	User          accountrepo.User
+	Workflow      Workflow
+	Workspace     accountrepo.Workspace
 }
 
 func (c *Container) AccountRepos() *accountrepo.Container {
@@ -41,19 +42,20 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 		return c
 	}
 	return &Container{
-		Asset:       c.Asset.Filtered(workspace),
-		AuthRequest: c.AuthRequest,
-		Config:      c.Config,
-		Deployment:  c.Deployment.Filtered(workspace),
-		Job:         c.Job.Filtered(workspace),
-		Lock:        c.Lock,
-		Workflow:    c.Workflow.Filtered(workspace),
-		Parameter:   c.Parameter,
-		Project:     c.Project.Filtered(workspace),
-		Transaction: c.Transaction,
-		Trigger:     c.Trigger,
-		User:        c.User,
-		Workspace:   c.Workspace,
+		Asset:         c.Asset.Filtered(workspace),
+		AuthRequest:   c.AuthRequest,
+		Config:        c.Config,
+		Deployment:    c.Deployment.Filtered(workspace),
+		Job:           c.Job.Filtered(workspace),
+		Lock:          c.Lock,
+		Workflow:      c.Workflow.Filtered(workspace),
+		Parameter:     c.Parameter,
+		Project:       c.Project.Filtered(workspace),
+		ProjectAccess: c.ProjectAccess,
+		Transaction:   c.Transaction,
+		Trigger:       c.Trigger,
+		User:          c.User,
+		Workspace:     c.Workspace,
 	}
 }
 

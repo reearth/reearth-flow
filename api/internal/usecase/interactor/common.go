@@ -20,6 +20,8 @@ import (
 type ContainerConfig struct {
 	SignupSecret    string
 	AuthSrvUIDomain string
+	Host            string
+	SharedPath      string
 }
 
 func NewContainer(r *repo.Container, g *gateway.Container,
@@ -29,14 +31,15 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 	job := NewJob(r, g)
 
 	return interfaces.Container{
-		Asset:      NewAsset(r, g),
-		Job:        job,
-		Deployment: NewDeployment(r, g, job),
-		Parameter:  NewParameter(r),
-		Project:    NewProject(r, g),
-		Workspace:  accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
-		Trigger:    NewTrigger(r, g, job),
-		User:       accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
+		Asset:         NewAsset(r, g),
+		Job:           job,
+		Deployment:    NewDeployment(r, g, job),
+		Parameter:     NewParameter(r),
+		Project:       NewProject(r, g),
+		ProjectAccess: NewProjectAccess(r, g, config),
+		Workspace:     accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
+		Trigger:       NewTrigger(r, g, job),
+		User:          accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
 	}
 }
 

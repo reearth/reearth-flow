@@ -22,12 +22,13 @@ var (
 )
 
 type Container struct {
-	Asset      Asset
-	Deployment Deployment
-	Job        Job
-	Parameter  Parameter
-	Project    Project
-	Trigger    Trigger
-	User       accountinterfaces.User
-	Workspace  accountinterfaces.Workspace
+	Asset         Asset
+	Deployment    Deployment
+	Job           Job
+	Parameter     Parameter
+	Project       Project
+	ProjectAccess ProjectAccess
+	Trigger       Trigger
+	User          accountinterfaces.User
+	Workspace     accountinterfaces.Workspace
 }

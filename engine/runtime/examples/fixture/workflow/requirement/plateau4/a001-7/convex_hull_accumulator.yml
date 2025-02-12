@@ -1,10 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
-name: "convex-hull-accumulator-workflow"
+name: "PLATEAU4-A001-7-convex-hull-accumulator-workflow"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
-  geojson: !include "../../testdata/geometry/convex_hull_accumulator/tsugaru_strait.geojson.txt"
-  outputPath:
+  geojson: !include ./files/tsugaru_strait.geojson.txt
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
@@ -24,7 +23,7 @@ graphs:
         action: ConvexHullAccumulator
         with:
           groupBy:
-          - municipality
+            - municipality
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: GeoJsonWriter
@@ -32,7 +31,7 @@ graphs:
         action: GeoJsonWriter
         with:
           output: |
-            file::join_path(env.get("outputPath"), "convex-hull.geojson")
+            file::join_path(env.get("currentPath"), "a001-7-convex-hull.geojson")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

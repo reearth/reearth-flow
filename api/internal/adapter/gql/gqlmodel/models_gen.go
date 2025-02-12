@@ -312,6 +312,19 @@ type RunProjectPayload struct {
 	Started   bool `json:"started"`
 }
 
+type ShareProjectInput struct {
+	ProjectID ID `json:"projectId"`
+}
+
+type ShareProjectPayload struct {
+	ProjectID  ID     `json:"projectId"`
+	SharingURL string `json:"sharingUrl"`
+}
+
+type SharedProjectPayload struct {
+	Project *Project `json:"project"`
+}
+
 type SignupInput struct {
 	UserID      *ID           `json:"userId,omitempty"`
 	Lang        *language.Tag `json:"lang,omitempty"`
@@ -353,6 +366,14 @@ type TriggerConnection struct {
 	Nodes      []*Trigger `json:"nodes"`
 	PageInfo   *PageInfo  `json:"pageInfo"`
 	TotalCount int        `json:"totalCount"`
+}
+
+type UnshareProjectInput struct {
+	ProjectID ID `json:"projectId"`
+}
+
+type UnshareProjectPayload struct {
+	ProjectID ID `json:"projectId"`
 }
 
 type UpdateDeploymentInput struct {

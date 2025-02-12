@@ -50,6 +50,7 @@ type (
 		SignupSecret     string            `pp:",omitempty"`
 		SignupDisabled   bool              `pp:",omitempty"`
 		HTTPSREDIRECT    bool              `pp:",omitempty"`
+		SharedPath       string            `default:"shared"`
 
 		// storage
 		GCS GCSConfig `pp:",omitempty"`

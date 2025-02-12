@@ -813,6 +813,43 @@
       ]
     },
     {
+      "name": "Dissolver",
+      "type": "processor",
+      "description": "Dissolves features grouped by specified attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "DissolverParam",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "area",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "EchoProcessor",
       "type": "processor",
       "description": "Répète les entités",
@@ -2041,49 +2078,6 @@
       ],
       "outputPorts": [
         "default"
-      ],
-      "categories": [
-        "Geometry"
-      ]
-    },
-    {
-      "name": "GeometryDissolver",
-      "type": "processor",
-      "description": "Dissout des géométries",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryDissolverParam",
-        "type": "object",
-        "properties": {
-          "completeGrouped": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "groupBy": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "area",
-        "rejected"
       ],
       "categories": [
         "Geometry"
@@ -3370,6 +3364,43 @@
       ],
       "outputPorts": [
         "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "Unifier",
+      "type": "processor",
+      "description": "Unifies features grouped by specified attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "UnifierParam",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "area",
+        "rejected"
       ],
       "categories": [
         "Geometry"

@@ -21,19 +21,19 @@ use super::errors::GeometryProcessorError;
 pub static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
 
 #[derive(Debug, Clone, Default)]
-pub struct DissolverFactory;
+pub struct UnifierFactory;
 
-impl ProcessorFactory for DissolverFactory {
+impl ProcessorFactory for UnifierFactory {
     fn name(&self) -> &str {
-        "Dissolver"
+        "Unifier"
     }
 
     fn description(&self) -> &str {
-        "Dissolves features grouped by specified attributes"
+        "Unifies features grouped by specified attributes"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(DissolverParam))
+        Some(schemars::schema_for!(UnifierParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -55,26 +55,26 @@ impl ProcessorFactory for DissolverFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let param: DissolverParam = if let Some(with) = with {
+        let param: UnifierParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::DissolverFactory(format!(
+                GeometryProcessorError::UnifierFactory(format!(
                     "Failed to serialize 'with' parameter: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::DissolverFactory(format!(
+                GeometryProcessorError::UnifierFactory(format!(
                     "Failed to deserialize 'with' parameter: {}",
                     e
                 ))
             })?
         } else {
-            return Err(GeometryProcessorError::DissolverFactory(
+            return Err(GeometryProcessorError::UnifierFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
         };
-        let process = Dissolver {
+        let process = Unifier {
             group_by: param.group_by,
             buffer: HashMap::new(),
         };
@@ -85,17 +85,17 @@ impl ProcessorFactory for DissolverFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct DissolverParam {
+pub struct UnifierParam {
     group_by: Option<Vec<Attribute>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct Dissolver {
+pub struct Unifier {
     group_by: Option<Vec<Attribute>>,
     buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
-impl Processor for Dissolver {
+impl Processor for Unifier {
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -106,7 +106,7 @@ impl Processor for Dissolver {
         if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
-        };
+        }
         match &geometry.value {
             GeometryValue::None => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -124,8 +124,8 @@ impl Processor for Dissolver {
                 };
 
                 if !self.buffer.contains_key(&key) {
-                    for dissolved in self.dissolve() {
-                        fw.send(ctx.new_with_feature_and_port(dissolved, AREA_PORT.clone()));
+                    for unified in self.unify() {
+                        fw.send(ctx.new_with_feature_and_port(unified, AREA_PORT.clone()));
                     }
                     self.buffer.clear();
                 }
@@ -147,10 +147,10 @@ impl Processor for Dissolver {
         ctx: NodeContext,
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        for dissolved in self.dissolve() {
+        for unified in self.unify() {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
-                dissolved,
+                unified,
                 AREA_PORT.clone(),
             ));
         }
@@ -158,70 +158,123 @@ impl Processor for Dissolver {
     }
 
     fn name(&self) -> &str {
-        "Dissolver"
+        "Unifier"
     }
 }
 
-impl Dissolver {
-    fn dissolve(&self) -> Vec<Feature> {
-        let mut dissolved = Vec::new();
+#[derive(Debug, Clone)]
+struct UnifiedPolygon {
+    polygon: MultiPolygon2D<f64>,
+    parents: Vec<usize>,
+}
+
+impl Unifier {
+    fn unify(&self) -> Vec<Feature> {
+        let mut unified = Vec::new();
         for buffer in self.buffer.values() {
             let buffered_features_2d = buffer
                 .iter()
                 .filter(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry2D(_)))
                 .collect::<Vec<_>>();
 
-            if let Some(dissolved_2d) = self.dissolve_2d(buffered_features_2d) {
-                dissolved.push(dissolved_2d);
-            }
+            let features = self.unify_2d(buffered_features_2d);
+            unified.extend(features);
         }
-        dissolved
+        unified
     }
 
-    fn dissolve_2d(&self, buffered_features_2d: Vec<&Feature>) -> Option<Feature> {
-        let multi_polygon_2d = buffered_features_2d.iter().fold(
-            None,
-            |multi_polygon_acc: Option<_>, feature_incoming| {
-                let geometry_incoming = feature_incoming.geometry.value.as_flow_geometry_2d()?;
-                let multi_polygon_incoming =
-                    if let Some(multi_polygon) = geometry_incoming.as_multi_polygon() {
-                        multi_polygon
-                    } else if let Some(polygon) = geometry_incoming.as_polygon() {
-                        MultiPolygon2D::new(vec![polygon])
+    fn unify_2d(&self, buffered_features_2d: Vec<&Feature>) -> Vec<Feature> {
+        let multi_polygons_incoming = buffered_features_2d
+            .iter()
+            .filter_map(|f| f.geometry.value.as_flow_geometry_2d())
+            .filter_map(|g| {
+                g.as_polygon()
+                    .map(|polygon| MultiPolygon2D::new(vec![polygon]))
+            })
+            .collect::<Vec<_>>();
+
+        let multi_polygon_mbrs = multi_polygons_incoming
+            .iter()
+            .map(|multi_polygon| multi_polygon.bounding_box())
+            .collect::<Vec<_>>();
+
+        let mut unifieds: Vec<UnifiedPolygon> = Vec::new();
+
+        for i in 0..multi_polygons_incoming.len() {
+            let multi_polygon_incoming = &multi_polygons_incoming[i];
+            let multi_polygon_mbr = if let Some(multi_polygon_mbr) = &multi_polygon_mbrs[i] {
+                multi_polygon_mbr
+            } else {
+                continue;
+            };
+
+            let mut new_unifieds = Vec::new();
+
+            if unifieds.is_empty() {
+                new_unifieds.push(UnifiedPolygon {
+                    polygon: multi_polygon_incoming.clone(),
+                    parents: vec![i],
+                });
+            } else {
+                for unified in &unifieds {
+                    let unified_mbr = if let Some(unified_mbr) = unified.polygon.bounding_box() {
+                        unified_mbr
                     } else {
-                        return multi_polygon_acc;
+                        continue;
                     };
+                    if multi_polygon_mbr.overlap(&unified_mbr) {
+                        let intersected = multi_polygon_incoming.intersection(&unified.polygon);
+                        new_unifieds.push(UnifiedPolygon {
+                            polygon: intersected,
+                            parents: unified.parents.clone().into_iter().chain(vec![i]).collect(),
+                        });
+                        let difference = unified.polygon.difference(multi_polygon_incoming);
+                        new_unifieds.push(UnifiedPolygon {
+                            polygon: difference,
+                            parents: unified.parents.clone(),
+                        });
+                    } else {
+                        new_unifieds.push(unified.clone());
+                    }
+                }
 
-                let mutli_polygon_acc = if let Some(mutli_polygon_acc) = multi_polygon_acc {
-                    mutli_polygon_acc
-                } else {
-                    return Some(multi_polygon_incoming);
-                };
+                let mut rest = multi_polygon_incoming.clone();
 
-                let unite = multi_polygon_incoming.union(&mutli_polygon_acc);
-                Some(unite)
-            },
-        );
+                for j in 0..i {
+                    let mbr = &multi_polygon_mbrs[j];
+                    if mbr.is_none() || !multi_polygon_mbr.overlap(&mbr.unwrap()) {
+                        continue;
+                    }
+                    rest = rest.difference(&multi_polygons_incoming[j]);
+                }
+                new_unifieds.push(UnifiedPolygon {
+                    polygon: rest,
+                    parents: vec![i],
+                });
+            }
+            unifieds = new_unifieds;
+        }
 
-        if let Some(multi_polygon_2d) = multi_polygon_2d {
+        let mut features = Vec::new();
+        for unified in unifieds {
             let mut feature = Feature::new();
-            if let (Some(group_by), Some(last_feature)) =
-                (&self.group_by, buffered_features_2d.last())
-            {
+            if let Some(group_by) = &self.group_by {
                 feature.attributes = group_by
                     .iter()
                     .filter_map(|attr| {
-                        let value = last_feature.attributes.get(attr).cloned()?;
+                        let value = buffered_features_2d[unified.parents[0]]
+                            .attributes
+                            .get(attr)
+                            .cloned()?;
                         Some((attr.clone(), value))
                     })
                     .collect::<HashMap<_, _>>();
             } else {
                 feature.attributes = HashMap::new();
             }
-            feature.geometry.value = GeometryValue::FlowGeometry2D(multi_polygon_2d.into());
-            Some(feature)
-        } else {
-            None
+            feature.geometry.value = GeometryValue::FlowGeometry2D(unified.polygon.into());
+            features.push(feature);
         }
+        features
     }
 }

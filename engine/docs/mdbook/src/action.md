@@ -803,6 +803,43 @@ Decompresses a directory
 ### Category
 * File
 
+## Dissolver
+### Type
+* processor
+### Description
+Dissolves features grouped by specified attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DissolverParam",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* area
+* rejected
+### Category
+* Geometry
+
 ## EchoProcessor
 ### Type
 * processor
@@ -2034,49 +2071,6 @@ Coerces the geometry of a feature to a specific geometry
 * default
 ### Output Ports
 * default
-### Category
-* Geometry
-
-## GeometryDissolver
-### Type
-* processor
-### Description
-Dissolve geometries
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GeometryDissolverParam",
-  "type": "object",
-  "properties": {
-    "completeGrouped": {
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "groupBy": {
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/Attribute"
-      }
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* area
-* rejected
 ### Category
 * Geometry
 
@@ -3330,6 +3324,43 @@ Forces a geometry to be two dimensional.
 * default
 ### Output Ports
 * default
+### Category
+* Geometry
+
+## Unifier
+### Type
+* processor
+### Description
+Unifies features grouped by specified attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "UnifierParam",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* area
+* rejected
 ### Category
 * Geometry
 
