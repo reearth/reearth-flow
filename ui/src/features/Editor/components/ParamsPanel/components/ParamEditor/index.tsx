@@ -10,6 +10,8 @@ import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
 import type { NodeData } from "@flow/types";
 
+import { noteNodeAction } from "../../../Canvas/components/Nodes/NoteNode";
+
 type Props = {
   nodeId: string;
   nodeMeta: NodeData;
@@ -37,6 +39,13 @@ const ParamEditor: React.FC<Props> = ({
         action = {
           ...nodeMeta,
           ...batchNodeAction,
+        };
+        break;
+
+      case "note":
+        action = {
+          ...nodeMeta,
+          ...noteNodeAction,
         };
         break;
       default:
