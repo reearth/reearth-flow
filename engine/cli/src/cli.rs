@@ -10,7 +10,8 @@ use crate::schema_action::{build_schema_action_command, SchemaActionCliCommand};
 use crate::schema_workflow::{build_schema_workflow_command, SchemaWorkflowCliCommand};
 
 pub fn build_cli() -> Command {
-    Command::new("Re:Earth Flow")
+    Command::new("Re:Earth Flow CLI")
+        .version(env!("CARGO_PKG_VERSION"))
         .subcommand(build_run_command().display_order(1))
         .subcommand(build_dot_command().display_order(2))
         .subcommand(build_schema_action_command().display_order(3))

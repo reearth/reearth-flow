@@ -91,8 +91,10 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             runtime.clone(),
             dag.event_hub().clone(),
         );
+        let version = env!("CARGO_PKG_VERSION");
         let span = info_span!(
             "action",
+            "engine.version" = version,
             "otel.name" = processor.name(),
             "otel.kind" = "Processor Node",
             "workflow.id" = dag.id.to_string().as_str(),
