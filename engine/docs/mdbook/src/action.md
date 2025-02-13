@@ -11,9 +11,6 @@ Overlays an area on another area
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AreaOnAreaOverlayerParam",
   "type": "object",
-  "required": [
-    "outputAttribute"
-  ],
   "properties": {
     "groupBy": {
       "type": [
@@ -23,9 +20,6 @@ Overlays an area on another area
       "items": {
         "$ref": "#/definitions/Attribute"
       }
-    },
-    "outputAttribute": {
-      "$ref": "#/definitions/Attribute"
     }
   },
   "definitions": {
@@ -2539,6 +2533,16 @@ Writes features to a file
     "output"
   ],
   "properties": {
+    "compressOutput": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "layerName": {
       "$ref": "#/definitions/Expr"
     },

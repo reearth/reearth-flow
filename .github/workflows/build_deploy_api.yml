@@ -36,28 +36,28 @@ jobs:
 
       - name: Build API
         run: |
-          cd api
+          cd server/api
           go build -v -o reearth-flow-api .
 
       - name: Create distribution directory
         run: |
-          mkdir -p api/dist
-          mv api/reearth-flow-api api/dist/
+          mkdir -p server/api/dist
+          mv server/api/reearth-flow-api server/api/dist/
 
       - name: Rename Artifacts
         if: ${{ inputs.name != 'blank' }}
         run: |
-          cd api/dist
+          cd server/api/dist
           mv reearth-flow-api reearth-flow-api_${{ inputs.name }}
 
       - name: List Artifacts
-        run: ls -l api/dist
+        run: ls -l server/api/dist
 
       - name: Upload API Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: api-artifacts
-          path: api/dist/*
+          path: server/api/dist/*
 
   build-docker-image:
     name: Build and Push Docker Image
@@ -74,7 +74,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: api-artifacts
-          path: api/dist
+          path: server/api/dist
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -118,7 +118,7 @@ jobs:
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
         with:
-          context: api
+          context: server/api
           platforms: ${{ steps.options.outputs.platforms }}
           push: true
           build-args: VERSION=${{ steps.options.outputs.version }}
