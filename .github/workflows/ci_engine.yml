@@ -24,6 +24,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Maximize build space
         uses: AdityaGarg8/remove-unwanted-software@v4.1
         with:
@@ -45,7 +47,36 @@ jobs:
       - name: install required tools
         uses: taiki-e/install-action@v2
         with:
-          tool: taplo-cli,cargo-make
+          tool: taplo-cli,cargo-make,cargo-edit
+      - name: Compare version with previous commit
+        if: ${{ !(github.ref == 'refs/heads/main') }}
+        run: |
+          # Try to get previous version, handle new files
+          PREV_VERSION=$(git show "HEAD~1:engine/Cargo.toml" 2>/dev/null | grep '^version' | cut -d '"' -f2) || PREV_VERSION=""
+          if [ -z "$PREV_VERSION" ]; then
+            echo "No previous version found (new file?) - skipping version check"
+            exit 0
+          fi
+
+          CURR_VERSION=$(grep '^version' Cargo.toml | cut -d '"' -f2)
+          if [ -z "$CURR_VERSION" ]; then
+            echo "Error: Could not find version in current Cargo.toml"
+            exit 1
+          fi
+
+           echo "Previous version: $PREV_VERSION"
+           echo "Current version:  $CURR_VERSION"
+
+           if [ "$PREV_VERSION" = "$CURR_VERSION" ]; then
+             echo "Error: The version of Cargo.toml has not been changed."
+             echo "       To increase the patch version, run 'cargo set-version --bump patch'."
+             echo "       To bump the version, run one of:"
+             echo "       - 'cargo set-version --bump major'  # For breaking changes"
+             echo "       - 'cargo set-version --bump minor'  # For new features"
+             echo "       - 'cargo set-version --bump patch'  # For bug fixes"
+             exit 1
+           fi
+
       - name: Install Python 3.11
         uses: actions/setup-python@v4
         with:
