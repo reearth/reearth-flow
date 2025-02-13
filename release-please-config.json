@@ -10,68 +10,70 @@
   "versioning": "default",
   "tag-separator": "@",
   "packages": {
-    "worker": {
+    "engine/worker": {
       "skip-github-release": false
     },
-    "cli": {},
-    "runtime/action-log": {
+    "engine/cli": {
       "skip-github-release": true
     },
-    "runtime/action-sink": {
+    "engine/runtime/action-log": {
       "skip-github-release": true
     },
-    "runtime/common": {
+    "engine/runtime/action-sink": {
       "skip-github-release": true
     },
-    "runtime/geometry": {
+    "engine/runtime/common": {
       "skip-github-release": true
     },
-    "runtime/runner": {
+    "engine/runtime/geometry": {
       "skip-github-release": true
     },
-    "runtime/state": {
+    "engine/runtime/runner": {
       "skip-github-release": true
     },
-    "runtime/tests": {
+    "engine/runtime/state": {
       "skip-github-release": true
     },
-    "runtime/action-plateau-processor": {
+    "engine/runtime/tests": {
       "skip-github-release": true
     },
-    "runtime/action-source": {
+    "engine/runtime/action-plateau-processor": {
       "skip-github-release": true
     },
-    "runtime/eval-expr": {
+    "engine/runtime/action-source": {
       "skip-github-release": true
     },
-    "runtime/gltf": {
+    "engine/runtime/eval-expr": {
       "skip-github-release": true
     },
-    "runtime/runtime": {
+    "engine/runtime/gltf": {
       "skip-github-release": true
     },
-    "runtime/storage": {
+    "engine/runtime/runtime": {
       "skip-github-release": true
     },
-    "runtime/types": {
+    "engine/runtime/storage": {
       "skip-github-release": true
     },
-    "runtime/action-processor": {
+    "engine/runtime/types": {
       "skip-github-release": true
     },
-    "runtime/action-wasm-processor": {
+    "engine/runtime/action-processor": {
       "skip-github-release": true
     },
-    "runtime/examples": {
+    "engine/runtime/action-wasm-processor": {
       "skip-github-release": true
     },
-    "runtime/macros": {
+    "engine/runtime/examples": {
       "skip-github-release": true
     },
-    "runtime/sevenz": {
+    "engine/runtime/macros": {
       "skip-github-release": true
     },
-    "runtime/telemetry": {
+    "engine/runtime/sevenz": {
+      "skip-github-release": true
+    },
+    "engine/runtime/telemetry": {
       "skip-github-release": true
     }
   }
