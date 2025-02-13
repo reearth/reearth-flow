@@ -14,3 +14,50 @@ pub use broadcast::group;
 pub use broadcast::pool;
 
 pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
+
+// New modules
+pub mod handlers;
+pub mod server;
+
+// Constants
+pub const BUCKET_NAME: &str = "yrs-dev";
+pub const PORT: &str = "8000";
+
+// Types
+#[cfg(feature = "auth")]
+#[derive(Debug, serde::Deserialize)]
+pub struct AuthQuery {
+    #[serde(default)]
+    pub token: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct RollbackQuery {
+    pub clock: u32,
+    #[cfg(feature = "auth")]
+    #[serde(default)]
+    pub token: String,
+}
+
+#[cfg(feature = "auth")]
+#[derive(Clone)]
+pub struct AppState {
+    pub pool: Arc<BroadcastPool>,
+    pub auth: Arc<AuthService>,
+}
+
+#[cfg(not(feature = "auth"))]
+#[derive(Clone)]
+pub struct AppState {
+    pub pool: Arc<BroadcastPool>,
+}
+
+#[cfg(feature = "auth")]
+pub use auth::AuthService;
+
+pub use conf::Config;
+pub use group::BroadcastGroup;
+pub use handlers::{get_doc_history, get_latest_doc, rollback_doc, ws_handler};
+pub use pool::BroadcastPool;
+pub use server::{create_router, ensure_bucket, start_server};
+pub use storage::gcs::GcsStore;
