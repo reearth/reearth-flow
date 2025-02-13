@@ -11,7 +11,7 @@ import { yWorkflowConstructor } from "@flow/lib/yjs/conversions";
 import { YWorkflow } from "@flow/lib/yjs/types";
 import { generateUUID } from "@flow/utils";
 
-export default (projectId: string) => {
+export default (projectId?: string) => {
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const { useGetProject } = useProject();
