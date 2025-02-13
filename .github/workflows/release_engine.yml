@@ -9,6 +9,6 @@ jobs:
     steps:
       - uses: googleapis/release-please-action@v3
         with:
-          release-type: "rust"
+          release-type: "cargo-workspace"
           path: "engine"
           token: ${{ secrets.GITHUB_TOKEN }}
