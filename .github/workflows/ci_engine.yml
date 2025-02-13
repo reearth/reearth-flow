@@ -52,7 +52,7 @@ jobs:
         if: ${{ !(github.ref == 'refs/heads/main') }}
         run: |
           # Try to get previous version, handle new files
-          PREV_VERSION=$(git show "refs/heads/main:engine/Cargo.toml" 2>/dev/null | grep '^version' | cut -d '"' -f2) || PREV_VERSION=""
+          PREV_VERSION=$(git show "HEAD~1:engine/Cargo.toml" 2>/dev/null | grep '^version' | cut -d '"' -f2) || PREV_VERSION=""
           if [ -z "$PREV_VERSION" ]; then
             echo "No previous version found (new file?) - skipping version check"
             exit 0
