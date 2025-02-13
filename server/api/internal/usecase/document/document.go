@@ -46,3 +46,7 @@ func GetLatest(ctx context.Context, id string) (*Document, error) {
 func GetHistory(ctx context.Context, id string) ([]*History, error) {
 	return getDefaultClient().GetHistory(ctx, id)
 }
+
+func Rollback(ctx context.Context, id string, clock int) (*Document, error) {
+	return getDefaultClient().Rollback(ctx, id, clock)
+}

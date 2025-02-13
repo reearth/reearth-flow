@@ -133,3 +133,28 @@ func (c *Client) GetHistory(ctx context.Context, docID string) ([]*History, erro
 
 	return history, nil
 }
+
+func (c *Client) Rollback(ctx context.Context, id string, clock int) (*Document, error) {
+	url := fmt.Sprintf("%s/%s/rollback?clock=%d", c.baseURL, id, clock)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	var doc Document
+	if err := json.NewDecoder(resp.Body).Decode(&doc); err != nil {
+		return nil, err
+	}
+
+	return &doc, nil
+}

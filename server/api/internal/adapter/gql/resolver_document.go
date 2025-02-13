@@ -39,6 +39,20 @@ func (r *queryResolver) DocumentHistory(ctx context.Context, id gqlmodel.ID) ([]
 	return nodes, nil
 }
 
+func (r *mutationResolver) DocumentRollback(ctx context.Context, id gqlmodel.ID, clock int) (*gqlmodel.Document, error) {
+	doc, err := document.Rollback(ctx, string(id), clock)
+	if err != nil {
+		return nil, err
+	}
+
+	return &gqlmodel.Document{
+		ID:        id,
+		Update:    doc.Update,
+		Clock:     doc.Clock,
+		Timestamp: doc.Timestamp,
+	}, nil
+}
+
 type documentResolver struct{ *Resolver }
 
 func (r *Resolver) Document() DocumentResolver {
