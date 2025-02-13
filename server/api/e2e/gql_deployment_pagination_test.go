@@ -20,7 +20,7 @@ func TestDeploymentsPagination(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser)
+	}, true, baseSeederUser, true)
 
 	// Log workspace and user info
 	t.Log("Workspace ID:", wId1.String())

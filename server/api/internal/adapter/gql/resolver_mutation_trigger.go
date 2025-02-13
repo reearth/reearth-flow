@@ -34,7 +34,7 @@ func (r *mutationResolver) CreateTrigger(ctx context.Context, input gqlmodel.Cre
 		param.AuthToken = input.APIDriverInput.Token
 	}
 
-	res, err := usecases(ctx).Trigger.Create(ctx, param, getOperator(ctx))
+	res, err := usecases(ctx).Trigger.Create(ctx, param)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func (r *mutationResolver) UpdateTrigger(ctx context.Context, input gqlmodel.Upd
 		param.AuthToken = input.APIDriverInput.Token
 	}
 
-	res, err := usecases(ctx).Trigger.Update(ctx, param, getOperator(ctx))
+	res, err := usecases(ctx).Trigger.Update(ctx, param)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +83,7 @@ func (r *mutationResolver) DeleteTrigger(ctx context.Context, triggerId gqlmodel
 		return false, err
 	}
 
-	err = usecases(ctx).Trigger.Delete(ctx, tid, getOperator(ctx))
+	err = usecases(ctx).Trigger.Delete(ctx, tid)
 	if err != nil {
 		return false, err
 	}

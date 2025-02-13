@@ -19,7 +19,7 @@ const Loading: React.FC<{ show?: boolean; className?: string }> = ({
         <div className="flex flex-col gap-5">
           <div className="flex flex-col items-center gap-8">
             <FlowLogo
-              id="loading-svg"
+              className="loading-pulse"
               style={{ height: "110px", width: "110px" }}
             />
             <p className="text-2xl font-thin"> {brandName || "Flow"}</p>

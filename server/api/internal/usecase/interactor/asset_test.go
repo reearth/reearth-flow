@@ -8,16 +8,13 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/fs"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/file"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmemory"
-	"github.com/reearth/reearthx/account/accountusecase"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 )
@@ -50,10 +47,6 @@ func TestAsset_Create(t *testing.T) {
 			Path:        "hoge.txt",
 			ContentType: "",
 			Size:        buflen,
-		},
-	}, &usecase.Operator{
-		AcOperator: &accountusecase.Operator{
-			WritableWorkspaces: accountdomain.WorkspaceIDList{ws.ID()},
 		},
 	})
 	assert.NoError(t, err)
