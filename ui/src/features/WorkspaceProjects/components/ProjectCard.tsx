@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
   FlowLogo,
 } from "@flow/components";
+import { useProjectExport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
 
@@ -36,12 +37,19 @@ const ProjectCard: React.FC<Props> = ({
 
   const [persistOverlay, setPersistOverlay] = useState(false);
 
+  const { isExporting, handleProjectExport } = useProjectExport(project.id);
+
   return (
     <Card
       className={`group relative cursor-pointer border-transparent bg-secondary ${currentProject && currentProject.id === id ? "border-border" : "hover:border-border"}`}
       key={id}
       onClick={() => onProjectSelect(project)}>
-      <CardContent className="flex h-[120px] items-center justify-center p-0">
+      <CardContent className="relative flex h-[120px] items-center justify-center p-0">
+        {isExporting && (
+          <p className="loading-pulse absolute left-2 top-2 font-thin">
+            {t("Exporting...")}
+          </p>
+        )}
         <FlowLogo
           className={`size-[120px] translate-x-20 opacity-50 ${description ? "group:hover:opacity-90" : ""}`}
         />
@@ -78,6 +86,13 @@ const ProjectCard: React.FC<Props> = ({
                   setEditProject({ ...project });
                 }}>
                 {t("Edit Details")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleProjectExport();
+                }}>
+                {t("Export Project")}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={(e) => {

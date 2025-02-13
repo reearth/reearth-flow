@@ -124,7 +124,6 @@ const DeploymentManager: React.FC = () => {
                 selectColumns
                 showFiltering
                 enablePagination
-                rowHeight={14}
                 onRowClick={handleDeploymentSelect}
                 currentPage={currentPage}
                 setCurrentPage={setCurrentPage}

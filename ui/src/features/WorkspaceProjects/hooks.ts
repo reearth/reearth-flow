@@ -92,6 +92,10 @@ export default () => {
     showError,
     buttonDisabled,
     openProjectAddDialog,
+    currentPage,
+    totalPages,
+    currentOrder,
+    isFetching,
     setOpenProjectAddDialog,
     setEditProject,
     setProjectToBeDeleted,
@@ -99,11 +103,7 @@ export default () => {
     handleDeleteProject,
     handleUpdateValue,
     handleUpdateProject,
-    currentPage,
     setCurrentPage,
-    totalPages,
-    currentOrder,
     setCurrentOrder,
-    isFetching,
   };
 };

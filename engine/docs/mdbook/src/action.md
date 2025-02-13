@@ -11,9 +11,6 @@ Overlays an area on another area
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AreaOnAreaOverlayerParam",
   "type": "object",
-  "required": [
-    "outputAttribute"
-  ],
   "properties": {
     "groupBy": {
       "type": [
@@ -23,9 +20,6 @@ Overlays an area on another area
       "items": {
         "$ref": "#/definitions/Attribute"
       }
-    },
-    "outputAttribute": {
-      "$ref": "#/definitions/Attribute"
     }
   },
   "definitions": {
@@ -802,6 +796,43 @@ Decompresses a directory
 * default
 ### Category
 * File
+
+## Dissolver
+### Type
+* processor
+### Description
+Dissolves features grouped by specified attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DissolverParam",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* area
+* rejected
+### Category
+* Geometry
 
 ## EchoProcessor
 ### Type
@@ -2037,49 +2068,6 @@ Coerces the geometry of a feature to a specific geometry
 ### Category
 * Geometry
 
-## GeometryDissolver
-### Type
-* processor
-### Description
-Dissolve geometries
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GeometryDissolverParam",
-  "type": "object",
-  "properties": {
-    "completeGrouped": {
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "groupBy": {
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/Attribute"
-      }
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* area
-* rejected
-### Category
-* Geometry
-
 ## GeometryExtractor
 ### Type
 * processor
@@ -2545,6 +2533,16 @@ Writes features to a file
     "output"
   ],
   "properties": {
+    "compressOutput": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "layerName": {
       "$ref": "#/definitions/Expr"
     },

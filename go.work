@@ -1,6 +1,6 @@
 go 1.22.3
 
 use (
-    ./api
+    ./server/api
     ./server/subscriber
 )

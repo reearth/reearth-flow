@@ -15,9 +15,15 @@ type Props = {
 
 const JobDetails: React.FC<Props> = ({ selectedJob }) => {
   const t = useT();
-  const { history } = useRouter();
+  const { navigate } = useRouter();
 
-  const handleBack = useCallback(() => history.go(-1), [history]); // Go back to previous page
+  const handleBack = useCallback(
+    () =>
+      navigate({
+        to: `/workspaces/${selectedJob?.workspaceId}/jobs/all`,
+      }),
+    [navigate, selectedJob?.workspaceId],
+  );
   const [logs, setLogs] = useState<Log[] | null>(null);
   const [isFetching, setIsFetching] = useState<boolean>(false);
   const details: DetailsBoxContent[] | undefined = useMemo(

@@ -35,6 +35,10 @@ const ProjectsManager: React.FC = () => {
     showError,
     buttonDisabled,
     openProjectAddDialog,
+    currentPage,
+    totalPages,
+    currentOrder,
+    isFetching,
     setOpenProjectAddDialog,
     setEditProject,
     setProjectToBeDeleted,
@@ -42,12 +46,8 @@ const ProjectsManager: React.FC = () => {
     handleDeleteProject,
     handleUpdateValue,
     handleUpdateProject,
-    currentPage,
     setCurrentPage,
-    totalPages,
-    currentOrder,
     setCurrentOrder,
-    isFetching,
   } = useHooks();
   const handleOrderChange = () => {
     setCurrentOrder?.(

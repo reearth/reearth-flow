@@ -8,9 +8,6 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AreaOnAreaOverlayerParam",
         "type": "object",
-        "required": [
-          "outputAttribute"
-        ],
         "properties": {
           "groupBy": {
             "type": [
@@ -20,9 +17,6 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
-          },
-          "outputAttribute": {
-            "$ref": "#/definitions/Attribute"
           }
         },
         "definitions": {
@@ -810,6 +804,43 @@
       ],
       "categories": [
         "File"
+      ]
+    },
+    {
+      "name": "Dissolver",
+      "type": "processor",
+      "description": "Dissolves features grouped by specified attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "DissolverParam",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "area",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
       ]
     },
     {
@@ -2047,49 +2078,6 @@
       ]
     },
     {
-      "name": "GeometryDissolver",
-      "type": "processor",
-      "description": "溶解几何体",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryDissolverParam",
-        "type": "object",
-        "properties": {
-          "completeGrouped": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "groupBy": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "area",
-        "rejected"
-      ],
-      "categories": [
-        "Geometry"
-      ]
-    },
-    {
       "name": "GeometryExtractor",
       "type": "processor",
       "description": "提取实体的几何并作为属性添加",
@@ -2555,6 +2543,16 @@
           "output"
         ],
         "properties": {
+          "compressOutput": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "layerName": {
             "$ref": "#/definitions/Expr"
           },
