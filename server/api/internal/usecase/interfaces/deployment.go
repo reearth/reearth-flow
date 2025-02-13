@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -35,14 +36,14 @@ var (
 )
 
 type Deployment interface {
-	Fetch(context.Context, []id.DeploymentID) ([]*deployment.Deployment, error)
-	FindByProject(context.Context, id.ProjectID) (*deployment.Deployment, error)
-	FindByVersion(context.Context, accountdomain.WorkspaceID, *id.ProjectID, string) (*deployment.Deployment, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *PaginationParam) ([]*deployment.Deployment, *PageBasedInfo, error)
-	FindHead(context.Context, accountdomain.WorkspaceID, *id.ProjectID) (*deployment.Deployment, error)
-	FindVersions(context.Context, accountdomain.WorkspaceID, *id.ProjectID) ([]*deployment.Deployment, error)
-	Create(context.Context, CreateDeploymentParam) (*deployment.Deployment, error)
-	Update(context.Context, UpdateDeploymentParam) (*deployment.Deployment, error)
-	Delete(context.Context, id.DeploymentID) error
-	Execute(context.Context, ExecuteDeploymentParam) (*job.Job, error)
+	Fetch(context.Context, []id.DeploymentID, *usecase.Operator) ([]*deployment.Deployment, error)
+	FindByProject(context.Context, id.ProjectID, *usecase.Operator) (*deployment.Deployment, error)
+	FindByVersion(context.Context, accountdomain.WorkspaceID, *id.ProjectID, string, *usecase.Operator) (*deployment.Deployment, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *PaginationParam, *usecase.Operator) ([]*deployment.Deployment, *PageBasedInfo, error)
+	FindHead(context.Context, accountdomain.WorkspaceID, *id.ProjectID, *usecase.Operator) (*deployment.Deployment, error)
+	FindVersions(context.Context, accountdomain.WorkspaceID, *id.ProjectID, *usecase.Operator) ([]*deployment.Deployment, error)
+	Create(context.Context, CreateDeploymentParam, *usecase.Operator) (*deployment.Deployment, error)
+	Update(context.Context, UpdateDeploymentParam, *usecase.Operator) (*deployment.Deployment, error)
+	Delete(context.Context, id.DeploymentID, *usecase.Operator) error
+	Execute(context.Context, ExecuteDeploymentParam, *usecase.Operator) (*job.Job, error)
 }
