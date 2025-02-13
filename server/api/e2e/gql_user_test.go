@@ -101,7 +101,7 @@ func TestUpdateMe(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser)
 	query := `mutation { updateMe(input: {name: "updated", email: "hoge@test.com", lang: "ja", password: "Ajsownndww1", passwordConfirmation: "Ajsownndww1"}){ me { id name email lang auths myWorkspaceId } }}`
 	request := GraphQLRequest{
 		Query: query,
@@ -127,7 +127,7 @@ func TestRemoveMyAuth(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser)
 	u, err := r.User.FindByID(context.Background(), uId1)
 	assert.Nil(t, err)
 	assert.Equal(t, &user.Auth{Provider: "reearth", Sub: "reearth|" + uId1.String()}, u.Auths().GetByProvider("reearth"))
@@ -157,7 +157,7 @@ func TestDeleteMe(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser)
 	u, err := r.User.FindByID(context.Background(), uId1)
 	assert.Nil(t, err)
 	assert.NotNil(t, u)
@@ -186,7 +186,7 @@ func TestSearchUser(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser)
 	query := fmt.Sprintf(` { searchUser(nameOrEmail: "%s"){ id name email } }`, "e2e")
 	request := GraphQLRequest{
 		Query: query,
@@ -226,7 +226,7 @@ func TestNode(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser)
 	query := fmt.Sprintf(` { node(id: "%s", type: USER){ id } }`, uId1.String())
 	request := GraphQLRequest{
 		Query: query,
@@ -249,7 +249,7 @@ func TestNodes(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser)
 	query := fmt.Sprintf(` { nodes(id: "%s", type: USER){ id } }`, uId1.String())
 	request := GraphQLRequest{
 		Query: query,

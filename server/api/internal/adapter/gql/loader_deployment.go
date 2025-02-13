@@ -26,7 +26,7 @@ func (c *DeploymentLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gql
 		return nil, []error{err}
 	}
 
-	res, err := c.usecase.Fetch(ctx, ids2)
+	res, err := c.usecase.Fetch(ctx, ids2, getOperator(ctx))
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -54,7 +54,7 @@ func (c *DeploymentLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmode
 		},
 	}
 
-	res, pageInfo, err := c.usecase.FindByWorkspace(ctx, wID, paginationParam)
+	res, pageInfo, err := c.usecase.FindByWorkspace(ctx, wID, paginationParam, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (c *DeploymentLoader) FindByVersion(ctx context.Context, input *gqlmodel.Ge
 		pID = &pid
 	}
 
-	res, err := c.usecase.FindByVersion(ctx, wsID, pID, input.Version)
+	res, err := c.usecase.FindByVersion(ctx, wsID, pID, input.Version, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (c *DeploymentLoader) FindHead(ctx context.Context, input *gqlmodel.GetHead
 		pID = &pid
 	}
 
-	res, err := c.usecase.FindHead(ctx, wsID, pID)
+	res, err := c.usecase.FindHead(ctx, wsID, pID, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (c *DeploymentLoader) FindVersions(ctx context.Context, wsID gqlmodel.ID, p
 		projectID = &pid
 	}
 
-	res, err := c.usecase.FindVersions(ctx, wID, projectID)
+	res, err := c.usecase.FindVersions(ctx, wID, projectID, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +151,7 @@ func (c *DeploymentLoader) FindByProject(ctx context.Context, pID gqlmodel.ID) (
 		return nil, err
 	}
 
-	res, _ := c.usecase.FindByProject(ctx, pid)
+	res, _ := c.usecase.FindByProject(ctx, pid, getOperator(ctx))
 
 	dep := gqlmodel.ToDeployment(res)
 
