@@ -24,6 +24,8 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Maximize build space
         uses: AdityaGarg8/remove-unwanted-software@v4.1
         with:
@@ -47,11 +49,10 @@ jobs:
         with:
           tool: taplo-cli,cargo-make,cargo-edit
       - name: Compare version with previous commit
+        if: ${{ !(github.ref == 'refs/heads/main') }}
         run: |
-          BASE_REF="${GITHUB_BASE_REF:-main}"
-
           # Try to get previous version, handle new files
-          PREV_VERSION=$(git show "$BASE_REF:engine/Cargo.toml" 2>/dev/null | grep '^version' | cut -d '"' -f2) || PREV_VERSION=""
+          PREV_VERSION=$(git show "HEAD~1:engine/Cargo.toml" 2>/dev/null | grep '^version' | cut -d '"' -f2) || PREV_VERSION=""
           if [ -z "$PREV_VERSION" ]; then
             echo "No previous version found (new file?) - skipping version check"
             exit 0
