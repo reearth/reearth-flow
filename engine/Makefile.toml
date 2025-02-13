@@ -107,3 +107,23 @@ script = ['''
 #!/usr/bin/env bash -eux
 taplo fmt
 ''']
+
+[tasks.generate-cms-workflow]
+script = ['''
+#!/usr/bin/env bash -eux
+FEATURES=(
+  "bldg"
+)
+
+for feature_type in "${FEATURES[@]}"; do
+  rm -rf "./worker/workflow/cms/plateau4/data-convert/${feature_type}/workflow.json"
+  if [ -e "./worker/workflow/cms/plateau4/data-convert/${feature_type}/template/workflow.yml" ]; then
+    yaml-include ./worker/workflow/cms/plateau4/data-convert/${feature_type}/template/workflow.yml | yq eval -o=json - > ./worker/workflow/cms/plateau4/data-convert/${feature_type}/workflow.json
+  fi
+  rm -rf "./worker/workflow/cms/plateau4/quality-check/${feature_type}/workflow.json"
+  if [ -e "./worker/workflow/cms/plateau4/quality-check/${feature_type}/template/workflow.yml" ]; then
+    yaml-include ./worker/workflow/cms/plateau4/quality-check/${feature_type}/template/workflow.yml | yq eval -o=json - > ./worker/workflow/cms/plateau4/quality-check/${feature_type}/workflow.json
+  fi
+done
+
+''']
