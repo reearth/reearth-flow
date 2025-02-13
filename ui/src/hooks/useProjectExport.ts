@@ -58,7 +58,8 @@ export default (projectId: string) => {
         zip.file("projectMeta.json", JSON.stringify(projectData, null, 2));
 
         const zipBlob = await zip.generateAsync({ type: "blob" });
-        saveAs(zipBlob, "project.zip");
+        const zipName = `${project.name}.flow.zip`;
+        saveAs(zipBlob, zipName);
         setIsExporting(false);
 
         yWebSocketProvider?.destroy();
