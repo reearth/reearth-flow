@@ -18,7 +18,7 @@ func (r *mutationResolver) CreateAsset(ctx context.Context, input gqlmodel.Creat
 	res, err := usecases(ctx).Asset.Create(ctx, interfaces.CreateAssetParam{
 		WorkspaceID: tid,
 		File:        gqlmodel.FromFile(&input.File),
-	})
+	}, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +32,7 @@ func (r *mutationResolver) RemoveAsset(ctx context.Context, input gqlmodel.Remov
 		return nil, err
 	}
 
-	res, err2 := usecases(ctx).Asset.Remove(ctx, aid)
+	res, err2 := usecases(ctx).Asset.Remove(ctx, aid, getOperator(ctx))
 	if err2 != nil {
 		return nil, err2
 	}
