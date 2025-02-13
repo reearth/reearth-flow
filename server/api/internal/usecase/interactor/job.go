@@ -83,9 +83,6 @@ func (i *Job) GetStatus(ctx context.Context, jobID id.JobID, operator *usecase.O
 	if err != nil {
 		return "", err
 	}
-	if err := i.CanReadWorkspace(j.Workspace(), operator); err != nil {
-		return "", err
-	}
 	return j.Status(), nil
 }
 
