@@ -45,7 +45,22 @@ jobs:
       - name: install required tools
         uses: taiki-e/install-action@v2
         with:
-          tool: taplo-cli,cargo-make
+          tool: taplo-cli,cargo-make,cargo-edit
+      - name: Compare version with previous commit
+        run: |
+          PREV_VERSION=$(git show HEAD~1:engine/Cargo.toml | grep '^version' | cut -d '"' -f2)
+
+          CURR_VERSION=$(grep '^version' Cargo.toml | cut -d '"' -f2)
+
+          echo "Previous version: $PREV_VERSION"
+          echo "Current version:  $CURR_VERSION"
+
+          if [ "$PREV_VERSION" = "$CURR_VERSION" ]; then
+            echo "Error: The version of Cargo.toml has not been changed."
+            echo "       To increase the patch version, run 'cargo set-version --bump patch'."
+            exit 1
+          fi
+
       - name: Install Python 3.11
         uses: actions/setup-python@v4
         with:
