@@ -151,10 +151,15 @@ func (c *Client) Rollback(ctx context.Context, id string, clock int) (*Document,
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	var doc Document
-	if err := json.NewDecoder(resp.Body).Decode(&doc); err != nil {
-		return nil, err
+	var result []int
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return &doc, nil
+	return &Document{
+		ID:        id,
+		Update:    result,
+		Clock:     clock,
+		Timestamp: time.Now(),
+	}, nil
 }
