@@ -15,7 +15,9 @@ import {
   DropdownMenuTrigger,
   IconButton,
 } from "@flow/components";
+import { useProjectExport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
+import { useCurrentProject } from "@flow/stores";
 
 import { DeployDialog } from "./components";
 
@@ -38,6 +40,10 @@ const ActionBar: React.FC<Props> = ({
   const t = useT();
 
   const [showDialog, setShowDialog] = useState(false);
+
+  const [currentProject] = useCurrentProject();
+
+  const { handleProjectExport } = useProjectExport(currentProject?.id);
 
   return (
     <>
@@ -73,7 +79,9 @@ const ActionBar: React.FC<Props> = ({
                 />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem className="flex gap-2" disabled>
+                <DropdownMenuItem
+                  className="flex gap-2"
+                  onClick={handleProjectExport}>
                   <DownloadSimple weight="light" />
                   <p className="text-sm font-extralight">
                     {t("Export Project")}

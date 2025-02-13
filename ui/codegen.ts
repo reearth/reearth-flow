@@ -4,7 +4,7 @@ const rootGQLDirectory = "src/lib/gql/__gen__/";
 const pluginsDirectory = `${rootGQLDirectory}/plugins`;
 
 const config: CodegenConfig = {
-  schema: "../api/gql/*.graphql",
+  schema: "../server/api/gql/*.graphql",
   documents: ["src/lib/gql/**/*.graphql"],
   ignoreNoDocuments: true, // for better experience with the watcher
   generates: {

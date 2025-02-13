@@ -29,7 +29,7 @@
   },
   "packageManager": "yarn@4.5.1",
   "graphql": {
-    "schema": "../api/gql/*.graphql"
+    "schema": "../server/api/gql/*.graphql"
   },
   "dependencies": {
     "@auth0/auth0-react": "2.3.0",
@@ -60,26 +60,28 @@
     "@tanstack/react-router": "1.102.1",
     "@tanstack/react-table": "8.20.6",
     "@xyflow/react": "12.4.2",
+    "cesium": "1.126.0",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "cmdk": "1.0.4",
     "date-fns": "4.1.0",
     "embla-carousel-react": "8.5.2",
+    "file-saver": "2.0.5",
     "graphql": "16.10.0",
     "graphql-request": "7.1.2",
     "i18next": "24.2.2",
     "i18next-browser-languagedetector": "8.0.2",
     "jotai": "2.11.3",
     "js-yaml": "4.1.0",
+    "jszip": "3.10.1",
     "lodash-es": "4.17.21",
-    "maplibre-gl": "4.7.1",
     "react": "19.0.0",
     "react-datepicker": "8.0.0",
     "react-dom": "19.0.0",
     "react-i18next": "15.4.0",
-    "react-map-gl": "7.1.9",
     "react-resizable-panels": "2.1.7",
     "react-yjs": "2.0.1",
+    "resium": "1.19.0-beta.1",
     "use-resize-observer": "9.1.0",
     "uuid": "11.0.5",
     "y-websocket": "2.1.0",
@@ -107,6 +109,7 @@
     "@testing-library/dom": "10.4.0",
     "@testing-library/jest-dom": "6.6.3",
     "@testing-library/react": "16.2.0",
+    "@types/file-saver": "^2",
     "@types/js-yaml": "4.0.9",
     "@types/jsdom": "21.1.7",
     "@types/lodash-es": "4.17.12",
@@ -134,6 +137,7 @@
     "ts-node": "10.9.2",
     "typescript": "5.7.3",
     "vite": "6.1.0",
+    "vite-plugin-cesium": "1.2.23",
     "vitest": "3.0.5"
   }
 }

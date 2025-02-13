@@ -41,7 +41,7 @@ const graphqlConfig = {
     parserOptions: {
       graphQLConfig: {
         skipGraphQLConfig: true,
-        schema: "../api/gql/*.graphql",
+        schema: "../server/api/gql/*.graphql",
       },
     },
   },

@@ -114,7 +114,6 @@ const TriggerManager: React.FC = () => {
                 selectColumns
                 showFiltering
                 enablePagination
-                rowHeight={14}
                 onRowClick={handleTriggerSelect}
                 currentPage={currentPage}
                 setCurrentPage={setCurrentPage}
