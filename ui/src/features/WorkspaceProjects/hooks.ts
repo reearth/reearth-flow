@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useProject } from "@flow/lib/gql";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
@@ -27,11 +27,12 @@ export default () => {
     orderBy: "updatedAt",
   });
 
+  const totalPages = useMemo(() => page?.totalPages as number, [page]);
+
   useEffect(() => {
     refetch();
   }, [currentPage, currentOrder, refetch]);
 
-  const totalPages = page?.totalPages as number;
   const [openProjectAddDialog, setOpenProjectAddDialog] = useState(false);
   const [showError, setShowError] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
@@ -81,7 +82,7 @@ export default () => {
     return;
   };
 
-  const projects = page?.projects;
+  const projects = useMemo(() => page?.projects, [page]);
 
   return {
     projects,

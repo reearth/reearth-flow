@@ -1,4 +1,4 @@
-import { Plus } from "@phosphor-icons/react";
+import { ArrowSquareIn, Plus } from "@phosphor-icons/react";
 
 import {
   Button,
@@ -65,13 +65,22 @@ const ProjectsManager: React.FC = () => {
       <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pb-2 pt-4">
         <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg dark:font-extralight">{t("Projects")}</p>
-          <Button
-            className="flex gap-2"
-            variant="outline"
-            onClick={() => setOpenProjectAddDialog(true)}>
-            <Plus weight="thin" />
-            <p className="text-xs dark:font-light">{t("New Project")}</p>
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              className="flex gap-2"
+              variant="outline"
+              onClick={() => setOpenProjectAddDialog(true)}>
+              <ArrowSquareIn weight="thin" />
+              <p className="text-xs dark:font-light">{t("Import Project")}</p>
+            </Button>
+            <Button
+              className="flex gap-2"
+              variant="default"
+              onClick={() => setOpenProjectAddDialog(true)}>
+              <Plus weight="thin" />
+              <p className="text-xs dark:font-light">{t("New Project")}</p>
+            </Button>
+          </div>
         </div>
         {currentOrder && (
           <Select
