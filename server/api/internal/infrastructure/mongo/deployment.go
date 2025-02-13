@@ -132,7 +132,7 @@ func (r *DeploymentAdapter) FindByWorkspace(ctx context.Context, id accountdomai
 func (a *DeploymentAdapter) FindByProject(ctx context.Context, pid id.ProjectID) (*deployment.Deployment, error) {
 	return a.findOne(ctx, bson.M{
 		"project": pid.String(),
-		"ishead":  true,
+		"isHead":  true,
 	}, true)
 }
 
