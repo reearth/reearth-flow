@@ -48,7 +48,7 @@ jobs:
           tool: taplo-cli,cargo-make,cargo-edit
       - name: Compare version with previous commit
         run: |
-          PREV_VERSION=$(git show HEAD~1:engine/Cargo.toml | grep '^version' | cut -d '"' -f2)
+          PREV_VERSION=$(git show main:engine/Cargo.toml | grep '^version' | cut -d '"' -f2)
 
           CURR_VERSION=$(grep '^version' Cargo.toml | cut -d '"' -f2)
 
