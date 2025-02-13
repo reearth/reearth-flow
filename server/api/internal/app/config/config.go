@@ -34,7 +34,7 @@ type (
 		DB               string            `default:"mongodb://localhost"`
 		DB_Account       string            `pp:",omitempty"`
 		DB_Users         []appx.NamedURI   `pp:",omitempty"`
-		GraphQL          GraphQLConfig     `default:""`
+		GraphQL          GraphQLConfig     `pp:",omitempty"`
 		GCPProject       string            `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
 		GCPRegion        string            `envconfig:"GOOGLE_CLOUD_REGION" pp:",omitempty"`
 		Profiler         string            `pp:",omitempty"`
