@@ -47,6 +47,7 @@ jobs:
         with:
           tool: taplo-cli,cargo-make,cargo-edit
       - name: Compare version with previous commit
+        if: ${{ !(github.ref == 'refs/heads/main') }}
         run: |
           BASE_REF="${GITHUB_BASE_REF:-main}"
 
