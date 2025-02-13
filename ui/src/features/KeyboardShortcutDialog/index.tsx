@@ -3,7 +3,7 @@ import { ReactNode, useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 
 import { Shortcuts } from "./components";
-import useHooks from "./useHooks";
+import useHooks from "./hooks";
 
 type Props = {
   isOpen: boolean;
