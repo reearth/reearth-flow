@@ -1,0 +1,14 @@
+name: Release Engine
+
+on:
+  push:
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v3
+        with:
+          release-type: "rust"
+          path: "engine"
+          token: ${{ secrets.GITHUB_TOKEN }}

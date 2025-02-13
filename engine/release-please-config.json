@@ -1,0 +1,78 @@
+{
+  "include-component-in-tag": true,
+  "include-v-in-tag": true,
+  "skip-packages-without-changes": false,
+  "release-type": "rust",
+  "plugins": ["cargo-workspace"],
+  "draft": false,
+  "bump-minor-pre-major": false,
+  "bump-patch-for-minor-pre-major": false,
+  "versioning": "default",
+  "tag-separator": "@",
+  "packages": {
+    "worker": {
+      "skip-github-release": false
+    },
+    "cli": {},
+    "runtime/action-log": {
+      "skip-github-release": true
+    },
+    "runtime/action-sink": {
+      "skip-github-release": true
+    },
+    "runtime/common": {
+      "skip-github-release": true
+    },
+    "runtime/geometry": {
+      "skip-github-release": true
+    },
+    "runtime/runner": {
+      "skip-github-release": true
+    },
+    "runtime/state": {
+      "skip-github-release": true
+    },
+    "runtime/tests": {
+      "skip-github-release": true
+    },
+    "runtime/action-plateau-processor": {
+      "skip-github-release": true
+    },
+    "runtime/action-source": {
+      "skip-github-release": true
+    },
+    "runtime/eval-expr": {
+      "skip-github-release": true
+    },
+    "runtime/gltf": {
+      "skip-github-release": true
+    },
+    "runtime/runtime": {
+      "skip-github-release": true
+    },
+    "runtime/storage": {
+      "skip-github-release": true
+    },
+    "runtime/types": {
+      "skip-github-release": true
+    },
+    "runtime/action-processor": {
+      "skip-github-release": true
+    },
+    "runtime/action-wasm-processor": {
+      "skip-github-release": true
+    },
+    "runtime/examples": {
+      "skip-github-release": true
+    },
+    "runtime/macros": {
+      "skip-github-release": true
+    },
+    "runtime/sevenz": {
+      "skip-github-release": true
+    },
+    "runtime/telemetry": {
+      "skip-github-release": true
+    }
+  }
+}
