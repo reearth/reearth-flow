@@ -1,4 +1,4 @@
-import { Database, Disc, Graph, Lightning } from "@phosphor-icons/react";
+import { Database, Disc, Eye, Graph, Lightning } from "@phosphor-icons/react";
 import { NodeProps } from "@xyflow/react";
 import { memo, useEffect, useState } from "react";
 
@@ -86,6 +86,11 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
           <p className="self-center truncate text-[10px] dark:font-light">
             {customName || officialName}
           </p>
+          {status === "success" ? (
+            <div className="self-center">
+              <Eye />
+            </div>
+          ) : null}
           <div
             className={`size-[8px] self-center rounded ${metaProps.style}`}
           />
