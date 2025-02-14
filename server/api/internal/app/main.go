@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -72,8 +73,8 @@ type ServerConfig struct {
 
 func NewServer(ctx context.Context, cfg *ServerConfig) *WebServer {
 	port := cfg.Config.Port
-	if port == "" {
-		port = "8080"
+	if port == 0 {
+		port = 8080
 	}
 
 	host := cfg.Config.ServerHost
@@ -84,7 +85,7 @@ func NewServer(ctx context.Context, cfg *ServerConfig) *WebServer {
 			host = "0.0.0.0"
 		}
 	}
-	address := host + ":" + port
+	address := fmt.Sprintf("%s:%d", host, port)
 
 	w := &WebServer{
 		address: address,

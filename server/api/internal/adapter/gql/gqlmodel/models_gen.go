@@ -158,6 +158,22 @@ type DeploymentPayload struct {
 	Deployment *Deployment `json:"deployment"`
 }
 
+type Document struct {
+	ID        ID        `json:"id"`
+	Update    []int     `json:"update"`
+	Clock     int       `json:"clock"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+func (Document) IsNode()        {}
+func (this Document) GetID() ID { return this.ID }
+
+type DocumentHistory struct {
+	Update    []int     `json:"update"`
+	Clock     int       `json:"clock"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
 type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
 }
