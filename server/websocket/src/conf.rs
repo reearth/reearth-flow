@@ -88,14 +88,6 @@ impl Config {
             if let Ok(url) = env::var("REEARTH_FLOW_AUTH_URL") {
                 builder = builder.auth_url(url);
             }
-            if let Ok(timeout_str) = env::var("REEARTH_FLOW_AUTH_TIMEOUT_MS") {
-                builder = builder.auth_timeout(timeout_str.parse().map_err(|_| {
-                    ConfigError::InvalidValue {
-                        key: "REEARTH_FLOW_AUTH_TIMEOUT_MS".to_string(),
-                        value: timeout_str,
-                    }
-                })?);
-            }
         }
 
         // Load App configuration
