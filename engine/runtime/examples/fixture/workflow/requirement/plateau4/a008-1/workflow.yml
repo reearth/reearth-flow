@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
+name: "PLATEAU4-A008-1-workflow"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+graphs:
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                testAttribute01: "test01-01",
+                testAttribute02: "01-test01",
+              },
+              #{
+                testAttribute01: "test02-01",
+                testAttribute02: "02-test02",
+              },
+            ]
+
+      - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        name: AttributeManager
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+          - attribute: subString
+            method: create
+            value: |
+              env.get("__value").testAttribute01.sub_string(0, 6)
+          - attribute: replace
+            method: create
+            value: |
+              let replace = env.get("__value").testAttribute01.replace("test", "replace");
+              replace
+          - attribute: contains
+            method: create
+            value: |
+              env.get("__value").testAttribute01.contains("02")
+          - attribute: startsWith
+            method: create
+            value: |
+              env.get("__value").testAttribute02.starts_with("01")
+          - attribute: endsWith
+            method: create
+            value: |
+              env.get("__value").testAttribute02.ends_with("02")
+          - attribute: split
+            method: create
+            value: |
+              env.get("__value").testAttribute01.split("01")[0]
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        name: FileWriterCSV
+        type: action
+        action: FileWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("currentPath"), "a008-1.csv")
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540d
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        fromPort: default
+        toPort: default
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        fromPort: default
+        toPort: default

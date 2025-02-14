@@ -19,7 +19,7 @@ func (r *subscriptionResolver) JobStatus(ctx context.Context, jobID gqlmodel.ID)
 		return nil, err
 	}
 
-	statusCh, err := usecases(ctx).Job.Subscribe(ctx, jID)
+	statusCh, err := usecases(ctx).Job.Subscribe(ctx, jID, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
