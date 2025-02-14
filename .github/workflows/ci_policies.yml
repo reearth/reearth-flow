@@ -25,6 +25,20 @@ jobs:
             exit 1
           fi
         working-directory: server/api
+
+      - name: Lint policy files
+        run: |
+          set -euo pipefail
+          for file in policies/flow_*.yaml; do
+            if [ -f "$file" ]; then
+              if ! yamllint "$file"; then
+                echo "Error: Invalid YAML in $file"
+                exit 1
+              fi
+            fi
+          done
+        working-directory: server/api
+
       - name: List generated policy files
         run: |
           set -eo pipefail
