@@ -148,6 +148,7 @@
   "Deployments": "部署",
   "New Deployment": "新部署",
   "No Deployment": "",
+  "Loading...": "",
   "Deployment ID": "部署ID",
   "Status": "状态",
   "Started At": "开始时间",

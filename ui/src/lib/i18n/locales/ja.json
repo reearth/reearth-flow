@@ -148,6 +148,7 @@
   "Deployments": "デプロイ",
   "New Deployment": "新規デプロイ",
   "No Deployment": "",
+  "Loading...": "",
   "Deployment ID": "デプロイメントID",
   "Status": "ステータス",
   "Started At": "開始日時",

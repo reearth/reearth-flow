@@ -3605,6 +3605,7 @@ __metadata:
     file-saver: "npm:2.0.5"
     graphql: "npm:16.10.0"
     graphql-request: "npm:7.1.2"
+    graphql-ws: "npm:6.0.3"
     i18next: "npm:24.2.2"
     i18next-browser-languagedetector: "npm:8.0.2"
     i18next-parser: "npm:9.1.0"
@@ -8789,6 +8790,25 @@ __metadata:
   peerDependencies:
     graphql: ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0
   checksum: 10c0/7763a72011bda454ed8ff1a0d82325f43ca6478e4ce4ab8b7910c4c651dd00db553132171c04d80af5d5aebf1ef6a8a9fd53ccfa33b90ddc00aa3d4be6114419
+  languageName: node
+  linkType: hard
+
+"graphql-ws@npm:6.0.3":
+  version: 6.0.3
+  resolution: "graphql-ws@npm:6.0.3"
+  peerDependencies:
+    "@fastify/websocket": ^10 || ^11
+    graphql: ^15.10.1 || ^16
+    uWebSockets.js: ^20
+    ws: ^8
+  peerDependenciesMeta:
+    "@fastify/websocket":
+      optional: true
+    uWebSockets.js:
+      optional: true
+    ws:
+      optional: true
+  checksum: 10c0/d2ab30bc6d773e79901ef3b9b52fdfacebca89933cd54778ffb81fe88cb11391f6c610b32562cf276a67659e24626007b41e0094a215d286385ed379d89c2d02
   languageName: node
   linkType: hard
 

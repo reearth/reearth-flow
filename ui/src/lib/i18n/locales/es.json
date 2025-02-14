@@ -148,6 +148,7 @@
   "Deployments": "Despliegues",
   "New Deployment": "Nuevo despliegue",
   "No Deployment": "",
+  "Loading...": "",
   "Deployment ID": "ID del despliegue",
   "Status": "Estado",
   "Started At": "Comenzado a las",
