@@ -19,4 +19,7 @@ run-db:
 gql:
 	go generate ./internal/adapter/gql
 
-.PHONY: lint test e2e build run-app run-db gql
+gen-policies:
+	go run ./cmd/policy-generator
+
+.PHONY: lint test e2e build run-app run-db gql gen-policies
