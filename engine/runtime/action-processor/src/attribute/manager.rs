@@ -4,7 +4,7 @@ use reearth_flow_runtime::{
     channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
-    executor_operation::{ExecutorContext, NodeContext},
+    executor_operation::{Context, ExecutorContext, NodeContext},
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use rhai::Dynamic;
@@ -138,6 +138,7 @@ impl Processor for AttributeManager {
         fw: &mut dyn ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = process_feature(
+            ctx.as_context(),
             &ctx.feature,
             &self.operations,
             Arc::clone(&ctx.expr_engine),
@@ -161,6 +162,7 @@ impl Processor for AttributeManager {
 }
 
 fn process_feature(
+    ctx: Context,
     feature: &Feature,
     operations: &[Operate],
     expr_engine: Arc<Engine>,
@@ -182,6 +184,9 @@ fn process_feature(
                         if let Ok(new_value) = new_value.try_into() {
                             result.insert(attribute.clone(), new_value);
                         }
+                    } else if let Err(e) = new_value {
+                        ctx.event_hub
+                            .warn_log(None, format!("convert error with: {:?}", e));
                     }
                 }
             }
@@ -193,6 +198,9 @@ fn process_feature(
                         if let Ok(new_value) = new_value.try_into() {
                             result.insert(attribute.clone(), new_value);
                         }
+                    } else if let Err(e) = new_value {
+                        ctx.event_hub
+                            .warn_log(None, format!("create error with: {:?}", e));
                     }
                 }
             }
