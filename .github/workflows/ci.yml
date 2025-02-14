@@ -3,6 +3,13 @@ on:
   push:
     branches: [main, release/*, release]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      force_update_policies:
+        description: 'Force update policies'
+        type: boolean
+        default: false
+
 jobs:
   prepare:
     runs-on: ubuntu-latest
@@ -159,6 +166,20 @@ jobs:
           NEW_TAG_SHORT: ${{ steps.info.outputs.new_tag_short }}
           NAME: ${{ steps.info.outputs.name }}
         run: echo "sha_short=$SHA_SHORT, new_tag=$NEW_TAG, new_tag_short=$NEW_TAG_SHORT, name=$NAME"
+  update-policies:
+    needs:
+      - ci
+      - ci-policies
+      - ci-collect-info
+    uses: ./.github/workflows/update_policies.yml
+    if: |
+      !failure() &&
+      needs.ci-policies.result == 'success' &&
+      (
+        (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/'))) ||
+        inputs.force_update_policies
+      )
+    secrets: inherit
   build-and-deploy-api:
     needs:
       - ci
@@ -172,14 +193,6 @@ jobs:
       new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
       name: ${{ needs.ci-collect-info.outputs.name }}
       sha: ${{ github.sha }}
-    secrets: inherit
-  update-policies:
-    needs:
-      - ci
-      - ci-policies
-      - ci-collect-info
-    uses: ./.github/workflows/update_policies.yml
-    if: ${{ !failure() && needs.ci-policies.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
     secrets: inherit
   build-and-deploy-ui:
     needs:
