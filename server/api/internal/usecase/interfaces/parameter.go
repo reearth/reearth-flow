@@ -3,7 +3,6 @@ package interfaces
 import (
 	"context"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 )
@@ -29,10 +28,10 @@ type UpdateParameterValueParam struct {
 }
 
 type Parameter interface {
-	DeclareParameter(context.Context, DeclareParameterParam, *usecase.Operator) (*parameter.Parameter, error)
-	Fetch(context.Context, id.ParameterIDList, *usecase.Operator) (*parameter.ParameterList, error)
-	FetchByProject(context.Context, id.ProjectID, *usecase.Operator) (*parameter.ParameterList, error)
-	RemoveParameter(context.Context, id.ParameterID, *usecase.Operator) (id.ParameterID, error)
-	UpdateParameterOrder(context.Context, UpdateParameterOrderParam, *usecase.Operator) (*parameter.ParameterList, error)
-	UpdateParameterValue(context.Context, UpdateParameterValueParam, *usecase.Operator) (*parameter.Parameter, error)
+	DeclareParameter(context.Context, DeclareParameterParam) (*parameter.Parameter, error)
+	Fetch(context.Context, id.ParameterIDList) (*parameter.ParameterList, error)
+	FetchByProject(context.Context, id.ProjectID) (*parameter.ParameterList, error)
+	RemoveParameter(context.Context, id.ParameterID) (id.ParameterID, error)
+	UpdateParameterOrder(context.Context, UpdateParameterOrderParam) (*parameter.ParameterList, error)
+	UpdateParameterValue(context.Context, UpdateParameterValueParam) (*parameter.Parameter, error)
 }

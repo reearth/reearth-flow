@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -27,8 +26,8 @@ type CreateAssetParam struct {
 var ErrCreateAssetFailed error = errors.New("failed to create asset")
 
 type Asset interface {
-	Fetch(context.Context, []id.AssetID, *usecase.Operator) ([]*asset.Asset, error)
-	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *string, *asset.SortType, *PaginationParam, *usecase.Operator) ([]*asset.Asset, *PageBasedInfo, error)
-	Create(context.Context, CreateAssetParam, *usecase.Operator) (*asset.Asset, error)
-	Remove(context.Context, id.AssetID, *usecase.Operator) (id.AssetID, error)
+	Fetch(context.Context, []id.AssetID) ([]*asset.Asset, error)
+	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *string, *asset.SortType, *PaginationParam) ([]*asset.Asset, *PageBasedInfo, error)
+	Create(context.Context, CreateAssetParam) (*asset.Asset, error)
+	Remove(context.Context, id.AssetID) (id.AssetID, error)
 }
