@@ -31,8 +31,8 @@ const CustomEdge: React.FC<CustomEdgeProps> = ({
   });
 
   // TODO: Implement when intermediate data becomes available @KaWaite
-  const intermediateDataFeatureLength: number | undefined = undefined;
 
+  const intermediateDataFeatureLength: number | undefined = undefined;
   return (
     <>
       <BaseEdge id={id} path={edgePath} {...props} />
@@ -52,6 +52,31 @@ const CustomEdge: React.FC<CustomEdgeProps> = ({
           </div>
         )}
       </EdgeLabelRenderer>
+      {/* <path
+        d={edgePath}
+        stroke="#27272A"
+        strokeWidth="2"
+        strokeDasharray="5,5"
+        fill="none">
+        <animate
+          attributeName="stroke-dashoffset"
+          from="10"
+          to="0"
+          dur="0.5s"
+          repeatCount="indefinite"
+        />
+      </path> */}
+      {/* <g>
+        <circle className="opacity-25" r="8" fill="#752236">
+          <animateMotion dur="4s" repeatCount="indefinite" path={edgePath} />
+        </circle>
+        <circle
+          style={{ filter: `drop-shadow(3px 3px 5px #471a27)` }}
+          r="4"
+          fill="#752236">
+          <animateMotion dur="4s" repeatCount="indefinite" path={edgePath} />
+        </circle>
+      </g> */}
     </>
   );
 };
