@@ -24,7 +24,7 @@ func (c *WorkspaceLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlm
 		return nil, []error{err}
 	}
 
-	res, err := c.usecase.Fetch(ctx, uids, getAcOperator(ctx))
+	res, err := c.usecase.Fetch(ctx, uids, nil)
 	if err != nil {
 		return nil, []error{err}
 	}

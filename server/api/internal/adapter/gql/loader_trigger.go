@@ -25,7 +25,7 @@ func (c *TriggerLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmod
 		return nil, []error{err}
 	}
 
-	res, err := c.usecase.Fetch(ctx, ids2, getOperator(ctx))
+	res, err := c.usecase.Fetch(ctx, ids2)
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -45,7 +45,7 @@ func (c *TriggerLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.I
 	}
 
 	paginationParam := gqlmodel.ToPageBasedPagination(pagination)
-	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam, getOperator(ctx))
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam)
 	if err != nil {
 		return nil, err
 	}
