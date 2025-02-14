@@ -97,7 +97,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
   // background color will always be a hex color, therefore needs to be converted to rgba
   const backgroundColor = data.params?.backgroundColor || "";
   const rgbaColor = convertHextoRgba(backgroundColor, 0.5);
-  console.log("data", data.customName);
+
   return (
     <>
       {selected && (
