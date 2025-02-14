@@ -1,4 +1,14 @@
-import { Database, Disc, Lightning, TreeView } from "@phosphor-icons/react";
+import {
+  Circle,
+  Database,
+  Disc,
+  Graph,
+  Lightning,
+  Note,
+  Plus,
+  RectangleDashed,
+  TreeView,
+} from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
 import { memo, useEffect, useState } from "react";
 
@@ -48,27 +58,117 @@ const LeftPanel: React.FC<Props> = ({
         id: n.id,
         name: n.data.customName || n.data.officialName || "untitled",
         icon: Database,
+        type: n.type,
       })) ?? []),
+    ...(nodes?.some((n) => n.type === "writer")
+      ? [
+          {
+            id: "writer",
+            name: t("Writers"),
+            icon: Disc,
+            children: nodes
+              ?.filter((n) => n.type === "writer")
+              .map((n) => ({
+                id: n.id,
+                name: n.data.customName || n.data.officialName || "untitled",
+                icon: Disc,
+                type: n.type,
+              })),
+          },
+        ]
+      : []),
+    ...(nodes?.some((n) => n.type === "transformer")
+      ? [
+          {
+            id: "transformer",
+            name: t("Transformers"),
+            icon: Lightning,
+            children: nodes
+              ?.filter((n) => n.type === "transformer")
+              .map((n) => ({
+                id: n.id,
+                name: n.data.customName || n.data.officialName || "untitled",
+                icon: Lightning,
+                type: n.type,
+              })),
+          },
+        ]
+      : []),
+    ...(nodes?.some((n) => n.type === "subworkflow")
+      ? [
+          {
+            id: "subworkflow",
+            name: t("Subworkflow"),
+            icon: Plus,
+            children: nodes
+              ?.filter((n) => n.type === "subworkflow")
+              .map((n) => ({
+                id: n.id,
+                name: n.data.customName || n.data.officialName || "untitled",
+                icon: Graph,
+                type: n.type,
+              })),
+          },
+        ]
+      : []),
     ...(nodes
-      ?.filter((n) => n.type === "writer")
+      ?.filter((n) => n.type === "note")
       .map((n) => ({
         id: n.id,
         name: n.data.customName || n.data.officialName || "untitled",
-        icon: Disc,
+        icon: Note,
       })) ?? []),
-    {
-      id: "transformer",
-      name: t("Transformers"),
-      icon: Lightning,
-      children: nodes
-        ?.filter((n) => n.type === "transformer")
-        .map((n) => ({
-          id: n.id,
-          name: n.data.customName || n.data.officialName || "untitled",
-          // icon: Disc,
-        })),
-    },
+    ...(nodes?.some((n) => n.type === "batch")
+      ? [
+          {
+            id: "batch",
+            name: t("Batch Node"),
+            icon: RectangleDashed,
+            children: nodes
+              ?.filter((n) => n.type === "batch")
+              .map((n) => ({
+                id: n.id,
+                name:
+                  n.data.params?.customName ||
+                  n.data.officialName ||
+                  "untitled",
+                icon: RectangleDashed,
+                type: n.type,
+                children: nodes
+                  ?.filter((d) => {
+                    return d.parentId === n.id;
+                  })
+                  .map((d) => {
+                    return {
+                      id: d.id,
+                      name:
+                        d.data.customName || d.data.officialName || "untitled",
+                      icon: getNodeIcon(d.type),
+                      type: d.type,
+                    };
+                  }),
+              })),
+          },
+        ]
+      : []),
   ];
+
+  function getNodeIcon(type: string | undefined) {
+    switch (type) {
+      case "note":
+        return Note;
+      case "subworkflow":
+        return Plus;
+      case "transformer":
+        return Lightning;
+      case "reader":
+        return Database;
+      case "writer":
+        return Disc;
+      default:
+        return Circle;
+    }
+  }
 
   const tabs: {
     id: Tab;

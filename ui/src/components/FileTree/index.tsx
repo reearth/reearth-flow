@@ -9,6 +9,7 @@ type TreeDataItem = {
   id: string;
   name: string;
   icon?: Icon;
+  type?: string;
   children?: TreeDataItem[];
 };
 
@@ -211,6 +212,7 @@ const Leaf = forwardRef<
     Icon?: Icon;
   }
 >(({ className, item, isSelected, Icon, ...props }, ref) => {
+  console.log("TreeItem", item);
   return (
     <div
       ref={ref}
