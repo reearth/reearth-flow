@@ -5982,6 +5982,7 @@ dependencies = [
 name = "reearth-flow-eval-expr"
 version = "0.0.4"
 dependencies = [
+ "chrono",
  "futures",
  "reearth-flow-common",
  "regex",
