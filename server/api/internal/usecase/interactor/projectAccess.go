@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -17,7 +16,6 @@ import (
 )
 
 type ProjectAccess struct {
-	common
 	projectRepo       repo.Project
 	projectAccessRepo repo.ProjectAccess
 	transaction       usecasex.Transaction
@@ -49,7 +47,7 @@ func (i *ProjectAccess) Fetch(ctx context.Context, token string) (project *proje
 	return i.projectRepo.FindByID(ctx, pa.Project())
 }
 
-func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID, operator *usecase.Operator) (sharingUrl string, err error) {
+func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID) (sharingUrl string, err error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return "", err
@@ -64,9 +62,6 @@ func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID, opera
 
 	prj, err := i.projectRepo.FindByID(ctx, projectID)
 	if err != nil {
-		return "", err
-	}
-	if err := i.CanWriteWorkspace(prj.Workspace(), operator); err != nil {
 		return "", err
 	}
 
@@ -116,7 +111,7 @@ func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID, opera
 	return sharingUrl, nil
 }
 
-func (i *ProjectAccess) Unshare(ctx context.Context, projectID id.ProjectID, operator *usecase.Operator) (err error) {
+func (i *ProjectAccess) Unshare(ctx context.Context, projectID id.ProjectID) (err error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return err
@@ -128,14 +123,6 @@ func (i *ProjectAccess) Unshare(ctx context.Context, projectID id.ProjectID, ope
 			err = err2
 		}
 	}()
-
-	prj, err := i.projectRepo.FindByID(ctx, projectID)
-	if err != nil {
-		return err
-	}
-	if err := i.CanWriteWorkspace(prj.Workspace(), operator); err != nil {
-		return err
-	}
 
 	pa, err := i.projectAccessRepo.FindByProjectID(ctx, projectID)
 	if err != nil {

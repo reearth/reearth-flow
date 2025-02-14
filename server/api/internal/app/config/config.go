@@ -27,6 +27,7 @@ type (
 		Port             string            `default:"8080"`
 		ServerHost       string            `pp:",omitempty"`
 		Host             string            `default:"http://localhost:8080"`
+		DashboardHost    string            `envconfig:"REEARTH_DASHBOARD_HOST" pp:",omitempty"`
 		Host_Web         string            `pp:",omitempty"`
 		Dev              bool              `pp:",omitempty"`
 		DB               string            `default:"mongodb://localhost"`

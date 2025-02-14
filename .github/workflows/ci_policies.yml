@@ -25,7 +25,6 @@ jobs:
             exit 1
           fi
         working-directory: server/api
-
       - name: List generated policy files
         run: |
           set -eo pipefail
