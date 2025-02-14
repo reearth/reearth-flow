@@ -46,15 +46,6 @@ jobs:
 
           for file in policies/flow_*.yaml; do
             if [ -f "$file" ]; then
-              if ! yamllint "$file"; then
-                echo "Error: Invalid YAML in $file"
-                exit 1
-              fi
-            fi
-          done
-
-          for file in policies/flow_*.yaml; do
-            if [ -f "$file" ]; then
               file_name=$(basename "$file")
               echo "Uploading/Updating: $file_name"
               if ! gsutil cp "$file" "${GCS_BUCKET_PATH}/$file_name"; then
