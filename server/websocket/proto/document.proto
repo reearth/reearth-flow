@@ -28,6 +28,7 @@ message DocumentRequest {
 message DocumentResponse {
   string doc_id = 1;
   bytes content = 2;
+  int32 clock = 3;
 }
 
 message DocumentHistoryRequest {
@@ -43,6 +44,7 @@ message DocumentVersion {
   string version_id = 1;
   string timestamp = 2;
   bytes content = 3;
+  int32 clock = 4;
 }
 
 message RollbackRequest {

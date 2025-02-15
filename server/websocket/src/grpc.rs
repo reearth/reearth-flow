@@ -91,9 +91,17 @@ impl DocumentService for DocumentServiceImpl {
                 drop(txn);
                 let read_txn = doc.transact();
                 let state = read_txn.encode_diff_v1(&StateVector::default());
+
+                // Get the latest clock from updates
+                let clock = match store.get_updates(&doc_id).await {
+                    Ok(updates) if !updates.is_empty() => updates.last().unwrap().clock as i32,
+                    _ => 0,
+                };
+
                 Ok(Response::new(DocumentResponse {
                     doc_id,
                     content: state,
+                    clock,
                 }))
             }
             Ok(false) => Err(Status::not_found("Document not found")),
@@ -119,6 +127,7 @@ impl DocumentService for DocumentServiceImpl {
                         version_id: info.clock.to_string(),
                         timestamp: info.timestamp.to_string(),
                         content: info.update.encode_v1(),
+                        clock: info.clock as i32,
                     })
                     .collect();
 
