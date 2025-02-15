@@ -66,14 +66,6 @@ impl Config {
         if let Ok(url) = env::var("REEARTH_FLOW_REDIS_URL") {
             builder = builder.redis_url(url);
         }
-        if let Ok(ttl_str) = env::var("REEARTH_FLOW_REDIS_TTL") {
-            builder =
-                builder.redis_ttl(ttl_str.parse().map_err(|_| ConfigError::InvalidValue {
-                    key: "REEARTH_FLOW_REDIS_TTL".to_string(),
-                    value: ttl_str,
-                })?);
-        }
-
         // Load GCS configuration
         if let Ok(bucket) = env::var("REEARTH_FLOW_GCS_BUCKET_NAME") {
             builder = builder.gcs_bucket(bucket);
