@@ -29,12 +29,12 @@ async fn main() {
         }
     };
 
-    let store = GcsStore::new_with_config(config.gcs)
+    let store = GcsStore::new_with_config(config.gcs.clone())
         .await
         .expect("Failed to create GCS store");
 
     // Ensure bucket exists
-    if let Err(e) = ensure_bucket(&store.client).await {
+    if let Err(e) = ensure_bucket(&store.client, &config.gcs.bucket_name).await {
         error!("Failed to ensure bucket exists: {}", e);
         std::process::exit(1);
     }
@@ -59,7 +59,7 @@ async fn main() {
         }
     });
 
-    if let Err(e) = start_server(state).await {
+    if let Err(e) = start_server(state, &config.ws_port).await {
         error!("Server error: {}", e);
         std::process::exit(1);
     }

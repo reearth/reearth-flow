@@ -19,10 +19,6 @@ pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
 // New modules
 pub mod server;
 
-// Constants
-pub const BUCKET_NAME: &str = "yrs-dev";
-pub const PORT: &str = "8000";
-
 // Types
 #[cfg(feature = "auth")]
 #[derive(Debug, serde::Deserialize)]

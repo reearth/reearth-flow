@@ -1,23 +1,21 @@
+use axum::{routing::get, Router};
 use google_cloud_storage::{
     client::Client,
     http::buckets::insert::{BucketCreationConfig, InsertBucketRequest},
 };
 use std::sync::Arc;
-use tonic::transport::Server;
+use tokio::net::TcpListener;
 use tracing::info;
 
-use crate::{
-    grpc::{document::document_service_server::DocumentServiceServer, DocumentServiceImpl},
-    AppState, BUCKET_NAME, PORT,
-};
+use crate::{ws::ws_handler, AppState};
 
-pub async fn ensure_bucket(client: &Client) -> Result<(), anyhow::Error> {
+pub async fn ensure_bucket(client: &Client, bucket_name: &str) -> Result<(), anyhow::Error> {
     let bucket = BucketCreationConfig {
         location: "US".to_string(),
         ..Default::default()
     };
     let request = InsertBucketRequest {
-        name: BUCKET_NAME.to_string(),
+        name: bucket_name.to_string(),
         bucket,
         ..Default::default()
     };
@@ -29,16 +27,17 @@ pub async fn ensure_bucket(client: &Client) -> Result<(), anyhow::Error> {
     }
 }
 
-pub async fn start_server(state: Arc<AppState>) -> Result<(), anyhow::Error> {
-    let addr = format!("0.0.0.0:{}", PORT).parse()?;
-    let document_service = DocumentServiceImpl::new(state);
+pub async fn start_server(state: Arc<AppState>, port: &str) -> Result<(), anyhow::Error> {
+    let addr = format!("0.0.0.0:{}", port);
+    let listener = TcpListener::bind(&addr).await?;
 
-    info!("Starting gRPC server on {}", addr);
+    info!("Starting WebSocket server on {}", addr);
 
-    Server::builder()
-        .add_service(DocumentServiceServer::new(document_service))
-        .serve(addr)
-        .await?;
+    let app = Router::new()
+        .route("/{doc_id}", get(ws_handler))
+        .with_state(state);
+
+    axum::serve(listener, app).await?;
 
     Ok(())
 }

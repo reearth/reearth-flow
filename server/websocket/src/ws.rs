@@ -1,12 +1,18 @@
 use crate::broadcast::group::BroadcastGroup;
 use crate::conn::Connection;
 use axum::extract::ws::{Message, WebSocket};
+use axum::{
+    extract::{Path, State, WebSocketUpgrade},
+    response::Response,
+};
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{Stream, StreamExt};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use yrs::sync::Error;
+
+use crate::{pool::BroadcastPool, AppState};
 
 /// Connection Wrapper over a [WebSocket], which implements a Yjs/Yrs awareness and update exchange
 /// protocol.
@@ -115,4 +121,51 @@ impl Stream for WarpStream {
             },
         }
     }
+}
+
+pub async fn ws_handler(
+    ws: WebSocketUpgrade,
+    Path(doc_id): Path<String>,
+    State(state): State<Arc<AppState>>,
+) -> Response {
+    let doc_id = normalize_doc_id(&doc_id);
+
+    let bcast = match state.pool.get_or_create_group(&doc_id).await {
+        Ok(group) => group,
+        Err(e) => {
+            tracing::error!("Failed to get or create group for {}: {}", doc_id, e);
+            return Response::builder()
+                .status(500)
+                .body(axum::body::Body::empty())
+                .unwrap();
+        }
+    };
+
+    ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, state.pool.clone()))
+}
+
+async fn handle_socket(
+    socket: axum::extract::ws::WebSocket,
+    bcast: Arc<crate::BroadcastGroup>,
+    doc_id: String,
+    pool: Arc<BroadcastPool>,
+) {
+    bcast.increment_connections();
+
+    let (sender, receiver) = socket.split();
+    let conn = crate::conn::Connection::with_broadcast_group(
+        bcast,
+        WarpSink(sender),
+        WarpStream(receiver),
+    )
+    .await;
+
+    if let Err(e) = conn.await {
+        tracing::error!("WebSocket connection error: {}", e);
+    }
+    pool.remove_connection(&doc_id).await;
+}
+
+fn normalize_doc_id(doc_id: &str) -> String {
+    doc_id.strip_suffix(":main").unwrap_or(doc_id).to_string()
 }

@@ -18,6 +18,8 @@ const DEFAULT_AUTH_URL: &str = "http://localhost:8080/api/verify/ws-token";
 const DEFAULT_AUTH_TIMEOUT_MS: u64 = 5000;
 const DEFAULT_APP_ENV: &str = "development";
 const DEFAULT_ORIGINS: &str = "http://localhost:3000";
+const DEFAULT_WS_PORT: &str = "8000";
+const DEFAULT_GRPC_PORT: &str = "50051";
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -46,6 +48,8 @@ pub struct Config {
     #[cfg(feature = "auth")]
     pub auth: AuthConfig,
     pub app: AppConfig,
+    pub ws_port: String,
+    pub grpc_port: String,
 }
 
 impl Config {
@@ -90,13 +94,23 @@ impl Config {
             builder = builder.app_origins(origins);
         }
 
+        // Load port configurations
+        if let Ok(ws_port) = env::var("REEARTH_FLOW_WS_PORT") {
+            builder = builder.ws_port(ws_port);
+        }
+        if let Ok(grpc_port) = env::var("REEARTH_FLOW_GRPC_PORT") {
+            builder = builder.grpc_port(grpc_port);
+        }
+
         let config = builder.build();
 
-        // Log final configuration
+        // Update logging to include ports
         info!("Final configuration:");
         info!("Redis: {:?}", config.redis);
         info!("GCS: {:?}", config.gcs);
         info!("App: {:?}", config.app);
+        info!("WebSocket Port: {}", config.ws_port);
+        info!("gRPC Port: {}", config.grpc_port);
         #[cfg(feature = "auth")]
         info!("Auth: {:?}", config.auth);
 
@@ -116,6 +130,8 @@ pub struct ConfigBuilder {
     auth_timeout: Option<u64>,
     app_env: Option<String>,
     app_origins: Option<String>,
+    ws_port: Option<String>,
+    grpc_port: Option<String>,
 }
 
 impl ConfigBuilder {
@@ -161,6 +177,16 @@ impl ConfigBuilder {
         self
     }
 
+    pub fn ws_port(mut self, port: String) -> Self {
+        self.ws_port = Some(port);
+        self
+    }
+
+    pub fn grpc_port(mut self, port: String) -> Self {
+        self.grpc_port = Some(port);
+        self
+    }
+
     pub fn build(self) -> Config {
         Config {
             redis: RedisConfig {
@@ -190,6 +216,10 @@ impl ConfigBuilder {
                     .app_origins
                     .unwrap_or_else(|| DEFAULT_ORIGINS.to_string()),
             },
+            ws_port: self.ws_port.unwrap_or_else(|| DEFAULT_WS_PORT.to_string()),
+            grpc_port: self
+                .grpc_port
+                .unwrap_or_else(|| DEFAULT_GRPC_PORT.to_string()),
         }
     }
 }
