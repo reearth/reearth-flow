@@ -7,6 +7,7 @@ pub mod auth;
 mod broadcast;
 pub mod conf;
 pub mod conn;
+pub mod grpc;
 pub mod storage;
 pub mod ws;
 
@@ -16,7 +17,6 @@ pub use broadcast::pool;
 pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
 
 // New modules
-pub mod handlers;
 pub mod server;
 
 // Constants
@@ -40,14 +40,14 @@ pub struct RollbackQuery {
 }
 
 #[cfg(feature = "auth")]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AppState {
     pub pool: Arc<BroadcastPool>,
     pub auth: Arc<AuthService>,
 }
 
 #[cfg(not(feature = "auth"))]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AppState {
     pub pool: Arc<BroadcastPool>,
 }
@@ -57,7 +57,6 @@ pub use auth::AuthService;
 
 pub use conf::Config;
 pub use group::BroadcastGroup;
-pub use handlers::{get_doc_history, get_latest_doc, rollback_doc, ws_handler};
 pub use pool::BroadcastPool;
-pub use server::{create_router, ensure_bucket, start_server};
+pub use server::{ensure_bucket, start_server};
 pub use storage::gcs::GcsStore;

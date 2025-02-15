@@ -1,13 +1,13 @@
-use axum::{routing::get, Router};
 use google_cloud_storage::{
     client::Client,
     http::buckets::insert::{BucketCreationConfig, InsertBucketRequest},
 };
-use tokio::net::TcpListener;
+use std::sync::Arc;
+use tonic::transport::Server;
 use tracing::info;
 
 use crate::{
-    handlers::{get_doc_history, get_latest_doc, rollback_doc, ws_handler},
+    grpc::{document::document_service_server::DocumentServiceServer, DocumentServiceImpl},
     AppState, BUCKET_NAME, PORT,
 };
 
@@ -29,59 +29,15 @@ pub async fn ensure_bucket(client: &Client) -> Result<(), anyhow::Error> {
     }
 }
 
-pub fn create_router(state: AppState) -> Router {
-    Router::new()
-        .route("/{doc_id}", get(ws_handler))
-        .route("/{doc_id}/latest", get(get_latest_doc))
-        .route("/{doc_id}/history", get(get_doc_history))
-        .route("/{doc_id}/rollback", get(rollback_doc))
-        .with_state(state)
-}
+pub async fn start_server(state: Arc<AppState>) -> Result<(), anyhow::Error> {
+    let addr = format!("0.0.0.0:{}", PORT).parse()?;
+    let document_service = DocumentServiceImpl::new(state);
 
-pub async fn setup_signal_handler() -> tokio::sync::broadcast::Sender<()> {
-    let (tx, _) = tokio::sync::broadcast::channel(1);
-    let shutdown_signal = tx.clone();
+    info!("Starting gRPC server on {}", addr);
 
-    tokio::spawn(async move {
-        let ctrl_c = async {
-            tokio::signal::ctrl_c()
-                .await
-                .expect("Failed to install Ctrl+C handler");
-        };
-
-        #[cfg(unix)]
-        let terminate = async {
-            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-                .expect("Failed to install signal handler")
-                .recv()
-                .await;
-        };
-
-        #[cfg(not(unix))]
-        let terminate = std::future::pending::<()>();
-
-        tokio::select! {
-            _ = ctrl_c => {},
-            _ = terminate => {},
-        }
-
-        info!("Shutdown signal received");
-        let _ = shutdown_signal.send(());
-    });
-
-    tx
-}
-
-pub async fn start_server(app: Router) -> Result<(), anyhow::Error> {
-    info!("Starting server on 0.0.0.0:{}", PORT);
-    let listener = TcpListener::bind(format!("0.0.0.0:{}", PORT)).await?;
-
-    let tx = setup_signal_handler().await;
-
-    axum::serve(listener, app)
-        .with_graceful_shutdown(async move {
-            let _ = tx.subscribe().recv().await;
-        })
+    Server::builder()
+        .add_service(DocumentServiceServer::new(document_service))
+        .serve(addr)
         .await?;
 
     Ok(())

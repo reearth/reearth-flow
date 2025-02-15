@@ -54,6 +54,17 @@ pub struct BroadcastGroup {
     storage_rx: Option<tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>>,
 }
 
+impl std::fmt::Debug for BroadcastGroup {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("BroadcastGroup")
+            .field("connections", &self.connections)
+            .field("awareness_ref", &self.awareness_ref)
+            .field("doc_name", &self.doc_name)
+            .field("redis_ttl", &self.redis_ttl)
+            .finish()
+    }
+}
+
 unsafe impl Send for BroadcastGroup {}
 unsafe impl Sync for BroadcastGroup {}
 

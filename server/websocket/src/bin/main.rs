@@ -4,7 +4,7 @@ use tracing::error;
 use websocket::{
     conf::Config,
     pool::BroadcastPool,
-    server::{create_router, ensure_bucket, start_server},
+    server::{ensure_bucket, start_server},
     storage::gcs::GcsStore,
     AppState,
 };
@@ -46,7 +46,7 @@ async fn main() {
     let pool = Arc::new(BroadcastPool::new(store, config.redis));
     tracing::info!("Broadcast pool initialized");
 
-    let state = {
+    let state = Arc::new({
         #[cfg(feature = "auth")]
         {
             let auth = Arc::new(AuthService::new(config.auth));
@@ -57,11 +57,9 @@ async fn main() {
         {
             AppState { pool }
         }
-    };
+    });
 
-    let app = create_router(state);
-
-    if let Err(e) = start_server(app).await {
+    if let Err(e) = start_server(state).await {
         error!("Server error: {}", e);
         std::process::exit(1);
     }

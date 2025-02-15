@@ -8,7 +8,7 @@ use std::sync::Arc;
 use yrs::sync::Awareness;
 use yrs::{Doc, Transact};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BroadcastPool {
     store: Arc<GcsStore>,
     redis_config: RedisConfig,
@@ -48,11 +48,9 @@ impl BroadcastPool {
             return Ok(group.clone());
         }
 
-        // Create new document and broadcast group
         let awareness: AwarenessRef = {
             let doc = Doc::new();
 
-            // Load document state
             {
                 let mut txn = doc.transact_mut();
                 match self.store.load_doc(doc_id, &mut txn).await {

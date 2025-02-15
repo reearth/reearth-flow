@@ -9,6 +9,7 @@ struct AuthResponse {
     authorized: bool,
 }
 
+#[derive(Clone, Debug)]
 pub struct AuthService {
     client: Client,
     config: AuthConfig,
