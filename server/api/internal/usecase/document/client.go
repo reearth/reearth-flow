@@ -2,132 +2,98 @@ package document
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"strings"
 	"time"
 
+	pb "github.com/reearth/reearth-flow/api/proto"
 	"github.com/reearth/reearthx/log"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type Client struct {
-	baseURL string
-	client  *http.Client
+	conn   *grpc.ClientConn
+	client pb.DocumentServiceClient
 }
 
-func NewClient(baseURL string) *Client {
-	baseURL = strings.TrimRight(baseURL, "/")
-	log.Infof("Creating new document client with base URL: %s", baseURL)
-	return &Client{
-		baseURL: baseURL,
-		client: &http.Client{
-			Timeout: 10 * time.Second,
-		},
+func NewClient(address string) (*Client, error) {
+	// If no port is specified, use the default gRPC port
+	if !strings.Contains(address, ":") {
+		address = fmt.Sprintf("%s:50051", address)
 	}
+
+	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to gRPC server: %w", err)
+	}
+
+	client := pb.NewDocumentServiceClient(conn)
+	log.Infof("Created new document client with gRPC address: %s", address)
+	return &Client{
+		conn:   conn,
+		client: client,
+	}, nil
+}
+
+func (c *Client) Close() error {
+	if c.conn != nil {
+		return c.conn.Close()
+	}
+	return nil
 }
 
 func (c *Client) GetLatest(ctx context.Context, docID string) (*Document, error) {
-	if c.baseURL == "" {
-		return nil, fmt.Errorf("base URL is not configured")
-	}
-
-	url := fmt.Sprintf("%s/%s/latest", c.baseURL, docID)
-	log.Debugf("Making request to: %s", url)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	resp, err := c.client.GetLatestDocument(ctx, &pb.DocumentRequest{
+		DocId: docID,
+	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
+		return nil, fmt.Errorf("failed to get latest document: %w", err)
 	}
 
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			log.Errorf("failed to close response body: %v", err)
-		}
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
-
-	var result []int
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	// Convert bytes to []int
+	update := make([]int, len(resp.Content))
+	for i, b := range resp.Content {
+		update[i] = int(b)
 	}
 
 	return &Document{
 		ID:        docID,
-		Update:    result,
-		Clock:     0,
+		Update:    update,
+		Clock:     int(resp.Clock),
 		Timestamp: time.Now(),
 	}, nil
 }
 
-type rawUpdateHistory struct {
-	Update    []int   `json:"update"`
-	Clock     int     `json:"clock"`
-	Timestamp []int64 `json:"timestamp"`
-}
-
-func (r *rawUpdateHistory) Time() time.Time {
-	if len(r.Timestamp) >= 9 {
-		return time.Date(
-			int(r.Timestamp[0]),        // year
-			time.Month(r.Timestamp[1]), // month
-			int(r.Timestamp[2]),        // day
-			int(r.Timestamp[3]),        // hour
-			int(r.Timestamp[4]),        // minute
-			int(r.Timestamp[5]/1e9),    // second
-			int(r.Timestamp[5]%1e9),    // nanosecond
-			time.FixedZone("UTC", 0),   // timezone
-		)
-	}
-	return time.Time{}
-}
-
 func (c *Client) GetHistory(ctx context.Context, docID string) ([]*History, error) {
-	if c.baseURL == "" {
-		return nil, fmt.Errorf("base URL is not configured")
+	resp, err := c.client.GetDocumentHistory(ctx, &pb.DocumentHistoryRequest{
+		DocId: docID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get document history: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/%s/history", c.baseURL, docID)
-	log.Debugf("Making request to: %s", url)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
+	history := make([]*History, len(resp.Versions))
+	for i, version := range resp.Versions {
+		timestamp, err := time.Parse("2006-01-02 15:04:05.999999 -07:00:00", version.Timestamp)
 		if err != nil {
-			log.Errorf("failed to close response body: %v", err)
+			timestamp, err = time.Parse(time.RFC3339, version.Timestamp)
+			if err != nil {
+				log.Errorf("failed to parse timestamp: %v", err)
+				timestamp = time.Time{}
+			}
 		}
-	}(resp.Body)
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-	}
+		// Convert bytes to []int
+		update := make([]int, len(version.Content))
+		for j, b := range version.Content {
+			update[j] = int(b)
+		}
 
-	var updates []rawUpdateHistory
-	if err := json.NewDecoder(resp.Body).Decode(&updates); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	history := make([]*History, len(updates))
-	for i, update := range updates {
 		history[i] = &History{
-			Update:    update.Update,
-			Clock:     update.Clock,
-			Timestamp: update.Time(),
+			Update:    update,
+			Clock:     int(version.Clock),
+			Timestamp: timestamp,
 		}
 	}
 
@@ -135,36 +101,17 @@ func (c *Client) GetHistory(ctx context.Context, docID string) ([]*History, erro
 }
 
 func (c *Client) Rollback(ctx context.Context, id string, clock int) (*Document, error) {
-	url := fmt.Sprintf("%s/%s/rollback?clock=%d", c.baseURL, id, clock)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	resp, err := c.client.RollbackDocument(ctx, &pb.RollbackRequest{
+		DocId:     id,
+		VersionId: fmt.Sprintf("%d", clock), // Using clock as version ID
+	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to rollback document: %w", err)
 	}
 
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			log.Errorf("failed to close response body: %v", err)
-		}
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	if !resp.Success {
+		return nil, fmt.Errorf("rollback failed: %s", resp.Message)
 	}
 
-	var result []int
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	return &Document{
-		ID:        id,
-		Update:    result,
-		Clock:     clock,
-		Timestamp: time.Now(),
-	}, nil
+	return c.GetLatest(ctx, id)
 }

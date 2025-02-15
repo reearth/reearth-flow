@@ -2,6 +2,7 @@ package document
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
@@ -20,9 +21,17 @@ func Init(c Config) {
 
 func getDefaultClient() *Client {
 	clientOnce.Do(func() {
-		log.Infof("Creating new document client with WebSocket URL: %s", cfg.WebsocketServerURL)
-		defaultClient = NewClient(cfg.WebsocketServerURL)
+		log.Infof("Creating new document client with gRPC address: %s", cfg.GrpcServerURL)
+		client, err := NewClient(cfg.GrpcServerURL)
+		if err != nil {
+			log.Errorf("Failed to create document client: %v", err)
+			return
+		}
+		defaultClient = client
 	})
+	if defaultClient == nil {
+		log.Error("Document client is not initialized")
+	}
 	return defaultClient
 }
 
@@ -40,13 +49,25 @@ type History struct {
 }
 
 func GetLatest(ctx context.Context, id string) (*Document, error) {
-	return getDefaultClient().GetLatest(ctx, id)
+	client := getDefaultClient()
+	if client == nil {
+		return nil, fmt.Errorf("document client is not initialized")
+	}
+	return client.GetLatest(ctx, id)
 }
 
 func GetHistory(ctx context.Context, id string) ([]*History, error) {
-	return getDefaultClient().GetHistory(ctx, id)
+	client := getDefaultClient()
+	if client == nil {
+		return nil, fmt.Errorf("document client is not initialized")
+	}
+	return client.GetHistory(ctx, id)
 }
 
 func Rollback(ctx context.Context, id string, clock int) (*Document, error) {
-	return getDefaultClient().Rollback(ctx, id, clock)
+	client := getDefaultClient()
+	if client == nil {
+		return nil, fmt.Errorf("document client is not initialized")
+	}
+	return client.Rollback(ctx, id, clock)
 }

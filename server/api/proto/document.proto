@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package proto;
 
+option go_package = "github.com/reearth/reearth-flow/server/api/proto";
+
 service DocumentService {
   // WebSocket-like streaming for document updates
   rpc SyncDocument (stream DocumentUpdate) returns (stream DocumentUpdate) {}

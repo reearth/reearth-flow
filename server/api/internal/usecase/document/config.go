@@ -1,5 +1,5 @@
 package document
 
 type Config struct {
-	WebsocketServerURL string `envconfig:"DOCUMENT_WEBSOCKETSERVERURL" default:"http://localhost:8000"`
+	GrpcServerURL string `envconfig:"DOCUMENT_GRPCSERVERURL" default:"localhost:50051"`
 }

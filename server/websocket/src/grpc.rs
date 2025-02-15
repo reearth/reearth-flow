@@ -11,7 +11,7 @@ use yrs::{
 use crate::{storage::kv::DocOps, AppState};
 
 pub mod document {
-    tonic::include_proto!("document");
+    tonic::include_proto!("proto");
 }
 
 use document::document_service_server::DocumentService;
@@ -125,7 +125,10 @@ impl DocumentService for DocumentServiceImpl {
                     .into_iter()
                     .map(|info| DocumentVersion {
                         version_id: info.clock.to_string(),
-                        timestamp: info.timestamp.to_string(),
+                        timestamp: info
+                            .timestamp
+                            .format(&time::format_description::well_known::Iso8601::DEFAULT)
+                            .unwrap_or_default(),
                         content: info.update.encode_v1(),
                         clock: info.clock as i32,
                     })
