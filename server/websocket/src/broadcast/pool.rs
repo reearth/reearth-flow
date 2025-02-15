@@ -44,50 +44,55 @@ impl BroadcastPool {
     }
 
     pub async fn get_or_create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
-        if let Some(group) = self.groups.get(doc_id) {
-            return Ok(group.clone());
-        }
+        let entry = self.groups.entry(doc_id.to_string());
 
-        let awareness: AwarenessRef = {
-            let doc = Doc::new();
+        match entry {
+            dashmap::mapref::entry::Entry::Occupied(entry) => Ok(entry.get().clone()),
+            dashmap::mapref::entry::Entry::Vacant(entry) => {
+                let awareness: AwarenessRef = {
+                    let doc = Doc::new();
 
-            {
-                let mut txn = doc.transact_mut();
-                match self.store.load_doc(doc_id, &mut txn).await {
-                    Ok(_) => {
-                        tracing::debug!("Successfully loaded existing document: {}", doc_id);
-                    }
-                    Err(e) => {
-                        if e.to_string().contains("not found") {
-                            tracing::info!("Creating new document: {}", doc_id);
-                        } else {
-                            tracing::error!("Failed to load document {}: {}", doc_id, e);
-                            return Err(anyhow!("Failed to load document: {}", e));
+                    {
+                        let mut txn = doc.transact_mut();
+                        match self.store.load_doc(doc_id, &mut txn).await {
+                            Ok(_) => {
+                                tracing::debug!(
+                                    "Successfully loaded existing document: {}",
+                                    doc_id
+                                );
+                            }
+                            Err(e) => {
+                                if e.to_string().contains("not found") {
+                                    tracing::info!("Creating new document: {}", doc_id);
+                                } else {
+                                    tracing::error!("Failed to load document {}: {}", doc_id, e);
+                                    return Err(anyhow!("Failed to load document: {}", e));
+                                }
+                            }
                         }
                     }
-                }
+
+                    Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
+                };
+
+                // Create new broadcast group
+                let group = Arc::new(
+                    BroadcastGroup::with_storage(
+                        awareness,
+                        self.buffer_capacity,
+                        self.store.clone(),
+                        BroadcastConfig {
+                            storage_enabled: true,
+                            doc_name: Some(doc_id.to_string()),
+                            redis_config: Some(self.redis_config.clone()),
+                        },
+                    )
+                    .await,
+                );
+
+                Ok(entry.insert(group.clone()).clone())
             }
-
-            Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
-        };
-
-        // Create new broadcast group
-        let group = Arc::new(
-            BroadcastGroup::with_storage(
-                awareness,
-                self.buffer_capacity,
-                self.store.clone(),
-                BroadcastConfig {
-                    storage_enabled: true,
-                    doc_name: Some(doc_id.to_string()),
-                    redis_config: Some(self.redis_config.clone()),
-                },
-            )
-            .await,
-        );
-
-        self.groups.insert(doc_id.to_string(), group.clone());
-        Ok(group)
+        }
     }
 
     pub async fn cleanup_empty_groups(&self) {

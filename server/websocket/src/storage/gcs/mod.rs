@@ -125,7 +125,15 @@ impl GcsStore {
                     // Extract clock from object name
                     if let Ok(key_bytes) = hex::decode(&obj.name) {
                         if key_bytes.len() >= 12 {
-                            let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+                            let clock_bytes_result: Result<[u8; 4], _> =
+                                key_bytes[7..11].try_into();
+                            let clock_bytes = match clock_bytes_result {
+                                Ok(b) => b,
+                                Err(e) => {
+                                    tracing::error!("Invalid clock bytes in key: {}", e);
+                                    continue;
+                                }
+                            };
                             let clock = u32::from_be_bytes(clock_bytes);
 
                             // Get timestamp from object metadata or use current time
@@ -194,7 +202,14 @@ impl GcsStore {
                 continue;
             }
 
-            let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+            let clock_bytes_result: Result<[u8; 4], _> = key_bytes[7..11].try_into();
+            let clock_bytes = match clock_bytes_result {
+                Ok(b) => b,
+                Err(e) => {
+                    tracing::error!("Invalid clock bytes in key: {}", e);
+                    continue;
+                }
+            };
             let clock = u32::from_be_bytes(clock_bytes);
 
             if clock > target_clock {
@@ -471,113 +486,3 @@ impl KVEntry for GcsEntry {
         &self.value
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use google_cloud_storage::http::buckets::insert::{BucketCreationConfig, InsertBucketRequest};
-
-//     use super::*;
-
-//     async fn ensure_test_bucket(client: &Client, bucket_name: &str) -> Result<(), GcsError> {
-//         let bucket = BucketCreationConfig {
-//             location: "US".to_string(),
-//             ..Default::default()
-//         };
-//         let request = InsertBucketRequest {
-//             name: bucket_name.to_string(),
-//             bucket,
-//             ..Default::default()
-//         };
-
-//         match client.insert_bucket(&request).await {
-//             Ok(_) => Ok(()),
-//             Err(e) if e.to_string().contains("already exists") => Ok(()),
-//             Err(e) => Err(GcsError::GoogleApi(e)),
-//         }
-//     }
-
-//     async fn create_test_store() -> GcsStore {
-//         let config = GcsConfig {
-//             bucket_name: "test-bucket".to_string(),
-//             endpoint: Some("http://localhost:4443".to_string()),
-//         };
-//         let store = GcsStore::new_with_config(config).await.unwrap();
-
-//         // Ensure bucket exists
-//         ensure_test_bucket(&store.client, &store.bucket)
-//             .await
-//             .unwrap();
-
-//         store
-//     }
-
-//     #[tokio::test]
-//     async fn test_basic_operations() {
-//         let store = create_test_store().await;
-
-//         // Test upsert
-//         let key = b"test_key";
-//         let value = b"test_value";
-//         store.upsert(key, value).await.unwrap();
-
-//         // Test get
-//         let result = store.get(key).await.unwrap();
-//         assert_eq!(result, Some(value.to_vec()));
-
-//         // Test get non-existent
-//         let result = store.get(b"nonexistent").await.unwrap();
-//         assert_eq!(result, None);
-
-//         // Test remove
-//         store.remove(key).await.unwrap();
-//         let result = store.get(key).await;
-//         assert!(matches!(
-//             result,
-//             Err(GcsError::GoogleApi(e)) if e.to_string().contains("404")
-//         ));
-//     }
-
-//     #[tokio::test]
-//     async fn test_range_operations() {
-//         let store = create_test_store().await;
-
-//         // Insert test data
-//         let test_data = vec![
-//             (b"key1".to_vec(), b"value1".to_vec()),
-//             (b"key2".to_vec(), b"value2".to_vec()),
-//             (b"key3".to_vec(), b"value3".to_vec()),
-//         ];
-
-//         for (key, value) in &test_data {
-//             store.upsert(key, value).await.unwrap();
-//         }
-
-//         // Test iter_range
-//         let range = store.iter_range(b"key1", b"key3").await.unwrap();
-//         let entries: Vec<_> = range.collect();
-//         assert_eq!(entries.len(), 3);
-
-//         // Test remove_range
-//         store.remove_range(b"key1", b"key2").await.unwrap();
-
-//         // Verify key3 still exists but key1 and key2 are gone
-//         assert!(store.get(b"key3").await.unwrap().is_some());
-//     }
-
-//     #[tokio::test]
-//     async fn test_peek_back() {
-//         let store = create_test_store().await;
-
-//         // Insert test data
-//         store.upsert(b"key1", b"value1").await.unwrap();
-//         store.upsert(b"key2", b"value2").await.unwrap();
-//         store.upsert(b"key3", b"value3").await.unwrap();
-
-//         // Test peek_back
-//         let result = store.peek_back(b"key3").await.unwrap();
-//         assert!(result.is_some());
-//         let entry = result.unwrap();
-//         assert_eq!(entry.key(), b"key2");
-//         assert_eq!(entry.value(), b"value2");
-//     }
-// }
