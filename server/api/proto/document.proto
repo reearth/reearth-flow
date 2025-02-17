@@ -57,16 +57,4 @@ message RollbackRequest {
 message RollbackResponse {
   bool success = 1;
   string message = 2;
-}
-
-message WorkspaceTokenVerifyRequest {
-}
-
-message WorkspaceTokenVerifyResponse {
-  bool authorized = 1;
-}
-
-service WorkspaceService {
-  // Verify workspace token
-  rpc VerifyWorkspaceToken (WorkspaceTokenVerifyRequest) returns (WorkspaceTokenVerifyResponse) {}
 } 

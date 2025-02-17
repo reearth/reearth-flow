@@ -10,24 +10,21 @@ import (
 )
 
 type Server struct {
-	server    *grpc.Server
-	port      int
-	wsService *WorkspaceService
+	server      *grpc.Server
+	port        int
+	authService *AuthService
 }
 
 func NewServer(port int, jwtProviders []appx.JWTProvider) *Server {
-	// Create server with auth interceptor
-	server := grpc.NewServer(
-		grpc.UnaryInterceptor(AuthInterceptor(jwtProviders)),
-	)
-	wsService := NewWorkspaceService()
+	server := grpc.NewServer()
+	authService := NewAuthService(jwtProviders)
 
-	proto.RegisterWorkspaceServiceServer(server, wsService)
+	proto.RegisterAuthServiceServer(server, authService)
 
 	return &Server{
-		server:    server,
-		port:      port,
-		wsService: wsService,
+		server:      server,
+		port:        port,
+		authService: authService,
 	}
 }
 
