@@ -56,7 +56,6 @@ const LeftPanel: React.FC<Props> = ({
     unlockAllNodes,
   } = useLocker();
 
-  console.log("interactionLockedNodes", interactionLockedNodes);
   useEffect(() => {
     if (!isOpen && selectedTab) {
       setSelectedTab(undefined);
@@ -209,12 +208,9 @@ const LeftPanel: React.FC<Props> = ({
                 const node = nodes.find((n) => n.id === idContainer);
                 if (node) {
                   if (interactionLockedNodes.some((n) => n.id === node.id)) {
-                    console.log("UNLOCK");
                     unlockNodeInteraction(node);
                   } else {
-                    console.log("LOCK");
                     lockNodeInteraction(node);
-                    console.log("Node");
                     onNodeLocking(node.id);
                   }
                 }
