@@ -135,7 +135,7 @@ type ComplexityRoot struct {
 		Update    func(childComplexity int) int
 	}
 
-	DocumentHistory struct {
+	DocumentSnapshot struct {
 		Clock     func(childComplexity int) int
 		Timestamp func(childComplexity int) int
 		Update    func(childComplexity int) int
@@ -257,8 +257,8 @@ type ComplexityRoot struct {
 		DeploymentHead      func(childComplexity int, input gqlmodel.GetHeadInput) int
 		DeploymentVersions  func(childComplexity int, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) int
 		Deployments         func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
-		DocumentHistory     func(childComplexity int, id gqlmodel.ID) int
 		DocumentLatest      func(childComplexity int, id gqlmodel.ID) int
+		DocumentSnapshot    func(childComplexity int, id gqlmodel.ID) int
 		Job                 func(childComplexity int, id gqlmodel.ID) int
 		Jobs                func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
 		Me                  func(childComplexity int) int
@@ -427,7 +427,7 @@ type QueryResolver interface {
 	DeploymentHead(ctx context.Context, input gqlmodel.GetHeadInput) (*gqlmodel.Deployment, error)
 	DeploymentVersions(ctx context.Context, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) ([]*gqlmodel.Deployment, error)
 	DocumentLatest(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Document, error)
-	DocumentHistory(ctx context.Context, id gqlmodel.ID) ([]*gqlmodel.DocumentHistory, error)
+	DocumentSnapshot(ctx context.Context, id gqlmodel.ID) ([]*gqlmodel.DocumentSnapshot, error)
 	Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
 	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
@@ -737,26 +737,26 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Document.Update(childComplexity), true
 
-	case "DocumentHistory.clock":
-		if e.complexity.DocumentHistory.Clock == nil {
+	case "DocumentSnapshot.clock":
+		if e.complexity.DocumentSnapshot.Clock == nil {
 			break
 		}
 
-		return e.complexity.DocumentHistory.Clock(childComplexity), true
+		return e.complexity.DocumentSnapshot.Clock(childComplexity), true
 
-	case "DocumentHistory.timestamp":
-		if e.complexity.DocumentHistory.Timestamp == nil {
+	case "DocumentSnapshot.timestamp":
+		if e.complexity.DocumentSnapshot.Timestamp == nil {
 			break
 		}
 
-		return e.complexity.DocumentHistory.Timestamp(childComplexity), true
+		return e.complexity.DocumentSnapshot.Timestamp(childComplexity), true
 
-	case "DocumentHistory.update":
-		if e.complexity.DocumentHistory.Update == nil {
+	case "DocumentSnapshot.update":
+		if e.complexity.DocumentSnapshot.Update == nil {
 			break
 		}
 
-		return e.complexity.DocumentHistory.Update(childComplexity), true
+		return e.complexity.DocumentSnapshot.Update(childComplexity), true
 
 	case "Job.completedAt":
 		if e.complexity.Job.CompletedAt == nil {
@@ -1528,18 +1528,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Deployments(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
 
-	case "Query.documentHistory":
-		if e.complexity.Query.DocumentHistory == nil {
-			break
-		}
-
-		args, err := ec.field_Query_documentHistory_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.DocumentHistory(childComplexity, args["id"].(gqlmodel.ID)), true
-
 	case "Query.documentLatest":
 		if e.complexity.Query.DocumentLatest == nil {
 			break
@@ -1551,6 +1539,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.DocumentLatest(childComplexity, args["id"].(gqlmodel.ID)), true
+
+	case "Query.DocumentSnapshot":
+		if e.complexity.Query.DocumentSnapshot == nil {
+			break
+		}
+
+		args, err := ec.field_Query_DocumentSnapshot_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.DocumentSnapshot(childComplexity, args["id"].(gqlmodel.ID)), true
 
 	case "Query.job":
 		if e.complexity.Query.Job == nil {
@@ -2342,7 +2342,7 @@ extend type Mutation {
   timestamp: DateTime!
 }
 
-type DocumentHistory {
+type DocumentSnapshot {
   update: [Int!]!
   clock: Int!
   timestamp: DateTime!
@@ -2352,7 +2352,7 @@ type DocumentHistory {
 
 extend type Query {
   documentLatest(id: ID!): Document
-  documentHistory(id: ID!): [DocumentHistory!]!
+  DocumentSnapshot(id: ID!): [DocumentSnapshot!]!
 }
 
 # Mutation
@@ -3334,6 +3334,21 @@ func (ec *executionContext) field_Mutation_updateWorkspace_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_DocumentSnapshot_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.ID
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -3466,21 +3481,6 @@ func (ec *executionContext) field_Query_deployments_args(ctx context.Context, ra
 		}
 	}
 	args["pagination"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_documentHistory_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 gqlmodel.ID
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["id"] = arg0
 	return args, nil
 }
 
@@ -5612,8 +5612,8 @@ func (ec *executionContext) fieldContext_Document_timestamp(_ context.Context, f
 	return fc, nil
 }
 
-func (ec *executionContext) _DocumentHistory_update(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.DocumentHistory) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DocumentHistory_update(ctx, field)
+func (ec *executionContext) _DocumentSnapshot_update(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.DocumentSnapshot) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DocumentSnapshot_update(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -5643,9 +5643,9 @@ func (ec *executionContext) _DocumentHistory_update(ctx context.Context, field g
 	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_DocumentHistory_update(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_DocumentSnapshot_update(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "DocumentHistory",
+		Object:     "DocumentSnapshot",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -5656,8 +5656,8 @@ func (ec *executionContext) fieldContext_DocumentHistory_update(_ context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _DocumentHistory_clock(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.DocumentHistory) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DocumentHistory_clock(ctx, field)
+func (ec *executionContext) _DocumentSnapshot_clock(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.DocumentSnapshot) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DocumentSnapshot_clock(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -5687,9 +5687,9 @@ func (ec *executionContext) _DocumentHistory_clock(ctx context.Context, field gr
 	return ec.marshalNInt2int(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_DocumentHistory_clock(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_DocumentSnapshot_clock(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "DocumentHistory",
+		Object:     "DocumentSnapshot",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -5700,8 +5700,8 @@ func (ec *executionContext) fieldContext_DocumentHistory_clock(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _DocumentHistory_timestamp(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.DocumentHistory) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DocumentHistory_timestamp(ctx, field)
+func (ec *executionContext) _DocumentSnapshot_timestamp(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.DocumentSnapshot) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DocumentSnapshot_timestamp(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -5731,9 +5731,9 @@ func (ec *executionContext) _DocumentHistory_timestamp(ctx context.Context, fiel
 	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_DocumentHistory_timestamp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_DocumentSnapshot_timestamp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
-		Object:     "DocumentHistory",
+		Object:     "DocumentSnapshot",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -10489,8 +10489,8 @@ func (ec *executionContext) fieldContext_Query_documentLatest(ctx context.Contex
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_documentHistory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_documentHistory(ctx, field)
+func (ec *executionContext) _Query_DocumentSnapshot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_DocumentSnapshot(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -10503,7 +10503,7 @@ func (ec *executionContext) _Query_documentHistory(ctx context.Context, field gr
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().DocumentHistory(rctx, fc.Args["id"].(gqlmodel.ID))
+		return ec.resolvers.Query().DocumentSnapshot(rctx, fc.Args["id"].(gqlmodel.ID))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10515,12 +10515,12 @@ func (ec *executionContext) _Query_documentHistory(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*gqlmodel.DocumentHistory)
+	res := resTmp.([]*gqlmodel.DocumentSnapshot)
 	fc.Result = res
-	return ec.marshalNDocumentHistory2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDocumentHistoryᚄ(ctx, field.Selections, res)
+	return ec.marshalNDocumentSnapshot2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDocumentSnapshotᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_documentHistory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_DocumentSnapshot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -10529,13 +10529,13 @@ func (ec *executionContext) fieldContext_Query_documentHistory(ctx context.Conte
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "update":
-				return ec.fieldContext_DocumentHistory_update(ctx, field)
+				return ec.fieldContext_DocumentSnapshot_update(ctx, field)
 			case "clock":
-				return ec.fieldContext_DocumentHistory_clock(ctx, field)
+				return ec.fieldContext_DocumentSnapshot_clock(ctx, field)
 			case "timestamp":
-				return ec.fieldContext_DocumentHistory_timestamp(ctx, field)
+				return ec.fieldContext_DocumentSnapshot_timestamp(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type DocumentHistory", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type DocumentSnapshot", field.Name)
 		},
 	}
 	defer func() {
@@ -10545,7 +10545,7 @@ func (ec *executionContext) fieldContext_Query_documentHistory(ctx context.Conte
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_documentHistory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_DocumentSnapshot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -17057,29 +17057,29 @@ func (ec *executionContext) _Document(ctx context.Context, sel ast.SelectionSet,
 	return out
 }
 
-var documentHistoryImplementors = []string{"DocumentHistory"}
+var documentSnapshotImplementors = []string{"DocumentSnapshot"}
 
-func (ec *executionContext) _DocumentHistory(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.DocumentHistory) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, documentHistoryImplementors)
+func (ec *executionContext) _DocumentSnapshot(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.DocumentSnapshot) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, documentSnapshotImplementors)
 
 	out := graphql.NewFieldSet(fields)
 	deferred := make(map[string]*graphql.FieldSet)
 	for i, field := range fields {
 		switch field.Name {
 		case "__typename":
-			out.Values[i] = graphql.MarshalString("DocumentHistory")
+			out.Values[i] = graphql.MarshalString("DocumentSnapshot")
 		case "update":
-			out.Values[i] = ec._DocumentHistory_update(ctx, field, obj)
+			out.Values[i] = ec._DocumentSnapshot_update(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "clock":
-			out.Values[i] = ec._DocumentHistory_clock(ctx, field, obj)
+			out.Values[i] = ec._DocumentSnapshot_clock(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
 		case "timestamp":
-			out.Values[i] = ec._DocumentHistory_timestamp(ctx, field, obj)
+			out.Values[i] = ec._DocumentSnapshot_timestamp(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -18221,7 +18221,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "documentHistory":
+		case "DocumentSnapshot":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -18230,7 +18230,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_documentHistory(ctx, field)
+				res = ec._Query_DocumentSnapshot(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -19895,7 +19895,7 @@ func (ec *executionContext) marshalNDeploymentConnection2ᚖgithubᚗcomᚋreear
 	return ec._DeploymentConnection(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNDocumentHistory2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDocumentHistoryᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.DocumentHistory) graphql.Marshaler {
+func (ec *executionContext) marshalNDocumentSnapshot2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDocumentSnapshotᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.DocumentSnapshot) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -19919,7 +19919,7 @@ func (ec *executionContext) marshalNDocumentHistory2ᚕᚖgithubᚗcomᚋreearth
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNDocumentHistory2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDocumentHistory(ctx, sel, v[i])
+			ret[i] = ec.marshalNDocumentSnapshot2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDocumentSnapshot(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -19939,14 +19939,14 @@ func (ec *executionContext) marshalNDocumentHistory2ᚕᚖgithubᚗcomᚋreearth
 	return ret
 }
 
-func (ec *executionContext) marshalNDocumentHistory2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDocumentHistory(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.DocumentHistory) graphql.Marshaler {
+func (ec *executionContext) marshalNDocumentSnapshot2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDocumentSnapshot(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.DocumentSnapshot) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
 		}
 		return graphql.Null
 	}
-	return ec._DocumentHistory(ctx, sel, v)
+	return ec._DocumentSnapshot(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNEventSourceType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEventSourceType(ctx context.Context, v interface{}) (gqlmodel.EventSourceType, error) {

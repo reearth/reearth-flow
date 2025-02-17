@@ -168,7 +168,7 @@ type Document struct {
 func (Document) IsNode()        {}
 func (this Document) GetID() ID { return this.ID }
 
-type DocumentHistory struct {
+type DocumentSnapshot struct {
 	Update    []int     `json:"update"`
 	Clock     int       `json:"clock"`
 	Timestamp time.Time `json:"timestamp"`

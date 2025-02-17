@@ -5,7 +5,7 @@ type Document implements Node {
   timestamp: DateTime!
 }
 
-type DocumentHistory {
+type DocumentSnapshot {
   update: [Int!]!
   clock: Int!
   timestamp: DateTime!
@@ -15,7 +15,7 @@ type DocumentHistory {
 
 extend type Query {
   documentLatest(id: ID!): Document
-  documentHistory(id: ID!): [DocumentHistory!]!
+  DocumentSnapshot(id: ID!): [DocumentSnapshot!]!
 }
 
 # Mutation

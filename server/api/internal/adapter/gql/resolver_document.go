@@ -21,15 +21,15 @@ func (r *queryResolver) DocumentLatest(ctx context.Context, id gqlmodel.ID) (*gq
 	}, nil
 }
 
-func (r *queryResolver) DocumentHistory(ctx context.Context, id gqlmodel.ID) ([]*gqlmodel.DocumentHistory, error) {
+func (r *queryResolver) DocumentSnapshot(ctx context.Context, id gqlmodel.ID) ([]*gqlmodel.DocumentSnapshot, error) {
 	history, err := document.GetHistory(ctx, string(id))
 	if err != nil {
 		return nil, err
 	}
 
-	nodes := make([]*gqlmodel.DocumentHistory, len(history))
+	nodes := make([]*gqlmodel.DocumentSnapshot, len(history))
 	for i, h := range history {
-		nodes[i] = &gqlmodel.DocumentHistory{
+		nodes[i] = &gqlmodel.DocumentSnapshot{
 			Update:    h.Update,
 			Clock:     h.Clock,
 			Timestamp: h.Timestamp,
