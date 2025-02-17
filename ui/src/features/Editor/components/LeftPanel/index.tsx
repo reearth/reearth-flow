@@ -57,6 +57,10 @@ const LeftPanel: React.FC<Props> = ({
       .map((n) => ({
         id: n.id,
         name: n.data.customName || n.data.officialName || "untitled",
+        position: {
+          x: n.position.x,
+          y: n.position.y,
+        },
         icon: Database,
         type: n.type,
       })) ?? []),
@@ -71,6 +75,10 @@ const LeftPanel: React.FC<Props> = ({
               .map((n) => ({
                 id: n.id,
                 name: n.data.customName || n.data.officialName || "untitled",
+                position: {
+                  x: n.position.x,
+                  y: n.position.y,
+                },
                 icon: Disc,
                 type: n.type,
               })),
@@ -88,6 +96,10 @@ const LeftPanel: React.FC<Props> = ({
               .map((n) => ({
                 id: n.id,
                 name: n.data.customName || n.data.officialName || "untitled",
+                position: {
+                  x: n.position.x,
+                  y: n.position.y,
+                },
                 icon: Lightning,
                 type: n.type,
               })),
@@ -105,6 +117,10 @@ const LeftPanel: React.FC<Props> = ({
               .map((n) => ({
                 id: n.id,
                 name: n.data.customName || n.data.officialName || "untitled",
+                position: {
+                  x: n.position.x,
+                  y: n.position.y,
+                },
                 icon: Graph,
                 type: n.type,
               })),
@@ -116,6 +132,10 @@ const LeftPanel: React.FC<Props> = ({
       .map((n) => ({
         id: n.id,
         name: n.data.customName || n.data.officialName || "untitled",
+        position: {
+          x: n.position.x,
+          y: n.position.y,
+        },
         icon: Note,
       })) ?? []),
     ...(nodes?.some((n) => n.type === "batch")
@@ -132,6 +152,10 @@ const LeftPanel: React.FC<Props> = ({
                   n.data.params?.customName ||
                   n.data.officialName ||
                   "untitled",
+                position: {
+                  x: n.position.x,
+                  y: n.position.y,
+                },
                 icon: RectangleDashed,
                 type: n.type,
                 children: nodes
@@ -143,6 +167,11 @@ const LeftPanel: React.FC<Props> = ({
                       id: d.id,
                       name:
                         d.data.customName || d.data.officialName || "untitled",
+                      position: {
+                        x: n.position.x,
+                        y: n.position.y,
+                      },
+
                       icon: getNodeIcon(d.type),
                       type: d.type,
                     };

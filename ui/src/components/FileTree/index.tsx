@@ -1,8 +1,10 @@
 import { CaretRight, Icon } from "@phosphor-icons/react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
+import { XYPosition } from "@xyflow/react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import useResizeObserver from "use-resize-observer";
 
+import useFocusOnNode from "@flow/features/Editor/components/Canvas/useFocusOnNode";
 import { cn } from "@flow/lib/utils";
 
 type TreeDataItem = {
@@ -10,6 +12,7 @@ type TreeDataItem = {
   name: string;
   icon?: Icon;
   type?: string;
+  position?: XYPosition;
   children?: TreeDataItem[];
 };
 
@@ -212,7 +215,12 @@ const Leaf = forwardRef<
     Icon?: Icon;
   }
 >(({ className, item, isSelected, Icon, ...props }, ref) => {
-  console.log("TreeItem", item);
+  const { handleOnNodeFocus } = useFocusOnNode();
+  const zoom = 1.85;
+  const focusOnNodeDoubleClick = () => {
+    if (!item.position) return;
+    handleOnNodeFocus(item.position, zoom);
+  };
   return (
     <div
       ref={ref}
@@ -223,6 +231,7 @@ const Leaf = forwardRef<
         isSelected &&
           "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-red-800/50",
       )}
+      onDoubleClick={focusOnNodeDoubleClick}
       {...props}>
       {item.icon && (
         <item.icon
