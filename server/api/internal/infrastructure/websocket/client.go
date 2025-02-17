@@ -1,4 +1,4 @@
-package document
+package websocket
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/pkg/websocket"
 	pb "github.com/reearth/reearth-flow/api/proto"
 	"github.com/reearth/reearthx/log"
 	"google.golang.org/grpc"
@@ -23,7 +24,7 @@ func NewClient(address string) (*Client, error) {
 		address = fmt.Sprintf("%s:50051", address)
 	}
 
-	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to gRPC server: %w", err)
 	}
@@ -43,7 +44,7 @@ func (c *Client) Close() error {
 	return nil
 }
 
-func (c *Client) GetLatest(ctx context.Context, docID string) (*Document, error) {
+func (c *Client) GetLatest(ctx context.Context, docID string) (*websocket.Document, error) {
 	resp, err := c.client.GetLatestDocument(ctx, &pb.DocumentRequest{
 		DocId: docID,
 	})
@@ -57,7 +58,7 @@ func (c *Client) GetLatest(ctx context.Context, docID string) (*Document, error)
 		update[i] = int(b)
 	}
 
-	return &Document{
+	return &websocket.Document{
 		ID:        docID,
 		Update:    update,
 		Clock:     int(resp.Clock),
@@ -65,7 +66,7 @@ func (c *Client) GetLatest(ctx context.Context, docID string) (*Document, error)
 	}, nil
 }
 
-func (c *Client) GetHistory(ctx context.Context, docID string) ([]*History, error) {
+func (c *Client) GetHistory(ctx context.Context, docID string) ([]*websocket.History, error) {
 	resp, err := c.client.GetDocumentHistory(ctx, &pb.DocumentHistoryRequest{
 		DocId: docID,
 	})
@@ -73,7 +74,7 @@ func (c *Client) GetHistory(ctx context.Context, docID string) ([]*History, erro
 		return nil, fmt.Errorf("failed to get document history: %w", err)
 	}
 
-	history := make([]*History, len(resp.Versions))
+	history := make([]*websocket.History, len(resp.Versions))
 	for i, version := range resp.Versions {
 		timestamp, err := time.Parse("2006-01-02 15:04:05.999999 -07:00:00", version.Timestamp)
 		if err != nil {
@@ -90,7 +91,7 @@ func (c *Client) GetHistory(ctx context.Context, docID string) ([]*History, erro
 			update[j] = int(b)
 		}
 
-		history[i] = &History{
+		history[i] = &websocket.History{
 			Update:    update,
 			Clock:     int(version.Clock),
 			Timestamp: timestamp,
@@ -100,10 +101,10 @@ func (c *Client) GetHistory(ctx context.Context, docID string) ([]*History, erro
 	return history, nil
 }
 
-func (c *Client) Rollback(ctx context.Context, id string, clock int) (*Document, error) {
+func (c *Client) Rollback(ctx context.Context, id string, clock int) (*websocket.Document, error) {
 	resp, err := c.client.RollbackDocument(ctx, &pb.RollbackRequest{
 		DocId:     id,
-		VersionId: fmt.Sprintf("%d", clock), // Using clock as version ID
+		VersionId: fmt.Sprintf("%d", clock),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to rollback document: %w", err)

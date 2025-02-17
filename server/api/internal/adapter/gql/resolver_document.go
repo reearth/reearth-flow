@@ -4,11 +4,11 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
-	"github.com/reearth/reearth-flow/api/internal/usecase/document"
+	"github.com/reearth/reearth-flow/api/internal/usecase/websocket"
 )
 
 func (r *queryResolver) DocumentLatest(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Document, error) {
-	doc, err := document.GetLatest(ctx, string(id))
+	doc, err := websocket.GetLatest(ctx, string(id))
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +22,7 @@ func (r *queryResolver) DocumentLatest(ctx context.Context, id gqlmodel.ID) (*gq
 }
 
 func (r *queryResolver) DocumentSnapshot(ctx context.Context, id gqlmodel.ID) ([]*gqlmodel.DocumentSnapshot, error) {
-	history, err := document.GetHistory(ctx, string(id))
+	history, err := websocket.GetHistory(ctx, string(id))
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func (r *queryResolver) DocumentSnapshot(ctx context.Context, id gqlmodel.ID) ([
 }
 
 func (r *mutationResolver) DocumentRollback(ctx context.Context, id gqlmodel.ID, clock int) (*gqlmodel.Document, error) {
-	doc, err := document.Rollback(ctx, string(id), clock)
+	doc, err := websocket.Rollback(ctx, string(id), clock)
 	if err != nil {
 		return nil, err
 	}

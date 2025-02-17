@@ -1,16 +1,18 @@
-package document
+package websocket
 
 import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/websocket"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	ws "github.com/reearth/reearth-flow/api/pkg/websocket"
 	"github.com/reearth/reearthx/log"
 )
 
 var (
-	defaultClient *Client
+	defaultClient interfaces.WebsocketClient
 	cfg           Config
 	clientOnce    sync.Once
 )
@@ -19,10 +21,10 @@ func Init(c Config) {
 	cfg = c
 }
 
-func getDefaultClient() *Client {
+func getDefaultClient() interfaces.WebsocketClient {
 	clientOnce.Do(func() {
 		log.Infof("Creating new document client with gRPC address: %s", cfg.GrpcServerURL)
-		client, err := NewClient(cfg.GrpcServerURL)
+		client, err := websocket.NewClient(cfg.GrpcServerURL)
 		if err != nil {
 			log.Errorf("Failed to create document client: %v", err)
 			return
@@ -35,20 +37,7 @@ func getDefaultClient() *Client {
 	return defaultClient
 }
 
-type Document struct {
-	ID        string
-	Update    []int
-	Clock     int
-	Timestamp time.Time
-}
-
-type History struct {
-	Update    []int
-	Clock     int
-	Timestamp time.Time
-}
-
-func GetLatest(ctx context.Context, id string) (*Document, error) {
+func GetLatest(ctx context.Context, id string) (*ws.Document, error) {
 	client := getDefaultClient()
 	if client == nil {
 		return nil, fmt.Errorf("document client is not initialized")
@@ -56,7 +45,7 @@ func GetLatest(ctx context.Context, id string) (*Document, error) {
 	return client.GetLatest(ctx, id)
 }
 
-func GetHistory(ctx context.Context, id string) ([]*History, error) {
+func GetHistory(ctx context.Context, id string) ([]*ws.History, error) {
 	client := getDefaultClient()
 	if client == nil {
 		return nil, fmt.Errorf("document client is not initialized")
@@ -64,7 +53,7 @@ func GetHistory(ctx context.Context, id string) ([]*History, error) {
 	return client.GetHistory(ctx, id)
 }
 
-func Rollback(ctx context.Context, id string, clock int) (*Document, error) {
+func Rollback(ctx context.Context, id string, clock int) (*ws.Document, error) {
 	client := getDefaultClient()
 	if client == nil {
 		return nil, fmt.Errorf("document client is not initialized")

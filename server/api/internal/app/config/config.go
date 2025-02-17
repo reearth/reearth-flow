@@ -8,7 +8,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/k0kubun/pp/v3"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/reearth/reearth-flow/api/internal/usecase/document"
+	"github.com/reearth/reearth-flow/api/internal/usecase/websocket"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/mailer"
@@ -74,7 +74,7 @@ type (
 		Worker_BinaryPath   string `pp:",omitempty"`
 		Worker_ImageURL     string `pp:",omitempty"`
 
-		Document document.Config `default:""`
+		WebsocketServer websocket.Config `default:""`
 	}
 )
 
