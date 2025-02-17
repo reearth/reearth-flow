@@ -27,6 +27,7 @@ nusamai-citygml.workspace = true
 nusamai-gltf.workspace = true
 nusamai-plateau.workspace = true
 nusamai-projection.workspace = true
+nusamai-czml.workspace = true
 
 ahash.workspace = true
 async-trait.workspace = true
