@@ -51,16 +51,24 @@ const LeftPanel: React.FC<Props> = ({
     }
   }, [isOpen, selectedTab]);
 
+  const getNodePosition = (node: Node) => {
+    return {
+      x: node.parentId
+        ? (nodes.find((parent) => parent.id === node.parentId)?.position.x ?? 0)
+        : (node.position.x ?? 0),
+      y: node.parentId
+        ? (nodes.find((parent) => parent.id === node.parentId)?.position.y ?? 0)
+        : (node.position.y ?? 0),
+    };
+  };
+
   const treeContent: TreeDataItem[] = [
     ...(nodes
       ?.filter((n) => n.type === "reader")
       .map((n) => ({
         id: n.id,
         name: n.data.customName || n.data.officialName || "untitled",
-        position: {
-          x: n.position.x,
-          y: n.position.y,
-        },
+        position: getNodePosition(n),
         icon: Database,
         type: n.type,
       })) ?? []),
@@ -75,10 +83,7 @@ const LeftPanel: React.FC<Props> = ({
               .map((n) => ({
                 id: n.id,
                 name: n.data.customName || n.data.officialName || "untitled",
-                position: {
-                  x: n.position.x,
-                  y: n.position.y,
-                },
+                position: getNodePosition(n),
                 icon: Disc,
                 type: n.type,
               })),
@@ -96,10 +101,7 @@ const LeftPanel: React.FC<Props> = ({
               .map((n) => ({
                 id: n.id,
                 name: n.data.customName || n.data.officialName || "untitled",
-                position: {
-                  x: n.position.x,
-                  y: n.position.y,
-                },
+                position: getNodePosition(n),
                 icon: Lightning,
                 type: n.type,
               })),
@@ -117,10 +119,7 @@ const LeftPanel: React.FC<Props> = ({
               .map((n) => ({
                 id: n.id,
                 name: n.data.customName || n.data.officialName || "untitled",
-                position: {
-                  x: n.position.x,
-                  y: n.position.y,
-                },
+                position: getNodePosition(n),
                 icon: Graph,
                 type: n.type,
               })),
@@ -132,10 +131,7 @@ const LeftPanel: React.FC<Props> = ({
       .map((n) => ({
         id: n.id,
         name: n.data.customName || n.data.officialName || "untitled",
-        position: {
-          x: n.position.x,
-          y: n.position.y,
-        },
+        position: getNodePosition(n),
         icon: Note,
       })) ?? []),
     ...(nodes?.some((n) => n.type === "batch")
@@ -152,30 +148,19 @@ const LeftPanel: React.FC<Props> = ({
                   n.data.params?.customName ||
                   n.data.officialName ||
                   "untitled",
-                position: {
-                  x: n.position.x,
-                  y: n.position.y,
-                },
+                position: getNodePosition(n),
                 icon: RectangleDashed,
                 type: n.type,
                 children: nodes
-                  ?.filter((d) => {
-                    return d.parentId === n.id;
-                  })
-                  .map((d) => {
-                    return {
-                      id: d.id,
-                      name:
-                        d.data.customName || d.data.officialName || "untitled",
-                      position: {
-                        x: n.position.x,
-                        y: n.position.y,
-                      },
-
-                      icon: getNodeIcon(d.type),
-                      type: d.type,
-                    };
-                  }),
+                  ?.filter((d) => d.parentId === n.id)
+                  .map((d) => ({
+                    id: d.id,
+                    name:
+                      d.data.customName || d.data.officialName || "untitled",
+                    position: getNodePosition(d),
+                    icon: getNodeIcon(d.type),
+                    type: d.type,
+                  })),
               })),
           },
         ]
@@ -213,7 +198,7 @@ const LeftPanel: React.FC<Props> = ({
         <Tree
           data={treeContent}
           className="w-full shrink-0 truncate rounded px-1"
-          // initialSlelectedItemId="1"
+          // initialSelectedItemId="1"
           onSelectChange={(item) => setContent(item?.name ?? "")}
           // folderIcon={Folder}
           // itemIcon={Database}
