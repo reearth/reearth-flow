@@ -293,5 +293,6 @@ export default ({
     handleEdgesAdd: handleYEdgesAdd,
     handleEdgesChange: handleYEdgesChange,
     handleEdgeHover,
+    handleNodeLocking,
   };
 };

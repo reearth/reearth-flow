@@ -1,4 +1,15 @@
-import { Database, Disc, Lightning, TreeView } from "@phosphor-icons/react";
+import {
+  Circle,
+  Database,
+  Disc,
+  Graph,
+  Lightning,
+  Note,
+  Plus,
+  RectangleDashed,
+  TreeView,
+  Lock,
+} from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
 import { memo, useEffect, useState } from "react";
 
@@ -7,6 +18,8 @@ import { UserMenu } from "@flow/features/common";
 import { useShortcuts } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { Node } from "@flow/types";
+
+import { useLocker } from "../../useInteractionLocker";
 
 import { ActionsList } from "./components";
 
@@ -19,6 +32,7 @@ type Props = {
   onNodesAdd: (node: Node[]) => void;
   isMainWorkflow: boolean;
   hasReader?: boolean;
+  onNodeLocking: (nodeId: string) => void;
 };
 
 const LeftPanel: React.FC<Props> = ({
@@ -28,18 +42,29 @@ const LeftPanel: React.FC<Props> = ({
   onNodesAdd,
   isMainWorkflow,
   hasReader,
+  onNodeLocking,
 }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
   const [selectedTab, setSelectedTab] = useState<Tab | undefined>();
 
   const [_content, setContent] = useState("Admin Page");
+  const {
+    interactionLockedNodes,
+    lockNodeInteraction,
+    unlockNodeInteraction,
+    unlockAllNodes,
+  } = useLocker();
 
+  console.log("interactionLockedNodes", interactionLockedNodes);
   useEffect(() => {
     if (!isOpen && selectedTab) {
       setSelectedTab(undefined);
     }
   }, [isOpen, selectedTab]);
+
+  const isNodeLocked = (nodeId: string) =>
+    interactionLockedNodes.some((lockedNode) => lockedNode.id === nodeId);
 
   const treeContent: TreeDataItem[] = [
     ...(nodes
@@ -47,28 +72,114 @@ const LeftPanel: React.FC<Props> = ({
       .map((n) => ({
         id: n.id,
         name: n.data.customName || n.data.officialName || "untitled",
-        icon: Database,
+        icon: isNodeLocked(n.id) ? Lock : Database,
+        type: n.type,
       })) ?? []),
+    ...(nodes?.some((n) => n.type === "writer")
+      ? [
+          {
+            id: "writer",
+            name: t("Writers"),
+            icon: Disc,
+            children: nodes
+              ?.filter((n) => n.type === "writer")
+              .map((n) => ({
+                id: n.id,
+                name: n.data.customName || n.data.officialName || "untitled",
+                icon: isNodeLocked(n.id) ? Lock : Disc,
+                type: n.type,
+              })),
+          },
+        ]
+      : []),
+    ...(nodes?.some((n) => n.type === "transformer")
+      ? [
+          {
+            id: "transformer",
+            name: t("Transformers"),
+            icon: Lightning,
+            children: nodes
+              ?.filter((n) => n.type === "transformer")
+              .map((n) => ({
+                id: n.id,
+                name: n.data.customName || n.data.officialName || "untitled",
+                icon: isNodeLocked(n.id) ? Lock : Lightning,
+                type: n.type,
+              })),
+          },
+        ]
+      : []),
+    ...(nodes?.some((n) => n.type === "subworkflow")
+      ? [
+          {
+            id: "subworkflow",
+            name: t("Subworkflow"),
+            icon: Plus,
+            children: nodes
+              ?.filter((n) => n.type === "subworkflow")
+              .map((n) => ({
+                id: n.id,
+                name: n.data.customName || n.data.officialName || "untitled",
+                icon: isNodeLocked(n.id) ? Lock : Graph,
+                type: n.type,
+              })),
+          },
+        ]
+      : []),
     ...(nodes
-      ?.filter((n) => n.type === "writer")
+      ?.filter((n) => n.type === "note")
       .map((n) => ({
         id: n.id,
         name: n.data.customName || n.data.officialName || "untitled",
-        icon: Disc,
+        icon: Note,
       })) ?? []),
-    {
-      id: "transformer",
-      name: t("Transformers"),
-      icon: Lightning,
-      children: nodes
-        ?.filter((n) => n.type === "transformer")
-        .map((n) => ({
-          id: n.id,
-          name: n.data.customName || n.data.officialName || "untitled",
-          // icon: Disc,
-        })),
-    },
+    ...(nodes?.some((n) => n.type === "batch")
+      ? [
+          {
+            id: "batch",
+            name: t("Batch Node"),
+            icon: RectangleDashed,
+            children: nodes
+              ?.filter((n) => n.type === "batch")
+              .map((n) => ({
+                id: n.id,
+                name:
+                  n.data.params?.customName ||
+                  n.data.officialName ||
+                  "untitled",
+                icon: isNodeLocked(n.id) ? Lock : RectangleDashed,
+                type: n.type,
+                children: nodes
+                  ?.filter((d) => d.parentId === n.id)
+                  .map((d) => ({
+                    id: d.id,
+                    name:
+                      d.data.customName || d.data.officialName || "untitled",
+                    icon: isNodeLocked(n.id) ? Lock : getNodeIcon(d.type),
+                  })),
+              })),
+          },
+        ]
+      : []),
   ];
+
+  function getNodeIcon(type: string | undefined) {
+    switch (type) {
+      case "note":
+        return Note;
+      case "subworkflow":
+        return Plus;
+      case "transformer":
+        return Lightning;
+      case "reader":
+        return Database;
+      case "writer":
+        return Disc;
+      default:
+        return Circle;
+    }
+  }
+  let idContainer = "";
 
   const tabs: {
     id: Tab;
@@ -81,14 +192,43 @@ const LeftPanel: React.FC<Props> = ({
       title: t("Canvas Navigation"),
       icon: <TreeView className="size-5" weight="thin" />,
       component: nodes && (
-        <Tree
-          data={treeContent}
-          className="w-full shrink-0 truncate rounded px-1"
-          // initialSlelectedItemId="1"
-          onSelectChange={(item) => setContent(item?.name ?? "")}
-          // folderIcon={Folder}
-          // itemIcon={Database}
-        />
+        <div className="flex flex-col">
+          <Tree
+            data={treeContent}
+            className="w-full shrink-0 truncate rounded px-1"
+            // initialSlelectedItemId="1"
+            onSelectChange={(item) => {
+              setContent(item?.name ?? "");
+
+              if (typeof item?.id === "string") {
+                idContainer = item.id;
+              }
+            }}
+            onDoubleClick={() => {
+              if (idContainer) {
+                const node = nodes.find((n) => n.id === idContainer);
+                if (node) {
+                  if (interactionLockedNodes.some((n) => n.id === node.id)) {
+                    console.log("UNLOCK");
+                    unlockNodeInteraction(node);
+                  } else {
+                    console.log("LOCK");
+                    lockNodeInteraction(node);
+                    console.log("Node");
+                    onNodeLocking(node.id);
+                  }
+                }
+              }
+            }}
+            // folderIcon={Folder}
+            // itemIcon={Database}
+          />
+          <button
+            onClick={unlockAllNodes}
+            className="absolute bottom-2 right-2 flex h-8 w-24 items-center justify-center rounded-lg bg-red-500 text-xs text-white shadow-md hover:bg-red-400">
+            Unlock All
+          </button>
+        </div>
       ),
     },
     {
