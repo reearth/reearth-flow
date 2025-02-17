@@ -13,6 +13,7 @@ type TreeDataItem = {
   icon?: Icon;
   type?: string;
   position?: XYPosition;
+  measured?: { width: number; height: number };
   children?: TreeDataItem[];
 };
 
@@ -218,8 +219,8 @@ const Leaf = forwardRef<
   const { handleOnNodeFocus } = useFocusOnNode();
   const zoom = 1.85;
   const focusOnNodeDoubleClick = () => {
-    if (!item.position) return;
-    handleOnNodeFocus(item.position, zoom);
+    if (!item.position || !item.measured) return;
+    handleOnNodeFocus(item.position, item.measured, zoom);
   };
 
   console.log("item", item);

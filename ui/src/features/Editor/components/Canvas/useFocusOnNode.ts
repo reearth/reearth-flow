@@ -5,9 +5,15 @@ export default () => {
   const { setCenter } = useReactFlow();
 
   const handleOnNodeFocus = useCallback(
-    (position: XYPosition, zoom: number) => {
-      if (position) {
-        setCenter(position.x, position.y, { zoom });
+    (
+      position: XYPosition,
+      measured: { width: number; height: number },
+      zoom: number,
+    ) => {
+      if (position && measured) {
+        const x = position.x + measured.width / 2;
+        const y = position.y + measured.height / 2;
+        setCenter(x, y, { zoom });
       }
     },
     [setCenter],

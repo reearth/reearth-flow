@@ -69,6 +69,10 @@ const LeftPanel: React.FC<Props> = ({
         id: n.id,
         name: n.data.customName || n.data.officialName || "untitled",
         position: getNodePosition(n),
+        measured: {
+          width: n.measured?.width ?? 0,
+          height: n.measured?.height ?? 0,
+        },
         icon: Database,
         type: n.type,
       })) ?? []),
@@ -84,6 +88,10 @@ const LeftPanel: React.FC<Props> = ({
                 id: n.id,
                 name: n.data.customName || n.data.officialName || "untitled",
                 position: getNodePosition(n),
+                measured: {
+                  width: n.measured?.width ?? 0,
+                  height: n.measured?.height ?? 0,
+                },
                 icon: Disc,
                 type: n.type,
               })),
@@ -102,6 +110,10 @@ const LeftPanel: React.FC<Props> = ({
                 id: n.id,
                 name: n.data.customName || n.data.officialName || "untitled",
                 position: getNodePosition(n),
+                measured: {
+                  width: n.measured?.width ?? 0,
+                  height: n.measured?.height ?? 0,
+                },
                 icon: Lightning,
                 type: n.type,
               })),
@@ -120,6 +132,10 @@ const LeftPanel: React.FC<Props> = ({
                 id: n.id,
                 name: n.data.customName || n.data.officialName || "untitled",
                 position: getNodePosition(n),
+                measured: {
+                  width: n.measured?.width ?? 0,
+                  height: n.measured?.height ?? 0,
+                },
                 icon: Graph,
                 type: n.type,
               })),
@@ -132,6 +148,10 @@ const LeftPanel: React.FC<Props> = ({
         id: n.id,
         name: n.data.customName || n.data.officialName || "untitled",
         position: getNodePosition(n),
+        measured: {
+          width: n.measured?.width ?? 0,
+          height: n.measured?.height ?? 0,
+        },
         icon: Note,
       })) ?? []),
     ...(nodes?.some((n) => n.type === "batch")
@@ -158,6 +178,10 @@ const LeftPanel: React.FC<Props> = ({
                     name:
                       d.data.customName || d.data.officialName || "untitled",
                     position: getNodePosition(d),
+                    measured: {
+                      width: n.measured?.width ?? 0,
+                      height: n.measured?.height ?? 0,
+                    },
                     icon: getNodeIcon(d.type),
                     type: d.type,
                   })),
