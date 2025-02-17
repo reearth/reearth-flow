@@ -2351,17 +2351,13 @@ type DocumentHistory {
 # Query
 
 extend type Query {
-  # Get the latest state of a document
   documentLatest(id: ID!): Document
-
-  # Get the history of updates for a document
   documentHistory(id: ID!): [DocumentHistory!]!
 }
 
 # Mutation
 
 extend type Mutation {
-  # Rollback a document to a specific clock
   documentRollback(id: ID!, clock: Int!): Document
 }
 `, BuiltIn: false},
