@@ -78,7 +78,6 @@ graphs:
             value: |
               datetime::add_second(env.get("__value").testAttribute01, 1)
 
-
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: FileWriterCSV
         type: action
@@ -86,7 +85,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("currentPath"), "a008-1.csv")
+            file::join_path(env.get("currentPath"), "a008-2.csv")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
