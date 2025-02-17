@@ -53,6 +53,8 @@ type (
 		HTTPSREDIRECT    bool              `pp:",omitempty"`
 		SharedPath       string            `default:"shared"`
 
+		GRPCPort int `default:"50051" envconfig:"REEARTH_FLOW_API_GRPC_PORT"`
+
 		// storage
 		GCS GCSConfig `pp:",omitempty"`
 		S3  S3Config  `pp:",omitempty"`

@@ -236,3 +236,107 @@ var DocumentService_ServiceDesc = grpc.ServiceDesc{
 	},
 	Metadata: "proto/document.proto",
 }
+
+const (
+	WorkspaceService_VerifyWorkspaceToken_FullMethodName = "/proto.WorkspaceService/VerifyWorkspaceToken"
+)
+
+// WorkspaceServiceClient is the client API for WorkspaceService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type WorkspaceServiceClient interface {
+	// Verify workspace token
+	VerifyWorkspaceToken(ctx context.Context, in *WorkspaceTokenVerifyRequest, opts ...grpc.CallOption) (*WorkspaceTokenVerifyResponse, error)
+}
+
+type workspaceServiceClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewWorkspaceServiceClient(cc grpc.ClientConnInterface) WorkspaceServiceClient {
+	return &workspaceServiceClient{cc}
+}
+
+func (c *workspaceServiceClient) VerifyWorkspaceToken(ctx context.Context, in *WorkspaceTokenVerifyRequest, opts ...grpc.CallOption) (*WorkspaceTokenVerifyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(WorkspaceTokenVerifyResponse)
+	err := c.cc.Invoke(ctx, WorkspaceService_VerifyWorkspaceToken_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// WorkspaceServiceServer is the server API for WorkspaceService service.
+// All implementations must embed UnimplementedWorkspaceServiceServer
+// for forward compatibility.
+type WorkspaceServiceServer interface {
+	// Verify workspace token
+	VerifyWorkspaceToken(context.Context, *WorkspaceTokenVerifyRequest) (*WorkspaceTokenVerifyResponse, error)
+	mustEmbedUnimplementedWorkspaceServiceServer()
+}
+
+// UnimplementedWorkspaceServiceServer must be embedded to have
+// forward compatible implementations.
+//
+// NOTE: this should be embedded by value instead of pointer to avoid a nil
+// pointer dereference when methods are called.
+type UnimplementedWorkspaceServiceServer struct{}
+
+func (UnimplementedWorkspaceServiceServer) VerifyWorkspaceToken(context.Context, *WorkspaceTokenVerifyRequest) (*WorkspaceTokenVerifyResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VerifyWorkspaceToken not implemented")
+}
+func (UnimplementedWorkspaceServiceServer) mustEmbedUnimplementedWorkspaceServiceServer() {}
+func (UnimplementedWorkspaceServiceServer) testEmbeddedByValue()                          {}
+
+// UnsafeWorkspaceServiceServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to WorkspaceServiceServer will
+// result in compilation errors.
+type UnsafeWorkspaceServiceServer interface {
+	mustEmbedUnimplementedWorkspaceServiceServer()
+}
+
+func RegisterWorkspaceServiceServer(s grpc.ServiceRegistrar, srv WorkspaceServiceServer) {
+	// If the following call pancis, it indicates UnimplementedWorkspaceServiceServer was
+	// embedded by pointer and is nil.  This will cause panics if an
+	// unimplemented method is ever invoked, so we test this at initialization
+	// time to prevent it from happening at runtime later due to I/O.
+	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
+		t.testEmbeddedByValue()
+	}
+	s.RegisterService(&WorkspaceService_ServiceDesc, srv)
+}
+
+func _WorkspaceService_VerifyWorkspaceToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(WorkspaceTokenVerifyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(WorkspaceServiceServer).VerifyWorkspaceToken(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: WorkspaceService_VerifyWorkspaceToken_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(WorkspaceServiceServer).VerifyWorkspaceToken(ctx, req.(*WorkspaceTokenVerifyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// WorkspaceService_ServiceDesc is the grpc.ServiceDesc for WorkspaceService service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var WorkspaceService_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "proto.WorkspaceService",
+	HandlerType: (*WorkspaceServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "VerifyWorkspaceToken",
+			Handler:    _WorkspaceService_VerifyWorkspaceToken_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "proto/document.proto",
+}
