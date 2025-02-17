@@ -4,7 +4,6 @@ import { XYPosition } from "@xyflow/react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import useResizeObserver from "use-resize-observer";
 
-import useFocusOnNode from "@flow/features/Editor/components/Canvas/useFocusOnNode";
 import { cn } from "@flow/lib/utils";
 
 type TreeDataItem = {
@@ -216,14 +215,6 @@ const Leaf = forwardRef<
     Icon?: Icon;
   }
 >(({ className, item, isSelected, Icon, ...props }, ref) => {
-  const { handleOnNodeFocus } = useFocusOnNode();
-  const zoom = 1.85;
-  const focusOnNodeDoubleClick = () => {
-    if (!item.position || !item.measured) return;
-    handleOnNodeFocus(item.position, item.measured, zoom);
-  };
-
-  console.log("item", item);
   return (
     <div
       ref={ref}
@@ -234,7 +225,6 @@ const Leaf = forwardRef<
         isSelected &&
           "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-node-reader",
       )}
-      onDoubleClick={focusOnNodeDoubleClick}
       {...props}>
       {item.icon && (
         <item.icon

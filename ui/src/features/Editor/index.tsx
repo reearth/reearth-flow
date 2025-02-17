@@ -11,6 +11,7 @@ import {
   RightPanel,
 } from "./components";
 import useHooks from "./hooks";
+import { LockerProvider } from "./useInteractionLocker";
 
 type Props = {
   yWorkflows: YArray<YWorkflow>;
@@ -58,69 +59,73 @@ export default function Editor({
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
+    handleNodeLocking,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
-  console.log("nodes", nodes);
-  console.log("edges", edges);
+  // console.log("nodes", nodes);
+  // console.log("edges", edges);
   return (
-    <div className="flex h-screen flex-col">
-      <div className="relative flex flex-1">
-        <LeftPanel
-          nodes={nodes}
-          isOpen={openPanel === "left" && !locallyLockedNode}
-          onOpen={handlePanelOpen}
-          onNodesAdd={handleNodesAdd}
-          isMainWorkflow={isMainWorkflow}
-          hasReader={hasReader}
-        />
-        <div className="flex flex-1 flex-col">
-          <OverlayUI
-            hoveredDetails={hoveredDetails}
-            nodePickerOpen={nodePickerOpen}
-            allowedToDeploy={allowedToDeploy}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            onWorkflowDeployment={handleWorkflowDeployment}
-            onWorkflowUndo={handleWorkflowUndo}
-            onWorkflowRedo={handleWorkflowRedo}
-            onNodesAdd={handleNodesAdd}
-            onNodePickerClose={handleNodePickerClose}
-            onRightPanelOpen={handleRightPanelOpen}
-            isMainWorkflow={isMainWorkflow}
-            hasReader={hasReader}>
-            <Canvas
-              nodes={nodes}
-              edges={edges}
-              canvasLock={!!locallyLockedNode}
-              onWorkflowAdd={handleWorkflowAdd}
-              onNodesAdd={handleNodesAdd}
-              onNodesChange={handleNodesChange}
-              onNodeHover={handleNodeHover}
-              onNodeDoubleClick={handleNodeDoubleClick}
-              onNodePickerOpen={handleNodePickerOpen}
-              onEdgesAdd={handleEdgesAdd}
-              onEdgesChange={handleEdgesChange}
-              onEdgeHover={handleEdgeHover}
-            />
-          </OverlayUI>
-          <BottomPanel
-            currentWorkflowId={currentWorkflowId}
-            openWorkflows={openWorkflows}
-            isOpen={openPanel === "bottom" && !locallyLockedNode}
+    <LockerProvider>
+      <div className="flex h-screen flex-col">
+        <div className="relative flex flex-1">
+          <LeftPanel
+            nodes={nodes}
+            isOpen={openPanel === "left" && !locallyLockedNode}
             onOpen={handlePanelOpen}
-            onWorkflowClose={handleWorkflowClose}
-            onWorkflowChange={handleWorkflowChange}
-            onWorkflowRename={handleWorkflowRename}
+            onNodesAdd={handleNodesAdd}
+            isMainWorkflow={isMainWorkflow}
+            hasReader={hasReader}
+            onNodeLocking={handleNodeLocking}
+          />
+          <div className="flex flex-1 flex-col">
+            <OverlayUI
+              hoveredDetails={hoveredDetails}
+              nodePickerOpen={nodePickerOpen}
+              allowedToDeploy={allowedToDeploy}
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onWorkflowDeployment={handleWorkflowDeployment}
+              onWorkflowUndo={handleWorkflowUndo}
+              onWorkflowRedo={handleWorkflowRedo}
+              onNodesAdd={handleNodesAdd}
+              onNodePickerClose={handleNodePickerClose}
+              onRightPanelOpen={handleRightPanelOpen}
+              isMainWorkflow={isMainWorkflow}
+              hasReader={hasReader}>
+              <Canvas
+                nodes={nodes}
+                edges={edges}
+                canvasLock={!!locallyLockedNode}
+                onWorkflowAdd={handleWorkflowAdd}
+                onNodesAdd={handleNodesAdd}
+                onNodesChange={handleNodesChange}
+                onNodeHover={handleNodeHover}
+                onNodeDoubleClick={handleNodeDoubleClick}
+                onNodePickerOpen={handleNodePickerOpen}
+                onEdgesAdd={handleEdgesAdd}
+                onEdgesChange={handleEdgesChange}
+                onEdgeHover={handleEdgeHover}
+              />
+            </OverlayUI>
+            <BottomPanel
+              currentWorkflowId={currentWorkflowId}
+              openWorkflows={openWorkflows}
+              isOpen={openPanel === "bottom" && !locallyLockedNode}
+              onOpen={handlePanelOpen}
+              onWorkflowClose={handleWorkflowClose}
+              onWorkflowChange={handleWorkflowChange}
+              onWorkflowRename={handleWorkflowRename}
+            />
+          </div>
+          <RightPanel
+            contentType={rightPanelContent}
+            onClose={() => handleRightPanelOpen(undefined)}
+          />
+          <ParamsPanel
+            selected={locallyLockedNode}
+            onParamsSubmit={handleNodeParamsUpdate}
           />
         </div>
-        <RightPanel
-          contentType={rightPanelContent}
-          onClose={() => handleRightPanelOpen(undefined)}
-        />
-        <ParamsPanel
-          selected={locallyLockedNode}
-          onParamsSubmit={handleNodeParamsUpdate}
-        />
       </div>
-    </div>
+    </LockerProvider>
   );
 }
