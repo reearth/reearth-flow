@@ -753,6 +753,49 @@
       ]
     },
     {
+      "name": "CzmlWriter",
+      "type": "sink",
+      "description": "Writes features to a Czml file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CzmlWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
       "name": "DimensionFilter",
       "type": "processor",
       "description": "Filtra las entidades según su dimensión",
