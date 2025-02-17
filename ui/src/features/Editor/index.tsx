@@ -69,7 +69,7 @@ export default function Editor({
         <div className="relative flex flex-1">
           <LeftPanel
             nodes={nodes}
-            isOpen={openPanel === "left" && !locallyLockedNode}
+            isOpen={openPanel === "left"}
             onOpen={handlePanelOpen}
             onNodesAdd={handleNodesAdd}
             isMainWorkflow={isMainWorkflow}

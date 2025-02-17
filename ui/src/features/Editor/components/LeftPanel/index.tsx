@@ -32,7 +32,7 @@ type Props = {
   onNodesAdd: (node: Node[]) => void;
   isMainWorkflow: boolean;
   hasReader?: boolean;
-  onNodeLocking: (nodeId: string, options?: { source: string }) => void;
+  onNodeLocking: (nodeId: string) => void;
 };
 
 const LeftPanel: React.FC<Props> = ({
@@ -42,6 +42,7 @@ const LeftPanel: React.FC<Props> = ({
   onNodesAdd,
   isMainWorkflow,
   hasReader,
+  onNodeLocking,
 }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
@@ -54,6 +55,8 @@ const LeftPanel: React.FC<Props> = ({
     unlockNodeInteraction,
     unlockAllNodes,
   } = useLocker();
+
+  console.log("interactionLockedNodes", interactionLockedNodes);
   useEffect(() => {
     if (!isOpen && selectedTab) {
       setSelectedTab(undefined);
@@ -177,6 +180,7 @@ const LeftPanel: React.FC<Props> = ({
     }
   }
   let idContainer = "";
+
   const tabs: {
     id: Tab;
     title: string;
@@ -205,9 +209,13 @@ const LeftPanel: React.FC<Props> = ({
                 const node = nodes.find((n) => n.id === idContainer);
                 if (node) {
                   if (interactionLockedNodes.some((n) => n.id === node.id)) {
+                    console.log("UNLOCK");
                     unlockNodeInteraction(node);
                   } else {
+                    console.log("LOCK");
                     lockNodeInteraction(node);
+                    console.log("Node");
+                    onNodeLocking(node.id);
                   }
                 }
               }
