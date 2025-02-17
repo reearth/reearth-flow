@@ -50,7 +50,7 @@ async fn main() {
     let state = Arc::new({
         #[cfg(feature = "auth")]
         {
-            let auth = Arc::new(AuthService::new(config.auth));
+            let auth = Arc::new(AuthService::new(config.auth).await.unwrap());
             tracing::info!("Auth service initialized");
             AppState { pool, auth }
         }

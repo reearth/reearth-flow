@@ -13,9 +13,7 @@ const DEFAULT_REDIS_TTL: u64 = 3600;
 const DEFAULT_GCS_BUCKET: &str = "yrs-dev";
 const DEFAULT_GCS_ENDPOINT: &str = "http://localhost:4443";
 #[cfg(feature = "auth")]
-const DEFAULT_AUTH_URL: &str = "http://localhost:8080/api/verify/ws-token";
-#[cfg(feature = "auth")]
-const DEFAULT_AUTH_TIMEOUT_MS: u64 = 5000;
+const DEFAULT_AUTH_URL: &str = "http://[::1]:50053";
 const DEFAULT_APP_ENV: &str = "development";
 const DEFAULT_ORIGINS: &str = "http://localhost:3000";
 const DEFAULT_WS_PORT: &str = "8000";
@@ -32,7 +30,6 @@ pub enum ConfigError {
 #[derive(Debug, Deserialize, Clone)]
 pub struct AuthConfig {
     pub url: String,
-    pub timeout_ms: u64,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -208,7 +205,6 @@ impl ConfigBuilder {
                 url: self
                     .auth_url
                     .unwrap_or_else(|| DEFAULT_AUTH_URL.to_string()),
-                timeout_ms: self.auth_timeout.unwrap_or(DEFAULT_AUTH_TIMEOUT_MS),
             },
             app: AppConfig {
                 env: self.app_env.unwrap_or_else(|| DEFAULT_APP_ENV.to_string()),

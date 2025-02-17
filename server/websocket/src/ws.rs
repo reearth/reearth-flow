@@ -2,7 +2,7 @@ use crate::broadcast::group::BroadcastGroup;
 use crate::conn::Connection;
 use axum::extract::ws::{Message, WebSocket};
 use axum::{
-    extract::{Path, State, WebSocketUpgrade},
+    extract::{Path, Query, State, WebSocketUpgrade},
     response::Response,
 };
 use futures_util::stream::{SplitSink, SplitStream};
@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use yrs::sync::Error;
 
-use crate::{pool::BroadcastPool, AppState};
+use crate::{pool::BroadcastPool, AppState, AuthQuery};
 
 /// Connection Wrapper over a [WebSocket], which implements a Yjs/Yrs awareness and update exchange
 /// protocol.
@@ -126,9 +126,35 @@ impl Stream for WarpStream {
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
     Path(doc_id): Path<String>,
+    Query(query): Query<AuthQuery>,
     State(state): State<Arc<AppState>>,
 ) -> Response {
     let doc_id = normalize_doc_id(&doc_id);
+
+    // Verify token
+    #[cfg(feature = "auth")]
+    {
+        let authorized = state.auth.verify_token(&query.token).await;
+        match authorized {
+            Ok(true) => {
+                tracing::debug!("Token verified successfully");
+            }
+            Ok(false) => {
+                tracing::error!("Token verification failed");
+                return Response::builder()
+                    .status(401)
+                    .body(axum::body::Body::empty())
+                    .unwrap();
+            }
+            Err(e) => {
+                tracing::error!("Token verification error: {}", e);
+                return Response::builder()
+                    .status(500)
+                    .body(axum::body::Body::empty())
+                    .unwrap();
+            }
+        }
+    }
 
     let bcast = match state.pool.get_or_create_group(&doc_id).await {
         Ok(group) => group,

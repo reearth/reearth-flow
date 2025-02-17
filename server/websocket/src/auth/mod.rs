@@ -1,49 +1,38 @@
-use crate::conf::AuthConfig;
+use crate::{conf::AuthConfig, proto};
 use anyhow::Result;
-use reqwest::Client;
-use serde::{Deserialize, Serialize};
-use std::{fmt::Debug, time::Duration};
+use proto::{auth_service_client::AuthServiceClient, ApiTokenVerifyRequest};
+use tonic::transport::Channel;
+use tracing::debug;
 
-#[derive(Debug, Deserialize, Serialize)]
-struct AuthResponse {
-    authorized: bool,
-}
-
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub struct AuthService {
-    client: Client,
-    config: AuthConfig,
+    client: AuthServiceClient<Channel>,
 }
 
 impl AuthService {
-    pub fn new(config: AuthConfig) -> Self {
-        {
-            let client = Client::builder()
-                .timeout(Duration::from_millis(config.timeout_ms))
-                .build()
-                .expect("Failed to create HTTP client");
-
-            Self { client, config }
-        }
+    pub async fn new(config: AuthConfig) -> Result<Self> {
+        debug!("Connecting to auth service at: {}", config.url);
+        let channel = Channel::from_shared(config.url)?.connect().await?;
+        let client = AuthServiceClient::new(channel);
+        Ok(Self { client })
     }
 
     pub async fn verify_token(&self, token: &str) -> Result<bool> {
-        {
-            let response = self
-                .client
-                .post(&self.config.url)
-                .header("Authorization", format!("Bearer {}", token))
-                .send()
-                .await?;
+        debug!("Verifying token");
+        let request = ApiTokenVerifyRequest {
+            token: token.to_string(),
+        };
 
-            tracing::debug!("response: {:?}", response);
-
-            if !response.status().is_success() {
-                return Ok(false);
+        match self.client.clone().verify_api_token(request).await {
+            Ok(response) => {
+                let authorized = response.into_inner().authorized;
+                debug!("Token verification result: {}", authorized);
+                Ok(authorized)
             }
-
-            let auth_response = response.json::<AuthResponse>().await?;
-            Ok(auth_response.authorized)
+            Err(e) => {
+                debug!("Token verification failed: {}", e);
+                Ok(false)
+            }
         }
     }
 }

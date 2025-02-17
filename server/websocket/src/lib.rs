@@ -16,6 +16,11 @@ pub use broadcast::pool;
 
 pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
 
+// Generated protobuf code
+pub mod proto {
+    tonic::include_proto!("proto");
+}
+
 // New modules
 pub mod server;
 
