@@ -24,7 +24,7 @@ func NewClient(address string) (*Client, error) {
 		address = fmt.Sprintf("%s:50051", address)
 	}
 
-	conn, err := grpc.Dial(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to gRPC server: %w", err)
 	}
