@@ -64,6 +64,10 @@ models:
         resolver: true
       deployment:
         resolver: true
+  Document:
+    fields:
+      update:
+        resolver: true
   Subscription:
     fields:
       jobStatus:

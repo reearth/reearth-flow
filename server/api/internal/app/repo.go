@@ -11,6 +11,7 @@ import (
 	mongorepo "github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/internal/usecase/websocket"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmongo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
@@ -24,7 +25,10 @@ import (
 
 const databaseName = "reearth-flow"
 
-func initReposAndGateways(ctx context.Context, conf *config.Config, debug bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
+func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
+	// Initialize document package
+	websocket.Init(conf.WebsocketServer)
+
 	gateways := &gateway.Container{}
 	acGateways := &accountgateway.Container{}
 

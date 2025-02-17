@@ -8,6 +8,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/k0kubun/pp/v3"
 	"github.com/kelseyhightower/envconfig"
+	"github.com/reearth/reearth-flow/api/internal/usecase/websocket"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/mailer"
@@ -24,7 +25,7 @@ type (
 	Mailer mailer.Mailer
 	Config struct {
 		mailer.Config
-		Port             string            `default:"8080" envconfig:"PORT"`
+		Port             int               `default:"8080"`
 		ServerHost       string            `pp:",omitempty"`
 		Host             string            `default:"http://localhost:8080"`
 		Host_Web         string            `pp:",omitempty"`
@@ -72,6 +73,8 @@ type (
 		Worker_BatchSAEmail string `pp:",omitempty"`
 		Worker_BinaryPath   string `pp:",omitempty"`
 		Worker_ImageURL     string `pp:",omitempty"`
+
+		WebsocketServer websocket.Config `default:""`
 	}
 )
 

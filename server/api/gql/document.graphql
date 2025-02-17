@@ -1,0 +1,25 @@
+type Document implements Node {
+  id: ID!
+  update: [Int!]!
+  clock: Int!
+  timestamp: DateTime!
+}
+
+type DocumentSnapshot {
+  update: [Int!]!
+  clock: Int!
+  timestamp: DateTime!
+}
+
+# Query
+
+extend type Query {
+  documentLatest(id: ID!): Document
+  DocumentSnapshot(id: ID!): [DocumentSnapshot!]!
+}
+
+# Mutation
+
+extend type Mutation {
+  documentRollback(id: ID!, clock: Int!): Document
+}
