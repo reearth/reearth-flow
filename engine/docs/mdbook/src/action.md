@@ -715,25 +715,40 @@ Creates a convex hull based on a group of input features.
 ### Category
 * Geometry
 
-## CoordinateSystemSetter
+## CzmlWriter
 ### Type
-* processor
+* sink
 ### Description
-Sets the coordinate system of a feature
+Writes features to a Czml file
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CoordinateSystemSetter",
+  "title": "CzmlWriterParam",
   "type": "object",
   "required": [
-    "epsgCode"
+    "output"
   ],
   "properties": {
-    "epsgCode": {
-      "type": "integer",
-      "format": "uint16",
-      "minimum": 0.0
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "output": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
+      "type": "string"
     }
   }
 }
@@ -741,9 +756,8 @@ Sets the coordinate system of a feature
 ### Input Ports
 * default
 ### Output Ports
-* default
 ### Category
-* Geometry
+* File
 
 ## DimensionFilter
 ### Type
@@ -2392,12 +2406,12 @@ Reprojects the geometry of a feature to a specified coordinate system
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "HorizontalReprojectorParam",
   "type": "object",
+  "required": [
+    "epsgCode"
+  ],
   "properties": {
     "epsgCode": {
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": "integer",
       "format": "uint16",
       "minimum": 0.0
     }

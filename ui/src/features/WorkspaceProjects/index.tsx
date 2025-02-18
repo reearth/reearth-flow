@@ -1,4 +1,4 @@
-import { Plus } from "@phosphor-icons/react";
+import { ArrowSquareIn, Plus } from "@phosphor-icons/react";
 
 import {
   Button,
@@ -12,8 +12,8 @@ import {
   SelectValue,
 } from "@flow/components/";
 import BasicBoiler from "@flow/components/BasicBoiler";
+import useProjectImport from "@flow/hooks/useProjectImport";
 import { useT } from "@flow/lib/i18n";
-import { OrderDirection } from "@flow/types/paginationOptions";
 
 import {
   ProjectAddDialog,
@@ -37,41 +37,48 @@ const ProjectsManager: React.FC = () => {
     openProjectAddDialog,
     currentPage,
     totalPages,
-    currentOrder,
     isFetching,
+    currentOrder,
+    orderDirections,
     setOpenProjectAddDialog,
     setEditProject,
     setProjectToBeDeleted,
+    setCurrentPage,
     handleProjectSelect,
     handleDeleteProject,
     handleUpdateValue,
     handleUpdateProject,
-    setCurrentPage,
-    setCurrentOrder,
+    handleOrderChange,
   } = useHooks();
-  const handleOrderChange = () => {
-    setCurrentOrder?.(
-      currentOrder === OrderDirection.Asc
-        ? OrderDirection.Desc
-        : OrderDirection.Asc,
-    );
-  };
-  const orderDirections: Record<OrderDirection, string> = {
-    DESC: t("Newest"),
-    ASC: t("Oldest"),
-  };
+
+  const {
+    fileInputRef,
+    isProjectImporting,
+    handleProjectImportClick,
+    handleProjectFileUpload,
+  } = useProjectImport();
+
   return (
     <div className="flex h-full flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pb-2 pt-4">
         <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg dark:font-extralight">{t("Projects")}</p>
-          <Button
-            className="flex gap-2"
-            variant="outline"
-            onClick={() => setOpenProjectAddDialog(true)}>
-            <Plus weight="thin" />
-            <p className="text-xs dark:font-light">{t("New Project")}</p>
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              className="flex gap-2"
+              variant="outline"
+              onClick={handleProjectImportClick}>
+              <ArrowSquareIn weight="thin" />
+              <p className="text-xs dark:font-light">{t("Import Project")}</p>
+            </Button>
+            <Button
+              className="flex gap-2"
+              variant="default"
+              onClick={() => setOpenProjectAddDialog(true)}>
+              <Plus weight="thin" />
+              <p className="text-xs dark:font-light">{t("New Project")}</p>
+            </Button>
+          </div>
         </div>
         {currentOrder && (
           <Select
@@ -89,7 +96,7 @@ const ProjectsManager: React.FC = () => {
             </SelectContent>
           </Select>
         )}
-        {isFetching ? (
+        {isFetching || isProjectImporting ? (
           <Loading />
         ) : projects && projects.length > 0 ? (
           <div
@@ -120,6 +127,13 @@ const ProjectsManager: React.FC = () => {
           totalPages={totalPages}
         />
       </div>
+      {/* This (ghost) input is used for uploading the project to be imported */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleProjectFileUpload}
+        style={{ display: "none" }}
+      />
       <ProjectAddDialog
         isOpen={openProjectAddDialog}
         onOpenChange={(o) => setOpenProjectAddDialog(o)}
