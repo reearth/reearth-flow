@@ -13,6 +13,11 @@ export type Project = {
   deployment?: Deployment;
 };
 
+export type ProjectToImport = {
+  name: string;
+  description: string;
+};
+
 export type GetWorkspaceProjects = {
   pages?: ({ projects?: Project[] } | undefined)[];
   hasNextPage: boolean;
