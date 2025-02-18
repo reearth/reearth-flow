@@ -78,7 +78,7 @@ impl Config {
         // Load Auth configuration
         #[cfg(feature = "auth")]
         {
-            if let Ok(url) = env::var("REEARTH_FLOW_AUTH_URL") {
+            if let Ok(url) = env::var("REEARTH_FLOW_GRPC_AUTH_URL") {
                 builder = builder.auth_url(url);
             }
         }
