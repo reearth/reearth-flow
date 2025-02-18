@@ -29,6 +29,7 @@ type Props = {
   isMainWorkflow: boolean;
   hasReader?: boolean;
   onNodeDoubleClick: (e: React.MouseEvent<Element>, node: Node) => void;
+  selected?: Node;
 };
 
 const LeftPanel: React.FC<Props> = ({
@@ -39,11 +40,28 @@ const LeftPanel: React.FC<Props> = ({
   isMainWorkflow,
   hasReader,
   onNodeDoubleClick,
+  selected,
 }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
   const [selectedTab, setSelectedTab] = useState<Tab | undefined>();
-  const { fitView } = useReactFlow();
+  const { fitView, getZoom, zoomTo } = useReactFlow();
+  const [previousZoom, setPreviousZoom] = useState<number | undefined>(
+    undefined,
+  );
+
+  useEffect(() => {
+    if (previousZoom !== undefined && selected === undefined) {
+      zoomTo(previousZoom, { duration: 400 });
+    }
+  }, [isOpen, previousZoom, selected, zoomTo]);
+
+  useEffect(() => {
+    if (selected) {
+      setPreviousZoom(getZoom());
+    }
+  }, [selected, getZoom]);
+
   const [nodeId, setNodeId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
