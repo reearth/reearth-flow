@@ -32,13 +32,13 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
 
   const borderColorTypes =
     type === "reader"
-      ? "border-node-reader/60"
+      ? "border-node-reader"
       : type === "writer"
-        ? "border-node-writer/60"
+        ? "border-node-writer"
         : type === "transformer"
-          ? "border-node-transformer/60"
+          ? "border-node-transformer"
           : type === "subworkflow"
-            ? "border-node-subworkflow/60"
+            ? "border-node-subworkflow"
             : "border-primary/20";
 
   const selectedColorTypes =

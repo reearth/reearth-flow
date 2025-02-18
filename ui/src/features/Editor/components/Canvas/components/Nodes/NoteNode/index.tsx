@@ -110,22 +110,43 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
           <Note />
           <p>{data.params?.customName ?? data.officialName}</p>
         </div>
-        <span
-          style={{
-            minWidth: "inherit",
-            minHeight: "inherit",
-          }}
+        <div
           ref={(element) => {
-            if (element)
+            if (element) {
               element.style.setProperty(
-                "color",
-                data.params?.textColor || "",
+                "background-color",
+                rgbaColor,
                 "important",
               );
-          }}
-          className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none">
-          {data.params?.description}
-        </span>
+              if (element)
+                element.style.setProperty(
+                  "color",
+                  data.params?.textColor || "",
+                  "important",
+                );
+            }
+          }}>
+          <p
+            ref={(element) => {
+              if (element) {
+                element.style.setProperty(
+                  "background-color",
+                  rgbaColor,
+                  "important",
+                );
+                if (element)
+                  element.style.setProperty(
+                    "color",
+                    data.params?.textColor || "",
+                    "important",
+                  );
+              }
+            }}
+            className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none">
+            {data.params?.description}
+          </p>
+        </div>
+
         {/* <textarea
           defaultValue={data.content}
           style={{
