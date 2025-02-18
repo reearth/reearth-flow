@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
@@ -91,7 +91,7 @@ impl Processor for AttributeBulkArrayJoiner {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
         let mut new_attributes = HashMap::<Attribute, AttributeValue>::new();
@@ -134,11 +134,7 @@ impl Processor for AttributeBulkArrayJoiner {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -150,13 +146,15 @@ impl Processor for AttributeBulkArrayJoiner {
 #[cfg(test)]
 // Gnerate test code
 mod test {
-    use crate::tests::utils::{create_default_execute_context, MockProcessorChannelForwarder};
+    use crate::tests::utils::create_default_execute_context;
+    use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_types::Feature;
 
     use super::*;
     #[test]
     fn test_attribute_map_array_joiner() {
-        let mut fw = MockProcessorChannelForwarder::default();
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
         let flattener: HashMap<String, AttributeValue> = vec![(
             "hoge".to_string(),
             AttributeValue::String("hogehoge".to_string()),
@@ -174,20 +172,26 @@ mod test {
         let mut processor = AttributeBulkArrayJoiner {
             ignore_attributes: vec![],
         };
-        processor.process(ctx, &mut fw).unwrap();
-        assert_eq!(fw.send_ports.len(), 1);
-        assert_eq!(fw.send_ports[0], DEFAULT_PORT.clone());
-        assert_eq!(fw.send_features.len(), 1);
-        let feature = fw.send_features[0].clone();
-        assert_eq!(feature.attributes.len(), 1);
-        assert!(feature
-            .attributes
-            .contains_key(&Attribute::new("test".to_string())),);
+        processor.process(ctx, &fw).unwrap();
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            assert_eq!(noop.send_ports.lock().unwrap().len(), 1);
+            assert_eq!(
+                noop.send_ports.lock().unwrap().first().cloned(),
+                Some(DEFAULT_PORT.clone())
+            );
+            assert_eq!(noop.send_features.lock().unwrap().len(), 1);
+            let feature = noop.send_features.lock().unwrap().first().unwrap().clone();
+            assert_eq!(feature.attributes.len(), 1);
+            assert!(feature
+                .attributes
+                .contains_key(&Attribute::new("hoge".to_string())),);
+        }
     }
 
     #[test]
     fn test_attribute_single_array_joiner() {
-        let mut fw = MockProcessorChannelForwarder::default();
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
         let attributes: HashMap<Attribute, AttributeValue> = vec![(
             Attribute::new("test"),
             AttributeValue::Array(vec![AttributeValue::String("fugafuga".to_string())]),
@@ -199,21 +203,27 @@ mod test {
         let mut processor = AttributeBulkArrayJoiner {
             ignore_attributes: vec![],
         };
-        processor.process(ctx, &mut fw).unwrap();
-        assert_eq!(fw.send_ports.len(), 1);
-        assert_eq!(fw.send_ports[0], DEFAULT_PORT.clone());
-        assert_eq!(fw.send_features.len(), 1);
-        let feature = fw.send_features[0].clone();
-        assert_eq!(feature.attributes.len(), 1);
-        let Some(AttributeValue::String(v)) = feature.get(&"test".to_string()) else {
-            panic!();
-        };
-        assert_eq!(v, "fugafuga");
+        processor.process(ctx, &fw).unwrap();
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            assert_eq!(noop.send_ports.lock().unwrap().len(), 1);
+            assert_eq!(
+                noop.send_ports.lock().unwrap().first().cloned(),
+                Some(DEFAULT_PORT.clone())
+            );
+            assert_eq!(noop.send_features.lock().unwrap().len(), 1);
+            let feature = noop.send_features.lock().unwrap().first().unwrap().clone();
+            assert_eq!(feature.attributes.len(), 1);
+            let Some(AttributeValue::String(v)) = feature.get(&"test".to_string()) else {
+                panic!();
+            };
+            assert_eq!(v, "fugafuga");
+        }
     }
 
     #[test]
     fn test_attribute_multi_array_joiner() {
-        let mut fw = MockProcessorChannelForwarder::default();
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
         let attributes: HashMap<Attribute, AttributeValue> = vec![(
             Attribute::new("test"),
             AttributeValue::Array(vec![
@@ -228,15 +238,20 @@ mod test {
         let mut processor = AttributeBulkArrayJoiner {
             ignore_attributes: vec![],
         };
-        processor.process(ctx, &mut fw).unwrap();
-        assert_eq!(fw.send_ports.len(), 1);
-        assert_eq!(fw.send_ports[0], DEFAULT_PORT.clone());
-        assert_eq!(fw.send_features.len(), 1);
-        let feature = fw.send_features[0].clone();
-        assert_eq!(feature.attributes.len(), 1);
-        let Some(AttributeValue::String(v)) = feature.get(&"test".to_string()) else {
-            panic!();
-        };
-        assert_eq!(v, "hogehoge,fugafuga");
+        processor.process(ctx, &fw).unwrap();
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            assert_eq!(noop.send_ports.lock().unwrap().len(), 1);
+            assert_eq!(
+                noop.send_ports.lock().unwrap().first().unwrap().clone(),
+                DEFAULT_PORT.clone()
+            );
+            assert_eq!(noop.send_features.lock().unwrap().len(), 1);
+            let feature = noop.send_features.lock().unwrap().first().unwrap().clone();
+            assert_eq!(feature.attributes.len(), 1);
+            let Some(AttributeValue::String(v)) = feature.get(&"test".to_string()) else {
+                panic!();
+            };
+            assert_eq!(v, "hogehoge,fugafuga");
+        }
     }
 }

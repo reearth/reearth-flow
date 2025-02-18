@@ -26,6 +26,10 @@ pub enum SinkError {
     CzmlWriterFactory(String),
     #[error("Czml Writer error: {0}")]
     CzmlWriter(String),
+    #[error("Shapefile Writer Factory error: {0}")]
+    ShapefileWriterFactory(String),
+    #[error("Shapefile Writer error: {0}")]
+    ShapefileWriter(String),
 }
 
 impl SinkError {

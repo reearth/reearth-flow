@@ -1,10 +1,10 @@
 use std::{cmp::Ordering, collections::HashMap, sync::Arc};
 
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
@@ -148,18 +148,14 @@ impl Processor for FeatureSorter {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
+        _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = ctx.feature;
         self.buffer.push(feature);
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         let mut features = self.buffer.clone();
         features.sort_by(|a, b| {
             let cmp = self
