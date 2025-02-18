@@ -85,7 +85,7 @@ func NewServer(ctx context.Context, cfg *ServerConfig) *WebServer {
 			host = "0.0.0.0"
 		}
 	}
-	address := fmt.Sprintf("%s:%d", host, port)
+	address := fmt.Sprintf("%s:%s", host, port)
 
 	w := &WebServer{
 		address: address,
