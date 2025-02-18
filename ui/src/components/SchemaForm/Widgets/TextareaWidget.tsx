@@ -7,7 +7,7 @@ import {
 } from "@rjsf/utils";
 import { ChangeEvent, FocusEvent } from "react";
 
-import { Textarea } from "@flow/components";
+import { TextArea } from "@flow/components";
 
 type CustomWidgetProps<
   T = any,
@@ -42,7 +42,7 @@ const TextareaWidget = <
     onFocus(id, target?.value);
 
   return (
-    <Textarea
+    <TextArea
       id={id}
       name={id}
       placeholder={placeholder}
