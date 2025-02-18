@@ -1,10 +1,10 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
+import useProjectPagination from "@flow/hooks/useProjectPagination";
 import { useProject } from "@flow/lib/gql";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 import { Project } from "@flow/types";
-import { OrderDirection } from "@flow/types/paginationOptions";
 
 export default () => {
   const ref = useRef<HTMLDivElement>(null);
@@ -12,26 +12,20 @@ export default () => {
   const [workspace] = useCurrentWorkspace();
 
   const [currentProject, setCurrentProject] = useCurrentProject();
-  const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
-    OrderDirection.Desc,
-  );
 
   const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
-  const { useGetWorkspaceProjects, deleteProject, updateProject } =
-    useProject();
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  const { deleteProject, updateProject } = useProject();
 
-  const { page, refetch, isFetching } = useGetWorkspaceProjects(workspace?.id, {
-    page: currentPage,
-    orderDir: currentOrder,
-    orderBy: "updatedAt",
-  });
-
-  const totalPages = useMemo(() => page?.totalPages as number, [page]);
-
-  useEffect(() => {
-    refetch();
-  }, [currentPage, currentOrder, refetch]);
+  const {
+    currentPage,
+    projects,
+    totalPages,
+    isFetching,
+    currentOrder,
+    orderDirections,
+    setCurrentPage,
+    handleOrderChange,
+  } = useProjectPagination({ workspace });
 
   const [openProjectAddDialog, setOpenProjectAddDialog] = useState(false);
   const [showError, setShowError] = useState(false);
@@ -82,8 +76,6 @@ export default () => {
     return;
   };
 
-  const projects = useMemo(() => page?.projects, [page]);
-
   return {
     projects,
     ref,
@@ -95,16 +87,17 @@ export default () => {
     openProjectAddDialog,
     currentPage,
     totalPages,
-    currentOrder,
     isFetching,
+    currentOrder,
+    orderDirections,
     setOpenProjectAddDialog,
     setEditProject,
     setProjectToBeDeleted,
+    setCurrentPage,
     handleProjectSelect,
     handleDeleteProject,
     handleUpdateValue,
     handleUpdateProject,
-    setCurrentPage,
-    setCurrentOrder,
+    handleOrderChange,
   };
 };
