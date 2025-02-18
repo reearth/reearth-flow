@@ -28,6 +28,7 @@ type Props = {
   onNodesAdd: (node: Node[]) => void;
   isMainWorkflow: boolean;
   hasReader?: boolean;
+  onNodeDoubleClick: (e: React.MouseEvent<Element>, node: Node) => void;
 };
 
 const LeftPanel: React.FC<Props> = ({
@@ -37,12 +38,13 @@ const LeftPanel: React.FC<Props> = ({
   onNodesAdd,
   isMainWorkflow,
   hasReader,
+  onNodeDoubleClick,
 }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
   const [selectedTab, setSelectedTab] = useState<Tab | undefined>();
   const { fitView } = useReactFlow();
-  const [_content, setContent] = useState("Admin Page");
+  const [nodeId, setNodeId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (!isOpen && selectedTab) {
@@ -84,23 +86,6 @@ const LeftPanel: React.FC<Props> = ({
           },
         ]
       : []),
-    ...(nodes?.some((n) => n.type === "subworkflow")
-      ? [
-          {
-            id: "subworkflow",
-            name: t("Subworkflow"),
-            icon: Graph,
-            children: nodes
-              ?.filter((n) => n.type === "subworkflow")
-              .map((n) => ({
-                id: n.id,
-                name: n.data.customName || n.data.officialName || "untitled",
-                icon: Graph,
-                type: n.type,
-              })),
-          },
-        ]
-      : []),
     ...(nodes?.some((n) => n.type === "batch")
       ? [
           {
@@ -129,9 +114,24 @@ const LeftPanel: React.FC<Props> = ({
           },
         ]
       : []),
+    ...(nodes?.some((n) => n.type === "subworkflow")
+      ? [
+          {
+            id: "subworkflow",
+            name: t("Subworkflow"),
+            icon: Graph,
+            children: nodes
+              ?.filter((n) => n.type === "subworkflow")
+              .map((n) => ({
+                id: n.id,
+                name: n.data.customName || n.data.officialName || "untitled",
+                icon: Graph,
+                type: n.type,
+              })),
+          },
+        ]
+      : []),
   ];
-
-  let idContainer = "";
   const tabs: {
     id: Tab;
     title: string;
@@ -146,25 +146,21 @@ const LeftPanel: React.FC<Props> = ({
         <Tree
           data={treeContent}
           className="w-full shrink-0 truncate rounded px-1"
-          // initialSlelectedItemId="1"
           onSelectChange={(item) => {
-            setContent(item?.name ?? "");
-
-            if (typeof item?.id === "string") {
-              idContainer = item.id;
-            }
+            setNodeId(item?.id ?? "");
           }}
           // folderIcon={Folder}
           // itemIcon={Database}
           onDoubleClick={() => {
-            if (idContainer) {
-              const node = nodes.find((n) => n.id === idContainer);
+            if (nodeId) {
+              const node = nodes.find((n) => n.id === nodeId);
               if (node) {
                 fitView({
                   nodes: [{ id: node.id }],
                   duration: 500,
                   padding: 2,
                 });
+                onNodeDoubleClick({} as React.MouseEvent, node);
               }
             }
           }}

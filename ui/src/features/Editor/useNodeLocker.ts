@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 
 import type { Node } from "@flow/types";
 
@@ -16,19 +16,26 @@ export default ({
   const [locallyLockedNode, setLocallyLockedNode] = useState<Node | undefined>(
     undefined,
   );
+  const isLockingRef = useRef(false);
 
   // When a node is deselected on the canvas, we need to unlock it
   useEffect(() => {
-    if (locallyLockedNode && !selectedNodeIds.includes(locallyLockedNode.id)) {
+    if (
+      locallyLockedNode &&
+      !selectedNodeIds.includes(locallyLockedNode.id) &&
+      !isLockingRef.current
+    ) {
       setLocallyLockedNode(undefined);
       setLockedNodeIds((lln) =>
         lln.filter((id) => id !== locallyLockedNode?.id),
       );
     }
-  }, [selectedNodeIds, locallyLockedNode]);
+  }, [selectedNodeIds, locallyLockedNode, lockedNodeIds]);
 
   const handleNodeLocking = useCallback(
     (nodeId: string) => {
+      isLockingRef.current = true;
+
       setLockedNodeIds((ids) => {
         if (ids.includes(nodeId)) {
           return ids.filter((id) => id !== nodeId);

@@ -58,6 +58,7 @@ export default function Editor({
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
+    handlePanelClose,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
   // console.log("nodes", nodes);
   // console.log("edges", edges);
@@ -66,11 +67,12 @@ export default function Editor({
       <div className="relative flex flex-1">
         <LeftPanel
           nodes={nodes}
-          isOpen={openPanel === "left" && !locallyLockedNode}
+          isOpen={openPanel === "left"}
           onOpen={handlePanelOpen}
           onNodesAdd={handleNodesAdd}
           isMainWorkflow={isMainWorkflow}
           hasReader={hasReader}
+          onNodeDoubleClick={handleNodeDoubleClick}
         />
         <div className="flex flex-1 flex-col">
           <OverlayUI
@@ -119,6 +121,7 @@ export default function Editor({
         <ParamsPanel
           selected={locallyLockedNode}
           onParamsSubmit={handleNodeParamsUpdate}
+          onClose={handlePanelClose}
         />
       </div>
     </div>

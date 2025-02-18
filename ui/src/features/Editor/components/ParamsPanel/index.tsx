@@ -9,20 +9,19 @@ import { ParamEditor } from "./components";
 type Props = {
   selected?: Node;
   onParamsSubmit: (nodeId: string, data: any) => void;
+  onClose?: () => void;
 };
 
-const ParamsPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
-  // This is a little hacky, but it works. We need to dispatch a click event to the react-flow__pane
-  // to unlock the node when user wants to close the right panel. - @KaWaite
+const ParamsPanel: React.FC<Props> = ({
+  selected,
+  onParamsSubmit,
+  onClose,
+}) => {
   const handleClose = useCallback(() => {
-    // react-flow__pane is the classname of the div inside react-flow that has the click event
-    // https://github.com/xyflow/xyflow/blob/71db83761c245493d44e74311e10cc6465bf8387/packages/react/src/container/Pane/index.tsx#L249
-    const paneElement = document.getElementsByClassName("react-flow__pane")[0];
-    if (!paneElement) return;
-    const clickEvent = new Event("click", { bubbles: true, cancelable: true });
-    paneElement.dispatchEvent(clickEvent);
-  }, []);
-
+    if (onClose) {
+      onClose();
+    }
+  }, [onClose]);
   const handleParamsSubmit = useCallback(
     async (nodeId: string, data: any) => {
       await Promise.resolve(onParamsSubmit(nodeId, data));
