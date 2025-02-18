@@ -3684,7 +3684,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -3874,7 +3874,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.5#b8f6151cc6ee53c7b7a2a1e48cd1c2e28993fd0c"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.6#cf68dd4307ea5efbf160be926f45be54b788d815"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4328,7 +4328,7 @@ dependencies = [
 [[package]]
 name = "nusamai-citygml"
 version = "0.0.0-alpha.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.5#b8f6151cc6ee53c7b7a2a1e48cd1c2e28993fd0c"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.6#cf68dd4307ea5efbf160be926f45be54b788d815"
 dependencies = [
  "ahash 0.8.11",
  "chrono",
@@ -4347,9 +4347,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "nusamai-czml"
+version = "0.1.0"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.6#cf68dd4307ea5efbf160be926f45be54b788d815"
+dependencies = [
+ "chrono",
+ "flatgeom",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.5#b8f6151cc6ee53c7b7a2a1e48cd1c2e28993fd0c"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.6#cf68dd4307ea5efbf160be926f45be54b788d815"
 dependencies = [
  "byteorder",
  "nusamai-gltf-json",
@@ -4359,7 +4370,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.5#b8f6151cc6ee53c7b7a2a1e48cd1c2e28993fd0c"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.6#cf68dd4307ea5efbf160be926f45be54b788d815"
 dependencies = [
  "cesiumtiles",
  "serde",
@@ -4370,7 +4381,7 @@ dependencies = [
 [[package]]
 name = "nusamai-plateau"
 version = "0.0.0-alpha.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.5#b8f6151cc6ee53c7b7a2a1e48cd1c2e28993fd0c"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.6#cf68dd4307ea5efbf160be926f45be54b788d815"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -4388,7 +4399,7 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.5#b8f6151cc6ee53c7b7a2a1e48cd1c2e28993fd0c"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.6#cf68dd4307ea5efbf160be926f45be54b788d815"
 dependencies = [
  "japan-geoid",
  "thiserror 2.0.11",
@@ -5040,7 +5051,7 @@ checksum = "953ec861398dccce10c670dfeaf3ec4911ca479e9c02154b3a215178c5f566f2"
 
 [[package]]
 name = "plateau-gis-quality-checker"
-version = "0.0.2"
+version = "0.0.6"
 dependencies = [
  "directories",
  "log",
@@ -5689,7 +5700,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-log"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "futures",
  "once_cell",
@@ -5709,7 +5720,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-plateau-processor"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "approx",
  "async-trait",
@@ -5748,7 +5759,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-processor"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "Inflector",
  "approx",
@@ -5791,7 +5802,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-sink"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "ahash 0.8.11",
  "async-trait",
@@ -5816,6 +5827,7 @@ dependencies = [
  "itertools 0.14.0",
  "kv-extsort",
  "nusamai-citygml",
+ "nusamai-czml",
  "nusamai-gltf",
  "nusamai-plateau",
  "nusamai-projection",
@@ -5850,7 +5862,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-source"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "async-trait",
  "async_zip",
@@ -5885,7 +5897,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-wasm-processor"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "chrono",
  "itertools 0.14.0",
@@ -5910,7 +5922,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-cli"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "bytes",
  "clap",
@@ -5946,7 +5958,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-common"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "approx",
  "async-recursion",
@@ -5980,7 +5992,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-eval-expr"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "chrono",
  "futures",
@@ -5994,7 +6006,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-examples"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6022,7 +6034,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-geometry"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "approx",
  "bytes",
@@ -6047,7 +6059,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-gltf"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "ahash 0.8.11",
  "byteorder",
@@ -6075,7 +6087,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-macros"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6084,7 +6096,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runner"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6113,7 +6125,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runtime"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -6146,7 +6158,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sevenz"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "bit-set",
  "byteorder",
@@ -6163,7 +6175,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-state"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "bytes",
  "reearth-flow-common",
@@ -6177,7 +6189,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-storage"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "bytes",
  "futures",
@@ -6195,7 +6207,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-telemetry"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "once_cell",
  "opentelemetry",
@@ -6209,7 +6221,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-tests"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "bytes",
  "directories",
@@ -6238,7 +6250,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-types"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "ahash 0.8.11",
  "bytes",
@@ -6274,7 +6286,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-worker"
-version = "0.0.5"
+version = "0.0.9"
 dependencies = [
  "async-trait",
  "bytes",
