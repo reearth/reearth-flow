@@ -11,10 +11,10 @@ use reearth_flow_geometry::types::line_string::LineString2D;
 use reearth_flow_runtime::executor_operation::Context;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
@@ -117,7 +117,7 @@ impl Processor for LineOnLineOverlayer {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
@@ -190,11 +190,7 @@ impl Processor for LineOnLineOverlayer {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         for (_, (_, buffer, rtree)) in self.buffer2d.iter() {
             self.handle_2d_line_strings(ctx.clone().into(), fw, buffer, rtree);
         }
@@ -207,7 +203,7 @@ impl Processor for LineOnLineOverlayer {
 }
 
 impl LineOnLineOverlayer {
-    fn change_group(&mut self, ctx: ExecutorContext, fw: &mut dyn ProcessorChannelForwarder) {
+    fn change_group(&mut self, ctx: ExecutorContext, fw: &ProcessorChannelForwarder) {
         let mut remove_2d_keys = Vec::new();
         for (key, (complete_grouped, buffer, rtree)) in self.buffer2d.iter() {
             if !*complete_grouped {
@@ -224,7 +220,7 @@ impl LineOnLineOverlayer {
     fn handle_2d_line_strings(
         &self,
         ctx: Context,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
         features: &[Feature],
         rtree: &RTree<LineString2D<f64>>,
     ) {

@@ -5,10 +5,10 @@ use reearth_flow_geometry::algorithm::centroid::Centroid;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Feature, Geometry, GeometryValue};
@@ -62,7 +62,7 @@ impl Processor for CenterPointReplacer {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
@@ -87,11 +87,7 @@ impl Processor for CenterPointReplacer {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -107,7 +103,7 @@ impl CenterPointReplacer {
         feature: &Feature,
         geometry: &Geometry,
         ctx: &ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) {
         let Some(centroid) = geos.centroid() else {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -125,7 +121,7 @@ impl CenterPointReplacer {
         feature: &Feature,
         geometry: &Geometry,
         ctx: &ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) {
         let Some(centroid) = geos.centroid() else {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));

@@ -2,14 +2,16 @@ import {
   FormContextType,
   RJSFSchema,
   StrictRJSFSchema,
+  SubmitButtonProps,
   TemplatesType,
 } from "@rjsf/utils";
+import { ComponentType } from "react";
 
 import { ArrayFieldItemTemplate } from "./ArrayFieldItemTemplate";
 import { ArrayFieldTemplate } from "./ArrayFieldTemplate";
 import { BaseInputTemplate } from "./BaseInputTemplate";
 import {
-  SubmitButton,
+  // SubmitButton,
   AddButton,
   CopyButton,
   MoveDownButton,
@@ -24,11 +26,27 @@ import { FieldTemplate } from "./FieldTemplate";
 import { ObjectFieldTemplate } from "./ObjectFieldTemplate";
 import { TitleFieldTemplate } from "./TitleFieldTemplate";
 
+type ModifiedButtonTemplates<
+  T,
+  S extends StrictRJSFSchema,
+  F extends FormContextType,
+> = Omit<TemplatesType<T, S, F>["ButtonTemplates"], "SubmitButton"> & {
+  SubmitButton?: ComponentType<SubmitButtonProps<T, S, F>>;
+};
+
+type ModifiedTemplatesType<
+  T,
+  S extends StrictRJSFSchema,
+  F extends FormContextType,
+> = Omit<TemplatesType<T, S, F>, "ButtonTemplates"> & {
+  ButtonTemplates: ModifiedButtonTemplates<T, S, F>;
+};
+
 export function generateTemplates<
   T = any,
   S extends StrictRJSFSchema = RJSFSchema,
   F extends FormContextType = FormContextType,
->(): Partial<TemplatesType<T, S, F>> {
+>(): Partial<ModifiedTemplatesType<T, S, F>> {
   return {
     TitleFieldTemplate,
     DescriptionFieldTemplate,
@@ -41,7 +59,7 @@ export function generateTemplates<
     FieldHelpTemplate,
     ObjectFieldTemplate,
     ButtonTemplates: {
-      SubmitButton,
+      // SubmitButton,
       AddButton,
       CopyButton,
       MoveDownButton,

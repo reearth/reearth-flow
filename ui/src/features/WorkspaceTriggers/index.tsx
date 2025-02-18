@@ -98,7 +98,6 @@ const TriggerManager: React.FC = () => {
               <p className="text-lg dark:font-extralight">{t("Triggers")}</p>
               <Button
                 className="flex gap-2"
-                variant="outline"
                 onClick={() => setOpenTriggerAddDialog(true)}>
                 <Plus weight="thin" />
                 <p className="text-xs dark:font-light">{t("New Trigger")}</p>

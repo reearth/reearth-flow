@@ -2,7 +2,7 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder, executor_operation::ExecutorContext, node::DEFAULT_PORT,
+    executor_operation::ExecutorContext, forwarder::ProcessorChannelForwarder, node::DEFAULT_PORT,
 };
 use reearth_flow_types::Feature;
 
@@ -10,7 +10,7 @@ use super::CompiledCommonReaderParam;
 
 pub(crate) fn read_json(
     ctx: ExecutorContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
     global_params: &Option<HashMap<String, serde_json::Value>>,
     params: &CompiledCommonReaderParam,
 ) -> Result<(), super::errors::FeatureProcessorError> {

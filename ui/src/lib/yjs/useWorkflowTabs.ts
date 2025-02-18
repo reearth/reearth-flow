@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useIsMainWorkflow } from "@flow/hooks";
 import { Edge, Node } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
@@ -14,7 +13,10 @@ export default ({
   rawWorkflows: Record<string, string | Node[] | Edge[]>[];
   setCurrentWorkflowId: (id: string) => void;
 }) => {
-  const isMainWorkflow = useIsMainWorkflow(currentWorkflowId);
+  const isMainWorkflow = useMemo(
+    () => currentWorkflowId === DEFAULT_ENTRY_GRAPH_ID,
+    [currentWorkflowId],
+  );
 
   // This works as a semi-static base for the rest of the state in this hook.
   // Without this state (aka using rawWorkflows directly), performance drops

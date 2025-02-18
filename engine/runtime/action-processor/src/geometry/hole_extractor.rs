@@ -6,10 +6,10 @@ use reearth_flow_geometry::types::{
     polygon::{Polygon2D, Polygon3D},
 };
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Feature, GeometryValue};
@@ -67,7 +67,7 @@ impl Processor for HoleExtractor {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
@@ -116,11 +116,7 @@ impl Processor for HoleExtractor {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -133,7 +129,7 @@ fn handle_polygon2d(
     polygon: &Polygon2D<f64>,
     feature: &Feature,
     ctx: &ExecutorContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
 ) {
     let exterior = polygon.exterior();
     let exterior_polygon = Polygon2D::new(exterior.clone(), vec![]);
@@ -159,7 +155,7 @@ fn handle_polygon3d(
     polygon: &Polygon3D<f64>,
     feature: &Feature,
     ctx: &ExecutorContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
 ) {
     let exterior = polygon.exterior();
     let exterior_polygon = Polygon3D::new(exterior.clone(), vec![]);

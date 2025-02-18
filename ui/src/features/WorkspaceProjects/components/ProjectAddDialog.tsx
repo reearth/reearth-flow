@@ -11,7 +11,7 @@ import {
   DialogTitle,
   Input,
   Label,
-  Textarea,
+  TextArea,
 } from "@flow/components";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
@@ -69,7 +69,7 @@ const ProjectAddDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
           </DialogContentSection>
           <DialogContentSection>
             <Label>{t("Project description (optional)")}</Label>
-            <Textarea
+            <TextArea
               placeholder={t("Project description...")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}

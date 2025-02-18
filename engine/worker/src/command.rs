@@ -183,12 +183,21 @@ impl RunWorkerCommand {
             .map_err(crate::errors::Error::init)?;
         match pubsub {
             PubSubBackend::Google(pubsub) => pubsub
-                .publish(JobCompleteEvent::new(workflow_id, meta.job_id, job_result))
+                .publish(JobCompleteEvent::new(
+                    workflow_id,
+                    meta.job_id,
+                    job_result.clone(),
+                ))
                 .await
                 .map_err(crate::errors::Error::run),
             PubSubBackend::Noop(_) => Ok(()),
         }?;
-        tracing::info!("Job completed");
+        tracing::info!(
+            "Job completed with workflow_id: {:?}, job_id: {:?} result: {:?}",
+            workflow_id,
+            meta.job_id,
+            job_result
+        );
         Ok(())
     }
 
