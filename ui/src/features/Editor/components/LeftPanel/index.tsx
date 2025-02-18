@@ -50,6 +50,7 @@ const LeftPanel: React.FC<Props> = ({
   const [previousZoom, setPreviousZoom] = useState<number | undefined>(
     undefined,
   );
+  const [nodeId, setNodeId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     if (previousZoom !== undefined && selected === undefined) {
@@ -63,93 +64,86 @@ const LeftPanel: React.FC<Props> = ({
     }
   }, [selected, getZoom]);
 
-  const [nodeId, setNodeId] = useState<string | undefined>(undefined);
-
   useEffect(() => {
     if (!isOpen && selectedTab) {
       setSelectedTab(undefined);
     }
   }, [isOpen, selectedTab]);
 
-  const createTreeDataItem = (type: string, icon: Icon) => {
-    return (
-      nodes
-        ?.filter((n) => n.type === type)
-        .map((n) => ({
-          id: n.id,
-          name: n.data.customName || n.data.officialName || "untitled",
-          icon,
-          type: n.type,
-        })) ?? []
-    );
+  const createTreeDataItem = (type: string, icon: Icon, name?: string) => {
+    if (type === "reader" || type === "writer") {
+      return (
+        nodes
+          ?.filter((n) => n.type === type)
+          .map((n) => ({
+            id: n.id,
+            name: n.data.customName || n.data.officialName || "untitled",
+            icon,
+            type: n.type,
+          })) ?? []
+      );
+    }
+
+    if (type === "transformer" || type === "subworkflow") {
+      return nodes?.some((n) => n.type === type)
+        ? [
+            {
+              id: type,
+              name: name || "untitled",
+              icon,
+              children: nodes
+                ?.filter((n) => n.type === type)
+                .map((n) => ({
+                  id: n.id,
+                  name: n.data.customName || n.data.officialName || "untitled",
+                  icon,
+                  type: n.type,
+                })),
+            },
+          ]
+        : [];
+    }
+
+    if (type === "batch") {
+      return nodes?.some((n) => n.type === type)
+        ? [
+            {
+              id: type,
+              name: t(name || "untitled"),
+              icon,
+              children: nodes
+                ?.filter((n) => n.type === type)
+                .map((n) => ({
+                  id: n.id,
+                  name:
+                    n.data.params?.customName ||
+                    n.data.officialName ||
+                    "untitled",
+                  icon,
+                  type: n.type,
+                  children: nodes
+                    ?.filter((d) => d.parentId === n.id)
+                    .map((d) => ({
+                      id: d.id,
+                      name:
+                        d.data.customName || d.data.officialName || "untitled",
+                      icon: getNodeIcon(d.type),
+                    })),
+                })),
+            },
+          ]
+        : [];
+    }
   };
 
   const treeContent: TreeDataItem[] = [
-    ...createTreeDataItem("reader", Database),
-    ...createTreeDataItem("writer", Disc),
-    ...(nodes?.some((n) => n.type === "transformer")
-      ? [
-          {
-            id: "transformer",
-            name: t("Transformers"),
-            icon: Lightning,
-            children: nodes
-              ?.filter((n) => n.type === "transformer")
-              .map((n) => ({
-                id: n.id,
-                name: n.data.customName || n.data.officialName || "untitled",
-                icon: Lightning,
-                type: n.type,
-              })),
-          },
-        ]
-      : []),
-    ...(nodes?.some((n) => n.type === "batch")
-      ? [
-          {
-            id: "batch",
-            name: t("Batch Nodes"),
-            icon: RectangleDashed,
-            children: nodes
-              ?.filter((n) => n.type === "batch")
-              .map((n) => ({
-                id: n.id,
-                name:
-                  n.data.params?.customName ||
-                  n.data.officialName ||
-                  "untitled",
-                icon: RectangleDashed,
-                type: n.type,
-                children: nodes
-                  ?.filter((d) => d.parentId === n.id)
-                  .map((d) => ({
-                    id: d.id,
-                    name:
-                      d.data.customName || d.data.officialName || "untitled",
-                    icon: getNodeIcon(d.type),
-                  })),
-              })),
-          },
-        ]
-      : []),
-    ...(nodes?.some((n) => n.type === "subworkflow")
-      ? [
-          {
-            id: "subworkflow",
-            name: t("Subworkflow"),
-            icon: Graph,
-            children: nodes
-              ?.filter((n) => n.type === "subworkflow")
-              .map((n) => ({
-                id: n.id,
-                name: n.data.customName || n.data.officialName || "untitled",
-                icon: Graph,
-                type: n.type,
-              })),
-          },
-        ]
-      : []),
+    ...(createTreeDataItem("reader", Database) || []),
+    ...(createTreeDataItem("writer", Disc) || []),
+    ...(createTreeDataItem("transformer", Lightning, t("Transformers")) || []),
+    ...(createTreeDataItem("subworkflow", Graph, t("Subworkflows")) || []),
+    ...(createTreeDataItem("batch", RectangleDashed, t("Batch Nodes")) || []),
   ];
+
   const tabs: {
     id: Tab;
     title: string;
@@ -167,8 +161,6 @@ const LeftPanel: React.FC<Props> = ({
           onSelectChange={(item) => {
             setNodeId(item?.id ?? "");
           }}
-          // folderIcon={Folder}
-          // itemIcon={Database}
           onDoubleClick={() => {
             if (nodeId) {
               const node = nodes.find((n) => n.id === nodeId);
