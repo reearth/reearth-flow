@@ -1,8 +1,8 @@
 import { RJSFSchema } from "@rjsf/utils";
 import { JSONSchema7Definition } from "json-schema";
-import { memo, useMemo } from "react";
+import { memo, useMemo, useState } from "react";
 
-import { Tabs, TabsContent, SchemaForm } from "@flow/components";
+import { SchemaForm, Button } from "@flow/components";
 import { patchAnyOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { batchNodeAction } from "@flow/features/Editor/components/Canvas/components/Nodes/BatchNode";
 import { noteNodeAction } from "@flow/features/Editor/components/Canvas/components/Nodes/NoteNode";
@@ -60,12 +60,16 @@ const ParamEditor: React.FC<Props> = ({
     [action?.parameter],
   );
 
-  const handleSubmit = (data: any) => onSubmit(nodeId, data);
+  const [updatedParams, setUpdatedParams] = useState(nodeMeta.params);
+
+  const handleChange = (data: any) => setUpdatedParams(data);
+
+  const handleSubmit = () => onSubmit(nodeId, updatedParams);
 
   return (
-    <div>
-      <div className="mb-3 flex justify-between gap-4">
-        {/* <div className="flex gap-2">
+    <div className="flex h-full flex-col gap-4">
+      {/* <div className="mb-3 flex justify-between gap-4"> */}
+      {/* <div className="flex gap-2">
           <IconButton
             className={actionButtonClasses}
             icon={<ArrowLeft />}
@@ -77,28 +81,30 @@ const ParamEditor: React.FC<Props> = ({
             tooltipText="Next selection"
           />
         </div> */}
+      {/* </div> */}
+      {/* <Tabs defaultValue="params" className="w-full"> */}
+      <div className="flex justify-between gap-2">
+        <p className="text-lg dark:font-thin">{t("Parameters")}</p>
+        <Button onClick={handleSubmit}>{t("Submit")}</Button>
       </div>
-      <Tabs defaultValue="params" className="w-full">
-        <div className="flex flex-col gap-2">
-          <p className="text-lg dark:font-thin">{t("Parameters")}</p>
-        </div>
-        {/* <TabsTrigger className="flex-1" value="data">
+      {/* <TabsTrigger className="flex-1" value="data">
             {t("Node data")}
           </TabsTrigger> */}
 
-        <TabsContent value="params">
-          <div className="rounded border bg-card p-3">
-            {!action?.parameter && <p>{t("No Parameters Available")}</p>}
-            {action && (
-              <SchemaForm
-                schema={patchedSchema}
-                defaultFormData={nodeMeta.params}
-                onSubmit={handleSubmit}
-              />
-            )}
-          </div>
-        </TabsContent>
-        {/* <TabsContent value="data">
+      {/* <TabsContent value="params"> */}
+      <div className="min-h-0 rounded border bg-card px-2">
+        {!action?.parameter && <p>{t("No Parameters Available")}</p>}
+        {action && (
+          <SchemaForm
+            schema={patchedSchema}
+            defaultFormData={nodeMeta.params}
+            onChange={handleChange}
+            // onSubmit={handleSubmit}
+          />
+        )}
+      </div>
+      {/* </TabsContent> */}
+      {/* <TabsContent value="data">
           <Card className="bg-transparent">
             <CardHeader>
               <CardTitle>Node data</CardTitle>
@@ -121,7 +127,7 @@ const ParamEditor: React.FC<Props> = ({
             </CardContent>
           </Card>
         </TabsContent> */}
-      </Tabs>
+      {/* </Tabs> */}
     </div>
   );
 };
