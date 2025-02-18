@@ -1,8 +1,7 @@
 import { Database, Disc, Eye, Graph, Lightning } from "@phosphor-icons/react";
 import { NodeProps } from "@xyflow/react";
-import { memo, useEffect, useState } from "react";
+import { memo } from "react";
 
-import { useDoubleClick } from "@flow/hooks";
 import { Node } from "@flow/types";
 import type { NodePosition, NodeType } from "@flow/types";
 
@@ -26,21 +25,8 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   data,
   type,
   selected,
-  id,
 }) => {
   const { officialName, customName, status, inputs, outputs } = data;
-
-  const [hardSelect, setHardSelect] = useState<boolean>(false);
-
-  const [_, handleDoubleClick] = useDoubleClick(undefined, () => {
-    setHardSelect(!hardSelect);
-  });
-
-  useEffect(() => {
-    if (!selected && hardSelect) {
-      setHardSelect(false);
-    }
-  }, [id, selected, hardSelect]);
 
   const metaProps = getPropsFrom(status);
 
@@ -66,11 +52,22 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
             ? "border-node-subworkflow-selected"
             : "border-zinc-600";
 
+  const selectedColorTypesBackgrounds =
+    type === "reader"
+      ? "bg-node-reader-selected"
+      : type === "writer"
+        ? "bg-node-writer-selected"
+        : type === "transformer"
+          ? "bg-node-transformer-selected"
+          : type === "subworkflow"
+            ? "bg-node-subworkflow-selected"
+            : "bg-zinc-600";
+
   return (
-    <div className="rounded-sm  bg-secondary" onDoubleClick={handleDoubleClick}>
+    <div className="rounded-sm  bg-secondary">
       <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
         <div
-          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? (hardSelect ? "border-red-300" : selectedColorTypes) : borderColorTypes} ${className} `}>
+          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? selectedColorTypes : borderColorTypes} ${selected ? selectedColorTypesBackgrounds : className} `}>
           {type === "reader" ? (
             <Database className={typeIconClasses} />
           ) : type === "writer" ? (
@@ -82,7 +79,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
           ) : null}
         </div>
         <div
-          className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? (hardSelect ? "border-red-300" : selectedColorTypes) : borderColorTypes}`}>
+          className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? selectedColorTypes : borderColorTypes}`}>
           <p className="self-center truncate text-[10px] dark:font-light">
             {customName || officialName}
           </p>
