@@ -24,6 +24,7 @@ A Rust-based Y-WebSocket server implementation for collaborative document editin
 
 [source,bash]
 ----
+brew install protobuf
 docker run -d --name fake-gcs-server -p 4443:4443 fsouza/fake-gcs-server -scheme http
 git clone <repository-url>
 cd <project-directory>
