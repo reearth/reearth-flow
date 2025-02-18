@@ -92,7 +92,7 @@ const ParamEditor: React.FC<Props> = ({
           </TabsTrigger> */}
 
       {/* <TabsContent value="params"> */}
-      <div className="min-h-0 rounded border bg-card px-2">
+      <div className="min-h-0 overflow-scroll rounded border bg-card px-2">
         {!action?.parameter && <p>{t("No Parameters Available")}</p>}
         {action && (
           <SchemaForm
