@@ -1,4 +1,11 @@
-import { Database, Disc, Lightning, TreeView } from "@phosphor-icons/react";
+import {
+  ChalkboardTeacher,
+  Database,
+  Disc,
+  HardDrive,
+  Lightning,
+  TreeView,
+} from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
 import { memo, useEffect, useState } from "react";
 
@@ -8,9 +15,9 @@ import { useShortcuts } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { Node } from "@flow/types";
 
-import { ActionsList } from "./components";
+import { ActionsList, ProjectVariables, Resources } from "./components";
 
-type Tab = "navigator" | "actions-list" | "resources";
+type Tab = "navigator" | "actions-list" | "resources" | "project-vars";
 
 type Props = {
   nodes: Node[];
@@ -92,6 +99,18 @@ const LeftPanel: React.FC<Props> = ({
       ),
     },
     {
+      id: "project-vars",
+      title: t("Project Variables"),
+      icon: <ChalkboardTeacher className="size-5" weight="thin" />,
+      component: <ProjectVariables />,
+    },
+    {
+      id: "resources",
+      title: t("Resources"),
+      icon: <HardDrive className="size-5" weight="thin" />,
+      component: <Resources />,
+    },
+    {
       id: "actions-list",
       title: t("Actions list"),
       icon: <Lightning className="size-5" weight="thin" />,
@@ -160,7 +179,7 @@ const LeftPanel: React.FC<Props> = ({
       </div>
       <aside className="relative z-10 w-14 border-r bg-secondary">
         <div className="flex h-full flex-col">
-          <nav className="flex flex-col items-center gap-5 p-3">
+          <nav className="flex flex-1 flex-col items-center gap-5 p-3">
             <Link
               to={`/workspaces/${workspaceId}`}
               className="flex shrink-0 items-center justify-center gap-2 text-lg font-semibold md:size-8 md:text-base">
