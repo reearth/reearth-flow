@@ -6,7 +6,6 @@ with:
   cityGmlPath:
   codelists:
   schemas:
-  cityCode:
   targetPackages:
     - bldg
   outputPath:
