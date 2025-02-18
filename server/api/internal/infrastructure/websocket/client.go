@@ -20,9 +20,6 @@ type Client struct {
 
 func NewClient(address string) (*Client, error) {
 
-	address = strings.TrimPrefix(address, "http://")
-	address = strings.TrimPrefix(address, "https://")
-
 	// If no port is specified, use the default gRPC port
 	if !strings.Contains(address, ":") {
 		address = fmt.Sprintf("%s:50051", address)
