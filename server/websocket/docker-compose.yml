@@ -6,10 +6,12 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - .env.docker
     depends_on:
       - redis
       - fake-gcs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   grpc:
     build:
@@ -18,10 +20,12 @@ services:
     ports:
       - "50051:50051"
     env_file:
-      - .env
+      - .env.docker
     depends_on:
       - redis
       - fake-gcs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   redis:
     image: redis:7-alpine
