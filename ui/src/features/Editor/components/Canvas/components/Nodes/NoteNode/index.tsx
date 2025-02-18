@@ -12,18 +12,18 @@ export type NoteNodeProps = NodeProps<Node>;
 export const initialSize = { width: 300, height: 200 };
 const minSize = { width: 250, height: 150 };
 
-// TODO: Currently textarea data.content on node is not setting the value correctly. Temporary fix is to use text on RJSFS params @billcookie
+// TODO: Currently textarea data.content on node is not setting the value correctly. Temporary fix is to use description on RJSFS params @billcookie
 const noteNodeSchema: RJSFSchema = {
   type: "object",
   properties: {
     customName: { type: "string", title: "Name" },
+    description: { type: "string", format: "textarea", title: "Description" },
+    textColor: { type: "string", format: "color", title: "Text Color" },
     backgroundColor: {
       type: "string",
       format: "color",
       title: "Background Color",
     },
-    text: { type: "string", format: "textarea", title: "Text" },
-    textColor: { type: "string", format: "color", title: "Text Color" },
   },
 };
 
@@ -124,7 +124,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
               );
           }}
           className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none">
-          {data.params?.text}
+          {data.params?.description}
         </span>
         {/* <textarea
           defaultValue={data.content}
