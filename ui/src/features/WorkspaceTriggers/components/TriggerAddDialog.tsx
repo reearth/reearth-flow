@@ -76,7 +76,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   const handleSelectDeployment = (deployment: Deployment) => {
     const deploymentId = deployment.id;
     const selectedDeployment = deployments?.find((d) => d.id === deploymentId);
-    console.log("Deployment", deployment);
+
     setSelectedDeployment(selectedDeployment || null);
     setDeploymentId(deploymentId);
   };
