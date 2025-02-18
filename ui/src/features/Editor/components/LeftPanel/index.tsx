@@ -2,6 +2,7 @@ import {
   Database,
   Disc,
   Graph,
+  Icon,
   Lightning,
   RectangleDashed,
   TreeView,
@@ -70,23 +71,22 @@ const LeftPanel: React.FC<Props> = ({
     }
   }, [isOpen, selectedTab]);
 
+  const createTreeDataItem = (type: string, icon: Icon) => {
+    return (
+      nodes
+        ?.filter((n) => n.type === type)
+        .map((n) => ({
+          id: n.id,
+          name: n.data.customName || n.data.officialName || "untitled",
+          icon,
+          type: n.type,
+        })) ?? []
+    );
+  };
+
   const treeContent: TreeDataItem[] = [
-    ...(nodes
-      ?.filter((n) => n.type === "reader")
-      .map((n) => ({
-        id: n.id,
-        name: n.data.customName || n.data.officialName || "untitled",
-        icon: Database,
-        type: n.type,
-      })) ?? []),
-    ...(nodes
-      ?.filter((n) => n.type === "writer")
-      .map((n) => ({
-        id: n.id,
-        name: n.data.customName || n.data.officialName || "untitled",
-        icon: Disc,
-        type: n.type,
-      })) ?? []),
+    ...createTreeDataItem("reader", Database),
+    ...createTreeDataItem("writer", Disc),
     ...(nodes?.some((n) => n.type === "transformer")
       ? [
           {
