@@ -218,8 +218,10 @@ pub async fn create_source_node<F>(
         receivers.push(receiver);
     }
 
+    let version = env!("CARGO_PKG_VERSION");
     let span = info_span!(
         "action",
+        "engine.version" = version,
         "otel.name" = "Source Node",
         "otel.kind" = "Source Node",
         "workflow.id" = dag.id.to_string().as_str(),

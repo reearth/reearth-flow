@@ -66,8 +66,10 @@ impl Runner {
             })?;
 
         let start = Instant::now();
+        let version = env!("CARGO_PKG_VERSION");
         let span = info_span!(
             "root",
+            "engine.version" = version,
             "otel.name" = workflow.name.as_str(),
             "otel.kind" = "runner",
             "workflow.id" = workflow.id.to_string().as_str(),
@@ -139,8 +141,10 @@ impl AsyncRunner {
         event_handlers: Vec<Arc<dyn EventHandler>>,
     ) -> Result<(), crate::errors::Error> {
         let start = Instant::now();
+        let version = env!("CARGO_PKG_VERSION");
         let span = info_span!(
             "root",
+            "engine.version" = version,
             "otel.name" = workflow.name.as_str(),
             "otel.kind" = "runner",
             "workflow.id" = workflow.id.to_string().as_str(),

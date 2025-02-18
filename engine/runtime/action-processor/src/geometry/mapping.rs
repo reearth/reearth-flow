@@ -8,7 +8,6 @@ use super::{
     bufferer::BuffererFactory, center_point_replacer::CenterPointReplacerFactory,
     clipper::ClipperFactory, closed_curve_filter::ClosedCurveFilterFactory,
     coercer::GeometryCoercerFactory, convex_hull_accumulator::ConvexHullAccumulatorFactory,
-    coordinate_system_setter::CoordinateSystemSetterFactory,
     dimension_filter::DimensionFilterFactory, dissolver::DissolverFactory,
     elevation_extractor::ElevationExtractorFactory, extractor::GeometryExtractorFactory,
     extruder::ExtruderFactory, filter::GeometryFilterFactory, hole_counter::HoleCounterFactory,
@@ -25,7 +24,6 @@ use super::{
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
-        Box::<CoordinateSystemSetterFactory>::default(),
         Box::<ExtruderFactory>::default(),
         Box::<ThreeDimensionBoxReplacerFactory>::default(),
         Box::<GeometryFilterFactory>::default(),
