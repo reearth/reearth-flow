@@ -52,8 +52,6 @@ type (
 		HTTPSREDIRECT    bool              `pp:",omitempty"`
 		SharedPath       string            `default:"shared"`
 
-		GRPCPort string `default:"50053" envconfig:"REEARTH_FLOW_API_GRPC_PORT"`
-
 		// storage
 		GCS GCSConfig `pp:",omitempty"`
 		S3  S3Config  `pp:",omitempty"`
@@ -75,7 +73,8 @@ type (
 		Worker_BinaryPath   string `pp:",omitempty"`
 		Worker_ImageURL     string `pp:",omitempty"`
 
-		WebsocketServer string `default:"localhost:50051" envconfig:"REEARTH_FLOW_WEBSOCKET_SERVER"`
+		WebsocketServer string `default:"localhost:50051" envconfig:"REEARTH_FLOW_WEBSOCKET_GRPC_SERVER"`
+		GRPCPort        string `default:"50053" envconfig:"REEARTH_FLOW_API_GRPC_SERVER_PORT"`
 	}
 )
 
