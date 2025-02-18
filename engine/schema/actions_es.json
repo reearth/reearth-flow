@@ -723,21 +723,36 @@
       ]
     },
     {
-      "name": "CoordinateSystemSetter",
-      "type": "processor",
-      "description": "Establece el sistema de coordenadas de una entidad",
+      "name": "CzmlWriter",
+      "type": "sink",
+      "description": "Writes features to a Czml file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CoordinateSystemSetter",
+        "title": "CzmlWriterParam",
         "type": "object",
         "required": [
-          "epsgCode"
+          "output"
         ],
         "properties": {
-          "epsgCode": {
-            "type": "integer",
-            "format": "uint16",
-            "minimum": 0.0
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
           }
         }
       },
@@ -745,11 +760,9 @@
       "inputPorts": [
         "default"
       ],
-      "outputPorts": [
-        "default"
-      ],
+      "outputPorts": [],
       "categories": [
-        "Geometry"
+        "File"
       ]
     },
     {
@@ -2403,12 +2416,12 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "HorizontalReprojectorParam",
         "type": "object",
+        "required": [
+          "epsgCode"
+        ],
         "properties": {
           "epsgCode": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": "integer",
             "format": "uint16",
             "minimum": 0.0
           }

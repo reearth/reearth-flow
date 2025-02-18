@@ -207,7 +207,12 @@ func TestString_Clone(t *testing.T) {
 			t.Parallel()
 			res := tc.Target.Clone()
 			assert.Equal(t, tc.Expected, res)
-			assert.NotSame(t, tc.Target, res)
+			if len(tc.Target) != 0 {
+				res["test"] = "bar"
+				_, originalHasKey := tc.Target["test"]
+				assert.False(t, originalHasKey, "original map should not have the new key")
+				assert.Equal(t, "bar", res["test"])
+			}
 		})
 	}
 }

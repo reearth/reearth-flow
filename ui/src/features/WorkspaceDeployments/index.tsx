@@ -109,7 +109,6 @@ const DeploymentManager: React.FC = () => {
               <p className="text-lg dark:font-extralight">{t("Deployments")}</p>
               <Button
                 className="flex gap-2"
-                variant="outline"
                 onClick={() => setOpenDeploymentAddDialog(true)}>
                 <Plus weight="thin" />
                 <p className="text-xs dark:font-light">{t("New Deployment")}</p>
