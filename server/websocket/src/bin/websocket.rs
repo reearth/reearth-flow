@@ -29,9 +29,13 @@ async fn main() {
         }
     };
 
-    let store = GcsStore::new_with_config(config.gcs.clone())
-        .await
-        .expect("Failed to create GCS store");
+    let store = match GcsStore::new_with_config(config.gcs.clone()).await {
+        Ok(store) => store,
+        Err(e) => {
+            error!("Failed to create GCS store: {}", e);
+            std::process::exit(1);
+        }
+    };
 
     // Ensure bucket exists
     if let Err(e) = ensure_bucket(&store.client, &config.gcs.bucket_name).await {
@@ -49,7 +53,13 @@ async fn main() {
     let state = Arc::new({
         #[cfg(feature = "auth")]
         {
-            let auth = Arc::new(AuthService::new(config.auth).await.unwrap());
+            let auth = match AuthService::new(config.auth).await {
+                Ok(auth) => Arc::new(auth),
+                Err(e) => {
+                    error!("Failed to initialize auth service: {}", e);
+                    std::process::exit(1);
+                }
+            };
             tracing::info!("Auth service initialized");
             AppState { pool, auth }
         }

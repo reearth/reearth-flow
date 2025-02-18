@@ -8,7 +8,7 @@ use yrs::{
     updates::decoder::Decode, updates::encoder::Encode, Doc, ReadTxn, StateVector, Transact, Update,
 };
 
-use crate::{storage::kv::DocOps, AppState};
+use crate::{pool::BroadcastPool, storage::kv::DocOps};
 
 pub mod document {
     tonic::include_proto!("proto");
@@ -21,12 +21,12 @@ use document::{
 };
 
 pub struct DocumentServiceImpl {
-    state: Arc<AppState>,
+    pool: Arc<BroadcastPool>,
 }
 
 impl DocumentServiceImpl {
-    pub fn new(state: Arc<AppState>) -> Self {
-        Self { state }
+    pub fn new(pool: Arc<BroadcastPool>) -> Self {
+        Self { pool }
     }
 
     fn normalize_doc_id(doc_id: &str) -> String {
@@ -45,12 +45,12 @@ impl DocumentService for DocumentServiceImpl {
     ) -> Result<Response<Self::SyncDocumentStream>, Status> {
         let mut stream = request.into_inner();
         let (tx, rx) = mpsc::channel(32);
-        let state = self.state.clone();
+        let pool = self.pool.clone();
 
         tokio::spawn(async move {
             while let Some(update) = stream.message().await.unwrap() {
                 let doc_id = Self::normalize_doc_id(&update.doc_id);
-                let _group = match state.pool.get_or_create_group(&doc_id).await {
+                let _group = match pool.get_or_create_group(&doc_id).await {
                     Ok(group) => group,
                     Err(e) => {
                         tracing::error!("Failed to get or create group: {}", e);
@@ -82,7 +82,7 @@ impl DocumentService for DocumentServiceImpl {
         request: Request<DocumentRequest>,
     ) -> Result<Response<DocumentResponse>, Status> {
         let doc_id = Self::normalize_doc_id(&request.into_inner().doc_id);
-        let store = self.state.pool.get_store();
+        let store = self.pool.get_store();
         let doc = Doc::new();
         let mut txn = doc.transact_mut();
 
@@ -117,7 +117,7 @@ impl DocumentService for DocumentServiceImpl {
         request: Request<DocumentHistoryRequest>,
     ) -> Result<Response<DocumentHistoryResponse>, Status> {
         let doc_id = Self::normalize_doc_id(&request.into_inner().doc_id);
-        let store = self.state.pool.get_store();
+        let store = self.pool.get_store();
 
         match store.get_updates(&doc_id).await {
             Ok(updates) => {
@@ -154,7 +154,7 @@ impl DocumentService for DocumentServiceImpl {
             .parse::<u32>()
             .map_err(|_| Status::invalid_argument("Invalid version_id: must be a valid u32"))?;
 
-        let store = self.state.pool.get_store();
+        let store = self.pool.get_store();
         match store.rollback_to(&doc_id, version_id).await {
             Ok(_) => Ok(Response::new(RollbackResponse {
                 success: true,

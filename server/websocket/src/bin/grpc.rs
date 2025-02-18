@@ -7,11 +7,7 @@ use websocket::{
     pool::BroadcastPool,
     server::ensure_bucket,
     storage::gcs::GcsStore,
-    AppState,
 };
-
-#[cfg(feature = "auth")]
-use websocket::auth::AuthService;
 
 #[tokio::main]
 async fn main() {
@@ -47,21 +43,8 @@ async fn main() {
     let pool = Arc::new(BroadcastPool::new(store, config.redis));
     tracing::info!("Broadcast pool initialized");
 
-    let state = Arc::new({
-        #[cfg(feature = "auth")]
-        {
-            let auth = Arc::new(AuthService::new(config.auth).await.unwrap());
-            tracing::info!("Auth service initialized");
-            AppState { pool, auth }
-        }
-        #[cfg(not(feature = "auth"))]
-        {
-            AppState { pool }
-        }
-    });
-
     let addr = format!("0.0.0.0:{}", config.grpc_port).parse().unwrap();
-    let document_service = DocumentServiceImpl::new(state);
+    let document_service = DocumentServiceImpl::new(pool);
 
     tracing::info!("Starting gRPC server on {}", addr);
 
