@@ -8,7 +8,7 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 rust-version.workspace = true
-version = "0.0.2"
+version.workspace = true
 
 [dependencies]
 reearth-flow-action-log.workspace = true
@@ -24,6 +24,7 @@ reearth-flow-types.workspace = true
 flatgeom.workspace = true
 kv-extsort = { git = "https://github.com/MIERUNE/kv-extsort-rs.git" }
 nusamai-citygml.workspace = true
+nusamai-czml.workspace = true
 nusamai-gltf.workspace = true
 nusamai-plateau.workspace = true
 nusamai-projection.workspace = true
