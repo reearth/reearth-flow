@@ -12,19 +12,19 @@ import (
 )
 
 var (
-	defaultClient interfaces.WebsocketClient
-	cfg           Config
-	clientOnce    sync.Once
+	defaultClient   interfaces.WebsocketClient
+	websocketServer string
+	clientOnce      sync.Once
 )
 
-func Init(c Config) {
-	cfg = c
+func Init(c string) {
+	websocketServer = c
 }
 
 func getDefaultClient() interfaces.WebsocketClient {
 	clientOnce.Do(func() {
-		log.Infof("Creating new document client with gRPC address: %s", cfg.GrpcServerURL)
-		client, err := websocket.NewClient(cfg.GrpcServerURL)
+		log.Infof("Creating new document client with gRPC address: %s", websocketServer)
+		client, err := websocket.NewClient(websocketServer)
 		if err != nil {
 			log.Errorf("Failed to create document client: %v", err)
 			return
