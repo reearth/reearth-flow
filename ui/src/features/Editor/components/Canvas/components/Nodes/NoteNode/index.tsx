@@ -12,6 +12,7 @@ export type NoteNodeProps = NodeProps<Node>;
 export const initialSize = { width: 300, height: 200 };
 const minSize = { width: 250, height: 150 };
 
+// TODO: Currently textarea data.content on node is not setting the value correctly. Temporary fix is to use text on RJSFS params @billcookie
 const noteNodeSchema: RJSFSchema = {
   type: "object",
   properties: {
@@ -21,6 +22,7 @@ const noteNodeSchema: RJSFSchema = {
       format: "color",
       title: "Background Color",
     },
+    text: { type: "string", format: "textarea", title: "Text" },
     textColor: { type: "string", format: "color", title: "Text Color" },
   },
 };
@@ -108,7 +110,23 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
           <Note />
           <p>{data.params?.customName ?? data.officialName}</p>
         </div>
-        <textarea
+        <span
+          style={{
+            minWidth: "inherit",
+            minHeight: "inherit",
+          }}
+          ref={(element) => {
+            if (element)
+              element.style.setProperty(
+                "color",
+                data.params?.textColor || "",
+                "important",
+              );
+          }}
+          className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none">
+          {data.params?.text}
+        </span>
+        {/* <textarea
           defaultValue={data.content}
           style={{
             minWidth: "inherit",
@@ -123,7 +141,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
               );
           }}
           className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none"
-        />
+        /> */}
       </div>
     </>
   );
