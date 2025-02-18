@@ -25,7 +25,7 @@ type (
 	Mailer mailer.Mailer
 	Config struct {
 		mailer.Config
-		Port             int               `default:"8080"`
+		Port             string            `default:"8080"`
 		ServerHost       string            `pp:",omitempty"`
 		Host             string            `default:"http://localhost:8080"`
 		Host_Web         string            `pp:",omitempty"`
@@ -53,7 +53,7 @@ type (
 		HTTPSREDIRECT    bool              `pp:",omitempty"`
 		SharedPath       string            `default:"shared"`
 
-		GRPCPort int `default:"50053" envconfig:"REEARTH_FLOW_API_GRPC_PORT"`
+		GRPCPort string `default:"50053" envconfig:"REEARTH_FLOW_API_GRPC_PORT"`
 
 		// storage
 		GCS GCSConfig `pp:",omitempty"`

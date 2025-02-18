@@ -11,11 +11,11 @@ import (
 
 type Server struct {
 	server      *grpc.Server
-	port        int
+	port        string
 	authService *AuthService
 }
 
-func NewServer(port int, jwtProviders []appx.JWTProvider) *Server {
+func NewServer(port string, jwtProviders []appx.JWTProvider) *Server {
 	server := grpc.NewServer()
 	authService := NewAuthService(jwtProviders)
 
@@ -29,7 +29,7 @@ func NewServer(port int, jwtProviders []appx.JWTProvider) *Server {
 }
 
 func (s *Server) Start() error {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", s.port))
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", s.port))
 	if err != nil {
 		return fmt.Errorf("failed to listen: %v", err)
 	}
