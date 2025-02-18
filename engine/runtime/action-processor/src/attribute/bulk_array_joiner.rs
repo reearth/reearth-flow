@@ -184,7 +184,7 @@ mod test {
             assert_eq!(feature.attributes.len(), 1);
             assert!(feature
                 .attributes
-                .contains_key(&Attribute::new("hoge".to_string())),);
+                .contains_key(&Attribute::new("test".to_string())),);
         }
     }
 
