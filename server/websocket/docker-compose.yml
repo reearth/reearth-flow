@@ -2,9 +2,21 @@ services:
   websocket:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.websocket
     ports:
       - "8000:8000"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - fake-gcs
+
+  grpc:
+    build:
+      context: .
+      dockerfile: Dockerfile.grpc
+    ports:
+      - "50051:50051"
     env_file:
       - .env
     depends_on:

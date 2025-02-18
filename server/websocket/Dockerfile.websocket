@@ -8,10 +8,10 @@ RUN cargo build --release
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /usr/src/app/target/release/main /usr/local/bin/websocket
+COPY --from=builder /usr/src/app/target/release/websocket /usr/local/bin/websocket
 
 WORKDIR /usr/local/bin
 COPY .env .
 EXPOSE 8000
 
-CMD ["websocket"]
+CMD ["websocket"] 
