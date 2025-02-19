@@ -110,7 +110,7 @@ const LayoutOptionsDialog: React.FC<Props> = ({
           </DialogContentSection>
         </DialogContentWrapper>
         <DialogFooter>
-          <Button onClick={handleLayoutChange}>{t("Submit")}</Button>
+          <Button onClick={handleLayoutChange}>{t("Update")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
