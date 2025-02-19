@@ -10,7 +10,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
-	grpcserver "github.com/reearth/reearth-flow/api/internal/infrastructure/grpc"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/log"
@@ -98,15 +97,6 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	apiPrivate.Use(authMiddleware, attachOpMiddleware(cfg))
 	apiPrivate.POST("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev, origins))
 	apiPrivate.POST("/signup", Signup())
-
-	// Initialize gRPC server
-	grpcServer := grpcserver.NewServer(cfg.Config.GRPCPort, cfg.Config.JWTProviders())
-	go func() {
-		log.Infof("Starting gRPC server on port %d", cfg.Config.GRPCPort)
-		if err := grpcServer.Start(); err != nil {
-			log.Errorf("Failed to start gRPC server: %v", err)
-		}
-	}()
 
 	apiPrivate.Any("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev, origins))
 	apiPrivate.POST("/signup", Signup())

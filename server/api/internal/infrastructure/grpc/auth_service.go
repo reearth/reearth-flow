@@ -7,6 +7,8 @@ import (
 
 	"github.com/reearth/reearth-flow/api/proto"
 	"github.com/reearth/reearthx/appx"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type AuthService struct {
@@ -29,16 +31,12 @@ func (s *AuthService) VerifyAPIToken(ctx context.Context, req *proto.APITokenVer
 
 	validator, err := appx.NewJWTMultipleValidator(s.authConfig)
 	if err != nil {
-		return &proto.APITokenVerifyResponse{
-			Authorized: false,
-		}, nil
+		return nil, status.Error(codes.Unauthenticated, "failed to initialize validator")
 	}
 
 	_, err = validator.ValidateToken(ctx, token)
 	if err != nil {
-		return &proto.APITokenVerifyResponse{
-			Authorized: false,
-		}, nil
+		return nil, status.Error(codes.Unauthenticated, "invalid token")
 	}
 
 	return &proto.APITokenVerifyResponse{

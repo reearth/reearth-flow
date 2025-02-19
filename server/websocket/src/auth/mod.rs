@@ -1,5 +1,5 @@
 use crate::{conf::AuthConfig, proto};
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use proto::{auth_service_client::AuthServiceClient, ApiTokenVerifyRequest};
 use tonic::transport::Channel;
 use tracing::debug;
@@ -27,11 +27,14 @@ impl AuthService {
             Ok(response) => {
                 let authorized = response.into_inner().authorized;
                 debug!("Token verification result: {}", authorized);
+                if !authorized {
+                    return Err(anyhow!("Token verification failed: unauthorized"));
+                }
                 Ok(authorized)
             }
             Err(e) => {
                 debug!("Token verification failed: {}", e);
-                Ok(false)
+                Err(anyhow!("Token verification failed: {}", e))
             }
         }
     }

@@ -7,12 +7,25 @@ services:
     environment:
       REEARTH_FLOW_DB: mongodb://reearth-flow-mongo
       PORT: 8080
+      REEARTH_FLOW_API_GRPC_SERVER_PORT: 50053
     ports:
       - "8080:8080"
     depends_on:
       - reearth-flow-mongo
+      - reearth-flow-grpc
     volumes:
       - ./data:/app/data
+
+  reearth-flow-grpc:
+    image: reearth/reearth-flow-grpc:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.grpc
+    environment:
+      REEARTH_FLOW_API_GRPC_SERVER_PORT: 50053
+    ports:
+      - "50053:50053"
+
   reearth-flow-mongo:
     image: mongo:6-focal
     ports:
