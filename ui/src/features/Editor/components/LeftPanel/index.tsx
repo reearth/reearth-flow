@@ -9,13 +9,13 @@ import {
 } from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
 import { useReactFlow } from "@xyflow/react";
-import { memo, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
 import { UserMenu } from "@flow/features/common";
 import { useShortcuts } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import type { Node } from "@flow/types";
+import type { Node, NodeChange } from "@flow/types";
 import { getNodeIcon } from "@flow/utils/getNodeIcon";
 
 import { ActionsList } from "./components";
@@ -29,8 +29,9 @@ type Props = {
   onNodesAdd: (node: Node[]) => void;
   isMainWorkflow: boolean;
   hasReader?: boolean;
-  // onNodeDoubleClick: (e: React.MouseEvent<Element>, node: Node) => void;
-  // selected?: Node;
+  onNodesChange: (changes: NodeChange[]) => void;
+  onNodeDoubleClick: (e: React.MouseEvent<Element>, node: Node) => void;
+  selected?: Node;
 };
 
 const LeftPanel: React.FC<Props> = ({
@@ -40,21 +41,63 @@ const LeftPanel: React.FC<Props> = ({
   onNodesAdd,
   isMainWorkflow,
   hasReader,
-  // onNodeDoubleClick,
-  // selected,
+  onNodesChange,
+  onNodeDoubleClick,
+  selected,
 }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
   const [selectedTab, setSelectedTab] = useState<Tab | undefined>();
-  const { fitView } = useReactFlow();
+  const { fitView, getViewport, zoomTo } = useReactFlow();
   const [nodeId, setNodeId] = useState<string | undefined>(undefined);
 
-  useEffect(() => {
+  const previousZoomRef = useRef<number | undefined>(undefined);
+
+  const handleSelectionChange = useCallback(() => {
     if ((!isOpen && selectedTab) || (!isOpen && nodeId)) {
       setSelectedTab(undefined);
       setNodeId(undefined);
     }
-  }, [isOpen, selectedTab, nodeId]);
+
+    if (!isOpen) {
+      setNodeId(undefined);
+    }
+
+    if (selected && nodeId) {
+      if (previousZoomRef.current === undefined) {
+        previousZoomRef.current = getViewport().zoom;
+      }
+    } else if (!selected && previousZoomRef.current !== undefined) {
+      zoomTo(previousZoomRef.current, { duration: 400 });
+      previousZoomRef.current = undefined;
+    }
+  }, [isOpen, selectedTab, nodeId, selected, getViewport, zoomTo]);
+
+  useEffect(() => {
+    handleSelectionChange();
+  }, [handleSelectionChange]);
+
+  const handleTreeDataItemDoubleClick = useCallback(
+    (nodeId: string) => {
+      if (!nodeId) return;
+      const node = nodes.find((n) => n.id === nodeId);
+      if (!node) return;
+
+      fitView({
+        nodes: [{ id: node.id }],
+        duration: 500,
+        padding: 2,
+      });
+      const nodeChanges: NodeChange[] = nodes.map((n) => ({
+        id: n.id,
+        type: "select",
+        selected: n.id === nodeId,
+      }));
+      onNodesChange(nodeChanges);
+      onNodeDoubleClick({} as React.MouseEvent, node);
+    },
+    [nodes, fitView, onNodesChange, onNodeDoubleClick],
+  );
 
   const treeContent: TreeDataItem[] = [
     ...(createTreeDataItem("reader", Database, nodes) || []),
@@ -90,16 +133,7 @@ const LeftPanel: React.FC<Props> = ({
           }}
           onDoubleClick={() => {
             if (nodeId) {
-              const node = nodes.find((n) => n.id === nodeId);
-              if (node) {
-                fitView({
-                  nodes: [{ id: node.id }],
-                  duration: 500,
-                  padding: 2,
-                });
-                // TODO: Implement double click on node so that params of a node opens. Currently selection is handled by React Flow component therefore it is hard to get the internal state @billcookie
-                // onNodeDoubleClick({} as React.MouseEvent, node);
-              }
+              handleTreeDataItemDoubleClick(nodeId);
             }
           }}
         />
