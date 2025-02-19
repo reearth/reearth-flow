@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"context"
 	"fmt"
 	"net"
 
@@ -28,15 +29,20 @@ func NewServer(port string, jwtProviders []appx.JWTProvider) *Server {
 	}
 }
 
-func (s *Server) Start() error {
+func (s *Server) Stop() {
+	s.server.GracefulStop()
+}
+
+func (s *Server) StartWithContext(ctx context.Context) error {
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", s.port))
 	if err != nil {
 		return fmt.Errorf("failed to listen: %v", err)
 	}
 
-	return s.server.Serve(lis)
-}
+	go func() {
+		<-ctx.Done()
+		s.Stop()
+	}()
 
-func (s *Server) Stop() {
-	s.server.GracefulStop()
+	return s.server.Serve(lis)
 }
