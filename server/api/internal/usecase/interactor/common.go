@@ -31,15 +31,16 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 	permissionChecker gateway.PermissionChecker,
 	config ContainerConfig,
 ) interfaces.Container {
-	job := NewJob(r, g)
+	job := NewJob(r, g, permissionChecker)
+
 	return interfaces.Container{
-		Asset:         NewAsset(r, g),
+		Asset:         NewAsset(r, g, permissionChecker),
 		Job:           job,
-		Deployment:    NewDeployment(r, g, job),
+		Deployment:    NewDeployment(r, g, job, permissionChecker),
 		Log:           NewLogInteractor(g.LogRedis),
-		Parameter:     NewParameter(r),
+		Parameter:     NewParameter(r, permissionChecker),
 		Project:       NewProject(r, g, job, permissionChecker),
-		ProjectAccess: NewProjectAccess(r, g, config),
+		ProjectAccess: NewProjectAccess(r, g, config, permissionChecker),
 		Workspace:     accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
 		Trigger:       NewTrigger(r, g, job, permissionChecker),
 		User:          accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
