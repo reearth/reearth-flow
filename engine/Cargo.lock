@@ -5737,6 +5737,7 @@ dependencies = [
  "parking_lot",
  "petgraph 0.6.5",
  "quick-xml 0.37.2",
+ "rayon",
  "reearth-flow-action-log",
  "reearth-flow-common",
  "reearth-flow-eval-expr",
