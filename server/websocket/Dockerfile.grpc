@@ -1,22 +1,23 @@
-FROM rust:1.84.1 as builder
-
+FROM rust:1.84.1-slim as builder
 
 RUN apt-get update && \
-    apt-get install -y protobuf-compiler && \
-    rm -rf /var/lib/apt/lists/*
+    apt-get install -y \
+    protobuf-compiler \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /usr/src/app
 COPY . .
 
 RUN cargo build --release 
 
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+FROM gcr.io/distroless/cc-debian12
 
 COPY --from=builder /usr/src/app/target/release/grpc /usr/local/bin/grpc
+COPY .env.docker /usr/local/bin/.env
 
 WORKDIR /usr/local/bin
-COPY .env .
 EXPOSE 50051
 
 CMD ["grpc"] 
