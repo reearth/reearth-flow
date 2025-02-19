@@ -3,10 +3,10 @@ use std::{collections::HashMap, str::FromStr};
 use super::errors::PlateauProcessorError;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
@@ -90,7 +90,7 @@ impl Processor for ObjectListExtractor {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
         let object_list_path = feature
@@ -156,11 +156,7 @@ impl Processor for ObjectListExtractor {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
