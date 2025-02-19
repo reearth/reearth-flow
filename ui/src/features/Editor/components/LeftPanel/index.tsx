@@ -40,7 +40,7 @@ const LeftPanel: React.FC<Props> = ({
   onNodesAdd,
   isMainWorkflow,
   hasReader,
-  onNodeDoubleClick,
+  // onNodeDoubleClick,
   selected,
 }) => {
   const t = useT();
@@ -56,13 +56,17 @@ const LeftPanel: React.FC<Props> = ({
     if (previousZoom !== undefined && selected === undefined) {
       zoomTo(previousZoom, { duration: 400 });
     }
-  }, [isOpen, previousZoom, selected, zoomTo]);
+  }, [previousZoom, selected, zoomTo]);
 
   useEffect(() => {
-    if (selected) {
+    if (selected && nodeId) {
       setPreviousZoom(getZoom());
     }
-  }, [selected, getZoom]);
+
+    if (!isOpen) {
+      setNodeId(undefined);
+    }
+  }, [selected, isOpen, getZoom, nodeId]);
 
   useEffect(() => {
     if (!isOpen && selectedTab) {
@@ -170,7 +174,7 @@ const LeftPanel: React.FC<Props> = ({
                   duration: 500,
                   padding: 2,
                 });
-                onNodeDoubleClick({} as React.MouseEvent, node);
+                // onNodeDoubleClick({} as React.MouseEvent, node);
               }
             }
           }}

@@ -58,8 +58,8 @@ export default function Editor({
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
-    handlePanelClose,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
+
   return (
     <div className="flex h-screen flex-col">
       <div className="relative flex flex-1">
@@ -120,7 +120,6 @@ export default function Editor({
         <ParamsPanel
           selected={locallyLockedNode}
           onParamsSubmit={handleNodeParamsUpdate}
-          onClose={handlePanelClose}
         />
       </div>
     </div>

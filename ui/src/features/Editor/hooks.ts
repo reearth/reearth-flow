@@ -158,12 +158,6 @@ export default ({
     [openPanel],
   );
 
-  const handlePanelClose = useCallback(() => {
-    if (locallyLockedNode) {
-      handleNodeLocking(locallyLockedNode.id);
-    }
-  }, [locallyLockedNode, handleNodeLocking]);
-
   const {
     nodePickerOpen,
     rightPanelContent,
@@ -299,6 +293,5 @@ export default ({
     handleEdgesAdd: handleYEdgesAdd,
     handleEdgesChange: handleYEdgesChange,
     handleEdgeHover,
-    handlePanelClose,
   };
 };
