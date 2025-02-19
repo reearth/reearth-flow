@@ -4,6 +4,7 @@ import {
   Database,
   Disc,
   Graph,
+  Layout,
   Lightning,
   Note,
   RectangleDashed,
@@ -15,34 +16,39 @@ import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { NodeType } from "@flow/types";
 
+type BreakItem = { id: "break" };
+
 type ToolboxItem<T> = {
   id: T;
   name: string;
   icon: React.ReactNode;
   disabled?: boolean;
+  onClick?: () => void;
 };
 
-type Tool = ToolboxItem<NodeType>;
+type Tool = ToolboxItem<NodeType> | BreakItem;
 
-type CanvasAction = "undo" | "redo";
-type Action = ToolboxItem<CanvasAction>;
+type CanvasAction = "layout" | "undo" | "redo";
+type Action = ToolboxItem<CanvasAction> | BreakItem;
 
 type Props = {
   canUndo: boolean;
   canRedo: boolean;
-  onRedo?: () => void;
-  onUndo?: () => void;
   isMainWorkflow: boolean;
   hasReader?: boolean;
+  onRedo: () => void;
+  onUndo: () => void;
+  onLayoutChange: () => void;
 };
 
 const Toolbox: React.FC<Props> = ({
   canUndo,
   canRedo,
-  onRedo,
-  onUndo,
   isMainWorkflow,
   hasReader,
+  onRedo,
+  onUndo,
+  onLayoutChange,
 }) => {
   const t = useT();
   const availableTools: Tool[] = [
@@ -72,7 +78,6 @@ const Toolbox: React.FC<Props> = ({
       id: "batch" as const,
       name: t("Batch Node"),
       icon: <RectangleDashed weight="thin" />,
-      disabled: true, // TODO: Enable batch node after fixing batch implementation
     },
     {
       id: "subworkflow" as const,
@@ -83,14 +88,25 @@ const Toolbox: React.FC<Props> = ({
 
   const availableActions: Action[] = [
     {
+      id: "layout",
+      name: t("Auto layout"),
+      icon: <Layout className="size-4" weight="thin" />,
+      onClick: onLayoutChange,
+    },
+    { id: "break" },
+    {
       id: "undo",
       name: t("Undo last action"),
-      icon: <ArrowArcLeft className="size-4 stroke-1" weight="thin" />,
+      icon: <ArrowArcLeft className="size-4" weight="thin" />,
+      disabled: !canUndo,
+      onClick: onUndo,
     },
     {
       id: "redo",
       name: t("Redo action"),
-      icon: <ArrowArcRight className="size-4 stroke-1" weight="thin" />,
+      icon: <ArrowArcRight className="size-4" weight="thin" />,
+      disabled: !canRedo,
+      onClick: onRedo,
     },
   ];
 
@@ -148,10 +164,12 @@ const Toolbox: React.FC<Props> = ({
     }, 0);
   };
   return (
-    <div className="pointer-events-none absolute bottom-1 left-2 top-2 flex shrink-0 gap-2 [&>*]:pointer-events-auto">
-      <div className="self-start rounded-md bg-secondary">
-        <div className="flex flex-col flex-wrap rounded-md border transition-all">
-          {availableTools.map((tool) => (
+    <div className="self-start rounded-md bg-secondary">
+      <div className="flex flex-col flex-wrap rounded-md border transition-all">
+        {availableTools.map((tool) =>
+          tool.id === "break" ? (
+            <div className="w-full border-t" />
+          ) : (
             <IconButton
               key={tool.id}
               className={`dndnode-${tool.id} rounded-[4px]`}
@@ -162,26 +180,24 @@ const Toolbox: React.FC<Props> = ({
               draggable
               disabled={tool.disabled}
             />
-          ))}
-          {availableActions && <div className="my-2 w-full border-t" />}
-          {availableActions.map((action) => (
+          ),
+        )}
+        <div className="w-full border-t" />
+        {availableActions.map((action) =>
+          action.id === "break" ? (
+            <div className="w-full border-t" />
+          ) : (
             <IconButton
               key={action.id}
-              className="rounded-[4px]"
+              className="gap-0 rounded-[4px]"
               tooltipPosition="right"
               tooltipText={action.name}
               icon={action.icon}
-              disabled={action.id === "undo" ? !canUndo : !canRedo}
-              onClick={() =>
-                action.id === "redo"
-                  ? onRedo?.()
-                  : action.id === "undo"
-                    ? onUndo?.()
-                    : undefined
-              }
+              disabled={action.disabled}
+              onClick={action.onClick}
             />
-          ))}
-        </div>
+          ),
+        )}
       </div>
     </div>
   );

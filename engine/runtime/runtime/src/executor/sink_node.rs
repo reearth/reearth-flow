@@ -69,8 +69,10 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
 
         let (node_handles, receivers) = dag.collect_receivers(node_index);
 
+        let version = env!("CARGO_PKG_VERSION");
         let span = info_span!(
             "action",
+            "engine.version" = version,
             "otel.name" = sink.name(),
             "otel.kind" = "Sink Node",
             "workflow.id" = dag.id.to_string().as_str(),

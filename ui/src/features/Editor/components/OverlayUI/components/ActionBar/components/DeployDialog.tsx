@@ -1,4 +1,5 @@
 // import { CaretRight } from "@phosphor-icons/react";
+import { CaretRight } from "@phosphor-icons/react";
 import { useCallback, useMemo, useState } from "react";
 
 import {
@@ -18,8 +19,8 @@ import { useCurrentProject } from "@flow/stores";
 type Props = {
   allowedToDeploy: boolean;
   onWorkflowDeployment: (
+    description: string,
     deploymentId?: string,
-    description?: string,
   ) => Promise<void>;
   setShowDialog: (show: boolean) => void;
 };
@@ -37,12 +38,19 @@ const DeployDialog: React.FC<Props> = ({
     [currentProject?.deployment],
   );
 
+  const currentVersion = useMemo(() => {
+    if (!deployment) return undefined;
+    const versionNumber = parseInt(deployment.version.slice(1));
+    if (Number.isNaN(versionNumber)) return undefined;
+    return versionNumber;
+  }, [deployment]);
+
   const [description, setDescription] = useState<string>(
     deployment?.description ?? "",
   );
 
   const handleWorkflowDeployment = useCallback(async () => {
-    await onWorkflowDeployment(deployment?.id, description);
+    await onWorkflowDeployment(description, deployment?.id);
     if (allowedToDeploy) {
       setShowDialog(false);
     }
@@ -59,20 +67,22 @@ const DeployDialog: React.FC<Props> = ({
       <DialogContent size="sm">
         <DialogTitle>{t("Deploy project")}</DialogTitle>
         <DialogContentWrapper>
-          <DialogContentSection className="flex flex-col">
-            <Label>{t("Project to deploy: ")}</Label>
+          <DialogContentSection className="flex flex-row items-center">
+            <Label>{t("Project to Deploy: ")}</Label>
             <p className="truncate dark:font-thin">
               {currentProject?.name ?? t("N/A")}
             </p>
           </DialogContentSection>
-          {/* <DialogContentSection>
-            <Label>{t("Deploy version: ")}</Label>
-            <div className="flex items-center">
-              <p className="dark:font-thin">{deployment?.version || 1.0}</p>
+          <DialogContentSection className="flex flex-row items-center">
+            <Label>{t("Deployment Version: ")}</Label>
+            <div className="flex items-center gap-2">
+              <p className="dark:font-thin">{currentVersion}</p>
               <CaretRight />
-              <p className="font-semibold">2.0</p>
+              <p className="font-semibold">
+                {currentVersion ? currentVersion + 1 : 1}
+              </p>
             </div>
-          </DialogContentSection> */}
+          </DialogContentSection>
           <div className="border-t border-primary" />
           <DialogContentSection className="flex flex-col">
             <Label>{t("Description")}</Label>

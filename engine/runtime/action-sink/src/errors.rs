@@ -22,10 +22,22 @@ pub enum SinkError {
     GltfWriterFactory(String),
     #[error("Gltf Writer error: {0}")]
     GltfWriter(String),
+    #[error("Czml Writer Factory error: {0}")]
+    CzmlWriterFactory(String),
+    #[error("Czml Writer error: {0}")]
+    CzmlWriter(String),
+    #[error("Shapefile Writer Factory error: {0}")]
+    ShapefileWriterFactory(String),
+    #[error("Shapefile Writer error: {0}")]
+    ShapefileWriter(String),
 }
 
 impl SinkError {
     pub fn file_writer<T: ToString>(message: T) -> Self {
+        Self::FileWriter(message.to_string())
+    }
+
+    pub fn geojson_writer<T: ToString>(message: T) -> Self {
         Self::FileWriter(message.to_string())
     }
 
@@ -35,6 +47,10 @@ impl SinkError {
 
     pub fn gltf_writer<T: ToString>(message: T) -> Self {
         Self::GltfWriter(message.to_string())
+    }
+
+    pub fn czml_writer<T: ToString>(message: T) -> Self {
+        Self::CzmlWriter(message.to_string())
     }
 }
 

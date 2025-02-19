@@ -1,4 +1,3 @@
-import type { XYPosition } from "@xyflow/react";
 import { MouseEvent, useCallback, useMemo, useState } from "react";
 import { useY } from "react-yjs";
 import { Array as YArray, UndoManager as YUndoManager } from "yjs";
@@ -12,7 +11,7 @@ import { rebuildWorkflow } from "@flow/lib/yjs/conversions";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
-import type { ActionNodeType, Edge, Node } from "@flow/types";
+import type { Edge, Node } from "@flow/types";
 import { isDefined } from "@flow/utils";
 import { jsonToFormData } from "@flow/utils/jsonToFormData";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflowJson/engineReadyWorkflow";
@@ -22,6 +21,7 @@ import { useToast } from "../NotificationSystem/useToast";
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useHover from "./useHover";
 import useNodeLocker from "./useNodeLocker";
+import useUIState from "./useUIState";
 
 export default ({
   yWorkflows,
@@ -51,7 +51,7 @@ export default ({
     rawWorkflows,
     currentYWorkflow,
     handleYWorkflowAdd,
-    handleYWorkflowAddFromSelection,
+    // handleYWorkflowAddFromSelection,
     handleYWorkflowUpdate,
     handleYNodesAdd,
     handleYNodesChange,
@@ -61,6 +61,7 @@ export default ({
     handleYWorkflowUndo,
     handleYWorkflowRedo,
     handleYWorkflowRename,
+    handleYLayoutChange,
   } = useYjsStore({
     currentWorkflowId,
     yWorkflows,
@@ -158,42 +159,18 @@ export default ({
     [openPanel],
   );
 
-  const [nodePickerOpen, setNodePickerOpen] = useState<
-    { position: XYPosition; nodeType: ActionNodeType } | undefined
-  >(undefined);
-
-  const handleNodePickerOpen = useCallback(
-    (
-      position?: XYPosition,
-      nodeType?: ActionNodeType,
-      isMainWorkflow?: boolean,
-    ) => {
-      if (isMainWorkflow === false && nodeType === "reader" && !hasReader) {
-        return;
-      }
-      if (isMainWorkflow && nodeType === "reader" && hasReader) {
-        return;
-      }
-
-      if (isMainWorkflow === false && nodeType === "writer") {
-        return;
-      }
-
-      setNodePickerOpen(
-        !position || !nodeType ? undefined : { position, nodeType },
-      );
-    },
-    [hasReader],
-  );
-  const handleNodePickerClose = useCallback(
-    () => setNodePickerOpen(undefined),
-    [],
-  );
+  const {
+    nodePickerOpen,
+    rightPanelContent,
+    handleNodePickerOpen,
+    handleNodePickerClose,
+    handleRightPanelOpen,
+  } = useUIState({ hasReader });
 
   const { hoveredDetails, handleNodeHover, handleEdgeHover } = useHover();
 
   const handleWorkflowDeployment = useCallback(
-    async (deploymentId?: string, description?: string) => {
+    async (description: string, deploymentId?: string) => {
       const {
         name: projectName,
         workspaceId,
@@ -276,10 +253,10 @@ export default ({
       keyBinding: { key: "z", commandKey: true },
       callback: handleYWorkflowUndo,
     },
-    {
-      keyBinding: { key: "s", commandKey: false },
-      callback: () => handleYWorkflowAddFromSelection(nodes, edges),
-    },
+    // {
+    //   keyBinding: { key: "s", commandKey: false },
+    //   callback: () => handleYWorkflowAddFromSelection(nodes, edges),
+    // },
   ]);
 
   return {
@@ -293,6 +270,12 @@ export default ({
     nodePickerOpen,
     openPanel,
     allowedToDeploy,
+    rightPanelContent,
+    canUndo,
+    canRedo,
+    isMainWorkflow,
+    hasReader,
+    handleRightPanelOpen,
     handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowDeployment,
     handlePanelOpen,
@@ -301,6 +284,7 @@ export default ({
     handleWorkflowRedo: handleYWorkflowRedo,
     handleWorkflowUndo: handleYWorkflowUndo,
     handleWorkflowRename: handleYWorkflowRename,
+    handleLayoutChange: handleYLayoutChange,
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
     handleNodeHover,
@@ -311,9 +295,5 @@ export default ({
     handleEdgesAdd: handleYEdgesAdd,
     handleEdgesChange: handleYEdgesChange,
     handleEdgeHover,
-    canUndo,
-    canRedo,
-    isMainWorkflow,
-    hasReader,
   };
 };

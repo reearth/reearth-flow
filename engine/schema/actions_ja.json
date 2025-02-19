@@ -8,9 +8,6 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AreaOnAreaOverlayerParam",
         "type": "object",
-        "required": [
-          "outputAttribute"
-        ],
         "properties": {
           "groupBy": {
             "type": [
@@ -20,9 +17,6 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
-          },
-          "outputAttribute": {
-            "$ref": "#/definitions/Attribute"
           }
         },
         "definitions": {
@@ -615,6 +609,16 @@
               "null"
             ]
           },
+          "compressOutput": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "maxZoom": {
             "type": "integer",
             "format": "uint8",
@@ -682,21 +686,27 @@
       ]
     },
     {
-      "name": "CoordinateSystemSetter",
+      "name": "ConvexHullAccumulator",
       "type": "processor",
-      "description": "フィーチャの座標系を設定する",
+      "description": "Creates a convex hull based on a group of input features.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CoordinateSystemSetter",
+        "title": "ConvexHullAccumulatorParam",
         "type": "object",
-        "required": [
-          "epsgCode"
-        ],
         "properties": {
-          "epsgCode": {
-            "type": "integer",
-            "format": "uint16",
-            "minimum": 0.0
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
           }
         }
       },
@@ -705,10 +715,54 @@
         "default"
       ],
       "outputPorts": [
-        "default"
+        "default",
+        "rejected"
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "CzmlWriter",
+      "type": "sink",
+      "description": "Writes features to a Czml file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CzmlWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
       ]
     },
     {
@@ -723,6 +777,79 @@
       "outputPorts": [
         "2d",
         "3d",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "DirectoryDecompressor",
+      "type": "processor",
+      "description": "Decompresses a directory",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "DirectoryDecompressorParam",
+        "type": "object",
+        "required": [
+          "archiveAttributes"
+        ],
+        "properties": {
+          "archiveAttributes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "Dissolver",
+      "type": "processor",
+      "description": "Dissolves features grouped by specified attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "DissolverParam",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "area",
         "rejected"
       ],
       "categories": [
@@ -823,6 +950,45 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "FeatureCityGmlReader",
+      "type": "processor",
+      "description": "Reads features from citygml file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureCityGmlReaderParam",
+        "type": "object",
+        "required": [
+          "dataset"
+        ],
+        "properties": {
+          "dataset": {
+            "$ref": "#/definitions/Expr"
+          },
+          "flatten": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
       ]
     },
     {
@@ -933,6 +1099,12 @@
           "sourceDataset"
         ],
         "properties": {
+          "destPrefix": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "extractArchive": {
             "type": "boolean"
           },
@@ -1143,30 +1315,6 @@
               "dataset": {
                 "$ref": "#/definitions/Expr"
               },
-              "flatten": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "citygml"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "required": [
-              "dataset",
-              "format"
-            ],
-            "properties": {
-              "dataset": {
-                "$ref": "#/definitions/Expr"
-              },
               "format": {
                 "type": "string",
                 "enum": [
@@ -1254,21 +1402,22 @@
         "title": "FeatureSorterParam",
         "type": "object",
         "required": [
-          "sortBy"
+          "attributes",
+          "order"
         ],
         "properties": {
-          "sortBy": {
+          "attributes": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/SortBy"
+              "$ref": "#/definitions/Attribute"
             }
+          },
+          "order": {
+            "$ref": "#/definitions/Order"
           }
         },
         "definitions": {
           "Attribute": {
-            "type": "string"
-          },
-          "Expr": {
             "type": "string"
           },
           "Order": {
@@ -1277,37 +1426,6 @@
               "ascending",
               "descending"
             ]
-          },
-          "SortBy": {
-            "type": "object",
-            "required": [
-              "order"
-            ],
-            "properties": {
-              "attribute": {
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Attribute"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "attributeValue": {
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "order": {
-                "$ref": "#/definitions/Order"
-              }
-            }
           }
         }
       },
@@ -1557,17 +1675,33 @@
             "title": "CSV",
             "type": "object",
             "required": [
-              "dataset",
               "format"
             ],
             "properties": {
               "dataset": {
-                "$ref": "#/definitions/Expr"
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "format": {
                 "type": "string",
                 "enum": [
                   "csv"
+                ]
+              },
+              "inline": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "offset": {
@@ -1584,17 +1718,33 @@
             "title": "TSV",
             "type": "object",
             "required": [
-              "dataset",
               "format"
             ],
             "properties": {
               "dataset": {
-                "$ref": "#/definitions/Expr"
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "format": {
                 "type": "string",
                 "enum": [
                   "tsv"
+                ]
+              },
+              "inline": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               },
               "offset": {
@@ -1611,17 +1761,33 @@
             "title": "JSON",
             "type": "object",
             "required": [
-              "dataset",
               "format"
             ],
             "properties": {
               "dataset": {
-                "$ref": "#/definitions/Expr"
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "format": {
                 "type": "string",
                 "enum": [
                   "json"
+                ]
+              },
+              "inline": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               }
             }
@@ -1630,12 +1796,18 @@
             "title": "CityGML",
             "type": "object",
             "required": [
-              "dataset",
               "format"
             ],
             "properties": {
               "dataset": {
-                "$ref": "#/definitions/Expr"
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "flatten": {
                 "type": [
@@ -1648,6 +1820,16 @@
                 "enum": [
                   "citygml"
                 ]
+              },
+              "inline": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             }
           },
@@ -1655,17 +1837,33 @@
             "title": "GeoJSON",
             "type": "object",
             "required": [
-              "dataset",
               "format"
             ],
             "properties": {
               "dataset": {
-                "$ref": "#/definitions/Expr"
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "format": {
                 "type": "string",
                 "enum": [
                   "geojson"
+                ]
+              },
+              "inline": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
                 ]
               }
             }
@@ -1872,49 +2070,6 @@
       ],
       "outputPorts": [
         "default"
-      ],
-      "categories": [
-        "Geometry"
-      ]
-    },
-    {
-      "name": "GeometryDissolver",
-      "type": "processor",
-      "description": "ジオメトリをディゾルブ（結合）する",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryDissolverParam",
-        "type": "object",
-        "properties": {
-          "completeGrouped": {
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "groupBy": {
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "area",
-        "rejected"
       ],
       "categories": [
         "Geometry"
@@ -2246,12 +2401,12 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "HorizontalReprojectorParam",
         "type": "object",
+        "required": [
+          "epsgCode"
+        ],
         "properties": {
           "epsgCode": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": "integer",
             "format": "uint16",
             "minimum": 0.0
           }
@@ -2386,6 +2541,16 @@
           "output"
         ],
         "properties": {
+          "compressOutput": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "layerName": {
             "$ref": "#/definitions/Expr"
           },
@@ -2891,9 +3056,32 @@
         "properties": {
           "cityGmlPath": {
             "$ref": "#/definitions/Expr"
+          },
+          "codelistsPath": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "schemasPath": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
           "Expr": {
             "type": "string"
           }

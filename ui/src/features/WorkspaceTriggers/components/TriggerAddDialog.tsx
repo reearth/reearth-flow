@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useMemo } from "react";
+import { useCallback, useState, useEffect } from "react";
 
 import {
   Button,
@@ -20,6 +20,9 @@ import { useDeployment, useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Deployment, TimeInterval } from "@flow/types";
+import { OrderDirection } from "@flow/types/paginationOptions";
+
+import { DeploymentsDialog } from "../../WorkspaceDeployments/components/DeploymentsDialog";
 
 type Props = {
   setShowDialog: (show: boolean) => void;
@@ -38,20 +41,29 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   );
   const [authToken, setAuthToken] = useState<string>("");
   const [description, setDescription] = useState<string>("");
-  const { useGetDeploymentsInfinite } = useDeployment();
-
-  const { pages } = useGetDeploymentsInfinite(currentWorkspace?.id);
-
-  const deployments: Deployment[] | undefined = useMemo(
-    () =>
-      pages?.reduce((deployments, page) => {
-        if (page?.deployments) {
-          deployments.push(...page.deployments);
-        }
-        return deployments;
-      }, [] as Deployment[]),
-    [pages],
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
+    OrderDirection.Desc,
   );
+  const { useGetDeployments } = useDeployment();
+
+  const { page, refetch, isFetching } = useGetDeployments(
+    currentWorkspace?.id,
+    {
+      page: currentPage,
+      orderDir: currentOrder,
+      orderBy: "updatedAt",
+    },
+  );
+
+  useEffect(() => {
+    refetch();
+  }, [currentPage, currentOrder, refetch]);
+
+  const deployments = page?.deployments;
+  const totalPages = page?.totalPages as number;
+  const [openSelectDeploymentsDialog, setOpenSelectDeploymentsDialog] =
+    useState<boolean>(false);
 
   useEffect(() => {
     if (eventSource === "API_DRIVEN") {
@@ -61,9 +73,10 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     }
   }, [eventSource]);
 
-  const handleSelectDeploymentId = (deploymentId: string) => {
-    const deployment = deployments?.find((d) => d.id === deploymentId);
-    setSelectedDeployment(deployment || null);
+  const handleSelectDeployment = (deployment: Deployment) => {
+    const deploymentId = deployment.id;
+    const selectedDeployment = deployments?.find((d) => d.id === deploymentId);
+    setSelectedDeployment(selectedDeployment || null);
     setDeploymentId(deploymentId);
   };
 
@@ -103,9 +116,9 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     await createTrigger(
       workspaceId,
       deploymentId,
+      description,
       eventSource === "TIME_DRIVEN" ? timeInterval : undefined,
       eventSource === "API_DRIVEN" ? authToken : undefined,
-      description,
     );
 
     setShowDialog(false);
@@ -133,28 +146,24 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               placeholder={t("Give your trigger a meaningful description...")}
             />
           </DialogContentSection>
-          <DialogContentSection className="flex-1">
-            <Label htmlFor="deployments-selector">
-              {t("Select a deployment")}
-            </Label>
-            <Select
-              value={selectedDeployment?.id || ""}
-              onValueChange={handleSelectDeploymentId}>
-              <SelectTrigger>
-                <SelectValue placeholder={t("Select a deployment")}>
-                  {selectedDeployment
-                    ? `${selectedDeployment.description}`
-                    : t("Select a deployment")}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {deployments?.map((deployment) => (
-                  <SelectItem key={deployment.id} value={deployment.id}>
-                    {deployment.description}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <DialogContentSection className="flex flex-col">
+            <Label>{t("Deployment: ")}</Label>
+            <div
+              className="flex h-8 w-full rounded-md border bg-transparent px-3 py-1 text-sm"
+              onClick={() => setOpenSelectDeploymentsDialog(true)}>
+              <span className="cursor-default whitespace-nowrap pr-2 text-muted-foreground">
+                {t("Select Deployment: ")}
+              </span>
+              {selectedDeployment ? (
+                <span className="cursor-default truncate">
+                  {selectedDeployment.description} @{selectedDeployment.version}
+                </span>
+              ) : (
+                <span className="cursor-default">
+                  {t("No Deployment Selected")}
+                </span>
+              )}
+            </div>
           </DialogContentSection>
           <DialogContentSection className="flex-1">
             <Label htmlFor="event-source-selector">
@@ -224,6 +233,19 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
           </Button>
         </DialogFooter>
       </DialogContent>
+      {openSelectDeploymentsDialog && (
+        <DeploymentsDialog
+          setShowDialog={() => setOpenSelectDeploymentsDialog(false)}
+          deployments={deployments}
+          handleSelectDeployment={handleSelectDeployment}
+          currentPage={currentPage}
+          setCurrentPage={setCurrentPage}
+          totalPages={totalPages}
+          currentOrder={currentOrder}
+          setCurrentOrder={setCurrentOrder}
+          isFetching={isFetching}
+        />
+      )}
     </Dialog>
   );
 };

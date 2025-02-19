@@ -11,9 +11,6 @@ Overlays an area on another area
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AreaOnAreaOverlayerParam",
   "type": "object",
-  "required": [
-    "outputAttribute"
-  ],
   "properties": {
     "groupBy": {
       "type": [
@@ -23,9 +20,6 @@ Overlays an area on another area
       "items": {
         "$ref": "#/definitions/Attribute"
       }
-    },
-    "outputAttribute": {
-      "$ref": "#/definitions/Attribute"
     }
   },
   "definitions": {
@@ -614,6 +608,16 @@ Writes features to a file
         "null"
       ]
     },
+    "compressOutput": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "maxZoom": {
       "type": "integer",
       "format": "uint8",
@@ -674,25 +678,31 @@ Checks if curves form closed loops
 ### Category
 * Geometry
 
-## CoordinateSystemSetter
+## ConvexHullAccumulator
 ### Type
 * processor
 ### Description
-Sets the coordinate system of a feature
+Creates a convex hull based on a group of input features.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CoordinateSystemSetter",
+  "title": "ConvexHullAccumulatorParam",
   "type": "object",
-  "required": [
-    "epsgCode"
-  ],
   "properties": {
-    "epsgCode": {
-      "type": "integer",
-      "format": "uint16",
-      "minimum": 0.0
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
     }
   }
 }
@@ -701,8 +711,53 @@ Sets the coordinate system of a feature
 * default
 ### Output Ports
 * default
+* rejected
 ### Category
 * Geometry
+
+## CzmlWriter
+### Type
+* sink
+### Description
+Writes features to a Czml file
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CzmlWriterParam",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "output": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
 
 ## DimensionFilter
 ### Type
@@ -716,6 +771,79 @@ Filters the dimension of features
 ### Output Ports
 * 2d
 * 3d
+* rejected
+### Category
+* Geometry
+
+## DirectoryDecompressor
+### Type
+* processor
+### Description
+Decompresses a directory
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DirectoryDecompressorParam",
+  "type": "object",
+  "required": [
+    "archiveAttributes"
+  ],
+  "properties": {
+    "archiveAttributes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* File
+
+## Dissolver
+### Type
+* processor
+### Description
+Dissolves features grouped by specified attributes
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DissolverParam",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* area
 * rejected
 ### Category
 * Geometry
@@ -812,6 +940,45 @@ Extrudes a polygon by a distance
 * default
 ### Category
 * Geometry
+
+## FeatureCityGmlReader
+### Type
+* processor
+### Description
+Reads features from citygml file
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureCityGmlReaderParam",
+  "type": "object",
+  "required": [
+    "dataset"
+  ],
+  "properties": {
+    "dataset": {
+      "$ref": "#/definitions/Expr"
+    },
+    "flatten": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Feature
 
 ## FeatureCounter
 ### Type
@@ -923,6 +1090,12 @@ Extracts features by file path
     "sourceDataset"
   ],
   "properties": {
+    "destPrefix": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "extractArchive": {
       "type": "boolean"
     },
@@ -1133,30 +1306,6 @@ Reads features from various formats
         "dataset": {
           "$ref": "#/definitions/Expr"
         },
-        "flatten": {
-          "type": [
-            "boolean",
-            "null"
-          ]
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "citygml"
-          ]
-        }
-      }
-    },
-    {
-      "type": "object",
-      "required": [
-        "dataset",
-        "format"
-      ],
-      "properties": {
-        "dataset": {
-          "$ref": "#/definitions/Expr"
-        },
         "format": {
           "type": "string",
           "enum": [
@@ -1244,21 +1393,22 @@ Sorts features by attributes
   "title": "FeatureSorterParam",
   "type": "object",
   "required": [
-    "sortBy"
+    "attributes",
+    "order"
   ],
   "properties": {
-    "sortBy": {
+    "attributes": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/SortBy"
+        "$ref": "#/definitions/Attribute"
       }
+    },
+    "order": {
+      "$ref": "#/definitions/Order"
     }
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     },
     "Order": {
@@ -1267,37 +1417,6 @@ Sorts features by attributes
         "ascending",
         "descending"
       ]
-    },
-    "SortBy": {
-      "type": "object",
-      "required": [
-        "order"
-      ],
-      "properties": {
-        "attribute": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Attribute"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "attributeValue": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "order": {
-          "$ref": "#/definitions/Order"
-        }
-      }
     }
   }
 }
@@ -1548,17 +1667,33 @@ Reads features from a file
       "title": "CSV",
       "type": "object",
       "required": [
-        "dataset",
         "format"
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "format": {
           "type": "string",
           "enum": [
             "csv"
+          ]
+        },
+        "inline": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "offset": {
@@ -1575,17 +1710,33 @@ Reads features from a file
       "title": "TSV",
       "type": "object",
       "required": [
-        "dataset",
         "format"
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "format": {
           "type": "string",
           "enum": [
             "tsv"
+          ]
+        },
+        "inline": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "offset": {
@@ -1602,17 +1753,33 @@ Reads features from a file
       "title": "JSON",
       "type": "object",
       "required": [
-        "dataset",
         "format"
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "format": {
           "type": "string",
           "enum": [
             "json"
+          ]
+        },
+        "inline": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       }
@@ -1621,12 +1788,18 @@ Reads features from a file
       "title": "CityGML",
       "type": "object",
       "required": [
-        "dataset",
         "format"
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "flatten": {
           "type": [
@@ -1639,6 +1812,16 @@ Reads features from a file
           "enum": [
             "citygml"
           ]
+        },
+        "inline": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -1646,17 +1829,33 @@ Reads features from a file
       "title": "GeoJSON",
       "type": "object",
       "required": [
-        "dataset",
         "format"
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
         },
         "format": {
           "type": "string",
           "enum": [
             "geojson"
+          ]
+        },
+        "inline": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
           ]
         }
       }
@@ -1865,49 +2064,6 @@ Coerces the geometry of a feature to a specific geometry
 * default
 ### Output Ports
 * default
-### Category
-* Geometry
-
-## GeometryDissolver
-### Type
-* processor
-### Description
-Dissolve geometries
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GeometryDissolverParam",
-  "type": "object",
-  "properties": {
-    "completeGrouped": {
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
-    "groupBy": {
-      "type": [
-        "array",
-        "null"
-      ],
-      "items": {
-        "$ref": "#/definitions/Attribute"
-      }
-    }
-  },
-  "definitions": {
-    "Attribute": {
-      "type": "string"
-    }
-  }
-}
-```
-### Input Ports
-* default
-### Output Ports
-* area
-* rejected
 ### Category
 * Geometry
 
@@ -2235,12 +2391,12 @@ Reprojects the geometry of a feature to a specified coordinate system
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "HorizontalReprojectorParam",
   "type": "object",
+  "required": [
+    "epsgCode"
+  ],
   "properties": {
     "epsgCode": {
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": "integer",
       "format": "uint16",
       "minimum": 0.0
     }
@@ -2376,6 +2532,16 @@ Writes features to a file
     "output"
   ],
   "properties": {
+    "compressOutput": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "layerName": {
       "$ref": "#/definitions/Expr"
     },
@@ -2858,9 +3024,32 @@ Extracts UDX folders from cityGML path
   "properties": {
     "cityGmlPath": {
       "$ref": "#/definitions/Expr"
+    },
+    "codelistsPath": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "schemasPath": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
     "Expr": {
       "type": "string"
     }

@@ -13,6 +13,7 @@ import { MouseEvent, useCallback } from "react";
 
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
+import useBatch from "./useBatch";
 import useDnd from "./useDnd";
 
 type Props = {
@@ -41,6 +42,8 @@ export default ({
     onNodesAdd,
     onNodePickerOpen,
   });
+
+  const { handleNodesDropInBatch } = useBatch();
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(
     (changes) => onNodesChange(changes),
@@ -206,22 +209,40 @@ export default ({
     [nodes, edges, isNodeIntersecting, onEdgesChange],
   );
 
+  const handleDropInBatch = useCallback(
+    (selectedNodes: Node[]) => {
+      const updatedNodes = handleNodesDropInBatch(selectedNodes);
+
+      if (updatedNodes) {
+        const changes = updatedNodes.map((node) => ({
+          type: "replace" as const,
+          id: node.id,
+          item: node,
+        }));
+
+        handleNodesChange(changes);
+      }
+    },
+    [handleNodesDropInBatch, handleNodesChange],
+  );
+
   const handleNodeDragStop = useCallback(
-    (_evt: MouseEvent, node: Node) => {
+    (_evt: MouseEvent, node: Node, selectedNodes: Node[]) => {
       if (node.type !== "batch") {
+        handleDropInBatch(selectedNodes);
         if (node.type !== "note") {
           handleNodeDropOnEdge(node);
         }
       }
     },
-    [handleNodeDropOnEdge],
+    [handleNodeDropOnEdge, handleDropInBatch],
   );
 
   return {
     handleNodesChange,
     handleNodesDelete,
+    handleNodeDragOver,
     handleNodeDragStop,
     handleNodeDrop,
-    handleNodeDragOver,
   };
 };

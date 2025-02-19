@@ -24,9 +24,10 @@ const WORKER_ASSET_GLOBAL_PARAMETER_VARIABLE: &str = "workerAssetPath";
 const WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE: &str = "workerArtifactPath";
 
 pub fn build_worker_command() -> Command {
-    Command::new("worker")
-        .about("Start worker.")
+    Command::new("Re:Earth Flow Worker")
+        .about("Start flow worker.")
         .long_about("Start a worker to run a workflow.")
+        .version(env!("CARGO_PKG_VERSION"))
         .arg(workflow_arg())
         .arg(asset_arg())
         .arg(worker_num_arg())
@@ -182,12 +183,21 @@ impl RunWorkerCommand {
             .map_err(crate::errors::Error::init)?;
         match pubsub {
             PubSubBackend::Google(pubsub) => pubsub
-                .publish(JobCompleteEvent::new(workflow_id, meta.job_id, job_result))
+                .publish(JobCompleteEvent::new(
+                    workflow_id,
+                    meta.job_id,
+                    job_result.clone(),
+                ))
                 .await
                 .map_err(crate::errors::Error::run),
             PubSubBackend::Noop(_) => Ok(()),
         }?;
-        tracing::info!("Job completed");
+        tracing::info!(
+            "Job completed with workflow_id: {:?}, job_id: {:?} result: {:?}",
+            workflow_id,
+            meta.job_id,
+            job_result
+        );
         Ok(())
     }
 

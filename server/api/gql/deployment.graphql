@@ -1,0 +1,86 @@
+type Deployment implements Node {
+  createdAt: DateTime!
+  description: String!
+  headId: ID
+  isHead: Boolean!
+  id: ID!
+  project: Project
+  projectId: ID
+  updatedAt: DateTime!
+  version: String!
+  workflowUrl: String!
+  workspace: Workspace
+  workspaceId: ID!
+}
+
+# Input Types
+
+input CreateDeploymentInput {
+  workspaceId: ID!
+  file: Upload!
+  projectId: ID
+  description: String!
+}
+
+input DeleteDeploymentInput {
+  deploymentId: ID!
+}
+
+input ExecuteDeploymentInput {
+  deploymentId: ID!
+}
+
+input GetHeadInput {
+  workspaceId: ID!
+  projectId: ID
+}
+
+input GetByVersionInput {
+  workspaceId: ID!
+  projectId: ID
+  version: String!
+}
+
+input UpdateDeploymentInput {
+  deploymentId: ID!
+  file: Upload
+  description: String
+}
+
+# Payload Types
+
+type DeploymentPayload {
+  deployment: Deployment!
+}
+
+type DeleteDeploymentPayload {
+  deploymentId: ID!
+}
+
+type JobPayload {
+  job: Job!
+}
+
+# Connection
+
+type DeploymentConnection {
+  nodes: [Deployment]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+# Query and Mutation
+
+extend type Query {
+  deployments(workspaceId: ID!, pagination: PageBasedPagination!): DeploymentConnection!
+  deploymentByVersion(input: GetByVersionInput!): Deployment
+  deploymentHead(input: GetHeadInput!): Deployment
+  deploymentVersions(workspaceId: ID!, projectId: ID): [Deployment!]!
+}
+
+extend type Mutation {
+  createDeployment(input: CreateDeploymentInput!): DeploymentPayload
+  updateDeployment(input: UpdateDeploymentInput!): DeploymentPayload
+  deleteDeployment(input: DeleteDeploymentInput!): DeleteDeploymentPayload
+  executeDeployment(input: ExecuteDeploymentInput!): JobPayload
+}

@@ -6,6 +6,7 @@ export * from "./edge";
 export * from "./node";
 export * from "./workspace";
 export * from "./api";
+export * from "./layout";
 export * from "./log";
 export * from "./action";
 export * from "./shortcuts";

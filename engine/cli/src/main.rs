@@ -28,7 +28,7 @@ fn main() -> Result<()> {
         .version(env!("CARGO_PKG_VERSION"));
     let matches = app.get_matches();
     let command = CliCommand::parse_cli_args(matches)?;
-    logger::setup_logging_and_tracing(command.default_log_level(), true);
+    logger::setup_logging_and_tracing()?;
     let return_code: i32 = if let Err(err) = command.execute() {
         eprintln!("{} Command failed: {:?}\n", "✘".color(RED_COLOR), err);
         1

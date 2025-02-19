@@ -26,7 +26,7 @@
   },
   "packageManager": "yarn@4.4.1",
   "graphql": {
-    "schema": "../api/gql/*.graphql"
+    "schema": "../server/api/gql/*.graphql"
   },
   "dependencies": {
     "@phosphor-icons/react": "2.1.7",

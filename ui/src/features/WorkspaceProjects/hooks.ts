@@ -1,6 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
+import { useProjectPagination } from "@flow/hooks";
 import { useProject } from "@flow/lib/gql";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 import { Project } from "@flow/types";
@@ -13,10 +14,18 @@ export default () => {
   const [currentProject, setCurrentProject] = useCurrentProject();
 
   const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
-  const { useGetWorkspaceProjectsInfinite, deleteProject, updateProject } =
-    useProject();
-  const { pages, hasNextPage, isFetching, fetchNextPage } =
-    useGetWorkspaceProjectsInfinite(workspace?.id);
+  const { deleteProject, updateProject } = useProject();
+
+  const {
+    currentPage,
+    projects,
+    totalPages,
+    isFetching,
+    currentOrder,
+    orderDirections,
+    setCurrentPage,
+    handleOrderChange,
+  } = useProjectPagination({ workspace });
 
   const [openProjectAddDialog, setOpenProjectAddDialog] = useState(false);
   const [showError, setShowError] = useState(false);
@@ -67,45 +76,6 @@ export default () => {
     return;
   };
 
-  const projects: Project[] | undefined = useMemo(
-    () =>
-      pages?.reduce((projects, page) => {
-        if (page?.projects) {
-          projects.push(...page.projects);
-        }
-        return projects;
-      }, [] as Project[]),
-    [pages],
-  );
-
-  // Auto fills the page
-  useEffect(() => {
-    if (
-      ref.current &&
-      ref.current?.scrollHeight <= document.documentElement.clientHeight &&
-      hasNextPage &&
-      !isFetching
-    ) {
-      fetchNextPage();
-    }
-  }, [isFetching, hasNextPage, ref, fetchNextPage]);
-
-  // Loads more projects as scroll reaches the bottom
-  useEffect(() => {
-    const handleScroll = () => {
-      if (
-        window.innerHeight + document.documentElement.scrollTop + 5 >=
-          document.documentElement.scrollHeight &&
-        !isFetching &&
-        hasNextPage
-      ) {
-        fetchNextPage();
-      }
-    };
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [isFetching, fetchNextPage, hasNextPage]);
-
   return {
     projects,
     ref,
@@ -115,12 +85,19 @@ export default () => {
     showError,
     buttonDisabled,
     openProjectAddDialog,
+    currentPage,
+    totalPages,
+    isFetching,
+    currentOrder,
+    orderDirections,
     setOpenProjectAddDialog,
     setEditProject,
     setProjectToBeDeleted,
+    setCurrentPage,
     handleProjectSelect,
     handleDeleteProject,
     handleUpdateValue,
     handleUpdateProject,
+    handleOrderChange,
   };
 };

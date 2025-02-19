@@ -6,9 +6,9 @@ import type {
   Deployment,
   EngineReadyWorkflow,
   ExecuteDeployment,
-  GetDeployments,
   UpdateDeployment,
 } from "@flow/types";
+import { PaginationOptions } from "@flow/types/paginationOptions";
 import { jsonToFormData } from "@flow/utils/jsonToFormData";
 
 import { ExecuteDeploymentInput } from "../__gen__/graphql";
@@ -24,14 +24,14 @@ export const useDeployment = () => {
     updateDeploymentMutation,
     deleteDeploymentMutation,
     executeDeploymentMutation,
-    useGetDeploymentsInfiniteQuery,
+    useGetDeploymentsQuery,
   } = useQueries();
 
   const createDeployment = async (
     workspaceId: string,
     projectId: string,
     engineReadyWorkflow: EngineReadyWorkflow,
-    description?: string,
+    description: string,
   ): Promise<CreateDeployment> => {
     const { mutateAsync, ...rest } = createDeploymentMutation;
 
@@ -60,14 +60,13 @@ export const useDeployment = () => {
   const createDeploymentFromFile = async (
     workspaceId: string,
     workflowFile: File,
-    customName?: string,
-    description?: string,
+    description: string,
   ): Promise<CreateDeployment> => {
     const { mutateAsync, ...rest } = createDeploymentMutation;
     const formData = new FormData();
     formData.append(
       "file",
-      new File([workflowFile], customName || workflowFile.name, {
+      new File([workflowFile], workflowFile.name, {
         type: workflowFile.type,
       }),
     );
@@ -130,10 +129,16 @@ export const useDeployment = () => {
     }
   };
 
-  const useGetDeploymentsInfinite = (workspaceId?: string): GetDeployments => {
-    const { data, ...rest } = useGetDeploymentsInfiniteQuery(workspaceId);
+  const useGetDeployments = (
+    workspaceId?: string,
+    paginationOptions?: PaginationOptions,
+  ) => {
+    const { data, ...rest } = useGetDeploymentsQuery(
+      workspaceId,
+      paginationOptions,
+    );
     return {
-      pages: data?.pages,
+      page: data,
       ...rest,
     };
   };
@@ -157,7 +162,7 @@ export const useDeployment = () => {
   return {
     createDeployment,
     createDeploymentFromFile,
-    useGetDeploymentsInfinite,
+    useGetDeployments,
     useUpdateDeployment,
     useDeleteDeployment,
     executeDeployment,

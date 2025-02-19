@@ -13,8 +13,12 @@ import { generateUUID } from "@flow/utils";
 
 import { fetcher } from "../fetch/transformers/useFetch";
 
-import { yNodeConstructor, yWorkflowConstructor } from "./conversions";
-import type { YNode, YNodesArray, YWorkflow } from "./types";
+import {
+  yEdgeConstructor,
+  yNodeConstructor,
+  yWorkflowConstructor,
+} from "./conversions";
+import type { YEdgesArray, YNode, YNodesArray, YWorkflow } from "./types";
 
 export default ({
   yWorkflows,
@@ -139,9 +143,11 @@ export default ({
           const parentWorkflowNodes = parentWorkflow?.get("nodes") as
             | YNodesArray
             | undefined;
-          parentWorkflowNodes?.push([newSubworkflowNode]);
+          parentWorkflowNodes?.insert(parentWorkflowNodes.length, [
+            newSubworkflowNode,
+          ]);
 
-          yWorkflows.push([newYWorkflow]);
+          yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
         });
       } catch (error) {
         console.error("Failed to add workflow:", error);
@@ -233,17 +239,32 @@ export default ({
           const parentWorkflowNodes = parentWorkflow?.get("nodes") as
             | YNodesArray
             | undefined;
+
+          const parentWorkflowEdges = parentWorkflow?.get("edges") as
+            | YEdgesArray
+            | undefined;
+
           const remainingNodes = nodes
             .filter((n) => !allIncludedNodeIds.has(n.id))
             .map((n) => yNodeConstructor(n));
 
+          const remainingEdges = edges
+            .filter(
+              (e) =>
+                !allIncludedNodeIds.has(e.source) ||
+                !allIncludedNodeIds.has(e.target),
+            )
+            .map((e) => yEdgeConstructor(e));
+
+          parentWorkflowEdges?.delete(0, parentWorkflowEdges.length);
           parentWorkflowNodes?.delete(0, parentWorkflowNodes.length);
           parentWorkflowNodes?.insert(0, [
             ...remainingNodes,
             newSubworkflowNode,
           ]);
+          parentWorkflowEdges?.insert(0, remainingEdges);
 
-          yWorkflows.push([newYWorkflow]);
+          yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
         });
       } catch (error) {
         console.error("Failed to add workflow from selection:", error);
@@ -269,7 +290,7 @@ export default ({
         nodes,
         edges,
       );
-      yWorkflows.push([newYWorkflow]);
+      yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
     },
     [yWorkflows],
   );

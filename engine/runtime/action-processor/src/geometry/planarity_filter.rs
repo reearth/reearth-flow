@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{AttributeValue, GeometryValue};
@@ -61,7 +61,7 @@ impl Processor for PlanarityFilter {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
@@ -121,11 +121,7 @@ impl Processor for PlanarityFilter {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -136,24 +132,29 @@ impl Processor for PlanarityFilter {
 
 #[cfg(test)]
 mod tests {
+    use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_types::Feature;
 
     use super::*;
-    use crate::tests::utils::{create_default_execute_context, MockProcessorChannelForwarder};
+    use crate::tests::utils::create_default_execute_context;
 
     #[test]
     fn test_process_null_geometry() {
         let mut processor = PlanarityFilter;
-        let mut fw = MockProcessorChannelForwarder::default();
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
 
         let feature = Feature::default();
         let ctx = create_default_execute_context(&feature);
 
-        processor.process(ctx, &mut fw).unwrap();
+        processor.process(ctx, &fw).unwrap();
 
-        assert_eq!(
-            fw.send_ports.first().cloned(),
-            Some(NOT_PLANARITY_PORT.clone())
-        );
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            assert_eq!(noop.send_ports.lock().unwrap().len(), 1);
+            assert_eq!(
+                noop.send_ports.lock().unwrap().first().cloned(),
+                Some(NOT_PLANARITY_PORT.clone())
+            );
+        }
     }
 }

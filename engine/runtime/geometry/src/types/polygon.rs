@@ -17,6 +17,7 @@ use crate::algorithm::line_intersection::{line_intersection, LineIntersection};
 use crate::algorithm::GeoFloat;
 
 use super::conversion::geojson::create_polygon_type;
+use super::coordinate::Coordinate;
 use super::coordnum::{CoordFloat, CoordNum};
 use super::face::Face;
 use super::line::Line;
@@ -210,6 +211,45 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
             is_valid: errors.is_empty(),
             errors,
         }
+    }
+
+    pub fn bounding_box(&self) -> Option<Rect<T, Z>> {
+        let coords = self
+            .rings()
+            .into_iter()
+            .flat_map(|ring| ring.into_iter().map(|point| (point.x, point.y, point.z)))
+            .collect::<Vec<_>>();
+
+        if coords.is_empty() {
+            return None;
+        }
+
+        let (mut min_x, mut min_y, mut min_z) = coords[0];
+        let (mut max_x, mut max_y, mut max_z) = coords[0];
+
+        for coord in coords.iter().skip(1) {
+            let (x, y, z) = coord;
+            if *x < min_x {
+                min_x = *x;
+            } else if *x > max_x {
+                max_x = *x;
+            }
+            if *y < min_y {
+                min_y = *y;
+            } else if *y > max_y {
+                max_y = *y;
+            }
+
+            if *z < min_z {
+                min_z = *z;
+            } else if *z > max_z {
+                max_z = *z;
+            }
+        }
+        Some(Rect::new(
+            Coordinate::new__(min_x, min_y, min_z),
+            Coordinate::new__(max_x, max_y, max_z),
+        ))
     }
 }
 

@@ -25,7 +25,7 @@ export default ({
         lln.filter((id) => id !== locallyLockedNode?.id),
       );
     }
-  }, [selectedNodeIds, locallyLockedNode]);
+  }, [selectedNodeIds, locallyLockedNode, lockedNodeIds]);
 
   const handleNodeLocking = useCallback(
     (nodeId: string) => {

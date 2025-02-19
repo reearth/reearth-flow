@@ -1,7 +1,8 @@
 use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
-use num_traits::Zero;
+use num_traits::{Bounded, Zero};
 use nusamai_projection::vshift::Jgd2011ToWgs84;
+use rstar::{RTreeNum, RTreeObject, AABB};
 use serde::{Deserialize, Serialize};
 
 use crate::polygon;
@@ -98,8 +99,60 @@ impl<T: CoordNum, Z: CoordNum> Rect<T, Z> {
         ]
     }
 
+    pub fn merge(self, other: Self) -> Self {
+        let min_x = if self.min.x < other.min.x {
+            self.min.x
+        } else {
+            other.min.x
+        };
+        let min_y = if self.min.y < other.min.y {
+            self.min.y
+        } else {
+            other.min.y
+        };
+        let min_z = if self.min.z < other.min.z {
+            self.min.z
+        } else {
+            other.min.z
+        };
+        let max_x = if self.max.x > other.max.x {
+            self.max.x
+        } else {
+            other.max.x
+        };
+        let max_y = if self.max.y > other.max.y {
+            self.max.y
+        } else {
+            other.max.y
+        };
+        let max_z = if self.max.z > other.max.z {
+            self.max.z
+        } else {
+            other.max.z
+        };
+        Self {
+            min: Coordinate::new__(min_x, min_y, min_z),
+            max: Coordinate::new__(max_x, max_y, max_z),
+        }
+    }
+
+    pub fn overlap(&self, other: &Rect<T, Z>) -> bool {
+        self.min.x <= other.max.x
+            && self.max.x >= other.min.x
+            && self.min.y <= other.max.y
+            && self.max.y >= other.min.y
+    }
+
     pub fn has_valid_bounds(&self) -> bool {
         self.min.x <= self.max.x && self.min.y <= self.max.y && self.min.z <= self.max.z
+    }
+}
+
+impl<T: CoordNum + Bounded + RTreeNum> RTreeObject for Rect2D<T> {
+    type Envelope = AABB<[T; 2]>;
+
+    fn envelope(&self) -> Self::Envelope {
+        AABB::from_corners([self.min.x, self.min.y], [self.max.x, self.max.y])
     }
 }
 
@@ -267,5 +320,21 @@ mod test {
     fn rect_width() {
         let rect = Rect::new((10, 10), (20, 20));
         assert_eq!(rect.width(), 10);
+    }
+
+    #[test]
+    fn rect_overlap() {
+        let rect1 = Rect::new((10, 10), (20, 20));
+        let rect2 = Rect::new((15, 15), (25, 25));
+        assert!(rect1.overlap(&rect2));
+
+        let rect3 = Rect::new((20, 20), (30, 30));
+        assert!(rect1.overlap(&rect3));
+
+        let rect4 = Rect::new((5, 5), (15, 15));
+        assert!(rect1.overlap(&rect4));
+
+        let rect5 = Rect::new((0, 0), (5, 5));
+        assert!(!rect1.overlap(&rect5));
     }
 }

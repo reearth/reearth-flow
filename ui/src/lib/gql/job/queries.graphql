@@ -1,12 +1,13 @@
-query GetJobs($workspaceId: ID!, $pagination: Pagination) {
+query GetJobs($workspaceId: ID!, $pagination: PageBasedPagination!) {
   jobs(workspaceId: $workspaceId, pagination: $pagination) {
     totalCount
     nodes {
       ...Job
     }
     pageInfo {
-      endCursor
-      hasNextPage
+      totalCount
+      currentPage
+      totalPages
     }
   }
 }

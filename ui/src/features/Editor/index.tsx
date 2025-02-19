@@ -7,6 +7,7 @@ import {
   Canvas,
   LeftPanel,
   OverlayUI,
+  ParamsPanel,
   RightPanel,
 } from "./components";
 import useHooks from "./hooks";
@@ -35,6 +36,10 @@ export default function Editor({
     canUndo,
     canRedo,
     allowedToDeploy,
+    isMainWorkflow,
+    hasReader,
+    rightPanelContent,
+    handleRightPanelOpen,
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handlePanelOpen,
@@ -53,19 +58,21 @@ export default function Editor({
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
-    isMainWorkflow,
-    hasReader,
+    handleLayoutChange,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
+
   return (
     <div className="flex h-screen flex-col">
       <div className="relative flex flex-1">
         <LeftPanel
           nodes={nodes}
-          isOpen={openPanel === "left" && !locallyLockedNode}
+          isOpen={openPanel === "left"}
           onOpen={handlePanelOpen}
           onNodesAdd={handleNodesAdd}
           isMainWorkflow={isMainWorkflow}
           hasReader={hasReader}
+          // onNodeDoubleClick={handleNodeDoubleClick}
+          // selected={locallyLockedNode}
         />
         <div className="flex flex-1 flex-col">
           <OverlayUI
@@ -74,13 +81,15 @@ export default function Editor({
             allowedToDeploy={allowedToDeploy}
             canUndo={canUndo}
             canRedo={canRedo}
+            isMainWorkflow={isMainWorkflow}
+            hasReader={hasReader}
             onWorkflowDeployment={handleWorkflowDeployment}
-            onWorkflowUndo={handleWorkflowUndo}
-            onWorkflowRedo={handleWorkflowRedo}
             onNodesAdd={handleNodesAdd}
             onNodePickerClose={handleNodePickerClose}
-            isMainWorkflow={isMainWorkflow}
-            hasReader={hasReader}>
+            onRightPanelOpen={handleRightPanelOpen}
+            onWorkflowUndo={handleWorkflowUndo}
+            onWorkflowRedo={handleWorkflowRedo}
+            onLayoutChange={handleLayoutChange}>
             <Canvas
               nodes={nodes}
               edges={edges}
@@ -107,6 +116,10 @@ export default function Editor({
           />
         </div>
         <RightPanel
+          contentType={rightPanelContent}
+          onClose={() => handleRightPanelOpen(undefined)}
+        />
+        <ParamsPanel
           selected={locallyLockedNode}
           onParamsSubmit={handleNodeParamsUpdate}
         />

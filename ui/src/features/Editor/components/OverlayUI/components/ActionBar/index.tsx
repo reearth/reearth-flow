@@ -1,13 +1,23 @@
 import {
+  DotsThreeVertical,
   DownloadSimple,
+  LetterCircleV,
   Play,
   RocketLaunch,
   Stop,
 } from "@phosphor-icons/react";
 import { memo, useState } from "react";
 
-import { IconButton } from "@flow/components";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  IconButton,
+} from "@flow/components";
+import { useProjectExport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
+import { useCurrentProject } from "@flow/stores";
 
 import { DeployDialog } from "./components";
 
@@ -16,51 +26,77 @@ const tooltipOffset = 6;
 type Props = {
   allowedToDeploy: boolean;
   onWorkflowDeployment: (
+    description: string,
     deploymentId?: string,
-    description?: string,
   ) => Promise<void>;
+  onRightPanelOpen: (content?: "version-history") => void;
 };
 
 const ActionBar: React.FC<Props> = ({
   allowedToDeploy,
   onWorkflowDeployment,
+  onRightPanelOpen,
 }) => {
   const t = useT();
 
   const [showDialog, setShowDialog] = useState(false);
 
+  const [currentProject] = useCurrentProject();
+
+  const { handleProjectExport } = useProjectExport(currentProject?.id);
+
   return (
     <>
-      <div className="absolute right-1 top-1">
-        <div className="m-1 rounded-md border bg-secondary">
-          <div className="flex rounded-md">
-            <div className="flex align-middle">
-              <IconButton
-                className="rounded-[4px]"
-                tooltipText={t("Run project workflow")}
-                tooltipOffset={tooltipOffset}
-                icon={<Play weight="thin" />}
-              />
-              <IconButton
-                className="rounded-[4px]"
-                tooltipText={t("Stop project workflow")}
-                tooltipOffset={tooltipOffset}
-                icon={<Stop weight="thin" />}
-              />
-              <IconButton
-                className="rounded-[4px]"
-                tooltipText={t("Deploy project workflow")}
-                tooltipOffset={tooltipOffset}
-                icon={<RocketLaunch weight="thin" />}
-                onClick={() => setShowDialog(true)}
-              />
-              <IconButton
-                className="rounded-[4px]"
-                tooltipText={t("Download project workflow")}
-                tooltipOffset={tooltipOffset}
-                icon={<DownloadSimple weight="thin" />}
-              />
-            </div>
+      <div className="rounded-md border bg-secondary">
+        <div className="flex rounded-md">
+          <div className="flex align-middle">
+            <IconButton
+              className="rounded-l-[4px] rounded-r-none"
+              tooltipText={t("Run project workflow")}
+              tooltipOffset={tooltipOffset}
+              icon={<Play weight="thin" />}
+            />
+            <IconButton
+              className="rounded-none"
+              tooltipText={t("Stop project workflow")}
+              tooltipOffset={tooltipOffset}
+              icon={<Stop weight="thin" />}
+            />
+            <IconButton
+              className="rounded-none"
+              tooltipText={t("Deploy project workflow")}
+              tooltipOffset={tooltipOffset}
+              icon={<RocketLaunch weight="thin" />}
+              onClick={() => setShowDialog(true)}
+            />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <IconButton
+                  className="w-[25px] rounded-l-none rounded-r-[4px]"
+                  tooltipText={t("Additional actions")}
+                  tooltipOffset={tooltipOffset}
+                  icon={<DotsThreeVertical />}
+                />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="flex gap-2"
+                  onClick={handleProjectExport}>
+                  <DownloadSimple weight="light" />
+                  <p className="text-sm font-extralight">
+                    {t("Export Project")}
+                  </p>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex gap-2"
+                  onClick={() => onRightPanelOpen("version-history")}>
+                  <LetterCircleV weight="light" />
+                  <p className="text-sm font-extralight">
+                    {t("Version History")}
+                  </p>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
