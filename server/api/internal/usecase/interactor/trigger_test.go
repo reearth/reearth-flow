@@ -39,10 +39,10 @@ func TestTrigger_Create(t *testing.T) {
 		Deployment: mongo.NewDeployment(mongox.NewClientWithDatabase(c)),
 	}
 	gateway := &gateway.Container{}
-	job := NewJob(&repo, gateway)
 	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
 		return true, nil
 	})
+	job := NewJob(&repo, gateway, mockPermissionCheckerTrue)
 	i := NewTrigger(&repo, gateway, job, mockPermissionCheckerTrue)
 
 	param := interfaces.CreateTriggerParam{
@@ -124,10 +124,10 @@ func TestTrigger_Update(t *testing.T) {
 		Deployment: mongo.NewDeployment(mongox.NewClientWithDatabase(c)),
 	}
 	gateway := &gateway.Container{}
-	job := NewJob(&repo, gateway)
 	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
 		return true, nil
 	})
+	job := NewJob(&repo, gateway, mockPermissionCheckerTrue)
 	i := NewTrigger(&repo, gateway, job, mockPermissionCheckerTrue)
 
 	// Test updating description and event source
@@ -208,10 +208,10 @@ func TestTrigger_Fetch(t *testing.T) {
 		Trigger: mongo.NewTrigger(mongox.NewClientWithDatabase(c)),
 	}
 	gateway := &gateway.Container{}
-	job := NewJob(&repo, gateway)
 	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
 		return true, nil
 	})
+	job := NewJob(&repo, gateway, mockPermissionCheckerTrue)
 	i := NewTrigger(&repo, gateway, job, mockPermissionCheckerTrue)
 
 	got, err := i.Fetch(ctx, []id.TriggerID{tid1, tid2})
@@ -244,10 +244,10 @@ func TestTrigger_Delete(t *testing.T) {
 		Trigger: mongo.NewTrigger(mongox.NewClientWithDatabase(c)),
 	}
 	gateway := &gateway.Container{}
-	job := NewJob(&repo, gateway)
 	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
 		return true, nil
 	})
+	job := NewJob(&repo, gateway, mockPermissionCheckerTrue)
 	i := NewTrigger(&repo, gateway, job, mockPermissionCheckerTrue)
 
 	err := i.Delete(ctx, tid)

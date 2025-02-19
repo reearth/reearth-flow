@@ -10,6 +10,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearth-flow/api/pkg/projectAccess"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
+	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,10 +18,13 @@ func TestProjectAccess_Fetch(t *testing.T) {
 	// prepare
 	ctx := context.Background()
 	mem := memory.New()
-
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+		return true, nil
+	})
 	i := &ProjectAccess{
 		projectRepo:       mem.Project,
 		projectAccessRepo: mem.ProjectAccess,
+		permissionChecker: mockPermissionCheckerTrue,
 	}
 
 	// Set up a workspace, project, and shared project access
@@ -96,11 +100,17 @@ func TestProjectAccess_Share(t *testing.T) {
 		Host:       "https://example.com",
 		SharedPath: "shared",
 	}
+
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+		return true, nil
+	})
+
 	i := &ProjectAccess{
 		projectRepo:       mem.Project,
 		projectAccessRepo: mem.ProjectAccess,
 		transaction:       mem.Transaction,
 		config:            config,
+		permissionChecker: mockPermissionCheckerTrue,
 	}
 
 	// Set up a workspace, project
@@ -160,11 +170,15 @@ func TestProjectAccess_Unshare(t *testing.T) {
 		Host:       "https://example.com",
 		SharedPath: "shared",
 	}
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+		return true, nil
+	})
 	i := &ProjectAccess{
 		projectRepo:       mem.Project,
 		projectAccessRepo: mem.ProjectAccess,
 		transaction:       mem.Transaction,
 		config:            config,
+		permissionChecker: mockPermissionCheckerTrue,
 	}
 
 	// Set up a workspace, project, and shared project access

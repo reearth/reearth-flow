@@ -13,6 +13,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmemory"
+	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 	"github.com/stretchr/testify/assert"
@@ -42,7 +43,11 @@ func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Co
 	prj := project.New().ID(pid).Workspace(ws.ID()).Name("testproject").UpdatedAt(time.Now()).MustBuild()
 	_ = projectRepo.Save(ctx, prj)
 
-	i := NewParameter(r)
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+		return true, nil
+	})
+
+	i := NewParameter(r, mockPermissionCheckerTrue)
 	return i, ctx, r, pid
 }
 

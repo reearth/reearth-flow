@@ -15,6 +15,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmemory"
+	"github.com/reearth/reearthx/appx"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 )
@@ -28,6 +29,11 @@ func TestAsset_Create(t *testing.T) {
 
 	mfs := afero.NewMemMapFs()
 	f, _ := fs.NewFile(mfs, "", "")
+
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+		return true, nil
+	})
+
 	uc := &Asset{
 		repos: &repo.Container{
 			Asset:     memory.NewAsset(),
@@ -36,6 +42,7 @@ func TestAsset_Create(t *testing.T) {
 		gateways: &gateway.Container{
 			File: f,
 		},
+		permissionChecker: mockPermissionCheckerTrue,
 	}
 
 	buf := bytes.NewBufferString("Hello")
