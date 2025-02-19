@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth0"
@@ -106,11 +107,26 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 	var err error
 	if conf.Worker_ImageURL != "" {
 		config := gcpbatch.BatchConfig{
-			BinaryPath: conf.Worker_BinaryPath,
-			ImageURI:   conf.Worker_ImageURL,
-			ProjectID:  conf.GCPProject,
-			Region:     conf.GCPRegion,
-			SAEmail:    conf.Worker_BatchSAEmail,
+			BinaryPath:     conf.Worker_BinaryPath,
+			ImageURI:       conf.Worker_ImageURL,
+			MachineType:    conf.Worker_MachineType,
+			MaxConcurrency: func() int {
+				mc, err := strconv.Atoi(conf.Worker_MaxConcurrency)
+				if err != nil {
+					log.Fatalf("Failed to convert MaxConcurrency: %v", err)
+				}
+				return mc
+			}(),
+			ProjectID:      conf.GCPProject,
+			Region:         conf.GCPRegion,
+			SAEmail:        conf.Worker_BatchSAEmail,
+			TaskCount: func() int {
+				tc, err := strconv.Atoi(conf.Worker_TaskCount)
+				if err != nil {
+					log.Fatalf("Failed to convert TaskCount: %v", err)
+				}
+				return tc
+			}(),
 		}
 
 		batchRepo, err = gcpbatch.NewBatch(ctx, config)

@@ -32,19 +32,19 @@ type (
 		DB               string            `default:"mongodb://localhost"`
 		DB_Account       string            `pp:",omitempty"`
 		DB_Users         []appx.NamedURI   `pp:",omitempty"`
-		GraphQL          GraphQLConfig     `pp:",omitempty"`
+		GraphQL          GraphQLConfig      `pp:",omitempty"`
 		GCPProject       string            `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
 		GCPRegion        string            `envconfig:"GOOGLE_CLOUD_REGION" pp:",omitempty"`
-		Profiler         string            `pp:",omitempty"`
+		Profiler          string            `pp:",omitempty"`
 		Tracer           string            `pp:",omitempty"`
-		TracerSample     float64           `pp:",omitempty"`
+		TracerSample     float64            `pp:",omitempty"`
 		AssetBaseURL     string            `default:"http://localhost:8080/assets"`
-		WorkflowBaseURL  string            `default:"http://localhost:8080/workflows"`
+		WorkflowBaseURL   string            `default:"http://localhost:8080/workflows"`
 		Origins          []string          `pp:",omitempty"`
 		Web_Disabled     bool              `pp:",omitempty"`
 		Web_App_Disabled bool              `pp:",omitempty"`
 		Web              map[string]string `pp:",omitempty"`
-		Web_Config       JSON              `pp:",omitempty"`
+		Web_Config        JSON              `pp:",omitempty"`
 		Web_Title        string            `pp:",omitempty"`
 		Web_FaviconURL   string            `pp:",omitempty"`
 		SignupSecret     string            `pp:",omitempty"`
@@ -57,10 +57,10 @@ type (
 		S3  S3Config  `pp:",omitempty"`
 
 		// auth
-		Auth          AuthConfigs   `pp:",omitempty"`
-		Auth0         Auth0Config   `pp:",omitempty"`
-		Cognito       CognitoConfig `pp:",omitempty"`
-		AuthSrv       AuthSrvConfig `pp:",omitempty"`
+		Auth          AuthConfigs    `pp:",omitempty"`
+		Auth0         Auth0Config    `pp:",omitempty"`
+		Cognito       CognitoConfig  `pp:",omitempty"`
+		AuthSrv       AuthSrvConfig  `pp:",omitempty"`
 		Auth_ISS      string        `pp:",omitempty"`
 		Auth_AUD      string        `pp:",omitempty"`
 		Auth_ALG      *string       `pp:",omitempty"`
@@ -69,9 +69,12 @@ type (
 		Auth_JWKSURI  *string       `pp:",omitempty"`
 
 		// worker
-		Worker_BatchSAEmail string `pp:",omitempty"`
-		Worker_BinaryPath   string `pp:",omitempty"`
-		Worker_ImageURL     string `pp:",omitempty"`
+		Worker_BatchSAEmail   string `envconfig:"WORKER_BATCH_SA_EMAIL" pp:",omitempty"`
+		Worker_BinaryPath     string `envconfig:"WORKER_BINARY_PATH" default:"reearth-flow-worker" pp:",omitempty"`
+		Worker_ImageURL       string `envconfig:"WORKER_IMAGE_URL" pp:",omitempty"`
+		Worker_MachineType    string `envconfig:"WORKER_MACHINE_TYPE" default:"e2-standard-4" pp:",omitempty"`
+		Worker_MaxConcurrency string `envconfig:"WORKER_MAX_CONCURRENCY" default:"4" pp:",omitempty"`
+		Worker_TaskCount      string `envconfig:"WORKER_TASK_COUNT" default:"1" pp:",omitempty"`
 	}
 )
 
