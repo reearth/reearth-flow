@@ -13,7 +13,7 @@ use quick_xml::NsReader;
 use reearth_flow_common::str::to_hash;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder, executor_operation::ExecutorContext, node::DEFAULT_PORT,
+    executor_operation::ExecutorContext, forwarder::ProcessorChannelForwarder, node::DEFAULT_PORT,
 };
 use reearth_flow_types::{
     geometry::Geometry, lod::LodMask, metadata::Metadata, Attribute, AttributeValue, Feature,
@@ -35,7 +35,7 @@ pub(crate) fn read_citygml(
     params: &CompiledCommonReaderParam,
     citygml_params: &CityGmlReaderParam,
     ctx: ExecutorContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
 ) -> Result<(), super::errors::FeatureProcessorError> {
     let code_resolver = nusamai_plateau::codelist::Resolver::new();
     let expr_engine = Arc::clone(&ctx.expr_engine);
@@ -84,7 +84,7 @@ fn parse_tree_reader<R: BufRead>(
     flatten: bool,
     base_url: Url,
     ctx: &ExecutorContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
 ) -> Result<(), super::errors::FeatureProcessorError> {
     let mut entities = Vec::new();
     let mut global_appearances = AppearanceStore::default();

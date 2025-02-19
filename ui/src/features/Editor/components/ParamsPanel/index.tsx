@@ -57,7 +57,7 @@ const ParamsPanel: React.FC<Props> = ({
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
-        <div className="size-full py-4 pl-4 pr-2">
+        <div className="size-full px-2 py-4">
           {selected && (
             <ParamEditor
               nodeId={selected.id}

@@ -85,8 +85,6 @@
   "Redo action": "アクションをやり直す",
   "Parameters": "パラメータ",
   "No Parameters Available": "利用可能なパラメータはありません",
-  "Previous selection": "前の選択",
-  "Next selection": "次の選択",
   "Current Version": "現在のバージョン",
   "Version ": "バージョン ",
   "Unable to rename workflow": "ワークフローの名前を変更できません",

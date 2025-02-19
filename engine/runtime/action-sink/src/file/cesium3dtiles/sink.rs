@@ -201,7 +201,7 @@ impl Sink for Cesium3DTilesWriter {
         let mut join_handles = self.join_handles.clone();
         join_handles.extend(result);
 
-        let timeout = std::time::Duration::from_secs(60 * 10);
+        let timeout = std::time::Duration::from_secs(60 * 60);
         let mut errors = Vec::new();
 
         for (i, join) in join_handles.iter().enumerate() {
