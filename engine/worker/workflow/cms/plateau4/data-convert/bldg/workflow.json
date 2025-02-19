@@ -188,7 +188,7 @@
           "type": "action",
           "action": "FeatureCreator",
           "with": {
-            "creator": "[\n  #{\n    cityGmlPath: env.get(\"cityGmlPath\"),\n    cityCode: file::extract_filename(env.get(\"cityGmlPath\"))[0..5],\n    codelists: env.get(\"codelists\"),\n    schemas: env.get(\"schemas\"),\n  },\n]\n"
+            "creator": "[\n  #{\n    cityGmlPath: env.get(\"cityGmlPath\"),\n    cityCode: env.get(\"cityCode\") ?? file::extract_filename(env.get(\"cityGmlPath\"))[0..5],\n    codelists: env.get(\"codelists\"),\n    schemas: env.get(\"schemas\"),\n  },\n]\n"
           }
         },
         {
@@ -201,10 +201,22 @@
           "id": "ded2e272-e05c-4918-86b3-aa9f763da6e6",
           "name": "FeatureReaderByCityGml",
           "type": "action",
-          "action": "FeatureReader",
+          "action": "FeatureCityGmlReader",
           "with": {
             "format": "citygml",
             "dataset": "env.get(\"__value\")[\"path\"]\n"
+          }
+        },
+        {
+          "id": "4ffbb8a3-371e-4938-aa73-c142f11bb04b",
+          "name": "FeatureSorter",
+          "type": "action",
+          "action": "FeatureSorter",
+          "with": {
+            "attributes": [
+              "path"
+            ],
+            "order": "ascending"
           }
         },
         {
@@ -251,7 +263,7 @@
             "mappers": [
               {
                 "attribute": "code",
-                "expr": "env.get(\"__value\").file[0..6]\n"
+                "expr": "env.get(\"__value\").file.split(\"_\")[0]\n"
               },
               {
                 "attribute": "type",
@@ -508,6 +520,13 @@
         {
           "id": "cf845867-6ffc-4b83-9fd5-e376a22470e2",
           "from": "ded2e272-e05c-4918-86b3-aa9f763da6e6",
+          "to": "4ffbb8a3-371e-4938-aa73-c142f11bb04b",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "f7c94aaf-e43c-4779-893c-e5b23c0cf643",
+          "from": "4ffbb8a3-371e-4938-aa73-c142f11bb04b",
           "to": "dc498449-5478-4bff-abaa-59f2d160925f",
           "fromPort": "default",
           "toPort": "default"
@@ -534,8 +553,8 @@
           "toPort": "default"
         },
         {
-          "id": "ad52c3e6-68ff-4844-a7b2-d302fc0aef14",
-          "from": "ded2e272-e05c-4918-86b3-aa9f763da6e6",
+          "id": "60ee038e-db4c-4c70-8c0a-a9cbfba726d0",
+          "from": "4ffbb8a3-371e-4938-aa73-c142f11bb04b",
           "to": "5daabfc0-2bda-4f8d-b206-d7a388469f7a",
           "fromPort": "default",
           "toPort": "default"

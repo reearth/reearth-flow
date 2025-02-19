@@ -18,7 +18,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.84" # Remember to update clippy.toml as well
-version = "0.0.10"
+version = "0.0.12"
 
 [profile.dev]
 opt-level = 0
@@ -113,6 +113,7 @@ image = { version = "0.25.5", default-features = false, features = ["jpeg", "png
 indexmap = "2.7.1"
 indoc = "2.0.5"
 itertools = "0.14.0"
+json-subscriber = "0.2.4"
 jsonpath_lib = "0.3.0"
 libxml = "0.3.3"
 nalgebra = "0.33.2"
