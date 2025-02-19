@@ -36,6 +36,7 @@ once_cell.workspace = true
 parking_lot.workspace = true
 petgraph.workspace = true
 quick-xml.workspace = true
+rayon.workspace = true
 regex.workspace = true
 rhai.workspace = true
 schemars.workspace = true

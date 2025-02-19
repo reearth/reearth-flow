@@ -1,4 +1,4 @@
-mod citygml;
+pub(super) mod citygml;
 mod csv;
 mod json;
 
@@ -56,19 +56,19 @@ impl ProcessorFactory for FeatureReaderFactory {
     ) -> Result<Box<dyn Processor>, BoxedError> {
         let params: FeatureReaderParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                FeatureProcessorError::FilterFactory(format!(
+                FeatureProcessorError::FileReaderFactory(format!(
                     "Failed to serialize `with` parameter: {}",
                     e
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                FeatureProcessorError::FilterFactory(format!(
+                FeatureProcessorError::FileReaderFactory(format!(
                     "Failed to deserialize `with` parameter: {}",
                     e
                 ))
             })?
         } else {
-            return Err(FeatureProcessorError::FilterFactory(
+            return Err(FeatureProcessorError::FileReaderFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -76,24 +76,6 @@ impl ProcessorFactory for FeatureReaderFactory {
 
         let expr_engine = Arc::clone(&ctx.expr_engine);
         match params {
-            FeatureReaderParam::CityGML {
-                common_param,
-                param,
-            } => {
-                let common_param = CompiledCommonReaderParam {
-                    expr: expr_engine
-                        .compile(common_param.dataset.as_ref())
-                        .map_err(|e| FeatureProcessorError::FilterFactory(format!("{:?}", e)))?,
-                };
-                let process = FeatureReader {
-                    global_params: with,
-                    params: CompiledFeatureReaderParam::CityGML {
-                        common_param,
-                        param,
-                    },
-                };
-                Ok(Box::new(process))
-            }
             FeatureReaderParam::Csv {
                 common_param,
                 param,
@@ -101,7 +83,9 @@ impl ProcessorFactory for FeatureReaderFactory {
                 let common_param = CompiledCommonReaderParam {
                     expr: expr_engine
                         .compile(common_param.dataset.as_ref())
-                        .map_err(|e| FeatureProcessorError::FilterFactory(format!("{:?}", e)))?,
+                        .map_err(|e| {
+                            FeatureProcessorError::FileReaderFactory(format!("{:?}", e))
+                        })?,
                 };
                 let process = FeatureReader {
                     global_params: with,
@@ -119,7 +103,9 @@ impl ProcessorFactory for FeatureReaderFactory {
                 let common_param = CompiledCommonReaderParam {
                     expr: expr_engine
                         .compile(common_param.dataset.as_ref())
-                        .map_err(|e| FeatureProcessorError::FilterFactory(format!("{:?}", e)))?,
+                        .map_err(|e| {
+                            FeatureProcessorError::FileReaderFactory(format!("{:?}", e))
+                        })?,
                 };
                 let process = FeatureReader {
                     global_params: with,
@@ -134,7 +120,9 @@ impl ProcessorFactory for FeatureReaderFactory {
                 let common_param = CompiledCommonReaderParam {
                     expr: expr_engine
                         .compile(common_param.dataset.as_ref())
-                        .map_err(|e| FeatureProcessorError::FilterFactory(format!("{:?}", e)))?,
+                        .map_err(|e| {
+                            FeatureProcessorError::FileReaderFactory(format!("{:?}", e))
+                        })?,
                 };
                 let process = FeatureReader {
                     global_params: with,
@@ -161,13 +149,6 @@ pub struct CommonReaderParam {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(tag = "format")]
 pub enum FeatureReaderParam {
-    #[serde(rename = "citygml")]
-    CityGML {
-        #[serde(flatten)]
-        common_param: CommonReaderParam,
-        #[serde(flatten)]
-        param: citygml::CityGmlReaderParam,
-    },
     #[serde(rename = "csv")]
     Csv {
         #[serde(flatten)]
@@ -191,10 +172,6 @@ pub enum FeatureReaderParam {
 
 #[derive(Debug, Clone)]
 enum CompiledFeatureReaderParam {
-    CityGML {
-        common_param: CompiledCommonReaderParam,
-        param: citygml::CityGmlReaderParam,
-    },
     Csv {
         common_param: CompiledCommonReaderParam,
         param: csv::CsvReaderParam,
@@ -214,25 +191,12 @@ struct CompiledCommonReaderParam {
 }
 
 impl Processor for FeatureReader {
-    fn num_threads(&self) -> usize {
-        10
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         match self {
-            FeatureReader {
-                global_params,
-                params:
-                    CompiledFeatureReaderParam::CityGML {
-                        common_param,
-                        param,
-                    },
-            } => citygml::read_citygml(global_params, common_param, param, ctx, fw)
-                .map_err(|e| e.into()),
             FeatureReader {
                 global_params,
                 params:
