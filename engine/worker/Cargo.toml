@@ -35,6 +35,7 @@ clap.workspace = true
 futures.workspace = true
 google-cloud-googleapis = "0.15.0"
 google-cloud-pubsub = "0.29.1"
+json-subscriber.workspace = true
 nutype.workspace = true
 object_store.workspace = true
 once_cell.workspace = true
