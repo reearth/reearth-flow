@@ -61,6 +61,7 @@ export default ({
     handleYWorkflowUndo,
     handleYWorkflowRedo,
     handleYWorkflowRename,
+    handleYLayoutChange,
   } = useYjsStore({
     currentWorkflowId,
     yWorkflows,
@@ -283,6 +284,7 @@ export default ({
     handleWorkflowRedo: handleYWorkflowRedo,
     handleWorkflowUndo: handleYWorkflowUndo,
     handleWorkflowRename: handleYWorkflowRename,
+    handleLayoutChange: handleYLayoutChange,
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
     handleNodeHover,
