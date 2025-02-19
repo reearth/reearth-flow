@@ -941,6 +941,45 @@ Extrudes a polygon by a distance
 ### Category
 * Geometry
 
+## FeatureCityGmlReader
+### Type
+* processor
+### Description
+Reads features from citygml file
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureCityGmlReaderParam",
+  "type": "object",
+  "required": [
+    "dataset"
+  ],
+  "properties": {
+    "dataset": {
+      "$ref": "#/definitions/Expr"
+    },
+    "flatten": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Feature
+
 ## FeatureCounter
 ### Type
 * processor
@@ -1267,30 +1306,6 @@ Reads features from various formats
         "dataset": {
           "$ref": "#/definitions/Expr"
         },
-        "flatten": {
-          "type": [
-            "boolean",
-            "null"
-          ]
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "citygml"
-          ]
-        }
-      }
-    },
-    {
-      "type": "object",
-      "required": [
-        "dataset",
-        "format"
-      ],
-      "properties": {
-        "dataset": {
-          "$ref": "#/definitions/Expr"
-        },
         "format": {
           "type": "string",
           "enum": [
@@ -1378,21 +1393,22 @@ Sorts features by attributes
   "title": "FeatureSorterParam",
   "type": "object",
   "required": [
-    "sortBy"
+    "attributes",
+    "order"
   ],
   "properties": {
-    "sortBy": {
+    "attributes": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/SortBy"
+        "$ref": "#/definitions/Attribute"
       }
+    },
+    "order": {
+      "$ref": "#/definitions/Order"
     }
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     },
     "Order": {
@@ -1401,37 +1417,6 @@ Sorts features by attributes
         "ascending",
         "descending"
       ]
-    },
-    "SortBy": {
-      "type": "object",
-      "required": [
-        "order"
-      ],
-      "properties": {
-        "attribute": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Attribute"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "attributeValue": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "order": {
-          "$ref": "#/definitions/Order"
-        }
-      }
     }
   }
 }
