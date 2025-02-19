@@ -61,7 +61,9 @@ func (e *LogEntry) ToDomain() (*log.Log, error) {
 	var nodeID *log.NodeID
 	if e.NodeID != nil && *e.NodeID != "" {
 		nid, err := id.NodeIDFrom(*e.NodeID)
-		if err == nil {
+		if err != nil {
+			reearth_log.Warnf("gql: invalid node ID in log entry: %v", *e.NodeID)
+		} else {
 			nodeID = &nid
 		}
 	}
