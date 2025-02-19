@@ -40,7 +40,7 @@ jobs:
 
       - name: changed files for policies
         id: policies
-        uses: tj-actions/changed-files@v41
+        uses: tj-actions/changed-files@v45
         with:
           files: |
             server/api/internal/rbac/**
