@@ -29,8 +29,8 @@ type Props = {
   onNodesAdd: (node: Node[]) => void;
   isMainWorkflow: boolean;
   hasReader?: boolean;
-  onNodeDoubleClick: (e: React.MouseEvent<Element>, node: Node) => void;
-  selected?: Node;
+  // onNodeDoubleClick: (e: React.MouseEvent<Element>, node: Node) => void;
+  // selected?: Node;
 };
 
 const LeftPanel: React.FC<Props> = ({
@@ -41,111 +41,34 @@ const LeftPanel: React.FC<Props> = ({
   isMainWorkflow,
   hasReader,
   // onNodeDoubleClick,
-  selected,
+  // selected,
 }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
   const [selectedTab, setSelectedTab] = useState<Tab | undefined>();
-  const { fitView, getZoom, zoomTo } = useReactFlow();
-  const [previousZoom, setPreviousZoom] = useState<number | undefined>(
-    undefined,
-  );
+  const { fitView } = useReactFlow();
   const [nodeId, setNodeId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (previousZoom !== undefined && selected === undefined) {
-      zoomTo(previousZoom, { duration: 400 });
-    }
-  }, [previousZoom, selected, zoomTo]);
-
-  useEffect(() => {
-    if (selected && nodeId) {
-      setPreviousZoom(getZoom());
-    }
-
-    if (!isOpen) {
+    if ((!isOpen && selectedTab) || (!isOpen && nodeId)) {
+      setSelectedTab(undefined);
       setNodeId(undefined);
     }
-  }, [selected, isOpen, getZoom, nodeId]);
-
-  useEffect(() => {
-    if (!isOpen && selectedTab) {
-      setSelectedTab(undefined);
-    }
-  }, [isOpen, selectedTab]);
-
-  const createTreeDataItem = (type: string, icon: Icon, name?: string) => {
-    if (type === "reader" || type === "writer") {
-      return (
-        nodes
-          ?.filter((n) => n.type === type)
-          .map((n) => ({
-            id: n.id,
-            name: n.data.customName || n.data.officialName || "untitled",
-            icon,
-            type: n.type,
-          })) ?? []
-      );
-    }
-
-    if (type === "transformer" || type === "subworkflow") {
-      return nodes?.some((n) => n.type === type)
-        ? [
-            {
-              id: type,
-              name: name || "untitled",
-              icon,
-              children: nodes
-                ?.filter((n) => n.type === type)
-                .map((n) => ({
-                  id: n.id,
-                  name: n.data.customName || n.data.officialName || "untitled",
-                  icon,
-                  type: n.type,
-                })),
-            },
-          ]
-        : [];
-    }
-
-    if (type === "batch") {
-      return nodes?.some((n) => n.type === type)
-        ? [
-            {
-              id: type,
-              name: t(name || "untitled"),
-              icon,
-              children: nodes
-                ?.filter((n) => n.type === type)
-                .map((n) => ({
-                  id: n.id,
-                  name:
-                    n.data.params?.customName ||
-                    n.data.officialName ||
-                    "untitled",
-                  icon,
-                  type: n.type,
-                  children: nodes
-                    ?.filter((d) => d.parentId === n.id)
-                    .map((d) => ({
-                      id: d.id,
-                      name:
-                        d.data.customName || d.data.officialName || "untitled",
-                      icon: getNodeIcon(d.type),
-                    })),
-                })),
-            },
-          ]
-        : [];
-    }
-  };
+  }, [isOpen, selectedTab, nodeId]);
 
   const treeContent: TreeDataItem[] = [
-    ...(createTreeDataItem("reader", Database) || []),
-    ...(createTreeDataItem("writer", Disc) || []),
-    ...(createTreeDataItem("transformer", Lightning, t("Transformers")) || []),
-    ...(createTreeDataItem("subworkflow", Graph, t("Subworkflows")) || []),
-    ...(createTreeDataItem("batch", RectangleDashed, t("Batch Nodes")) || []),
+    ...(createTreeDataItem("reader", Database, nodes) || []),
+    ...(createTreeDataItem("writer", Disc, nodes) || []),
+    ...(createTreeDataItem(
+      "transformer",
+      Lightning,
+      nodes,
+      t("Transformers"),
+    ) || []),
+    ...(createTreeDataItem("subworkflow", Graph, nodes, t("Subworkflows")) ||
+      []),
+    ...(createTreeDataItem("batch", RectangleDashed, nodes, t("Batch Nodes")) ||
+      []),
   ];
 
   const tabs: {
@@ -174,6 +97,7 @@ const LeftPanel: React.FC<Props> = ({
                   duration: 500,
                   padding: 2,
                 });
+                // TODO: Implement double click on node so that params of a node opens. Currently selection is handled by React Flow component therefore it is hard to get the internal state @billcookie
                 // onNodeDoubleClick({} as React.MouseEvent, node);
               }
             }
@@ -286,6 +210,77 @@ const LeftPanel: React.FC<Props> = ({
       </aside>
     </>
   );
+};
+
+const createTreeDataItem = (
+  type: string,
+  icon: Icon,
+  nodes?: Node[],
+  name?: string,
+) => {
+  if (type === "reader" || type === "writer") {
+    return (
+      nodes
+        ?.filter((n) => n.type === type)
+        .map((n) => ({
+          id: n.id,
+          name: n.data.customName || n.data.officialName || "untitled",
+          icon,
+          type: n.type,
+        })) ?? []
+    );
+  }
+
+  if (type === "transformer" || type === "subworkflow") {
+    return nodes?.some((n) => n.type === type)
+      ? [
+          {
+            id: type,
+            name: name || "untitled",
+            icon,
+            children: nodes
+              ?.filter((n) => n.type === type)
+              .map((n) => ({
+                id: n.id,
+                name: n.data.customName || n.data.officialName || "untitled",
+                icon,
+                type: n.type,
+              })),
+          },
+        ]
+      : [];
+  }
+
+  if (type === "batch") {
+    return nodes?.some((n) => n.type === type)
+      ? [
+          {
+            id: type,
+            name: name || "untitled",
+            icon,
+            children: nodes
+              ?.filter((n) => n.type === type)
+              .map((n) => ({
+                id: n.id,
+                name:
+                  n.data.params?.customName ||
+                  n.data.officialName ||
+                  "untitled",
+                icon,
+                type: n.type,
+                children: nodes
+                  ?.filter((d) => d.parentId === n.id)
+                  .map((d) => ({
+                    id: d.id,
+                    name:
+                      d.data.customName || d.data.officialName || "untitled",
+                    icon: getNodeIcon(d.type),
+                  })),
+              })),
+          },
+        ]
+      : [];
+  }
 };
 
 export default memo(LeftPanel);
