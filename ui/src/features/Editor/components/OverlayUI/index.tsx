@@ -1,7 +1,13 @@
 import { type XYPosition } from "@xyflow/react";
-import { memo } from "react";
+import { memo, useCallback, useState } from "react";
 
-import type { ActionNodeType, Edge, Node } from "@flow/types";
+import type {
+  ActionNodeType,
+  Algorithm,
+  Direction,
+  Edge,
+  Node,
+} from "@flow/types";
 
 import {
   ActionBar,
@@ -10,6 +16,7 @@ import {
   Breadcrumb,
   Infobar,
   NodePickerDialog,
+  LayoutOptionsDialog,
 } from "./components";
 
 type OverlayUIProps = {
@@ -21,6 +28,8 @@ type OverlayUIProps = {
   allowedToDeploy: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  isMainWorkflow: boolean;
+  hasReader?: boolean;
   onWorkflowDeployment: (
     description: string,
     deploymentId?: string,
@@ -30,9 +39,12 @@ type OverlayUIProps = {
   onRightPanelOpen: (content?: "version-history") => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
-  isMainWorkflow: boolean;
+  onLayoutChange: (
+    algorithm: Algorithm,
+    direction: Direction,
+    spacing: number,
+  ) => void;
   children?: React.ReactNode;
-  hasReader?: boolean;
 };
 
 const OverlayUI: React.FC<OverlayUIProps> = ({
@@ -41,16 +53,23 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   allowedToDeploy,
   canUndo,
   canRedo,
+  isMainWorkflow,
+  hasReader,
   onWorkflowDeployment,
   onNodesAdd,
   onNodePickerClose,
   onRightPanelOpen,
   onWorkflowUndo,
   onWorkflowRedo,
-  isMainWorkflow,
-  hasReader,
+  onLayoutChange,
   children: canvas,
 }) => {
+  const [showLayoutOptions, setShowLayoutOptions] = useState(false);
+
+  const handleLayoutOptionsToggle = useCallback(() => {
+    setShowLayoutOptions((prev) => !prev);
+  }, []);
+
   return (
     <>
       <div className="relative flex flex-1 flex-col">
@@ -67,10 +86,11 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           <Toolbox
             canUndo={canUndo}
             canRedo={canRedo}
-            onRedo={onWorkflowRedo}
-            onUndo={onWorkflowUndo}
             isMainWorkflow={isMainWorkflow}
             hasReader={hasReader}
+            onLayoutChange={handleLayoutOptionsToggle}
+            onRedo={onWorkflowRedo}
+            onUndo={onWorkflowUndo}
           />
         </div>
         <div id="right-top" className="absolute right-1 top-1 m-1">
@@ -85,12 +105,17 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         </div>
         {hoveredDetails && <Infobar hoveredDetails={hoveredDetails} />}
       </div>
+      <LayoutOptionsDialog
+        isOpen={showLayoutOptions}
+        onLayoutChange={onLayoutChange}
+        onClose={handleLayoutOptionsToggle}
+      />
       {nodePickerOpen && (
         <NodePickerDialog
           openedActionType={nodePickerOpen}
+          isMainWorkflow={isMainWorkflow}
           onNodesAdd={onNodesAdd}
           onClose={onNodePickerClose}
-          isMainWorkflow={isMainWorkflow}
         />
       )}
     </>

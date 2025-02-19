@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@flow/components/";
 import BasicBoiler from "@flow/components/BasicBoiler";
-import useProjectImport from "@flow/hooks/useProjectImport";
+import { useProjectImport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 
 import {
