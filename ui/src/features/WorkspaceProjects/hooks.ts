@@ -1,7 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 
-import useProjectPagination from "@flow/hooks/useProjectPagination";
+import { useProjectPagination } from "@flow/hooks";
 import { useProject } from "@flow/lib/gql";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 import { Project } from "@flow/types";
