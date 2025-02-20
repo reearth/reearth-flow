@@ -17,6 +17,7 @@ type Loaders struct {
 	Asset      *AssetLoader
 	Deployment *DeploymentLoader
 	Job        *JobLoader
+	Log        *LogLoader
 	Project    *ProjectLoader
 	Trigger    *TriggerLoader
 	User       *UserLoader
@@ -42,6 +43,7 @@ func NewLoaders(usecases *interfaces.Container) *Loaders {
 		Asset:      NewAssetLoader(usecases.Asset),
 		Deployment: NewDeploymentLoader(usecases.Deployment),
 		Job:        NewJobLoader(usecases.Job),
+		Log:        NewLogLoader(usecases.Log),
 		Project:    NewProjectLoader(usecases.Project),
 		Trigger:    NewTriggerLoader(usecases.Trigger),
 		User:       NewUserLoader(usecases.User),
