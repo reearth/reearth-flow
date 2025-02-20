@@ -8,8 +8,7 @@ import {
   TreeView,
 } from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
-import { useReactFlow } from "@xyflow/react";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
 import { UserMenu } from "@flow/features/common";
@@ -30,7 +29,10 @@ type Props = {
   isMainWorkflow: boolean;
   hasReader?: boolean;
   onNodesChange: (changes: NodeChange[]) => void;
-  onNodeDoubleClick: (e: React.MouseEvent<Element>, node: Node) => void;
+  onNodeDoubleClick: (
+    e: React.MouseEvent<Element> | undefined,
+    node: Node,
+  ) => void;
   selected?: Node;
 };
 
@@ -43,60 +45,33 @@ const LeftPanel: React.FC<Props> = ({
   hasReader,
   onNodesChange,
   onNodeDoubleClick,
-  selected,
 }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
   const [selectedTab, setSelectedTab] = useState<Tab | undefined>();
-  const { fitView, getViewport, zoomTo } = useReactFlow();
   const [nodeId, setNodeId] = useState<string | undefined>(undefined);
 
-  const previousZoomRef = useRef<number | undefined>(undefined);
-
-  const handleSelectionChange = useCallback(() => {
-    if ((!isOpen && selectedTab) || (!isOpen && nodeId)) {
-      setSelectedTab(undefined);
-      setNodeId(undefined);
-    }
-
-    if (!isOpen) {
-      setNodeId(undefined);
-    }
-
-    if (selected && nodeId) {
-      if (previousZoomRef.current === undefined) {
-        previousZoomRef.current = getViewport().zoom;
-      }
-    } else if (!selected && previousZoomRef.current !== undefined) {
-      zoomTo(previousZoomRef.current, { duration: 400 });
-      previousZoomRef.current = undefined;
-    }
-  }, [isOpen, selectedTab, nodeId, selected, getViewport, zoomTo]);
-
   useEffect(() => {
-    handleSelectionChange();
-  }, [handleSelectionChange]);
+    if (!isOpen && nodeId) {
+      setNodeId(undefined);
+    }
+  }, [isOpen, nodeId]);
 
   const handleTreeDataItemDoubleClick = useCallback(
     (nodeId: string) => {
-      if (!nodeId) return;
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
 
-      fitView({
-        nodes: [{ id: node.id }],
-        duration: 500,
-        padding: 2,
-      });
       const nodeChanges: NodeChange[] = nodes.map((n) => ({
         id: n.id,
         type: "select",
         selected: n.id === nodeId,
       }));
+
       onNodesChange(nodeChanges);
-      onNodeDoubleClick({} as React.MouseEvent, node);
+      onNodeDoubleClick(undefined, node);
     },
-    [nodes, fitView, onNodesChange, onNodeDoubleClick],
+    [nodes, onNodesChange, onNodeDoubleClick],
   );
 
   const treeContent: TreeDataItem[] = [
@@ -127,7 +102,7 @@ const LeftPanel: React.FC<Props> = ({
       component: nodes && (
         <Tree
           data={treeContent}
-          className="w-full shrink-0 truncate rounded px-1"
+          className="w-full shrink-0 select-none truncate rounded px-1"
           onSelectChange={(item) => {
             setNodeId(item?.id ?? "");
           }}

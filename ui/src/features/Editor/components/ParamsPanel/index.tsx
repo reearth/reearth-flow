@@ -1,5 +1,6 @@
 import { X } from "@phosphor-icons/react";
-import { memo, useCallback } from "react";
+import { useReactFlow } from "@xyflow/react";
+import { memo, useCallback, useEffect, useRef } from "react";
 
 import { IconButton } from "@flow/components";
 import { Node } from "@flow/types";
@@ -31,6 +32,25 @@ const ParamsPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
     [onParamsSubmit, handleClose],
   );
 
+  const { getViewport, setViewport } = useReactFlow();
+
+  const previousViewportRef = useRef<{
+    x: number;
+    y: number;
+    zoom: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (selected) {
+      if (!previousViewportRef.current) {
+        const { x, y, zoom } = getViewport();
+        previousViewportRef.current = { x, y, zoom };
+      }
+    } else if (!selected && previousViewportRef.current) {
+      setViewport(previousViewportRef.current, { duration: 400 });
+      previousViewportRef.current = null;
+    }
+  }, [setViewport, getViewport, selected]);
   return (
     <>
       <div
