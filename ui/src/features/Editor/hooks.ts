@@ -1,5 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
-import { MouseEvent, useCallback, useMemo, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useY } from "react-yjs";
 import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
@@ -46,6 +46,11 @@ export default ({
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
+
+  // TODO: If we split canvas more, or use refs, etc, this will become unnecessary @KaWaite
+  useEffect(() => {
+    fitView({ padding: 0.5 });
+  }, [currentWorkflowId, fitView]);
 
   const {
     canUndo,
