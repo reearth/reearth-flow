@@ -37,7 +37,6 @@ export default () => {
   const handleWorkflowFileUpload = useCallback(
     async (e: ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      console.log("file", file);
       if (!file) return;
 
       setIsWorkflowImporting(true);
@@ -76,7 +75,6 @@ export default () => {
 
             if (!project) return console.error("Failed to create project");
 
-            console.log("canvasReadyWorkflows", canvasReadyWorkflows);
             const yDoc = new Y.Doc();
             const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
             yWorkflows.insert(
@@ -120,8 +118,6 @@ export default () => {
     },
     [currentWorkspace, t, createProject],
   );
-
-  console.log("invalidFile", invalidFile);
 
   return {
     fileInputRef,

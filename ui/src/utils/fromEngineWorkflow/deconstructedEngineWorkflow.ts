@@ -13,17 +13,13 @@ export const deconstructedEngineWorkflow = async ({
   engineWorkflow?: EngineReadyWorkflow;
   layoutType?: Algorithm;
 }): Promise<{ meta: Meta; workflows: Workflow[] } | undefined> => {
-  console.log("HERE w engineWorkflow", engineWorkflow);
   if (!engineWorkflow) return;
   const meta = { name: engineWorkflow.name };
 
-  console.log("HERE");
   const canvasReadyWorkflows: Workflow[] | undefined = await separateWorkflow({
     engineWorkflow,
     layoutType,
   });
-
-  console.log("canvasReadyWorkflows", canvasReadyWorkflows);
 
   if (!canvasReadyWorkflows) return;
 
