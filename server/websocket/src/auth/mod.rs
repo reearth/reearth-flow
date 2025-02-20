@@ -12,7 +12,10 @@ pub struct AuthService {
 impl AuthService {
     pub async fn new(config: AuthConfig) -> Result<Self> {
         debug!("Connecting to auth service at: {}", config.url);
-        let channel = Channel::from_shared(config.url)?.connect().await?;
+        let channel = Channel::builder(config.url.parse()?)
+            .connect_timeout(std::time::Duration::from_secs(5))
+            .connect()
+            .await?;
         let client = AuthServiceClient::new(channel);
         Ok(Self { client })
     }
