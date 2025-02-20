@@ -2,7 +2,7 @@ import { useParams } from "@tanstack/react-router";
 import { isEqual } from "lodash-es";
 import { useEffect } from "react";
 
-import { Loading } from "@flow/components";
+import { LoadingSplashscreen } from "@flow/components";
 import { useProject } from "@flow/lib/gql";
 import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
 
@@ -29,8 +29,10 @@ const ProjectIdWrapper: React.FC<Props> = ({ children }) => {
     setCurrentProject(project);
   }, [project, currentProject, currentWorkspace, setCurrentProject]);
 
+  console.log("isloading", isLoading);
+
   return isLoading ? (
-    <Loading />
+    <LoadingSplashscreen />
   ) : !project ? (
     <NotFoundPage message={`Project with id: "${projectId}" not found.`} />
   ) : currentWorkspace && project.workspaceId !== currentWorkspace.id ? (

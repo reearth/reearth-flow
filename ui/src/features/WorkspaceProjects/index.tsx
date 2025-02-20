@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   FlowLogo,
-  Loading,
+  LoadingSkeleton,
   Pagination,
   Select,
   SelectContent,
@@ -135,7 +135,7 @@ const ProjectsManager: React.FC = () => {
           </Select>
         )}
         {isFetching || isProjectImporting ? (
-          <Loading />
+          <LoadingSkeleton />
         ) : projects && projects.length > 0 ? (
           <div
             className="grid min-w-0 grid-cols-1 gap-2 overflow-scroll sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4"
