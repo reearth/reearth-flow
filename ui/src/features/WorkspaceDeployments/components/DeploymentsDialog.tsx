@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DataTable as Table,
   FlowLogo,
-  Loading,
+  LoadingSkeleton,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
@@ -17,27 +17,27 @@ import { Deployment } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
 type Props = {
-  setShowDialog: (show: boolean) => void;
   deployments: Deployment[] | undefined;
-  handleSelectDeployment: (deployment: Deployment) => void;
   currentPage?: number;
-  setCurrentPage?: (page: number) => void;
   currentOrder?: OrderDirection;
-  setCurrentOrder?: (order: OrderDirection) => void;
   totalPages?: number;
   isFetching?: boolean;
+  setShowDialog: (show: boolean) => void;
+  handleSelectDeployment: (deployment: Deployment) => void;
+  setCurrentPage?: (page: number) => void;
+  setCurrentOrder?: (order: OrderDirection) => void;
 };
 
 const DeploymentsDialog: React.FC<Props> = ({
-  setShowDialog,
   deployments,
-  handleSelectDeployment,
   currentPage = 1,
-  setCurrentPage,
   currentOrder = OrderDirection.Desc,
-  setCurrentOrder,
   totalPages,
   isFetching,
+  setShowDialog,
+  handleSelectDeployment,
+  setCurrentPage,
+  setCurrentOrder,
 }) => {
   const t = useT();
   const resultsPerPage = DEPLOYMENT_FETCH_RATE;
@@ -67,7 +67,7 @@ const DeploymentsDialog: React.FC<Props> = ({
         <DialogContentWrapper>
           <DialogContentSection className="flex-1">
             {isFetching ? (
-              <Loading className="h-[373px]" />
+              <LoadingSkeleton className="h-[373px]" />
             ) : deployments && deployments.length > 0 ? (
               <Table
                 columns={columns}

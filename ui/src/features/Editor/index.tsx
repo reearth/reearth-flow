@@ -71,8 +71,9 @@ export default function Editor({
           onNodesAdd={handleNodesAdd}
           isMainWorkflow={isMainWorkflow}
           hasReader={hasReader}
-          // onNodeDoubleClick={handleNodeDoubleClick}
-          // selected={locallyLockedNode}
+          onNodesChange={handleNodesChange}
+          onNodeDoubleClick={handleNodeDoubleClick}
+          selected={locallyLockedNode}
         />
         <div className="flex flex-1 flex-col">
           <OverlayUI

@@ -93,15 +93,15 @@ const JobRunDialog: React.FC<Props> = ({ setShowDialog }) => {
       </DialogContent>
       {openSelectDeploymentsDialog && (
         <DeploymentsDialog
-          setShowDialog={() => setOpenSelectDeploymentsDialog(false)}
           deployments={deployments}
-          handleSelectDeployment={selectDeployment}
           currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
           totalPages={totalPages}
           currentOrder={currentOrder}
-          setCurrentOrder={setCurrentOrder}
           isFetching={isFetching}
+          setShowDialog={() => setOpenSelectDeploymentsDialog(false)}
+          handleSelectDeployment={selectDeployment}
+          setCurrentPage={setCurrentPage}
+          setCurrentOrder={setCurrentOrder}
         />
       )}
     </Dialog>

@@ -15,7 +15,7 @@ export function updateParentYWorkflowNode(
 
   // Update the subworkflow node with the updated input/output
   const parentNodeIndex = parentNodes.findIndex(
-    (n) => n.id === currentWorkflowId,
+    (n) => n.data.subworkflowId === currentWorkflowId,
   );
   const subworkflowParentNode = parentNodes[parentNodeIndex];
 

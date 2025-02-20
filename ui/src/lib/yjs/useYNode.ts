@@ -196,7 +196,9 @@ export default ({
 
           const parentWorkflowIndex = rawWorkflows.findIndex((w) => {
             const nodes = w.nodes as Node[];
-            return nodes.some((n) => n.id === currentWorkflowId);
+            return nodes.some(
+              (n) => n.data.subworkflowId === currentWorkflowId,
+            );
           });
           const parentYWorkflow = yWorkflows.get(parentWorkflowIndex);
 
