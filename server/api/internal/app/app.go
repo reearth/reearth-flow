@@ -55,6 +55,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 
 	// auth config
 	authConfig := cfg.Config.JWTProviders()
+
 	log.Infof("auth: config: %#v", authConfig)
 	authMiddleware := echo.WrapMiddleware(lo.Must(appx.AuthMiddleware(authConfig, adapter.ContextAuthInfo, true)))
 
@@ -94,6 +95,9 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	// authenticated routes
 	apiPrivate := api.Group("", privateCache)
 	apiPrivate.Use(authMiddleware, attachOpMiddleware(cfg))
+	apiPrivate.POST("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev, origins))
+	apiPrivate.POST("/signup", Signup())
+
 	apiPrivate.Any("/graphql", GraphqlAPI(cfg.Config.GraphQL, gqldev, origins))
 	apiPrivate.POST("/signup", Signup())
 
@@ -116,7 +120,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	return e
 }
 
-func initActionsData(ctx context.Context) error {
+func initActionsData(_ context.Context) error {
 	for lang := range supportedLangs {
 		if err := loadActionsData(lang); err != nil {
 			log.Errorf("Failed to load actions data for language %s: %v", lang, err)

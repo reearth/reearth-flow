@@ -24,7 +24,7 @@ type (
 	Mailer mailer.Mailer
 	Config struct {
 		mailer.Config
-		Port             string            `default:"8080" envconfig:"PORT"`
+		Port             string            `default:"8080"`
 		ServerHost       string            `pp:",omitempty"`
 		Host             string            `default:"http://localhost:8080"`
 		Host_Web         string            `pp:",omitempty"`
@@ -77,6 +77,8 @@ type (
 		Worker_MachineType    string `envconfig:"WORKER_MACHINE_TYPE" default:"e2-standard-4" pp:",omitempty"`
 		Worker_MaxConcurrency string `envconfig:"WORKER_MAX_CONCURRENCY" default:"4" pp:",omitempty"`
 		Worker_TaskCount      string `envconfig:"WORKER_TASK_COUNT" default:"1" pp:",omitempty"`
+
+		WebsocketServer string `default:"localhost:50051" envconfig:"REEARTH_FLOW_WEBSOCKET_GRPC_SERVER"`
 	}
 )
 
