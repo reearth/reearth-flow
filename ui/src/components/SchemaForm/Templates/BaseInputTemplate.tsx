@@ -9,7 +9,7 @@ import {
 } from "@rjsf/utils";
 import { ChangeEvent, useRef } from "react";
 
-import { TextArea } from "@flow/components";
+import { Input, TextArea } from "@flow/components";
 
 /** The `BaseInputTemplate` is the template to use to render the basic `<input>` component for the `core` theme.
  * It is used as the template for rendering many of the <input> based widgets that differ by `type` and callbacks only.
@@ -77,7 +77,27 @@ const BaseInputTemplate = <
       onChangeOverride || onChange(value === "" ? options.emptyValue : value)
     );
   };
-
+  // We want the default to be textarea as for most params they will be long strings, however, for color and future formats we can set as input to get the correct styling @billcookie
+  if (schema.format === "color") {
+    return (
+      <Input
+        id={id}
+        name={id}
+        placeholder={placeholder}
+        autoFocus={autofocus}
+        required={required}
+        disabled={disabled || readonly}
+        {...otherProps}
+        value={value || value === 0 ? value : ""}
+        onChange={(e) =>
+          onChangeOverride ||
+          onChange(e.target.value === "" ? options.emptyValue : e.target.value)
+        }
+        {...textFieldProps}
+        aria-describedby={ariaDescribedByIds<T>(id, !!schema.examples)}
+      />
+    );
+  }
   return (
     <>
       <TextArea

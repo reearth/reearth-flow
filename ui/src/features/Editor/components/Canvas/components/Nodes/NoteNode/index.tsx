@@ -113,11 +113,6 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
         <div
           ref={(element) => {
             if (element) {
-              element.style.setProperty(
-                "background-color",
-                rgbaColor,
-                "important",
-              );
               if (element)
                 element.style.setProperty(
                   "color",
@@ -126,23 +121,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
                 );
             }
           }}>
-          <p
-            ref={(element) => {
-              if (element) {
-                element.style.setProperty(
-                  "background-color",
-                  rgbaColor,
-                  "important",
-                );
-                if (element)
-                  element.style.setProperty(
-                    "color",
-                    data.params?.textColor || "",
-                    "important",
-                  );
-              }
-            }}
-            className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none">
+          <p className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none">
             {data.params?.description}
           </p>
         </div>
