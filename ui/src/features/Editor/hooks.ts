@@ -1,3 +1,4 @@
+import { useReactFlow } from "@xyflow/react";
 import { MouseEvent, useCallback, useMemo, useState } from "react";
 import { useY } from "react-yjs";
 import { Array as YArray, UndoManager as YUndoManager } from "yjs";
@@ -44,6 +45,7 @@ export default ({
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
+  const { fitView } = useReactFlow();
 
   const {
     canUndo,
@@ -124,14 +126,19 @@ export default ({
   });
 
   const handleNodeDoubleClick = useCallback(
-    (_e: MouseEvent, node: Node) => {
+    (_e: MouseEvent | undefined, node: Node) => {
       if (node.type === "subworkflow") {
         handleWorkflowOpen(node.id);
       } else {
+        fitView({
+          nodes: [{ id: node.id }],
+          duration: 500,
+          padding: 2,
+        });
         handleNodeLocking(node.id);
       }
     },
-    [handleWorkflowOpen, handleNodeLocking],
+    [handleWorkflowOpen, fitView, handleNodeLocking],
   );
 
   const { handleCopy, handlePaste } = useCanvasCopyPaste({
