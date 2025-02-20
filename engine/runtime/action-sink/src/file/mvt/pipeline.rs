@@ -102,7 +102,7 @@ pub(super) fn geometry_slicing_stage(
             .lock()
             .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {}", e)))?
             .push(tile_content);
-        Ok(())
+        Ok::<(), crate::errors::SinkError>(())
     })?;
 
     let mut tile_content = TileContent::default();

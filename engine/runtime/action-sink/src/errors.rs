@@ -30,6 +30,8 @@ pub enum SinkError {
     ShapefileWriterFactory(String),
     #[error("Shapefile Writer error: {0}")]
     ShapefileWriter(String),
+    #[error("Shapefile I/O error: {0}")]
+    ShapefileWriterIo(#[from] std::io::Error),
 }
 
 impl SinkError {

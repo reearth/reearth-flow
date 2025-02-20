@@ -4,4 +4,5 @@ mod excel;
 pub(crate) mod geojson;
 pub(crate) mod gltf;
 pub(crate) mod mvt;
+pub(crate) mod shapefile;
 pub(crate) mod writer;
