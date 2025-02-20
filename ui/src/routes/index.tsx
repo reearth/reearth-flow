@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { Loading, Button, FlowLogo } from "@flow/components";
+import { LoadingSplashscreen, Button, FlowLogo } from "@flow/components";
 import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 
@@ -22,7 +22,7 @@ function Index() {
   return !isLoading && (isError || !me || !me?.myWorkspaceId) ? (
     <ErrorPage errorMessage={"Could not fetch user"} />
   ) : (
-    <Loading />
+    <LoadingSplashscreen />
   );
 }
 

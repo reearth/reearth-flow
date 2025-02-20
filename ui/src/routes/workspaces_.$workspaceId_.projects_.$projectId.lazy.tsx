@@ -1,7 +1,7 @@
 import { createLazyFileRoute } from "@tanstack/react-router";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 
-import { Loading } from "@flow/components";
+import { LoadingSplashscreen } from "@flow/components";
 import Editor from "@flow/features/Editor";
 import {
   ProjectIdWrapper,
@@ -54,7 +54,7 @@ const EditorComponent = () => {
   });
 
   return !state || !isSynced ? (
-    <Loading />
+    <LoadingSplashscreen />
   ) : (
     <Editor
       yWorkflows={state.yWorkflows}
