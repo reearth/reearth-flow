@@ -1,11 +1,19 @@
 import { config } from "@flow/config";
 import { DEFAULT_NODE_SIZE } from "@flow/global-constants";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
-import type { Action, EngineReadyNode, Node } from "@flow/types";
+import type { Action, EngineReadyNode, Node, PseudoPort } from "@flow/types";
 
 import { isDefined } from "../isDefined";
 
-export const convertNodes = async (engineNodes?: EngineReadyNode[]) => {
+export const convertNodes = async (
+  engineNodes: EngineReadyNode[],
+  getSubworkflowPseudoPorts: (id: string) =>
+    | {
+        pseudoInputs: PseudoPort[];
+        pseudoOutputs: PseudoPort[];
+      }
+    | undefined,
+) => {
   if (!engineNodes) return [];
   const { api } = config();
 
@@ -20,22 +28,35 @@ export const convertNodes = async (engineNodes?: EngineReadyNode[]) => {
         const canvasNodeType =
           en.type === "subGraph" ? "subworkflow" : action?.type || undefined;
 
+        const isSubworkflow = en.type === "subGraph";
+
         if (!en.id || !canvasNodeType || !en.name) return undefined;
 
         const canvasNode: Node = {
-          id:
-            canvasNodeType === "subworkflow" && en.subGraphId
-              ? en.subGraphId
-              : en.id,
+          id: en.id,
           type: canvasNodeType,
           position: { x: 0, y: 0 }, // this is temporary before we have a layout
           measured: DEFAULT_NODE_SIZE,
           data: {
-            officialName: en.action || en.name,
+            officialName: isSubworkflow ? "Subworkflow" : en.action || en.name,
             customName: en.name,
             params: en.with,
           },
         };
+
+        if (isSubworkflow && en.subGraphId) {
+          canvasNode.data.subworkflowId = en.subGraphId;
+
+          const subworkflowPseudoPorts = getSubworkflowPseudoPorts(
+            en.subGraphId,
+          );
+          if (subworkflowPseudoPorts) {
+            canvasNode.data.pseudoInputs = subworkflowPseudoPorts.pseudoInputs;
+            canvasNode.data.pseudoOutputs =
+              subworkflowPseudoPorts.pseudoOutputs;
+          }
+        }
+
         if (action?.inputPorts.length) {
           canvasNode.data.inputs = action.inputPorts;
         }

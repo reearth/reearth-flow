@@ -29,6 +29,7 @@ export const yNodeConstructor = (node: Node): YNode => {
       status: toYjsText(node.data.status),
       params: node.data.params,
       // Subworkflow specific
+      subworkflowId: toYjsText(node.data.subworkflowId ?? node.id),
       pseudoInputs: toYjsArray(
         node.data.pseudoInputs?.map((pseudoInput) => {
           const yPseudoInput = new Y.Map();

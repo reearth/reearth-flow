@@ -62,8 +62,9 @@ export default () => {
           const resultsObject = JSON.parse(results as string);
 
           if (currentWorkspace && isEngineWorkflow(resultsObject)) {
-            const canvasReadyWorkflows =
-              await deconstructedEngineWorkflow(resultsObject);
+            const canvasReadyWorkflows = await deconstructedEngineWorkflow({
+              engineWorkflow: resultsObject,
+            });
             if (!canvasReadyWorkflows)
               return console.error("Failed to convert workflows");
 

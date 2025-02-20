@@ -127,8 +127,8 @@ export default ({
 
   const handleNodeDoubleClick = useCallback(
     (_e: MouseEvent, node: Node) => {
-      if (node.type === "subworkflow") {
-        handleWorkflowOpen(node.id);
+      if (node.type === "subworkflow" && node.data.subworkflowId) {
+        handleWorkflowOpen(node.data.subworkflowId);
       } else {
         handleNodeLocking(node.id);
       }

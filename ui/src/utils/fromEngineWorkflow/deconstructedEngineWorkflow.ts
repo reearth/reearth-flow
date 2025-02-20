@@ -1,4 +1,4 @@
-import { EngineReadyWorkflow, Workflow } from "@flow/types";
+import { Algorithm, EngineReadyWorkflow, Workflow } from "@flow/types";
 
 import { separateWorkflow } from "./separateWorkflows";
 
@@ -6,14 +6,24 @@ type Meta = {
   name: string;
 };
 
-export const deconstructedEngineWorkflow = async (
-  engineWorkflow?: EngineReadyWorkflow,
-): Promise<{ meta: Meta; workflows: Workflow[] } | undefined> => {
+export const deconstructedEngineWorkflow = async ({
+  engineWorkflow,
+  layoutType,
+}: {
+  engineWorkflow?: EngineReadyWorkflow;
+  layoutType?: Algorithm;
+}): Promise<{ meta: Meta; workflows: Workflow[] } | undefined> => {
+  console.log("HERE w engineWorkflow", engineWorkflow);
   if (!engineWorkflow) return;
   const meta = { name: engineWorkflow.name };
 
-  const canvasReadyWorkflows: Workflow[] | undefined =
-    await separateWorkflow(engineWorkflow);
+  console.log("HERE");
+  const canvasReadyWorkflows: Workflow[] | undefined = await separateWorkflow({
+    engineWorkflow,
+    layoutType,
+  });
+
+  console.log("canvasReadyWorkflows", canvasReadyWorkflows);
 
   if (!canvasReadyWorkflows) return;
 
