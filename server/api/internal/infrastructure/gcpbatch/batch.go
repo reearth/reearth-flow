@@ -19,11 +19,15 @@ import (
 )
 
 type BatchConfig struct {
-	BinaryPath string
-	ImageURI   string
-	ProjectID  string
-	Region     string
-	SAEmail    string
+	BinaryPath     string
+	BootDiskSizeGB int
+	BootDiskType   string
+	ImageURI       string
+	MachineType    string
+	ProjectID      string
+	Region         string
+	SAEmail        string
+	TaskCount      int
 }
 
 type BatchClient interface {
@@ -125,14 +129,20 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 	}
 
 	taskGroup := &batchpb.TaskGroup{
-		TaskCount: 1,
+		TaskCount: int64(b.config.TaskCount),
 		TaskSpec:  taskSpec,
 	}
 	log.Debugfc(ctx, "gcpbatch: configured task group with count=%d", taskGroup.TaskCount)
 
+	bootDisk := &batchpb.AllocationPolicy_Disk{
+		Type:   b.config.BootDiskType,
+		SizeGb: int64(b.config.BootDiskSizeGB),
+	}
+
 	instancePolicy := &batchpb.AllocationPolicy_InstancePolicy{
 		ProvisioningModel: batchpb.AllocationPolicy_STANDARD,
-		MachineType:       "e2-standard-4",
+		MachineType:       b.config.MachineType,
+		BootDisk:          bootDisk,
 	}
 	log.Debugfc(ctx, "gcpbatch: configured instance policy with machine=%s", instancePolicy.MachineType)
 
