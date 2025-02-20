@@ -13,14 +13,14 @@ use crate::{log_event_handler::LogEventHandler, orchestrator::Orchestrator};
 /// Controls the number of worker threads in the Tokio runtime.
 ///
 /// # Environment Variable
-/// - FLOW_RUNTIME_WORKER_NUM: Number of worker threads (default: 100)
+/// - FLOW_RUNTIME_ASYNC_WORKER_NUM: Number of worker threads (default: number of CPUs)
 ///
 /// # Notes
-static WORKER_NUM: Lazy<usize> = Lazy::new(|| {
-    env::var("FLOW_RUNTIME_WORKER_NUM")
+static ASYNC_WORKER_NUM: Lazy<usize> = Lazy::new(|| {
+    env::var("FLOW_RUNTIME_ASYNC_WORKER_NUM")
         .ok()
         .and_then(|v| v.parse().ok())
-        .unwrap_or(100)
+        .unwrap_or(num_cpus::get())
 });
 
 pub struct Runner;
@@ -55,7 +55,7 @@ impl Runner {
         event_handlers: Vec<Arc<dyn EventHandler>>,
     ) -> Result<(), crate::errors::Error> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(*WORKER_NUM)
+            .worker_threads(*ASYNC_WORKER_NUM)
             .enable_all()
             .build()
             .map_err(|e| {

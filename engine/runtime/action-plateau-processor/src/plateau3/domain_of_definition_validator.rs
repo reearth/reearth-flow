@@ -335,7 +335,7 @@ pub struct DomainOfDefinitionValidatorParam {
 
 impl Processor for DomainOfDefinitionValidator {
     fn num_threads(&self) -> usize {
-        5
+        2
     }
 
     fn process(

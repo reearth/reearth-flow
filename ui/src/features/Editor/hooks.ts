@@ -46,6 +46,7 @@ export default ({
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
+  const { fitView } = useReactFlow();
 
   const {
     canUndo,
@@ -126,14 +127,19 @@ export default ({
   });
 
   const handleNodeDoubleClick = useCallback(
-    (_e: MouseEvent, node: Node) => {
+    (_e: MouseEvent | undefined, node: Node) => {
       if (node.type === "subworkflow" && node.data.subworkflowId) {
         handleWorkflowOpen(node.data.subworkflowId);
       } else {
+        fitView({
+          nodes: [{ id: node.id }],
+          duration: 500,
+          padding: 2,
+        });
         handleNodeLocking(node.id);
       }
     },
-    [handleWorkflowOpen, handleNodeLocking],
+    [handleWorkflowOpen, fitView, handleNodeLocking],
   );
 
   const { handleCopy, handlePaste } = useCanvasCopyPaste({
