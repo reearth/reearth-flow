@@ -35,6 +35,7 @@ colored.workspace = true
 directories.workspace = true
 indoc.workspace = true
 json-subscriber.workspace = true
+num_cpus.workspace = true
 once_cell.workspace = true
 opentelemetry.workspace = true
 opentelemetry_sdk.workspace = true
