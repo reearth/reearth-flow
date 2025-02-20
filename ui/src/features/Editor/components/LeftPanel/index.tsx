@@ -8,14 +8,13 @@ import {
   TreeView,
 } from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
-import { useReactFlow } from "@xyflow/react";
-import { memo, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
 import { UserMenu } from "@flow/features/common";
 import { useShortcuts } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import type { Node } from "@flow/types";
+import type { Node, NodeChange } from "@flow/types";
 import { getNodeIcon } from "@flow/utils/getNodeIcon";
 
 import { ActionsList } from "./components";
@@ -29,8 +28,12 @@ type Props = {
   onNodesAdd: (node: Node[]) => void;
   isMainWorkflow: boolean;
   hasReader?: boolean;
-  // onNodeDoubleClick: (e: React.MouseEvent<Element>, node: Node) => void;
-  // selected?: Node;
+  onNodesChange: (changes: NodeChange[]) => void;
+  onNodeDoubleClick: (
+    e: React.MouseEvent<Element> | undefined,
+    node: Node,
+  ) => void;
+  selected?: Node;
 };
 
 const LeftPanel: React.FC<Props> = ({
@@ -40,21 +43,36 @@ const LeftPanel: React.FC<Props> = ({
   onNodesAdd,
   isMainWorkflow,
   hasReader,
-  // onNodeDoubleClick,
-  // selected,
+  onNodesChange,
+  onNodeDoubleClick,
 }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
   const [selectedTab, setSelectedTab] = useState<Tab | undefined>();
-  const { fitView } = useReactFlow();
   const [nodeId, setNodeId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if ((!isOpen && selectedTab) || (!isOpen && nodeId)) {
-      setSelectedTab(undefined);
+    if (!isOpen && nodeId) {
       setNodeId(undefined);
     }
-  }, [isOpen, selectedTab, nodeId]);
+  }, [isOpen, nodeId]);
+
+  const handleTreeDataItemDoubleClick = useCallback(
+    (nodeId: string) => {
+      const node = nodes.find((n) => n.id === nodeId);
+      if (!node) return;
+
+      const nodeChanges: NodeChange[] = nodes.map((n) => ({
+        id: n.id,
+        type: "select",
+        selected: n.id === nodeId,
+      }));
+
+      onNodesChange(nodeChanges);
+      onNodeDoubleClick(undefined, node);
+    },
+    [nodes, onNodesChange, onNodeDoubleClick],
+  );
 
   const treeContent: TreeDataItem[] = [
     ...(createTreeDataItem("reader", Database, nodes) || []),
@@ -84,22 +102,13 @@ const LeftPanel: React.FC<Props> = ({
       component: nodes && (
         <Tree
           data={treeContent}
-          className="w-full shrink-0 truncate rounded px-1"
+          className="w-full shrink-0 select-none truncate rounded px-1"
           onSelectChange={(item) => {
             setNodeId(item?.id ?? "");
           }}
           onDoubleClick={() => {
             if (nodeId) {
-              const node = nodes.find((n) => n.id === nodeId);
-              if (node) {
-                fitView({
-                  nodes: [{ id: node.id }],
-                  duration: 500,
-                  padding: 2,
-                });
-                // TODO: Implement double click on node so that params of a node opens. Currently selection is handled by React Flow component therefore it is hard to get the internal state @billcookie
-                // onNodeDoubleClick({} as React.MouseEvent, node);
-              }
+              handleTreeDataItemDoubleClick(nodeId);
             }
           }}
         />

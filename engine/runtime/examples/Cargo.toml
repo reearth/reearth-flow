@@ -29,6 +29,7 @@ reearth-flow-types.workspace = true
 async-trait.workspace = true
 bytes.workspace = true
 directories.workspace = true
+num_cpus.workspace = true
 once_cell.workspace = true
 time.workspace = true
 tokio.workspace = true

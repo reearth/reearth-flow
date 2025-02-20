@@ -24,6 +24,7 @@ crossbeam.workspace = true
 directories.workspace = true
 futures.workspace = true
 futures-util.workspace = true
+num_cpus.workspace = true
 once_cell.workspace = true
 petgraph.workspace = true
 regex.workspace = true

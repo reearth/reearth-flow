@@ -162,7 +162,7 @@ impl XmlFragment {
 
 impl Processor for XmlFragmenter {
     fn num_threads(&self) -> usize {
-        20
+        2
     }
 
     fn process(

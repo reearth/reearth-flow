@@ -9,6 +9,8 @@ mod schema_action;
 mod schema_workflow;
 mod utils;
 
+use std::env;
+
 use colored::{Color, Colorize};
 use opentelemetry::global::shutdown_tracer_provider;
 
@@ -28,6 +30,10 @@ fn main() -> Result<()> {
         .version(env!("CARGO_PKG_VERSION"));
     let matches = app.get_matches();
     let command = CliCommand::parse_cli_args(matches)?;
+    env::set_var(
+        "RAYON_NUM_THREADS",
+        std::cmp::min(num_cpus::get() * 2, 64).to_string().as_str(),
+    );
     logger::setup_logging_and_tracing()?;
     let return_code: i32 = if let Err(err) = command.execute() {
         eprintln!("{} Command failed: {:?}\n", "✘".color(RED_COLOR), err);

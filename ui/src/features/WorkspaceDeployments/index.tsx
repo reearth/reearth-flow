@@ -5,7 +5,7 @@ import {
   Button,
   ButtonWithTooltip,
   FlowLogo,
-  Loading,
+  LoadingSkeleton,
   DataTable as Table,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
@@ -115,7 +115,7 @@ const DeploymentManager: React.FC = () => {
               </Button>
             </div>
             {isFetching ? (
-              <Loading />
+              <LoadingSkeleton />
             ) : deployments && deployments.length > 0 ? (
               <Table
                 columns={columns}

@@ -1,4 +1,5 @@
-import { MouseEvent, useCallback, useMemo, useState } from "react";
+import { useReactFlow } from "@xyflow/react";
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useY } from "react-yjs";
 import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
@@ -11,10 +12,10 @@ import { rebuildWorkflow } from "@flow/lib/yjs/conversions";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
-import type { Edge, Node } from "@flow/types";
+import type { Algorithm, Direction, Edge, Node } from "@flow/types";
 import { isDefined } from "@flow/utils";
 import { jsonToFormData } from "@flow/utils/jsonToFormData";
-import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflowJson/engineReadyWorkflow";
+import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 
 import { useToast } from "../NotificationSystem/useToast";
 
@@ -33,6 +34,7 @@ export default ({
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
   const { toast } = useToast();
+  const { fitView } = useReactFlow();
   const t = useT();
 
   const [currentProject] = useCurrentProject();
@@ -44,6 +46,11 @@ export default ({
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
+
+  // TODO: If we split canvas more, or use refs, etc, this will become unnecessary @KaWaite
+  useEffect(() => {
+    fitView({ padding: 0.5 });
+  }, [currentWorkflowId, fitView]);
 
   const {
     canUndo,
@@ -124,14 +131,19 @@ export default ({
   });
 
   const handleNodeDoubleClick = useCallback(
-    (_e: MouseEvent, node: Node) => {
-      if (node.type === "subworkflow") {
-        handleWorkflowOpen(node.id);
+    (_e: MouseEvent | undefined, node: Node) => {
+      if (node.type === "subworkflow" && node.data.subworkflowId) {
+        handleWorkflowOpen(node.data.subworkflowId);
       } else {
+        fitView({
+          nodes: [{ id: node.id }],
+          duration: 500,
+          padding: 2,
+        });
         handleNodeLocking(node.id);
       }
     },
-    [handleWorkflowOpen, handleNodeLocking],
+    [handleWorkflowOpen, fitView, handleNodeLocking],
   );
 
   const { handleCopy, handlePaste } = useCanvasCopyPaste({
@@ -222,6 +234,14 @@ export default ({
     ],
   );
 
+  const handleLayoutChange = useCallback(
+    (algorithm: Algorithm, direction: Direction, _spacing: number) => {
+      handleYLayoutChange(algorithm, direction, _spacing);
+      fitView();
+    },
+    [fitView, handleYLayoutChange],
+  );
+
   useShortcuts([
     {
       keyBinding: { key: "r", commandKey: false },
@@ -284,7 +304,7 @@ export default ({
     handleWorkflowRedo: handleYWorkflowRedo,
     handleWorkflowUndo: handleYWorkflowUndo,
     handleWorkflowRename: handleYWorkflowRename,
-    handleLayoutChange: handleYLayoutChange,
+    handleLayoutChange,
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
     handleNodeHover,

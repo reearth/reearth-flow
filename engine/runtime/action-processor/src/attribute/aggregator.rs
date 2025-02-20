@@ -165,7 +165,7 @@ pub(super) enum Method {
 
 impl Processor for AttributeAggregator {
     fn num_threads(&self) -> usize {
-        4
+        2
     }
 
     fn process(
