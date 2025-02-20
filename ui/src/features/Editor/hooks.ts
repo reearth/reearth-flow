@@ -46,7 +46,6 @@ export default ({
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
-  const { fitView } = useReactFlow();
 
   const {
     canUndo,
