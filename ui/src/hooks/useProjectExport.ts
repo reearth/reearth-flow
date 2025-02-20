@@ -58,7 +58,16 @@ export default (projectId?: string) => {
         zip.file("projectMeta.json", JSON.stringify(projectData, null, 2));
 
         const zipBlob = await zip.generateAsync({ type: "blob" });
-        const zipName = `${project.name}.flow.zip`;
+        const date = new Date();
+        const timeStamp = [
+          date.getFullYear(),
+          String(date.getMonth() + 1).padStart(2, "0"),
+          String(date.getDate()).padStart(2, "0"),
+          String(date.getHours()).padStart(2, "0"),
+          String(date.getMinutes()).padStart(2, "0"),
+          String(date.getSeconds()).padStart(2, "0"),
+        ].join("");
+        const zipName = `${project.name}_${timeStamp}.flow.zip`;
         saveAs(zipBlob, zipName);
         setIsExporting(false);
 
