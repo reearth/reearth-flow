@@ -29,8 +29,6 @@ const ProjectIdWrapper: React.FC<Props> = ({ children }) => {
     setCurrentProject(project);
   }, [project, currentProject, currentWorkspace, setCurrentProject]);
 
-  console.log("isloading", isLoading);
-
   return isLoading ? (
     <LoadingSplashscreen />
   ) : !project ? (

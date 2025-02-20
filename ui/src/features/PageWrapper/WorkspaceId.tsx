@@ -26,8 +26,6 @@ const WorkspaceIdWrapper: React.FC<Props> = ({ children }) => {
     setCurrentWorkspace(workspace);
   }, [workspace, setCurrentWorkspace]);
 
-  console.log("isloading", isLoading);
-
   return isLoading ? (
     <LoadingSplashscreen />
   ) : !workspace ? (
