@@ -26,6 +26,8 @@ export default ({
 }) => {
   const rawWorkflows = yWorkflows.map((w) => rebuildWorkflow(w));
 
+  console.log("rawWorkflows", rawWorkflows);
+
   const {
     currentYWorkflow,
     handleYWorkflowAdd,
