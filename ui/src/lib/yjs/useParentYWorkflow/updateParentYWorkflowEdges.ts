@@ -16,7 +16,7 @@ export function updateParentYWorkflowEdges(
 
   // Update the subworkflow node with the updated input/output
   const subworkflowParentNode = parentNodes.find(
-    (n) => n.id === currentWorkflowId,
+    (n) => n.data.subworkflowId === currentWorkflowId,
   );
   if (!subworkflowParentNode) return;
 
@@ -50,9 +50,9 @@ export function updateParentYWorkflowEdges(
     const edgeIndex = Array.from(parentYEdges).findIndex((e) => {
       const edgeObj = reassembleEdge(e as YEdge);
       return edgeType === "source"
-        ? edgeObj.source === currentWorkflowId &&
+        ? edgeObj.source === subworkflowParentNode.id &&
             edgeObj.sourceHandle === prevPseudoPort.portName
-        : edgeObj.target === currentWorkflowId &&
+        : edgeObj.target === subworkflowParentNode.id &&
             edgeObj.targetHandle === prevPseudoPort.portName;
     });
 
@@ -77,7 +77,7 @@ export function updateParentYWorkflowEdges(
 }
 
 export function removeEdgePort(
-  currentWorkflowId: string,
+  nodeId: string,
   parentYWorkflow: YWorkflow,
   portName: string,
   type: "source" | "target",
@@ -91,14 +91,10 @@ export function removeEdgePort(
     const updatedEdges = edgesArray.filter((edgeObj) => {
       if (type === "source") {
         return !(
-          edgeObj.source === currentWorkflowId &&
-          edgeObj.sourceHandle === portName
+          edgeObj.source === nodeId && edgeObj.sourceHandle === portName
         );
       }
-      return !(
-        edgeObj.target === currentWorkflowId &&
-        edgeObj.targetHandle === portName
-      );
+      return !(edgeObj.target === nodeId && edgeObj.targetHandle === portName);
     });
 
     const newYEdges = updatedEdges.map((edgeObj) => yEdgeConstructor(edgeObj));
