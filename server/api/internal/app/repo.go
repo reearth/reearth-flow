@@ -107,7 +107,7 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 	var err error
 	if conf.Worker_ImageURL != "" {
 		config := gcpbatch.BatchConfig{
-			BinaryPath:     conf.Worker_BinaryPath,
+			BinaryPath: conf.Worker_BinaryPath,
 			BootDiskSizeGB: func() int {
 				tc, err := strconv.Atoi(conf.Worker_BootDiskSizeGB)
 				if err != nil {
@@ -115,12 +115,12 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 				}
 				return tc
 			}(),
-			BootDiskType:   conf.Worker_BootDiskType,
-			ImageURI:       conf.Worker_ImageURL,
-			MachineType:    conf.Worker_MachineType,
-			ProjectID:      conf.GCPProject,
-			Region:         conf.GCPRegion,
-			SAEmail:        conf.Worker_BatchSAEmail,
+			BootDiskType: conf.Worker_BootDiskType,
+			ImageURI:     conf.Worker_ImageURL,
+			MachineType:  conf.Worker_MachineType,
+			ProjectID:    conf.GCPProject,
+			Region:       conf.GCPRegion,
+			SAEmail:      conf.Worker_BatchSAEmail,
 			TaskCount: func() int {
 				tc, err := strconv.Atoi(conf.Worker_TaskCount)
 				if err != nil {
