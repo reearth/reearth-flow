@@ -53,7 +53,13 @@
     --node-exit: 126, 34, 206;
     --node-reader: 22, 78, 99;
     --node-transformer: 99, 22, 40;
-    --node-writer: 99, 81, 22;
+    --node-writer: 72, 62, 28;
+    --node-subworkflow: 111, 32, 119;
+    /* Selected Node colors */
+    --node-reader-selected: 25, 94, 117;
+    --node-transformer-selected: 117, 34, 54;
+    --node-writer-selected: 102, 84, 32;
+    --node-subworkflow-selected: 162, 28, 175;
     /* success green */
     --success: 34, 197, 94;
   }

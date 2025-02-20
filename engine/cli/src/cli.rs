@@ -1,7 +1,6 @@
 use std::env;
 
 use clap::{ArgMatches, Command};
-use tracing::Level;
 
 use crate::doc_action::{build_doc_action_command, DocActionCliCommand};
 use crate::dot::{build_dot_command, DotCliCommand};
@@ -32,19 +31,6 @@ pub enum CliCommand {
 }
 
 impl CliCommand {
-    pub fn default_log_level(&self) -> Level {
-        let env_level = env::var("RUST_LOG")
-            .ok()
-            .and_then(|s| s.parse::<Level>().ok());
-        env_level.unwrap_or(match self {
-            CliCommand::Run(_) => Level::INFO,
-            CliCommand::Dot(_) => Level::WARN,
-            CliCommand::SchemaAction(_) => Level::WARN,
-            CliCommand::SchemaWorkflow(_) => Level::WARN,
-            CliCommand::DocAction(_) => Level::WARN,
-        })
-    }
-
     pub fn parse_cli_args(mut matches: ArgMatches) -> crate::Result<Self> {
         let (subcommand, submatches) = matches
             .remove_subcommand()

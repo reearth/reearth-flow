@@ -5,10 +5,10 @@ use reearth_flow_common::{
     xml::{self, XmlDocument},
 };
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
@@ -162,13 +162,13 @@ impl XmlFragment {
 
 impl Processor for XmlFragmenter {
     fn num_threads(&self) -> usize {
-        20
+        2
     }
 
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         match &self.params {
             XmlFragmenterParam::Url { property } => {
@@ -186,11 +186,7 @@ impl Processor for XmlFragmenter {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -201,7 +197,7 @@ impl Processor for XmlFragmenter {
 
 fn send_xml_fragment(
     ctx: &ExecutorContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
     global_params: &Option<HashMap<String, serde_json::Value>>,
     feature: &Feature,
     attribute: &Attribute,
@@ -265,7 +261,7 @@ fn send_xml_fragment(
 
 fn generate_fragment(
     ctx: &ExecutorContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
     feature: &Feature,
     uri: &Uri,
     document: &XmlDocument,

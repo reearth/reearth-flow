@@ -58,19 +58,22 @@ export default function Editor({
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
+    handleLayoutChange,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
-  console.log("nodes", nodes);
-  console.log("edges", edges);
+
   return (
     <div className="flex h-screen flex-col">
       <div className="relative flex flex-1">
         <LeftPanel
           nodes={nodes}
-          isOpen={openPanel === "left" && !locallyLockedNode}
+          isOpen={openPanel === "left"}
           onOpen={handlePanelOpen}
           onNodesAdd={handleNodesAdd}
           isMainWorkflow={isMainWorkflow}
           hasReader={hasReader}
+          onNodesChange={handleNodesChange}
+          onNodeDoubleClick={handleNodeDoubleClick}
+          selected={locallyLockedNode}
         />
         <div className="flex flex-1 flex-col">
           <OverlayUI
@@ -79,14 +82,15 @@ export default function Editor({
             allowedToDeploy={allowedToDeploy}
             canUndo={canUndo}
             canRedo={canRedo}
+            isMainWorkflow={isMainWorkflow}
+            hasReader={hasReader}
             onWorkflowDeployment={handleWorkflowDeployment}
-            onWorkflowUndo={handleWorkflowUndo}
-            onWorkflowRedo={handleWorkflowRedo}
             onNodesAdd={handleNodesAdd}
             onNodePickerClose={handleNodePickerClose}
             onRightPanelOpen={handleRightPanelOpen}
-            isMainWorkflow={isMainWorkflow}
-            hasReader={hasReader}>
+            onWorkflowUndo={handleWorkflowUndo}
+            onWorkflowRedo={handleWorkflowRedo}
+            onLayoutChange={handleLayoutChange}>
             <Canvas
               nodes={nodes}
               edges={edges}

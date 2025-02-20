@@ -5,10 +5,10 @@ use nusamai_citygml::GML31_NS;
 use once_cell::sync::Lazy;
 use reearth_flow_common::xml;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{Context, ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
@@ -120,7 +120,7 @@ impl Processor for MissingAttributeDetector {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let AttributeValue::String(package) = feature
@@ -159,11 +159,7 @@ impl Processor for MissingAttributeDetector {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         let features = self.sumary_features(None);
         for (port, features) in features {
             for feature in features {
@@ -240,7 +236,7 @@ impl MissingAttributeDetector {
     fn process_group(
         &mut self,
         ctx: Context,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
         ignore_package: String,
     ) -> super::errors::Result<()> {
         let package = ignore_package.clone();

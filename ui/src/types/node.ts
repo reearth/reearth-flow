@@ -22,6 +22,7 @@ export type NodeData = {
   status?: Status;
   params?: NodeParam;
   // subworkflow nodes
+  subworkflowId?: string;
   pseudoInputs?: PseudoPort[];
   pseudoOutputs?: PseudoPort[];
   // batch & note nodes

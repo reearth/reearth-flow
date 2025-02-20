@@ -2,10 +2,10 @@ use std::{collections::HashMap, fs, path::PathBuf, str::FromStr, sync::Arc};
 
 use reearth_flow_common::{dir::project_temp_dir, uri::Uri};
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
@@ -92,7 +92,7 @@ impl Processor for DirectoryDecompressor {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
         for attribute in &self.archive_attributes {
@@ -121,11 +121,7 @@ impl Processor for DirectoryDecompressor {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -180,6 +176,29 @@ fn get_single_subfolder_or_self(parent_dir: &Uri) -> super::errors::Result<Uri> 
         .collect();
 
     if subfolders.len() == 1 && subfolders[0].is_dir() {
+        let descendants: Vec<PathBuf> = fs::read_dir(subfolders[0].clone())
+            .map_err(|e| {
+                super::errors::FileProcessorError::DirectoryDecompressor(format!("{:?}", e))
+            })?
+            .filter_map(|entry| {
+                let entry = entry.ok()?;
+                let path = entry.path();
+                Some(path)
+            })
+            .collect();
+        if descendants.len() == 1 && descendants[0].is_dir() {
+            return Uri::from_str(descendants[0].to_str().ok_or(
+                super::errors::FileProcessorError::DirectoryDecompressor(
+                    "Invalid path".to_string(),
+                ),
+            )?)
+            .map_err(|e| {
+                super::errors::FileProcessorError::DirectoryDecompressor(format!(
+                    "Failed to convert `descendants[0]` to URI: {}",
+                    e
+                ))
+            });
+        }
         Ok(Uri::from_str(subfolders[0].to_str().ok_or(
             super::errors::FileProcessorError::DirectoryDecompressor("Invalid path".to_string()),
         )?)

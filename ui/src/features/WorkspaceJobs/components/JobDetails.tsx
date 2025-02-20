@@ -2,7 +2,7 @@ import { CaretLeft } from "@phosphor-icons/react";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { Button, Loading } from "@flow/components";
+import { Button, LoadingSkeleton } from "@flow/components";
 import { config } from "@flow/config";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { LogsConsole } from "@flow/features/Editor/components/BottomPanel/components";
@@ -125,7 +125,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
         </div>
         <div className="mt-6 min-h-0 max-w-[1200px] flex-1">
           {!isFetching && logs && <LogsConsole data={logs} />}
-          {isFetching && <Loading />}
+          {isFetching && <LoadingSkeleton />}
         </div>
       </div>
     )

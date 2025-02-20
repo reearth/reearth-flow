@@ -100,7 +100,9 @@ impl RunWorkerCommand {
             .ok_or(crate::errors::Error::init("No metadata path provided"))?;
         let metadata_path =
             Uri::from_str(metadata_path.as_str()).map_err(crate::errors::Error::init)?;
-        let worker_num = matches.remove_one::<usize>("worker_num").unwrap_or(100);
+        let worker_num = matches
+            .remove_one::<usize>("worker_num")
+            .unwrap_or(num_cpus::get());
         let pubsub_backend = matches
             .remove_one::<String>("pubsub_backend")
             .unwrap_or_else(|| "google".to_string());
@@ -183,12 +185,21 @@ impl RunWorkerCommand {
             .map_err(crate::errors::Error::init)?;
         match pubsub {
             PubSubBackend::Google(pubsub) => pubsub
-                .publish(JobCompleteEvent::new(workflow_id, meta.job_id, job_result))
+                .publish(JobCompleteEvent::new(
+                    workflow_id,
+                    meta.job_id,
+                    job_result.clone(),
+                ))
                 .await
                 .map_err(crate::errors::Error::run),
             PubSubBackend::Noop(_) => Ok(()),
         }?;
-        tracing::info!("Job completed");
+        tracing::info!(
+            "Job completed with workflow_id: {:?}, job_id: {:?} result: {:?}",
+            workflow_id,
+            meta.job_id,
+            job_result
+        );
         Ok(())
     }
 

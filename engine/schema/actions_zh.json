@@ -723,36 +723,6 @@
       ]
     },
     {
-      "name": "CoordinateSystemSetter",
-      "type": "processor",
-      "description": "设置实体的坐标系",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CoordinateSystemSetter",
-        "type": "object",
-        "required": [
-          "epsgCode"
-        ],
-        "properties": {
-          "epsgCode": {
-            "type": "integer",
-            "format": "uint16",
-            "minimum": 0.0
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "default"
-      ],
-      "outputPorts": [
-        "default"
-      ],
-      "categories": [
-        "Geometry"
-      ]
-    },
-    {
       "name": "CzmlWriter",
       "type": "sink",
       "description": "Writes features to a Czml file",
@@ -980,6 +950,45 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "FeatureCityGmlReader",
+      "type": "processor",
+      "description": "Reads features from citygml file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureCityGmlReaderParam",
+        "type": "object",
+        "required": [
+          "dataset"
+        ],
+        "properties": {
+          "dataset": {
+            "$ref": "#/definitions/Expr"
+          },
+          "flatten": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
       ]
     },
     {
@@ -1306,30 +1315,6 @@
               "dataset": {
                 "$ref": "#/definitions/Expr"
               },
-              "flatten": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "citygml"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "required": [
-              "dataset",
-              "format"
-            ],
-            "properties": {
-              "dataset": {
-                "$ref": "#/definitions/Expr"
-              },
               "format": {
                 "type": "string",
                 "enum": [
@@ -1417,21 +1402,22 @@
         "title": "FeatureSorterParam",
         "type": "object",
         "required": [
-          "sortBy"
+          "attributes",
+          "order"
         ],
         "properties": {
-          "sortBy": {
+          "attributes": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/SortBy"
+              "$ref": "#/definitions/Attribute"
             }
+          },
+          "order": {
+            "$ref": "#/definitions/Order"
           }
         },
         "definitions": {
           "Attribute": {
-            "type": "string"
-          },
-          "Expr": {
             "type": "string"
           },
           "Order": {
@@ -1440,37 +1426,6 @@
               "ascending",
               "descending"
             ]
-          },
-          "SortBy": {
-            "type": "object",
-            "required": [
-              "order"
-            ],
-            "properties": {
-              "attribute": {
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Attribute"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "attributeValue": {
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "order": {
-                "$ref": "#/definitions/Order"
-              }
-            }
           }
         }
       },
@@ -2446,12 +2401,12 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "HorizontalReprojectorParam",
         "type": "object",
+        "required": [
+          "epsgCode"
+        ],
         "properties": {
           "epsgCode": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": "integer",
             "format": "uint16",
             "minimum": 0.0
           }

@@ -2,10 +2,10 @@ use std::{collections::HashMap, fmt::Debug, fs, path::Path, str::FromStr};
 
 use reearth_flow_common::{fs::metadata, uri::Uri};
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
@@ -143,7 +143,7 @@ impl Processor for FilePropertyExtractor {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let Some(AttributeValue::String(file_path)) = feature.get(&self.file_path_attribute) else {
@@ -183,11 +183,7 @@ impl Processor for FilePropertyExtractor {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

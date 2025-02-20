@@ -6,10 +6,10 @@ use reearth_flow_common::{
     xml::{self, XmlDocument, XmlRoNode},
 };
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
@@ -508,7 +508,7 @@ impl Processor for XmlAttributeExtractor {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
+        _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         // Codelist dictionary creation
@@ -548,11 +548,7 @@ impl Processor for XmlAttributeExtractor {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         let codelists = self
             .codelists_map
             .iter()

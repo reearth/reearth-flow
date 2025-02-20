@@ -1,16 +1,10 @@
-import { Database, Disc, Graph, Lightning } from "@phosphor-icons/react";
-import {
-  GearIcon,
-  DoubleArrowRightIcon,
-  PlayIcon,
-} from "@radix-ui/react-icons";
+import { Database, Disc, Eye, Graph, Lightning } from "@phosphor-icons/react";
 import { NodeProps } from "@xyflow/react";
-import { memo, useEffect, useState } from "react";
+import { memo, useMemo } from "react";
 
-import { IconButton } from "@flow/components";
-import { useDoubleClick } from "@flow/hooks";
 import { Node } from "@flow/types";
 import type { NodePosition, NodeType } from "@flow/types";
+import { isDefined } from "@flow/utils";
 
 import { getPropsFrom } from "../utils";
 
@@ -27,34 +21,89 @@ export type GeneralNodeProps = NodeProps<Node> & {
 
 const typeIconClasses = "w-[10px] h-[100%]";
 
+const borderColorTypesObject = {
+  reader: "border-node-reader",
+  writer: "border-node-writer",
+  transformer: "border-node-transformer",
+  subworkflow: "border-node-subworkflow",
+  default: "border-primary/20",
+};
+
+const selectedColorTypesObject = {
+  reader: "border-node-reader-selected",
+  writer: "border-node-writer-selected",
+  transformer: "border-node-transformer-selected",
+  subworkflow: "border-node-subworkflow-selected",
+  default: "border-zinc-600",
+};
+
+const selectedColorTypesBackgroundsObject = {
+  reader: "bg-node-reader-selected",
+  writer: "bg-node-writer-selected",
+  transformer: "bg-node-transformer-selected",
+  subworkflow: "bg-node-subworkflow-selected",
+  default: "bg-zinc-600",
+};
+
 const GeneralNode: React.FC<GeneralNodeProps> = ({
   className,
   data,
   type,
   selected,
-  id,
 }) => {
-  const { officialName, customName, status, inputs, outputs } = data;
+  const {
+    officialName,
+    customName,
+    status,
+    inputs: defaultInputs,
+    outputs: defaultOutputs,
+  } = data;
 
-  const [hardSelect, setHardSelect] = useState<boolean>(false);
-
-  const [_, handleDoubleClick] = useDoubleClick(undefined, () => {
-    setHardSelect(!hardSelect);
-  });
-
-  useEffect(() => {
-    if (!selected && hardSelect) {
-      setHardSelect(false);
+  const inputs: string[] = useMemo(() => {
+    if (data.params?.conditions) {
+      const i = data.params.conditions
+        .map((condition: any) => condition.inputPort)
+        .filter(isDefined);
+      return i.length ? i : defaultInputs;
     }
-  }, [id, selected, hardSelect]);
+    return defaultInputs;
+  }, [data.params?.conditions, defaultInputs]);
+
+  const outputs: string[] = useMemo(() => {
+    if (data.params?.conditions) {
+      const i = data.params.conditions
+        .map((condition: any) => condition.outputPort)
+        .filter(isDefined);
+      return i.length ? i : defaultOutputs;
+    }
+    return defaultOutputs;
+  }, [data.params?.conditions, defaultOutputs]);
 
   const metaProps = getPropsFrom(status);
 
+  const borderColorTypes = Object.keys(borderColorTypesObject).includes(type)
+    ? borderColorTypesObject[type as keyof typeof borderColorTypesObject]
+    : borderColorTypesObject.default;
+
+  const selectedColorTypes = Object.keys(selectedColorTypesObject).includes(
+    type,
+  )
+    ? selectedColorTypesObject[type as keyof typeof selectedColorTypesObject]
+    : selectedColorTypesObject.default;
+
+  const selectedColorTypesBackgrounds = Object.keys(
+    selectedColorTypesBackgroundsObject,
+  ).includes(type)
+    ? selectedColorTypesBackgroundsObject[
+        type as keyof typeof selectedColorTypesBackgroundsObject
+      ]
+    : selectedColorTypesBackgroundsObject.default;
+
   return (
-    <div className="rounded-sm bg-secondary" onDoubleClick={handleDoubleClick}>
+    <div className="rounded-sm  bg-secondary">
       <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
         <div
-          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? (hardSelect ? "border-red-300" : "border-zinc-600") : type === "subworkflow" ? "border-none" : "border-primary/20"} ${className}`}>
+          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? selectedColorTypes : borderColorTypes} ${selected ? selectedColorTypesBackgrounds : className} `}>
           {type === "reader" ? (
             <Database className={typeIconClasses} />
           ) : type === "writer" ? (
@@ -66,15 +115,20 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
           ) : null}
         </div>
         <div
-          className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? (hardSelect ? "border-red-300" : "border-zinc-600") : type === "subworkflow" ? "border-[#a21caf]/60" : "border-primary/20"}`}>
-          <p className="self-center truncate text-[10px] dark:font-light">
+          className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? selectedColorTypes : borderColorTypes}`}>
+          <p className="self-center truncate text-xs dark:font-light">
             {customName || officialName}
           </p>
+          {status === "success" ? (
+            <div className="self-center">
+              <Eye />
+            </div>
+          ) : null}
           <div
-            className={`size-[8px] self-center rounded ${metaProps.style}`}
+            className={`size-[8px] shrink-0 self-center rounded ${metaProps.style}`}
           />
         </div>
-        {selected && (
+        {/* {selected && (
           <div className="absolute bottom-[25px] right-1/2 flex h-[25px] w-[95%] translate-x-1/2 items-center justify-center rounded-t-lg bg-secondary">
             <IconButton
               className="h-full flex-1 rounded-b-none"
@@ -92,7 +146,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
               icon={<GearIcon />}
             />
           </div>
-        )}
+        )} */}
       </div>
       <Handles nodeType={type} inputs={inputs} outputs={outputs} />
     </div>

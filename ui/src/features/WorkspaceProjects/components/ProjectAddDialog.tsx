@@ -11,7 +11,7 @@ import {
   DialogTitle,
   Input,
   Label,
-  Textarea,
+  TextArea,
 } from "@flow/components";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
@@ -56,11 +56,11 @@ const ProjectAddDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
     <Dialog open={isOpen} onOpenChange={(o) => onOpenChange(o)}>
       <DialogContent size="md" position="off-center">
         <DialogHeader>
-          <DialogTitle>{t("New project")}</DialogTitle>
+          <DialogTitle>{t("New Project")}</DialogTitle>
         </DialogHeader>
         <DialogContentWrapper>
           <DialogContentSection>
-            <Label>{t("Project name")}</Label>
+            <Label>{t("Project Name")}</Label>
             <Input
               placeholder={t("Project name...")}
               value={name}
@@ -68,8 +68,8 @@ const ProjectAddDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
             />
           </DialogContentSection>
           <DialogContentSection>
-            <Label>{t("Project description (optional)")}</Label>
-            <Textarea
+            <Label>{t("Project Description (optional)")}</Label>
+            <TextArea
               placeholder={t("Project description...")}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
