@@ -42,8 +42,8 @@ const ParamsPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
 
   useEffect(() => {
     if (selected && !previousViewportRef.current) {
-        const { x, y, zoom } = getViewport();
-        previousViewportRef.current = { x, y, zoom };
+      const { x, y, zoom } = getViewport();
+      previousViewportRef.current = { x, y, zoom };
     } else if (!selected && previousViewportRef.current) {
       setViewport(previousViewportRef.current, { duration: 400 });
       previousViewportRef.current = null;
