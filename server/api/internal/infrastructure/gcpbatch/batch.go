@@ -6,7 +6,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 
 	batch "cloud.google.com/go/batch/apiv1"
@@ -21,9 +20,10 @@ import (
 
 type BatchConfig struct {
 	BinaryPath     string
+	BootDiskSizeGB int
+	BootDiskType   string
 	ImageURI       string
 	MachineType    string
-	MaxConcurrency int
 	ProjectID      string
 	Region         string
 	SAEmail        string
@@ -124,7 +124,6 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 			Variables: map[string]string{
 				"FLOW_RUNTIME_FEATURE_WRITER_DISABLE": "true",
 				"FLOW_WORKER_ENABLE_JSON_LOG":         "true",
-				"FLOW_WORKER_MAXPROCS":               strconv.Itoa(b.config.MaxConcurrency),
 			},
 		},
 	}
@@ -135,9 +134,15 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 	}
 	log.Debugfc(ctx, "gcpbatch: configured task group with count=%d", taskGroup.TaskCount)
 
+	bootDisk := &batchpb.AllocationPolicy_Disk{
+		Type:   b.config.BootDiskType,
+		SizeGb: int64(b.config.BootDiskSizeGB),
+	}
+
 	instancePolicy := &batchpb.AllocationPolicy_InstancePolicy{
 		ProvisioningModel: batchpb.AllocationPolicy_STANDARD,
-		MachineType:       b.config.MachineType,	
+		MachineType:       b.config.MachineType,
+		BootDisk:          bootDisk,
 	}
 	log.Debugfc(ctx, "gcpbatch: configured instance policy with machine=%s", instancePolicy.MachineType)
 
