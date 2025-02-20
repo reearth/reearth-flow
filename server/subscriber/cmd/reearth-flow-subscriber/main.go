@@ -28,7 +28,7 @@ func main() {
 	}
 	log.Printf("config: %s", conf.Print())
 
-	pubsubClient, err := pubsub.NewClient(ctx, conf.ProjectID)
+	pubsubClient, err := pubsub.NewClient(ctx, conf.GCPProject)
 	if err != nil {
 		log.Fatalf("Failed to create pubsub client: %v", err)
 	}
@@ -38,7 +38,7 @@ func main() {
 		}
 	}()
 
-	sub := pubsubClient.Subscription(conf.SubscriptionID)
+	sub := pubsubClient.Subscription(conf.LogSubscriptionID)
 	subAdapter := flow_pubsub.NewRealSubscription(sub)
 
 	opt, err := redis.ParseURL(conf.RedisURL)

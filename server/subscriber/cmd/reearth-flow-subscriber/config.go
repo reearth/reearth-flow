@@ -16,11 +16,11 @@ func init() {
 }
 
 type Config struct {
-	Dev            bool   `pp:",omitempty"`
-	Port           string `default:"8080" envconfig:"PORT"`
-	ProjectID      string `envconfig:"PROJECT_ID" default:"local-project"`
-	RedisURL       string `envconfig:"REDIS_URL" default:"redis://localhost:6379"`
-	SubscriptionID string `envconfig:"SUBSCRIPTION_ID" default:"flow-log-stream-topic"`
+	Dev               bool   `pp:",omitempty"`
+	GCPProject        string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
+	LogSubscriptionID string `default:"flow-log-stream-topic-sub"`
+	Port              string `envconfig:"PORT" default:"8080"`
+	RedisURL          string `envconfig:"REDIS_URL" default:"redis://localhost:6379"`
 }
 
 func ReadConfig(debug bool) (*Config, error) {
