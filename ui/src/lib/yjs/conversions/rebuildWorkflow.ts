@@ -47,6 +47,11 @@ export const reassembleNode = (yNode: YNode): Node => {
     data.params = (yNode.get("data") as Y.Map<any>)?.get("params");
   }
   // Subworkflow specific
+  if ((yNode.get("data") as Y.Map<any>)?.get("subworkflowId") !== undefined) {
+    data.subworkflowId = (yNode.get("data") as Y.Map<any>)
+      ?.get("subworkflowId")
+      .toString();
+  }
   if ((yNode.get("data") as Y.Map<any>)?.get("pseudoInputs") !== undefined) {
     data.pseudoInputs = (yNode.get("data") as Y.Map<any>)
       ?.get("pseudoInputs")

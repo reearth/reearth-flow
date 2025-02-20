@@ -16,7 +16,9 @@ export function removeParentYWorkflowNodePseudoPort(
 
   const parentNodes = parentYNodes.toJSON() as Node[];
 
-  const subworkflowNode = parentNodes.find((n) => n.id === currentWorkflowId);
+  const subworkflowNode = parentNodes.find(
+    (n) => n.data.subworkflowId === currentWorkflowId,
+  );
   if (!subworkflowNode) return;
 
   const updatedSubworkflowNode: Node = { ...subworkflowNode };
@@ -33,7 +35,7 @@ export function removeParentYWorkflowNodePseudoPort(
 
     if (portToRemove) {
       removeEdgePort(
-        currentWorkflowId,
+        updatedSubworkflowNode.id,
         parentYWorkflow,
         portToRemove.portName,
         "target",
@@ -50,7 +52,7 @@ export function removeParentYWorkflowNodePseudoPort(
 
     if (portToRemove) {
       removeEdgePort(
-        currentWorkflowId,
+        updatedSubworkflowNode.id,
         parentYWorkflow,
         portToRemove.portName,
         "source",

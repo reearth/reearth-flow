@@ -190,7 +190,7 @@ impl Debug for XmlValidator {
 
 impl Processor for XmlValidator {
     fn num_threads(&self) -> usize {
-        5
+        2
     }
 
     fn process(

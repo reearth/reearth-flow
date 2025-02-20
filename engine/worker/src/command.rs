@@ -100,7 +100,9 @@ impl RunWorkerCommand {
             .ok_or(crate::errors::Error::init("No metadata path provided"))?;
         let metadata_path =
             Uri::from_str(metadata_path.as_str()).map_err(crate::errors::Error::init)?;
-        let worker_num = matches.remove_one::<usize>("worker_num").unwrap_or(100);
+        let worker_num = matches
+            .remove_one::<usize>("worker_num")
+            .unwrap_or(num_cpus::get());
         let pubsub_backend = matches
             .remove_one::<String>("pubsub_backend")
             .unwrap_or_else(|| "google".to_string());

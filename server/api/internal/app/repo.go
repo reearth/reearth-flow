@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
@@ -111,10 +112,26 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 	if conf.Worker_ImageURL != "" {
 		config := gcpbatch.BatchConfig{
 			BinaryPath: conf.Worker_BinaryPath,
-			ImageURI:   conf.Worker_ImageURL,
-			ProjectID:  conf.GCPProject,
-			Region:     conf.GCPRegion,
-			SAEmail:    conf.Worker_BatchSAEmail,
+			BootDiskSizeGB: func() int {
+				tc, err := strconv.Atoi(conf.Worker_BootDiskSizeGB)
+				if err != nil {
+					log.Fatalf("Failed to convert BootDiskSizeDB: %v", err)
+				}
+				return tc
+			}(),
+			BootDiskType: conf.Worker_BootDiskType,
+			ImageURI:     conf.Worker_ImageURL,
+			MachineType:  conf.Worker_MachineType,
+			ProjectID:    conf.GCPProject,
+			Region:       conf.GCPRegion,
+			SAEmail:      conf.Worker_BatchSAEmail,
+			TaskCount: func() int {
+				tc, err := strconv.Atoi(conf.Worker_TaskCount)
+				if err != nil {
+					log.Fatalf("Failed to convert TaskCount: %v", err)
+				}
+				return tc
+			}(),
 		}
 
 		batchRepo, err = gcpbatch.NewBatch(ctx, config)

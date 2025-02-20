@@ -30,4 +30,4 @@ const Loading: React.FC<{ show?: boolean; className?: string }> = ({
   );
 };
 
-export { Loading };
+export default Loading;
