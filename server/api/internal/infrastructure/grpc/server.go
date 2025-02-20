@@ -1,9 +1,8 @@
 package grpc
 
 import (
-	"context"
-	"fmt"
-	"net"
+	"net/http"
+	"strings"
 
 	"github.com/reearth/reearth-flow/api/proto"
 	"github.com/reearth/reearthx/appx"
@@ -12,11 +11,10 @@ import (
 
 type Server struct {
 	server      *grpc.Server
-	port        string
 	authService *AuthService
 }
 
-func NewServer(port string, jwtProviders []appx.JWTProvider) *Server {
+func NewServer(_ string, jwtProviders []appx.JWTProvider) *Server {
 	server := grpc.NewServer()
 	authService := NewAuthService(jwtProviders)
 
@@ -24,7 +22,6 @@ func NewServer(port string, jwtProviders []appx.JWTProvider) *Server {
 
 	return &Server{
 		server:      server,
-		port:        port,
 		authService: authService,
 	}
 }
@@ -33,16 +30,10 @@ func (s *Server) Stop() {
 	s.server.GracefulStop()
 }
 
-func (s *Server) StartWithContext(ctx context.Context) error {
-	lis, err := net.Listen("tcp", fmt.Sprintf(":%s", s.port))
-	if err != nil {
-		return fmt.Errorf("failed to listen: %v", err)
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
+		s.server.ServeHTTP(w, r)
+		return
 	}
-
-	go func() {
-		<-ctx.Done()
-		s.Stop()
-	}()
-
-	return s.server.Serve(lis)
+	http.Error(w, "unsupported protocol", http.StatusBadRequest)
 }

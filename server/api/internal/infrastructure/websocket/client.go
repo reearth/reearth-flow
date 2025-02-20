@@ -3,7 +3,6 @@ package websocket
 import (
 	"context"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/reearth/reearth-flow/api/pkg/websocket"
@@ -20,18 +19,12 @@ type Client struct {
 
 func NewClient(address string) (*Client, error) {
 
-	// If no port is specified, use the default gRPC port
-	if !strings.Contains(address, ":") {
-		address = fmt.Sprintf("%s:50051", address)
-	}
-
 	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to gRPC server: %w", err)
 	}
 
 	client := pb.NewDocumentServiceClient(conn)
-	log.Infof("Created new document client with gRPC address: %s", address)
 	return &Client{
 		conn:   conn,
 		client: client,
