@@ -86,7 +86,12 @@ impl reearth_flow_runtime::event::EventHandler for EventHandler {
 
 #[allow(dead_code)]
 pub(crate) fn execute(workflow: &str) {
-    unsafe { env::set_var("RAYON_NUM_THREADS", "100") };
+    unsafe {
+        env::set_var(
+            "RAYON_NUM_THREADS",
+            (num_cpus::get() * 2).to_string().as_str(),
+        )
+    };
     setup_logging_and_tracing();
     let job_id = uuid::Uuid::new_v4();
     let action_log_uri = setup_job_directory("engine", "action-log", job_id)

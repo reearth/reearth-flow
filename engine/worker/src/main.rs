@@ -15,7 +15,12 @@ use command::{build_worker_command, RunWorkerCommand};
 fn main() {
     let app = build_worker_command().version(env!("CARGO_PKG_VERSION"));
     let matches = app.get_matches();
-    unsafe { env::set_var("RAYON_NUM_THREADS", "100") };
+    unsafe {
+        env::set_var(
+            "RAYON_NUM_THREADS",
+            (num_cpus::get() * 2).to_string().as_str(),
+        )
+    };
     let command = match RunWorkerCommand::parse_cli_args(matches) {
         Ok(command) => command,
         Err(err) => {

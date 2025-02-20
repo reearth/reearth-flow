@@ -79,8 +79,16 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
                 .map_err(|e| FeatureProcessorError::FileCityGmlReaderFactory(format!("{:?}", e)))?,
             flatten: params.flatten,
         };
+        let threads_num = {
+            let size = (num_cpus::get() as f32 / 2f32).trunc() as usize;
+            if size < 1 {
+                1
+            } else {
+                size
+            }
+        };
         let pool = rayon::ThreadPoolBuilder::new()
-            .num_threads(4)
+            .num_threads(threads_num)
             .build()
             .unwrap();
         let process = FeatureCityGmlReader {
@@ -118,7 +126,7 @@ struct CompiledFeatureCityGmlReaderParam {
 
 impl Processor for FeatureCityGmlReader {
     fn num_threads(&self) -> usize {
-        4
+        2
     }
 
     fn process(
