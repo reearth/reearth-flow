@@ -158,14 +158,17 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		Instances: []*batchpb.AllocationPolicy_InstancePolicyOrTemplate{
 			instancePolicyOrTemplate,
 		},
-		Location: &batchpb.AllocationPolicy_LocationPolicy{
-			AllowedLocations: b.config.AllowedLocations,
-		},
 		ServiceAccount: &batchpb.ServiceAccount{
 			Email: b.config.SAEmail,
 		},
 	}
 	log.Debugfc(ctx, "gcpbatch: configured allocation policy with service account=%s", b.config.SAEmail)
+
+	if len(b.config.AllowedLocations) > 0 {
+		allocationPolicy.Location = &batchpb.AllocationPolicy_LocationPolicy{
+			AllowedLocations: b.config.AllowedLocations,
+		}
+	}
 
 	labels := map[string]string{
 		"project_id":  projectID.String(),

@@ -69,7 +69,7 @@ type (
 		Auth_JWKSURI  *string       `pp:",omitempty"`
 
 		// worker
-		Worker_AllowedLocations []string `envconfig:"WORKER_ALLOWED_LOCATIONS" pp:",omitempty"`
+		Worker_AllowedLocations []string `envconfig:"WORKER_BATCH_ALLOWED_LOCATIONS" pp:",omitempty"`
 		Worker_BatchSAEmail     string   `envconfig:"WORKER_BATCH_SA_EMAIL" pp:",omitempty"`
 		Worker_BinaryPath       string   `envconfig:"WORKER_BINARY_PATH" default:"reearth-flow-worker" pp:",omitempty"`
 		Worker_BootDiskSizeGB   string   `envconfig:"WORKER_BOOT_DISK_SIZE_GB" default:"50" pp:",omitempty"`
