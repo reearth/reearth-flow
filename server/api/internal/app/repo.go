@@ -28,7 +28,12 @@ const databaseName = "reearth-flow"
 
 func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
 	// Initialize document package
-	websocket.Init(conf.WebsocketServer)
+	websocket.Init(
+		conf.GCS.BucketName,
+		conf.GCS.Endpoint,
+		conf.RedisURL,
+		conf.RedisTTL,
+	)
 
 	gateways := &gateway.Container{}
 	acGateways := &accountgateway.Container{}
