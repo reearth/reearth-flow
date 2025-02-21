@@ -69,14 +69,15 @@ type (
 		Auth_JWKSURI  *string       `pp:",omitempty"`
 
 		// worker
-		Worker_BatchSAEmail   string `envconfig:"WORKER_BATCH_SA_EMAIL" pp:",omitempty"`
-		Worker_BinaryPath     string `envconfig:"WORKER_BINARY_PATH" default:"reearth-flow-worker" pp:",omitempty"`
-		Worker_BootDiskSizeGB string `envconfig:"WORKER_BOOT_DISK_SIZE_GB" default:"50" pp:",omitempty"`
-		Worker_BootDiskType   string `envconfig:"WORKER_BOOT_DISK_TYPE" default:"pd-balanced" pp:",omitempty"`
-		Worker_ImageURL       string `envconfig:"WORKER_IMAGE_URL" pp:",omitempty"`
-		Worker_MachineType    string `envconfig:"WORKER_MACHINE_TYPE" default:"e2-standard-4" pp:",omitempty"`
-		Worker_MaxConcurrency string `envconfig:"WORKER_MAX_CONCURRENCY" default:"4" pp:",omitempty"`
-		Worker_TaskCount      string `envconfig:"WORKER_TASK_COUNT" default:"1" pp:",omitempty"`
+		Worker_AllowedLocations []string `envconfig:"WORKER_ALLOWED_LOCATIONS" pp:",omitempty"`
+		Worker_BatchSAEmail     string   `envconfig:"WORKER_BATCH_SA_EMAIL" pp:",omitempty"`
+		Worker_BinaryPath       string   `envconfig:"WORKER_BINARY_PATH" default:"reearth-flow-worker" pp:",omitempty"`
+		Worker_BootDiskSizeGB   string   `envconfig:"WORKER_BOOT_DISK_SIZE_GB" default:"50" pp:",omitempty"`
+		Worker_BootDiskType     string   `envconfig:"WORKER_BOOT_DISK_TYPE" default:"pd-balanced" pp:",omitempty"`
+		Worker_ImageURL         string   `envconfig:"WORKER_IMAGE_URL" pp:",omitempty"`
+		Worker_MachineType      string   `envconfig:"WORKER_MACHINE_TYPE" default:"e2-standard-4" pp:",omitempty"`
+		Worker_MaxConcurrency   string   `envconfig:"WORKER_MAX_CONCURRENCY" default:"4" pp:",omitempty"`
+		Worker_TaskCount        string   `envconfig:"WORKER_TASK_COUNT" default:"1" pp:",omitempty"`
 	}
 )
 

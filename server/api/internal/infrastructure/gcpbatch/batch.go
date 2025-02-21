@@ -19,15 +19,16 @@ import (
 )
 
 type BatchConfig struct {
-	BinaryPath     string
-	BootDiskSizeGB int
-	BootDiskType   string
-	ImageURI       string
-	MachineType    string
-	ProjectID      string
-	Region         string
-	SAEmail        string
-	TaskCount      int
+	AllowedLocations []string
+	BinaryPath       string
+	BootDiskSizeGB   int
+	BootDiskType     string
+	ImageURI         string
+	MachineType      string
+	ProjectID        string
+	Region           string
+	SAEmail          string
+	TaskCount        int
 }
 
 type BatchClient interface {
@@ -156,6 +157,9 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 	allocationPolicy := &batchpb.AllocationPolicy{
 		Instances: []*batchpb.AllocationPolicy_InstancePolicyOrTemplate{
 			instancePolicyOrTemplate,
+		},
+		Location: &batchpb.AllocationPolicy_LocationPolicy{
+			AllowedLocations: b.config.AllowedLocations,
 		},
 		ServiceAccount: &batchpb.ServiceAccount{
 			Email: b.config.SAEmail,
