@@ -76,6 +76,7 @@ const MembersSettings: React.FC = () => {
       return;
     }
     setEmail("");
+    setOpenMemberAddDialog(false);
   };
 
   const handleChangeRole = async (userId: string, role: Role) => {
