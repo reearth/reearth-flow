@@ -12,7 +12,8 @@ RUN apk add --update --no-cache \
     rust \
     cargo \
     openssl-dev \
-    pkgconfig
+    pkgconfig \
+    libgcc
 
 WORKDIR /reearth-flow
 
@@ -50,7 +51,11 @@ RUN CGO_ENABLED=1 RUSTFLAGS="-C target-feature=-crt-static" go build -tags "${TA
 
 FROM alpine:latest
 
-RUN apk add --no-cache ca-certificates libc6-compat
+RUN apk add --no-cache \
+    ca-certificates \
+    libc6-compat \
+    libgcc \
+    libstdc++
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /reearth-flow/reearth-flow /reearth-flow/reearth-flow
