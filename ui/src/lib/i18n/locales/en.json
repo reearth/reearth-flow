@@ -204,9 +204,12 @@
   "Maintainer": "Maintainer",
   "Writer": "Writer",
   "Could not find the user": "Could not find the user",
-  "Failed to add member": "Failed to add member",
-  "Failed to change role of the member": "Failed to change role of the member",
-  "Failed to remove member": "Failed to remove member",
+  "Member Could Not Be Added": "",
+  "There was an error when adding a new member": "",
+  "Member's Role Could Not Be Updated": "",
+  "There was an error when trying to update the members persmissons.": "",
+  "Member Could Not Be Removed": "",
+  "There was an error when trying to remove the member.": "",
   "Members Settings": "",
   "Members": "",
   "Change role": "",
@@ -272,5 +275,7 @@
   "Member has been successfully added to the workspace.": "",
   "Member Removed": "",
   "Member has been successfully removed from the workspace.": "",
+  "Member's Role updated": "",
+  "Member's Role has been successfully updated.": "",
   "Reload": ""
 }

@@ -204,9 +204,12 @@
   "Maintainer": "Mantenedor",
   "Writer": "Escritor",
   "Could not find the user": "No se pudo encontrar al usuario",
-  "Failed to add member": "Error al agregar miembro",
-  "Failed to change role of the member": "Error al cambiar el rol del miembro",
-  "Failed to remove member": "Error al eliminar miembro",
+  "Member Could Not Be Added": "",
+  "There was an error when adding a new member": "",
+  "Member's Role Could Not Be Updated": "",
+  "There was an error when trying to update the members persmissons.": "",
+  "Member Could Not Be Removed": "",
+  "There was an error when trying to remove the member.": "",
   "Members Settings": "Configuración de miembros",
   "Members": "Miembros",
   "Change role": "Cambiar rol",
@@ -272,5 +275,7 @@
   "Member has been successfully added to the workspace.": "El miembro ha sido agregado exitosamente al espacio de trabajo.",
   "Member Removed": "Miembro eliminado",
   "Member has been successfully removed from the workspace.": "El miembro ha sido eliminado exitosamente del espacio de trabajo.",
+  "Member's Role updated": "",
+  "Member's Role has been successfully updated.": "",
   "Reload": "Recargar"
 }

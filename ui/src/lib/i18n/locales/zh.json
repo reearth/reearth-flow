@@ -204,9 +204,12 @@
   "Maintainer": "维护者",
   "Writer": "作者",
   "Could not find the user": "找不到用户",
-  "Failed to add member": "添加成员失败",
-  "Failed to change role of the member": "更改成员角色失败",
-  "Failed to remove member": "移除成员失败",
+  "Member Could Not Be Added": "",
+  "There was an error when adding a new member": "",
+  "Member's Role Could Not Be Updated": "",
+  "There was an error when trying to update the members persmissons.": "",
+  "Member Could Not Be Removed": "",
+  "There was an error when trying to remove the member.": "",
   "Members Settings": "成员设置",
   "Members": "成员",
   "Change role": "更改角色",
@@ -272,5 +275,7 @@
   "Member has been successfully added to the workspace.": "成员已成功添加到工作区。",
   "Member Removed": "成员已移除",
   "Member has been successfully removed from the workspace.": "成员已成功从工作区中移除。",
+  "Member's Role updated": "",
+  "Member's Role has been successfully updated.": "",
   "Reload": "重新加载"
 }
