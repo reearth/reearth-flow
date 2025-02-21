@@ -104,38 +104,44 @@ func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) 
 }
 
 func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batch) {
-	var err error
-	if conf.Worker_ImageURL != "" {
-		config := gcpbatch.BatchConfig{
-			BinaryPath: conf.Worker_BinaryPath,
-			BootDiskSizeGB: func() int {
-				tc, err := strconv.Atoi(conf.Worker_BootDiskSizeGB)
-				if err != nil {
-					log.Fatalf("Failed to convert BootDiskSizeDB: %v", err)
-				}
-				return tc
-			}(),
-			BootDiskType: conf.Worker_BootDiskType,
-			ImageURI:     conf.Worker_ImageURL,
-			MachineType:  conf.Worker_MachineType,
-			ProjectID:    conf.GCPProject,
-			Region:       conf.GCPRegion,
-			SAEmail:      conf.Worker_BatchSAEmail,
-			TaskCount: func() int {
-				tc, err := strconv.Atoi(conf.Worker_TaskCount)
-				if err != nil {
-					log.Fatalf("Failed to convert TaskCount: %v", err)
-				}
-				return tc
-			}(),
-		}
-
-		batchRepo, err = gcpbatch.NewBatch(ctx, config)
-		if err != nil {
-			log.Fatalf("Failed to create Batch repository: %v", err)
-		}
-		return
+	if conf.Worker_ImageURL == "" {
+		return nil
 	}
 
-	return batchRepo
+	if conf.GCPProject == "" {
+		log.Fatal("GCP project ID is required")
+	}
+	if conf.GCPRegion == "" {
+		log.Fatal("GCP region is required")
+	}
+
+	bootDiskSize, err := strconv.Atoi(conf.Worker_BootDiskSizeGB)
+	if err != nil {
+		log.Fatalf("invalid boot disk size: %v", err)
+	}
+
+	taskCount, err := strconv.Atoi(conf.Worker_TaskCount)
+	if err != nil {
+		log.Fatalf("invalid task count: %v", err)
+	}
+
+	config := gcpbatch.BatchConfig{
+		AllowedLocations: conf.Worker_AllowedLocations,
+		BinaryPath:       conf.Worker_BinaryPath,
+		BootDiskSizeGB:   bootDiskSize,
+		BootDiskType:     conf.Worker_BootDiskType,
+		ImageURI:         conf.Worker_ImageURL,
+		MachineType:      conf.Worker_MachineType,
+		ProjectID:        conf.GCPProject,
+		Region:           conf.GCPRegion,
+		SAEmail:          conf.Worker_BatchSAEmail,
+		TaskCount:        taskCount,
+	}
+
+	batchRepo, err = gcpbatch.NewBatch(ctx, config)
+	if err != nil {
+		log.Fatalf("failed to create Batch repository: %v", err)
+	}
+
+	return
 }
