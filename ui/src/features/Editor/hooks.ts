@@ -235,8 +235,11 @@ export default ({
   );
 
   const handleLayoutChange = useCallback(
-    (algorithm: Algorithm, direction: Direction, _spacing: number) => {
-      handleYLayoutChange(algorithm, direction, _spacing);
+    async (algorithm: Algorithm, direction: Direction, _spacing: number) => {
+      // We need to wait for the layout to finish before fitting the view
+      await Promise.resolve(
+        handleYLayoutChange(algorithm, direction, _spacing),
+      );
       fitView();
     },
     [fitView, handleYLayoutChange],

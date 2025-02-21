@@ -11,14 +11,15 @@ import {
 } from "@xyflow/react";
 import { MouseEvent, memo } from "react";
 
-import type { ActionNodeType, Edge, Node } from "@flow/types";
-
 import {
+  isValidConnection,
   CustomConnectionLine,
   edgeTypes,
   connectionLineStyle,
   nodeTypes,
-} from "./components";
+} from "@flow/lib/reactFlow";
+import type { ActionNodeType, Edge, Node } from "@flow/types";
+
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
@@ -119,6 +120,7 @@ const Canvas: React.FC<Props> = ({
       defaultEdgeOptions={defaultEdgeOptions}
       connectionLineComponent={CustomConnectionLine}
       connectionLineStyle={connectionLineStyle}
+      isValidConnection={isValidConnection}
       onNodesChange={handleNodesChange}
       onEdgesChange={handleEdgesChange}
       onNodeDoubleClick={onNodeDoubleClick}
