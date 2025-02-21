@@ -77,7 +77,7 @@ const BaseInputTemplate = <
       onChangeOverride || onChange(value === "" ? options.emptyValue : value)
     );
   };
-  // For most text-based params we want TextArea. But for certain schema format types, we want Input to get the appropriate styling @billcookie 
+  // For most text-based params we want TextArea. But for certain schema format types, we want Input to get the appropriate styling @billcookie
   if (schema.format === "color") {
     return (
       <Input
