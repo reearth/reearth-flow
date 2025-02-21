@@ -10,23 +10,29 @@ RUN apk add --update --no-cache \
     protobuf-dev \
     curl \
     rust \
-    cargo
+    cargo \
+    openssl-dev \
+    pkgconfig
 
 WORKDIR /reearth-flow
 
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28 \
     && go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
 
-COPY go.mod go.sum main.go /reearth-flow/
+COPY server/api/go.mod server/api/go.sum server/api/main.go /reearth-flow/
 RUN go mod download
 
-COPY cmd/ /reearth-flow/cmd/
-COPY pkg/ /reearth-flow/pkg/
-COPY internal/ /reearth-flow/internal/
-COPY proto/ /reearth-flow/proto/
+COPY server/api/cmd/ /reearth-flow/cmd/
+COPY server/api/pkg/ /reearth-flow/pkg/
+COPY server/api/internal/ /reearth-flow/internal/
+COPY server/api/proto/ /reearth-flow/proto/
 
-COPY server/Cargo.toml server/Cargo.lock /reearth-flow/server/
-COPY server/src/ /reearth-flow/server/src/
+COPY server/websocket/Cargo.toml server/websocket/Cargo.lock /reearth-flow/server/
+COPY server/websocket/src/ /reearth-flow/server/src/
+COPY server/websocket/benches/ /reearth-flow/server/benches/
+COPY server/websocket/build.rs /reearth-flow/server/
+COPY server/websocket/proto/ /reearth-flow/server/proto/
+
 WORKDIR /reearth-flow/server
 RUN cargo build --release
 
@@ -45,7 +51,7 @@ RUN apk add --no-cache ca-certificates libc6-compat
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /reearth-flow/reearth-flow /reearth-flow/reearth-flow
 COPY --from=build /reearth-flow/server/target/release/libwebsocket.so /reearth-flow/target/release/
-COPY ui* /reearth-flow/ui/
+COPY ui/ /reearth-flow/ui/
 
 WORKDIR /reearth-flow
 

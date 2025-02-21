@@ -2,8 +2,8 @@ services:
   reearth-flow-api:
     image: reearth/reearth-flow:latest
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: ../../
+      dockerfile: server/api/Dockerfile
     environment:
       REEARTH_FLOW_DB: mongodb://reearth-flow-mongo
       PORT: 8080
