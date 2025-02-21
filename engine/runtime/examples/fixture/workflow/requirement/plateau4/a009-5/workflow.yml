@@ -1,0 +1,45 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
+name: "PLATEAU4-A009-5-workflow"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+graphs:
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FileReader
+        type: action
+        action: FileReader
+        with:
+          format: citygml
+          dataset: |
+            file::join_path(env.get("currentPath"), file::convert_slice_to_slash("runtime/examples/fixture/workflow/requirement/plateau4/a009-5/files/52310614_bldg_6697_op.gml"))
+
+      - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        name: VerticalReprojector
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        name: ShapefileWriter
+        type: action
+        action: ShapefileWriter
+        with:
+          groupBy:
+            - gmlName
+          output: |
+            file::join_path(env.get("currentPath"), "shapefile")
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540d
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        fromPort: default
+        toPort: default
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        fromPort: default
+        toPort: default

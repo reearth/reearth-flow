@@ -52,6 +52,10 @@ export default ({
 
   const handleNodesDelete = useCallback(
     (deleted: Node[]) => {
+      // We use deletedIds below to make sure we don't create new connections between nodes
+      // that are being deleted
+      const deletedIds = new Set(deleted.map((node) => node.id));
+
       const changes: EdgeChange[] = deleted.reduce((acc, node) => {
         const incomers = getIncomers(node, nodes, edges);
         const outgoers = getOutgoers(node, nodes, edges);
@@ -63,18 +67,30 @@ export default ({
           type: "remove" as const,
         }));
 
+        // If node has multiple inputs or outputs, we don't want to create new connections
+        // due to the ambiguity of which input/output to connect to
+        const hasMultiple =
+          (node.data.outputs && node.data.outputs.length > 1) ||
+          (node.data.inputs && node.data.inputs.length > 1);
+
         // Then create new direct connections between incomers and outgoers
-        const additions: EdgeChange[] = incomers.flatMap(({ id: source }) =>
-          outgoers.map(({ id: target }) => ({
-            id: `${source}->${target}`,
-            type: "add" as const,
-            item: {
-              id: `${source}->${target}`,
-              source,
-              target,
-            },
-          })),
-        );
+        const additions: EdgeChange[] = !hasMultiple
+          ? incomers
+              .filter(({ id }) => !deletedIds.has(id))
+              .flatMap(({ id: source }) =>
+                outgoers
+                  .filter(({ id }) => !deletedIds.has(id))
+                  .map(({ id: target }) => ({
+                    id: `${source}->${target}`,
+                    type: "add" as const,
+                    item: {
+                      id: `${source}->${target}`,
+                      source,
+                      target,
+                    },
+                  })),
+              )
+          : [];
 
         return [...acc, ...removals, ...additions];
       }, [] as EdgeChange[]);

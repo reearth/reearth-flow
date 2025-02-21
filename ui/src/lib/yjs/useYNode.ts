@@ -118,8 +118,11 @@ export default ({
                     index
                   ].toJSON() as Node;
 
-                  if (nodeToDelete.type === "subworkflow") {
-                    handleYWorkflowsRemove([change.id]);
+                  if (
+                    nodeToDelete.type === "subworkflow" &&
+                    nodeToDelete.data.subworkflowId
+                  ) {
+                    handleYWorkflowsRemove([nodeToDelete.data.subworkflowId]);
                   } else if (nodeToDelete.data.params?.routingPort) {
                     const workflowIndex = rawWorkflows.findIndex((w) => {
                       const nodes = w.nodes as Node[];
