@@ -6,6 +6,7 @@ import { Button, LoadingSkeleton } from "@flow/components";
 import { config } from "@flow/config";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { LogsConsole } from "@flow/features/Editor/components/BottomPanel/components";
+import { useJobStatus } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
 import type { Job, Log } from "@flow/types";
 
@@ -26,6 +27,15 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
   );
   const [logs, setLogs] = useState<Log[] | null>(null);
   const [isFetching, setIsFetching] = useState<boolean>(false);
+
+  const { data, isLoading, error } = useJobStatus(selectedJob?.id ?? "");
+
+  const statusValue = isLoading
+    ? t("Loading...")
+    : error
+      ? t("Error")
+      : (data ?? "queued");
+
   const details: DetailsBoxContent[] | undefined = useMemo(
     () =>
       selectedJob
@@ -43,7 +53,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
             {
               id: "status",
               name: t("Status"),
-              value: selectedJob.status,
+              value: statusValue,
             },
             {
               id: "startedAt",
@@ -57,7 +67,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
             },
           ]
         : undefined,
-    [t, selectedJob],
+    [t, statusValue, selectedJob],
   );
   // Note: This is only temporary and will be replaced with a proper log fetching mechanism when the API is ready @Billcookie
   const getAllLogs = useCallback(async () => {
