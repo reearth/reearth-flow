@@ -4,9 +4,10 @@ import { useY } from "react-yjs";
 import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useHasReader, useShortcuts } from "@flow/hooks";
+import { useShortcuts } from "@flow/hooks";
 import { useDeployment } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
+import { checkForReader } from "@flow/lib/reactFlow";
 import { useYjsStore } from "@flow/lib/yjs";
 import { rebuildWorkflow } from "@flow/lib/yjs/conversions";
 import type { YWorkflow } from "@flow/lib/yjs/types";
@@ -112,7 +113,7 @@ export default ({
 
   const allowedToDeploy = useMemo(() => nodes.length > 0, [nodes]);
 
-  const hasReader = useHasReader(nodes);
+  const hasReader = checkForReader(nodes);
 
   const { lockedNodeIds, locallyLockedNode, handleNodeLocking } = useNodeLocker(
     { selectedNodeIds, nodes },
