@@ -77,7 +77,7 @@ const BaseInputTemplate = <
       onChangeOverride || onChange(value === "" ? options.emptyValue : value)
     );
   };
-  // We want the default to be textarea as for most params they will be long strings, however, for color and future formats we can set as input to get the correct styling @billcookie
+  // For most text-based params we want TextArea. But for certain schema format types, we want Input to get the appropriate styling @billcookie 
   if (schema.format === "color") {
     return (
       <Input
