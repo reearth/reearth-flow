@@ -46,17 +46,20 @@ jobs:
         run: |
           cd server/websocket
           cargo build --release
-          ls -la target/release/
+          mkdir -p ../target/release
+          cp target/release/libwebsocket.* ../target/release/
+          ls -la ../target/release/
       - name: set up Go
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: server/api/go.sum
       - name: test
-        run: go test ./... -v -race -coverprofile=coverage.txt -covermode=atomic -timeout 10m
+        run: |
+          ls -la ${{ github.workspace }}/server/target/release/
+          go test ./... -v -race -coverprofile=coverage.txt -covermode=atomic -timeout 10m
         env:
           REEARTH_FLOW_DB: mongodb://localhost
-          CGO_LDFLAGS: "-L${{ github.workspace }}/server/websocket/target/release -lwebsocket"
         working-directory: server/api
       - name: Send coverage report
         uses: codecov/codecov-action@v2
