@@ -3,9 +3,9 @@ import { RJSFSchema } from "@rjsf/utils";
 import { NodeProps, NodeResizer, useReactFlow } from "@xyflow/react";
 import { memo, useCallback } from "react";
 
+import { useBatch } from "@flow/lib/reactFlow";
 import { Node } from "@flow/types";
 
-import useBatch from "../../../useBatch";
 import { convertHextoRgba } from "../utils";
 
 export type BatchNodeProps = NodeProps<Node>;

@@ -8,7 +8,7 @@ import {
   type NodeType,
 } from "@flow/types";
 
-import { useCreateNode } from "./useCreateNode";
+import { buildNewCanvasNode } from "./buildNewCanvasNode";
 
 type Props = {
   onWorkflowAdd: (position?: XYPosition) => void;
@@ -20,7 +20,6 @@ type Props = {
 // This is not used for node dnd within the canvas. That is done internally by react-flow
 export default ({ onWorkflowAdd, onNodesAdd, onNodePickerOpen }: Props) => {
   const { screenToFlowPosition } = useReactFlow();
-  const { createNode } = useCreateNode();
 
   const handleNodeDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -53,19 +52,13 @@ export default ({ onWorkflowAdd, onNodesAdd, onNodePickerOpen }: Props) => {
         return;
       }
 
-      const newNode = await createNode({ position, type });
+      const newNode = await buildNewCanvasNode({ position, type });
 
       if (!newNode) return;
 
       onNodesAdd([newNode]);
     },
-    [
-      screenToFlowPosition,
-      onWorkflowAdd,
-      onNodesAdd,
-      onNodePickerOpen,
-      createNode,
-    ],
+    [screenToFlowPosition, onWorkflowAdd, onNodesAdd, onNodePickerOpen],
   );
 
   return { handleNodeDragOver, handleNodeDrop };
