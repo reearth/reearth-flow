@@ -6,6 +6,8 @@ pub enum SinkError {
     BuildFactory(String),
     #[error("File Writer error: {0}")]
     FileWriter(String),
+    #[error("Xml Writer error: {0}")]
+    XmlWriter(String),
     #[error("Cesium3DTiles Writer Factory error: {0}")]
     Cesium3DTilesWriterFactory(String),
     #[error("Cesium3DTiles Writer error: {0}")]

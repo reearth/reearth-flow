@@ -1928,6 +1928,24 @@ Writes features to a file
         "output"
       ],
       "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "xml"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
         "converter": {
           "anyOf": [
             {
