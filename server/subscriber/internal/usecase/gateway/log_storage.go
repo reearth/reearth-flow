@@ -3,7 +3,7 @@ package gateway
 import (
 	"context"
 
-	domainLog "github.com/reearth/reearth-flow/log-subscriber/pkg/log"
+	domainLog "github.com/reearth/reearth-flow/subscriber/pkg/log"
 )
 
 type LogStorage interface {
