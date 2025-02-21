@@ -80,7 +80,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             flatten: params.flatten,
         };
         let threads_num = {
-            let size = (num_cpus::get() as f32 / 4 as f32).trunc() as usize;
+            let size = (num_cpus::get() as f32 / 4_f32).trunc() as usize;
             if size < 1 {
                 1
             } else {
