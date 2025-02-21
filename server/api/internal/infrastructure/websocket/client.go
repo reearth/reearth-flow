@@ -11,7 +11,7 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-// #cgo LDFLAGS: -L/Users/xy/work/reearth-flow/server/target/release -lwebsocket
+// #cgo LDFLAGS: -L${SRCDIR}/../../../../target/release -lwebsocket
 // #include <stdlib.h>
 // #include <stdint.h>
 // extern char* get_latest_document(const char* doc_id, const char* config_json);
