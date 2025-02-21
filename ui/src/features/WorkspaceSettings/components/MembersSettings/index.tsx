@@ -7,12 +7,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Input,
 } from "@flow/components";
 import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Role, UserMember } from "@flow/types";
+
+import { MemberAddDialog } from "./components";
 
 type Filter = "all" | Role;
 
@@ -45,6 +46,8 @@ const MembersSettings: React.FC = () => {
     (m) =>
       "userId" in m && (currentFilter === "all" || m.role === currentFilter),
   ) as UserMember[];
+  const [openMemberAddDialog, setOpenMemberAddDialog] =
+    useState<boolean>(false);
 
   const handleAddMember = async (email: string) => {
     setError(undefined);
@@ -108,18 +111,8 @@ const MembersSettings: React.FC = () => {
         <p className="text-lg dark:font-extralight">{t("Members Settings")}</p>
       </div>
       <div className="mt-4 flex max-w-[900px] flex-col gap-6">
-        <div className="flex items-center justify-between">
-          {/* TODO: This will be a dialog component */}
-          <Input
-            className="w-2/4"
-            placeholder={t("Enter email")}
-            value={email}
-            disabled={currentWorkspace?.personal}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Button
-            onClick={() => handleAddMember(email)}
-            disabled={!email || currentWorkspace?.personal}>
+        <div className="flex items-center justify-between ">
+          <Button onClick={() => setOpenMemberAddDialog(true)}>
             {t("Add Member")}
           </Button>
         </div>
@@ -135,7 +128,6 @@ const MembersSettings: React.FC = () => {
                   <p>{filters.find((f) => f.id === currentFilter)?.title}</p>
                   <CaretDown className="size-3" />
                 </DropdownMenuTrigger>
-
                 <DropdownMenuContent className="min-w-[70px]">
                   {filters.map((filter, idx) => (
                     <DropdownMenuItem
@@ -163,7 +155,6 @@ const MembersSettings: React.FC = () => {
                     <p className="text-sm">{t("Change role")}</p>
                     <CaretDown className="size-2" />
                   </DropdownMenuTrigger>
-
                   <DropdownMenuContent className="min-w-[70px]">
                     {roles.map((role, idx) => (
                       <DropdownMenuItem
@@ -188,6 +179,16 @@ const MembersSettings: React.FC = () => {
         </div>
         <p className="text-sm text-red-400">{error}</p>
       </div>
+      {openMemberAddDialog && (
+        <MemberAddDialog
+          setShowDialog={setOpenMemberAddDialog}
+          email={email}
+          setEmail={setEmail}
+          currentWorkspace={currentWorkspace}
+          onAddMember={handleAddMember}
+          error={error}
+        />
+      )}
     </>
   );
 };
