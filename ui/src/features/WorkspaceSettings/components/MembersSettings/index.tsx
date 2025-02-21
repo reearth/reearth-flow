@@ -111,11 +111,13 @@ const MembersSettings: React.FC = () => {
         <p className="text-lg dark:font-extralight">{t("Members Settings")}</p>
       </div>
       <div className="mt-4 flex max-w-[900px] flex-col gap-6">
-        <div className="flex items-center justify-between ">
-          <Button onClick={() => setOpenMemberAddDialog(true)}>
-            {t("Add Member")}
-          </Button>
-        </div>
+        {!currentWorkspace?.personal && (
+          <div className="flex items-center justify-between ">
+            <Button onClick={() => setOpenMemberAddDialog(true)}>
+              {t("Add Member")}
+            </Button>
+          </div>
+        )}
         <div className="rounded border dark:font-extralight">
           <div className="flex h-[42px] items-center justify-between gap-2 border-b p-2">
             <div className="flex items-center gap-2">
@@ -184,7 +186,6 @@ const MembersSettings: React.FC = () => {
           setShowDialog={setOpenMemberAddDialog}
           email={email}
           setEmail={setEmail}
-          currentWorkspace={currentWorkspace}
           onAddMember={handleAddMember}
           error={error}
         />

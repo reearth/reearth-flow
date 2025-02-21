@@ -11,13 +11,11 @@ import {
   Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { Workspace } from "@flow/types";
 
 type Props = {
   setShowDialog: (show: boolean) => void;
   email: string;
   setEmail: (email: string) => void;
-  currentWorkspace?: Workspace;
   onAddMember: (email: string) => void;
   error?: string;
 };
@@ -26,7 +24,6 @@ const MemberAddDialog: React.FC<Props> = ({
   setShowDialog,
   email,
   setEmail,
-  currentWorkspace,
   onAddMember,
   error,
 }) => {
@@ -42,16 +39,13 @@ const MemberAddDialog: React.FC<Props> = ({
               className="w-full"
               placeholder={t("Enter email")}
               value={email}
-              disabled={currentWorkspace?.personal}
               onChange={(e) => setEmail(e.target.value)}
             />
             <p className="text-sm text-red-400">{error}</p>
           </DialogContentSection>
         </DialogContentWrapper>
         <DialogFooter>
-          <Button
-            onClick={() => onAddMember(email)}
-            disabled={!email || currentWorkspace?.personal}>
+          <Button onClick={() => onAddMember(email)} disabled={!email}>
             {t("Add Member")}
           </Button>
         </DialogFooter>
