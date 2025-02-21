@@ -9,30 +9,33 @@ type Status string
 const (
 	StatusPending   Status = "PENDING"
 	StatusRunning   Status = "RUNNING"
+	StatusCancelled Status = "CANCELLED"
 	StatusCompleted Status = "COMPLETED"
 	StatusFailed    Status = "FAILED"
 )
 
 type Job struct {
-	id          ID
-	deployment  DeploymentID
-	workspace   WorkspaceID
-	gcpJobID    string
-	status      Status
-	startedAt   time.Time
 	completedAt *time.Time
+	deployment  DeploymentID
+	gcpJobID    string
+	id          ID
+	logsURL     string
 	metadataURL string
+	outputURLs  []string
+	startedAt   time.Time
+	status      Status
+	workspace   WorkspaceID
 }
 
 func NewJob(id ID, deployment DeploymentID, workspace WorkspaceID, gcpJobID string) *Job {
 	return &Job{
-		id:          id,
 		deployment:  deployment,
-		workspace:   workspace,
 		gcpJobID:    gcpJobID,
+		id:          id,
+		metadataURL: "",
 		status:      StatusPending,
 		startedAt:   time.Now(),
-		metadataURL: "",
+		workspace:   workspace,
 	}
 }
 
@@ -64,8 +67,16 @@ func (j *Job) CompletedAt() *time.Time {
 	return j.completedAt
 }
 
-func (d *Job) MetadataURL() string {
-	return d.metadataURL
+func (j *Job) LogsURL() string {
+	return j.logsURL
+}
+
+func (j *Job) MetadataURL() string {
+	return j.metadataURL
+}
+
+func (j *Job) OutputURLs() []string {
+	return j.outputURLs
 }
 
 func (j *Job) SetID(id ID) {
@@ -100,6 +111,14 @@ func (j *Job) SetCompletedAt(completedAt *time.Time) {
 	j.completedAt = completedAt
 }
 
+func (j *Job) SetLogsURL(logsURL string) {
+	j.logsURL = logsURL
+}
+
 func (j *Job) SetMetadataURL(metadataURL string) {
 	j.metadataURL = metadataURL
+}
+
+func (j *Job) SetOutputURLs(outputURLs []string) {
+	j.outputURLs = outputURLs
 }
