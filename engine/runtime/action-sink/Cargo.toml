@@ -28,6 +28,7 @@ nusamai-czml.workspace = true
 nusamai-gltf.workspace = true
 nusamai-plateau.workspace = true
 nusamai-projection.workspace = true
+nusamai-shapefile.workspace = true
 
 ahash.workspace = true
 async-trait.workspace = true
@@ -60,6 +61,7 @@ rust_xlsxwriter.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+shapefile.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
 tinymvt.workspace = true
