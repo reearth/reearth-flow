@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::ffi::{c_char, CStr, CString};
 use std::os::raw::c_int;
 use std::sync::Arc;
+use tracing::{error, info};
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
@@ -10,16 +11,49 @@ use crate::pool::BroadcastPool;
 use crate::storage::gcs::{GcsConfig, GcsStore};
 use crate::storage::kv::DocOps;
 
+fn init_tracing() {
+    use tracing_subscriber::{fmt, EnvFilter};
+    static INIT: std::sync::Once = std::sync::Once::new();
+
+    INIT.call_once(|| {
+        fmt()
+            .with_env_filter(
+                EnvFilter::from_default_env().add_directive("websocket=debug".parse().unwrap()),
+            )
+            .with_target(false)
+            .with_thread_ids(true)
+            .with_thread_names(true)
+            .with_file(true)
+            .with_line_number(true)
+            .init();
+    });
+}
+
 fn create_pool(gcs_config: GcsConfig, redis_config: RedisConfig) -> Option<Arc<BroadcastPool>> {
+    info!(
+        "Creating GCS store with config: bucket={}, endpoint={:?}",
+        gcs_config.bucket_name, gcs_config.endpoint
+    );
+
     // Initialize GCS store
     let store = match tokio::runtime::Runtime::new()
         .unwrap()
         .block_on(GcsStore::new_with_config(gcs_config))
     {
-        Ok(store) => Arc::new(store),
-        Err(_) => return None,
+        Ok(store) => {
+            info!("GCS store created successfully");
+            Arc::new(store)
+        }
+        Err(e) => {
+            error!("Failed to create GCS store: {}", e);
+            return None;
+        }
     };
 
+    info!(
+        "Creating broadcast pool with Redis config: url={}",
+        redis_config.url
+    );
     // Create broadcast pool
     Some(Arc::new(BroadcastPool::new(store, redis_config)))
 }
@@ -63,21 +97,40 @@ pub unsafe extern "C" fn get_latest_document(
     doc_id: *const c_char,
     config_json: *const c_char,
 ) -> *mut c_char {
+    init_tracing();
+
     let doc_id = unsafe {
         match CStr::from_ptr(doc_id).to_str() {
-            Ok(s) => s.to_string(),
-            Err(_) => return std::ptr::null_mut(),
+            Ok(s) => {
+                info!("FFI: Received doc_id: {}", s);
+                s.to_string()
+            }
+            Err(e) => {
+                error!("FFI: Failed to parse doc_id: {}", e);
+                return std::ptr::null_mut();
+            }
         }
     };
 
     let config: Config = unsafe {
         match CStr::from_ptr(config_json)
             .to_str()
-            .map_err(|_| "UTF-8 error")
-            .and_then(|s| serde_json::from_str(s).map_err(|_| "JSON error"))
-        {
+            .map_err(|e| {
+                error!("FFI: UTF-8 error in config: {}", e);
+                "UTF-8 error"
+            })
+            .and_then(|s| {
+                info!("FFI: Received config: {}", s);
+                serde_json::from_str(s).map_err(|e| {
+                    error!("FFI: JSON error in config: {}", e);
+                    "JSON error"
+                })
+            }) {
             Ok(c) => c,
-            Err(_) => return std::ptr::null_mut(),
+            Err(e) => {
+                error!("FFI: Config error: {}", e);
+                return std::ptr::null_mut();
+            }
         }
     };
 
@@ -92,8 +145,14 @@ pub unsafe extern "C" fn get_latest_document(
     };
 
     let pool = match create_pool(gcs_config, redis_config) {
-        Some(p) => p,
-        None => return std::ptr::null_mut(),
+        Some(p) => {
+            info!("FFI: Pool created successfully");
+            p
+        }
+        None => {
+            error!("FFI: Failed to create pool");
+            return std::ptr::null_mut();
+        }
     };
 
     let doc = Doc::new();
@@ -102,14 +161,28 @@ pub unsafe extern "C" fn get_latest_document(
     let result = tokio::runtime::Runtime::new().unwrap().block_on(async {
         match pool.get_store().load_doc(&doc_id, &mut txn).await {
             Ok(true) => {
+                info!("FFI: Document loaded successfully");
                 drop(txn);
                 let read_txn = doc.transact();
                 let state = read_txn.encode_diff_v1(&StateVector::default());
 
                 // Get the latest clock from updates
                 let clock = match pool.get_store().get_updates(&doc_id).await {
-                    Ok(updates) if !updates.is_empty() => updates.last().unwrap().clock as i32,
-                    _ => 0,
+                    Ok(updates) if !updates.is_empty() => {
+                        info!(
+                            "FFI: Got updates, latest clock: {}",
+                            updates.last().unwrap().clock
+                        );
+                        updates.last().unwrap().clock as i32
+                    }
+                    Ok(_) => {
+                        info!("FFI: No updates found");
+                        0
+                    }
+                    Err(e) => {
+                        error!("FFI: Failed to get updates: {}", e);
+                        0
+                    }
                 };
 
                 let response = DocumentResponse {
@@ -118,18 +191,43 @@ pub unsafe extern "C" fn get_latest_document(
                     clock,
                 };
 
-                serde_json::to_string(&response).ok()
+                match serde_json::to_string(&response) {
+                    Ok(json) => {
+                        info!("FFI: Successfully serialized response");
+                        Some(json)
+                    }
+                    Err(e) => {
+                        error!("FFI: Failed to serialize response: {}", e);
+                        None
+                    }
+                }
             }
-            _ => None,
+            Ok(false) => {
+                error!("FFI: Document not found");
+                None
+            }
+            Err(e) => {
+                error!("FFI: Failed to load document: {}", e);
+                None
+            }
         }
     });
 
     match result {
         Some(json) => match CString::new(json) {
-            Ok(c_str) => c_str.into_raw(),
-            Err(_) => std::ptr::null_mut(),
+            Ok(c_str) => {
+                info!("FFI: Returning success response");
+                c_str.into_raw()
+            }
+            Err(e) => {
+                error!("FFI: Failed to create C string: {}", e);
+                std::ptr::null_mut()
+            }
         },
-        None => std::ptr::null_mut(),
+        None => {
+            error!("FFI: No result to return");
+            std::ptr::null_mut()
+        }
     }
 }
 

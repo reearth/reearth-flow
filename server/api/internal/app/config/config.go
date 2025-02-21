@@ -78,6 +78,12 @@ type (
 		Worker_MaxConcurrency string `envconfig:"WORKER_MAX_CONCURRENCY" default:"4" pp:",omitempty"`
 		Worker_TaskCount      string `envconfig:"WORKER_TASK_COUNT" default:"1" pp:",omitempty"`
 
+		// websocket
+		WebsocketGCSBucket   string  `envconfig:"REEARTH_FLOW_WEBSOCKET_GCS_BUCKET" default:"yrs-dev" pp:",omitempty"`
+		WebsocketGCSEndpoint *string `envconfig:"REEARTH_FLOW_WEBSOCKET_GCS_ENDPOINT" default:"http://localhost:4443" pp:",omitempty"`
+		WebsocketRedisURL    string  `envconfig:"REEARTH_FLOW_WEBSOCKET_REDIS_URL" default:"redis://127.0.0.1:6379"`
+		WebsocketRedisTTL    uint64  `envconfig:"REEARTH_FLOW_WEBSOCKET_REDIS_TTL" default:"3600"`
+
 		WebsocketServer string `default:"localhost:50051" envconfig:"REEARTH_FLOW_WEBSOCKET_GRPC_SERVER"`
 
 		RedisURL string `pp:",omitempty" env:"REEARTH_FLOW_REDIS_URL,required"`

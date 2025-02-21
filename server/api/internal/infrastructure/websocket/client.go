@@ -8,9 +8,10 @@ import (
 	"unsafe"
 
 	"github.com/reearth/reearth-flow/api/pkg/websocket"
+	"github.com/reearth/reearthx/log"
 )
 
-// #cgo LDFLAGS: -L${SRCDIR}/../../../../../../target/release -lwebsocket
+// #cgo LDFLAGS: -L/Users/xy/work/reearth-flow/server/target/release -lwebsocket
 // #include <stdlib.h>
 // #include <stdint.h>
 // extern char* get_latest_document(const char* doc_id, const char* config_json);
@@ -64,19 +65,27 @@ func (c *Client) GetLatest(ctx context.Context, docID string) (*websocket.Docume
 		return nil, fmt.Errorf("failed to marshal config: %w", err)
 	}
 
+	log.Infof("GetLatest config: %s", string(configJSON))
+
 	cDocID := C.CString(docID)
 	cConfigJSON := C.CString(string(configJSON))
 	defer C.free(unsafe.Pointer(cDocID))
 	defer C.free(unsafe.Pointer(cConfigJSON))
 
+	log.Infof("Calling FFI get_latest_document with docID: %s", docID)
 	result := C.get_latest_document(cDocID, cConfigJSON)
 	if result == nil {
+		log.Errorf("FFI call returned nil for docID: %s", docID)
 		return nil, fmt.Errorf("failed to get latest document")
 	}
 	defer C.free_string(result)
 
+	resultStr := C.GoString(result)
+	log.Infof("FFI result: %s", resultStr)
+
 	var resp documentResponse
-	if err := json.Unmarshal([]byte(C.GoString(result)), &resp); err != nil {
+	if err := json.Unmarshal([]byte(resultStr), &resp); err != nil {
+		log.Errorf("Failed to unmarshal response: %v", err)
 		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
@@ -86,12 +95,14 @@ func (c *Client) GetLatest(ctx context.Context, docID string) (*websocket.Docume
 		update[i] = int(b)
 	}
 
-	return &websocket.Document{
+	doc := &websocket.Document{
 		ID:        docID,
 		Update:    update,
 		Clock:     int(resp.Clock),
 		Timestamp: time.Now(),
-	}, nil
+	}
+	log.Infof("Returning document: %+v", doc)
+	return doc, nil
 }
 
 func (c *Client) GetHistory(ctx context.Context, docID string) ([]*websocket.History, error) {
