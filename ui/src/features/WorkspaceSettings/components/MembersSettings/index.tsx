@@ -1,4 +1,4 @@
-import { CaretDown, User } from "@phosphor-icons/react";
+import { CaretDown, Plus, User } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
@@ -109,15 +109,16 @@ const MembersSettings: React.FC = () => {
     <>
       <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
         <p className="text-lg dark:font-extralight">{t("Members Settings")}</p>
+        {!currentWorkspace?.personal && (
+          <Button
+            className="flex gap-2"
+            onClick={() => setOpenMemberAddDialog(true)}>
+            <Plus weight="thin" />
+            <p className="text-xs dark:font-light"> {t("Add Member")}</p>
+          </Button>
+        )}
       </div>
       <div className="mt-4 flex max-w-[900px] flex-col gap-6">
-        {!currentWorkspace?.personal && (
-          <div className="flex items-center justify-between ">
-            <Button onClick={() => setOpenMemberAddDialog(true)}>
-              {t("Add Member")}
-            </Button>
-          </div>
-        )}
         <div className="rounded border dark:font-extralight">
           <div className="flex h-[42px] items-center justify-between gap-2 border-b p-2">
             <div className="flex items-center gap-2">
