@@ -12,19 +12,24 @@ import (
 )
 
 var (
-	defaultClient   interfaces.WebsocketClient
-	websocketServer string
-	clientOnce      sync.Once
+	defaultClient interfaces.WebsocketClient
+	clientConfig  websocket.Config
+	clientOnce    sync.Once
 )
 
-func Init(c string) {
-	websocketServer = c
+func Init(gcsBucket string, gcsEndpoint *string, redisUrl string, redisTtl uint64) {
+	clientConfig = websocket.Config{
+		GcsBucket:   gcsBucket,
+		GcsEndpoint: gcsEndpoint,
+		RedisUrl:    redisUrl,
+		RedisTtl:    redisTtl,
+	}
 }
 
 func getDefaultClient() interfaces.WebsocketClient {
 	clientOnce.Do(func() {
-		log.Infof("Creating new document client with gRPC address: %s", websocketServer)
-		client, err := websocket.NewClient(websocketServer)
+		log.Info("Creating new document client with FFI")
+		client, err := websocket.NewClient(clientConfig)
 		if err != nil {
 			log.Errorf("Failed to create document client: %v", err)
 			return

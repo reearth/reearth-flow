@@ -7,12 +7,14 @@ pub mod auth;
 mod broadcast;
 pub mod conf;
 pub mod conn;
+pub mod ffi;
 pub mod grpc;
 pub mod storage;
 pub mod ws;
 
 pub use broadcast::group;
 pub use broadcast::pool;
+pub use ffi::*;
 
 pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
 
@@ -61,3 +63,4 @@ pub use group::BroadcastGroup;
 pub use pool::BroadcastPool;
 pub use server::{ensure_bucket, start_server};
 pub use storage::gcs::GcsStore;
+pub use storage::kv::DocOps;

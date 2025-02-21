@@ -2,48 +2,82 @@ package websocket
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
+	"unsafe"
 
 	"github.com/reearth/reearth-flow/api/pkg/websocket"
-	pb "github.com/reearth/reearth-flow/api/proto"
-	"github.com/reearth/reearthx/log"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
-type Client struct {
-	conn   *grpc.ClientConn
-	client pb.DocumentServiceClient
+// #cgo LDFLAGS: -L${SRCDIR}/../../../../../../target/release -lwebsocket
+// #include <stdlib.h>
+// #include <stdint.h>
+// extern char* get_latest_document(const char* doc_id, const char* config_json);
+// extern char* get_document_history(const char* doc_id, const char* config_json);
+// extern char* rollback_document(const char* doc_id, int32_t target_clock, const char* config_json);
+// extern void free_string(char* ptr);
+import "C"
+
+type Config struct {
+	GcsBucket   string  `json:"gcs_bucket"`
+	GcsEndpoint *string `json:"gcs_endpoint,omitempty"`
+	RedisUrl    string  `json:"redis_url"`
+	RedisTtl    uint64  `json:"redis_ttl"`
 }
 
-func NewClient(address string) (*Client, error) {
+type Client struct {
+	config Config
+}
 
-	conn, err := grpc.NewClient(address, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to gRPC server: %w", err)
-	}
+type documentResponse struct {
+	DocID   string `json:"doc_id"`
+	Content []byte `json:"content"`
+	Clock   int32  `json:"clock"`
+}
 
-	client := pb.NewDocumentServiceClient(conn)
+type historyVersion struct {
+	VersionID string `json:"version_id"`
+	Timestamp string `json:"timestamp"`
+	Content   []byte `json:"content"`
+	Clock     int32  `json:"clock"`
+}
+
+type documentHistory struct {
+	DocID    string           `json:"doc_id"`
+	Versions []historyVersion `json:"versions"`
+}
+
+func NewClient(config Config) (*Client, error) {
 	return &Client{
-		conn:   conn,
-		client: client,
+		config: config,
 	}, nil
 }
 
 func (c *Client) Close() error {
-	if c.conn != nil {
-		return c.conn.Close()
-	}
 	return nil
 }
 
 func (c *Client) GetLatest(ctx context.Context, docID string) (*websocket.Document, error) {
-	resp, err := c.client.GetLatestDocument(ctx, &pb.DocumentRequest{
-		DocId: docID,
-	})
+	configJSON, err := json.Marshal(c.config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get latest document: %w", err)
+		return nil, fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	cDocID := C.CString(docID)
+	cConfigJSON := C.CString(string(configJSON))
+	defer C.free(unsafe.Pointer(cDocID))
+	defer C.free(unsafe.Pointer(cConfigJSON))
+
+	result := C.get_latest_document(cDocID, cConfigJSON)
+	if result == nil {
+		return nil, fmt.Errorf("failed to get latest document")
+	}
+	defer C.free_string(result)
+
+	var resp documentResponse
+	if err := json.Unmarshal([]byte(C.GoString(result)), &resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	// Convert bytes to []int
@@ -61,22 +95,32 @@ func (c *Client) GetLatest(ctx context.Context, docID string) (*websocket.Docume
 }
 
 func (c *Client) GetHistory(ctx context.Context, docID string) ([]*websocket.History, error) {
-	resp, err := c.client.GetDocumentHistory(ctx, &pb.DocumentHistoryRequest{
-		DocId: docID,
-	})
+	configJSON, err := json.Marshal(c.config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get document history: %w", err)
+		return nil, fmt.Errorf("failed to marshal config: %w", err)
+	}
+
+	cDocID := C.CString(docID)
+	cConfigJSON := C.CString(string(configJSON))
+	defer C.free(unsafe.Pointer(cDocID))
+	defer C.free(unsafe.Pointer(cConfigJSON))
+
+	result := C.get_document_history(cDocID, cConfigJSON)
+	if result == nil {
+		return nil, fmt.Errorf("failed to get document history")
+	}
+	defer C.free_string(result)
+
+	var resp documentHistory
+	if err := json.Unmarshal([]byte(C.GoString(result)), &resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
 	history := make([]*websocket.History, len(resp.Versions))
 	for i, version := range resp.Versions {
-		timestamp, err := time.Parse("2006-01-02 15:04:05.999999 -07:00:00", version.Timestamp)
+		timestamp, err := time.Parse(time.RFC3339, version.Timestamp)
 		if err != nil {
-			timestamp, err = time.Parse(time.RFC3339, version.Timestamp)
-			if err != nil {
-				log.Errorf("failed to parse timestamp: %v", err)
-				timestamp = time.Time{}
-			}
+			return nil, fmt.Errorf("failed to parse timestamp: %w", err)
 		}
 
 		// Convert bytes to []int
@@ -96,17 +140,37 @@ func (c *Client) GetHistory(ctx context.Context, docID string) ([]*websocket.His
 }
 
 func (c *Client) Rollback(ctx context.Context, id string, clock int) (*websocket.Document, error) {
-	resp, err := c.client.RollbackDocument(ctx, &pb.RollbackRequest{
-		DocId:     id,
-		VersionId: fmt.Sprintf("%d", clock),
-	})
+	configJSON, err := json.Marshal(c.config)
 	if err != nil {
-		return nil, fmt.Errorf("failed to rollback document: %w", err)
+		return nil, fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	if !resp.Success {
-		return nil, fmt.Errorf("rollback failed: %s", resp.Message)
+	cDocID := C.CString(id)
+	cConfigJSON := C.CString(string(configJSON))
+	defer C.free(unsafe.Pointer(cDocID))
+	defer C.free(unsafe.Pointer(cConfigJSON))
+
+	result := C.rollback_document(cDocID, C.int32_t(clock), cConfigJSON)
+	if result == nil {
+		return nil, fmt.Errorf("failed to rollback document")
+	}
+	defer C.free_string(result)
+
+	var resp documentResponse
+	if err := json.Unmarshal([]byte(C.GoString(result)), &resp); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	return c.GetLatest(ctx, id)
+	// Convert bytes to []int
+	update := make([]int, len(resp.Content))
+	for i, b := range resp.Content {
+		update[i] = int(b)
+	}
+
+	return &websocket.Document{
+		ID:        id,
+		Update:    update,
+		Clock:     int(resp.Clock),
+		Timestamp: time.Now(),
+	}, nil
 }
