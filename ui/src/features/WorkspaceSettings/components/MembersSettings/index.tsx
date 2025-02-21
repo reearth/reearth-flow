@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@flow/components";
+import { toast } from "@flow/features/NotificationSystem/useToast";
 import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
@@ -72,7 +73,11 @@ const MembersSettings: React.FC = () => {
     );
 
     if (!workspace) {
-      setError(t("Failed to add member"));
+      toast({
+        title: t("Member Could Not Be Added"),
+        description: t("There was an error when adding a new member"),
+        variant: "warning",
+      });
       return;
     }
     setEmail("");
@@ -80,7 +85,6 @@ const MembersSettings: React.FC = () => {
   };
 
   const handleChangeRole = async (userId: string, role: Role) => {
-    setError(undefined);
     if (!currentWorkspace?.id) return;
     const { workspace } = await updateMemberOfWorkspace(
       currentWorkspace.id,
@@ -88,20 +92,29 @@ const MembersSettings: React.FC = () => {
       role,
     );
     if (!workspace) {
-      setError(t("Failed to change role of the member"));
+      toast({
+        title: t("Member's Role Could Not Be Updated"),
+        description: t(
+          "There was an error when trying to update the members persmissons.",
+        ),
+        variant: "warning",
+      });
       return;
     }
   };
 
   const handleRemoveMembers = async (userId: string) => {
-    setError(undefined);
     if (!currentWorkspace?.id) return;
     const { workspace } = await removeMemberFromWorkspace(
       currentWorkspace.id,
       userId,
     );
     if (!workspace) {
-      setError(t("Failed to remove member"));
+      toast({
+        title: t("Member Could Not Be Removed"),
+        description: t("There was an error when trying to remove the member."),
+        variant: "warning",
+      });
       return;
     }
   };
@@ -181,7 +194,6 @@ const MembersSettings: React.FC = () => {
             ))}
           </div>
         </div>
-        <p className="text-sm text-red-400">{error}</p>
       </div>
       {openMemberAddDialog && (
         <MemberAddDialog
