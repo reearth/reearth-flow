@@ -3709,7 +3709,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc2f4eb4bc735547cfed7c0a4922cbd04a4655978c09b54f1f7b228750664c34"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -5085,7 +5085,7 @@ checksum = "953ec861398dccce10c670dfeaf3ec4911ca479e9c02154b3a215178c5f566f2"
 
 [[package]]
 name = "plateau-gis-quality-checker"
-version = "0.0.11"
+version = "0.0.12"
 dependencies = [
  "directories",
  "log",
@@ -5734,7 +5734,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-log"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "futures",
  "once_cell",
@@ -5754,7 +5754,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-plateau-processor"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "approx",
  "async-trait",
@@ -5794,7 +5794,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-processor"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "Inflector",
  "approx",
@@ -5838,7 +5838,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-sink"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "ahash 0.8.11",
  "async-trait",
@@ -5872,6 +5872,7 @@ dependencies = [
  "parking_lot",
  "petgraph 0.6.5",
  "prost",
+ "quick-xml 0.37.2",
  "rayon",
  "reearth-flow-action-log",
  "reearth-flow-common",
@@ -5900,7 +5901,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-source"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "async-trait",
  "async_zip",
@@ -5935,7 +5936,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-wasm-processor"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "chrono",
  "itertools 0.14.0",
@@ -5960,7 +5961,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-cli"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "bytes",
  "clap",
@@ -5998,7 +5999,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-common"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "approx",
  "async-recursion",
@@ -6032,7 +6033,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-eval-expr"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "chrono",
  "futures",
@@ -6046,7 +6047,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-examples"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6075,7 +6076,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-geometry"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "approx",
  "bytes",
@@ -6100,7 +6101,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-gltf"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "ahash 0.8.11",
  "byteorder",
@@ -6128,7 +6129,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-macros"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -6137,7 +6138,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runner"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "async-trait",
  "bytes",
@@ -6167,7 +6168,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runtime"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -6200,7 +6201,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sevenz"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "bit-set",
  "byteorder",
@@ -6217,7 +6218,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-state"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "bytes",
  "reearth-flow-common",
@@ -6231,7 +6232,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-storage"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "bytes",
  "futures",
@@ -6249,7 +6250,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-telemetry"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "once_cell",
  "opentelemetry",
@@ -6263,7 +6264,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-tests"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "bytes",
  "directories",
@@ -6292,7 +6293,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-types"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "ahash 0.8.11",
  "bytes",
@@ -6328,7 +6329,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-worker"
-version = "0.0.14"
+version = "0.0.15"
 dependencies = [
  "async-trait",
  "bytes",
