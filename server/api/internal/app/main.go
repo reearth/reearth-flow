@@ -49,13 +49,13 @@ func Start(debug bool, version string) {
 	repos, gateways, acRepos, acGateways := initReposAndGateways(ctx, conf, debug)
 
 	// PermissionChecker
-	if conf.DashboardHost == "" {
-		log.Fatalf("dashboard host configuration is required")
+	if conf.AccountsHost == "" {
+		log.Fatalf("accounts host configuration is required")
 	}
-	if _, err := url.Parse(conf.DashboardHost); err != nil {
-		log.Fatalf("invalid dashboard host URL: %v", err)
+	if _, err := url.Parse(conf.AccountsHost); err != nil {
+		log.Fatalf("invalid accounts host URL: %v", err)
 	}
-	permissionChecker := cerbosClient.NewPermissionChecker(rbac.ServiceName, conf.DashboardHost)
+	permissionChecker := cerbosClient.NewPermissionChecker(rbac.ServiceName, conf.AccountsHost)
 	if permissionChecker == nil {
 		log.Fatalf("failed to initialize permission checker")
 	}
