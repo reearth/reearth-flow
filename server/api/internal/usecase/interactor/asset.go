@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"path"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -15,24 +15,38 @@ import (
 )
 
 type Asset struct {
-	repos    *repo.Container
-	gateways *gateway.Container
+	repos             *repo.Container
+	gateways          *gateway.Container
+	permissionChecker gateway.PermissionChecker
 }
 
-func NewAsset(r *repo.Container, g *gateway.Container) interfaces.Asset {
+func NewAsset(r *repo.Container, g *gateway.Container, permissionChecker gateway.PermissionChecker) interfaces.Asset {
 	return &Asset{
-		repos:    r,
-		gateways: g,
+		repos:             r,
+		gateways:          g,
+		permissionChecker: permissionChecker,
 	}
 }
 
-func (i *Asset) Fetch(ctx context.Context, assets []id.AssetID, operator *usecase.Operator) ([]*asset.Asset, error) {
+func (i *Asset) checkPermission(ctx context.Context, action string) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceAsset, action)
+}
+
+func (i *Asset) Fetch(ctx context.Context, assets []id.AssetID) ([]*asset.Asset, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	return i.repos.Asset.FindByIDs(ctx, assets)
 }
 
-func (i *Asset) FindByWorkspace(ctx context.Context, tid accountdomain.WorkspaceID, keyword *string, sort *asset.SortType, p *interfaces.PaginationParam, operator *usecase.Operator) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
+func (i *Asset) FindByWorkspace(ctx context.Context, tid accountdomain.WorkspaceID, keyword *string, sort *asset.SortType, p *interfaces.PaginationParam) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, nil, err
+	}
+
 	return Run2(
-		ctx, operator, i.repos,
+		ctx, i.repos,
 		Usecase().WithReadableWorkspaces(tid),
 		func(ctx context.Context) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
 			return i.repos.Asset.FindByWorkspace(ctx, tid, repo.AssetFilter{
@@ -44,18 +58,13 @@ func (i *Asset) FindByWorkspace(ctx context.Context, tid accountdomain.Workspace
 	)
 }
 
-func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam, operator *usecase.Operator) (result *asset.Asset, err error) {
-	if inp.File == nil {
-		return nil, interfaces.ErrFileNotIncluded
-	}
-
-	ws, err := i.repos.Workspace.FindByID(ctx, inp.WorkspaceID)
-	if err != nil {
+func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (result *asset.Asset, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, err
 	}
 
-	if !operator.IsWritableWorkspace(ws.ID()) {
-		return nil, interfaces.ErrOperationDenied
+	if inp.File == nil {
+		return nil, interfaces.ErrFileNotIncluded
 	}
 
 	url, size, err := i.gateways.File.UploadAsset(ctx, inp.File)
@@ -81,18 +90,18 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam, ope
 	return a, nil
 }
 
-func (i *Asset) Remove(ctx context.Context, aid id.AssetID, operator *usecase.Operator) (result id.AssetID, err error) {
+func (i *Asset) Remove(ctx context.Context, aid id.AssetID) (result id.AssetID, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return aid, err
+	}
+
 	return Run1(
-		ctx, operator, i.repos,
+		ctx, i.repos,
 		Usecase().Transaction(),
 		func(ctx context.Context) (id.AssetID, error) {
 			asset, err := i.repos.Asset.FindByID(ctx, aid)
 			if err != nil {
 				return aid, err
-			}
-
-			if ok := operator.IsWritableWorkspace(asset.Workspace()); !ok {
-				return aid, interfaces.ErrOperationDenied
 			}
 
 			if url, _ := url.Parse(asset.URL()); url != nil {

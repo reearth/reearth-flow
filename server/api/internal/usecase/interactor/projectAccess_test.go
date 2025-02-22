@@ -6,12 +6,11 @@ import (
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearth-flow/api/pkg/projectAccess"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
-	"github.com/reearth/reearthx/account/accountusecase"
+	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,10 +18,13 @@ func TestProjectAccess_Fetch(t *testing.T) {
 	// prepare
 	ctx := context.Background()
 	mem := memory.New()
-
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+		return true, nil
+	})
 	i := &ProjectAccess{
 		projectRepo:       mem.Project,
 		projectAccessRepo: mem.ProjectAccess,
+		permissionChecker: mockPermissionCheckerTrue,
 	}
 
 	// Set up a workspace, project, and shared project access
@@ -98,11 +100,17 @@ func TestProjectAccess_Share(t *testing.T) {
 		Host:       "https://example.com",
 		SharedPath: "shared",
 	}
+
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+		return true, nil
+	})
+
 	i := &ProjectAccess{
 		projectRepo:       mem.Project,
 		projectAccessRepo: mem.ProjectAccess,
 		transaction:       mem.Transaction,
 		config:            config,
+		permissionChecker: mockPermissionCheckerTrue,
 	}
 
 	// Set up a workspace, project
@@ -116,46 +124,25 @@ func TestProjectAccess_Share(t *testing.T) {
 	tests := []struct {
 		name        string
 		projectID   id.ProjectID
-		operator    *usecase.Operator
 		wantErr     bool
 		wantURLBase string
 	}{
 		{
-			name:      "success: make project public",
-			projectID: prj.ID(),
-			operator: &usecase.Operator{
-				AcOperator: &accountusecase.Operator{
-					WritableWorkspaces: workspace.IDList{ws.ID()},
-				},
-			},
+			name:        "success: make project public",
+			projectID:   prj.ID(),
 			wantErr:     false,
 			wantURLBase: "https://example.com/shared/",
 		},
 		{
 			name:      "failure: project not found",
 			projectID: id.ProjectID{},
-			operator: &usecase.Operator{
-				AcOperator: &accountusecase.Operator{
-					WritableWorkspaces: workspace.IDList{ws.ID()},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name:      "failure: insufficient permissions",
-			projectID: prj.ID(),
-			operator: &usecase.Operator{
-				AcOperator: &accountusecase.Operator{
-					ReadableWorkspaces: workspace.IDList{ws.ID()},
-				},
-			},
-			wantErr: true,
+			wantErr:   true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			url, err := i.Share(ctx, tt.projectID, tt.operator)
+			url, err := i.Share(ctx, tt.projectID)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -183,11 +170,15 @@ func TestProjectAccess_Unshare(t *testing.T) {
 		Host:       "https://example.com",
 		SharedPath: "shared",
 	}
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+		return true, nil
+	})
 	i := &ProjectAccess{
 		projectRepo:       mem.Project,
 		projectAccessRepo: mem.ProjectAccess,
 		transaction:       mem.Transaction,
 		config:            config,
+		permissionChecker: mockPermissionCheckerTrue,
 	}
 
 	// Set up a workspace, project, and shared project access
@@ -208,44 +199,23 @@ func TestProjectAccess_Unshare(t *testing.T) {
 	tests := []struct {
 		name      string
 		projectID id.ProjectID
-		operator  *usecase.Operator
 		wantErr   bool
 	}{
 		{
 			name:      "success: make project private",
 			projectID: prj.ID(),
-			operator: &usecase.Operator{
-				AcOperator: &accountusecase.Operator{
-					WritableWorkspaces: workspace.IDList{ws.ID()},
-				},
-			},
-			wantErr: false,
+			wantErr:   false,
 		},
 		{
-			name:      "failure: project not found",
+			name:      "failure: project access not found",
 			projectID: id.ProjectID{},
-			operator: &usecase.Operator{
-				AcOperator: &accountusecase.Operator{
-					WritableWorkspaces: workspace.IDList{ws.ID()},
-				},
-			},
-			wantErr: true,
-		},
-		{
-			name:      "failure: insufficient permissions",
-			projectID: prj.ID(),
-			operator: &usecase.Operator{
-				AcOperator: &accountusecase.Operator{
-					ReadableWorkspaces: workspace.IDList{ws.ID()},
-				},
-			},
-			wantErr: true,
+			wantErr:   true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := i.Unshare(ctx, tt.projectID, tt.operator)
+			err := i.Unshare(ctx, tt.projectID)
 
 			if tt.wantErr {
 				assert.Error(t, err)
