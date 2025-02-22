@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
@@ -50,6 +51,49 @@ func NewJob(r *repo.Container, gr *gateway.Container) interfaces.Job {
 		subscriptions: subscription.NewManager(),
 		notifier:      notification.NewHTTPNotifier(),
 	}
+}
+
+func (i *Job) Cancel(ctx context.Context, jobID id.JobID, operator *usecase.Operator) (*job.Job, error) {
+	j, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := i.CanWriteWorkspace(j.Workspace(), operator); err != nil {
+		return nil, err
+	}
+
+	if j.Status() != job.StatusPending && j.Status() != job.StatusRunning {
+		return nil, fmt.Errorf("job cannot be cancelled: current status is %s", j.Status())
+	}
+
+	tx, err := i.transaction.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := tx.End(ctx); err != nil {
+			log.Errorfc(ctx, "transaction end failed: %v", err)
+		}
+	}()
+
+	if err := i.batch.CancelJob(ctx, j.GCPJobID()); err != nil {
+		return nil, err
+	}
+
+	j.SetStatus(job.StatusCancelled)
+	now := time.Now()
+	j.SetCompletedAt(&now)
+
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		return nil, err
+	}
+
+	tx.Commit()
+	i.subscriptions.Notify(j.ID().String(), j.Status())
+	i.monitor.Remove(j.ID().String())
+
+	return j, nil
 }
 
 func (i *Job) FindByID(ctx context.Context, id id.JobID, operator *usecase.Operator) (*job.Job, error) {
@@ -162,18 +206,26 @@ func (i *Job) updateJobStatus(ctx context.Context, j *job.Job, status job.Status
 
 func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 	config := i.monitor.Get(j.ID().String())
-	if config == nil || config.NotificationURL == nil {
-		return nil
-	}
 
 	outputs, err := i.file.ListJobArtifacts(ctx, j.ID().String())
 	if err != nil {
 		return err
 	}
 
-	logURL := i.file.GetJobLogURL(j.ID().String())
-	var logs []string
+	j.SetOutputURLs(outputs)
 
+	logURL := i.file.GetJobLogURL(j.ID().String())
+	j.SetLogsURL(logURL)
+
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		return err
+	}
+
+	if config == nil || config.NotificationURL == nil {
+		return nil
+	}
+
+	var logs []string
 	if exists, _ := i.file.CheckJobLogExists(ctx, j.ID().String()); exists {
 		logs = append(logs, logURL)
 	}
