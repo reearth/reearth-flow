@@ -8,7 +8,6 @@ mod broadcast;
 pub mod conf;
 pub mod conn;
 pub mod ffi;
-pub mod grpc;
 pub mod storage;
 pub mod ws;
 

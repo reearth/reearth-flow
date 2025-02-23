@@ -13,20 +13,6 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
-  grpc:
-    build:
-      context: .
-      dockerfile: Dockerfile.grpc
-    ports:
-      - "50051:50051"
-    env_file:
-      - .env.docker
-    depends_on:
-      - redis
-      - fake-gcs
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-
   redis:
     image: redis:7-alpine
     ports:
