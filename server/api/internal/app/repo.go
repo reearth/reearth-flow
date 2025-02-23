@@ -31,8 +31,6 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 	websocket.Init(
 		conf.WebsocketGCSBucket,
 		conf.WebsocketGCSEndpoint,
-		conf.WebsocketRedisURL,
-		conf.WebsocketRedisTTL,
 	)
 
 	gateways := &gateway.Container{}

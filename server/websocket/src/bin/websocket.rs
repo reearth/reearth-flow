@@ -2,11 +2,7 @@ use std::sync::Arc;
 
 use tracing::error;
 use websocket::{
-    conf::Config,
-    pool::BroadcastPool,
-    server::{ensure_bucket, start_server},
-    storage::gcs::GcsStore,
-    AppState,
+    conf::Config, pool::BroadcastPool, server::start_server, storage::gcs::GcsStore, AppState,
 };
 
 #[cfg(feature = "auth")]
@@ -47,7 +43,7 @@ async fn main() {
     tracing::info!("GCS store initialized");
 
     // Create broadcast pool
-    let pool = Arc::new(BroadcastPool::new(store, config.redis));
+    let pool = Arc::new(BroadcastPool::new(store, Some(config.redis)));
     tracing::info!("Broadcast pool initialized");
 
     let state = Arc::new({

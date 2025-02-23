@@ -17,12 +17,10 @@ var (
 	clientOnce    sync.Once
 )
 
-func Init(gcsBucket string, gcsEndpoint *string, redisUrl string, redisTtl uint64) {
+func Init(gcsBucket string, gcsEndpoint *string) {
 	clientConfig = websocket.Config{
 		GcsBucket:   gcsBucket,
 		GcsEndpoint: gcsEndpoint,
-		RedisUrl:    redisUrl,
-		RedisTtl:    redisTtl,
 	}
 }
 

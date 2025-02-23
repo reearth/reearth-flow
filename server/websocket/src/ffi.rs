@@ -6,7 +6,6 @@ use tracing::{debug, info};
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
-use crate::broadcast::group::RedisConfig;
 use crate::pool::BroadcastPool;
 use crate::storage::gcs::{GcsConfig, GcsStore};
 use crate::storage::kv::DocOps;
@@ -29,7 +28,7 @@ fn init_tracing() {
     });
 }
 
-fn create_pool(gcs_config: GcsConfig, redis_config: RedisConfig) -> Option<Arc<BroadcastPool>> {
+fn create_pool(gcs_config: GcsConfig) -> Option<Arc<BroadcastPool>> {
     info!(
         "Creating GCS store with config: bucket={}, endpoint={:?}",
         gcs_config.bucket_name, gcs_config.endpoint
@@ -50,12 +49,8 @@ fn create_pool(gcs_config: GcsConfig, redis_config: RedisConfig) -> Option<Arc<B
         }
     };
 
-    info!(
-        "Creating broadcast pool with Redis config: url={}",
-        redis_config.url
-    );
-    // Create broadcast pool
-    Some(Arc::new(BroadcastPool::new(store, redis_config)))
+    // Create broadcast pool with optional Redis config
+    Some(Arc::new(BroadcastPool::new(store, None)))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -139,12 +134,7 @@ pub unsafe extern "C" fn get_latest_document(
         endpoint: config.gcs_endpoint,
     };
 
-    let redis_config = RedisConfig {
-        url: config.redis_url,
-        ttl: config.redis_ttl,
-    };
-
-    let pool = match create_pool(gcs_config, redis_config) {
+    let pool = match create_pool(gcs_config) {
         Some(p) => {
             info!("FFI: Pool created successfully");
             p
@@ -264,12 +254,7 @@ pub unsafe extern "C" fn get_document_history(
         endpoint: config.gcs_endpoint,
     };
 
-    let redis_config = RedisConfig {
-        url: config.redis_url,
-        ttl: config.redis_ttl,
-    };
-
-    let pool = match create_pool(gcs_config, redis_config) {
+    let pool = match create_pool(gcs_config) {
         Some(p) => p,
         None => return std::ptr::null_mut(),
     };
@@ -341,12 +326,7 @@ pub unsafe extern "C" fn rollback_document(
         endpoint: config.gcs_endpoint,
     };
 
-    let redis_config = RedisConfig {
-        url: config.redis_url,
-        ttl: config.redis_ttl,
-    };
-
-    let pool = match create_pool(gcs_config, redis_config) {
+    let pool = match create_pool(gcs_config) {
         Some(p) => p,
         None => return std::ptr::null_mut(),
     };

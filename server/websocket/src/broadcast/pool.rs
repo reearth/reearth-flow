@@ -11,13 +11,13 @@ use yrs::{Doc, Transact};
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
     store: Arc<GcsStore>,
-    redis_config: RedisConfig,
+    redis_config: Option<RedisConfig>,
     groups: DashMap<String, Arc<BroadcastGroup>>,
     buffer_capacity: usize,
 }
 
 impl BroadcastPool {
-    pub fn new(store: Arc<GcsStore>, redis_config: RedisConfig) -> Self {
+    pub fn new(store: Arc<GcsStore>, redis_config: Option<RedisConfig>) -> Self {
         Self {
             store,
             redis_config,
@@ -28,7 +28,7 @@ impl BroadcastPool {
 
     pub fn with_buffer_capacity(
         store: Arc<GcsStore>,
-        redis_config: RedisConfig,
+        redis_config: Option<RedisConfig>,
         buffer_capacity: usize,
     ) -> Self {
         Self {
@@ -84,7 +84,7 @@ impl BroadcastPool {
                         BroadcastConfig {
                             storage_enabled: true,
                             doc_name: Some(doc_id.to_string()),
-                            redis_config: Some(self.redis_config.clone()),
+                            redis_config: self.redis_config.clone(),
                         },
                     )
                     .await,
