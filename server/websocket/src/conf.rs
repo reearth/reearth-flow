@@ -17,7 +17,6 @@ const DEFAULT_AUTH_URL: &str = "http://localhost:8080";
 const DEFAULT_APP_ENV: &str = "development";
 const DEFAULT_ORIGINS: &str = "http://localhost:3000";
 const DEFAULT_WS_PORT: &str = "8000";
-const DEFAULT_GRPC_PORT: &str = "50051";
 
 #[derive(Debug, Error)]
 pub enum ConfigError {
@@ -46,7 +45,6 @@ pub struct Config {
     pub auth: AuthConfig,
     pub app: AppConfig,
     pub ws_port: String,
-    pub grpc_port: String,
 }
 
 impl Config {
@@ -107,7 +105,6 @@ impl Config {
         info!("GCS: {:?}", config.gcs);
         info!("App: {:?}", config.app);
         info!("WebSocket Port: {}", config.ws_port);
-        info!("gRPC Port: {}", config.grpc_port);
         #[cfg(feature = "auth")]
         info!("Auth: {:?}", config.auth);
 
@@ -213,9 +210,6 @@ impl ConfigBuilder {
                     .unwrap_or_else(|| DEFAULT_ORIGINS.to_string()),
             },
             ws_port: self.ws_port.unwrap_or_else(|| DEFAULT_WS_PORT.to_string()),
-            grpc_port: self
-                .grpc_port
-                .unwrap_or_else(|| DEFAULT_GRPC_PORT.to_string()),
         }
     }
 }
