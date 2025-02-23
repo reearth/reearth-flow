@@ -280,7 +280,7 @@ impl Stream for OpendalReader {
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.inner
             .try_poll_next_unpin(cx)
-            .map(|x| x.map(|x| x.map(Bytes::from)))
+            .map(|x| x)
             .map_err(|e| object_store::Error::Generic {
                 store: "IoError",
                 source: Box::new(e),

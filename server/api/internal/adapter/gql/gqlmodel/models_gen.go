@@ -51,6 +51,14 @@ type AssetConnection struct {
 	TotalCount int       `json:"totalCount"`
 }
 
+type CancelJobInput struct {
+	JobID ID `json:"jobId"`
+}
+
+type CancelJobPayload struct {
+	Job *Job `json:"job,omitempty"`
+}
+
 type CreateAssetInput struct {
 	WorkspaceID ID             `json:"workspaceId"`
 	File        graphql.Upload `json:"file"`
@@ -194,6 +202,8 @@ type Job struct {
 	Deployment   *Deployment `json:"deployment,omitempty"`
 	DeploymentID ID          `json:"deploymentId"`
 	ID           ID          `json:"id"`
+	LogsURL      *string     `json:"logsURL,omitempty"`
+	OutputURLs   []string    `json:"outputURLs,omitempty"`
 	StartedAt    time.Time   `json:"startedAt"`
 	Status       JobStatus   `json:"status"`
 	Workspace    *Workspace  `json:"workspace,omitempty"`

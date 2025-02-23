@@ -19,15 +19,16 @@ import (
 )
 
 type BatchConfig struct {
-	BinaryPath     string
-	BootDiskSizeGB int
-	BootDiskType   string
-	ImageURI       string
-	MachineType    string
-	ProjectID      string
-	Region         string
-	SAEmail        string
-	TaskCount      int
+	AllowedLocations []string
+	BinaryPath       string
+	BootDiskSizeGB   int
+	BootDiskType     string
+	ImageURI         string
+	MachineType      string
+	ProjectID        string
+	Region           string
+	SAEmail          string
+	TaskCount        int
 }
 
 type BatchClient interface {
@@ -162,6 +163,12 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		},
 	}
 	log.Debugfc(ctx, "gcpbatch: configured allocation policy with service account=%s", b.config.SAEmail)
+
+	if len(b.config.AllowedLocations) > 0 {
+		allocationPolicy.Location = &batchpb.AllocationPolicy_LocationPolicy{
+			AllowedLocations: b.config.AllowedLocations,
+		}
+	}
 
 	labels := map[string]string{
 		"project_id":  projectID.String(),

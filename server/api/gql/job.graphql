@@ -3,6 +3,8 @@ type Job implements Node {
   deployment: Deployment
   deploymentId: ID!
   id: ID!
+  logsURL: String
+  outputURLs: [String!]
   startedAt: DateTime!
   status: JobStatus!
   workspace: Workspace
@@ -14,6 +16,16 @@ enum JobStatus {
   RUNNING
   COMPLETED
   FAILED
+}
+
+# InputType
+input CancelJobInput {
+  jobId: ID!
+}
+
+# Payloads
+type CancelJobPayload {
+  job: Job
 }
 
 # Connection
@@ -35,4 +47,8 @@ extend type Subscription {
 extend type Query {
   jobs(workspaceId: ID!, pagination: PageBasedPagination!): JobConnection!
   job(id: ID!): Job
+}
+
+extend type Mutation {
+  cancelJob(input: CancelJobInput!): CancelJobPayload!
 }
