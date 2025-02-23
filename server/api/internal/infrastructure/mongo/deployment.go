@@ -2,6 +2,8 @@ package mongo
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -179,14 +181,46 @@ func (r *Deployment) Create(ctx context.Context, param interfaces.CreateDeployme
 		Workspace(param.Workspace).
 		Project(param.Project).
 		Description(param.Description).
-		WorkflowURL(param.Workflow.Path).
-		MustBuild()
+		WorkflowURL(param.Workflow.Path)
 
-	if err := r.Save(ctx, d); err != nil {
+	if param.Project != nil {
+		head, _ := r.FindHead(ctx, param.Workspace, param.Project)
+
+		d = d.IsHead(true)
+		if head != nil {
+			currentHeadID := head.ID()
+			d = d.HeadID(&currentHeadID)
+			d = d.Version(incrementVersion(head.Version()))
+
+			head.SetIsHead(false)
+			if err := r.Save(ctx, head); err != nil {
+				return nil, err
+			}
+		} else {
+			d = d.Version("v1")
+		}
+	} else {
+		d = d.Version("v0")
+		d = d.IsHead(false)
+	}
+
+	dep := d.MustBuild()
+	if err := r.Save(ctx, dep); err != nil {
 		return nil, err
 	}
 
-	return d, nil
+	return dep, nil
+}
+
+func incrementVersion(version string) string {
+	if len(version) < 2 || version[0] != 'v' {
+		return "v1"
+	}
+	num := version[1:]
+	if n, err := strconv.Atoi(num); err == nil {
+		return fmt.Sprintf("v%d", n+1)
+	}
+	return "v1"
 }
 
 func (r *Deployment) Update(ctx context.Context, param interfaces.UpdateDeploymentParam) (*deployment.Deployment, error) {
