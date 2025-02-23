@@ -3,7 +3,7 @@ on:
   workflow_call:
 env:
   GO_VERSION: "1.22"
-  RUST_VERSION: "1.75"
+  RUST_VERSION: "1.85"
 
 jobs:
   ci-api-lint:
