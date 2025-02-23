@@ -51,17 +51,15 @@ jobs:
           cd ${{ github.workspace }}/server/websocket
           pwd
           echo "Building websocket library..."
-          cargo build --release --verbose
+          cargo build --release --target-dir ../target --verbose
           echo "Build completed, checking target directory..."
-          ls -la
+          ls -la ../target
           echo "Checking release directory..."
-          ls -la target/
-          echo "Checking release/deps directory..."
-          ls -la target/release/
-          mkdir -p ${{ github.workspace }}/server/target/release
-          cp target/release/libwebsocket.{so,rlib} ${{ github.workspace }}/server/target/release/ || cp target/release/libwebsocket.{dylib,rlib} ${{ github.workspace }}/server/target/release/
+          ls -la ../target/release/
+          mkdir -p ../target/release
+          cp ../target/release/libwebsocket.{so,rlib} ../target/release/ || cp ../target/release/libwebsocket.{dylib,rlib} ../target/release/
           echo "Checking copied files..."
-          ls -la ${{ github.workspace }}/server/target/release/
+          ls -la ../target/release/
       - name: set up Go
         uses: actions/setup-go@v5
         with:
