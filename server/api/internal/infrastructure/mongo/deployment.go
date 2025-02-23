@@ -129,40 +129,41 @@ func (r *DeploymentAdapter) FindByWorkspace(ctx context.Context, id accountdomai
 	return c.Result, interfaces.NewPageBasedInfo(total, 1, len(c.Result)), nil
 }
 
-func (a *DeploymentAdapter) FindByProject(ctx context.Context, pid id.ProjectID) (*deployment.Deployment, error) {
-	return a.findOne(ctx, bson.M{
-		"project": pid.String(),
+func (r *Deployment) FindByProject(ctx context.Context, pid id.ProjectID) (*deployment.Deployment, error) {
+	return r.findOne(ctx, bson.M{
+		"projectid": pid.String(),
+		"ishead":    true,
 	}, true)
 }
 
 func (r *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID, version string) (*deployment.Deployment, error) {
 	filter := bson.M{
-		"workspace": wsID.String(),
-		"version":   version,
+		"workspaceid": wsID.String(),
+		"version":     version,
 	}
 	if pID != nil {
-		filter["project"] = pID.String()
+		filter["projectid"] = pID.String()
 	}
 	return r.findOne(ctx, filter, true)
 }
 
 func (r *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID) (*deployment.Deployment, error) {
 	filter := bson.M{
-		"workspace": wsID.String(),
-		"isHead":    true,
+		"workspaceid": wsID.String(),
+		"ishead":      true,
 	}
 	if pID != nil {
-		filter["project"] = pID.String()
+		filter["projectid"] = pID.String()
 	}
 	return r.findOne(ctx, filter, true)
 }
 
 func (r *Deployment) FindVersions(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID) ([]*deployment.Deployment, error) {
 	filter := bson.M{
-		"workspace": wsID.String(),
+		"workspaceid": wsID.String(),
 	}
 	if pID != nil {
-		filter["project"] = pID.String()
+		filter["projectid"] = pID.String()
 	}
 
 	c := mongodoc.NewDeploymentConsumer(r.f.Readable)
