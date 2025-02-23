@@ -48,12 +48,20 @@ jobs:
           sudo apt-get install -y protobuf-compiler
       - name: Build WebSocket Library
         run: |
-          cd server/websocket
-          cargo build --release
+          cd ${{ github.workspace }}/server/websocket
+          pwd
+          echo "Building websocket library..."
+          cargo build --release --verbose
+          echo "Build completed, checking target directory..."
+          ls -la
+          echo "Checking release directory..."
+          ls -la target/
+          echo "Checking release/deps directory..."
           ls -la target/release/
-          mkdir -p ../target/release
-          cp target/release/libwebsocket.{so,rlib} ../target/release/ || cp target/release/libwebsocket.{dylib,rlib} ../target/release/
-          ls -la ../target/release/
+          mkdir -p ${{ github.workspace }}/server/target/release
+          cp target/release/libwebsocket.{so,rlib} ${{ github.workspace }}/server/target/release/ || cp target/release/libwebsocket.{dylib,rlib} ${{ github.workspace }}/server/target/release/
+          echo "Checking copied files..."
+          ls -la ${{ github.workspace }}/server/target/release/
       - name: set up Go
         uses: actions/setup-go@v5
         with:
