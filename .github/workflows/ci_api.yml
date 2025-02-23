@@ -64,9 +64,11 @@ jobs:
       - name: test
         run: |
           ls -la ${{ github.workspace }}/server/target/release/
+          export LD_LIBRARY_PATH=${{ github.workspace }}/server/target/release:$LD_LIBRARY_PATH
           go test ./... -v -race -coverprofile=coverage.txt -covermode=atomic -timeout 10m
         env:
           REEARTH_FLOW_DB: mongodb://localhost
+          LD_LIBRARY_PATH: ${{ github.workspace }}/server/target/release
         working-directory: server/api
       - name: Send coverage report
         uses: codecov/codecov-action@v2

@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::ffi::{c_char, CStr, CString};
 use std::os::raw::c_int;
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::{debug, info};
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
@@ -45,7 +45,7 @@ fn create_pool(gcs_config: GcsConfig, redis_config: RedisConfig) -> Option<Arc<B
             Arc::new(store)
         }
         Err(e) => {
-            error!("Failed to create GCS store: {}", e);
+            debug!("Failed to create GCS store: {}", e);
             return None;
         }
     };
@@ -106,7 +106,7 @@ pub unsafe extern "C" fn get_latest_document(
                 s.to_string()
             }
             Err(e) => {
-                error!("FFI: Failed to parse doc_id: {}", e);
+                debug!("FFI: Failed to parse doc_id: {}", e);
                 return std::ptr::null_mut();
             }
         }
@@ -116,19 +116,19 @@ pub unsafe extern "C" fn get_latest_document(
         match CStr::from_ptr(config_json)
             .to_str()
             .map_err(|e| {
-                error!("FFI: UTF-8 error in config: {}", e);
+                debug!("FFI: UTF-8 error in config: {}", e);
                 "UTF-8 error"
             })
             .and_then(|s| {
                 info!("FFI: Received config: {}", s);
                 serde_json::from_str(s).map_err(|e| {
-                    error!("FFI: JSON error in config: {}", e);
+                    debug!("FFI: JSON error in config: {}", e);
                     "JSON error"
                 })
             }) {
             Ok(c) => c,
             Err(e) => {
-                error!("FFI: Config error: {}", e);
+                debug!("FFI: Config error: {}", e);
                 return std::ptr::null_mut();
             }
         }
@@ -150,7 +150,7 @@ pub unsafe extern "C" fn get_latest_document(
             p
         }
         None => {
-            error!("FFI: Failed to create pool");
+            debug!("FFI: Failed to create pool");
             return std::ptr::null_mut();
         }
     };
@@ -180,7 +180,7 @@ pub unsafe extern "C" fn get_latest_document(
                         0
                     }
                     Err(e) => {
-                        error!("FFI: Failed to get updates: {}", e);
+                        debug!("FFI: Failed to get updates: {}", e);
                         0
                     }
                 };
@@ -197,17 +197,17 @@ pub unsafe extern "C" fn get_latest_document(
                         Some(json)
                     }
                     Err(e) => {
-                        error!("FFI: Failed to serialize response: {}", e);
+                        debug!("FFI: Failed to serialize response: {}", e);
                         None
                     }
                 }
             }
             Ok(false) => {
-                error!("FFI: Document not found");
+                debug!("FFI: Document not found");
                 None
             }
             Err(e) => {
-                error!("FFI: Failed to load document: {}", e);
+                debug!("FFI: Failed to load document: {}", e);
                 None
             }
         }
@@ -220,12 +220,12 @@ pub unsafe extern "C" fn get_latest_document(
                 c_str.into_raw()
             }
             Err(e) => {
-                error!("FFI: Failed to create C string: {}", e);
+                debug!("FFI: Failed to create C string: {}", e);
                 std::ptr::null_mut()
             }
         },
         None => {
-            error!("FFI: No result to return");
+            debug!("FFI: No result to return");
             std::ptr::null_mut()
         }
     }
