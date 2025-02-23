@@ -56,10 +56,6 @@ jobs:
           ls -la ../target
           echo "Checking release directory..."
           ls -la ../target/release/
-          mkdir -p ../target/release
-          cp ../target/release/libwebsocket.{so,rlib} ../target/release/ || cp ../target/release/libwebsocket.{dylib,rlib} ../target/release/
-          echo "Checking copied files..."
-          ls -la ../target/release/
       - name: set up Go
         uses: actions/setup-go@v5
         with:
