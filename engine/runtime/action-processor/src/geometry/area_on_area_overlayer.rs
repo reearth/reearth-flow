@@ -230,12 +230,13 @@ impl AreaOnAreaOverlayer {
 
         let overlay_graph = OverlayGraph::bulk_load(&polygons_incoming);
 
+        // all (devided) polygons to output
         let midpolygons = (0..polygons_incoming.len())
             .into_par_iter()
             .map(|i| {
                 let mut polygon_target = polygons_incoming[i].clone();
 
-                // cut off the target polygon by above overlayed polygons
+                // cut off the target polygon by upper polygons
                 for j in overlay_graph.overlayed_iter(i).copied() {
                     if i < j {
                         polygon_target = polygon_target.difference(&polygons_incoming[j]);
@@ -247,7 +248,7 @@ impl AreaOnAreaOverlayer {
                     parents: vec![i],
                 }];
 
-                // divide the target polygon by below overlayed polygons
+                // divide the target polygon by lower polygons
                 for j in overlay_graph.overlayed_iter(i).copied() {
                     if i > j {
                         let mut new_queue = Vec::new();
