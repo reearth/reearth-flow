@@ -40,9 +40,6 @@ func (r *Workflow) FindByID(_ context.Context, wfid id.WorkflowID) (*workflow.Wo
 		return d, nil
 	}
 
-	if ok && r.f.CanRead(d.Workspace()) {
-		return d, nil
-	}
 	return nil, rerror.ErrNotFound
 }
 
