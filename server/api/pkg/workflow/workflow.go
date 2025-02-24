@@ -5,8 +5,8 @@ type Workflow struct {
 	project   ProjectID
 	workspace WorkspaceID
 	// Meta      *string
-	url       string
-	graph     GraphID
+	url   string
+	graph GraphID
 }
 
 func NewWorkflow(id ID, project ProjectID, workspace WorkspaceID, url string, graph GraphID) *Workflow {
