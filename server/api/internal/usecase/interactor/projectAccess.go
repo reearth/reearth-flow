@@ -143,6 +143,11 @@ func (i *ProjectAccess) Unshare(ctx context.Context, projectID id.ProjectID) (er
 		}
 	}()
 
+	prj, err := i.projectRepo.FindByID(ctx, projectID)
+	if err != nil {
+		return err
+	}
+
 	pa, err := i.projectAccessRepo.FindByProjectID(ctx, projectID)
 	if err != nil {
 		return fmt.Errorf("failed to find project access: %w", err)
