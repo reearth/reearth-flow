@@ -23,6 +23,8 @@ type BatchConfig struct {
 	BinaryPath       string
 	BootDiskSizeGB   int
 	BootDiskType     string
+	ComputeCpuMilli  int
+	ComputeMemoryMib int
 	ImageURI         string
 	MachineType      string
 	ProjectID        string
@@ -117,7 +119,13 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		AlwaysRun:        false,
 	}
 
+	computeResource := &batchpb.ComputeResource{
+		CpuMilli:  int64(b.config.ComputeCpuMilli),
+		MemoryMib: int64(b.config.ComputeMemoryMib),
+	}
+
 	taskSpec := &batchpb.TaskSpec{
+		ComputeResource: computeResource,
 		Runnables: []*batchpb.Runnable{
 			runnable,
 		},

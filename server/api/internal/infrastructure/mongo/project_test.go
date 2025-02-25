@@ -26,8 +26,8 @@ func TestProject_FindByIDs(t *testing.T) {
 	wid := accountdomain.NewWorkspaceID()
 	wid2 := accountdomain.NewWorkspaceID()
 	_, _ = c.Collection("project").InsertMany(ctx, []any{
-		bson.M{"id": pid.String(), "workspace": wid.String()},
-		bson.M{"id": pid2.String(), "workspace": wid2.String()},
+		bson.M{"id": pid.String(), "workspaceid": wid.String()},
+		bson.M{"id": pid2.String(), "workspaceid": wid2.String()},
 	})
 
 	r := NewProject(mongox.NewClientWithDatabase(c))
@@ -52,10 +52,10 @@ func TestProject_CountByWorkspace(t *testing.T) {
 	wid := accountdomain.NewWorkspaceID()
 	wid2 := accountdomain.NewWorkspaceID()
 	_, _ = c.Collection("project").InsertMany(ctx, []any{
-		bson.M{"id": "a", "workspace": wid.String(), "publishmentstatus": "public"},
-		bson.M{"id": "b", "workspace": wid.String(), "publishmentstatus": "limited"},
-		bson.M{"id": "c", "workspace": wid.String()},
-		bson.M{"id": "d", "workspace": "x", "publishmentstatus": "public"},
+		bson.M{"id": "a", "workspaceid": wid.String(), "publishmentstatus": "public"},
+		bson.M{"id": "b", "workspaceid": wid.String(), "publishmentstatus": "limited"},
+		bson.M{"id": "c", "workspaceid": wid.String()},
+		bson.M{"id": "d", "workspaceid": "x", "publishmentstatus": "public"},
 	})
 
 	r := NewProject(mongox.NewClientWithDatabase(c))
@@ -77,10 +77,10 @@ func TestProject_CountPublicByWorkspace(t *testing.T) {
 	wid := accountdomain.NewWorkspaceID()
 	wid2 := accountdomain.NewWorkspaceID()
 	_, _ = c.Collection("project").InsertMany(ctx, []any{
-		bson.M{"id": "a", "workspace": wid.String(), "publishmentstatus": "public"},
-		bson.M{"id": "b", "workspace": wid.String(), "publishmentstatus": "limited"},
-		bson.M{"id": "c", "workspace": wid.String()},
-		bson.M{"id": "d", "workspace": "x", "publishmentstatus": "public"},
+		bson.M{"id": "a", "workspaceid": wid.String(), "publishmentstatus": "public"},
+		bson.M{"id": "b", "workspaceid": wid.String(), "publishmentstatus": "limited"},
+		bson.M{"id": "c", "workspaceid": wid.String()},
+		bson.M{"id": "d", "workspaceid": "x", "publishmentstatus": "public"},
 	})
 
 	r := NewProject(mongox.NewClientWithDatabase(c))

@@ -12,6 +12,7 @@ import (
 	mongorepo "github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/internal/usecase/websocket"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmongo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
@@ -25,7 +26,13 @@ import (
 
 const databaseName = "reearth-flow"
 
-func initReposAndGateways(ctx context.Context, conf *config.Config, debug bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
+func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
+	// Initialize document package
+	websocket.Init(
+		conf.WebsocketGCSBucket,
+		conf.WebsocketGCSEndpoint,
+	)
+
 	gateways := &gateway.Container{}
 	acGateways := &accountgateway.Container{}
 
@@ -120,6 +127,16 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		log.Fatalf("invalid boot disk size: %v", err)
 	}
 
+	computeCpuMilli, err := strconv.Atoi(conf.Worker_ComputeCpuMilli)
+	if err != nil {
+		log.Fatalf("invalid boot disk size: %v", err)
+	}
+
+	computeMemoryMib, err := strconv.Atoi(conf.Worker_ComputeMemoryMib)
+	if err != nil {
+		log.Fatalf("invalid task count: %v", err)
+	}
+
 	taskCount, err := strconv.Atoi(conf.Worker_TaskCount)
 	if err != nil {
 		log.Fatalf("invalid task count: %v", err)
@@ -130,6 +147,8 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		BinaryPath:       conf.Worker_BinaryPath,
 		BootDiskSizeGB:   bootDiskSize,
 		BootDiskType:     conf.Worker_BootDiskType,
+		ComputeCpuMilli:  computeCpuMilli,
+		ComputeMemoryMib: computeMemoryMib,
 		ImageURI:         conf.Worker_ImageURL,
 		MachineType:      conf.Worker_MachineType,
 		ProjectID:        conf.GCPProject,

@@ -1,0 +1,60 @@
+= Y-Websocket Server
+:toc: left
+:sectnums:
+:source-highlighter: highlight.js
+
+A Rust-based Y-WebSocket server implementation for collaborative document editing.
+
+== Features
+
+* WebSocket server implementation
+* Y-Protocol support
+* Document update broadcasting
+* Local persistent storage
+* Multi-client concurrent connections
+
+== Quick Start
+
+=== Prerequisites
+
+* Rust 1.70+
+* Cargo
+
+=== Server Installation
+
+[source,bash]
+----
+brew install protobuf
+docker run -d --name fake-gcs-server -p 4443:4443 fsouza/fake-gcs-server -scheme http
+git clone <repository-url>
+cd <project-directory>
+cargo build --release
+----
+
+=== Running the Server
+
+[source,bash]
+----
+
+sh build.sh
+cd output
+sh run.sh
+----
+
+By default, the server will start at `ws://127.0.0.1:8000`.
+
+== Project Structure
+
+[source]
+----
+
+.
+├── src/
+│   ├── broadcast.rs    # Broadcasting implementation
+│   ├── conn.rs         # Connection management
+│   ├── ws.rs          # WebSocket handling
+│   ├── storage/       # Storage module
+│   └── lib.rs         # Core library implementation
+├── examples/          # Example code
+└── Cargo.toml         # Project configuration
+----
