@@ -61,9 +61,9 @@ impl GcsStore {
         config: GcsConfig,
     ) -> Result<Self, google_cloud_storage::http::Error> {
         let mut client_config = ClientConfig::default().anonymous();
-        client_config.storage_endpoint = config
-            .endpoint
-            .unwrap_or_else(|| "http://localhost:4443".to_string());
+        if let Some(endpoint) = config.endpoint {
+            client_config.storage_endpoint = endpoint;
+        }
 
         let client = Client::new(client_config);
 
