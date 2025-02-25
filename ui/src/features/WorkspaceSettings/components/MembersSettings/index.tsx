@@ -92,13 +92,6 @@ const MembersSettings: React.FC = () => {
       role,
     );
     if (!workspace) {
-      toast({
-        title: t("Member's Role Could Not Be Updated"),
-        description: t(
-          "There was an error when trying to update the members persmissons.",
-        ),
-        variant: "warning",
-      });
       return;
     }
   };
@@ -110,11 +103,6 @@ const MembersSettings: React.FC = () => {
       userId,
     );
     if (!workspace) {
-      toast({
-        title: t("Member Could Not Be Removed"),
-        description: t("There was an error when trying to remove the member."),
-        variant: "warning",
-      });
       return;
     }
   };
