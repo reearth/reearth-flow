@@ -60,7 +60,7 @@ RUN apk add --no-cache \
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /reearth-flow/reearth-flow /reearth-flow/reearth-flow
 COPY --from=build /reearth-flow/server/target/release/libwebsocket.so /reearth-flow/target/release/
-COPY ui/ /reearth-flow/ui/
+COPY ui* /reearth-flow/ui/
 
 WORKDIR /reearth-flow
 

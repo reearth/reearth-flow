@@ -43,7 +43,7 @@ jobs:
       - name: Build Websocket
         run: |
           cd server/websocket
-          cargo build --release --features gcs-storage
+          cargo build --release
 
       - name: Create distribution directory
         run: |
