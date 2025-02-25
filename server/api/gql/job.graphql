@@ -12,10 +12,11 @@ type Job implements Node {
 }
 
 enum JobStatus {
-  PENDING
-  RUNNING
+  CANCELLED
   COMPLETED
   FAILED
+  PENDING
+  RUNNING
 }
 
 # InputType
