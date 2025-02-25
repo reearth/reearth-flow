@@ -8,7 +8,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@flow/components";
-import { toast } from "@flow/features/NotificationSystem/useToast";
 import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
@@ -73,11 +72,6 @@ const MembersSettings: React.FC = () => {
     );
 
     if (!workspace) {
-      toast({
-        title: t("Member Could Not Be Added"),
-        description: t("There was an error when adding a new member"),
-        variant: "warning",
-      });
       return;
     }
     setEmail("");
