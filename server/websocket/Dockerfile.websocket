@@ -15,7 +15,7 @@ RUN cargo build --release
 FROM gcr.io/distroless/cc-debian12
 
 COPY --from=builder /usr/src/app/target/release/websocket /usr/local/bin/websocket
-COPY .env.docker /usr/local/bin/.env
+# COPY .env.docker /usr/local/bin/.env
 
 WORKDIR /usr/local/bin
 EXPOSE 8000
