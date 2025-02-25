@@ -13,9 +13,9 @@ export type Log = {
   workflowId: string;
   jobId: string;
   nodeId?: string;
-  ts: string;
-  level: LogLevel;
-  msg: string;
+  timeStamp: string;
+  status: LogLevel;
+  message: string;
 };
 
 export type GetLogs = {

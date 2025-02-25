@@ -9,15 +9,15 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ data }) => {
   const props = {
     columns: [
       {
-        accessorKey: "ts",
+        accessorKey: "timeStamp",
         header: "Timestamp",
       },
       {
-        accessorKey: "level",
+        accessorKey: "status",
         header: "Status",
       },
       {
-        accessorKey: "msg",
+        accessorKey: "message",
         header: "message",
       },
     ],

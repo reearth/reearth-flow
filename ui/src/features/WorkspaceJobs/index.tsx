@@ -28,6 +28,7 @@ const JobsManager: React.FC = () => {
     totalPages,
     currentOrder,
     setCurrentOrder,
+    handleCancelJob,
   } = useHooks();
 
   const columns: ColumnDef<Job>[] = [
@@ -56,7 +57,7 @@ const JobsManager: React.FC = () => {
 
   return selectedJob ? (
     <div className="flex flex-1">
-      <JobDetails selectedJob={selectedJob} />
+      <JobDetails selectedJob={selectedJob} onJobCancel={handleCancelJob} />
     </div>
   ) : (
     <div className="flex h-full flex-1 flex-col">
