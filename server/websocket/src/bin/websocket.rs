@@ -11,7 +11,6 @@ use websocket::auth::AuthService;
 
 #[tokio::main]
 async fn main() {
-    // Initialize tracing
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .with_file(true)
@@ -34,7 +33,6 @@ async fn main() {
         }
     };
 
-    // Ensure bucket exists
     if let Err(e) = ensure_bucket(&store.client, &config.gcs.bucket_name).await {
         error!("Failed to ensure bucket exists: {}", e);
         std::process::exit(1);
@@ -43,7 +41,6 @@ async fn main() {
     let store = Arc::new(store);
     tracing::info!("GCS store initialized");
 
-    // Create broadcast pool
     let pool = Arc::new(BroadcastPool::new(store, Some(config.redis)));
     tracing::info!("Broadcast pool initialized");
 
