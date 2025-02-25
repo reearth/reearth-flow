@@ -89,7 +89,7 @@ const LogsTable = <TData, TValue>({
   };
 
   const handleTimeStampColumnVisibility = () => {
-    const column = table.getColumn("ts");
+    const column = table.getColumn("timeStamp");
 
     column?.toggleVisibility(!column.getIsVisible());
     return;
@@ -97,7 +97,7 @@ const LogsTable = <TData, TValue>({
 
   const handleResetTable = () => {
     setColumnFilters([]);
-    table.getColumn("ts")?.toggleVisibility(true);
+    table.getColumn("timeStamp")?.toggleVisibility(true);
   };
 
   const getStatusValue = useMemo(() => {
@@ -163,9 +163,11 @@ const LogsTable = <TData, TValue>({
           <IconButton
             size="icon"
             variant={
-              table.getColumn("ts")?.getIsVisible() ? "default" : "outline"
+              table.getColumn("timeStamp")?.getIsVisible()
+                ? "default"
+                : "outline"
             }
-            tooltipText={t("Include ts")}
+            tooltipText={t("Include Time Stamp")}
             onClick={handleTimeStampColumnVisibility}
             icon={<ClockIcon />}
           />
