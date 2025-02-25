@@ -2,9 +2,13 @@ use crate::broadcast::group::BroadcastGroup;
 use crate::conn::Connection;
 use axum::extract::ws::{Message, WebSocket};
 use axum::{
-    extract::{Path, Query, State, WebSocketUpgrade},
+    extract::{Path, State, WebSocketUpgrade},
     response::Response,
 };
+
+#[cfg(feature = "auth")]
+use axum::extract::Query;
+
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{Stream, StreamExt};
 use std::pin::Pin;
@@ -12,7 +16,10 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use yrs::sync::Error;
 
-use crate::{pool::BroadcastPool, AppState, AuthQuery};
+use crate::{pool::BroadcastPool, AppState};
+
+#[cfg(feature = "auth")]
+use crate::AuthQuery;
 
 /// Connection Wrapper over a [WebSocket], which implements a Yjs/Yrs awareness and update exchange
 /// protocol.
@@ -126,7 +133,7 @@ impl Stream for WarpStream {
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
     Path(doc_id): Path<String>,
-    Query(query): Query<AuthQuery>,
+    #[cfg(feature = "auth")] Query(query): Query<AuthQuery>,
     State(state): State<Arc<AppState>>,
 ) -> Response {
     let doc_id = normalize_doc_id(&doc_id);
