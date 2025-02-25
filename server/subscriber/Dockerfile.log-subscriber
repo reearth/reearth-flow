@@ -6,7 +6,7 @@ RUN apk add --update --no-cache git ca-certificates build-base
 
 WORKDIR /reearth-flow
 
-COPY go.mod go.sum cmd/reearth-flow-subscriber/main.go /reearth-flow/
+COPY go.mod go.sum cmd/log_subscriber/main.go /reearth-flow/
 RUN go mod download
 
 COPY cmd/ /reearth-flow/cmd/
@@ -18,7 +18,7 @@ RUN CGO_ENABLED=0 go build \
     -ldflags="-X main.version=${VERSION} -s -w -buildid=" \
     -trimpath \
     -o /reearth-flow/reearth-flow-subscriber \
-    ./cmd/reearth-flow-subscriber
+    ./cmd/log_subscriber
 
 
 FROM scratch
