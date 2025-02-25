@@ -11,7 +11,6 @@ use crate::{group::RedisConfig, storage::gcs::GcsConfig};
 const DEFAULT_REDIS_URL: &str = "redis://127.0.0.1:6379";
 const DEFAULT_REDIS_TTL: u64 = 3600;
 const DEFAULT_GCS_BUCKET: &str = "yrs-dev";
-const DEFAULT_GCS_ENDPOINT: &str = "http://localhost:4443";
 #[cfg(feature = "auth")]
 const DEFAULT_AUTH_URL: &str = "http://localhost:8080";
 const DEFAULT_APP_ENV: &str = "development";
@@ -193,9 +192,7 @@ impl ConfigBuilder {
                 bucket_name: self
                     .gcs_bucket
                     .unwrap_or_else(|| DEFAULT_GCS_BUCKET.to_string()),
-                endpoint: self
-                    .gcs_endpoint
-                    .or_else(|| Some(DEFAULT_GCS_ENDPOINT.to_string())),
+                endpoint: self.gcs_endpoint.filter(|e| !e.is_empty()),
             },
             #[cfg(feature = "auth")]
             auth: AuthConfig {
