@@ -127,6 +127,16 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		log.Fatalf("invalid boot disk size: %v", err)
 	}
 
+	computeCpuMilli, err := strconv.Atoi(conf.Worker_ComputeCpuMilli)
+	if err != nil {
+		log.Fatalf("invalid boot disk size: %v", err)
+	}
+
+	computeMemoryMib, err := strconv.Atoi(conf.Worker_ComputeMemoryMib)
+	if err != nil {
+		log.Fatalf("invalid task count: %v", err)
+	}
+
 	taskCount, err := strconv.Atoi(conf.Worker_TaskCount)
 	if err != nil {
 		log.Fatalf("invalid task count: %v", err)
@@ -137,6 +147,8 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		BinaryPath:       conf.Worker_BinaryPath,
 		BootDiskSizeGB:   bootDiskSize,
 		BootDiskType:     conf.Worker_BootDiskType,
+		ComputeCpuMilli:  computeCpuMilli,
+		ComputeMemoryMib: computeMemoryMib,
 		ImageURI:         conf.Worker_ImageURL,
 		MachineType:      conf.Worker_MachineType,
 		ProjectID:        conf.GCPProject,

@@ -23,6 +23,8 @@ type BatchConfig struct {
 	BinaryPath       string
 	BootDiskSizeGB   int
 	BootDiskType     string
+	ComputeCpuMilli  int
+	ComputeMemoryMib int
 	ImageURI         string
 	MachineType      string
 	ProjectID        string
