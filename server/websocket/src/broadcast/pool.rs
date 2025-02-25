@@ -87,7 +87,7 @@ impl BroadcastPool {
                             redis_config: self.redis_config.clone(),
                         },
                     )
-                    .await,
+                    .await?,
                 );
 
                 Ok(entry.insert(group.clone()).clone())

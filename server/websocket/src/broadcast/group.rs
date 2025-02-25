@@ -2,6 +2,8 @@ use crate::storage::kv::DocOps;
 //use crate::storage::sqlite::SqliteStore;
 use crate::storage::gcs::GcsStore;
 use crate::AwarenessRef;
+use anyhow::anyhow;
+use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
 use redis::aio::MultiplexedConnection as RedisConnection;
 use redis::AsyncCommands;
@@ -81,7 +83,7 @@ impl BroadcastGroup {
         self.connections.load(Ordering::Relaxed)
     }
 
-    pub async fn new(awareness: AwarenessRef, buffer_capacity: usize) -> Self {
+    pub async fn new(awareness: AwarenessRef, buffer_capacity: usize) -> Result<Self> {
         let (sender, _receiver) = channel(buffer_capacity);
         let awareness_c = Arc::downgrade(&awareness);
         let mut lock = awareness.write().await;
@@ -106,7 +108,7 @@ impl BroadcastGroup {
                         tracing::error!("Failed to send update to storage channel: {}", e);
                     }
                 })
-                .unwrap()
+                .map_err(|e| anyhow!("Failed to observe document updates: {}", e))?
         };
 
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
@@ -153,7 +155,7 @@ impl BroadcastGroup {
             }
         });
 
-        BroadcastGroup {
+        Ok(BroadcastGroup {
             connections: Arc::new(AtomicUsize::new(0)),
             awareness_ref: awareness,
             awareness_updater,
@@ -165,7 +167,7 @@ impl BroadcastGroup {
             doc_name: None,
             redis_ttl: None,
             storage_rx: Some(storage_rx),
-        }
+        })
     }
 
     pub async fn with_storage(
@@ -173,12 +175,12 @@ impl BroadcastGroup {
         buffer_capacity: usize,
         store: Arc<GcsStore>,
         config: BroadcastConfig,
-    ) -> Self {
+    ) -> Result<Self> {
         if !config.storage_enabled {
             return Self::new(awareness, buffer_capacity).await;
         }
 
-        let mut group = Self::new(awareness, buffer_capacity).await;
+        let mut group = Self::new(awareness, buffer_capacity).await?;
 
         // Set storage-related fields
         let doc_name = config
@@ -226,7 +228,7 @@ impl BroadcastGroup {
             });
         }
 
-        group
+        Ok(group)
     }
 
     async fn init_redis_connection(
