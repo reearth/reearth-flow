@@ -206,10 +206,6 @@
   "Could not find the user": "Impossible de trouver l'utilisateur",
   "Member Could Not Be Added": "",
   "There was an error when adding a new member": "",
-  "Member's Role Could Not Be Updated": "",
-  "There was an error when trying to update the members persmissons.": "",
-  "Member Could Not Be Removed": "",
-  "There was an error when trying to remove the member.": "",
   "Members Settings": "Paramètres des membres",
   "Members": "Membres",
   "Change role": "Changer de rôle",
@@ -275,7 +271,11 @@
   "Member has been successfully added to the workspace.": "Le membre a été ajouté avec succès à l'espace de travail.",
   "Member Removed": "Membre supprimé",
   "Member has been successfully removed from the workspace.": "Le membre a été supprimé avec succès de l'espace de travail.",
+  "Member Could Not Be Removed": "",
+  "There was an error when trying to remove the member.": "",
   "Member's Role updated": "",
   "Member's Role has been successfully updated.": "",
+  "Member's Role Could Not Be Updated": "",
+  "There was an error when trying to update the members persmissons.": "",
   "Reload": "Recharger"
 }

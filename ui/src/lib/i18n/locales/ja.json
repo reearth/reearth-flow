@@ -206,10 +206,6 @@
   "Could not find the user": "ユーザーが見つかりませんでした",
   "Member Could Not Be Added": "メンバーを追加できませんでした",
   "There was an error when adding a new member": " 新しいメンバーを追加する際にエラーが発生しました",
-  "Member's Role Could Not Be Updated": "メンバーの役割を更新できませんでした",
-  "There was an error when trying to update the members persmissons.": "メンバーの権限を更新しようとした際にエラーが発生しました。",
-  "Member Could Not Be Removed": "メンバーを削除できませんでした",
-  "There was an error when trying to remove the member.": "メンバーを削除しようとした際にエラーが発生しました。",
   "Members Settings": "メンバー設定",
   "Members": "メンバー",
   "Change role": "役割を変更",
@@ -275,7 +271,11 @@
   "Member has been successfully added to the workspace.": "メンバーがワークスペースに正常に追加されました。",
   "Member Removed": "メンバー削除",
   "Member has been successfully removed from the workspace.": "メンバーがワークスペースから正常に削除されました。",
+  "Member Could Not Be Removed": "メンバーを削除できませんでした",
+  "There was an error when trying to remove the member.": "メンバーを削除しようとした際にエラーが発生しました。",
   "Member's Role updated": "",
   "Member's Role has been successfully updated.": "",
+  "Member's Role Could Not Be Updated": "メンバーの役割を更新できませんでした",
+  "There was an error when trying to update the members persmissons.": "メンバーの権限を更新しようとした際にエラーが発生しました。",
   "Reload": "リロード"
 }
