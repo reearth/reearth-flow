@@ -1,4 +1,11 @@
-export type JobStatus = "queued" | "running" | "completed" | "failed";
+import { ApiResponse } from "./api";
+
+export type JobStatus =
+  | "queued"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
 
 export type Job = {
   id: string;
@@ -7,4 +14,10 @@ export type Job = {
   status: JobStatus;
   startedAt: string;
   completedAt: string;
+  outputURLS?: string[];
+  logsURL?: string;
 };
+
+export type CancelJob = {
+  job?: Job;
+} & ApiResponse;

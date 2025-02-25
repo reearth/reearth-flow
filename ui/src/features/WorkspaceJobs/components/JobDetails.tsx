@@ -1,9 +1,8 @@
-import { CaretLeft } from "@phosphor-icons/react";
+import { CaretLeft, XCircle } from "@phosphor-icons/react";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button, LoadingSkeleton } from "@flow/components";
-import { config } from "@flow/config";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { LogsConsole } from "@flow/features/Editor/components/BottomPanel/components";
 import { useT } from "@flow/lib/i18n";
@@ -11,9 +10,10 @@ import type { Job, Log } from "@flow/types";
 
 type Props = {
   selectedJob?: Job;
+  onJobCancel?: () => void;
 };
 
-const JobDetails: React.FC<Props> = ({ selectedJob }) => {
+const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
   const t = useT();
   const { navigate } = useRouter();
 
@@ -24,6 +24,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
       }),
     [navigate, selectedJob?.workspaceId],
   );
+
   const [logs, setLogs] = useState<Log[] | null>(null);
   const [isFetching, setIsFetching] = useState<boolean>(false);
   const details: DetailsBoxContent[] | undefined = useMemo(
@@ -55,32 +56,49 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
               name: t("Completed At"),
               value: selectedJob.completedAt || t("N/A"),
             },
+            {
+              id: "logsURL",
+              name: t("Logs URL"),
+              value: selectedJob.logsURL || t("N/A"),
+            },
+            {
+              id: "outputURLS",
+              name: t("Output URLs"),
+              value: Array.isArray(selectedJob.outputURLS)
+                ? selectedJob.outputURLS.join(", ")
+                : selectedJob.outputURLS || t("N/A"),
+            },
           ]
         : undefined,
     [t, selectedJob],
   );
-  // Note: This is only temporary and will be replaced with a proper log fetching mechanism when the API is ready @Billcookie
+
   const getAllLogs = useCallback(async () => {
-    const BASE_URL = config().api;
     if (!selectedJob) return;
     setIsFetching(true);
     try {
-      const response = await fetch(
-        `${BASE_URL}/artifacts/${selectedJob.id}/action-log/all.log`,
-      );
+      const response = await fetch(`${selectedJob.logsURL}`);
+
       const textData = await response.text();
       const logsArray = textData
         .split("\n")
         .filter((line) => line.trim() !== "")
         .map((line) => {
           try {
-            const parsed = JSON.parse(line);
+            const parsedLog = JSON.parse(line);
+            // Clean up the msg field if needed
+            try {
+              parsedLog.msg = JSON.parse(parsedLog.msg);
+            } catch (innerError) {
+              // If additional parsing fails, keep the original msg
+              console.error("Failed to clean msg:", parsedLog.msg, innerError);
+            }
             return {
               workflowId: selectedJob.workspaceId,
               jobId: selectedJob.id,
-              msg: parsed.msg,
-              ts: parsed.ts,
-              level: parsed.level,
+              msg: parsedLog.msg,
+              ts: parsedLog.ts,
+              level: parsedLog.level,
             };
           } catch (error) {
             console.error("Failed to parse log line:", line, error);
@@ -108,6 +126,13 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
           <Button size="icon" variant="ghost" onClick={handleBack}>
             <CaretLeft />
           </Button>
+          {(selectedJob.status === "queued" ||
+            selectedJob.status === "running") && (
+            <Button variant="destructive" size="sm" onClick={onJobCancel}>
+              <XCircle />
+              {t("Cancel Job")}
+            </Button>
+          )}
         </div>
         <div className="w-full border-b" />
         <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
