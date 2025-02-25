@@ -19,12 +19,6 @@ func ToUser(u *user.User) *User {
 	}
 }
 
-func ToUsersFromSimple(users user.SimpleList) []*User {
-	return util.Map(users, func(u *user.Simple) *User {
-		return ToUserFromSimple(u)
-	})
-}
-
 func ToUserFromSimple(u *user.Simple) *User {
 	if u == nil {
 		return nil

@@ -170,20 +170,6 @@ jobs:
       name: ${{ needs.ci-collect-info.outputs.name }}
       sha: ${{ github.sha }}
     secrets: inherit
-  build-and-deploy-subscriber:
-    needs:
-      - ci
-      - ci-subscriber
-      - ci-collect-info
-    uses: ./.github/workflows/build_deploy_subscriber.yml
-    if: ${{ !failure() && needs.ci-subscriber.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
-    with:
-      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
-      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-      name: ${{ needs.ci-collect-info.outputs.name }}
-      sha: ${{ github.sha }}
-    secrets: inherit
   build-and-deploy-websocket:
     needs:
       - ci
