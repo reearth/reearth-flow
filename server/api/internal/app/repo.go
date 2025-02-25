@@ -143,18 +143,21 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 	}
 
 	config := gcpbatch.BatchConfig{
-		AllowedLocations: conf.Worker_AllowedLocations,
-		BinaryPath:       conf.Worker_BinaryPath,
-		BootDiskSizeGB:   bootDiskSize,
-		BootDiskType:     conf.Worker_BootDiskType,
-		ComputeCpuMilli:  computeCpuMilli,
-		ComputeMemoryMib: computeMemoryMib,
-		ImageURI:         conf.Worker_ImageURL,
-		MachineType:      conf.Worker_MachineType,
-		ProjectID:        conf.GCPProject,
-		Region:           conf.GCPRegion,
-		SAEmail:          conf.Worker_BatchSAEmail,
-		TaskCount:        taskCount,
+		AllowedLocations:                conf.Worker_AllowedLocations,
+		BinaryPath:                      conf.Worker_BinaryPath,
+		BootDiskSizeGB:                  bootDiskSize,
+		BootDiskType:                    conf.Worker_BootDiskType,
+		ComputeCpuMilli:                 computeCpuMilli,
+		ComputeMemoryMib:                computeMemoryMib,
+		ImageURI:                        conf.Worker_ImageURL,
+		MachineType:                     conf.Worker_MachineType,
+		PubSubLogStreamTopic:            conf.Worker_PubSubLogStreamTopic,
+		PubSubJobCompleteTopic:          conf.Worker_PubSubJobCompleteTopic,
+		PubSubEdgePassThroughEventTopic: conf.Worker_PubSubEdgePassThroughEventTopic,
+		ProjectID:                       conf.GCPProject,
+		Region:                          conf.GCPRegion,
+		SAEmail:                         conf.Worker_BatchSAEmail,
+		TaskCount:                       taskCount,
 	}
 
 	batchRepo, err = gcpbatch.NewBatch(ctx, config)
