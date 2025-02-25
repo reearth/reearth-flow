@@ -9,6 +9,11 @@ func ToProject(p *project.Project) *Project {
 		return nil
 	}
 
+	var sharedURL *string
+	if p.SharedURL() != nil {
+		sharedURL = p.SharedURL()
+	}
+
 	return &Project{
 		ID:                IDFrom(p.ID()),
 		CreatedAt:         p.CreatedAt(),
@@ -18,6 +23,7 @@ func ToProject(p *project.Project) *Project {
 		BasicAuthPassword: p.BasicAuthPassword(),
 		Name:              p.Name(),
 		Description:       p.Description(),
+		SharedURL:         sharedURL,
 		UpdatedAt:         p.UpdatedAt(),
 		WorkspaceID:       IDFrom(p.Workspace()),
 	}

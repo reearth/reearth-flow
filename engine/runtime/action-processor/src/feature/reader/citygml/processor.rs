@@ -80,11 +80,11 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
             flatten: params.flatten,
         };
         let threads_num = {
-            let size = (num_cpus::get() as f32 / 2f32).trunc() as usize;
+            let size = (num_cpus::get() as f32 / 4_f32).trunc() as usize;
             if size < 1 {
                 1
             } else {
-                std::cmp::min(size, 32) as usize
+                std::cmp::min(size, 4) as usize
             }
         };
         let pool = rayon::ThreadPoolBuilder::new()

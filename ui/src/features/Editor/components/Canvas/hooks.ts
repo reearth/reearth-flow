@@ -2,15 +2,11 @@ import {
   DefaultEdgeOptions,
   EdgeChange,
   NodeChange,
-  useReactFlow,
   XYPosition,
 } from "@xyflow/react";
-import { useEffect } from "react";
 
+import { useEdges, useNodes } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
-
-import useEdges from "./useEdges";
-import useNodes from "./useNodes";
 
 type Props = {
   nodes: Node[];
@@ -50,13 +46,6 @@ export default ({
   onEdgesChange,
   onNodePickerOpen,
 }: Props) => {
-  const { fitView } = useReactFlow();
-
-  // Fit all nodes into view on mount
-  useEffect(() => {
-    fitView({ padding: 0.2 });
-  }, []); // eslint-disable-line
-
   const {
     handleNodesChange,
     handleNodesDelete,
@@ -74,6 +63,7 @@ export default ({
   });
 
   const { handleEdgesChange, handleConnect, handleReconnect } = useEdges({
+    edges,
     onEdgesAdd,
     onEdgesChange,
   });

@@ -120,7 +120,7 @@ func (r *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deplo
 	defer r.lock.Unlock()
 
 	for _, d := range r.data {
-		if d.Project() != nil && *d.Project() == id && r.f.CanRead(d.Workspace()) {
+		if d.Project() != nil && *d.Project() == id && d.IsHead() && r.f.CanRead(d.Workspace()) {
 			return d, nil
 		}
 	}

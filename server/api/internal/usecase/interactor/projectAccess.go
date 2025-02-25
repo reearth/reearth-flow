@@ -100,6 +100,14 @@ func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID, opera
 	if err != nil {
 		return "", err
 	}
+
+	prj.SetSharedURL(&sharingUrl)
+	err = i.projectRepo.Save(ctx, prj)
+	if err != nil {
+		return "", fmt.Errorf("failed to update project with sharing URL: %w", err)
+	}
+
+	tx.Commit()
 	return sharingUrl, nil
 }
 
@@ -142,5 +150,12 @@ func (i *ProjectAccess) Unshare(ctx context.Context, projectID id.ProjectID, ope
 		return err
 	}
 
+	prj.SetSharedURL(nil)
+	err = i.projectRepo.Save(ctx, prj)
+	if err != nil {
+		return fmt.Errorf("failed to update project to remove sharing URL: %w", err)
+	}
+
+	tx.Commit()
 	return nil
 }

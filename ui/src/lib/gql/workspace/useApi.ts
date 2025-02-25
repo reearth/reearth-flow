@@ -105,6 +105,11 @@ export const useWorkspace = () => {
       });
       return { workspace: data, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Member Could Not Be Added"),
+        description: t("There was an error when adding a new member"),
+        variant: "warning",
+      });
       return { workspace: undefined, ...rest };
     }
   };
@@ -125,6 +130,11 @@ export const useWorkspace = () => {
       });
       return { workspace: data, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Member Could Not Be Removed"),
+        description: t("There was an error when trying to remove the member."),
+        variant: "warning",
+      });
       return { workspace: undefined, ...rest };
     }
   };
@@ -137,8 +147,20 @@ export const useWorkspace = () => {
     const { mutateAsync, ...rest } = updateMemberOfWorkspaceMutation;
     try {
       const data = await mutateAsync({ workspaceId, userId, role });
+      toast({
+        title: t("Member's Role updated"),
+        description: t("Member's Role has been successfully updated."),
+        variant: "default",
+      });
       return { workspace: data, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Member's Role Could Not Be Updated"),
+        description: t(
+          "There was an error when trying to update the members persmissons.",
+        ),
+        variant: "warning",
+      });
       return { workspace: undefined, ...rest };
     }
   };

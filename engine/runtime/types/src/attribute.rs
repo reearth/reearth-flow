@@ -215,10 +215,18 @@ impl Display for AttributeValue {
             AttributeValue::Bool(v) => write!(f, "{}", v),
             AttributeValue::Number(v) => write!(f, "{}", v),
             AttributeValue::String(v) => write!(f, "{}", v),
-            AttributeValue::Array(v) => write!(f, "{:?}", v),
+            AttributeValue::Array(v) => {
+                for (i, value) in v.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", value)?;
+                }
+                Ok(())
+            }
             AttributeValue::Bytes(v) => write!(f, "{:?}", v),
             AttributeValue::Map(v) => write!(f, "{:?}", v),
-            AttributeValue::DateTime(v) => write!(f, "{}", v),
+            AttributeValue::DateTime(v) => write!(f, "{}", v.to_rfc3339()),
         }
     }
 }

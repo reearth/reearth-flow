@@ -24,6 +24,7 @@ func TestDeployment(t *testing.T) {
 		Workspace(wsID).
 		Project(&projectID).
 		Version(version).
+		IsHead(true).
 		MustBuild()
 
 	repo := NewDeployment()
