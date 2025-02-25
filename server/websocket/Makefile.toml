@@ -16,4 +16,4 @@ args = ["test", "--all-features"]
 [tasks.format]
 description = "Format the code"
 command = "cargo"
-args = ["fmt", "--all"] 
+args = ["fmt", "--all"]
