@@ -5,8 +5,8 @@ import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { nodeTypes, type Action, type Node, type NodeType } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
-import { baseBatchNode } from "./components/Nodes/BatchNode";
-import { baseNoteNode } from "./components/Nodes/NoteNode";
+import { baseBatchNode } from "./nodeTypes/BatchNode";
+import { baseNoteNode } from "./nodeTypes/NoteNode";
 
 type CreateNodeOptions = {
   position: XYPosition;
@@ -64,18 +64,12 @@ const createActionNode = async (
   };
 };
 
-export const useCreateNode = () => {
-  const createNode = async ({
-    position,
-    type,
-  }: CreateNodeOptions): Promise<Node | null> => {
-    if (nodeTypes.includes(type as NodeType)) {
-      return createSpecializedNode({ position, type });
-    }
-    return createActionNode(type, position);
-  };
-
-  return {
-    createNode,
-  };
+export const buildNewCanvasNode = async ({
+  position,
+  type,
+}: CreateNodeOptions): Promise<Node | null> => {
+  if (nodeTypes.includes(type as NodeType)) {
+    return createSpecializedNode({ position, type });
+  }
+  return createActionNode(type, position);
 };

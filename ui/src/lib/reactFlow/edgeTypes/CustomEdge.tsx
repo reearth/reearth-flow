@@ -2,7 +2,6 @@ import {
   BaseEdge,
   EdgeLabelRenderer,
   EdgeProps,
-  EdgeTypes,
   getBezierPath,
 } from "@xyflow/react";
 import { memo } from "react";
@@ -19,7 +18,8 @@ const CustomEdge: React.FC<CustomEdgeProps> = ({
   targetX,
   targetY,
   targetPosition,
-  ...props
+  markerEnd,
+  // ...props
 }) => {
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
@@ -35,7 +35,7 @@ const CustomEdge: React.FC<CustomEdgeProps> = ({
   const intermediateDataFeatureLength: number | undefined = undefined;
   return (
     <>
-      <BaseEdge id={id} path={edgePath} {...props} />
+      <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} />
       <EdgeLabelRenderer>
         {intermediateDataFeatureLength && (
           <div
@@ -82,7 +82,3 @@ const CustomEdge: React.FC<CustomEdgeProps> = ({
 };
 
 export default memo(CustomEdge);
-
-export const edgeTypes: EdgeTypes = {
-  default: CustomEdge,
-};

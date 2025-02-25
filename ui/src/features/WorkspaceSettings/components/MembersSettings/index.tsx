@@ -1,4 +1,4 @@
-import { CaretDown, User } from "@phosphor-icons/react";
+import { CaretDown, Plus, User } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
@@ -7,12 +7,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Input,
 } from "@flow/components";
 import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Role, UserMember } from "@flow/types";
+
+import { MemberAddDialog } from "./components";
 
 type Filter = "all" | Role;
 
@@ -45,6 +46,8 @@ const MembersSettings: React.FC = () => {
     (m) =>
       "userId" in m && (currentFilter === "all" || m.role === currentFilter),
   ) as UserMember[];
+  const [openMemberAddDialog, setOpenMemberAddDialog] =
+    useState<boolean>(false);
 
   const handleAddMember = async (email: string) => {
     setError(undefined);
@@ -69,14 +72,13 @@ const MembersSettings: React.FC = () => {
     );
 
     if (!workspace) {
-      setError(t("Failed to add member"));
       return;
     }
     setEmail("");
+    setOpenMemberAddDialog(false);
   };
 
   const handleChangeRole = async (userId: string, role: Role) => {
-    setError(undefined);
     if (!currentWorkspace?.id) return;
     const { workspace } = await updateMemberOfWorkspace(
       currentWorkspace.id,
@@ -84,20 +86,17 @@ const MembersSettings: React.FC = () => {
       role,
     );
     if (!workspace) {
-      setError(t("Failed to change role of the member"));
       return;
     }
   };
 
   const handleRemoveMembers = async (userId: string) => {
-    setError(undefined);
     if (!currentWorkspace?.id) return;
     const { workspace } = await removeMemberFromWorkspace(
       currentWorkspace.id,
       userId,
     );
     if (!workspace) {
-      setError(t("Failed to remove member"));
       return;
     }
   };
@@ -106,23 +105,16 @@ const MembersSettings: React.FC = () => {
     <>
       <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
         <p className="text-lg dark:font-extralight">{t("Members Settings")}</p>
+        {!currentWorkspace?.personal && (
+          <Button
+            className="flex gap-2"
+            onClick={() => setOpenMemberAddDialog(true)}>
+            <Plus weight="thin" />
+            <p className="text-xs dark:font-light"> {t("Add Member")}</p>
+          </Button>
+        )}
       </div>
       <div className="mt-4 flex max-w-[900px] flex-col gap-6">
-        <div className="flex items-center justify-between">
-          {/* TODO: This will be a dialog component */}
-          <Input
-            className="w-2/4"
-            placeholder={t("Enter email")}
-            value={email}
-            disabled={currentWorkspace?.personal}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-          <Button
-            onClick={() => handleAddMember(email)}
-            disabled={!email || currentWorkspace?.personal}>
-            {t("Add Member")}
-          </Button>
-        </div>
         <div className="rounded border dark:font-extralight">
           <div className="flex h-[42px] items-center justify-between gap-2 border-b p-2">
             <div className="flex items-center gap-2">
@@ -135,7 +127,6 @@ const MembersSettings: React.FC = () => {
                   <p>{filters.find((f) => f.id === currentFilter)?.title}</p>
                   <CaretDown className="size-3" />
                 </DropdownMenuTrigger>
-
                 <DropdownMenuContent className="min-w-[70px]">
                   {filters.map((filter, idx) => (
                     <DropdownMenuItem
@@ -163,7 +154,6 @@ const MembersSettings: React.FC = () => {
                     <p className="text-sm">{t("Change role")}</p>
                     <CaretDown className="size-2" />
                   </DropdownMenuTrigger>
-
                   <DropdownMenuContent className="min-w-[70px]">
                     {roles.map((role, idx) => (
                       <DropdownMenuItem
@@ -186,8 +176,16 @@ const MembersSettings: React.FC = () => {
             ))}
           </div>
         </div>
-        <p className="text-sm text-red-400">{error}</p>
       </div>
+      {openMemberAddDialog && (
+        <MemberAddDialog
+          setShowDialog={setOpenMemberAddDialog}
+          email={email}
+          setEmail={setEmail}
+          onAddMember={handleAddMember}
+          error={error}
+        />
+      )}
     </>
   );
 };

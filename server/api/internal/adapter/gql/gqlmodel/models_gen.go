@@ -281,6 +281,7 @@ type Project struct {
 	Name              string       `json:"name"`
 	Parameters        []*Parameter `json:"parameters"`
 	UpdatedAt         time.Time    `json:"updatedAt"`
+	SharedURL         *string      `json:"sharedUrl,omitempty"`
 	Version           int          `json:"version"`
 	Workspace         *Workspace   `json:"workspace,omitempty"`
 	WorkspaceID       ID           `json:"workspaceId"`
@@ -297,6 +298,11 @@ type ProjectConnection struct {
 
 type ProjectPayload struct {
 	Project *Project `json:"project"`
+}
+
+type ProjectSharingInfoPayload struct {
+	ProjectID  ID      `json:"projectId"`
+	SharingURL *string `json:"sharingUrl,omitempty"`
 }
 
 type Query struct {
@@ -581,22 +587,24 @@ func (e EventSourceType) MarshalGQL(w io.Writer) {
 type JobStatus string
 
 const (
-	JobStatusPending   JobStatus = "PENDING"
-	JobStatusRunning   JobStatus = "RUNNING"
+	JobStatusCancelled JobStatus = "CANCELLED"
 	JobStatusCompleted JobStatus = "COMPLETED"
 	JobStatusFailed    JobStatus = "FAILED"
+	JobStatusPending   JobStatus = "PENDING"
+	JobStatusRunning   JobStatus = "RUNNING"
 )
 
 var AllJobStatus = []JobStatus{
-	JobStatusPending,
-	JobStatusRunning,
+	JobStatusCancelled,
 	JobStatusCompleted,
 	JobStatusFailed,
+	JobStatusPending,
+	JobStatusRunning,
 }
 
 func (e JobStatus) IsValid() bool {
 	switch e {
-	case JobStatusPending, JobStatusRunning, JobStatusCompleted, JobStatusFailed:
+	case JobStatusCancelled, JobStatusCompleted, JobStatusFailed, JobStatusPending, JobStatusRunning:
 		return true
 	}
 	return false
