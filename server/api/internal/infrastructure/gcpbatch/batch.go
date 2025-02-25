@@ -117,7 +117,13 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		AlwaysRun:        false,
 	}
 
+	computeResource := &batchpb.ComputeResource{
+		CpuMilli:  2000,
+		MemoryMib: 2000,
+	}
+
 	taskSpec := &batchpb.TaskSpec{
+		ComputeResource: computeResource,
 		Runnables: []*batchpb.Runnable{
 			runnable,
 		},

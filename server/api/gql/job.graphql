@@ -9,7 +9,6 @@ type Job implements Node {
   status: JobStatus!
   workspace: Workspace
   workspaceId: ID!
-  
 }
 
 enum JobStatus {
