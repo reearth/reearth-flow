@@ -3,7 +3,6 @@ package repo
 import (
 	"errors"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 	"github.com/reearth/reearthx/authserver"
@@ -62,13 +61,6 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 type WorkspaceFilter struct {
 	Readable accountdomain.WorkspaceIDList
 	Writable accountdomain.WorkspaceIDList
-}
-
-func WorkspaceFilterFromOperator(o *usecase.Operator) WorkspaceFilter {
-	return WorkspaceFilter{
-		Readable: o.AllReadableWorkspaces(),
-		Writable: o.AllWritableWorkspaces(),
-	}
 }
 
 func (f WorkspaceFilter) Clone() WorkspaceFilter {

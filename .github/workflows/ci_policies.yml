@@ -1,0 +1,56 @@
+name: ci-policies
+on:
+  workflow_call:
+env:
+  GO_VERSION: '1.22'
+
+jobs:
+  cerbosCheck:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: set up
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Generate policies
+        run: |
+          set -e
+          if ! make gen-policies; then
+            echo "Policy generation failed"
+            exit 1
+          fi
+        working-directory: server/api
+
+      - name: List generated policy files
+        run: |
+          set -eo pipefail
+          echo "Generated policy files in server/api/policies/:"
+          ls -la policies/ || echo "No files found"
+          if [ -d "policies" ] && [ "$(ls -A policies/)" ]; then
+            echo "Content of policy files:"
+            for file in policies/*.yaml; do
+              echo "--- Content of $file ---"
+              cat "$file"
+            done
+          else
+            echo "No policy files were generated"
+            exit 1
+          fi
+        working-directory: server/api
+
+      - name: Setup Cerbos
+        uses: cerbos/cerbos-setup-action@v1
+        with:
+          version: '0.40.0'
+
+      - name: Validate Cerbos policies
+        run: |
+          set -eo pipefail
+          cerbos compile ./policies
+          echo "Policy validation successful"
+        working-directory: server/api
