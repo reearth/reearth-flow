@@ -63,11 +63,6 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
                 ? selectedJob.outputURLS.join(", ")
                 : selectedJob.outputURLS || t("N/A"),
             },
-            {
-              id: "logsURL",
-              name: t("Logs URL"),
-              value: selectedJob.logsURL || t("N/A"),
-            },
           ]
         : undefined,
     [t, selectedJob],
