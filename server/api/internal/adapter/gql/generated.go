@@ -147,6 +147,7 @@ type ComplexityRoot struct {
 
 	Job struct {
 		CompletedAt  func(childComplexity int) int
+		Debug        func(childComplexity int) int
 		Deployment   func(childComplexity int) int
 		DeploymentID func(childComplexity int) int
 		ID           func(childComplexity int) int
@@ -787,6 +788,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Job.CompletedAt(childComplexity), true
+
+	case "Job.debug":
+		if e.complexity.Job.Debug == nil {
+			break
+		}
+
+		return e.complexity.Job.Debug(childComplexity), true
 
 	case "Job.deployment":
 		if e.complexity.Job.Deployment == nil {
@@ -2448,6 +2456,7 @@ extend type Mutation {
   completedAt: DateTime
   deployment: Deployment
   deploymentId: ID!
+  debug: Boolean
   id: ID!
   logsURL: String
   outputURLs: [String!]
@@ -4523,6 +4532,8 @@ func (ec *executionContext) fieldContext_CancelJobPayload_job(_ context.Context,
 				return ec.fieldContext_Job_deployment(ctx, field)
 			case "deploymentId":
 				return ec.fieldContext_Job_deploymentId(ctx, field)
+			case "debug":
+				return ec.fieldContext_Job_debug(ctx, field)
 			case "id":
 				return ec.fieldContext_Job_id(ctx, field)
 			case "logsURL":
@@ -6098,6 +6109,47 @@ func (ec *executionContext) fieldContext_Job_deploymentId(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Job_debug(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Job_debug(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Debug, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Job_debug(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Job",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Job_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Job_id(ctx, field)
 	if err != nil {
@@ -6456,6 +6508,8 @@ func (ec *executionContext) fieldContext_JobConnection_nodes(_ context.Context, 
 				return ec.fieldContext_Job_deployment(ctx, field)
 			case "deploymentId":
 				return ec.fieldContext_Job_deploymentId(ctx, field)
+			case "debug":
+				return ec.fieldContext_Job_debug(ctx, field)
 			case "id":
 				return ec.fieldContext_Job_id(ctx, field)
 			case "logsURL":
@@ -6618,6 +6672,8 @@ func (ec *executionContext) fieldContext_JobPayload_job(_ context.Context, field
 				return ec.fieldContext_Job_deployment(ctx, field)
 			case "deploymentId":
 				return ec.fieldContext_Job_deploymentId(ctx, field)
+			case "debug":
+				return ec.fieldContext_Job_debug(ctx, field)
 			case "id":
 				return ec.fieldContext_Job_id(ctx, field)
 			case "logsURL":
@@ -11138,6 +11194,8 @@ func (ec *executionContext) fieldContext_Query_job(ctx context.Context, field gr
 				return ec.fieldContext_Job_deployment(ctx, field)
 			case "deploymentId":
 				return ec.fieldContext_Job_deploymentId(ctx, field)
+			case "debug":
+				return ec.fieldContext_Job_debug(ctx, field)
 			case "id":
 				return ec.fieldContext_Job_id(ctx, field)
 			case "logsURL":
@@ -17768,6 +17826,8 @@ func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "debug":
+			out.Values[i] = ec._Job_debug(ctx, field, obj)
 		case "id":
 			out.Values[i] = ec._Job_id(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

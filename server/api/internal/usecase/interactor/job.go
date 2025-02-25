@@ -90,6 +90,11 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID, operator *usecase.Oper
 	}
 
 	tx.Commit()
+
+	if err := i.handleJobCompletion(ctx, j); err != nil {
+		log.Errorfc(ctx, "job: completion handling failed: %v", err)
+	}
+
 	i.subscriptions.Notify(j.ID().String(), j.Status())
 	i.monitor.Remove(j.ID().String())
 
@@ -209,17 +214,29 @@ func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 
 	outputs, err := i.file.ListJobArtifacts(ctx, j.ID().String())
 	if err != nil {
-		return err
+		log.Errorfc(ctx, "failed to list job artifacts: %v", err)
+	} else {
+		j.SetOutputURLs(outputs)
 	}
-
-	j.SetOutputURLs(outputs)
 
 	logURL := i.file.GetJobLogURL(j.ID().String())
 	j.SetLogsURL(logURL)
 
+	tx, err := i.transaction.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := tx.End(ctx); err != nil {
+			log.Errorfc(ctx, "transaction end failed: %v", err)
+		}
+	}()
+
 	if err := i.jobRepo.Save(ctx, j); err != nil {
 		return err
 	}
+
+	tx.Commit()
 
 	if config == nil || config.NotificationURL == nil {
 		return nil
@@ -233,6 +250,8 @@ func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 	status := "failed"
 	if j.Status() == job.StatusCompleted {
 		status = "succeeded"
+	} else if j.Status() == job.StatusCancelled {
+		status = "cancelled"
 	}
 
 	payload := notification.Payload{

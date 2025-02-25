@@ -266,8 +266,11 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
+	debug := false
+
 	j, err := job.New().
 		NewID().
+		Debug(&debug).
 		Deployment(d.ID()).
 		Workspace(d.Workspace()).
 		Status(job.StatusPending).

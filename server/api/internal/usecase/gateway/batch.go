@@ -13,6 +13,7 @@ const (
 	JobStatusUnknown   JobStatus = "UNKNOWN"
 	JobStatusPending   JobStatus = "PENDING"
 	JobStatusRunning   JobStatus = "RUNNING"
+	JobStatusCancelled JobStatus = "CANCELLED"
 	JobStatusCompleted JobStatus = "COMPLETED"
 	JobStatusFailed    JobStatus = "FAILED"
 )

@@ -44,6 +44,9 @@ func ToJob(j *job.Job) *Job {
 	if logsURL := j.LogsURL(); logsURL != "" {
 		job.LogsURL = &logsURL
 	}
+	if debug := j.Debug(); debug != nil {
+		job.Debug = debug
+	}
 
 	return job
 }

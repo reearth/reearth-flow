@@ -37,6 +37,11 @@ func (b *JobBuilder) NewID() *JobBuilder {
 	return b
 }
 
+func (b *JobBuilder) Debug(debug *bool) *JobBuilder {
+	b.j.debug = debug
+	return b
+}
+
 func (b *JobBuilder) Deployment(deployment DeploymentID) *JobBuilder {
 	b.j.deployment = deployment
 	return b
