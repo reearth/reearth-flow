@@ -57,7 +57,7 @@ jobs:
         uses: tj-actions/changed-files@v45
         with:
           files: |
-            websocket/**
+            server/websocket/**
             .github/workflows/ci.yml
             .github/workflows/ci_websocket.yml
             CHANGELOG.md
