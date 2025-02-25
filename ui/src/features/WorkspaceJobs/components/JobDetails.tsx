@@ -7,6 +7,7 @@ import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { LogsConsole } from "@flow/features/Editor/components/BottomPanel/components";
 import { useT } from "@flow/lib/i18n";
 import type { Job, Log } from "@flow/types";
+import { parseJSONL } from "@flow/utils/parseJsonL";
 
 type Props = {
   selectedJob?: Job;
@@ -67,52 +68,35 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
         : undefined,
     [t, selectedJob],
   );
-  // This is temporary, we will replace this with a proper log fetching with graphql
+
   const getAllLogs = useCallback(async () => {
     if (!selectedJob || !selectedJob.logsURL) return;
     setIsFetching(true);
     try {
-      const response = await fetch(`${selectedJob.logsURL}`);
-
+      const response = await fetch(selectedJob.logsURL);
       const textData = await response.text();
-      const logsArray = textData
-        .split("\n")
-        .filter((line) => line.trim() !== "")
-        .map((line) => {
-          try {
-            const parsedLog = JSON.parse(line);
-            if (
-              typeof parsedLog.msg === "string" &&
-              parsedLog.msg.trim() !== ""
-            ) {
-              try {
-                parsedLog.msg = JSON.parse(parsedLog.msg);
-              } catch (innerError) {
-                console.error(
-                  "Failed to clean msg:",
-                  parsedLog.msg,
-                  innerError,
-                );
-              }
-            }
 
-            return {
-              workflowId: selectedJob.workspaceId,
-              jobId: selectedJob.id,
-              message: parsedLog.msg,
-              timeStamp: parsedLog.ts,
-              status: parsedLog.level,
-            };
-          } catch (error) {
-            console.error("Failed to parse log line:", line, error);
-            return null;
+      // Logs are JSONL there we have ensure they are parsed correctly and cleaned to be used
+      const transformLog = (parsedLog: any) => {
+        if (typeof parsedLog.msg === "string" && parsedLog.msg.trim() !== "") {
+          try {
+            parsedLog.msg = JSON.parse(parsedLog.msg);
+          } catch (innerError) {
+            console.error("Failed to clean msg:", parsedLog.msg, innerError);
           }
-        })
-        .filter((log) => log !== null);
+        }
+        return {
+          workflowId: selectedJob.workspaceId,
+          jobId: selectedJob.id,
+          message: parsedLog.msg,
+          timeStamp: parsedLog.ts,
+          status: parsedLog.level,
+        };
+      };
+      const logsArray = parseJSONL(textData, transformLog);
       setLogs(logsArray);
     } catch (error) {
       console.error("Error fetching logs:", error);
-      setIsFetching(false);
     } finally {
       setIsFetching(false);
     }
