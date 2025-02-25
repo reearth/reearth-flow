@@ -2,8 +2,7 @@ use std::sync::Arc;
 
 use tracing::error;
 use websocket::{
-    conf::Config, ensure_bucket, pool::BroadcastPool, server::start_server, storage::gcs::GcsStore,
-    AppState,
+    conf::Config, pool::BroadcastPool, server::start_server, storage::gcs::GcsStore, AppState,
 };
 
 #[cfg(feature = "auth")]
@@ -33,10 +32,10 @@ async fn main() {
         }
     };
 
-    if let Err(e) = ensure_bucket(&store.client, &config.gcs.bucket_name).await {
-        error!("Failed to ensure bucket exists: {}", e);
-        std::process::exit(1);
-    }
+    // if let Err(e) = ensure_bucket(&store.client, &config.gcs.bucket_name).await {
+    //     error!("Failed to ensure bucket exists: {}", e);
+    //     std::process::exit(1);
+    // }
 
     let store = Arc::new(store);
     tracing::info!("GCS store initialized");
