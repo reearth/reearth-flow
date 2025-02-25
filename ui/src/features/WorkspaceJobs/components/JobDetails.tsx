@@ -74,7 +74,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
   );
 
   const getAllLogs = useCallback(async () => {
-    if (!selectedJob) return;
+    if (!selectedJob || !selectedJob.logsURL) return;
     setIsFetching(true);
     try {
       const response = await fetch(`${selectedJob.logsURL}`);
@@ -86,19 +86,27 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
         .map((line) => {
           try {
             const parsedLog = JSON.parse(line);
-            // Clean up the msg field if needed
-            try {
-              parsedLog.msg = JSON.parse(parsedLog.msg);
-            } catch (innerError) {
-              // If additional parsing fails, keep the original msg
-              console.error("Failed to clean msg:", parsedLog.msg, innerError);
+            if (
+              typeof parsedLog.msg === "string" &&
+              parsedLog.msg.trim() !== ""
+            ) {
+              try {
+                parsedLog.msg = JSON.parse(parsedLog.msg);
+              } catch (innerError) {
+                console.error(
+                  "Failed to clean msg:",
+                  parsedLog.msg,
+                  innerError,
+                );
+              }
             }
+
             return {
               workflowId: selectedJob.workspaceId,
               jobId: selectedJob.id,
-              msg: parsedLog.msg,
-              ts: parsedLog.ts,
-              level: parsedLog.level,
+              message: parsedLog.msg,
+              timeStamp: parsedLog.ts,
+              status: parsedLog.level,
             };
           } catch (error) {
             console.error("Failed to parse log line:", line, error);

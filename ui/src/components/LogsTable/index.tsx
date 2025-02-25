@@ -84,7 +84,7 @@ const LogsTable = <TData, TValue>({
     if (getStatusValue === status) {
       setColumnFilters([]);
     } else {
-      setColumnFilters([{ id: "level", value: status }]);
+      setColumnFilters([{ id: "status", value: status }]);
     }
   };
 
@@ -101,7 +101,7 @@ const LogsTable = <TData, TValue>({
   };
 
   const getStatusValue = useMemo(() => {
-    const value = columnFilters.find((id) => id.id === "level");
+    const value = columnFilters.find((id) => id.id === "status");
     return value?.value;
   }, [columnFilters]);
 
