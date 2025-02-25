@@ -1935,6 +1935,24 @@
               "output"
             ],
             "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "xml"
+                ]
+              },
+              "output": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "format",
+              "output"
+            ],
+            "properties": {
               "converter": {
                 "anyOf": [
                   {
@@ -3168,6 +3186,49 @@
       ],
       "categories": [
         "Feature"
+      ]
+    },
+    {
+      "name": "ShapefileWriter",
+      "type": "sink",
+      "description": "Writes features to a Shapefile",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ShapefileWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
       ]
     },
     {

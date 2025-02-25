@@ -84,7 +84,6 @@ impl reearth_flow_runtime::event::EventHandler for EventHandler {
     }
 }
 
-#[allow(dead_code)]
 pub(crate) fn execute(workflow: &str) {
     env::set_var(
         "RAYON_NUM_THREADS",
