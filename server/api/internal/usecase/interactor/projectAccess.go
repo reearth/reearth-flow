@@ -100,7 +100,7 @@ func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID, opera
 	if err != nil {
 		return "", err
 	}
-	
+
 	prj.SetSharedURL(&sharingUrl)
 	err = i.projectRepo.Save(ctx, prj)
 	if err != nil {
@@ -149,7 +149,7 @@ func (i *ProjectAccess) Unshare(ctx context.Context, projectID id.ProjectID, ope
 	if err != nil {
 		return err
 	}
-	
+
 	prj.SetSharedURL(nil)
 	err = i.projectRepo.Save(ctx, prj)
 	if err != nil {

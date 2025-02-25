@@ -11,11 +11,11 @@ import (
 
 type ProjectDocument struct {
 	// Core Identity
-	ID          string
-	Alias       string
-	Name        string
-	Workflow    string
-	Workspace   string
+	ID        string
+	Alias     string
+	Name      string
+	Workflow  string
+	Workspace string
 
 	// Authentication
 	BasicAuthPassword string
@@ -27,7 +27,7 @@ type ProjectDocument struct {
 	ImageURL    string
 
 	// Metadata
-	Archived   bool
+	Archived    bool
 	PublishedAt time.Time
 	UpdatedAt   time.Time
 
@@ -53,7 +53,7 @@ func NewProjectConsumer(workspaces []accountdomain.WorkspaceID) *ProjectConsumer
 
 func NewProject(project *project.Project) (*ProjectDocument, string) {
 	pid := project.ID().String()
-	
+
 	var sharedURL string
 	if project.SharedURL() != nil {
 		sharedURL = *project.SharedURL()
@@ -79,14 +79,14 @@ func (d *ProjectDocument) Model() (*project.Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	tid, err := accountdomain.WorkspaceIDFrom(d.Workspace)
 	if err != nil {
 		return nil, err
 	}
 
 	wid, _ := id.WorkflowIDFrom(d.Workflow)
-	
+
 	var sharedURL *string
 	if d.SharedURL != "" {
 		sharedURL = &d.SharedURL
