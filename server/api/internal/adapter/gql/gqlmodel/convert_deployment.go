@@ -50,6 +50,8 @@ func ToJob(j *job.Job) *Job {
 
 func ToJobStatus(status job.Status) JobStatus {
 	switch status {
+	case job.StatusCancelled:
+		return JobStatusCancelled
 	case job.StatusPending:
 		return JobStatusPending
 	case job.StatusRunning:

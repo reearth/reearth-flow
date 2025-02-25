@@ -2283,10 +2283,11 @@ extend type Mutation {
 }
 
 enum JobStatus {
-  PENDING
-  RUNNING
+  CANCELLED
   COMPLETED
   FAILED
+  PENDING
+  RUNNING
 }
 
 # InputType
