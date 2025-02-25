@@ -227,6 +227,7 @@ type ComplexityRoot struct {
 		IsBasicAuthActive func(childComplexity int) int
 		Name              func(childComplexity int) int
 		Parameters        func(childComplexity int) int
+		SharedURL         func(childComplexity int) int
 		UpdatedAt         func(childComplexity int) int
 		Version           func(childComplexity int) int
 		Workspace         func(childComplexity int) int
@@ -243,6 +244,11 @@ type ComplexityRoot struct {
 		Project func(childComplexity int) int
 	}
 
+	ProjectSharingInfoPayload struct {
+		ProjectID  func(childComplexity int) int
+		SharingURL func(childComplexity int) int
+	}
+
 	Query struct {
 		Assets              func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
 		DeploymentByVersion func(childComplexity int, input gqlmodel.GetByVersionInput) int
@@ -254,6 +260,7 @@ type ComplexityRoot struct {
 		Me                  func(childComplexity int) int
 		Node                func(childComplexity int, id gqlmodel.ID, typeArg gqlmodel.NodeType) int
 		Nodes               func(childComplexity int, id []gqlmodel.ID, typeArg gqlmodel.NodeType) int
+		ProjectSharingInfo  func(childComplexity int, projectID gqlmodel.ID) int
 		Projects            func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) int
 		SearchUser          func(childComplexity int, nameOrEmail string) int
 		SharedProject       func(childComplexity int, token string) int
@@ -417,6 +424,7 @@ type QueryResolver interface {
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
 	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
 	SharedProject(ctx context.Context, token string) (*gqlmodel.SharedProjectPayload, error)
+	ProjectSharingInfo(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectSharingInfoPayload, error)
 	Triggers(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error)
 	Me(ctx context.Context) (*gqlmodel.Me, error)
 	SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error)
@@ -1369,6 +1377,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.Parameters(childComplexity), true
 
+	case "Project.sharedUrl":
+		if e.complexity.Project.SharedURL == nil {
+			break
+		}
+
+		return e.complexity.Project.SharedURL(childComplexity), true
+
 	case "Project.updatedAt":
 		if e.complexity.Project.UpdatedAt == nil {
 			break
@@ -1424,6 +1439,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.ProjectPayload.Project(childComplexity), true
+
+	case "ProjectSharingInfoPayload.projectId":
+		if e.complexity.ProjectSharingInfoPayload.ProjectID == nil {
+			break
+		}
+
+		return e.complexity.ProjectSharingInfoPayload.ProjectID(childComplexity), true
+
+	case "ProjectSharingInfoPayload.sharingUrl":
+		if e.complexity.ProjectSharingInfoPayload.SharingURL == nil {
+			break
+		}
+
+		return e.complexity.ProjectSharingInfoPayload.SharingURL(childComplexity), true
 
 	case "Query.assets":
 		if e.complexity.Query.Assets == nil {
@@ -1539,6 +1568,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Nodes(childComplexity, args["id"].([]gqlmodel.ID), args["type"].(gqlmodel.NodeType)), true
+
+	case "Query.projectSharingInfo":
+		if e.complexity.Query.ProjectSharingInfo == nil {
+			break
+		}
+
+		args, err := ec.field_Query_projectSharingInfo_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.ProjectSharingInfo(childComplexity, args["projectId"].(gqlmodel.ID)), true
 
 	case "Query.projects":
 		if e.complexity.Query.Projects == nil {
@@ -2411,6 +2452,7 @@ extend type Mutation {
   name: String!
   parameters: [Parameter!]!
   updatedAt: DateTime!
+  sharedUrl: String
   version: Int!
   workspace: Workspace
   workspaceId: ID!
@@ -2497,6 +2539,11 @@ input UnshareProjectInput {
 
 # Payload
 
+type ProjectSharingInfoPayload {
+  projectId: ID!
+  sharingUrl: String
+}
+
 type SharedProjectPayload {
   project: Project!
 }
@@ -2514,6 +2561,7 @@ type UnshareProjectPayload {
 
 extend type Query {
   sharedProject(token: String!): SharedProjectPayload!
+  projectSharingInfo(projectId: ID!): ProjectSharingInfoPayload!
 }
 
 extend type Mutation {
@@ -3469,6 +3517,21 @@ func (ec *executionContext) field_Query_nodes_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["type"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_projectSharingInfo_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.ID
+	if tmp, ok := rawArgs["projectId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
 	return args, nil
 }
 
@@ -4864,6 +4927,8 @@ func (ec *executionContext) fieldContext_Deployment_project(_ context.Context, f
 				return ec.fieldContext_Project_parameters(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "sharedUrl":
+				return ec.fieldContext_Project_sharedUrl(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
 			case "workspace":
@@ -9298,6 +9363,47 @@ func (ec *executionContext) fieldContext_Project_updatedAt(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_sharedUrl(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_sharedUrl(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SharedURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Project_sharedUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_version(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Project_version(ctx, field)
 	if err != nil {
@@ -9502,6 +9608,8 @@ func (ec *executionContext) fieldContext_ProjectConnection_nodes(_ context.Conte
 				return ec.fieldContext_Project_parameters(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "sharedUrl":
+				return ec.fieldContext_Project_sharedUrl(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
 			case "workspace":
@@ -9672,6 +9780,8 @@ func (ec *executionContext) fieldContext_ProjectPayload_project(_ context.Contex
 				return ec.fieldContext_Project_parameters(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "sharedUrl":
+				return ec.fieldContext_Project_sharedUrl(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
 			case "workspace":
@@ -9680,6 +9790,91 @@ func (ec *executionContext) fieldContext_ProjectPayload_project(_ context.Contex
 				return ec.fieldContext_Project_workspaceId(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Project", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectSharingInfoPayload_projectId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectSharingInfoPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectSharingInfoPayload_projectId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProjectID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectSharingInfoPayload_projectId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectSharingInfoPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectSharingInfoPayload_sharingUrl(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectSharingInfoPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectSharingInfoPayload_sharingUrl(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SharingURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectSharingInfoPayload_sharingUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectSharingInfoPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -10414,6 +10609,67 @@ func (ec *executionContext) fieldContext_Query_sharedProject(ctx context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_projectSharingInfo(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_projectSharingInfo(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ProjectSharingInfo(rctx, fc.Args["projectId"].(gqlmodel.ID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.ProjectSharingInfoPayload)
+	fc.Result = res
+	return ec.marshalNProjectSharingInfoPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSharingInfoPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_projectSharingInfo(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "projectId":
+				return ec.fieldContext_ProjectSharingInfoPayload_projectId(ctx, field)
+			case "sharingUrl":
+				return ec.fieldContext_ProjectSharingInfoPayload_sharingUrl(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProjectSharingInfoPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_projectSharingInfo_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_triggers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_triggers(ctx, field)
 	if err != nil {
@@ -11066,6 +11322,8 @@ func (ec *executionContext) fieldContext_SharedProjectPayload_project(_ context.
 				return ec.fieldContext_Project_parameters(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "sharedUrl":
+				return ec.fieldContext_Project_sharedUrl(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
 			case "workspace":
@@ -17420,6 +17678,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "sharedUrl":
+			out.Values[i] = ec._Project_sharedUrl(ctx, field, obj)
 		case "version":
 			out.Values[i] = ec._Project_version(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -17551,6 +17811,47 @@ func (ec *executionContext) _ProjectPayload(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var projectSharingInfoPayloadImplementors = []string{"ProjectSharingInfoPayload"}
+
+func (ec *executionContext) _ProjectSharingInfoPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.ProjectSharingInfoPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, projectSharingInfoPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProjectSharingInfoPayload")
+		case "projectId":
+			out.Values[i] = ec._ProjectSharingInfoPayload_projectId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sharingUrl":
+			out.Values[i] = ec._ProjectSharingInfoPayload_sharingUrl(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -17811,6 +18112,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_sharedProject(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "projectSharingInfo":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_projectSharingInfo(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -19800,6 +20123,20 @@ func (ec *executionContext) marshalNProjectConnection2ᚖgithubᚗcomᚋreearth�
 		return graphql.Null
 	}
 	return ec._ProjectConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNProjectSharingInfoPayload2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSharingInfoPayload(ctx context.Context, sel ast.SelectionSet, v gqlmodel.ProjectSharingInfoPayload) graphql.Marshaler {
+	return ec._ProjectSharingInfoPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNProjectSharingInfoPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSharingInfoPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.ProjectSharingInfoPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ProjectSharingInfoPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRemoveAssetInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRemoveAssetInput(ctx context.Context, v interface{}) (gqlmodel.RemoveAssetInput, error) {

@@ -265,6 +265,7 @@ type Project struct {
 	Name              string       `json:"name"`
 	Parameters        []*Parameter `json:"parameters"`
 	UpdatedAt         time.Time    `json:"updatedAt"`
+	SharedURL         *string      `json:"sharedUrl,omitempty"`
 	Version           int          `json:"version"`
 	Workspace         *Workspace   `json:"workspace,omitempty"`
 	WorkspaceID       ID           `json:"workspaceId"`
@@ -281,6 +282,11 @@ type ProjectConnection struct {
 
 type ProjectPayload struct {
 	Project *Project `json:"project"`
+}
+
+type ProjectSharingInfoPayload struct {
+	ProjectID  ID      `json:"projectId"`
+	SharingURL *string `json:"sharingUrl,omitempty"`
 }
 
 type Query struct {
