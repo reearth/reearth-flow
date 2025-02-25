@@ -11,7 +11,7 @@ env:
 
 defaults:
   run:
-    working-directory: websocket
+    working-directory: server/websocket
 
 jobs:
   ci:
@@ -24,7 +24,7 @@ jobs:
       - name: Cache cargo registry
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: websocket
+          workspaces: server/websocket
           shared-key: "websocket-ci"
       - name: Install required tools
         uses: taiki-e/install-action@v2
