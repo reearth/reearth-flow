@@ -5,23 +5,14 @@ import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useShortcuts } from "@flow/hooks";
-import { useDeployment } from "@flow/lib/gql";
-import { useT } from "@flow/lib/i18n";
 import { checkForReader } from "@flow/lib/reactFlow";
 import { useYjsStore } from "@flow/lib/yjs";
-import { rebuildWorkflow } from "@flow/lib/yjs/conversions";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
-import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
-import { isDefined } from "@flow/utils";
-import { jsonToFormData } from "@flow/utils/jsonToFormData";
-import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
-
-import { useToast } from "../NotificationSystem/useToast";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
-import useHover from "./useHover";
+import useDeployment from "./useDeployment";
 import useNodeLocker from "./useNodeLocker";
 import useUIState from "./useUIState";
 
@@ -34,12 +25,7 @@ export default ({
   undoManager: YUndoManager | null;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
-  const { toast } = useToast();
   const { fitView } = useReactFlow();
-  const t = useT();
-
-  const [currentProject] = useCurrentProject();
-  const { createDeployment, useUpdateDeployment } = useDeployment();
 
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(
     DEFAULT_ENTRY_GRAPH_ID,
@@ -83,6 +69,7 @@ export default ({
     currentYWorkflow.get("nodes") ?? new YArray(),
   ) as Node[];
 
+  // Non-persistant state needs to be managed here
   const nodes = useMemo(
     () =>
       rawNodes.map((node) => ({
@@ -99,6 +86,7 @@ export default ({
     currentYWorkflow.get("edges") ?? new YArray(),
   ) as Edge[];
 
+  // Non-persistant state needs to be managed here
   const edges = useMemo(
     () =>
       rawEdges.map((edge) => ({
@@ -110,8 +98,6 @@ export default ({
       })),
     [rawEdges, selectedEdgeIds],
   );
-
-  const allowedToDeploy = useMemo(() => nodes.length > 0, [nodes]);
 
   const hasReader = checkForReader(nodes);
 
@@ -157,83 +143,23 @@ export default ({
     handleEdgesAdd: handleYEdgesAdd,
   });
 
-  const [openPanel, setOpenPanel] = useState<
-    "left" | "right" | "bottom" | undefined
-  >(undefined);
-
-  const handlePanelOpen = useCallback(
-    (panel?: "left" | "right" | "bottom") => {
-      if (!panel || openPanel === panel) {
-        setOpenPanel(undefined);
-      } else {
-        setOpenPanel(panel);
-      }
-    },
-    [openPanel],
-  );
-
   const {
+    openPanel,
     nodePickerOpen,
     rightPanelContent,
+    hoveredDetails,
+    handleNodeHover,
+    handleEdgeHover,
+    handlePanelOpen,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleRightPanelOpen,
   } = useUIState({ hasReader });
 
-  const { hoveredDetails, handleNodeHover, handleEdgeHover } = useHover();
-
-  const handleWorkflowDeployment = useCallback(
-    async (description: string, deploymentId?: string) => {
-      const {
-        name: projectName,
-        workspaceId,
-        id: projectId,
-      } = currentProject ?? {};
-
-      if (!workspaceId || !projectId) return;
-
-      const engineReadyWorkflow = createEngineReadyWorkflow(
-        projectName,
-        yWorkflows.map((w) => rebuildWorkflow(w)).filter(isDefined),
-      );
-
-      if (!engineReadyWorkflow) {
-        toast({
-          title: t("Empty workflow detected"),
-          description: t("You cannot create a deployment without a workflow."),
-        });
-        return;
-      }
-
-      const formData = jsonToFormData(
-        engineReadyWorkflow,
-        engineReadyWorkflow.id,
-      );
-
-      if (deploymentId) {
-        await useUpdateDeployment(
-          deploymentId,
-          formData.get("file") ?? undefined,
-          description,
-        );
-      } else {
-        await createDeployment(
-          workspaceId,
-          projectId,
-          engineReadyWorkflow,
-          description,
-        );
-      }
-    },
-    [
-      yWorkflows,
-      currentProject,
-      t,
-      createDeployment,
-      useUpdateDeployment,
-      toast,
-    ],
-  );
+  const { allowedToDeploy, handleWorkflowDeployment } = useDeployment({
+    currentNodes: nodes,
+    yWorkflows,
+  });
 
   const handleLayoutChange = useCallback(
     async (algorithm: Algorithm, direction: Direction, _spacing: number) => {
