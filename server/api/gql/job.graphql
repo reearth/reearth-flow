@@ -2,6 +2,7 @@ type Job implements Node {
   completedAt: DateTime
   deployment: Deployment
   deploymentId: ID!
+  debug: Boolean
   id: ID!
   logsURL: String
   outputURLs: [String!]
