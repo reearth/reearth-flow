@@ -68,8 +68,8 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
       return "completed";
     case "FAILED":
       return "failed";
-    // case "CANCELLED":
-    //   return "cancelled";
+    case "CANCELLED":
+      return "cancelled";
     case "PENDING":
     default:
       return "queued";

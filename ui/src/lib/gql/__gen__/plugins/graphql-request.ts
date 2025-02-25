@@ -233,6 +233,7 @@ export type JobPayload = {
 };
 
 export enum JobStatus {
+  Cancelled = 'CANCELLED',
   Completed = 'COMPLETED',
   Failed = 'FAILED',
   Pending = 'PENDING',

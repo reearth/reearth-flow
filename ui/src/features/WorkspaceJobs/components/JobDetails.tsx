@@ -57,22 +57,22 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
               value: selectedJob.completedAt || t("N/A"),
             },
             {
-              id: "logsURL",
-              name: t("Logs URL"),
-              value: selectedJob.logsURL || t("N/A"),
-            },
-            {
               id: "outputURLS",
               name: t("Output URLs"),
               value: Array.isArray(selectedJob.outputURLS)
                 ? selectedJob.outputURLS.join(", ")
                 : selectedJob.outputURLS || t("N/A"),
             },
+            {
+              id: "logsURL",
+              name: t("Logs URL"),
+              value: selectedJob.logsURL || t("N/A"),
+            },
           ]
         : undefined,
     [t, selectedJob],
   );
-
+  // This is temporary, we will replace this with a proper log fetching with graphql
   const getAllLogs = useCallback(async () => {
     if (!selectedJob || !selectedJob.logsURL) return;
     setIsFetching(true);
