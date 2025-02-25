@@ -57,11 +57,11 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
               value: selectedJob.completedAt || t("N/A"),
             },
             {
-              id: "outputURLS",
+              id: "outputURLs",
               name: t("Output URLs"),
-              value: Array.isArray(selectedJob.outputURLS)
-                ? selectedJob.outputURLS.join(", ")
-                : selectedJob.outputURLS || t("N/A"),
+              value: Array.isArray(selectedJob.outputURLs)
+                ? (selectedJob.outputURLs?.join(", ") ?? t("N/A"))
+                : selectedJob.outputURLs || t("N/A"),
             },
           ]
         : undefined,

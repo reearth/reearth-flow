@@ -57,7 +57,7 @@ export const toJob = (job: JobFragment): Job => ({
   startedAt: job.startedAt,
   completedAt: job.completedAt,
   logsURL: job.logsURL ?? undefined,
-  outputURLS: job.outputURLs ?? undefined,
+  outputURLs: job.outputURLs ?? undefined,
 });
 
 export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {

@@ -14,7 +14,7 @@ export type Job = {
   status: JobStatus;
   startedAt: string;
   completedAt: string;
-  outputURLS?: string[];
+  outputURLs?: string[];
   logsURL?: string;
 };
 
