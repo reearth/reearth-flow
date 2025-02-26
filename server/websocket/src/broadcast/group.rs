@@ -5,9 +5,11 @@ use crate::AwarenessRef;
 use anyhow::anyhow;
 use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
+use rand;
 use redis::aio::MultiplexedConnection as RedisConnection;
 use redis::AsyncCommands;
 use serde::Deserialize;
+use serde_json;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::select;
@@ -337,6 +339,43 @@ impl BroadcastGroup {
         <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
+        self.subscribe_with(sink, stream, DefaultProtocol)
+    }
+
+    pub fn subscribe_with_user<Sink, Stream, E>(
+        &self,
+        sink: Arc<Mutex<Sink>>,
+        stream: Stream,
+        user_token: Option<String>,
+    ) -> Subscription
+    where
+        Sink: SinkExt<Vec<u8>> + Send + Sync + Unpin + 'static,
+        Stream: StreamExt<Item = Result<Vec<u8>, E>> + Send + Sync + Unpin + 'static,
+        <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        if let Some(token) = user_token {
+            let awareness = self.awareness().clone();
+            let client_id = rand::random::<u64>();
+
+            tokio::spawn(async move {
+                let awareness = awareness.write().await;
+                let mut local_state = std::collections::HashMap::new();
+
+                local_state.insert(
+                    "user",
+                    serde_json::json!({
+                        "id": token,
+                        "name": format!("User-{}", client_id % 1000),
+                    }),
+                );
+
+                if let Err(e) = awareness.set_local_state(Some(local_state)) {
+                    tracing::error!("Failed to set awareness state: {}", e);
+                }
+            });
+        }
+
         self.subscribe_with(sink, stream, DefaultProtocol)
     }
 

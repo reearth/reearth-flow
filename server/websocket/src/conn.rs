@@ -17,6 +17,7 @@ type CompletionFuture = Pin<Box<dyn Future<Output = Result<(), Error>> + Send>>;
 pub struct Connection<Sink, Stream> {
     broadcast_sub: Option<Subscription>,
     completion_future: Option<CompletionFuture>,
+    user_token: Option<String>,
     _sink: PhantomData<Sink>,
     _stream: PhantomData<Stream>,
 }
@@ -27,6 +28,26 @@ where
     Stream: StreamExt<Item = Result<Vec<u8>, E>> + Send + Sync + Unpin + 'static,
     E: std::error::Error + Into<Error> + Send + Sync + 'static,
 {
+    /// Creates a new connection using a BroadcastGroup with user information
+    pub async fn with_broadcast_group_and_user(
+        broadcast_group: Arc<BroadcastGroup>,
+        sink: Sink,
+        stream: Stream,
+        user_token: Option<String>,
+    ) -> Self {
+        let sink = Arc::new(Mutex::new(sink));
+        let broadcast_sub =
+            Some(broadcast_group.subscribe_with_user(sink, stream, user_token.clone()));
+
+        Connection {
+            broadcast_sub,
+            completion_future: None,
+            user_token,
+            _sink: PhantomData,
+            _stream: PhantomData,
+        }
+    }
+
     /// Creates a new connection using a BroadcastGroup
     pub async fn with_broadcast_group(
         broadcast_group: Arc<BroadcastGroup>,
@@ -39,6 +60,7 @@ where
         Connection {
             broadcast_sub,
             completion_future: None,
+            user_token: None,
             _sink: PhantomData,
             _stream: PhantomData,
         }
@@ -52,6 +74,7 @@ where
         Connection {
             broadcast_sub,
             completion_future: None,
+            user_token: None,
             _sink: PhantomData,
             _stream: PhantomData,
         }
