@@ -126,34 +126,34 @@ const MembersSettings: React.FC = () => {
         <div className="rounded border dark:font-extralight">
           <div className="flex h-[42px] items-center justify-between gap-2 border-b p-2">
             <div className="flex items-center gap-8">
-              <div className="flex items-center gap-2">
-                <User weight="thin" />
-                <p>{`${members?.length} ${t("Members")}`}</p>
-              </div>
               <Input
                 className="w-[250px]"
                 placeholder={t("Search...")}
                 autoFocus
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
+              <div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center gap-2">
+                    <p>{filters.find((f) => f.id === currentFilter)?.title}</p>
+                    <CaretDown className="size-3" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="min-w-[70px]">
+                    {filters.map((filter, idx) => (
+                      <DropdownMenuItem
+                        key={idx}
+                        className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-accent" : undefined}`}
+                        onClick={() => setFilter(filter.id)}>
+                        {filter.title}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
             </div>
-            <div>
-              <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center gap-2">
-                  <p>{filters.find((f) => f.id === currentFilter)?.title}</p>
-                  <CaretDown className="size-3" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="min-w-[70px]">
-                  {filters.map((filter, idx) => (
-                    <DropdownMenuItem
-                      key={idx}
-                      className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-accent" : undefined}`}
-                      onClick={() => setFilter(filter.id)}>
-                      {filter.title}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <div className="flex items-center gap-2">
+              <User weight="thin" />
+              <p>{`${members?.length} ${t("Members")}`}</p>
             </div>
           </div>
           <div className="max-h-[50vh] overflow-auto">
