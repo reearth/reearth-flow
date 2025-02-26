@@ -18,12 +18,15 @@ const VersionHistoryList: React.FC<Props> = ({ versionHistory }) => {
     null,
   );
 
+  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
+
   const [openVersionChangeDialog, setOpenVersionChangeDialog] = useState(false);
 
   const currentVersion = versionHistory.length > 0 ? versionHistory[0] : null;
   const olderVersions = versionHistory.slice(1);
-  const handleVersionClick = (id: string) => {
+  const handleVersionClick = (id: string, version: string) => {
     setSelectedVersionId(id);
+    setSelectedVersion(version);
   };
 
   const handleDoubleClick = () => {
@@ -41,9 +44,12 @@ const VersionHistoryList: React.FC<Props> = ({ versionHistory }) => {
                 {formatDate(currentVersion.createdAt)}
               </p>
             </div>
-            <p className="text-xs font-thin">
-              {t("Version ")}
-              <span className="font-light">{currentVersion.version}</span>
+            <p className="rounded border bg-green-800/70 p-1 text-xs font-thin">
+              <span className="font-light">
+                {" "}
+                {t("Version ")}
+                {currentVersion.version}
+              </span>
             </p>
           </div>
         )}
@@ -53,16 +59,16 @@ const VersionHistoryList: React.FC<Props> = ({ versionHistory }) => {
               key={history.id}
               version={history}
               isSelected={history.id === selectedVersionId}
-              onClick={() => handleVersionClick(history.id)}
+              onClick={() => handleVersionClick(history.id, history.version)}
               onDoubleClick={handleDoubleClick}
             />
           ))}
-          <div className="pb-6" />
+          <div className="pb-8" />
         </div>
       </ScrollArea>
-      {openVersionChangeDialog && selectedVersionId && (
+      {openVersionChangeDialog && selectedVersion && (
         <VersionHistoryChangeDialog
-          selectedVersion={selectedVersionId}
+          selectedVersion={selectedVersion}
           onDialogClose={() => setOpenVersionChangeDialog(false)}
         />
       )}
