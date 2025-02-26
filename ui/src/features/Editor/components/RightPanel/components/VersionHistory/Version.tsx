@@ -25,15 +25,14 @@ const Version: React.FC<VersionProps> = ({
     <div key={version.id}>
       <div
         className={`flex cursor-pointer select-none
-justify-between gap-2 rounded px-4 py-2 hover:bg-primary ${isSelected ? "border border-l-2 border-l-[#5A1E78]/50 bg-primary" : ""}`}
+justify-between gap-2 rounded px-4 py-2 hover:bg-primary ${isSelected ? "border border-l-2 border-l-[#00a340]/30 bg-primary" : ""}`}
         onClick={onClick}
         onDoubleClick={onDoubleClick}>
         <p className="flex-[2] self-center text-xs font-thin">
           {formatDate(version.createdAt)}
         </p>
         <div className="flex justify-end">
-          <p
-            className={`rounded border p-1 text-xs font-thin ${isSelected ? "bg-[#5A1E78]/50" : "bg-primary/30"}`}>
+          <p className="rounded border bg-primary/30 p-1 text-xs font-thin">
             <span className="font-light">
               {" "}
               {t("Version ")}

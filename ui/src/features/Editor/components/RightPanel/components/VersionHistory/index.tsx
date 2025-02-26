@@ -44,7 +44,7 @@ const VersionHistoryList: React.FC<Props> = ({ versionHistory }) => {
                 {formatDate(currentVersion.createdAt)}
               </p>
             </div>
-            <p className="rounded border bg-green-800/70 p-1 text-xs font-thin">
+            <p className="rounded border bg-[#00a340]/30 p-1 text-xs font-thin">
               <span className="font-light">
                 {" "}
                 {t("Version ")}
