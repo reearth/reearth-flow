@@ -43,7 +43,7 @@ impl SqlAdapter {
     pub async fn fetch_many(&self, query: &str) -> crate::errors::Result<Vec<AnyRow>> {
         let result: Vec<AnyRow> = self
             .pool
-            .fetch(query)
+            .fetch(sqlx::query(query))
             .try_collect()
             .boxed()
             .await
