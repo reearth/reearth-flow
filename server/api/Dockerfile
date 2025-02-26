@@ -13,7 +13,8 @@ RUN apk add --update --no-cache \
     cargo \
     openssl-dev \
     pkgconfig \
-    libgcc
+    libgcc \
+    thrift
 
 WORKDIR /reearth-flow
 
