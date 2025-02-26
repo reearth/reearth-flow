@@ -26,7 +26,7 @@ func (c *AssetLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmodel
 		return nil, []error{err}
 	}
 
-	res, err := c.usecase.Fetch(ctx, ids2)
+	res, err := c.usecase.Fetch(ctx, ids2, getOperator(ctx))
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -40,7 +40,7 @@ func (c *AssetLoader) FindByWorkspace(ctx context.Context, wsID gqlmodel.ID, key
 		return nil, err
 	}
 
-	assets, pi, err := c.usecase.FindByWorkspace(ctx, tid, keyword, sort, gqlmodel.ToPageBasedPagination(*pagination))
+	assets, pi, err := c.usecase.FindByWorkspace(ctx, tid, keyword, sort, gqlmodel.ToPageBasedPagination(*pagination), getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}

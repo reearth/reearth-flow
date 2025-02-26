@@ -2,8 +2,10 @@ package interactor
 
 import (
 	"context"
+	"fmt"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -19,6 +21,7 @@ import (
 )
 
 type Job struct {
+	common
 	jobRepo       repo.Job
 	workspaceRepo accountrepo.Workspace
 	transaction   usecasex.Transaction
@@ -50,27 +53,81 @@ func NewJob(r *repo.Container, gr *gateway.Container) interfaces.Job {
 	}
 }
 
-func (i *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
+func (i *Job) Cancel(ctx context.Context, jobID id.JobID, operator *usecase.Operator) (*job.Job, error) {
+	j, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := i.CanWriteWorkspace(j.Workspace(), operator); err != nil {
+		return nil, err
+	}
+
+	if j.Status() != job.StatusPending && j.Status() != job.StatusRunning {
+		return nil, fmt.Errorf("job cannot be cancelled: current status is %s", j.Status())
+	}
+
+	tx, err := i.transaction.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err := tx.End(ctx); err != nil {
+			log.Errorfc(ctx, "transaction end failed: %v", err)
+		}
+	}()
+
+	if err := i.batch.CancelJob(ctx, j.GCPJobID()); err != nil {
+		return nil, err
+	}
+
+	j.SetStatus(job.StatusCancelled)
+	now := time.Now()
+	j.SetCompletedAt(&now)
+
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		return nil, err
+	}
+
+	tx.Commit()
+
+	if err := i.handleJobCompletion(ctx, j); err != nil {
+		log.Errorfc(ctx, "job: completion handling failed: %v", err)
+	}
+
+	i.subscriptions.Notify(j.ID().String(), j.Status())
+	i.monitor.Remove(j.ID().String())
+
+	return j, nil
+}
+
+func (i *Job) FindByID(ctx context.Context, id id.JobID, operator *usecase.Operator) (*job.Job, error) {
 	j, err := i.jobRepo.FindByID(ctx, id)
 	if err != nil {
+		return nil, err
+	}
+	if err := i.CanReadWorkspace(j.Workspace(), operator); err != nil {
 		return nil, err
 	}
 	return j, nil
 }
 
-func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
+func (i *Job) Fetch(ctx context.Context, ids []id.JobID, operator *usecase.Operator) ([]*job.Job, error) {
 	jobs, err := i.jobRepo.FindByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
-	return jobs, nil
+	return i.filterReadableJobs(jobs, operator), nil
 }
 
-func (i *Job) FindByWorkspace(ctx context.Context, wsID accountdomain.WorkspaceID, p *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error) {
+func (i *Job) FindByWorkspace(ctx context.Context, wsID accountdomain.WorkspaceID, p *interfaces.PaginationParam, operator *usecase.Operator) ([]*job.Job, *interfaces.PageBasedInfo, error) {
+	if err := i.CanReadWorkspace(wsID, operator); err != nil {
+		return nil, nil, err
+	}
 	return i.jobRepo.FindByWorkspace(ctx, wsID, p)
 }
 
-func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error) {
+func (i *Job) GetStatus(ctx context.Context, jobID id.JobID, operator *usecase.Operator) (job.Status, error) {
 	j, err := i.jobRepo.FindByID(ctx, jobID)
 	if err != nil {
 		return "", err
@@ -78,7 +135,7 @@ func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error)
 	return j.Status(), nil
 }
 
-func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *string) error {
+func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *string, operator *usecase.Operator) error {
 	log.Debugfc(ctx, "job: starting monitoring for jobID=%s workspace=%s", j.ID(), j.Workspace())
 
 	monitorCtx, cancel := context.WithCancel(context.Background())
@@ -154,18 +211,38 @@ func (i *Job) updateJobStatus(ctx context.Context, j *job.Job, status job.Status
 
 func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 	config := i.monitor.Get(j.ID().String())
+
+	outputs, err := i.file.ListJobArtifacts(ctx, j.ID().String())
+	if err != nil {
+		log.Errorfc(ctx, "failed to list job artifacts: %v", err)
+	} else {
+		j.SetOutputURLs(outputs)
+	}
+
+	logURL := i.file.GetJobLogURL(j.ID().String())
+	j.SetLogsURL(logURL)
+
+	tx, err := i.transaction.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := tx.End(ctx); err != nil {
+			log.Errorfc(ctx, "transaction end failed: %v", err)
+		}
+	}()
+
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		return err
+	}
+
+	tx.Commit()
+
 	if config == nil || config.NotificationURL == nil {
 		return nil
 	}
 
-	outputs, err := i.file.ListJobArtifacts(ctx, j.ID().String())
-	if err != nil {
-		return err
-	}
-
-	logURL := i.file.GetJobLogURL(j.ID().String())
 	var logs []string
-
 	if exists, _ := i.file.CheckJobLogExists(ctx, j.ID().String()); exists {
 		logs = append(logs, logURL)
 	}
@@ -173,6 +250,8 @@ func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 	status := "failed"
 	if j.Status() == job.StatusCompleted {
 		status = "succeeded"
+	} else if j.Status() == job.StatusCancelled {
+		status = "cancelled"
 	}
 
 	payload := notification.Payload{
@@ -188,8 +267,8 @@ func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 	return i.notifier.Send(*config.NotificationURL, payload)
 }
 
-func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, error) {
-	j, err := i.FindByID(ctx, jobID)
+func (i *Job) Subscribe(ctx context.Context, jobID id.JobID, operator *usecase.Operator) (chan job.Status, error) {
+	j, err := i.FindByID(ctx, jobID, operator)
 	if err != nil {
 		return nil, err
 	}
@@ -201,4 +280,14 @@ func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, e
 
 func (i *Job) Unsubscribe(jobID id.JobID, ch chan job.Status) {
 	i.subscriptions.Unsubscribe(jobID.String(), ch)
+}
+
+func (i *Job) filterReadableJobs(jobs []*job.Job, operator *usecase.Operator) []*job.Job {
+	result := make([]*job.Job, 0, len(jobs))
+	for _, j := range jobs {
+		if i.CanReadWorkspace(j.Workspace(), operator) == nil {
+			result = append(result, j)
+		}
+	}
+	return result
 }

@@ -1,10 +1,10 @@
 use std::{collections::HashMap, fmt::Debug};
 
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use serde_json::Value;
@@ -55,7 +55,7 @@ impl Processor for EchoProcessor {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let span = ctx.info_span();
         let feature: serde_json::Value = ctx.feature.clone().into();
@@ -70,11 +70,7 @@ impl Processor for EchoProcessor {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

@@ -5,10 +5,10 @@ use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 use reearth_flow_common::{csv::Delimiter, uri::Uri};
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
@@ -189,7 +189,7 @@ impl Processor for FeatureWriter {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
+        _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let output = self.params.output().clone();
@@ -203,11 +203,7 @@ impl Processor for FeatureWriter {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         for (output, features) in &self.buffer {
             let feature: Feature = HashMap::<Attribute, AttributeValue>::from([
                 (

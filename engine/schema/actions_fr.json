@@ -723,21 +723,36 @@
       ]
     },
     {
-      "name": "CoordinateSystemSetter",
-      "type": "processor",
-      "description": "Définit le système de coordonnées d'une entité",
+      "name": "CzmlWriter",
+      "type": "sink",
+      "description": "Writes features to a Czml file",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CoordinateSystemSetter",
+        "title": "CzmlWriterParam",
         "type": "object",
         "required": [
-          "epsgCode"
+          "output"
         ],
         "properties": {
-          "epsgCode": {
-            "type": "integer",
-            "format": "uint16",
-            "minimum": 0.0
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
           }
         }
       },
@@ -745,11 +760,9 @@
       "inputPorts": [
         "default"
       ],
-      "outputPorts": [
-        "default"
-      ],
+      "outputPorts": [],
       "categories": [
-        "Geometry"
+        "File"
       ]
     },
     {
@@ -937,6 +950,45 @@
       ],
       "categories": [
         "Geometry"
+      ]
+    },
+    {
+      "name": "FeatureCityGmlReader",
+      "type": "processor",
+      "description": "Reads features from citygml file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureCityGmlReaderParam",
+        "type": "object",
+        "required": [
+          "dataset"
+        ],
+        "properties": {
+          "dataset": {
+            "$ref": "#/definitions/Expr"
+          },
+          "flatten": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
       ]
     },
     {
@@ -1263,30 +1315,6 @@
               "dataset": {
                 "$ref": "#/definitions/Expr"
               },
-              "flatten": {
-                "type": [
-                  "boolean",
-                  "null"
-                ]
-              },
-              "format": {
-                "type": "string",
-                "enum": [
-                  "citygml"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "required": [
-              "dataset",
-              "format"
-            ],
-            "properties": {
-              "dataset": {
-                "$ref": "#/definitions/Expr"
-              },
               "format": {
                 "type": "string",
                 "enum": [
@@ -1374,21 +1402,22 @@
         "title": "FeatureSorterParam",
         "type": "object",
         "required": [
-          "sortBy"
+          "attributes",
+          "order"
         ],
         "properties": {
-          "sortBy": {
+          "attributes": {
             "type": "array",
             "items": {
-              "$ref": "#/definitions/SortBy"
+              "$ref": "#/definitions/Attribute"
             }
+          },
+          "order": {
+            "$ref": "#/definitions/Order"
           }
         },
         "definitions": {
           "Attribute": {
-            "type": "string"
-          },
-          "Expr": {
             "type": "string"
           },
           "Order": {
@@ -1397,37 +1426,6 @@
               "ascending",
               "descending"
             ]
-          },
-          "SortBy": {
-            "type": "object",
-            "required": [
-              "order"
-            ],
-            "properties": {
-              "attribute": {
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Attribute"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "attributeValue": {
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Expr"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "order": {
-                "$ref": "#/definitions/Order"
-              }
-            }
           }
         }
       },
@@ -1937,6 +1935,24 @@
               "output"
             ],
             "properties": {
+              "format": {
+                "type": "string",
+                "enum": [
+                  "xml"
+                ]
+              },
+              "output": {
+                "$ref": "#/definitions/Expr"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "format",
+              "output"
+            ],
+            "properties": {
               "converter": {
                 "anyOf": [
                   {
@@ -2403,12 +2419,12 @@
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "HorizontalReprojectorParam",
         "type": "object",
+        "required": [
+          "epsgCode"
+        ],
         "properties": {
           "epsgCode": {
-            "type": [
-              "integer",
-              "null"
-            ],
+            "type": "integer",
             "format": "uint16",
             "minimum": 0.0
           }
@@ -3170,6 +3186,49 @@
       ],
       "categories": [
         "Feature"
+      ]
+    },
+    {
+      "name": "ShapefileWriter",
+      "type": "sink",
+      "description": "Writes features to a Shapefile",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ShapefileWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "groupBy": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "output": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
       ]
     },
     {

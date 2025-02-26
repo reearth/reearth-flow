@@ -1,11 +1,12 @@
 use std::{collections::HashMap, sync::Arc};
 
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reearth_flow_eval_expr::utils::dynamic_to_value;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{Context, ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
@@ -163,10 +164,14 @@ pub(super) enum Method {
 }
 
 impl Processor for AttributeAggregator {
+    fn num_threads(&self) -> usize {
+        2
+    }
+
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let expr_engine = Arc::clone(&ctx.expr_engine);
@@ -210,7 +215,8 @@ impl Processor for AttributeAggregator {
         };
         let key = AttributeValue::Array(aggregates);
         if !self.buffer.contains_key(&key) {
-            self.flush_buffer(ctx.as_context(), fw, &key);
+            self.flush_buffer(ctx.as_context(), fw);
+            self.buffer.clear();
         }
         match &self.method {
             Method::Max => {
@@ -229,15 +235,22 @@ impl Processor for AttributeAggregator {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
-        for (key, value) in &self.buffer {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+        self.flush_buffer(ctx.as_context(), fw);
+        Ok(())
+    }
+
+    fn name(&self) -> &str {
+        "AttributeAggregator"
+    }
+}
+
+impl AttributeAggregator {
+    pub(crate) fn flush_buffer(&self, ctx: Context, fw: &ProcessorChannelForwarder) {
+        self.buffer.par_iter().for_each(|(key, value)| {
             let mut feature = Feature::new();
             let AttributeValue::Array(aggregates) = key else {
-                continue;
+                return;
             };
             for (i, aggregate_attribute) in self.aggregate_attributes.iter().enumerate() {
                 feature.attributes.insert(
@@ -249,51 +262,11 @@ impl Processor for AttributeAggregator {
                 self.calculation_attribute.clone(),
                 AttributeValue::Number(serde_json::Number::from(*value)),
             );
-            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                &ctx,
-                feature,
-                DEFAULT_PORT.clone(),
-            ));
-        }
-        Ok(())
-    }
-
-    fn name(&self) -> &str {
-        "AttributeAggregator"
-    }
-}
-
-impl AttributeAggregator {
-    pub(crate) fn flush_buffer(
-        &mut self,
-        ctx: Context,
-        fw: &mut dyn ProcessorChannelForwarder,
-        ignore_key: &AttributeValue,
-    ) {
-        let value = self.buffer.remove(ignore_key);
-        for (key, value) in self.buffer.drain() {
-            let mut feature = Feature::new();
-            let AttributeValue::Array(aggregates) = key else {
-                continue;
-            };
-            for (i, aggregate_attribute) in self.aggregate_attributes.iter().enumerate() {
-                feature.attributes.insert(
-                    aggregate_attribute.new_attribute.clone(),
-                    aggregates.get(i).cloned().unwrap_or(AttributeValue::Null),
-                );
-            }
-            feature.attributes.insert(
-                self.calculation_attribute.clone(),
-                AttributeValue::Number(serde_json::Number::from(value)),
-            );
             fw.send(ExecutorContext::new_with_context_feature_and_port(
                 &ctx,
                 feature,
                 DEFAULT_PORT.clone(),
             ));
-        }
-        if let Some(value) = value {
-            self.buffer.insert(ignore_key.clone(), value);
-        }
+        });
     }
 }

@@ -118,8 +118,11 @@ export default ({
                     index
                   ].toJSON() as Node;
 
-                  if (nodeToDelete.type === "subworkflow") {
-                    handleYWorkflowsRemove([change.id]);
+                  if (
+                    nodeToDelete.type === "subworkflow" &&
+                    nodeToDelete.data.subworkflowId
+                  ) {
+                    handleYWorkflowsRemove([nodeToDelete.data.subworkflowId]);
                   } else if (nodeToDelete.data.params?.routingPort) {
                     const workflowIndex = rawWorkflows.findIndex((w) => {
                       const nodes = w.nodes as Node[];
@@ -196,7 +199,9 @@ export default ({
 
           const parentWorkflowIndex = rawWorkflows.findIndex((w) => {
             const nodes = w.nodes as Node[];
-            return nodes.some((n) => n.id === currentWorkflowId);
+            return nodes.some(
+              (n) => n.data.subworkflowId === currentWorkflowId,
+            );
           });
           const parentYWorkflow = yWorkflows.get(parentWorkflowIndex);
 

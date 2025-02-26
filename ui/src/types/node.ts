@@ -22,6 +22,7 @@ export type NodeData = {
   status?: Status;
   params?: NodeParam;
   // subworkflow nodes
+  subworkflowId?: string;
   pseudoInputs?: PseudoPort[];
   pseudoOutputs?: PseudoPort[];
   // batch & note nodes
@@ -43,8 +44,6 @@ export const nodeTypes = [
   "batch",
   "note",
   "subworkflow",
-  "entrance",
-  "exit",
 ] as const;
 
 export type NodeType = (typeof nodeTypes)[number];

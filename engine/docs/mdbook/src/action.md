@@ -715,25 +715,40 @@ Creates a convex hull based on a group of input features.
 ### Category
 * Geometry
 
-## CoordinateSystemSetter
+## CzmlWriter
 ### Type
-* processor
+* sink
 ### Description
-Sets the coordinate system of a feature
+Writes features to a Czml file
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CoordinateSystemSetter",
+  "title": "CzmlWriterParam",
   "type": "object",
   "required": [
-    "epsgCode"
+    "output"
   ],
   "properties": {
-    "epsgCode": {
-      "type": "integer",
-      "format": "uint16",
-      "minimum": 0.0
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "output": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
+      "type": "string"
     }
   }
 }
@@ -741,9 +756,8 @@ Sets the coordinate system of a feature
 ### Input Ports
 * default
 ### Output Ports
-* default
 ### Category
-* Geometry
+* File
 
 ## DimensionFilter
 ### Type
@@ -926,6 +940,45 @@ Extrudes a polygon by a distance
 * default
 ### Category
 * Geometry
+
+## FeatureCityGmlReader
+### Type
+* processor
+### Description
+Reads features from citygml file
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureCityGmlReaderParam",
+  "type": "object",
+  "required": [
+    "dataset"
+  ],
+  "properties": {
+    "dataset": {
+      "$ref": "#/definitions/Expr"
+    },
+    "flatten": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Feature
 
 ## FeatureCounter
 ### Type
@@ -1253,30 +1306,6 @@ Reads features from various formats
         "dataset": {
           "$ref": "#/definitions/Expr"
         },
-        "flatten": {
-          "type": [
-            "boolean",
-            "null"
-          ]
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "citygml"
-          ]
-        }
-      }
-    },
-    {
-      "type": "object",
-      "required": [
-        "dataset",
-        "format"
-      ],
-      "properties": {
-        "dataset": {
-          "$ref": "#/definitions/Expr"
-        },
         "format": {
           "type": "string",
           "enum": [
@@ -1364,21 +1393,22 @@ Sorts features by attributes
   "title": "FeatureSorterParam",
   "type": "object",
   "required": [
-    "sortBy"
+    "attributes",
+    "order"
   ],
   "properties": {
-    "sortBy": {
+    "attributes": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/SortBy"
+        "$ref": "#/definitions/Attribute"
       }
+    },
+    "order": {
+      "$ref": "#/definitions/Order"
     }
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     },
     "Order": {
@@ -1387,37 +1417,6 @@ Sorts features by attributes
         "ascending",
         "descending"
       ]
-    },
-    "SortBy": {
-      "type": "object",
-      "required": [
-        "order"
-      ],
-      "properties": {
-        "attribute": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Attribute"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "attributeValue": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "order": {
-          "$ref": "#/definitions/Order"
-        }
-      }
     }
   }
 }
@@ -1929,6 +1928,24 @@ Writes features to a file
         "output"
       ],
       "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "xml"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
         "converter": {
           "anyOf": [
             {
@@ -2392,12 +2409,12 @@ Reprojects the geometry of a feature to a specified coordinate system
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "HorizontalReprojectorParam",
   "type": "object",
+  "required": [
+    "epsgCode"
+  ],
   "properties": {
     "epsgCode": {
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": "integer",
       "format": "uint16",
       "minimum": 0.0
     }
@@ -3131,6 +3148,50 @@ Calls Rhai script
 * default
 ### Category
 * Feature
+
+## ShapefileWriter
+### Type
+* sink
+### Description
+Writes features to a Shapefile
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ShapefileWriterParam",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "output": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
 
 ## StatisticsCalculator
 ### Type

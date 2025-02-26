@@ -9,7 +9,7 @@ use tracing_subscriber::EnvFilter;
 static ENABLE_JSON_LOG: Lazy<bool> = Lazy::new(|| {
     env::var("FLOW_WORKER_ENABLE_JSON_LOG")
         .ok()
-        .map(|s| s == "true")
+        .map(|s| s.to_lowercase() == "true")
         .unwrap_or(false)
 });
 
@@ -22,23 +22,27 @@ pub fn setup_logging_and_tracing() -> crate::errors::Result<()> {
         .with_default_directive(log_level.into())
         .from_env_lossy()
         .add_directive("opendal=error".parse().unwrap());
+    let time_format = UtcTime::new(
+        time::format_description::parse(
+            "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z",
+        )
+        .map_err(crate::errors::Error::init)?,
+    );
     if *ENABLE_JSON_LOG {
-        tracing_subscriber::fmt()
-            .json()
-            .with_ansi(false)
-            .with_target(false)
-            .with_env_filter(env_filter)
+        let mut layer = json_subscriber::JsonLayer::stdout();
+        layer.with_flattened_event();
+        layer.with_level("severity");
+        layer.with_current_span("span");
+        layer.with_timer("time", time_format);
+        tracing_subscriber::registry()
+            .with(env_filter)
+            .with(layer)
             .try_init()
             .map_err(crate::errors::Error::init)
     } else {
         let event_format = tracing_subscriber::fmt::format()
             .with_target(true)
-            .with_timer(UtcTime::new(
-                time::format_description::parse(
-                    "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z",
-                )
-                .expect("Time format invalid."),
-            ));
+            .with_timer(time_format);
 
         tracing_subscriber::registry()
             .with(env_filter)

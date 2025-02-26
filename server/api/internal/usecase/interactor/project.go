@@ -3,12 +3,14 @@ package interactor
 import (
 	"context"
 	"fmt"
+	"time"
 
-	"github.com/reearth/reearth-flow/api/internal/rbac"
+	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
@@ -16,52 +18,44 @@ import (
 )
 
 type Project struct {
-	assetRepo         repo.Asset
-	workflowRepo      repo.Workflow
-	projectRepo       repo.Project
-	userRepo          accountrepo.User
-	workspaceRepo     accountrepo.Workspace
-	transaction       usecasex.Transaction
-	file              gateway.File
-	batch             gateway.Batch
-	permissionChecker gateway.PermissionChecker
+	common
+	assetRepo     repo.Asset
+	workflowRepo  repo.Workflow
+	projectRepo   repo.Project
+	jobRepo       repo.Job
+	userRepo      accountrepo.User
+	workspaceRepo accountrepo.Workspace
+	transaction   usecasex.Transaction
+	file          gateway.File
+	batch         gateway.Batch
+	job           interfaces.Job
 }
 
-func NewProject(r *repo.Container, gr *gateway.Container, permissionChecker gateway.PermissionChecker) interfaces.Project {
+func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job) interfaces.Project {
 	return &Project{
-		assetRepo:         r.Asset,
-		workflowRepo:      r.Workflow,
-		projectRepo:       r.Project,
-		userRepo:          r.User,
-		workspaceRepo:     r.Workspace,
-		transaction:       r.Transaction,
-		file:              gr.File,
-		permissionChecker: permissionChecker,
+		assetRepo:     r.Asset,
+		workflowRepo:  r.Workflow,
+		projectRepo:   r.Project,
+		jobRepo:       r.Job,
+		userRepo:      r.User,
+		workspaceRepo: r.Workspace,
+		transaction:   r.Transaction,
+		file:          gr.File,
+		batch:         gr.Batch,
+		job:           jobUsecase,
 	}
 }
 
-func (i *Project) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProject, action)
-}
-
-func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID) ([]*project.Project, error) {
-	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
-		return nil, err
-	}
-
+func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID, _ *usecase.Operator) ([]*project.Project, error) {
 	return i.projectRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
-		return nil, nil, err
-	}
-
+func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam, _ *usecase.Operator) ([]*project.Project, *interfaces.PageBasedInfo, error) {
 	return i.projectRepo.FindByWorkspace(ctx, id, pagination)
 }
 
-func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (_ *project.Project, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
+func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
+	if err := i.CanWriteWorkspace(p.WorkspaceID, operator); err != nil {
 		return nil, err
 	}
 
@@ -109,11 +103,7 @@ func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (
 	return proj, nil
 }
 
-func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (_ *project.Project, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
-		return nil, err
-	}
-
+func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -128,6 +118,9 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 
 	prj, err := i.projectRepo.FindByID(ctx, p.ID)
 	if err != nil {
+		return nil, err
+	}
+	if err := i.CanWriteWorkspace(prj.Workspace(), operator); err != nil {
 		return nil, err
 	}
 
@@ -163,11 +156,7 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 	return prj, nil
 }
 
-func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error) {
-	if err := i.checkPermission(ctx, rbac.ActionDelete); err != nil {
-		return err
-	}
-
+func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *usecase.Operator) (err error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -184,12 +173,15 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error
 	if err != nil {
 		return err
 	}
+	if err := i.CanWriteWorkspace(prj.Workspace(), operator); err != nil {
+		return err
+	}
 
 	deleter := ProjectDeleter{
 		File:    i.file,
 		Project: i.projectRepo,
 	}
-	if err := deleter.Delete(ctx, prj, true); err != nil {
+	if err := deleter.Delete(ctx, prj, true, operator); err != nil {
 		return err
 	}
 
@@ -197,11 +189,7 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error
 	return nil
 }
 
-func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (started bool, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
-		return false, err
-	}
-
+func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operator *usecase.Operator) (started bool, err error) {
 	if p.Workflow == nil {
 		return false, nil
 	}
@@ -218,19 +206,54 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (starte
 		}
 	}()
 
-	fmt.Println("RunProjectParam", p)
-
 	prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
 	if err != nil {
 		return false, err
 	}
 
-	jobID := id.NewJobID()
-	_, err = i.batch.SubmitJob(ctx, jobID, p.Workflow.Path, "", nil, p.ProjectID, prj.Workspace())
+	debug := true
+
+	j, err := job.New().
+		NewID().
+		Debug(&debug).
+		Deployment(id.NewDeploymentID()). // Using a placeholder deployment ID
+		Workspace(prj.Workspace()).
+		Status(job.StatusPending).
+		StartedAt(time.Now()).
+		Build()
+	if err != nil {
+		return false, err
+	}
+
+	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
+	if err != nil {
+		return false, fmt.Errorf("failed to upload metadata: %v", err)
+	}
+	if metadataURL != nil {
+		j.SetMetadataURL(metadataURL.String())
+	}
+
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		return false, err
+	}
+
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), p.Workflow.Path, j.MetadataURL(), nil, p.ProjectID, prj.Workspace())
 	if err != nil {
 		return false, fmt.Errorf("failed to submit job: %v", err)
 	}
+	j.SetGCPJobID(gcpJobID)
+
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		return false, err
+	}
 
 	tx.Commit()
+
+	if i.job != nil {
+		if err := i.job.StartMonitoring(ctx, j, nil, operator); err != nil {
+			return true, fmt.Errorf("failed to start job monitoring: %v", err)
+		}
+	}
+
 	return true, nil
 }

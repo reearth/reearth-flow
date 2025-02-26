@@ -51,6 +51,14 @@ type AssetConnection struct {
 	TotalCount int       `json:"totalCount"`
 }
 
+type CancelJobInput struct {
+	JobID ID `json:"jobId"`
+}
+
+type CancelJobPayload struct {
+	Job *Job `json:"job,omitempty"`
+}
+
 type CreateAssetInput struct {
 	WorkspaceID ID             `json:"workspaceId"`
 	File        graphql.Upload `json:"file"`
@@ -158,6 +166,22 @@ type DeploymentPayload struct {
 	Deployment *Deployment `json:"deployment"`
 }
 
+type Document struct {
+	ID        ID        `json:"id"`
+	Update    []int     `json:"update"`
+	Clock     int       `json:"clock"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+func (Document) IsNode()        {}
+func (this Document) GetID() ID { return this.ID }
+
+type DocumentSnapshot struct {
+	Update    []int     `json:"update"`
+	Clock     int       `json:"clock"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
 type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
 }
@@ -177,7 +201,10 @@ type Job struct {
 	CompletedAt  *time.Time  `json:"completedAt,omitempty"`
 	Deployment   *Deployment `json:"deployment,omitempty"`
 	DeploymentID ID          `json:"deploymentId"`
+	Debug        *bool       `json:"debug,omitempty"`
 	ID           ID          `json:"id"`
+	LogsURL      *string     `json:"logsURL,omitempty"`
+	OutputURLs   []string    `json:"outputURLs,omitempty"`
 	StartedAt    time.Time   `json:"startedAt"`
 	Status       JobStatus   `json:"status"`
 	Workspace    *Workspace  `json:"workspace,omitempty"`
@@ -255,6 +282,7 @@ type Project struct {
 	Name              string       `json:"name"`
 	Parameters        []*Parameter `json:"parameters"`
 	UpdatedAt         time.Time    `json:"updatedAt"`
+	SharedURL         *string      `json:"sharedUrl,omitempty"`
 	Version           int          `json:"version"`
 	Workspace         *Workspace   `json:"workspace,omitempty"`
 	WorkspaceID       ID           `json:"workspaceId"`
@@ -271,6 +299,11 @@ type ProjectConnection struct {
 
 type ProjectPayload struct {
 	Project *Project `json:"project"`
+}
+
+type ProjectSharingInfoPayload struct {
+	ProjectID  ID      `json:"projectId"`
+	SharingURL *string `json:"sharingUrl,omitempty"`
 }
 
 type Query struct {
@@ -555,22 +588,24 @@ func (e EventSourceType) MarshalGQL(w io.Writer) {
 type JobStatus string
 
 const (
-	JobStatusPending   JobStatus = "PENDING"
-	JobStatusRunning   JobStatus = "RUNNING"
+	JobStatusCancelled JobStatus = "CANCELLED"
 	JobStatusCompleted JobStatus = "COMPLETED"
 	JobStatusFailed    JobStatus = "FAILED"
+	JobStatusPending   JobStatus = "PENDING"
+	JobStatusRunning   JobStatus = "RUNNING"
 )
 
 var AllJobStatus = []JobStatus{
-	JobStatusPending,
-	JobStatusRunning,
+	JobStatusCancelled,
 	JobStatusCompleted,
 	JobStatusFailed,
+	JobStatusPending,
+	JobStatusRunning,
 }
 
 func (e JobStatus) IsValid() bool {
 	switch e {
-	case JobStatusPending, JobStatusRunning, JobStatusCompleted, JobStatusFailed:
+	case JobStatusCancelled, JobStatusCompleted, JobStatusFailed, JobStatusPending, JobStatusRunning:
 		return true
 	}
 	return false

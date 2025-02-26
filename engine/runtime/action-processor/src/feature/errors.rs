@@ -23,8 +23,12 @@ pub(crate) enum FeatureProcessorError {
     CounterFactory(String),
     #[error("Feature Counter error: {0}")]
     Counter(String),
+    #[error("Feature File City Gml Reader Factory error: {0}")]
+    FileCityGmlReaderFactory(String),
     #[error("Feature File City Gml Reader error: {0}")]
     FileCityGmlReader(String),
+    #[error("Feature File Reader Factory error: {0}")]
+    FileReaderFactory(String),
     #[error("Feature File Csv Reader error: {0}")]
     FileCsvReader(String),
     #[error("Feature File Json Reader error: {0}")]

@@ -16,6 +16,7 @@ use tracing::{info_span, Span};
 
 use crate::event::{Event, EventHub};
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
+use crate::forwarder::ProcessorChannelForwarder;
 use crate::kvs::KvStore;
 use crate::{
     builder_dag::NodeKind,
@@ -32,7 +33,7 @@ static SLOW_ACTION_THRESHOLD: Lazy<Duration> = Lazy::new(|| {
         .ok()
         .and_then(|v| v.parse().ok())
         .map(Duration::from_millis)
-        .unwrap_or(Duration::from_millis(300))
+        .unwrap_or(Duration::from_millis(1000))
 });
 
 /// A processor in the execution DAG.
@@ -47,7 +48,7 @@ pub struct ProcessorNode<F> {
     /// The processor.
     processor: Arc<parking_lot::RwLock<Box<dyn Processor>>>,
     /// This node's output channel manager, for forwarding data, writing metadata and writing port state.
-    channel_manager: Arc<parking_lot::RwLock<ChannelManager>>,
+    channel_manager: Arc<parking_lot::RwLock<ProcessorChannelForwarder>>,
     /// The shutdown future.
     #[allow(dead_code)]
     shutdown: F,
@@ -84,15 +85,17 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let senders = dag.collect_senders(node_index);
         let record_writers = dag.collect_record_writers(node_index).await;
 
-        let channel_manager = ChannelManager::new(
+        let channel_manager = ProcessorChannelForwarder::ChannelManager(ChannelManager::new(
             node_handle.clone(),
             record_writers,
             senders,
             runtime.clone(),
             dag.event_hub().clone(),
-        );
+        ));
+        let version = env!("CARGO_PKG_VERSION");
         let span = info_span!(
             "action",
+            "engine.version" = version,
             "otel.name" = processor.name(),
             "otel.kind" = "Processor Node",
             "workflow.id" = dag.id.to_string().as_str(),
@@ -236,9 +239,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
 
     fn on_terminate(&mut self, ctx: NodeContext) -> Result<(), ExecutionError> {
         let channel_manager = Arc::clone(&self.channel_manager);
-        let mut channel_manager_guard = channel_manager.write();
+        let channel_manager_guard = channel_manager.read();
         let processor = Arc::clone(&self.processor);
-        let channel_manager: &mut ChannelManager = &mut channel_manager_guard;
+        let channel_manager: &ProcessorChannelForwarder = &channel_manager_guard;
         let now = time::Instant::now();
         processor
             .write()
@@ -263,13 +266,13 @@ fn process(
     node_handle: NodeHandle,
     span: Span,
     event_hub: EventHub,
-    channel_manager: Arc<parking_lot::RwLock<ChannelManager>>,
+    channel_manager: Arc<parking_lot::RwLock<ProcessorChannelForwarder>>,
     processor: Arc<parking_lot::RwLock<Box<dyn Processor>>>,
 ) {
     let feature_id = ctx.feature.id;
-    let mut channel_manager_guard = channel_manager.write();
+    let channel_manager_guard = channel_manager.read();
     let mut processor_guard = processor.write();
-    let channel_manager: &mut ChannelManager = &mut channel_manager_guard;
+    let channel_manager: &ProcessorChannelForwarder = &channel_manager_guard;
     let processor: &mut Box<dyn Processor> = &mut processor_guard;
     let now = time::Instant::now();
     let result = processor.process(ctx, channel_manager);

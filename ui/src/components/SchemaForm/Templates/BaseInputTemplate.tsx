@@ -7,9 +7,9 @@ import {
   RJSFSchema,
   StrictRJSFSchema,
 } from "@rjsf/utils";
-import { ChangeEvent, FocusEvent } from "react";
+import { ChangeEvent, useRef } from "react";
 
-import { Input } from "@flow/components";
+import { Input, TextArea } from "@flow/components";
 
 /** The `BaseInputTemplate` is the template to use to render the basic `<input>` component for the `core` theme.
  * It is used as the template for rendering many of the <input> based widgets that differ by `type` and callbacks only.
@@ -51,6 +51,8 @@ const BaseInputTemplate = <
     InputLabelProps,
     ...textFieldProps
   } = props;
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   const inputProps = getInputProps<T, S, F>(schema, type, options);
   // Now we need to pull out the step, min, max into an inner `inputProps` for material-ui
   const { step, min, max, ...rest } = inputProps;
@@ -63,15 +65,21 @@ const BaseInputTemplate = <
     },
     ...rest,
   };
-  const _onChange = ({ target: { value } }: ChangeEvent<HTMLInputElement>) =>
-    onChange(value === "" ? options.emptyValue : value);
-  const _onBlur = ({ target }: FocusEvent<HTMLInputElement>) =>
-    onBlur(id, target?.value);
-  const _onFocus = ({ target }: FocusEvent<HTMLInputElement>) =>
-    onFocus(id, target?.value);
-
-  return (
-    <>
+  const handleOnChange = ({
+    target: { value },
+  }: ChangeEvent<HTMLTextAreaElement>) => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = "auto";
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+    return (
+      onChangeOverride || onChange(value === "" ? options.emptyValue : value)
+    );
+  };
+  // For most text-based params we want TextArea. But for certain schema format types, we want Input to get the appropriate styling @billcookie
+  if (schema.format === "color") {
+    return (
       <Input
         id={id}
         name={id}
@@ -81,9 +89,29 @@ const BaseInputTemplate = <
         disabled={disabled || readonly}
         {...otherProps}
         value={value || value === 0 ? value : ""}
-        onChange={onChangeOverride || _onChange}
-        onBlur={_onBlur}
-        onFocus={_onFocus}
+        onChange={(e) =>
+          onChangeOverride ||
+          onChange(e.target.value === "" ? options.emptyValue : e.target.value)
+        }
+        {...textFieldProps}
+        aria-describedby={ariaDescribedByIds<T>(id, !!schema.examples)}
+      />
+    );
+  }
+  return (
+    <>
+      <TextArea
+        ref={textareaRef}
+        id={id}
+        name={id}
+        rows={1}
+        placeholder={placeholder}
+        autoFocus={autofocus}
+        required={required}
+        disabled={disabled || readonly}
+        {...otherProps}
+        value={value || value === 0 ? value : ""}
+        onChange={handleOnChange}
         {...textFieldProps}
         aria-describedby={ariaDescribedByIds<T>(id, !!schema.examples)}
       />

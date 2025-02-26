@@ -5,6 +5,7 @@ import { rebuildWorkflow } from "./conversions";
 import type { YWorkflow } from "./types";
 import useYEdge from "./useYEdge";
 import useYHistory from "./useYHistory";
+import useYLayout from "./useYLayout";
 import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
 
@@ -58,6 +59,12 @@ export default ({
   const { canRedo, canUndo, handleYWorkflowRedo, handleYWorkflowUndo } =
     useYHistory({ undoManager });
 
+  const { handleYLayoutChange } = useYLayout({
+    yWorkflows,
+    rawWorkflows,
+    undoTrackerActionWrapper,
+  });
+
   return {
     canUndo,
     canRedo,
@@ -74,5 +81,6 @@ export default ({
     handleYWorkflowUndo,
     handleYWorkflowRedo,
     handleYWorkflowRename,
+    handleYLayoutChange,
   };
 };

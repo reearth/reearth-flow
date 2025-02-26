@@ -37,6 +37,11 @@ func (b *JobBuilder) NewID() *JobBuilder {
 	return b
 }
 
+func (b *JobBuilder) Debug(debug *bool) *JobBuilder {
+	b.j.debug = debug
+	return b
+}
+
 func (b *JobBuilder) Deployment(deployment DeploymentID) *JobBuilder {
 	b.j.deployment = deployment
 	return b
@@ -69,5 +74,15 @@ func (b *JobBuilder) CompletedAt(completedAt *time.Time) *JobBuilder {
 
 func (b *JobBuilder) MetadataURL(metadataURL string) *JobBuilder {
 	b.j.metadataURL = metadataURL
+	return b
+}
+
+func (b *JobBuilder) OutputURLs(outputURLs []string) *JobBuilder {
+	b.j.outputURLs = outputURLs
+	return b
+}
+
+func (b *JobBuilder) LogsURL(logsURL string) *JobBuilder {
+	b.j.logsURL = logsURL
 	return b
 }

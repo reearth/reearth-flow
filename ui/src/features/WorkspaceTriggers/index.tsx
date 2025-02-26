@@ -5,7 +5,7 @@ import {
   Button,
   ButtonWithTooltip,
   FlowLogo,
-  Loading,
+  LoadingSkeleton,
   DataTable as Table,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
@@ -98,7 +98,6 @@ const TriggerManager: React.FC = () => {
               <p className="text-lg dark:font-extralight">{t("Triggers")}</p>
               <Button
                 className="flex gap-2"
-                variant="outline"
                 onClick={() => setOpenTriggerAddDialog(true)}>
                 <Plus weight="thin" />
                 <p className="text-xs dark:font-light">{t("New Trigger")}</p>
@@ -106,7 +105,7 @@ const TriggerManager: React.FC = () => {
             </div>
 
             {isFetching ? (
-              <Loading />
+              <LoadingSkeleton />
             ) : triggers && triggers.length > 0 ? (
               <Table
                 columns={columns}

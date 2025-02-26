@@ -1,5 +1,6 @@
 import { X } from "@phosphor-icons/react";
-import { memo, useCallback } from "react";
+import { useReactFlow } from "@xyflow/react";
+import { memo, useCallback, useEffect, useRef } from "react";
 
 import { IconButton } from "@flow/components";
 import { Node } from "@flow/types";
@@ -31,6 +32,23 @@ const ParamsPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
     [onParamsSubmit, handleClose],
   );
 
+  const { getViewport, setViewport } = useReactFlow();
+
+  const previousViewportRef = useRef<{
+    x: number;
+    y: number;
+    zoom: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (selected && !previousViewportRef.current) {
+      const { x, y, zoom } = getViewport();
+      previousViewportRef.current = { x, y, zoom };
+    } else if (!selected && previousViewportRef.current) {
+      setViewport(previousViewportRef.current, { duration: 400 });
+      previousViewportRef.current = null;
+    }
+  }, [setViewport, getViewport, selected]);
   return (
     <>
       <div
@@ -58,7 +76,7 @@ const ParamsPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
-        <div className="size-full py-4 pl-4 pr-2">
+        <div className="size-full px-2 py-4">
           {selected && (
             <ParamEditor
               nodeId={selected.id}

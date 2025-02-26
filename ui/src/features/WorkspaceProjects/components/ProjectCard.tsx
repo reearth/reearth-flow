@@ -16,6 +16,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@flow/components";
+import { useProjectExport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
@@ -48,13 +49,19 @@ const ProjectCard: React.FC<Props> = ({
     if (!isShared) return;
     copyToClipboard(sharedURL);
   };
+  const { isExporting, handleProjectExport } = useProjectExport(project.id);
 
   return (
     <Card
       className={`group relative cursor-pointer border-transparent bg-secondary ${currentProject && currentProject.id === id ? "border-border" : "hover:border-border"}`}
       key={id}
       onClick={() => onProjectSelect(project)}>
-      <CardContent className="flex h-[120px] items-center justify-center p-0">
+      <CardContent className="relative flex h-[120px] items-center justify-center p-0">
+        {isExporting && (
+          <p className="loading-pulse absolute left-2 top-2 font-thin">
+            {t("Exporting...")}
+          </p>
+        )}
         <FlowLogo
           className={`size-[120px] translate-x-20 opacity-50 ${description ? "group:hover:opacity-90" : ""}`}
         />
@@ -95,7 +102,14 @@ const ProjectCard: React.FC<Props> = ({
                 onClick={handleCopyURLToClipBoard}>
                 {t("Copy Share URL")}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setProjectToBeDeleted(id)}>
+              <DropdownMenuItem onClick={handleProjectExport}>
+                {t("Export Project")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setProjectToBeDeleted(id);
+                }}>
                 {t("Delete Project")}
               </DropdownMenuItem>
             </DropdownMenuContent>

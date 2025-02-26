@@ -1,12 +1,21 @@
-import { Database, Disc, Lightning, TreeView } from "@phosphor-icons/react";
+import {
+  Database,
+  Disc,
+  Graph,
+  Icon,
+  Lightning,
+  RectangleDashed,
+  TreeView,
+} from "@phosphor-icons/react";
 import { Link, useParams } from "@tanstack/react-router";
-import { memo, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
 import { UserMenu } from "@flow/features/common";
 import { useShortcuts } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import type { Node } from "@flow/types";
+import type { Node, NodeChange } from "@flow/types";
+import { getNodeIcon } from "@flow/utils/getNodeIcon";
 
 import { ActionsList } from "./components";
 
@@ -19,6 +28,12 @@ type Props = {
   onNodesAdd: (node: Node[]) => void;
   isMainWorkflow: boolean;
   hasReader?: boolean;
+  onNodesChange: (changes: NodeChange[]) => void;
+  onNodeDoubleClick: (
+    e: React.MouseEvent<Element> | undefined,
+    node: Node,
+  ) => void;
+  selected?: Node;
 };
 
 const LeftPanel: React.FC<Props> = ({
@@ -28,46 +43,50 @@ const LeftPanel: React.FC<Props> = ({
   onNodesAdd,
   isMainWorkflow,
   hasReader,
+  onNodesChange,
+  onNodeDoubleClick,
 }) => {
   const t = useT();
   const { workspaceId } = useParams({ strict: false });
   const [selectedTab, setSelectedTab] = useState<Tab | undefined>();
-
-  const [_content, setContent] = useState("Admin Page");
+  const [nodeId, setNodeId] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    if (!isOpen && selectedTab) {
-      setSelectedTab(undefined);
+    if (!isOpen && nodeId) {
+      setNodeId(undefined);
     }
-  }, [isOpen, selectedTab]);
+  }, [isOpen, nodeId]);
+
+  const handleTreeDataItemDoubleClick = useCallback(
+    (nodeId: string) => {
+      const node = nodes.find((n) => n.id === nodeId);
+      if (!node) return;
+
+      const nodeChanges: NodeChange[] = nodes.map((n) => ({
+        id: n.id,
+        type: "select",
+        selected: n.id === nodeId,
+      }));
+
+      onNodesChange(nodeChanges);
+      onNodeDoubleClick(undefined, node);
+    },
+    [nodes, onNodesChange, onNodeDoubleClick],
+  );
 
   const treeContent: TreeDataItem[] = [
-    ...(nodes
-      ?.filter((n) => n.type === "reader")
-      .map((n) => ({
-        id: n.id,
-        name: n.data.customName || n.data.officialName || "untitled",
-        icon: Database,
-      })) ?? []),
-    ...(nodes
-      ?.filter((n) => n.type === "writer")
-      .map((n) => ({
-        id: n.id,
-        name: n.data.customName || n.data.officialName || "untitled",
-        icon: Disc,
-      })) ?? []),
-    {
-      id: "transformer",
-      name: t("Transformers"),
-      icon: Lightning,
-      children: nodes
-        ?.filter((n) => n.type === "transformer")
-        .map((n) => ({
-          id: n.id,
-          name: n.data.customName || n.data.officialName || "untitled",
-          // icon: Disc,
-        })),
-    },
+    ...(createTreeDataItem("reader", Database, nodes) || []),
+    ...(createTreeDataItem("writer", Disc, nodes) || []),
+    ...(createTreeDataItem(
+      "transformer",
+      Lightning,
+      nodes,
+      t("Transformers"),
+    ) || []),
+    ...(createTreeDataItem("subworkflow", Graph, nodes, t("Subworkflows")) ||
+      []),
+    ...(createTreeDataItem("batch", RectangleDashed, nodes, t("Batch Nodes")) ||
+      []),
   ];
 
   const tabs: {
@@ -83,11 +102,15 @@ const LeftPanel: React.FC<Props> = ({
       component: nodes && (
         <Tree
           data={treeContent}
-          className="w-full shrink-0 truncate rounded px-1"
-          // initialSlelectedItemId="1"
-          onSelectChange={(item) => setContent(item?.name ?? "")}
-          // folderIcon={Folder}
-          // itemIcon={Database}
+          className="w-full shrink-0 select-none truncate rounded px-1"
+          onSelectChange={(item) => {
+            setNodeId(item?.id ?? "");
+          }}
+          onDoubleClick={() => {
+            if (nodeId) {
+              handleTreeDataItemDoubleClick(nodeId);
+            }
+          }}
         />
       ),
     },
@@ -196,6 +219,77 @@ const LeftPanel: React.FC<Props> = ({
       </aside>
     </>
   );
+};
+
+const createTreeDataItem = (
+  type: string,
+  icon: Icon,
+  nodes?: Node[],
+  name?: string,
+) => {
+  if (type === "reader" || type === "writer") {
+    return (
+      nodes
+        ?.filter((n) => n.type === type)
+        .map((n) => ({
+          id: n.id,
+          name: n.data.customName || n.data.officialName || "untitled",
+          icon,
+          type: n.type,
+        })) ?? []
+    );
+  }
+
+  if (type === "transformer" || type === "subworkflow") {
+    return nodes?.some((n) => n.type === type)
+      ? [
+          {
+            id: type,
+            name: name || "untitled",
+            icon,
+            children: nodes
+              ?.filter((n) => n.type === type)
+              .map((n) => ({
+                id: n.id,
+                name: n.data.customName || n.data.officialName || "untitled",
+                icon,
+                type: n.type,
+              })),
+          },
+        ]
+      : [];
+  }
+
+  if (type === "batch") {
+    return nodes?.some((n) => n.type === type)
+      ? [
+          {
+            id: type,
+            name: name || "untitled",
+            icon,
+            children: nodes
+              ?.filter((n) => n.type === type)
+              .map((n) => ({
+                id: n.id,
+                name:
+                  n.data.params?.customName ||
+                  n.data.officialName ||
+                  "untitled",
+                icon,
+                type: n.type,
+                children: nodes
+                  ?.filter((d) => d.parentId === n.id)
+                  .map((d) => ({
+                    id: d.id,
+                    name:
+                      d.data.customName || d.data.officialName || "untitled",
+                    icon: getNodeIcon(d.type),
+                  })),
+              })),
+          },
+        ]
+      : [];
+  }
 };
 
 export default memo(LeftPanel);

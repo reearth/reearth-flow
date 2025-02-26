@@ -9,10 +9,10 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_common::xml::XmlContext;
 use reearth_flow_common::xml::{self, XmlRoNode};
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
@@ -335,13 +335,13 @@ pub struct DomainOfDefinitionValidatorParam {
 
 impl Processor for DomainOfDefinitionValidator {
     fn num_threads(&self) -> usize {
-        5
+        2
     }
 
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         if self.codelists.is_none() {
@@ -357,11 +357,7 @@ impl Processor for DomainOfDefinitionValidator {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         let mut gml_ids = HashMap::<String, Vec<HashMap<String, String>>>::new();
         for (_, gml_id) in self.feature_buffer.iter() {
             for (k, v) in gml_id.iter() {
@@ -411,7 +407,7 @@ impl Processor for DomainOfDefinitionValidator {
 #[allow(clippy::type_complexity)]
 fn process_feature(
     ctx: &ExecutorContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
     codelists: &HashMap<String, HashMap<String, String>>,
     feature: &Feature,
 ) -> super::errors::Result<(Vec<Feature>, HashMap<String, Vec<HashMap<String, String>>>)> {
@@ -697,7 +693,7 @@ fn parse_envelope(envelopes: Vec<XmlRoNode>) -> super::errors::Result<Envelope> 
 #[allow(clippy::too_many_arguments)]
 fn process_member_node(
     ctx: &ExecutorContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
     xml_ctx: &XmlContext,
     codelists: &HashMap<String, HashMap<String, String>>,
     feature: &Feature,

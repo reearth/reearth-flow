@@ -19,11 +19,21 @@ import (
 )
 
 type BatchConfig struct {
-	BinaryPath string
-	ImageURI   string
-	ProjectID  string
-	Region     string
-	SAEmail    string
+	AllowedLocations                []string
+	BinaryPath                      string
+	BootDiskSizeGB                  int
+	BootDiskType                    string
+	ComputeCpuMilli                 int
+	ComputeMemoryMib                int
+	ImageURI                        string
+	MachineType                     string
+	PubSubLogStreamTopic            string
+	PubSubJobCompleteTopic          string
+	PubSubEdgePassThroughEventTopic string
+	ProjectID                       string
+	Region                          string
+	SAEmail                         string
+	TaskCount                       int
 }
 
 type BatchClient interface {
@@ -112,27 +122,42 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		AlwaysRun:        false,
 	}
 
+	computeResource := &batchpb.ComputeResource{
+		CpuMilli:  int64(b.config.ComputeCpuMilli),
+		MemoryMib: int64(b.config.ComputeMemoryMib),
+	}
+
 	taskSpec := &batchpb.TaskSpec{
+		ComputeResource: computeResource,
 		Runnables: []*batchpb.Runnable{
 			runnable,
 		},
 		Environment: &batchpb.Environment{
 			Variables: map[string]string{
-				"FLOW_RUNTIME_FEATURE_WRITER_DISABLE": "true",
-				"FLOW_WORKER_ENABLE_JSON_LOG":         "true",
+				"FLOW_RUNTIME_FEATURE_WRITER_DISABLE":       "true",
+				"FLOW_WORKER_ENABLE_JSON_LOG":               "true",
+				"FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC": b.config.PubSubEdgePassThroughEventTopic,
+				"FLOW_WORKER_LOG_STREAM_TOPIC":              b.config.PubSubLogStreamTopic,
+				"FLOW_WORKER_JOB_COMPLETE_TOPIC":            b.config.PubSubJobCompleteTopic,
 			},
 		},
 	}
 
 	taskGroup := &batchpb.TaskGroup{
-		TaskCount: 1,
+		TaskCount: int64(b.config.TaskCount),
 		TaskSpec:  taskSpec,
 	}
 	log.Debugfc(ctx, "gcpbatch: configured task group with count=%d", taskGroup.TaskCount)
 
+	bootDisk := &batchpb.AllocationPolicy_Disk{
+		Type:   b.config.BootDiskType,
+		SizeGb: int64(b.config.BootDiskSizeGB),
+	}
+
 	instancePolicy := &batchpb.AllocationPolicy_InstancePolicy{
 		ProvisioningModel: batchpb.AllocationPolicy_STANDARD,
-		MachineType:       "e2-standard-4",
+		MachineType:       b.config.MachineType,
+		BootDisk:          bootDisk,
 	}
 	log.Debugfc(ctx, "gcpbatch: configured instance policy with machine=%s", instancePolicy.MachineType)
 
@@ -152,6 +177,12 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		},
 	}
 	log.Debugfc(ctx, "gcpbatch: configured allocation policy with service account=%s", b.config.SAEmail)
+
+	if len(b.config.AllowedLocations) > 0 {
+		allocationPolicy.Location = &batchpb.AllocationPolicy_LocationPolicy{
+			AllowedLocations: b.config.AllowedLocations,
+		}
+	}
 
 	labels := map[string]string{
 		"project_id":  projectID.String(),
