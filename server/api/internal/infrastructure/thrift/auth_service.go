@@ -1,4 +1,4 @@
-package grpc
+package thrift
 
 import (
 	"context"
@@ -7,25 +7,21 @@ import (
 	"strings"
 
 	"github.com/reearth/reearth-flow/api/proto"
-
 	"github.com/reearth/reearthx/appx"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 )
 
-type AuthService struct {
-	proto.UnimplementedAuthServiceServer
+type AuthServiceHandler struct {
 	authConfig []appx.JWTProvider
 }
 
-func NewAuthService(authConfig []appx.JWTProvider) *AuthService {
-	return &AuthService{
+func NewAuthServiceHandler(authConfig []appx.JWTProvider) *AuthServiceHandler {
+	return &AuthServiceHandler{
 		authConfig: authConfig,
 	}
 }
 
-func (s *AuthService) VerifyAPIToken(ctx context.Context, req *proto.APITokenVerifyRequest) (*proto.APITokenVerifyResponse, error) {
-	token := req.GetToken()
+func (s *AuthServiceHandler) VerifyAPIToken(ctx context.Context, req *proto.APITokenVerifyRequest) (*proto.APITokenVerifyResponse, error) {
+	token := req.Token
 	if !strings.HasPrefix(token, "Bearer ") {
 		token = fmt.Sprintf("Bearer %s", token)
 	}
@@ -34,13 +30,13 @@ func (s *AuthService) VerifyAPIToken(ctx context.Context, req *proto.APITokenVer
 	validator, err := appx.NewJWTMultipleValidator(s.authConfig)
 	if err != nil {
 		log.Printf("failed to initialize validator: %v", err)
-		return nil, status.Error(codes.Unauthenticated, "failed to initialize validator")
+		return nil, fmt.Errorf("failed to initialize validator: %v", err)
 	}
 
 	_, err = validator.ValidateToken(ctx, token)
 	if err != nil {
 		log.Printf("failed to validate token %s: %v", token, err)
-		return nil, status.Error(codes.Unauthenticated, "invalid token")
+		return nil, fmt.Errorf("invalid token: %v", err)
 	}
 
 	return &proto.APITokenVerifyResponse{
