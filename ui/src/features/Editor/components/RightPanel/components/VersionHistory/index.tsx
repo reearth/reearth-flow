@@ -47,7 +47,7 @@ const VersionHistoryList: React.FC<Props> = ({ versionHistory }) => {
             </p>
           </div>
         )}
-        <div className="flex flex-col gap-2 overflow-auto">
+        <div className="flex flex-col overflow-auto">
           {olderVersions.map((history) => (
             <Version
               key={history.id}
@@ -57,6 +57,7 @@ const VersionHistoryList: React.FC<Props> = ({ versionHistory }) => {
               onDoubleClick={handleDoubleClick}
             />
           ))}
+          <div className="pb-6" />
         </div>
       </ScrollArea>
       {openVersionChangeDialog && selectedVersionId && (
