@@ -19,18 +19,21 @@ import (
 )
 
 type BatchConfig struct {
-	AllowedLocations []string
-	BinaryPath       string
-	BootDiskSizeGB   int
-	BootDiskType     string
-	ComputeCpuMilli  int
-	ComputeMemoryMib int
-	ImageURI         string
-	MachineType      string
-	ProjectID        string
-	Region           string
-	SAEmail          string
-	TaskCount        int
+	AllowedLocations                []string
+	BinaryPath                      string
+	BootDiskSizeGB                  int
+	BootDiskType                    string
+	ComputeCpuMilli                 int
+	ComputeMemoryMib                int
+	ImageURI                        string
+	MachineType                     string
+	PubSubLogStreamTopic            string
+	PubSubJobCompleteTopic          string
+	PubSubEdgePassThroughEventTopic string
+	ProjectID                       string
+	Region                          string
+	SAEmail                         string
+	TaskCount                       int
 }
 
 type BatchClient interface {
@@ -131,8 +134,11 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		},
 		Environment: &batchpb.Environment{
 			Variables: map[string]string{
-				"FLOW_RUNTIME_FEATURE_WRITER_DISABLE": "true",
-				"FLOW_WORKER_ENABLE_JSON_LOG":         "true",
+				"FLOW_RUNTIME_FEATURE_WRITER_DISABLE":       "true",
+				"FLOW_WORKER_ENABLE_JSON_LOG":               "true",
+				"FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC": b.config.PubSubEdgePassThroughEventTopic,
+				"FLOW_WORKER_LOG_STREAM_TOPIC":              b.config.PubSubLogStreamTopic,
+				"FLOW_WORKER_JOB_COMPLETE_TOPIC":            b.config.PubSubJobCompleteTopic,
 			},
 		},
 	}

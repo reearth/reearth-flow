@@ -201,6 +201,7 @@ type Job struct {
 	CompletedAt  *time.Time  `json:"completedAt,omitempty"`
 	Deployment   *Deployment `json:"deployment,omitempty"`
 	DeploymentID ID          `json:"deploymentId"`
+	Debug        *bool       `json:"debug,omitempty"`
 	ID           ID          `json:"id"`
 	LogsURL      *string     `json:"logsURL,omitempty"`
 	OutputURLs   []string    `json:"outputURLs,omitempty"`

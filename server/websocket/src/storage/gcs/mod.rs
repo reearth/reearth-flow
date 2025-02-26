@@ -57,13 +57,14 @@ impl GcsStore {
         Ok(Self { client, bucket })
     }
 
-    pub async fn new_with_config(
-        config: GcsConfig,
-    ) -> Result<Self, google_cloud_storage::http::Error> {
-        let mut client_config = ClientConfig::default().anonymous();
-        client_config.storage_endpoint = config
-            .endpoint
-            .unwrap_or_else(|| "http://localhost:4443".to_string());
+    pub async fn new_with_config(config: GcsConfig) -> Result<Self, anyhow::Error> {
+        let client_config = if let Some(endpoint) = &config.endpoint {
+            let mut client_config = ClientConfig::default().anonymous();
+            client_config.storage_endpoint = endpoint.clone();
+            client_config
+        } else {
+            ClientConfig::default().with_auth().await?
+        };
 
         let client = Client::new(client_config);
 
