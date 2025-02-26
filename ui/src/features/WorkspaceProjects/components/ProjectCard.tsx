@@ -97,6 +97,13 @@ const ProjectCard: React.FC<Props> = ({
               <DropdownMenuItem
                 onClick={(e) => {
                   e.stopPropagation();
+                  // handleProjectDuplication();
+                }}>
+                {t("Duplicate Project")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={(e) => {
+                  e.stopPropagation();
                   setProjectToBeDeleted(id);
                 }}>
                 {t("Delete Project")}
