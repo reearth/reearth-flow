@@ -10,6 +10,7 @@ type Project implements Node {
   name: String!
   parameters: [Parameter!]!
   updatedAt: DateTime!
+  sharedUrl: String
   version: Int!
   workspace: Workspace
   workspaceId: ID!

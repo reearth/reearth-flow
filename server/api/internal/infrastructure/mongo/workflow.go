@@ -44,6 +44,9 @@ func (r *Workflow) FindByID(ctx context.Context, id id.WorkflowID) (*workflow.Wo
 }
 
 func (r *Workflow) Save(ctx context.Context, workflow *workflow.Workflow) error {
+	if !r.f.CanWrite(workflow.Workspace()) {
+		return repo.ErrOperationDenied
+	}
 	doc, id := mongodoc.NewWorkflow(workflow)
 	return r.client.SaveOne(ctx, id, doc)
 }

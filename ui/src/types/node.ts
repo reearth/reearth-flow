@@ -44,8 +44,6 @@ export const nodeTypes = [
   "batch",
   "note",
   "subworkflow",
-  "entrance",
-  "exit",
 ] as const;
 
 export type NodeType = (typeof nodeTypes)[number];

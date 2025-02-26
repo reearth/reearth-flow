@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package proto;
+
+option go_package = "github.com/reearth/reearth-flow/server/api/proto";
+
+message APITokenVerifyRequest {
+  string token = 1;
+}
+
+message APITokenVerifyResponse {
+  bool authorized = 1;
+}
+
+service AuthService {
+  // Verify API token
+  rpc VerifyAPIToken (APITokenVerifyRequest) returns (APITokenVerifyResponse) {}
+} 

@@ -1,7 +1,9 @@
-pub(crate) mod cesium3dtiles;
-pub(crate) mod czml;
+pub(super) mod cesium3dtiles;
+pub(super) mod czml;
 mod excel;
-pub(crate) mod geojson;
-pub(crate) mod gltf;
-pub(crate) mod mvt;
+pub(super) mod geojson;
+pub(super) mod gltf;
+pub(super) mod mvt;
+pub(super) mod shapefile;
 pub(crate) mod writer;
+pub(super) mod xml;

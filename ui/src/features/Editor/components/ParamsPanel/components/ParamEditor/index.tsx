@@ -4,11 +4,10 @@ import { memo, useMemo, useState } from "react";
 
 import { SchemaForm, Button } from "@flow/components";
 import { patchAnyOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
-import { batchNodeAction } from "@flow/features/Editor/components/Canvas/components/Nodes/BatchNode";
-import { noteNodeAction } from "@flow/features/Editor/components/Canvas/components/Nodes/NoteNode";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
+import { batchNodeAction, noteNodeAction } from "@flow/lib/reactFlow";
 import type { NodeData } from "@flow/types";
 
 type Props = {
