@@ -14,7 +14,7 @@ type Props = {
 
 const RightPanel: React.FC<Props> = ({ contentType, onClose }) => {
   const t = useT();
-  // Note: this versionHistory is a mock data, types, components and code is subject to change.
+  // TODO: Hook up gql, correct types and remove mock data
   const versionHistory = [...mockVersionHistory];
 
   return (

@@ -24,10 +24,10 @@ const Version: React.FC<VersionProps> = ({
   return (
     <div key={version.id}>
       <div
-        className={`flex cursor-pointer select-none
-justify-between gap-2 rounded px-4 py-2 hover:bg-primary ${isSelected ? "border border-l-2 border-l-[#00a340]/30 bg-primary" : ""}`}
+        className={`flex cursor-pointer select-none justify-between gap-2 rounded px-4 py-2 ${isSelected ? "relative before:absolute before:inset-y-0 before:left-0 before:right-1 before:-z-10 before:rounded-md before:border before:border-l-2 before:border-accent before:border-l-green-800/70 before:bg-primary before:opacity-100" : "hover:bg-primary"}`}
         onClick={onClick}
-        onDoubleClick={onDoubleClick}>
+        onDoubleClick={onDoubleClick}
+        style={{ height: "100%" }}>
         <p className="flex-[2] self-center text-xs font-thin">
           {formatDate(version.createdAt)}
         </p>

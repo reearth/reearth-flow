@@ -13,8 +13,11 @@ const VersionHistoryChangeDialog: React.FC<Props> = ({
   const t = useT();
   return (
     <ConfirmationDialog
-      title={`${t("Are you sure you want to revert to Version")} ${selectedVersion}?`}
-      description={t("Test description here")}
+      title={t("Are you sure you want to revert to Version?")}
+      description={t(
+        "By clicking continue you will be reverting back to Version {{version}}.",
+        { version: selectedVersion },
+      )}
       isOpen={!!selectedVersion}
       confirmDisabled={!selectedVersion}
       onClose={() => onDialogClose()}
