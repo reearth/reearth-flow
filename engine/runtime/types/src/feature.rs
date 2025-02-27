@@ -9,6 +9,8 @@ use nutype::nutype;
 use reearth_flow_common::{str, xml::XmlXpathValue};
 use reearth_flow_eval_expr::{engine::Engine, scope::Scope};
 use serde::{Deserialize, Serialize};
+use serde_json::Number;
+use sqlx::{any::AnyTypeInfoKind, Column, Row, ValueRef};
 
 pub use crate::attribute::AttributeValue;
 use crate::{all_attribute_keys, attribute::Attribute, geometry::Geometry, metadata::Metadata};
@@ -225,6 +227,75 @@ impl From<serde_json::Value> for Feature {
             geometry: geometry.unwrap_or_default(),
             metadata: metadata.unwrap_or_default(),
         }
+    }
+}
+
+impl TryFrom<sqlx::any::AnyRow> for Feature {
+    type Error = crate::error::Error;
+
+    fn try_from(value: sqlx::any::AnyRow) -> Result<Self, Self::Error> {
+        let attributes = value
+            .columns
+            .iter()
+            .map(|column| {
+                let raw = value.try_get_raw(column.name()).map_err(|e| {
+                    crate::error::Error::Conversion(format!("Failed to get column: {}", e))
+                })?;
+                let type_info = raw.type_info();
+                let result = match type_info.kind() {
+                    AnyTypeInfoKind::Text => {
+                        let value: String = value.try_get(column.ordinal()).map_err(|e| {
+                            crate::error::Error::Conversion(format!("Failed to get text: {}", e))
+                        })?;
+                        (
+                            Attribute::new(column.name.to_string()),
+                            AttributeValue::String(value),
+                        )
+                    }
+                    AnyTypeInfoKind::SmallInt
+                    | AnyTypeInfoKind::BigInt
+                    | AnyTypeInfoKind::Integer => {
+                        let value: i64 = value.try_get(column.ordinal()).map_err(|e| {
+                            crate::error::Error::Conversion(format!("Failed to get integer: {}", e))
+                        })?;
+                        (
+                            Attribute::new(column.name.to_string()),
+                            AttributeValue::Number(Number::from(value)),
+                        )
+                    }
+                    AnyTypeInfoKind::Double | AnyTypeInfoKind::Real => {
+                        let value: f64 = value.try_get(column.ordinal()).map_err(|e| {
+                            crate::error::Error::Conversion(format!("Failed to get float: {}", e))
+                        })?;
+                        (
+                            Attribute::new(column.name.to_string()),
+                            AttributeValue::Number(
+                                Number::from_f64(value).unwrap_or(Number::from(0)),
+                            ),
+                        )
+                    }
+                    AnyTypeInfoKind::Bool => {
+                        let value: bool = value.try_get(column.ordinal()).map_err(|e| {
+                            crate::error::Error::Conversion(format!("Failed to get bool: {}", e))
+                        })?;
+                        (
+                            Attribute::new(column.name.to_string()),
+                            AttributeValue::Bool(value),
+                        )
+                    }
+                    AnyTypeInfoKind::Null => (
+                        Attribute::new(column.name.to_string()),
+                        AttributeValue::Null,
+                    ),
+                    _ => (
+                        Attribute::new(column.name.to_string()),
+                        AttributeValue::Null,
+                    ),
+                };
+                Ok::<(Attribute, AttributeValue), Self::Error>(result)
+            })
+            .collect::<Result<HashMap<_, _>, _>>()?;
+        Ok(Self::from(attributes))
     }
 }
 
