@@ -30,7 +30,7 @@ func NewClient(config Config) (*Client, error) {
 		config.ServerURL = "http://localhost:8000"
 	}
 
-	trans, err := thrift.NewTHttpClient(config.ServerURL + "/api/thrift/document")
+	trans, err := thrift.NewTHttpClient(config.ServerURL + "/doc")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Thrift HTTP client: %w", err)
 	}
@@ -39,8 +39,7 @@ func NewClient(config Config) (*Client, error) {
 
 	documentClient := proto.NewDocumentServiceClientFactory(trans, protocolFactory)
 
-	return &Client{
-		config:         config,
+	return &Client{config: config,
 		documentClient: documentClient,
 		transport:      trans,
 	}, nil
