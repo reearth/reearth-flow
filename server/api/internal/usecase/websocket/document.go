@@ -26,7 +26,7 @@ func Init(gcsBucket string, gcsEndpoint *string) {
 
 func getDefaultClient() interfaces.WebsocketClient {
 	clientOnce.Do(func() {
-		log.Info("Creating new document client with FFI")
+		log.Info("Creating new document client")
 		client, err := websocket.NewClient(clientConfig)
 		if err != nil {
 			log.Errorf("Failed to create document client: %v", err)
