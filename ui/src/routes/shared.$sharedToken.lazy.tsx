@@ -1,13 +1,14 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, useParams } from "@tanstack/react-router";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 
 import { LoadingSplashscreen } from "@flow/components";
 import SharedCanvas from "@flow/features/SharedCanvas";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useFullscreen, useShortcuts } from "@flow/hooks";
+import { useSharedProject } from "@flow/lib/gql";
 import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
 
-export const Route = createLazyFileRoute("/shared/$shareId")({
+export const Route = createLazyFileRoute("/shared/$sharedToken")({
   component: () => (
     <ReactFlowProvider>
       <EditorComponent />
@@ -38,7 +39,14 @@ const EditorComponent = () => {
     },
   ]);
 
+  const { useGetSharedProject } = useSharedProject();
+
+  const { sharedToken } = useParams({ strict: false });
+
+  const { sharedProject } = useGetSharedProject(sharedToken);
+
   const { state, isSynced } = useYjsSetup({
+    projectId: sharedProject?.id,
     workflowId: DEFAULT_ENTRY_GRAPH_ID,
   });
 

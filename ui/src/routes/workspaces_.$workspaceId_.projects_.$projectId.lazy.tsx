@@ -1,4 +1,4 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, useParams } from "@tanstack/react-router";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { useEffect, useState } from "react";
 
@@ -64,8 +64,13 @@ const EditorComponent = () => {
     },
   ]);
 
+  const { projectId }: { projectId: string } = useParams({
+    strict: false,
+  });
+
   const { state, isSynced, undoManager } = useYjsSetup({
     accessToken,
+    projectId,
     workflowId: DEFAULT_ENTRY_GRAPH_ID,
   });
 
