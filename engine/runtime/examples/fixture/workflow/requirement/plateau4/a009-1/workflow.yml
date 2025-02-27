@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
-name: "PLATEAU4-A008-3-workflow"
+name: "PLATEAU4-A009-1-workflow"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
@@ -26,40 +26,18 @@ graphs:
             ]
 
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
-        name: AttributeManager
+        name: NoopProcessor
         type: action
-        action: AttributeManager
-        with:
-          operations:
-          - attribute: round
-            method: create
-            value: |
-              round(env.get("__value").testAttribute02)
-          - attribute: floor
-            method: create
-            value: |
-              floor(env.get("__value").testAttribute02)
-          - attribute: ceiling
-            method: create
-            value: |
-              ceiling(env.get("__value").testAttribute02)
-          - attribute: abs
-            method: create
-            value: |
-              abs(env.get("__value").testAttribute03)
-          - attribute: sqrt
-            method: create
-            value: |
-              sqrt(env.get("__value").testAttribute02)
+        action: NoopProcessor
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        name: FileWriterCSV
+        name: JsonWriter
         type: action
         action: FileWriter
         with:
-          format: csv
+          format: json
           output: |
-            file::join_path(env.get("currentPath"), "a008-3.csv")
+            file::join_path(env.get("currentPath"), "a009-1.json")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

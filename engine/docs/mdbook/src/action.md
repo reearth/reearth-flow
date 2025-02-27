@@ -3508,10 +3508,13 @@ Compiles scripts into .wasm and runs at the wasm runtime
       "$ref": "#/definitions/ProgrammingLanguage"
     },
     "sourceCodeFilePath": {
-      "type": "string"
+      "$ref": "#/definitions/Expr"
     }
   },
   "definitions": {
+    "Expr": {
+      "type": "string"
+    },
     "ProcessorType": {
       "type": "string",
       "enum": [
