@@ -6,15 +6,11 @@ RUN apk add --update --no-cache \
     git \
     ca-certificates \
     build-base \
-    protoc \
-    protobuf-dev \
     curl \
     pkgconfig \
     thrift
 
 WORKDIR /reearth-flow
-
-RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
 
 COPY server/api/go.mod server/api/go.sum server/api/main.go /reearth-flow/
 RUN go mod download
@@ -23,9 +19,6 @@ COPY server/api/cmd/ /reearth-flow/cmd/
 COPY server/api/pkg/ /reearth-flow/pkg/
 COPY server/api/internal/ /reearth-flow/internal/
 COPY server/api/proto/ /reearth-flow/proto/
-
-RUN protoc --go_out=. --go_opt=paths=source_relative \
-    proto/*.proto
 
 RUN go build -tags "${TAG}" "-ldflags=-X main.version=${VERSION} -s -w -buildid=" -trimpath ./cmd/reearth-flow
 
