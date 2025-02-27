@@ -4,13 +4,13 @@ import "time"
 
 type Document struct {
 	ID        string
-	Update    []int
-	Clock     int
+	Updates   []int
+	Version   int
 	Timestamp time.Time
 }
 
 type History struct {
-	Update    []int
-	Clock     int
+	Updates   []int
+	Version   int
 	Timestamp time.Time
 }

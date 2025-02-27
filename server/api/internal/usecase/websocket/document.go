@@ -56,10 +56,10 @@ func GetHistory(ctx context.Context, id string) ([]*ws.History, error) {
 	return client.GetHistory(ctx, id)
 }
 
-func Rollback(ctx context.Context, id string, clock int) (*ws.Document, error) {
+func Rollback(ctx context.Context, id string, version int) (*ws.Document, error) {
 	client := getDefaultClient()
 	if client == nil {
 		return nil, fmt.Errorf("document client is not initialized")
 	}
-	return client.Rollback(ctx, id, clock)
+	return client.Rollback(ctx, id, version)
 }

@@ -29,14 +29,14 @@ type Client struct {
 type documentResponse struct {
 	DocID   string `json:"doc_id"`
 	Content []byte `json:"content"`
-	Clock   int32  `json:"clock"`
+	Version int32  `json:"version"`
 }
 
 type historyVersion struct {
 	VersionID string `json:"version_id"`
 	Timestamp string `json:"timestamp"`
 	Content   []byte `json:"content"`
-	Clock     int32  `json:"clock"`
+	Version   int32  `json:"version"`
 }
 
 type documentHistory struct {
@@ -74,7 +74,12 @@ func (c *Client) GetLatest(ctx context.Context, docID string) (*websocket.Docume
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Errorf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -87,15 +92,15 @@ func (c *Client) GetLatest(ctx context.Context, docID string) (*websocket.Docume
 	}
 
 	// Convert bytes to []int
-	update := make([]int, len(docResp.Content))
+	updates := make([]int, len(docResp.Content))
 	for i, b := range docResp.Content {
-		update[i] = int(b)
+		updates[i] = int(b)
 	}
 
 	doc := &websocket.Document{
 		ID:        docID,
-		Update:    update,
-		Clock:     int(docResp.Clock),
+		Updates:   updates,
+		Version:   int(docResp.Version),
 		Timestamp: time.Now(),
 	}
 
@@ -115,7 +120,12 @@ func (c *Client) GetHistory(ctx context.Context, docID string) ([]*websocket.His
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Errorf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -135,14 +145,14 @@ func (c *Client) GetHistory(ctx context.Context, docID string) ([]*websocket.His
 		}
 
 		// Convert bytes to []int
-		update := make([]int, len(version.Content))
+		updates := make([]int, len(version.Content))
 		for j, b := range version.Content {
-			update[j] = int(b)
+			updates[j] = int(b)
 		}
 
 		history[i] = &websocket.History{
-			Update:    update,
-			Clock:     int(version.Clock),
+			Updates:   updates,
+			Version:   int(version.Version),
 			Timestamp: timestamp,
 		}
 	}
@@ -150,11 +160,11 @@ func (c *Client) GetHistory(ctx context.Context, docID string) ([]*websocket.His
 	return history, nil
 }
 
-func (c *Client) Rollback(ctx context.Context, id string, clock int) (*websocket.Document, error) {
+func (c *Client) Rollback(ctx context.Context, id string, version int) (*websocket.Document, error) {
 	url := fmt.Sprintf("%s/api/documents/%s/rollback", c.config.ServerURL, id)
 
 	data := map[string]interface{}{
-		"clock": clock,
+		"version": version,
 	}
 
 	jsonData, err := json.Marshal(data)
@@ -172,7 +182,12 @@ func (c *Client) Rollback(ctx context.Context, id string, clock int) (*websocket
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Errorf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -185,15 +200,15 @@ func (c *Client) Rollback(ctx context.Context, id string, clock int) (*websocket
 	}
 
 	// Convert bytes to []int
-	update := make([]int, len(docResp.Content))
+	updates := make([]int, len(docResp.Content))
 	for i, b := range docResp.Content {
-		update[i] = int(b)
+		updates[i] = int(b)
 	}
 
 	return &websocket.Document{
 		ID:        id,
-		Update:    update,
-		Clock:     int(docResp.Clock),
+		Updates:   updates,
+		Version:   int(docResp.Version),
 		Timestamp: time.Now(),
 	}, nil
 }
