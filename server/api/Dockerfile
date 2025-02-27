@@ -9,28 +9,10 @@ RUN apk add --update --no-cache \
     protoc \
     protobuf-dev \
     curl \
-    rust \
-    cargo \
-    openssl-dev \
     pkgconfig \
-    libgcc \
     thrift
 
 WORKDIR /reearth-flow
-
-COPY server/websocket/Cargo.toml server/websocket/Cargo.lock /reearth-flow/server/
-COPY server/websocket/src/ /reearth-flow/server/src/
-COPY server/websocket/benches/ /reearth-flow/server/benches/
-COPY server/websocket/build.rs /reearth-flow/server/
-COPY server/websocket/thrift/ /reearth-flow/server/thrift/
-
-WORKDIR /reearth-flow/server
-RUN cargo build --release
-WORKDIR /reearth-flow
-
-RUN mkdir -p /usr/local/lib && \
-    ln -s /reearth-flow/server/target/release/libwebsocket.so /usr/local/lib/libwebsocket.so && \
-    ldconfig /usr/local/lib
 
 RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
 
@@ -45,24 +27,18 @@ COPY server/api/proto/ /reearth-flow/proto/
 RUN protoc --go_out=. --go_opt=paths=source_relative \
     proto/*.proto
 
-ENV LD_LIBRARY_PATH=/reearth-flow/server/target/release
-RUN CGO_ENABLED=1 RUSTFLAGS="-C target-feature=-crt-static" go build -tags "${TAG}" "-ldflags=-X main.version=${VERSION} -s -w -buildid=" -trimpath ./cmd/reearth-flow
+RUN go build -tags "${TAG}" "-ldflags=-X main.version=${VERSION} -s -w -buildid=" -trimpath ./cmd/reearth-flow
 
 FROM alpine:latest
 
 RUN apk add --no-cache \
     ca-certificates \
-    libc6-compat \
-    libgcc \
-    libstdc++
+    libc6-compat
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /reearth-flow/reearth-flow /reearth-flow/reearth-flow
-COPY --from=build /reearth-flow/server/target/release/libwebsocket.so /reearth-flow/target/release/
 COPY ui* /reearth-flow/ui/
 
 WORKDIR /reearth-flow
-
-ENV LD_LIBRARY_PATH=/reearth-flow/target/release
 
 CMD ["./reearth-flow"]
