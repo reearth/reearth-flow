@@ -230,7 +230,7 @@ type ComplexityRoot struct {
 		IsBasicAuthActive func(childComplexity int) int
 		Name              func(childComplexity int) int
 		Parameters        func(childComplexity int) int
-		SharedURL         func(childComplexity int) int
+		SharedToken       func(childComplexity int) int
 		UpdatedAt         func(childComplexity int) int
 		Version           func(childComplexity int) int
 		Workspace         func(childComplexity int) int
@@ -255,8 +255,8 @@ type ComplexityRoot struct {
 	}
 
 	ProjectSharingInfoPayload struct {
-		ProjectID  func(childComplexity int) int
-		SharingURL func(childComplexity int) int
+		ProjectID    func(childComplexity int) int
+		SharingToken func(childComplexity int) int
 	}
 
 	ProjectSnapshot struct {
@@ -1420,12 +1420,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.Parameters(childComplexity), true
 
-	case "Project.sharedUrl":
-		if e.complexity.Project.SharedURL == nil {
+	case "Project.sharedToken":
+		if e.complexity.Project.SharedToken == nil {
 			break
 		}
 
-		return e.complexity.Project.SharedURL(childComplexity), true
+		return e.complexity.Project.SharedToken(childComplexity), true
 
 	case "Project.updatedAt":
 		if e.complexity.Project.UpdatedAt == nil {
@@ -1518,12 +1518,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProjectSharingInfoPayload.ProjectID(childComplexity), true
 
-	case "ProjectSharingInfoPayload.sharingUrl":
-		if e.complexity.ProjectSharingInfoPayload.SharingURL == nil {
+	case "ProjectSharingInfoPayload.sharingToken":
+		if e.complexity.ProjectSharingInfoPayload.SharingToken == nil {
 			break
 		}
 
-		return e.complexity.ProjectSharingInfoPayload.SharingURL(childComplexity), true
+		return e.complexity.ProjectSharingInfoPayload.SharingToken(childComplexity), true
 
 	case "ProjectSnapshot.timestamp":
 		if e.complexity.ProjectSnapshot.Timestamp == nil {
@@ -2595,7 +2595,7 @@ extend type Mutation {
   name: String!
   parameters: [Parameter!]!
   updatedAt: DateTime!
-  sharedUrl: String
+  sharedToken: String
   version: Int!
   workspace: Workspace
   workspaceId: ID!
@@ -2684,7 +2684,7 @@ input UnshareProjectInput {
 
 type ProjectSharingInfoPayload {
   projectId: ID!
-  sharingUrl: String
+  sharingToken: String
 }
 
 type SharedProjectPayload {
@@ -5126,8 +5126,8 @@ func (ec *executionContext) fieldContext_Deployment_project(_ context.Context, f
 				return ec.fieldContext_Project_parameters(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
-			case "sharedUrl":
-				return ec.fieldContext_Project_sharedUrl(ctx, field)
+			case "sharedToken":
+				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
 			case "workspace":
@@ -9669,8 +9669,8 @@ func (ec *executionContext) fieldContext_Project_updatedAt(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Project_sharedUrl(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Project_sharedUrl(ctx, field)
+func (ec *executionContext) _Project_sharedToken(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_sharedToken(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9683,7 +9683,7 @@ func (ec *executionContext) _Project_sharedUrl(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.SharedURL, nil
+		return obj.SharedToken, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -9697,7 +9697,7 @@ func (ec *executionContext) _Project_sharedUrl(ctx context.Context, field graphq
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Project_sharedUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Project_sharedToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Project",
 		Field:      field,
@@ -9914,8 +9914,8 @@ func (ec *executionContext) fieldContext_ProjectConnection_nodes(_ context.Conte
 				return ec.fieldContext_Project_parameters(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
-			case "sharedUrl":
-				return ec.fieldContext_Project_sharedUrl(ctx, field)
+			case "sharedToken":
+				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
 			case "workspace":
@@ -10262,8 +10262,8 @@ func (ec *executionContext) fieldContext_ProjectPayload_project(_ context.Contex
 				return ec.fieldContext_Project_parameters(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
-			case "sharedUrl":
-				return ec.fieldContext_Project_sharedUrl(ctx, field)
+			case "sharedToken":
+				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
 			case "workspace":
@@ -10321,8 +10321,8 @@ func (ec *executionContext) fieldContext_ProjectSharingInfoPayload_projectId(_ c
 	return fc, nil
 }
 
-func (ec *executionContext) _ProjectSharingInfoPayload_sharingUrl(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectSharingInfoPayload) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSharingInfoPayload_sharingUrl(ctx, field)
+func (ec *executionContext) _ProjectSharingInfoPayload_sharingToken(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectSharingInfoPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectSharingInfoPayload_sharingToken(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -10335,7 +10335,7 @@ func (ec *executionContext) _ProjectSharingInfoPayload_sharingUrl(ctx context.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.SharingURL, nil
+		return obj.SharingToken, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10349,7 +10349,7 @@ func (ec *executionContext) _ProjectSharingInfoPayload_sharingUrl(ctx context.Co
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ProjectSharingInfoPayload_sharingUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ProjectSharingInfoPayload_sharingToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ProjectSharingInfoPayload",
 		Field:      field,
@@ -11391,8 +11391,8 @@ func (ec *executionContext) fieldContext_Query_projectSharingInfo(ctx context.Co
 			switch field.Name {
 			case "projectId":
 				return ec.fieldContext_ProjectSharingInfoPayload_projectId(ctx, field)
-			case "sharingUrl":
-				return ec.fieldContext_ProjectSharingInfoPayload_sharingUrl(ctx, field)
+			case "sharingToken":
+				return ec.fieldContext_ProjectSharingInfoPayload_sharingToken(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectSharingInfoPayload", field.Name)
 		},
@@ -12063,8 +12063,8 @@ func (ec *executionContext) fieldContext_SharedProjectPayload_project(_ context.
 				return ec.fieldContext_Project_parameters(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
-			case "sharedUrl":
-				return ec.fieldContext_Project_sharedUrl(ctx, field)
+			case "sharedToken":
+				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
 			case "workspace":
@@ -18432,8 +18432,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "sharedUrl":
-			out.Values[i] = ec._Project_sharedUrl(ctx, field, obj)
+		case "sharedToken":
+			out.Values[i] = ec._Project_sharedToken(ctx, field, obj)
 		case "version":
 			out.Values[i] = ec._Project_version(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -18689,8 +18689,8 @@ func (ec *executionContext) _ProjectSharingInfoPayload(ctx context.Context, sel 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "sharingUrl":
-			out.Values[i] = ec._ProjectSharingInfoPayload_sharingUrl(ctx, field, obj)
+		case "sharingToken":
+			out.Values[i] = ec._ProjectSharingInfoPayload_sharingToken(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

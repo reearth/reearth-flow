@@ -36,7 +36,7 @@ type ProjectDocument struct {
 	PublicImage       string
 	PublicNoIndex     bool
 	PublicTitle       string
-	SharedURL         string
+	SharedToken       string
 
 	// Analytics
 	EnableGA   bool
@@ -54,9 +54,9 @@ func NewProjectConsumer(workspaces []accountdomain.WorkspaceID) *ProjectConsumer
 func NewProject(project *project.Project) (*ProjectDocument, string) {
 	pid := project.ID().String()
 
-	var sharedURL string
-	if project.SharedURL() != nil {
-		sharedURL = *project.SharedURL()
+	var sharedToken string
+	if project.SharedToken() != nil {
+		sharedToken = *project.SharedToken()
 	}
 
 	return &ProjectDocument{
@@ -67,7 +67,7 @@ func NewProject(project *project.Project) (*ProjectDocument, string) {
 		Description:       project.Description(),
 		IsBasicAuthActive: project.IsBasicAuthActive(),
 		Name:              project.Name(),
-		SharedURL:         sharedURL,
+		SharedToken:       sharedToken,
 		UpdatedAt:         project.UpdatedAt(),
 		Workflow:          project.Workflow().String(),
 		Workspace:         project.Workspace().String(),
@@ -87,9 +87,9 @@ func (d *ProjectDocument) Model() (*project.Project, error) {
 
 	wid, _ := id.WorkflowIDFrom(d.Workflow)
 
-	var sharedURL *string
-	if d.SharedURL != "" {
-		sharedURL = &d.SharedURL
+	var sharedToken *string
+	if d.SharedToken != "" {
+		sharedToken = &d.SharedToken
 	}
 
 	return project.New().
@@ -100,7 +100,7 @@ func (d *ProjectDocument) Model() (*project.Project, error) {
 		IsArchived(d.Archived).
 		IsBasicAuthActive(d.IsBasicAuthActive).
 		Name(d.Name).
-		SharedURL(sharedURL).
+		SharedToken(sharedToken).
 		UpdatedAt(d.UpdatedAt).
 		Workflow(wid).
 		Workspace(tid).

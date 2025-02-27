@@ -15,7 +15,7 @@ type Project struct {
 	isArchived        bool
 	isBasicAuthActive bool
 	name              string
-	sharedUrl         *string
+	sharedToken       *string
 	updatedAt         time.Time
 	workflow          WorkflowID
 	workspace         WorkspaceID
@@ -53,8 +53,8 @@ func (p *Project) Name() string {
 	return p.name
 }
 
-func (p *Project) SharedURL() *string {
-	return p.sharedUrl
+func (p *Project) SharedToken() *string {
+	return p.sharedToken
 }
 
 func (p *Project) SetArchived(isArchived bool) {
@@ -77,8 +77,8 @@ func (p *Project) SetIsBasicAuthActive(isBasicAuthActive bool) {
 	p.updatedAt = time.Now()
 }
 
-func (p *Project) SetSharedURL(sharedUrl *string) {
-	p.sharedUrl = sharedUrl
+func (p *Project) SetSharedToken(sharedToken *string) {
+	p.sharedToken = sharedToken
 	p.updatedAt = time.Now()
 }
 
