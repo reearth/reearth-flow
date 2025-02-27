@@ -34,15 +34,15 @@ type Props = {
   nodes: Node[];
   edges: Edge[];
   canvasLock: boolean;
-  onWorkflowAdd: (position?: XYPosition) => void;
-  onNodesAdd: (newNode: Node[]) => void;
-  onNodesChange: (changes: NodeChange<Node>[]) => void;
-  onNodeDoubleClick: (e: MouseEvent, node: Node) => void;
-  onNodeHover: (e: MouseEvent, node?: Node) => void;
-  onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
-  onEdgesAdd: (newEdges: Edge[]) => void;
-  onEdgesChange: (changes: EdgeChange[]) => void;
-  onEdgeHover: (e: MouseEvent, edge?: Edge) => void;
+  onWorkflowAdd?: (position?: XYPosition) => void;
+  onNodesAdd?: (newNode: Node[]) => void;
+  onNodesChange?: (changes: NodeChange<Node>[]) => void;
+  onNodeDoubleClick?: (e: MouseEvent, node: Node) => void;
+  onNodeHover?: (e: MouseEvent, node?: Node) => void;
+  onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
+  onEdgesAdd?: (newEdges: Edge[]) => void;
+  onEdgesChange?: (changes: EdgeChange[]) => void;
+  onEdgeHover?: (e: MouseEvent, edge?: Edge) => void;
 };
 
 const Canvas: React.FC<Props> = ({
@@ -97,17 +97,17 @@ const Canvas: React.FC<Props> = ({
       // Locking props START
       nodesDraggable={!canvasLock}
       nodesConnectable={!canvasLock}
-      nodesFocusable={!canvasLock}
+      // nodesFocusable={!canvasLock}
       edgesFocusable={!canvasLock}
-      elementsSelectable={!canvasLock}
+      // elementsSelectable={!canvasLock}
       autoPanOnConnect={!canvasLock}
       autoPanOnNodeDrag={!canvasLock}
-      panOnDrag={!canvasLock}
+      // panOnDrag={!canvasLock}
       selectionOnDrag={!canvasLock}
-      panOnScroll={!canvasLock}
-      zoomOnScroll={!canvasLock}
-      zoomOnPinch={!canvasLock}
-      zoomOnDoubleClick={!canvasLock}
+      // panOnScroll={!canvasLock}
+      // zoomOnScroll={!canvasLock}
+      // zoomOnPinch={!canvasLock}
+      // zoomOnDoubleClick={!canvasLock}
       connectOnClick={!canvasLock}
       // Locking props END
 

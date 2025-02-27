@@ -11,9 +11,9 @@ import {
 import { buildNewCanvasNode } from "./buildNewCanvasNode";
 
 type Props = {
-  onWorkflowAdd: (position?: XYPosition) => void;
-  onNodesAdd: (node: Node[]) => void;
-  onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
+  onWorkflowAdd?: (position?: XYPosition) => void;
+  onNodesAdd?: (node: Node[]) => void;
+  onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
 
 // This is used for drag and drop functionality in to the canvas
@@ -39,7 +39,7 @@ export default ({ onWorkflowAdd, onNodesAdd, onNodePickerOpen }: Props) => {
       if (!type) return;
 
       if (type === "subworkflow") {
-        onWorkflowAdd(position);
+        onWorkflowAdd?.(position);
         return;
       }
 
@@ -48,7 +48,7 @@ export default ({ onWorkflowAdd, onNodesAdd, onNodePickerOpen }: Props) => {
         type !== "batch" &&
         type !== "note"
       ) {
-        onNodePickerOpen(position, type as ActionNodeType);
+        onNodePickerOpen?.(position, type as ActionNodeType);
         return;
       }
 
@@ -56,7 +56,7 @@ export default ({ onWorkflowAdd, onNodesAdd, onNodePickerOpen }: Props) => {
 
       if (!newNode) return;
 
-      onNodesAdd([newNode]);
+      onNodesAdd?.([newNode]);
     },
     [screenToFlowPosition, onWorkflowAdd, onNodesAdd, onNodePickerOpen],
   );

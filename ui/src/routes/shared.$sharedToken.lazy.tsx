@@ -61,6 +61,11 @@ const EditorComponent = () => {
   return !state || !isSynced ? (
     <LoadingSplashscreen />
   ) : (
-    <SharedCanvas yWorkflows={state.yWorkflows} />
+    <div className="h-screen">
+      <SharedCanvas
+        yWorkflows={state.yWorkflows}
+        undoTrackerActionWrapper={state.undoTrackerActionWrapper}
+      />
+    </div>
   );
 };
