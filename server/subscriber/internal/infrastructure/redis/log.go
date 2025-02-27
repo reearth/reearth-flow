@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	domainLog "github.com/reearth/reearth-flow/log-subscriber/pkg/log"
+	domainLog "github.com/reearth/reearth-flow/subscriber/pkg/log"
 )
 
 type RedisClient interface {
