@@ -1,0 +1,14 @@
+query GetSharedProject($token: String!) {
+  sharedProject(token: $token) {
+    project {
+      ...Project
+    }
+  }
+}
+
+mutation ShareProject($input: ShareProjectInput!) {
+  shareProject(input: $input) {
+    projectId
+    sharingUrl
+  }
+}

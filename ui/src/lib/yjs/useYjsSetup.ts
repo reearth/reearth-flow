@@ -1,4 +1,3 @@
-import { useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
@@ -11,14 +10,13 @@ import type { YWorkflow } from "./types";
 
 export default ({
   workflowId,
+  projectId,
   accessToken,
 }: {
   workflowId?: string;
+  projectId?: string;
   accessToken?: string;
 }) => {
-  const { projectId }: { projectId: string } = useParams({
-    strict: false,
-  });
   const [undoManager, setUndoManager] = useState<Y.UndoManager | null>(null);
 
   const [state, setState] = useState<{

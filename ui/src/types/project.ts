@@ -10,6 +10,7 @@ export type Project = {
   description: string;
   workspaceId: string;
   workflows?: Workflow[];
+  sharedUrl?: string;
   deployment?: Deployment;
 };
 
@@ -46,4 +47,9 @@ export type DeleteProject = {
 export type RunProject = {
   projectId?: string;
   started?: boolean;
+} & ApiResponse;
+
+export type ShareProject = {
+  projectId?: string;
+  sharingUrl?: string;
 } & ApiResponse;
