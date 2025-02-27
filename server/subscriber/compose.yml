@@ -15,7 +15,7 @@ services:
   log-subscriber:
     build:
       context: .
-      dockerfile: ./Dockerfile.log-subscriber
+      dockerfile: ./Dockerfile
     container_name: log-subscriber
     restart: always
     depends_on:
