@@ -17,7 +17,7 @@ use thrift::{
     transport::{TFramedReadTransport, TFramedWriteTransport},
 };
 use tokio::net::TcpListener;
-use tracing::{error, info};
+use tracing::{debug, error};
 
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
@@ -102,8 +102,14 @@ async fn handle_thrift_request(
     State(state): State<ServerState>,
     request: axum::extract::Request,
 ) -> impl IntoResponse {
+    let headers = request.headers().clone();
+    debug!("Received Thrift request with headers: {:?}", headers);
+
     let body_bytes = match axum::body::to_bytes(request.into_body(), usize::MAX).await {
-        Ok(bytes) => bytes,
+        Ok(bytes) => {
+            debug!("Received request body of size: {} bytes", bytes.len());
+            bytes
+        }
         Err(e) => {
             error!("Failed to read request body: {}", e);
             return Response::builder()
@@ -125,6 +131,7 @@ async fn handle_thrift_request(
     match state.processor.process(&mut i_prot, &mut o_prot) {
         Ok(_) => {
             let response_data = output_buffer.into_inner();
+            debug!("Sending response of size: {} bytes", response_data.len());
 
             Response::builder()
                 .status(StatusCode::OK)

@@ -35,13 +35,18 @@ func NewClient(config Config) (*Client, error) {
 		return nil, fmt.Errorf("failed to create Thrift HTTP client: %w", err)
 	}
 
-	protocolFactory := thrift.NewTJSONProtocolFactory()
+	// Use TFramedTransport to match the Rust server's TFramedReadTransport/TFramedWriteTransport
+	framedTransport := thrift.NewTFramedTransport(trans)
 
-	documentClient := proto.NewDocumentServiceClientFactory(trans, protocolFactory)
+	// Use TBinaryProtocol to match the Rust server
+	protocolFactory := thrift.NewTBinaryProtocolFactoryDefault()
+
+	// Create client with the framed transport
+	documentClient := proto.NewDocumentServiceClientFactory(framedTransport, protocolFactory)
 
 	return &Client{config: config,
 		documentClient: documentClient,
-		transport:      trans,
+		transport:      framedTransport,
 	}, nil
 }
 

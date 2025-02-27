@@ -2,7 +2,7 @@ use chrono::Utc;
 use std::sync::Arc;
 use thrift::server::TProcessor;
 use thrift::{ApplicationError, ApplicationErrorKind};
-use tokio::runtime::Handle;
+use tokio::task;
 use tracing::{debug, error, info};
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
@@ -32,15 +32,11 @@ struct HistoryItem {
 
 pub struct DocumentHandler {
     storage: Arc<GcsStore>,
-    runtime: Handle,
 }
 
 impl DocumentHandler {
     pub fn new(storage: Arc<GcsStore>) -> Self {
-        Self {
-            storage,
-            runtime: Handle::current(),
-        }
+        Self { storage }
     }
 
     pub fn processor(self) -> impl TProcessor {
@@ -71,82 +67,77 @@ impl DocumentServiceSyncHandler for DocumentHandler {
 
         let doc = Doc::new();
 
-        let mut txn = doc.transact_mut();
-        let load_result = self
-            .runtime
-            .block_on(async { storage.load_doc(&doc_id_clone, &mut txn).await });
+        let result = tokio::task::block_in_place(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
 
-        match load_result {
-            Ok(true) => {
-                drop(txn);
-                let read_txn = doc.transact();
-                let state = read_txn.encode_diff_v1(&StateVector::default());
-                drop(read_txn);
+            rt.block_on(async move {
+                let mut txn = doc.transact_mut();
+                let load_result = storage.load_doc(&doc_id_clone, &mut txn).await;
 
-                let result = self.runtime.block_on(async {
-                    let updates = storage.get_updates(&doc_id_clone).await?;
+                match load_result {
+                    Ok(true) => {
+                        drop(txn);
+                        let read_txn = doc.transact();
+                        let state = read_txn.encode_diff_v1(&StateVector::default());
+                        drop(read_txn);
 
-                    let latest_clock = if !updates.is_empty() {
-                        updates.last().unwrap().clock as i32
-                    } else {
-                        0
-                    };
+                        let updates = storage.get_updates(&doc_id_clone).await?;
 
-                    let timestamp = if !updates.is_empty() {
-                        let last_update = updates.last().unwrap();
-                        chrono::DateTime::from_timestamp(last_update.timestamp.unix_timestamp(), 0)
-                            .unwrap_or(Utc::now())
-                    } else {
-                        Utc::now()
-                    };
-
-                    let document = Document {
-                        id: doc_id_clone,
-                        version: latest_clock as u64,
-                        timestamp,
-                        updates: state,
-                    };
-
-                    Ok::<_, anyhow::Error>(document)
-                });
-
-                match result {
-                    Ok(doc) => {
-                        let updates_as_i32: Vec<i32> =
-                            doc.updates.iter().map(|&b| b as i32).collect();
-
-                        let document = ThriftDocument {
-                            id: Some(doc.id),
-                            updates: Some(updates_as_i32),
-                            version: Some(doc.version as i32),
-                            timestamp: Some(doc.timestamp.to_rfc3339()),
+                        let latest_clock = if !updates.is_empty() {
+                            updates.last().unwrap().clock as i32
+                        } else {
+                            0
                         };
 
-                        Ok(GetLatestResponse {
-                            document: Some(document),
-                        })
+                        let timestamp = if !updates.is_empty() {
+                            let last_update = updates.last().unwrap();
+                            chrono::DateTime::from_timestamp(
+                                last_update.timestamp.unix_timestamp(),
+                                0,
+                            )
+                            .unwrap_or(Utc::now())
+                        } else {
+                            Utc::now()
+                        };
+
+                        let document = Document {
+                            id: doc_id_clone,
+                            version: latest_clock as u64,
+                            timestamp,
+                            updates: state,
+                        };
+
+                        Ok::<_, anyhow::Error>(document)
                     }
-                    Err(err) => {
-                        error!("Failed to get document {}: {}", doc_id, err);
-                        Err(thrift::Error::Application(ApplicationError::new(
-                            ApplicationErrorKind::Unknown,
-                            format!("Failed to get document: {}", err),
-                        )))
-                    }
+                    Ok(false) => Err(anyhow::anyhow!("Document not found: {}", doc_id_clone)),
+                    Err(e) => Err(anyhow::anyhow!("Failed to load document: {}", e)),
                 }
+            })
+        });
+
+        match result {
+            Ok(doc) => {
+                let updates_as_i32: Vec<i32> = doc.updates.iter().map(|&b| b as i32).collect();
+
+                let document = ThriftDocument {
+                    id: Some(doc.id),
+                    updates: Some(updates_as_i32),
+                    version: Some(doc.version as i32),
+                    timestamp: Some(doc.timestamp.to_rfc3339()),
+                };
+
+                Ok(GetLatestResponse {
+                    document: Some(document),
+                })
             }
-            Ok(false) => {
-                error!("Document {} not found", doc_id);
+            Err(err) => {
+                error!("Failed to get document {}: {}", doc_id, err);
                 Err(thrift::Error::Application(ApplicationError::new(
                     ApplicationErrorKind::Unknown,
-                    format!("Document not found: {}", doc_id),
-                )))
-            }
-            Err(e) => {
-                error!("Failed to load document {}: {}", doc_id, e);
-                Err(thrift::Error::Application(ApplicationError::new(
-                    ApplicationErrorKind::Unknown,
-                    format!("Failed to load document: {}", e),
+                    format!("Failed to get document: {}", err),
                 )))
             }
         }
@@ -172,23 +163,30 @@ impl DocumentServiceSyncHandler for DocumentHandler {
         let storage = self.storage.clone();
         let doc_id_clone = doc_id.clone();
 
-        let result: anyhow::Result<Vec<HistoryItem>> = self.runtime.block_on(async move {
-            let updates = storage.get_updates(&doc_id_clone).await?;
+        let result = tokio::task::block_in_place(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
 
-            let history_items: Vec<HistoryItem> = updates
-                .iter()
-                .map(|update_info| HistoryItem {
-                    version: update_info.clock as u64,
-                    updates: update_info.update.encode_v1(),
-                    timestamp: chrono::DateTime::from_timestamp(
-                        update_info.timestamp.unix_timestamp(),
-                        0,
-                    )
-                    .unwrap_or(Utc::now()),
-                })
-                .collect();
+            rt.block_on(async move {
+                let updates = storage.get_updates(&doc_id_clone).await?;
 
-            Ok(history_items)
+                let history_items: Vec<HistoryItem> = updates
+                    .iter()
+                    .map(|update_info| HistoryItem {
+                        version: update_info.clock as u64,
+                        updates: update_info.update.encode_v1(),
+                        timestamp: chrono::DateTime::from_timestamp(
+                            update_info.timestamp.unix_timestamp(),
+                            0,
+                        )
+                        .unwrap_or(Utc::now()),
+                    })
+                    .collect();
+
+                Ok::<_, anyhow::Error>(history_items)
+            })
         });
 
         match result {
@@ -247,65 +245,49 @@ impl DocumentServiceSyncHandler for DocumentHandler {
         let storage = self.storage.clone();
         let doc_id_clone = doc_id.clone();
 
-        let rollback_result = self
-            .runtime
-            .block_on(async { storage.rollback_to(&doc_id_clone, version as u32).await });
+        let rollback_result = tokio::task::block_in_place(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+
+            rt.block_on(async move {
+                let doc = Doc::new();
+                let mut txn = doc.transact_mut();
+
+                let loaded = storage.load_doc(&doc_id_clone, &mut txn).await?;
+                if !loaded {
+                    return Err(anyhow::anyhow!("Document not found: {}", doc_id_clone));
+                }
+
+                drop(txn);
+                let read_txn = doc.transact();
+                let state = read_txn.encode_diff_v1(&StateVector::default());
+                drop(read_txn);
+
+                Ok::<_, anyhow::Error>(Document {
+                    id: doc_id_clone,
+                    version,
+                    timestamp: Utc::now(),
+                    updates: state,
+                })
+            })
+        });
 
         match rollback_result {
             Ok(doc) => {
-                let txn = doc.transact();
-                let state = txn.encode_diff_v1(&StateVector::default());
-                drop(txn);
+                let updates_as_i32: Vec<i32> = doc.updates.iter().map(|&b| b as i32).collect();
 
-                let result = self.runtime.block_on(async {
-                    let updates = storage.get_updates(&doc_id_clone).await?;
+                let document = ThriftDocument {
+                    id: Some(doc.id),
+                    updates: Some(updates_as_i32),
+                    version: Some(doc.version as i32),
+                    timestamp: Some(doc.timestamp.to_rfc3339()),
+                };
 
-                    let timestamp = updates
-                        .iter()
-                        .find(|u| u.clock as u64 == version)
-                        .map(|update| {
-                            chrono::DateTime::from_timestamp(update.timestamp.unix_timestamp(), 0)
-                                .unwrap_or(Utc::now())
-                        })
-                        .unwrap_or_else(Utc::now);
-
-                    let document = Document {
-                        id: doc_id_clone,
-                        version,
-                        timestamp,
-                        updates: state,
-                    };
-
-                    Ok::<_, anyhow::Error>(document)
-                });
-
-                match result {
-                    Ok(doc) => {
-                        let updates_as_i32: Vec<i32> =
-                            doc.updates.iter().map(|&b| b as i32).collect();
-
-                        let document = ThriftDocument {
-                            id: Some(doc.id),
-                            updates: Some(updates_as_i32),
-                            version: Some(doc.version as i32),
-                            timestamp: Some(doc.timestamp.to_rfc3339()),
-                        };
-
-                        Ok(RollbackResponse {
-                            document: Some(document),
-                        })
-                    }
-                    Err(err) => {
-                        error!(
-                            "Failed to get updates after rollback for document {}: {}",
-                            doc_id, err
-                        );
-                        Err(thrift::Error::Application(ApplicationError::new(
-                            ApplicationErrorKind::Unknown,
-                            format!("Failed to get updates after rollback: {}", err),
-                        )))
-                    }
-                }
+                Ok(RollbackResponse {
+                    document: Some(document),
+                })
             }
             Err(err) => {
                 error!(
