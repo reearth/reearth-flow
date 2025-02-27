@@ -42,6 +42,7 @@ export default function Editor({
     handleRightPanelOpen,
     handleWorkflowAdd,
     handleWorkflowDeployment,
+    handleProjectShare,
     handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowChange,
@@ -85,6 +86,7 @@ export default function Editor({
             isMainWorkflow={isMainWorkflow}
             hasReader={hasReader}
             onWorkflowDeployment={handleWorkflowDeployment}
+            onProjectShare={handleProjectShare}
             onNodesAdd={handleNodesAdd}
             onNodePickerClose={handleNodePickerClose}
             onRightPanelOpen={handleRightPanelOpen}

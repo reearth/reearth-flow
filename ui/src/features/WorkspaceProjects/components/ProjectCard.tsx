@@ -1,5 +1,5 @@
 import { DotsThreeVertical, ShareFat } from "@phosphor-icons/react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 import {
   Card,
@@ -19,6 +19,7 @@ import {
 import { useProjectExport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
+import { lastOfUrl } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 type Props = {
@@ -37,19 +38,34 @@ const ProjectCard: React.FC<Props> = ({
   onProjectSelect,
 }) => {
   const t = useT();
-  const { id, name, description, updatedAt } = project;
+  const {
+    id,
+    name,
+    description,
+    updatedAt,
+    sharedUrl: tempSharedUrl,
+  } = project;
 
   const [persistOverlay, setPersistOverlay] = useState(false);
 
   // TODO: isShared and sharedURL are temp values.
   const BASE_URL = window.location.origin;
-  const isShared = useMemo(() => Math.random() < 0.5, []);
-  const sharedURL = BASE_URL + "/shared/" + id;
+  const sharedToken = tempSharedUrl ? lastOfUrl(tempSharedUrl) : undefined;
+  const sharedUrl = sharedToken
+    ? BASE_URL + "/shared/" + sharedToken
+    : undefined;
 
   const handleCopyURLToClipBoard = () => {
-    if (!isShared) return;
-    copyToClipboard(sharedURL);
+    if (!sharedUrl) return;
+    copyToClipboard(sharedUrl);
   };
+
+  // const handleOpenSharedProject = (e: MouseEvent) => {
+  //   if (!sharedUrl) return;
+  //   e.stopPropagation();
+  //   openLinkInNewTab(sharedUrl);
+  // };
+
   const { isExporting, handleProjectExport } = useProjectExport(project.id);
 
   return (
@@ -99,7 +115,7 @@ const ProjectCard: React.FC<Props> = ({
                 {t("Edit Details")}
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!isShared}
+                disabled={!sharedUrl}
                 onClick={handleCopyURLToClipBoard}>
                 {t("Copy Share URL")}
               </DropdownMenuItem>
@@ -117,9 +133,12 @@ const ProjectCard: React.FC<Props> = ({
           </DropdownMenu>
         </div>
       </div>
-      {isShared && (
+      {sharedUrl && (
         <Tooltip>
-          <TooltipTrigger className="absolute right-2 top-2 text-muted-foreground group-hover:text-white">
+          <TooltipTrigger className="absolute right-1 top-1 rounded p-1 text-muted-foreground hover:bg-primary group-hover:text-white">
+            {/* <TooltipTrigger
+            className="absolute right-1 top-1 rounded p-1 text-muted-foreground hover:bg-primary group-hover:text-white"
+            onClick={handleOpenSharedProject}> */}
             <ShareFat />
           </TooltipTrigger>
           <TooltipContent>{t("Public Read Access")}</TooltipContent>
