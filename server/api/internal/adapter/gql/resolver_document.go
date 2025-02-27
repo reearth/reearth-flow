@@ -7,31 +7,31 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/websocket"
 )
 
-func (r *queryResolver) DocumentLatest(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Document, error) {
-	doc, err := websocket.GetLatest(ctx, string(id))
+func (r *queryResolver) LatestProjectSnapshot(ctx context.Context, projectId gqlmodel.ID) (*gqlmodel.ProjectDocument, error) {
+	doc, err := websocket.GetLatest(ctx, string(projectId))
 	if err != nil {
 		return nil, err
 	}
 
-	return &gqlmodel.Document{
-		ID:        id,
-		Update:    doc.Update,
-		Clock:     doc.Clock,
+	return &gqlmodel.ProjectDocument{
+		ID:        projectId,
+		Updates:   doc.Updates,
+		Version:   doc.Version,
 		Timestamp: doc.Timestamp,
 	}, nil
 }
 
-func (r *queryResolver) DocumentSnapshot(ctx context.Context, id gqlmodel.ID) ([]*gqlmodel.DocumentSnapshot, error) {
-	history, err := websocket.GetHistory(ctx, string(id))
+func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.ID) ([]*gqlmodel.ProjectSnapshot, error) {
+	history, err := websocket.GetHistory(ctx, string(projectId))
 	if err != nil {
 		return nil, err
 	}
 
-	nodes := make([]*gqlmodel.DocumentSnapshot, len(history))
+	nodes := make([]*gqlmodel.ProjectSnapshot, len(history))
 	for i, h := range history {
-		nodes[i] = &gqlmodel.DocumentSnapshot{
-			Update:    h.Update,
-			Clock:     h.Clock,
+		nodes[i] = &gqlmodel.ProjectSnapshot{
+			Updates:   h.Updates,
+			Version:   h.Version,
 			Timestamp: h.Timestamp,
 		}
 	}
@@ -39,26 +39,26 @@ func (r *queryResolver) DocumentSnapshot(ctx context.Context, id gqlmodel.ID) ([
 	return nodes, nil
 }
 
-func (r *mutationResolver) DocumentRollback(ctx context.Context, id gqlmodel.ID, clock int) (*gqlmodel.Document, error) {
-	doc, err := websocket.Rollback(ctx, string(id), clock)
+func (r *mutationResolver) RollbackProject(ctx context.Context, projectId gqlmodel.ID, version int) (*gqlmodel.ProjectDocument, error) {
+	doc, err := websocket.Rollback(ctx, string(projectId), version)
 	if err != nil {
 		return nil, err
 	}
 
-	return &gqlmodel.Document{
-		ID:        id,
-		Update:    doc.Update,
-		Clock:     doc.Clock,
+	return &gqlmodel.ProjectDocument{
+		ID:        projectId,
+		Updates:   doc.Updates,
+		Version:   doc.Version,
 		Timestamp: doc.Timestamp,
 	}, nil
 }
 
-type documentResolver struct{ *Resolver }
+type projectDocumentResolver struct{ *Resolver }
 
-func (r *Resolver) Document() DocumentResolver {
-	return &documentResolver{r}
+func (r *Resolver) ProjectDocument() ProjectDocumentResolver {
+	return &projectDocumentResolver{r}
 }
 
-func (r *documentResolver) Update(ctx context.Context, obj *gqlmodel.Document) ([]int, error) {
-	return obj.Update, nil
+func (r *projectDocumentResolver) Updates(ctx context.Context, obj *gqlmodel.ProjectDocument) ([]int, error) {
+	return obj.Updates, nil
 }

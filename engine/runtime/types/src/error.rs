@@ -16,6 +16,9 @@ pub enum Error {
     #[error("IO error: {0}")]
     IO(#[from] std::io::Error),
 
+    #[error("ConversionError: {0}")]
+    Conversion(String),
+
     #[allow(dead_code)]
     #[error("Unsupported feature: {0}")]
     UnsupportedFeature(String),
