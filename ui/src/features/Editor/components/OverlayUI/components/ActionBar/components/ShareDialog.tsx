@@ -17,6 +17,8 @@ import {
   Label,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { useCurrentProject } from "@flow/stores";
+import { lastOfUrl } from "@flow/utils";
 
 type Props = {
   onProjectShare: (share: boolean) => void;
@@ -27,10 +29,20 @@ type SharingState = "sharing" | "notSharing";
 
 const ShareDialog: React.FC<Props> = ({ onProjectShare, setShowDialog }) => {
   const t = useT();
-  // const [currentProject] = useCurrentProject();
+  const [currentProject] = useCurrentProject();
+
+  const tempSharedUrl = currentProject?.sharedUrl;
+
+  const BASE_URL = window.location.origin;
+  const sharedToken = tempSharedUrl ? lastOfUrl(tempSharedUrl) : undefined;
+  const sharedUrl = sharedToken
+    ? BASE_URL + "/shared/" + sharedToken
+    : undefined;
 
   const [hasBeenEdited, setHasBeenEdited] = useState(false);
-  const [isSharing, setIsSharing] = useState<SharingState>("notSharing");
+  const [isSharing, setIsSharing] = useState<SharingState>(
+    currentProject?.sharedUrl ? "sharing" : "notSharing",
+  );
 
   const handleSharingChange = useCallback((share: SharingState) => {
     setIsSharing(share);
@@ -80,9 +92,7 @@ const ShareDialog: React.FC<Props> = ({ onProjectShare, setShowDialog }) => {
           {isSharing === "sharing" && (
             <DialogContentSection className="break-all">
               <Label>{t("URL: ")}</Label>
-              <p className="text-wrap font-thin">
-                https://someUrl.reearth.flow.io/preview/project/alskdfjasldfkjasldkfj
-              </p>
+              <p className="text-wrap font-thin">{sharedUrl}</p>
             </DialogContentSection>
           )}
         </DialogContentWrapper>

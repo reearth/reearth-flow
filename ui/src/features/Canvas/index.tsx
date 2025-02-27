@@ -97,7 +97,7 @@ const Canvas: React.FC<Props> = ({
       // Locking props START
       nodesDraggable={!canvasLock}
       nodesConnectable={!canvasLock}
-      // nodesFocusable={!canvasLock}
+      nodesFocusable={!canvasLock}
       edgesFocusable={!canvasLock}
       // elementsSelectable={!canvasLock}
       autoPanOnConnect={!canvasLock}
