@@ -1,15 +1,13 @@
 package websocket
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"time"
 
+	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/reearth/reearth-flow/api/pkg/websocket"
+	"github.com/reearth/reearth-flow/api/proto"
 	"github.com/reearth/reearthx/log"
 )
 
@@ -22,26 +20,9 @@ type Config struct {
 }
 
 type Client struct {
-	config Config
-	client *http.Client
-}
-
-type documentResponse struct {
-	DocID   string `json:"doc_id"`
-	Content []byte `json:"content"`
-	Version int32  `json:"version"`
-}
-
-type historyVersion struct {
-	VersionID string `json:"version_id"`
-	Timestamp string `json:"timestamp"`
-	Content   []byte `json:"content"`
-	Version   int32  `json:"version"`
-}
-
-type documentHistory struct {
-	DocID    string           `json:"doc_id"`
-	Versions []historyVersion `json:"versions"`
+	config         Config
+	documentClient *proto.DocumentServiceClient
+	transport      thrift.TTransport
 }
 
 func NewClient(config Config) (*Client, error) {
@@ -49,59 +30,62 @@ func NewClient(config Config) (*Client, error) {
 		config.ServerURL = "http://localhost:8000"
 	}
 
+	trans, err := thrift.NewTHttpClient(config.ServerURL + "/api/thrift/document")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Thrift HTTP client: %w", err)
+	}
+
+	protocolFactory := thrift.NewTJSONProtocolFactory()
+
+	documentClient := proto.NewDocumentServiceClientFactory(trans, protocolFactory)
+
 	return &Client{
-		config: config,
-		client: &http.Client{
-			Timeout: 30 * time.Second,
-		},
+		config:         config,
+		documentClient: documentClient,
+		transport:      trans,
 	}, nil
 }
 
 func (c *Client) Close() error {
-	c.client.CloseIdleConnections()
-	return nil
+	return c.transport.Close()
 }
 
 func (c *Client) GetLatest(ctx context.Context, docID string) (*websocket.Document, error) {
-	url := fmt.Sprintf("%s/api/documents/%s", c.config.ServerURL, docID)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			log.Errorf("failed to close response body: %v", err)
+	if !c.transport.IsOpen() {
+		if err := c.transport.Open(); err != nil {
+			return nil, fmt.Errorf("failed to open transport: %w", err)
 		}
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("server returned error: %s, body: %s", resp.Status, string(body))
 	}
 
-	var docResp documentResponse
-	if err := json.NewDecoder(resp.Body).Decode(&docResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	request := &proto.GetLatestRequest{
+		DocID: docID,
 	}
 
-	// Convert bytes to []int
-	updates := make([]int, len(docResp.Content))
-	for i, b := range docResp.Content {
-		updates[i] = int(b)
+	response, err := c.documentClient.GetLatest(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest document: %w", err)
+	}
+
+	if response == nil || response.Document == nil {
+		return nil, fmt.Errorf("received empty response")
+	}
+
+	updates := make([]int, len(response.Document.Updates))
+	for i, update := range response.Document.Updates {
+		updates[i] = int(update)
+	}
+
+	timestamp, err := time.Parse(time.RFC3339, response.Document.Timestamp)
+	if err != nil {
+		log.Warnf("failed to parse timestamp: %v, using current time", err)
+		timestamp = time.Now()
 	}
 
 	doc := &websocket.Document{
-		ID:        docID,
+		ID:        response.Document.ID,
 		Updates:   updates,
-		Version:   int(docResp.Version),
-		Timestamp: time.Now(),
+		Version:   int(response.Document.Version),
+		Timestamp: timestamp,
 	}
 
 	log.Infof("Returning document: %+v", doc)
@@ -109,45 +93,36 @@ func (c *Client) GetLatest(ctx context.Context, docID string) (*websocket.Docume
 }
 
 func (c *Client) GetHistory(ctx context.Context, docID string) ([]*websocket.History, error) {
-	url := fmt.Sprintf("%s/api/documents/%s/history", c.config.ServerURL, docID)
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			log.Errorf("failed to close response body: %v", err)
+	if !c.transport.IsOpen() {
+		if err := c.transport.Open(); err != nil {
+			return nil, fmt.Errorf("failed to open transport: %w", err)
 		}
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("server returned error: %s, body: %s", resp.Status, string(body))
 	}
 
-	var histResp documentHistory
-	if err := json.NewDecoder(resp.Body).Decode(&histResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	request := &proto.GetHistoryRequest{
+		DocID: docID,
 	}
 
-	history := make([]*websocket.History, len(histResp.Versions))
-	for i, version := range histResp.Versions {
+	response, err := c.documentClient.GetHistory(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get document history: %w", err)
+	}
+
+	if response == nil || response.History == nil {
+		return nil, fmt.Errorf("received empty response")
+	}
+
+	history := make([]*websocket.History, len(response.History))
+	for i, version := range response.History {
 		timestamp, err := time.Parse(time.RFC3339, version.Timestamp)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse timestamp: %w", err)
+			log.Warnf("failed to parse timestamp: %v, using current time", err)
+			timestamp = time.Now()
 		}
 
-		// Convert bytes to []int
-		updates := make([]int, len(version.Content))
-		for j, b := range version.Content {
-			updates[j] = int(b)
+		updates := make([]int, len(version.Updates))
+		for j, update := range version.Updates {
+			updates[j] = int(update)
 		}
 
 		history[i] = &websocket.History{
@@ -161,54 +136,41 @@ func (c *Client) GetHistory(ctx context.Context, docID string) ([]*websocket.His
 }
 
 func (c *Client) Rollback(ctx context.Context, id string, version int) (*websocket.Document, error) {
-	url := fmt.Sprintf("%s/api/documents/%s/rollback", c.config.ServerURL, id)
-
-	data := map[string]interface{}{
-		"version": version,
-	}
-
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal request: %w", err)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewBuffer(jsonData))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send request: %w", err)
-	}
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			log.Errorf("failed to close response body: %v", err)
+	if !c.transport.IsOpen() {
+		if err := c.transport.Open(); err != nil {
+			return nil, fmt.Errorf("failed to open transport: %w", err)
 		}
-	}(resp.Body)
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("server returned error: %s, body: %s", resp.Status, string(body))
 	}
 
-	var docResp documentResponse
-	if err := json.NewDecoder(resp.Body).Decode(&docResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+	request := &proto.RollbackRequest{
+		DocID:   id,
+		Version: int32(version),
 	}
 
-	// Convert bytes to []int
-	updates := make([]int, len(docResp.Content))
-	for i, b := range docResp.Content {
-		updates[i] = int(b)
+	response, err := c.documentClient.Rollback(ctx, request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to rollback document: %w", err)
+	}
+
+	if response == nil || response.Document == nil {
+		return nil, fmt.Errorf("received empty response")
+	}
+
+	updates := make([]int, len(response.Document.Updates))
+	for i, update := range response.Document.Updates {
+		updates[i] = int(update)
+	}
+
+	timestamp, err := time.Parse(time.RFC3339, response.Document.Timestamp)
+	if err != nil {
+		log.Warnf("failed to parse timestamp: %v, using current time", err)
+		timestamp = time.Now()
 	}
 
 	return &websocket.Document{
-		ID:        id,
+		ID:        response.Document.ID,
 		Updates:   updates,
-		Version:   int(docResp.Version),
-		Timestamp: time.Now(),
+		Version:   int(response.Document.Version),
+		Timestamp: timestamp,
 	}, nil
 }

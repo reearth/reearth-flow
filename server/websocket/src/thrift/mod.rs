@@ -1,3 +1,5 @@
-pub use self::auth::*;
+pub mod auth;
+pub mod document;
 
-mod auth;
+pub use auth::*;
+pub use document::*;

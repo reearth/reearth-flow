@@ -19,4 +19,14 @@ run-db:
 gql:
 	go generate ./internal/adapter/gql
 
-.PHONY: lint test e2e build run-app run-db gql
+.PHONY: lint test e2e build run-app run-db gql all gen-thrift clean-thrift
+
+all: gen-thrift
+
+gen-thrift:
+	@echo "Generating Thrift code..."
+	@thrift -r --gen go:package_prefix=github.com/reearth/reearth-flow/api/ -out . thrift/document.thrift
+
+clean-thrift:
+	@echo "Cleaning generated Thrift code..."
+	@rm -rf proto/document
