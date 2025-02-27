@@ -181,6 +181,7 @@
   "Exporting...": "エクスポート中...",
   "Last modified:": "最終更新日",
   "Edit Details": "詳細を編集",
+  "Duplicate Project": "プロジェクトを複製",
   "Delete Project": "プロジェクトを削除",
   "This action cannot be undone. This will permanently delete your project and remove your data from our servers.": "この操作は元に戻すことができません。この操作はプロジェクトを完全に削除し、データをサーバーから削除します。",
   "Edit Project": "プロジェクトを編集",
