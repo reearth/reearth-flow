@@ -2,7 +2,6 @@ use chrono::Utc;
 use std::sync::Arc;
 use thrift::server::TProcessor;
 use thrift::{ApplicationError, ApplicationErrorKind};
-use tokio::task;
 use tracing::{debug, error, info};
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
