@@ -17,7 +17,7 @@ use thrift::{
     transport::{TFramedReadTransport, TFramedWriteTransport},
 };
 use tokio::net::TcpListener;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
