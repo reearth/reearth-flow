@@ -1,7 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 
-import { TriggerManager } from '@flow/features/WorkspaceTriggers'
+import { TriggerManager } from "@flow/features/WorkspaceTriggers";
 
-export const Route = createFileRoute('/workspaces/$workspaceId/triggers/$tab')({
+export const Route = createFileRoute("/workspaces/$workspaceId/triggers/$tab")({
   component: () => <TriggerManager />,
-})
+});
