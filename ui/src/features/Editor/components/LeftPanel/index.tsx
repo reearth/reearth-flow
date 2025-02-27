@@ -11,6 +11,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
+import BasicBoiler from "@flow/components/BasicBoiler";
 import { UserMenu } from "@flow/features/common";
 import { useShortcuts } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
@@ -99,20 +100,27 @@ const LeftPanel: React.FC<Props> = ({
       id: "navigator",
       title: t("Canvas Navigation"),
       icon: <TreeView className="size-5" weight="thin" />,
-      component: nodes && (
-        <Tree
-          data={treeContent}
-          className="w-full shrink-0 select-none truncate rounded px-1"
-          onSelectChange={(item) => {
-            setNodeId(item?.id ?? "");
-          }}
-          onDoubleClick={() => {
-            if (nodeId) {
-              handleTreeDataItemDoubleClick(nodeId);
-            }
-          }}
-        />
-      ),
+      component:
+        nodes.length !== 0 ? (
+          <Tree
+            data={treeContent}
+            className="w-full shrink-0 select-none truncate rounded px-1"
+            onSelectChange={(item) => {
+              setNodeId(item?.id ?? "");
+            }}
+            onDoubleClick={() => {
+              if (nodeId) {
+                handleTreeDataItemDoubleClick(nodeId);
+              }
+            }}
+          />
+        ) : (
+          <BasicBoiler
+            text={t("No Actions in Canvas")}
+            className="pt-16"
+            icon={<FlowLogo className="size-16 text-accent" />}
+          />
+        ),
     },
     {
       id: "actions-list",
@@ -156,10 +164,10 @@ const LeftPanel: React.FC<Props> = ({
       keyBinding: { key: "a", shiftKey: true },
       callback: () => handleTabChange("actions-list"),
     },
-    {
-      keyBinding: { key: "r", shiftKey: true },
-      callback: () => handleTabChange("resources"),
-    },
+    // {
+    //   keyBinding: { key: "r", shiftKey: true },
+    //   callback: () => handleTabChange("resources"),
+    // },
   ]);
 
   return (
