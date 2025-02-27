@@ -95,6 +95,7 @@ const ProjectCard: React.FC<Props> = ({
                 {t("Export Project")}
               </DropdownMenuItem>
               <DropdownMenuItem
+                disabled
                 onClick={(e) => {
                   e.stopPropagation();
                   // handleProjectDuplication();
