@@ -107,6 +107,11 @@ func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID, opera
 		return "", fmt.Errorf("failed to update project with sharing URL: %w", err)
 	}
 
+	sharingUrl, err = pa.SharingURL(i.config.Host, i.config.SharedPath)
+	if err != nil {
+		return "", err
+	}
+
 	tx.Commit()
 	return sharingUrl, nil
 }
