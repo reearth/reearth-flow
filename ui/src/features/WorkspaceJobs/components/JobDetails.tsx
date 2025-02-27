@@ -77,23 +77,34 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
       const textData = await response.text();
 
       // Logs are JSONL there we have ensure they are parsed correctly and cleaned to be used
-      const transformLog = (parsedLog: any) => {
-        if (typeof parsedLog.msg === "string" && parsedLog.msg.trim() !== "") {
-          try {
-            parsedLog.msg = JSON.parse(parsedLog.msg);
-          } catch (innerError) {
-            console.error("Failed to clean msg:", parsedLog.msg, innerError);
+      const logsArray = parseJSONL(textData, {
+        transform: (parsedLog) => {
+          if (
+            typeof parsedLog.msg === "string" &&
+            parsedLog.msg.trim() !== ""
+          ) {
+            try {
+              parsedLog.msg = JSON.parse(parsedLog.msg);
+            } catch (innerError) {
+              console.error("Failed to clean msg:", parsedLog.msg, innerError);
+            }
           }
-        }
-        return {
-          workflowId: selectedJob.workspaceId,
-          jobId: selectedJob.id,
-          message: parsedLog.msg,
-          timeStamp: parsedLog.ts,
-          status: parsedLog.level,
-        };
-      };
-      const logsArray = parseJSONL(textData, transformLog);
+          return {
+            workflowId: selectedJob.workspaceId,
+            jobId: selectedJob.id,
+            message: parsedLog.msg,
+            timeStamp: parsedLog.ts,
+            status: parsedLog.level,
+          };
+        },
+        onError: (error, line, index) => {
+          console.warn(
+            `Skipping malformed log at line ${index}:`,
+            line.substring(0, 100),
+          );
+          console.log("Error:", error);
+        },
+      });
       setLogs(logsArray);
     } catch (error) {
       console.error("Error fetching logs:", error);

@@ -38,7 +38,6 @@ export const useQueries = () => {
           },
         });
         if (!data) return;
-        console.log("DATA", data);
         const {
           jobs: {
             nodes,

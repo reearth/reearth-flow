@@ -13,7 +13,7 @@ import { DeploymentEditDialog } from "./DeploymentEditDialog";
 type Props = {
   selectedDeployment?: Deployment;
   setDeploymentToBeDeleted: (deployment?: Deployment) => void;
-  onDeploymentRun: () => void;
+  onDeploymentRun: (deployment?: Deployment) => Promise<void>;
 };
 
 const DeploymentDetails: React.FC<Props> = ({
@@ -89,7 +89,10 @@ const DeploymentDetails: React.FC<Props> = ({
             <CaretLeft />
           </Button>
           <div className="flex gap-2">
-            <Button variant="default" size="sm" onClick={onDeploymentRun}>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => onDeploymentRun(selectedDeployment)}>
               <Play />
               {t("Run")}
             </Button>
