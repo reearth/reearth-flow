@@ -1,25 +1,25 @@
-type Document implements Node {
+type ProjectDocument implements Node {
   id: ID!
-  update: [Int!]!
-  clock: Int!
   timestamp: DateTime!
+  updates: [Int!]!
+  version: Int!
 }
 
-type DocumentSnapshot {
-  update: [Int!]!
-  clock: Int!
+type ProjectSnapshot {
   timestamp: DateTime!
+  updates: [Int!]!
+  version: Int!
 }
 
 # Query
 
 extend type Query {
-  documentLatest(id: ID!): Document
-  DocumentSnapshot(id: ID!): [DocumentSnapshot!]!
+  latestProjectSnapshot(projectId: ID!): ProjectDocument
+  projectHistory(projectId: ID!): [ProjectSnapshot!]!
 }
 
 # Mutation
 
 extend type Mutation {
-  documentRollback(id: ID!, clock: Int!): Document
+  rollbackProject(projectId: ID!, version: Int!): ProjectDocument
 }

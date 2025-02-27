@@ -18,8 +18,8 @@ func (r *queryResolver) ProjectSharingInfo(ctx context.Context, projectId gqlmod
 	}
 
 	return &gqlmodel.ProjectSharingInfoPayload{
-		ProjectID:  projectId,
-		SharingURL: project.SharedURL,
+		ProjectID:    projectId,
+		SharingToken: project.SharedToken,
 	}, nil
 }
 

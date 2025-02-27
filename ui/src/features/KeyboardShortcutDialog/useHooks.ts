@@ -63,10 +63,10 @@ export default () => {
         keyBinding: EditorKeyBindings["leftPanelActionsList"],
         description: t("Toggle the actions list panel"),
       },
-      {
-        keyBinding: EditorKeyBindings["leftPanelResources"],
-        description: t("Toggle the resources panel"),
-      },
+      // {
+      //   keyBinding: EditorKeyBindings["leftPanelResources"],
+      //   description: t("Toggle the resources panel"),
+      // },
     ],
   };
 

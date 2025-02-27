@@ -22,6 +22,10 @@ pub enum SourceError {
     FeatureCreatorFactory(String),
     #[error("FeatureCreator error: {0}")]
     FeatureCreator(String),
+    #[error("SqlReader Factory error: {0}")]
+    SqlReaderFactory(String),
+    #[error("SqlReader error: {0}")]
+    SqlReader(String),
 }
 
 pub type Result<T, E = SourceError> = std::result::Result<T, E>;
@@ -29,5 +33,9 @@ pub type Result<T, E = SourceError> = std::result::Result<T, E>;
 impl SourceError {
     pub(crate) fn file_path_extractor<T: ToString>(message: T) -> Self {
         Self::FilePathExtractor(message.to_string())
+    }
+
+    pub(crate) fn sql_reader<T: ToString>(message: T) -> Self {
+        Self::SqlReader(message.to_string())
     }
 }

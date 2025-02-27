@@ -64,9 +64,9 @@ models:
         resolver: true
       deployment:
         resolver: true
-  Document:
+  ProjectDocument:
     fields:
-      update:
+      updates:
         resolver: true
   Subscription:
     fields:
