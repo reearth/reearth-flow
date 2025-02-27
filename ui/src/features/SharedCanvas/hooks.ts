@@ -6,7 +6,7 @@ import { rebuildWorkflow } from "@flow/lib/yjs/conversions";
 import { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 
-import useHover from "../Editor/useHover";
+import useUIState from "../Editor/useUIState";
 
 export default ({ yWorkflows }: { yWorkflows: YArray<YWorkflow> }) => {
   const [currentWorkflowId, setCurrentWorkflowId] = useState(
@@ -36,7 +36,7 @@ export default ({ yWorkflows }: { yWorkflows: YArray<YWorkflow> }) => {
     setCurrentWorkflowId,
   });
 
-  const { hoveredDetails, handleNodeHover, handleEdgeHover } = useHover();
+  const { hoveredDetails, handleNodeHover, handleEdgeHover } = useUIState({});
 
   return {
     currentWorkflowId,

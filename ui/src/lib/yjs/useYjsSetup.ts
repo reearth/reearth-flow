@@ -3,19 +3,22 @@ import { useEffect, useState } from "react";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
-import { useAuth } from "@flow/lib/auth";
 import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 
 import { yWorkflowConstructor } from "./conversions";
 import type { YWorkflow } from "./types";
 
-export default ({ workflowId }: { workflowId?: string }) => {
+export default ({
+  workflowId,
+  accessToken,
+}: {
+  workflowId?: string;
+  accessToken?: string;
+}) => {
   const { projectId }: { projectId: string } = useParams({
     strict: false,
   });
-  const { getAccessToken } = useAuth();
-
   const [undoManager, setUndoManager] = useState<Y.UndoManager | null>(null);
 
   const [state, setState] = useState<{
@@ -33,33 +36,34 @@ export default ({ workflowId }: { workflowId?: string }) => {
     let yWebSocketProvider: WebsocketProvider | null = null;
 
     if (workflowId && websocket && projectId) {
-      (async () => {
-        const token = await getAccessToken();
-        yWebSocketProvider = new WebsocketProvider(
-          websocket,
-          `${projectId}:${workflowId}`,
-          yDoc,
-          {
-            params: {
-              token,
-            },
-          },
-        );
+      let params: Record<string, string> | undefined;
+      if (accessToken) {
+        params = {
+          token: accessToken,
+        };
+      }
+      yWebSocketProvider = new WebsocketProvider(
+        websocket,
+        `${projectId}:${workflowId}`,
+        yDoc,
+        {
+          params,
+        },
+      );
 
-        yWebSocketProvider.once("sync", () => {
-          if (yWorkflows.length === 0) {
-            yDoc.transact(() => {
-              const yWorkflow = yWorkflowConstructor(
-                DEFAULT_ENTRY_GRAPH_ID,
-                "Main Workflow",
-              );
-              yWorkflows.insert(0, [yWorkflow]);
-            });
-          }
+      yWebSocketProvider.once("sync", () => {
+        if (yWorkflows.length === 0) {
+          yDoc.transact(() => {
+            const yWorkflow = yWorkflowConstructor(
+              DEFAULT_ENTRY_GRAPH_ID,
+              "Main Workflow",
+            );
+            yWorkflows.insert(0, [yWorkflow]);
+          });
+        }
 
-          setIsSynced(true); // Mark as synced
-        });
-      })();
+        setIsSynced(true); // Mark as synced
+      });
     }
 
     // Initial state setup
@@ -74,7 +78,7 @@ export default ({ workflowId }: { workflowId?: string }) => {
       setIsSynced(false); // Mark as not synced
       yWebSocketProvider?.destroy(); // Cleanup on unmount
     };
-  }, [projectId, workflowId, getAccessToken]);
+  }, [projectId, workflowId, accessToken]);
 
   const { yDoc, yWorkflows, undoTrackerActionWrapper } = state || {};
 

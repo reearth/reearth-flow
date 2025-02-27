@@ -42,8 +42,9 @@ const ProjectCard: React.FC<Props> = ({
   const [persistOverlay, setPersistOverlay] = useState(false);
 
   // TODO: isShared and sharedURL are temp values.
+  const BASE_URL = window.location.origin;
   const isShared = useMemo(() => Math.random() < 0.5, []);
-  const sharedURL = "https://flow.org";
+  const sharedURL = BASE_URL + "/shared/" + id;
 
   const handleCopyURLToClipBoard = () => {
     if (!isShared) return;

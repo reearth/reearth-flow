@@ -1,12 +1,13 @@
 import { Array as YArray } from "yjs";
 
+import Canvas from "@flow/features/Canvas";
 import { YWorkflow } from "@flow/lib/yjs/types";
 
 type Props = {
   yWorkflows: YArray<YWorkflow>;
 };
 
-const Preview: React.FC<Props> = ({ yWorkflows }) => {
+const SharedCanvas: React.FC<Props> = ({ yWorkflows }) => {
   console.log("yWorkflows", yWorkflows);
   return (
     <div>
@@ -28,4 +29,4 @@ const Preview: React.FC<Props> = ({ yWorkflows }) => {
   );
 };
 
-export default Preview;
+export default SharedCanvas;
