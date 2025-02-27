@@ -9,6 +9,7 @@ pub mod conf;
 pub mod conn;
 pub mod ffi;
 pub mod storage;
+pub mod thrift;
 pub mod ws;
 
 pub use broadcast::group;
@@ -16,11 +17,6 @@ pub use broadcast::pool;
 pub use ffi::*;
 
 pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
-
-// Generated protobuf code
-pub mod proto {
-    tonic::include_proto!("proto");
-}
 
 // New modules
 pub mod server;

@@ -166,22 +166,6 @@ type DeploymentPayload struct {
 	Deployment *Deployment `json:"deployment"`
 }
 
-type Document struct {
-	ID        ID        `json:"id"`
-	Update    []int     `json:"update"`
-	Clock     int       `json:"clock"`
-	Timestamp time.Time `json:"timestamp"`
-}
-
-func (Document) IsNode()        {}
-func (this Document) GetID() ID { return this.ID }
-
-type DocumentSnapshot struct {
-	Update    []int     `json:"update"`
-	Clock     int       `json:"clock"`
-	Timestamp time.Time `json:"timestamp"`
-}
-
 type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
 }
@@ -297,6 +281,16 @@ type ProjectConnection struct {
 	TotalCount int        `json:"totalCount"`
 }
 
+type ProjectDocument struct {
+	ID        ID        `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+	Updates   []int     `json:"updates"`
+	Version   int       `json:"version"`
+}
+
+func (ProjectDocument) IsNode()        {}
+func (this ProjectDocument) GetID() ID { return this.ID }
+
 type ProjectPayload struct {
 	Project *Project `json:"project"`
 }
@@ -304,6 +298,12 @@ type ProjectPayload struct {
 type ProjectSharingInfoPayload struct {
 	ProjectID  ID      `json:"projectId"`
 	SharingURL *string `json:"sharingUrl,omitempty"`
+}
+
+type ProjectSnapshot struct {
+	Timestamp time.Time `json:"timestamp"`
+	Updates   []int     `json:"updates"`
+	Version   int       `json:"version"`
 }
 
 type Query struct {
