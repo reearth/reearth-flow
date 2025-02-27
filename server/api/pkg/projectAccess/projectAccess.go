@@ -5,6 +5,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+
+	"github.com/reearth/reearthx/account/accountdomain/user"
+	"github.com/reearth/reearthx/account/accountdomain/workspace"
 )
 
 var (
@@ -17,10 +20,11 @@ var (
 )
 
 type ProjectAccess struct {
-	id       ID
-	project  ProjectID
-	isPublic bool
-	token    string
+	id        ID
+	project   ProjectID
+	isPublic  bool
+	token     string
+	userRoles UserRoleList
 }
 
 func (pa *ProjectAccess) ID() ID {
@@ -37,6 +41,10 @@ func (pa *ProjectAccess) IsPublic() bool {
 
 func (pa *ProjectAccess) Token() string {
 	return pa.token
+}
+
+func (pa *ProjectAccess) UserRoles() UserRoleList {
+	return pa.userRoles
 }
 
 func (pa *ProjectAccess) SetIsPublic(isPublic bool) {
@@ -99,4 +107,16 @@ func generateToken() (string, error) {
 	token := base64.URLEncoding.EncodeToString(b)
 
 	return fmt.Sprintf("shr_%s", token), nil
+}
+
+func (pa *ProjectAccess) AddUserRole(userID user.ID, role workspace.Role) error {
+	return pa.userRoles.Add(userID, role)
+}
+
+func (pa *ProjectAccess) EditUserRole(userID user.ID, role workspace.Role) error {
+	return pa.userRoles.Edit(userID, role)
+}
+
+func (pa *ProjectAccess) RemoveUserRole(userID user.ID) error {
+	return pa.userRoles.Remove(userID)
 }

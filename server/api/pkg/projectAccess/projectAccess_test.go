@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/reearth/reearthx/account/accountdomain/user"
+	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,6 +34,12 @@ func TestProjectAccess_Token(t *testing.T) {
 	expectedToken := "token"
 	pa := &ProjectAccess{token: expectedToken}
 	assert.Equal(t, expectedToken, pa.Token())
+}
+
+func TestProjectAccess_UserRoles(t *testing.T) {
+	expectedUserRoles := NewUserRoleList()
+	pa := &ProjectAccess{userRoles: expectedUserRoles}
+	assert.Equal(t, expectedUserRoles, pa.UserRoles())
 }
 
 func TestProjectAccess_SetIsPublic(t *testing.T) {
@@ -226,4 +234,69 @@ func Test_generateToken(t *testing.T) {
 		_, err = base64.URLEncoding.DecodeString(tokenWithoutPrefix)
 		assert.NoError(t, err, "token should be valid base64")
 	}
+}
+
+func TestProjectAccess_AddUserRole(t *testing.T) {
+	userID := user.NewID()
+	pa := &ProjectAccess{
+		userRoles: NewUserRoleList(),
+	}
+
+	// Add a user (success case)
+	err := pa.AddUserRole(userID, workspace.RoleOwner)
+	assert.NoError(t, err)
+	assert.Len(t, pa.userRoles, 1)
+	assert.Equal(t, userID, pa.userRoles[0].UserID())
+	assert.Equal(t, workspace.RoleOwner, pa.userRoles[0].Role())
+
+	// Add duplicate user (failure case)
+	err = pa.AddUserRole(userID, workspace.RoleReader)
+	assert.Error(t, err)
+	assert.Equal(t, ErrUserRoleExists, err)
+	assert.Len(t, pa.userRoles, 1)
+}
+
+func TestProjectAccess_EditUserRole(t *testing.T) {
+	userID1 := user.NewID()
+	userID2 := user.NewID()
+	pa := &ProjectAccess{
+		userRoles: NewUserRoleList(),
+	}
+
+	_ = pa.userRoles.Add(userID1, workspace.RoleOwner)
+
+	// Update the permission of an existing user to a different value (successful case)
+	err := pa.EditUserRole(userID1, workspace.RoleReader)
+	assert.NoError(t, err)
+	assert.Equal(t, workspace.RoleReader, pa.userRoles[0].Role())
+
+	// Update the permission of an existing user to the same value (failure case - no change)
+	err = pa.EditUserRole(userID1, workspace.RoleReader)
+	assert.Error(t, err)
+	assert.Equal(t, ErrNoRoleChange, err)
+
+	// Update the permission of a non-existent user (failure case)
+	err = pa.EditUserRole(userID2, workspace.RoleWriter)
+	assert.Error(t, err)
+	assert.Equal(t, ErrUserRoleNotFound, err)
+}
+
+func TestProjectAccess_RemoveUserRole(t *testing.T) {
+	userID1 := user.NewID()
+	userID2 := user.NewID()
+	pa := &ProjectAccess{
+		userRoles: NewUserRoleList(),
+	}
+
+	_ = pa.userRoles.Add(userID1, workspace.RoleOwner)
+
+	// Removing an existing user (successful case)
+	err := pa.RemoveUserRole(userID1)
+	assert.NoError(t, err)
+	assert.Empty(t, pa.userRoles)
+
+	// Removing a non-existent user (failure case)
+	err = pa.RemoveUserRole(userID2)
+	assert.Error(t, err)
+	assert.Equal(t, ErrUserRoleNotFound, err)
 }
