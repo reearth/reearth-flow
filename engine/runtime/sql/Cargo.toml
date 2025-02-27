@@ -1,5 +1,5 @@
 [package]
-description = "Re:Earth Flow sevenz"
+description = "Re:Earth Flow sql"
 name = "reearth-flow-sql"
 
 authors.workspace = true
