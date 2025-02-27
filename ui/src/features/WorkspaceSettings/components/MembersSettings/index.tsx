@@ -7,7 +7,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  FlowLogo,
+  Input,
 } from "@flow/components";
+import BasicBoiler from "@flow/components/BasicBoiler";
 import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
@@ -28,6 +31,7 @@ const MembersSettings: React.FC = () => {
     updateMemberOfWorkspace,
   } = useWorkspace();
   const { searchUser, useGetMe } = useUser();
+  const [searchTerm, setSearchTerm] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [currentFilter, setFilter] = useState<Filter>("all");
   const [error, setError] = useState<string | undefined>();
@@ -44,8 +48,12 @@ const MembersSettings: React.FC = () => {
 
   const members = currentWorkspace?.members?.filter(
     (m) =>
-      "userId" in m && (currentFilter === "all" || m.role === currentFilter),
+      "userId" in m &&
+      (currentFilter === "all" || m.role === currentFilter) &&
+      (m.user?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.user?.email.toLowerCase().includes(searchTerm.toLowerCase())),
   ) as UserMember[];
+
   const [openMemberAddDialog, setOpenMemberAddDialog] =
     useState<boolean>(false);
 
@@ -117,27 +125,35 @@ const MembersSettings: React.FC = () => {
       <div className="mt-4 flex max-w-[900px] flex-col gap-6">
         <div className="rounded border dark:font-extralight">
           <div className="flex h-[42px] items-center justify-between gap-2 border-b p-2">
+            <div className="flex items-center gap-8">
+              <Input
+                className="w-[250px]"
+                placeholder={t("Search...")}
+                autoFocus
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="flex items-center gap-2">
+                    <p>{filters.find((f) => f.id === currentFilter)?.title}</p>
+                    <CaretDown className="size-3" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="min-w-[70px]">
+                    {filters.map((filter, idx) => (
+                      <DropdownMenuItem
+                        key={idx}
+                        className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-accent" : undefined}`}
+                        onClick={() => setFilter(filter.id)}>
+                        {filter.title}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </div>
             <div className="flex items-center gap-2">
               <User weight="thin" />
               <p>{`${members?.length} ${t("Members")}`}</p>
-            </div>
-            <div>
-              <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center gap-2">
-                  <p>{filters.find((f) => f.id === currentFilter)?.title}</p>
-                  <CaretDown className="size-3" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="min-w-[70px]">
-                  {filters.map((filter, idx) => (
-                    <DropdownMenuItem
-                      key={idx}
-                      className={`h-[25px] justify-center ${filter.id === currentFilter ? "bg-accent" : undefined}`}
-                      onClick={() => setFilter(filter.id)}>
-                      {filter.title}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
           <div className="max-h-[50vh] overflow-auto">
@@ -175,6 +191,13 @@ const MembersSettings: React.FC = () => {
               </div>
             ))}
           </div>
+          {members?.length === 0 && (
+            <BasicBoiler
+              className="p-8"
+              text={t("No Members")}
+              icon={<FlowLogo className="size-16 text-accent" />}
+            />
+          )}
         </div>
       </div>
       {openMemberAddDialog && (

@@ -3193,6 +3193,47 @@ Writes features to a Shapefile
 ### Category
 * File
 
+## SqlReader
+### Type
+* source
+### Description
+Reads features from SQL
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SqlReaderParam",
+  "type": "object",
+  "required": [
+    "databaseUrl",
+    "sql"
+  ],
+  "properties": {
+    "databaseUrl": {
+      "description": "Database URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "sql": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
+### Category
+* Feature
+
 ## StatisticsCalculator
 ### Type
 * processor
@@ -3467,10 +3508,13 @@ Compiles scripts into .wasm and runs at the wasm runtime
       "$ref": "#/definitions/ProgrammingLanguage"
     },
     "sourceCodeFilePath": {
-      "type": "string"
+      "$ref": "#/definitions/Expr"
     }
   },
   "definitions": {
+    "Expr": {
+      "type": "string"
+    },
     "ProcessorType": {
       "type": "string",
       "enum": [

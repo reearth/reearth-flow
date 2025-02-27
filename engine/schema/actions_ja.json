@@ -3232,6 +3232,46 @@
       ]
     },
     {
+      "name": "SqlReader",
+      "type": "source",
+      "description": "Reads features from SQL",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "SqlReaderParam",
+        "type": "object",
+        "required": [
+          "databaseUrl",
+          "sql"
+        ],
+        "properties": {
+          "databaseUrl": {
+            "description": "Database URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          },
+          "sql": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
       "name": "StatisticsCalculator",
       "type": "processor",
       "description": "フィーチャの統計情報を計算する",
@@ -3506,10 +3546,13 @@
             "$ref": "#/definitions/ProgrammingLanguage"
           },
           "sourceCodeFilePath": {
-            "type": "string"
+            "$ref": "#/definitions/Expr"
           }
         },
         "definitions": {
+          "Expr": {
+            "type": "string"
+          },
           "ProcessorType": {
             "type": "string",
             "enum": [
