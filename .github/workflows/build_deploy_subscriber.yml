@@ -1,0 +1,161 @@
+name: Build and Deploy Subscriber
+
+on:
+  workflow_call:
+    inputs:
+      sha_short:
+        required: true
+        type: string
+      new_tag:
+        required: true
+        type: string
+      new_tag_short:
+        required: true
+        type: string
+      name:
+        required: true
+        type: string
+      sha:
+        required: true
+        type: string
+
+jobs:
+  build-subscriber:
+    name: Build Subscriber
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Build Subscriber
+        run: |
+          cd server/subscriber
+          go build -v -o reearth-flow-subscriber .
+      - name: Create distribution directory
+        run: |
+          mkdir -p server/subscriber/dist
+          mv server/subscriber/reearth-flow-subscriber server/subscriber/dist/
+      - name: Rename Artifacts
+        if: ${{ inputs.name != 'blank' }}
+        run: |
+          cd server/subscriber/dist
+          mv reearth-flow-subscriber reearth-flow-subscriber_${{ inputs.name }}
+      - name: List Artifacts
+        run: ls -l server/subscriber/dist
+
+      - name: Upload Subscriber Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: subscriber-artifacts
+          path: server/subscriber/dist/*
+
+  build-docker-image:
+    name: Build and Push Docker Image
+    needs: build-subscriber
+    runs-on: ubuntu-latest
+    if: ${{ inputs.name != 'blank' || inputs.new_tag != 'blank' }}
+    env:
+      IMAGE_NAME: reearth/reearth-flow-subscriber
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Subscriber Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: subscriber-artifacts
+          path: server/subscriber/dist
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Determine Build Options
+        id: options
+        run: |
+          TAG="${{ inputs.new_tag_short != 'blank' && inputs.new_tag_short || '' }}"
+          NAME="${{ inputs.name }}"
+          SHA="${{ inputs.sha_short }}"
+          if [[ -n "$TAG" ]]; then
+            PLATFORMS="linux/amd64,linux/arm64"
+            VERSION="$TAG"
+            TAGS="$IMAGE_NAME:$TAG"
+            if [[ ! "$TAG" =~ '-' ]]; then
+              TAGS+=",${IMAGE_NAME}:${TAG%.*}"
+              TAGS+=",${IMAGE_NAME}:${TAG%%.*}"
+              TAGS+=",${IMAGE_NAME}:latest"
+            fi
+          else
+            PLATFORMS="linux/amd64"
+            VERSION="$SHA"
+            TAGS="$IMAGE_NAME:$NAME"
+          fi
+          echo "platforms=$PLATFORMS" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tags=$TAGS" >> $GITHUB_OUTPUT
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v6
+        with:
+          context: server/subscriber
+          platforms: ${{ steps.options.outputs.platforms }}
+          push: true
+          build-args: VERSION=${{ steps.options.outputs.version }}
+          tags: ${{ steps.options.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: true
+          sbom: true
+
+  deploy-to-cloud-run:
+    name: Deploy to Cloud Run (Nightly)
+    needs: build-docker-image
+    runs-on: ubuntu-latest
+    if: ${{ inputs.name == 'nightly' }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      IMAGE: reearth/reearth-flow-subscriber:nightly
+      IMAGE_GCP: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-subscriber:nightly
+      GCP_REGION: us-central1
+      CLOUD_RUN_SERVICE: reearth-flow-subscriber
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCP
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Push Docker Image to GCP Artifact Registry
+        run: |
+          docker pull $IMAGE
+          docker tag $IMAGE $IMAGE_GCP
+          docker push $IMAGE_GCP
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy $CLOUD_RUN_SERVICE \
+            --image $IMAGE_GCP \
+            --region $GCP_REGION \
+            --platform managed \
+            --quiet
