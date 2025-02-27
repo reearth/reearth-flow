@@ -3546,10 +3546,13 @@
             "$ref": "#/definitions/ProgrammingLanguage"
           },
           "sourceCodeFilePath": {
-            "type": "string"
+            "$ref": "#/definitions/Expr"
           }
         },
         "definitions": {
+          "Expr": {
+            "type": "string"
+          },
           "ProcessorType": {
             "type": "string",
             "enum": [
