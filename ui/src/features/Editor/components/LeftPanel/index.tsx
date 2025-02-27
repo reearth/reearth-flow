@@ -116,7 +116,7 @@ const LeftPanel: React.FC<Props> = ({
           />
         ) : (
           <BasicBoiler
-            text={t("No Actions in Canvas")}
+            text={t("No Nodes in Canvas")}
             className="pt-16"
             icon={<FlowLogo className="size-16 text-accent" />}
           />
