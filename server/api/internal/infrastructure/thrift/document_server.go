@@ -11,19 +11,16 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-// DocumentServiceHandler implements the DocumentService interface
 type DocumentServiceHandler struct {
 	client *websocket.Client
 }
 
-// NewDocumentServiceHandler creates a new DocumentServiceHandler
 func NewDocumentServiceHandler(client *websocket.Client) *DocumentServiceHandler {
 	return &DocumentServiceHandler{
 		client: client,
 	}
 }
 
-// GetLatest implements the DocumentService.GetLatest method
 func (h *DocumentServiceHandler) GetLatest(ctx context.Context, request *proto.GetLatestRequest) (*proto.GetLatestResponse, error) {
 	log.Infof("Handling GetLatest request for doc_id: %s", request.DocID)
 
@@ -33,13 +30,11 @@ func (h *DocumentServiceHandler) GetLatest(ctx context.Context, request *proto.G
 		return nil, err
 	}
 
-	// Convert updates from []int to []int32
 	updates := make([]int32, len(doc.Updates))
 	for i, update := range doc.Updates {
 		updates[i] = int32(update)
 	}
 
-	// Format timestamp
 	timestamp := doc.Timestamp.Format(time.RFC3339)
 
 	response := &proto.GetLatestResponse{
@@ -54,7 +49,6 @@ func (h *DocumentServiceHandler) GetLatest(ctx context.Context, request *proto.G
 	return response, nil
 }
 
-// GetHistory implements the DocumentService.GetHistory method
 func (h *DocumentServiceHandler) GetHistory(ctx context.Context, request *proto.GetHistoryRequest) (*proto.GetHistoryResponse, error) {
 	log.Infof("Handling GetHistory request for doc_id: %s", request.DocID)
 
@@ -64,16 +58,13 @@ func (h *DocumentServiceHandler) GetHistory(ctx context.Context, request *proto.
 		return nil, err
 	}
 
-	// Convert history to proto.History
 	historyItems := make([]*proto.History, len(history))
 	for i, item := range history {
-		// Convert updates from []int to []int32
 		updates := make([]int32, len(item.Updates))
 		for j, update := range item.Updates {
 			updates[j] = int32(update)
 		}
 
-		// Format timestamp
 		timestamp := item.Timestamp.Format(time.RFC3339)
 
 		historyItems[i] = &proto.History{
@@ -90,7 +81,6 @@ func (h *DocumentServiceHandler) GetHistory(ctx context.Context, request *proto.
 	return response, nil
 }
 
-// Rollback implements the DocumentService.Rollback method
 func (h *DocumentServiceHandler) Rollback(ctx context.Context, request *proto.RollbackRequest) (*proto.RollbackResponse, error) {
 	log.Infof("Handling Rollback request for doc_id: %s to version: %d", request.DocID, request.Version)
 
@@ -100,13 +90,11 @@ func (h *DocumentServiceHandler) Rollback(ctx context.Context, request *proto.Ro
 		return nil, err
 	}
 
-	// Convert updates from []int to []int32
 	updates := make([]int32, len(doc.Updates))
 	for i, update := range doc.Updates {
 		updates[i] = int32(update)
 	}
 
-	// Format timestamp
 	timestamp := doc.Timestamp.Format(time.RFC3339)
 
 	response := &proto.RollbackResponse{
@@ -121,7 +109,6 @@ func (h *DocumentServiceHandler) Rollback(ctx context.Context, request *proto.Ro
 	return response, nil
 }
 
-// DocumentServer represents a Thrift document service server
 type DocumentServer struct {
 	processor        thrift.TProcessor
 	handler          *DocumentServiceHandler
@@ -129,7 +116,6 @@ type DocumentServer struct {
 	transportFactory thrift.TTransportFactory
 }
 
-// NewDocumentServer creates a new DocumentServer
 func NewDocumentServer(client *websocket.Client) *DocumentServer {
 	handler := NewDocumentServiceHandler(client)
 	processor := proto.NewDocumentServiceProcessor(handler)
@@ -145,7 +131,6 @@ func NewDocumentServer(client *websocket.Client) *DocumentServer {
 	}
 }
 
-// Handler returns an HTTP handler for the Thrift document service
 func (s *DocumentServer) Handler() http.Handler {
 	return http.HandlerFunc(thrift.NewThriftHandlerFunc(s.processor, s.protocolFactory, s.protocolFactory))
 }

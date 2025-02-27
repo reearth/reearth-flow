@@ -27,6 +27,4 @@ gen-thrift:
 	@echo "Generating Thrift code..."
 	@thrift -r --gen go:package_prefix=github.com/reearth/reearth-flow/api/ -out . thrift/document.thrift
 
-clean-thrift:
-	@echo "Cleaning generated Thrift code..."
-	@rm -rf proto/document
+
