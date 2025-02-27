@@ -5,14 +5,22 @@ import { LoadingSplashscreen } from "@flow/components";
 import SharedCanvas from "@flow/features/SharedCanvas";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useFullscreen, useShortcuts } from "@flow/hooks";
-import { useSharedProject } from "@flow/lib/gql";
+import { GraphQLProvider, useSharedProject } from "@flow/lib/gql";
+import { I18nProvider } from "@flow/lib/i18n";
+import { ThemeProvider } from "@flow/lib/theme";
 import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
 
 export const Route = createLazyFileRoute("/shared/$sharedToken")({
   component: () => (
-    <ReactFlowProvider>
-      <EditorComponent />
-    </ReactFlowProvider>
+    <ThemeProvider>
+      <GraphQLProvider>
+        <I18nProvider>
+          <ReactFlowProvider>
+            <EditorComponent />
+          </ReactFlowProvider>
+        </I18nProvider>
+      </GraphQLProvider>
+    </ThemeProvider>
   ),
 });
 

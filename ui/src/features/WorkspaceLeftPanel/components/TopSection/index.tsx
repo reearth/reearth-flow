@@ -24,7 +24,7 @@ const TopSection: React.FC<Props> = ({ route }) => {
         <div
           className="flex cursor-pointer items-center justify-between gap-2 p-4"
           onClick={() =>
-            navigate({ to: `/workspaces/${currentWorkspace?.id}` })
+            navigate({ to: `/workspaces/${currentWorkspace?.id}/projects` })
           }>
           <div className="flex items-center gap-2">
             <FlowLogo className="size-8" />

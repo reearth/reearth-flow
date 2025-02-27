@@ -15,7 +15,7 @@ const ProjectManager: React.FC<Props> = ({ selected }) => {
 
   const handleNavigation = () => {
     if (selected) return;
-    navigate({ to: `/workspaces/${currentWorkspace?.id}` });
+    navigate({ to: `/workspaces/${currentWorkspace?.id}/projects` });
   };
 
   return (
