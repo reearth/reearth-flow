@@ -5,7 +5,7 @@ fragment Project on Project {
   createdAt
   updatedAt
   workspaceId
-  sharedUrl
+  sharedToken
   deployment {
     ...Deployment
   }

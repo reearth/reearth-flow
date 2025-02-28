@@ -10,7 +10,7 @@ export type Project = {
   description: string;
   workspaceId: string;
   workflows?: Workflow[];
-  sharedUrl?: string;
+  sharedToken?: string;
   deployment?: Deployment;
 };
 

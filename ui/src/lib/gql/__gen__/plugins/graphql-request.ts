@@ -186,21 +186,6 @@ export type DeploymentPayload = {
   deployment: Deployment;
 };
 
-export type Document = Node & {
-  __typename?: 'Document';
-  clock: Scalars['Int']['output'];
-  id: Scalars['ID']['output'];
-  timestamp: Scalars['DateTime']['output'];
-  update: Array<Scalars['Int']['output']>;
-};
-
-export type DocumentSnapshot = {
-  __typename?: 'DocumentSnapshot';
-  clock: Scalars['Int']['output'];
-  timestamp: Scalars['DateTime']['output'];
-  update: Array<Scalars['Int']['output']>;
-};
-
 export enum EventSourceType {
   ApiDriven = 'API_DRIVEN',
   TimeDriven = 'TIME_DRIVEN'
@@ -283,12 +268,12 @@ export type Mutation = {
   deleteProject?: Maybe<DeleteProjectPayload>;
   deleteTrigger: Scalars['Boolean']['output'];
   deleteWorkspace?: Maybe<DeleteWorkspacePayload>;
-  documentRollback?: Maybe<Document>;
   executeDeployment?: Maybe<JobPayload>;
   removeAsset?: Maybe<RemoveAssetPayload>;
   removeMemberFromWorkspace?: Maybe<RemoveMemberFromWorkspacePayload>;
   removeMyAuth?: Maybe<UpdateMePayload>;
   removeParameter: Scalars['Boolean']['output'];
+  rollbackProject?: Maybe<ProjectDocument>;
   runProject?: Maybe<RunProjectPayload>;
   shareProject?: Maybe<ShareProjectPayload>;
   signup?: Maybe<SignupPayload>;
@@ -370,12 +355,6 @@ export type MutationDeleteWorkspaceArgs = {
 };
 
 
-export type MutationDocumentRollbackArgs = {
-  clock: Scalars['Int']['input'];
-  id: Scalars['ID']['input'];
-};
-
-
 export type MutationExecuteDeploymentArgs = {
   input: ExecuteDeploymentInput;
 };
@@ -398,6 +377,12 @@ export type MutationRemoveMyAuthArgs = {
 
 export type MutationRemoveParameterArgs = {
   input: RemoveParameterInput;
+};
+
+
+export type MutationRollbackProjectArgs = {
+  projectId: Scalars['ID']['input'];
+  version: Scalars['Int']['input'];
 };
 
 
@@ -542,7 +527,7 @@ export type Project = Node & {
   isBasicAuthActive: Scalars['Boolean']['output'];
   name: Scalars['String']['output'];
   parameters: Array<Parameter>;
-  sharedUrl?: Maybe<Scalars['String']['output']>;
+  sharedToken?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
   version: Scalars['Int']['output'];
   workspace?: Maybe<Workspace>;
@@ -556,6 +541,14 @@ export type ProjectConnection = {
   totalCount: Scalars['Int']['output'];
 };
 
+export type ProjectDocument = Node & {
+  __typename?: 'ProjectDocument';
+  id: Scalars['ID']['output'];
+  timestamp: Scalars['DateTime']['output'];
+  updates: Array<Scalars['Int']['output']>;
+  version: Scalars['Int']['output'];
+};
+
 export type ProjectPayload = {
   __typename?: 'ProjectPayload';
   project: Project;
@@ -564,33 +557,35 @@ export type ProjectPayload = {
 export type ProjectSharingInfoPayload = {
   __typename?: 'ProjectSharingInfoPayload';
   projectId: Scalars['ID']['output'];
-  sharingUrl?: Maybe<Scalars['String']['output']>;
+  sharingToken?: Maybe<Scalars['String']['output']>;
+};
+
+export type ProjectSnapshot = {
+  __typename?: 'ProjectSnapshot';
+  timestamp: Scalars['DateTime']['output'];
+  updates: Array<Scalars['Int']['output']>;
+  version: Scalars['Int']['output'];
 };
 
 export type Query = {
   __typename?: 'Query';
-  DocumentSnapshot: Array<DocumentSnapshot>;
   assets: AssetConnection;
   deploymentByVersion?: Maybe<Deployment>;
   deploymentHead?: Maybe<Deployment>;
   deploymentVersions: Array<Deployment>;
   deployments: DeploymentConnection;
-  documentLatest?: Maybe<Document>;
   job?: Maybe<Job>;
   jobs: JobConnection;
+  latestProjectSnapshot?: Maybe<ProjectDocument>;
   me?: Maybe<Me>;
   node?: Maybe<Node>;
   nodes: Array<Maybe<Node>>;
+  projectHistory: Array<ProjectSnapshot>;
   projectSharingInfo: ProjectSharingInfoPayload;
   projects: ProjectConnection;
   searchUser?: Maybe<User>;
   sharedProject: SharedProjectPayload;
   triggers: TriggerConnection;
-};
-
-
-export type QueryDocumentSnapshotArgs = {
-  id: Scalars['ID']['input'];
 };
 
 
@@ -624,11 +619,6 @@ export type QueryDeploymentsArgs = {
 };
 
 
-export type QueryDocumentLatestArgs = {
-  id: Scalars['ID']['input'];
-};
-
-
 export type QueryJobArgs = {
   id: Scalars['ID']['input'];
 };
@@ -637,6 +627,11 @@ export type QueryJobArgs = {
 export type QueryJobsArgs = {
   pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
+};
+
+
+export type QueryLatestProjectSnapshotArgs = {
+  projectId: Scalars['ID']['input'];
 };
 
 
@@ -649,6 +644,11 @@ export type QueryNodeArgs = {
 export type QueryNodesArgs = {
   id: Array<Scalars['ID']['input']>;
   type: NodeType;
+};
+
+
+export type QueryProjectHistoryArgs = {
+  projectId: Scalars['ID']['input'];
 };
 
 
@@ -945,7 +945,7 @@ export type GetDeploymentsQueryVariables = Exact<{
 
 export type GetDeploymentsQuery = { __typename?: 'Query', deployments: { __typename?: 'DeploymentConnection', totalCount: number, nodes: Array<{ __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
 
-export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedUrl?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
+export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
 export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
 
@@ -973,7 +973,7 @@ export type CreateProjectMutationVariables = Exact<{
 }>;
 
 
-export type CreateProjectMutation = { __typename?: 'Mutation', createProject?: { __typename?: 'ProjectPayload', project: { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedUrl?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } } | null };
+export type CreateProjectMutation = { __typename?: 'Mutation', createProject?: { __typename?: 'ProjectPayload', project: { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } } | null };
 
 export type GetProjectsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
@@ -981,21 +981,21 @@ export type GetProjectsQueryVariables = Exact<{
 }>;
 
 
-export type GetProjectsQuery = { __typename?: 'Query', projects: { __typename?: 'ProjectConnection', totalCount: number, nodes: Array<{ __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedUrl?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
+export type GetProjectsQuery = { __typename?: 'Query', projects: { __typename?: 'ProjectConnection', totalCount: number, nodes: Array<{ __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
 
 export type GetProjectByIdQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
 }>;
 
 
-export type GetProjectByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Document' } | { __typename: 'Job' } | { __typename: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedUrl?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace' } | null };
+export type GetProjectByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | { __typename: 'ProjectDocument' } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace' } | null };
 
 export type UpdateProjectMutationVariables = Exact<{
   input: UpdateProjectInput;
 }>;
 
 
-export type UpdateProjectMutation = { __typename?: 'Mutation', updateProject?: { __typename?: 'ProjectPayload', project: { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedUrl?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } } | null };
+export type UpdateProjectMutation = { __typename?: 'Mutation', updateProject?: { __typename?: 'ProjectPayload', project: { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } } | null };
 
 export type DeleteProjectMutationVariables = Exact<{
   input: DeleteProjectInput;
@@ -1016,7 +1016,7 @@ export type GetSharedProjectQueryVariables = Exact<{
 }>;
 
 
-export type GetSharedProjectQuery = { __typename?: 'Query', sharedProject: { __typename?: 'SharedProjectPayload', project: { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedUrl?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } } };
+export type GetSharedProjectQuery = { __typename?: 'Query', sharedProject: { __typename?: 'SharedProjectPayload', project: { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } } };
 
 export type ShareProjectMutationVariables = Exact<{
   input: ShareProjectInput;
@@ -1092,7 +1092,7 @@ export type GetWorkspaceByIdQueryVariables = Exact<{
 }>;
 
 
-export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Document' } | { __typename: 'Job' } | { __typename: 'Project' } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> } | null };
+export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'Project' } | { __typename: 'ProjectDocument' } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> } | null };
 
 export type UpdateWorkspaceMutationVariables = Exact<{
   input: UpdateWorkspaceInput;
@@ -1152,7 +1152,7 @@ export const ProjectFragmentDoc = gql`
   createdAt
   updatedAt
   workspaceId
-  sharedUrl
+  sharedToken
   deployment {
     ...Deployment
   }

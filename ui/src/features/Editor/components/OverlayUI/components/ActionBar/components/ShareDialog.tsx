@@ -18,7 +18,6 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
-import { lastOfUrl } from "@flow/utils";
 
 type Props = {
   onProjectShare: (share: boolean) => void;
@@ -31,17 +30,15 @@ const ShareDialog: React.FC<Props> = ({ onProjectShare, setShowDialog }) => {
   const t = useT();
   const [currentProject] = useCurrentProject();
 
-  const tempSharedUrl = currentProject?.sharedUrl;
-
   const BASE_URL = window.location.origin;
-  const sharedToken = tempSharedUrl ? lastOfUrl(tempSharedUrl) : undefined;
+  const sharedToken = currentProject?.sharedToken;
   const sharedUrl = sharedToken
     ? BASE_URL + "/shared/" + sharedToken
     : undefined;
 
   const [hasBeenEdited, setHasBeenEdited] = useState(false);
   const [isSharing, setIsSharing] = useState<SharingState>(
-    currentProject?.sharedUrl ? "sharing" : "notSharing",
+    currentProject?.sharedToken ? "sharing" : "notSharing",
   );
 
   const handleSharingChange = useCallback((share: SharingState) => {
@@ -89,7 +86,7 @@ const ShareDialog: React.FC<Props> = ({ onProjectShare, setShowDialog }) => {
               </SelectContent>
             </Select>
           </DialogContentSection>
-          {isSharing === "sharing" && (
+          {isSharing === "sharing" && sharedToken && (
             <DialogContentSection className="break-all">
               <Label>{t("URL: ")}</Label>
               <p className="text-wrap font-thin">{sharedUrl}</p>

@@ -19,7 +19,6 @@ import {
 import { useProjectExport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
-import { lastOfUrl } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 type Props = {
@@ -38,19 +37,13 @@ const ProjectCard: React.FC<Props> = ({
   onProjectSelect,
 }) => {
   const t = useT();
-  const {
-    id,
-    name,
-    description,
-    updatedAt,
-    sharedUrl: tempSharedUrl,
-  } = project;
+  const { id, name, description, updatedAt, sharedToken } = project;
 
   const [persistOverlay, setPersistOverlay] = useState(false);
 
   // TODO: isShared and sharedURL are temp values.
   const BASE_URL = window.location.origin;
-  const sharedToken = tempSharedUrl ? lastOfUrl(tempSharedUrl) : undefined;
+
   const sharedUrl = sharedToken
     ? BASE_URL + "/shared/" + sharedToken
     : undefined;
