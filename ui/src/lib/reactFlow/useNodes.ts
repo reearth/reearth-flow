@@ -19,11 +19,11 @@ import useDnd from "./useDnd";
 type Props = {
   nodes: Node[];
   edges: Edge[];
-  onWorkflowAdd: (position?: XYPosition) => void;
-  onNodesAdd: (newNode: Node[]) => void;
-  onNodesChange: (changes: NodeChange<Node>[]) => void;
-  onEdgesChange: (changes: EdgeChange[]) => void;
-  onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
+  onWorkflowAdd?: (position?: XYPosition) => void;
+  onNodesAdd?: (newNode: Node[]) => void;
+  onNodesChange?: (changes: NodeChange<Node>[]) => void;
+  onEdgesChange?: (changes: EdgeChange[]) => void;
+  onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
 
 export default ({
@@ -46,7 +46,7 @@ export default ({
   const { handleNodesDropInBatch } = useBatch();
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(
-    (changes) => onNodesChange(changes),
+    (changes) => onNodesChange?.(changes),
     [onNodesChange],
   );
 
@@ -95,7 +95,7 @@ export default ({
         return [...acc, ...removals, ...additions];
       }, [] as EdgeChange[]);
 
-      onEdgesChange(changes);
+      onEdgesChange?.(changes);
     },
     [edges, nodes, onEdgesChange],
   );
@@ -215,7 +215,7 @@ export default ({
             },
           ];
 
-          onEdgesChange([...removeChanges, ...addChanges]);
+          onEdgesChange?.([...removeChanges, ...addChanges]);
 
           // Set edge creation complete to stop loop
           edgeCreationComplete = true;

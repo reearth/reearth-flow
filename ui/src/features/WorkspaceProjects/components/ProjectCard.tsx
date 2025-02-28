@@ -1,5 +1,5 @@
-import { DotsThreeVertical } from "@phosphor-icons/react";
-import { useState } from "react";
+import { DotsThreeVertical, ShareFat } from "@phosphor-icons/react";
+import { MouseEvent, useState } from "react";
 
 import {
   Card,
@@ -10,12 +10,19 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   FlowLogo,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@flow/components";
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useProjectExport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
+import { openLinkInNewTab } from "@flow/utils";
+import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 type Props = {
   project: Project;
@@ -33,11 +40,36 @@ const ProjectCard: React.FC<Props> = ({
   onProjectSelect,
 }) => {
   const t = useT();
-  const { id, name, description, updatedAt } = project;
+  const { toast } = useToast();
+  const { id, name, description, updatedAt, sharedToken } = project;
 
   const [persistOverlay, setPersistOverlay] = useState(false);
 
-  const { isExporting, handleProjectExport } = useProjectExport(project.id);
+  // TODO: isShared and sharedURL are temp values.
+  const BASE_URL = window.location.origin;
+
+  const sharedUrl = sharedToken
+    ? BASE_URL + "/shared/" + sharedToken
+    : undefined;
+
+  const handleCopyURLToClipBoard = () => {
+    if (!sharedUrl) return;
+    copyToClipboard(sharedUrl);
+    toast({
+      title: t("Copied to clipboard"),
+      description: t("{{project}} project's share URL copied to clipboard", {
+        project: name,
+      }),
+    });
+  };
+
+  const handleOpenSharedProject = (e: MouseEvent) => {
+    if (!sharedUrl) return;
+    e.stopPropagation();
+    openLinkInNewTab(sharedUrl);
+  };
+
+  const { isExporting, handleProjectExport } = useProjectExport(project);
 
   return (
     <Card
@@ -79,19 +111,14 @@ const ProjectCard: React.FC<Props> = ({
               onClick={(e) => e.stopPropagation()}>
               <DotsThreeVertical className="size-[24px]" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditProject({ ...project });
-                }}>
+            <DropdownMenuContent
+              align="end"
+              onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem onClick={() => setEditProject({ ...project })}>
                 {t("Edit Details")}
               </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleProjectExport();
-                }}>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleProjectExport}>
                 {t("Export Project")}
               </DropdownMenuItem>
               <DropdownMenuItem
@@ -103,6 +130,13 @@ const ProjectCard: React.FC<Props> = ({
                 {t("Duplicate Project")}
               </DropdownMenuItem>
               <DropdownMenuItem
+                disabled={!sharedUrl}
+                onClick={handleCopyURLToClipBoard}>
+                {t("Copy Share URL")}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-destructive"
                 onClick={(e) => {
                   e.stopPropagation();
                   setProjectToBeDeleted(id);
@@ -113,6 +147,17 @@ const ProjectCard: React.FC<Props> = ({
           </DropdownMenu>
         </div>
       </div>
+      {sharedUrl && (
+        <Tooltip>
+          {/* <TooltipTrigger className="absolute right-1 top-1 rounded p-1 text-muted-foreground hover:bg-primary group-hover:text-white"> */}
+          <TooltipTrigger
+            className="absolute right-1 top-1 rounded p-1 text-muted-foreground hover:bg-primary group-hover:text-white"
+            onClick={handleOpenSharedProject}>
+            <ShareFat />
+          </TooltipTrigger>
+          <TooltipContent>{t("Public Read Access")}</TooltipContent>
+        </Tooltip>
+      )}
     </Card>
   );
 };
