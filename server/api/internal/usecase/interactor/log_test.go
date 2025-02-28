@@ -67,3 +67,58 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 		assert.Contains(t, err.Error(), "logsGatewayRedis is nil")
 	})
 }
+
+func TestLogInteractor_SubscribeInitialLogs(t *testing.T) {
+	jobID := id.NewJobID()
+	nodeID := log.NodeID(id.NewNodeID())
+	initialLog := log.NewLog(jobID, &nodeID, time.Now(), log.LevelInfo, "initial log")
+	redisMock := &mockLogGateway{
+		logs: []*log.Log{initialLog},
+	}
+
+	li := NewLogInteractor(redisMock)
+
+	since := time.Now().Add(-1 * time.Minute)
+	ctx := context.Background()
+
+	ch, err := li.Subscribe(ctx, since, jobID, &usecase.Operator{})
+	assert.NoError(t, err)
+
+	select {
+	case logEntry := <-ch:
+		assert.Equal(t, initialLog, logEntry)
+	case <-time.After(500 * time.Millisecond):
+		t.Fatalf("Timeout waiting for initial log notification")
+	}
+
+	li.Unsubscribe(jobID, ch)
+}
+
+func TestLogInteractor_Unsubscribe(t *testing.T) {
+	redisMock := &mockLogGateway{}
+	liInterface := NewLogInteractor(redisMock)
+	li, ok := liInterface.(*LogInteractor)
+	if !ok {
+		t.Fatal("expected *LogInteractor")
+	}
+	jobID := id.NewJobID()
+
+	ctx := context.Background()
+	ch, err := liInterface.Subscribe(ctx, time.Now().Add(-1*time.Minute), jobID, &usecase.Operator{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	li.Unsubscribe(jobID, ch)
+
+	testLog2 := log.NewLog(jobID, nil, time.Now(), log.LevelInfo, "test log 2")
+	li.subscriptions.Notify(jobID.String(), []*log.Log{testLog2})
+
+	select {
+	case l, ok := <-ch:
+		if ok && l != nil {
+			t.Fatalf("Channel received a non-nil log after unsubscription: %v", l)
+		}
+	case <-time.After(100 * time.Millisecond):
+	}
+}

@@ -2,7 +2,6 @@ package gql
 
 import (
 	"context"
-	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 )
@@ -47,10 +46,6 @@ func (r *queryResolver) Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job,
 
 func (r *queryResolver) Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error) {
 	return loaders(ctx).Job.FindByWorkspacePage(ctx, workspaceID, pagination)
-}
-
-func (r *queryResolver) Logs(ctx context.Context, since time.Time, jobId gqlmodel.ID) ([]*gqlmodel.Log, error) {
-	return loaders(ctx).Log.GetLogs(ctx, since, jobId)
 }
 
 func (r *queryResolver) Node(ctx context.Context, i gqlmodel.ID, typeArg gqlmodel.NodeType) (gqlmodel.Node, error) {

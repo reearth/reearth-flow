@@ -23,6 +23,15 @@ func (m *MockLogUsecase) GetLogs(ctx context.Context, since time.Time, jobID id.
 	return args.Get(0).([]*log.Log), args.Error(1)
 }
 
+func (m *MockLogUsecase) Subscribe(ctx context.Context, t time.Time, jobID id.JobID, op *usecase.Operator) (chan *log.Log, error) {
+	ch := make(chan *log.Log)
+	close(ch)
+	return ch, nil
+}
+
+func (m *MockLogUsecase) Unsubscribe(jobID id.JobID, ch chan *log.Log) {
+}
+
 func TestGetLogs_Success(t *testing.T) {
 	mockUsecase := new(MockLogUsecase)
 	loader := NewLogLoader(mockUsecase)
@@ -35,7 +44,7 @@ func TestGetLogs_Success(t *testing.T) {
 		log.NewLog(id.NewJobID(), nil, time.Now().UTC(), log.LevelDebug, "Test log message 2 from gcs"),
 	}
 
-	mockUsecase.On("GetLogs", ctx, since, mock.Anything, mock.Anything, mock.Anything).Return(mockLogs, nil)
+	mockUsecase.On("GetLogs", ctx, since, mock.Anything, mock.Anything).Return(mockLogs, nil)
 
 	logs, err := loader.GetLogs(ctx, since, jobID)
 	assert.NoError(t, err)
@@ -50,7 +59,7 @@ func TestGetLogs_UsecaseError(t *testing.T) {
 	since := time.Now()
 	jobID := gqlmodel.ID(id.NewJobID().String())
 
-	mockUsecase.On("GetLogs", ctx, since, mock.Anything, mock.Anything, mock.Anything).Return([]*log.Log(nil), errors.New("usecase error"))
+	mockUsecase.On("GetLogs", ctx, since, mock.Anything, mock.Anything).Return([]*log.Log(nil), errors.New("usecase error"))
 
 	logs, err := loader.GetLogs(ctx, since, jobID)
 	assert.Error(t, err)

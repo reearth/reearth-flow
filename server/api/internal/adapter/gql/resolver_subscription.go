@@ -2,6 +2,7 @@ package gql
 
 import (
 	"context"
+	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -39,6 +40,40 @@ func (r *subscriptionResolver) JobStatus(ctx context.Context, jobID gqlmodel.ID)
 					return
 				}
 				resultCh <- gqlmodel.JobStatus(status)
+			}
+		}
+	}()
+
+	return resultCh, nil
+}
+
+func (r *subscriptionResolver) Logs(ctx context.Context, since time.Time, jobID gqlmodel.ID) (<-chan *gqlmodel.Log, error) {
+	jid, err := id.JobIDFrom(string(jobID))
+	if err != nil {
+		return nil, err
+	}
+
+	logsCh, err := usecases(ctx).Log.Subscribe(ctx, since, jid, getOperator(ctx))
+	if err != nil {
+		return nil, err
+	}
+
+	resultCh := make(chan *gqlmodel.Log)
+
+	go func() {
+		defer close(resultCh)
+		defer usecases(ctx).Log.Unsubscribe(jid, logsCh)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case log, ok := <-logsCh:
+				if !ok {
+					return
+				}
+				glog := gqlmodel.ToLog(log)
+				resultCh <- glog
 			}
 		}
 	}()
