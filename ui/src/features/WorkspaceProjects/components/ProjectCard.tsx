@@ -17,6 +17,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@flow/components";
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useProjectExport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
@@ -39,6 +40,7 @@ const ProjectCard: React.FC<Props> = ({
   onProjectSelect,
 }) => {
   const t = useT();
+  const { toast } = useToast();
   const { id, name, description, updatedAt, sharedToken } = project;
 
   const [persistOverlay, setPersistOverlay] = useState(false);
@@ -53,6 +55,12 @@ const ProjectCard: React.FC<Props> = ({
   const handleCopyURLToClipBoard = () => {
     if (!sharedUrl) return;
     copyToClipboard(sharedUrl);
+    toast({
+      title: t("Copied to clipboard"),
+      description: t("{{project}} project's share URL copied to clipboard", {
+        project: name,
+      }),
+    });
   };
 
   const handleOpenSharedProject = (e: MouseEvent) => {
@@ -110,11 +118,6 @@ const ProjectCard: React.FC<Props> = ({
                 {t("Edit Details")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                disabled={!sharedUrl}
-                onClick={handleCopyURLToClipBoard}>
-                {t("Copy Share URL")}
-              </DropdownMenuItem>
               <DropdownMenuItem onClick={handleProjectExport}>
                 {t("Export Project")}
               </DropdownMenuItem>
@@ -125,6 +128,11 @@ const ProjectCard: React.FC<Props> = ({
                   // handleProjectDuplication();
                 }}>
                 {t("Duplicate Project")}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!sharedUrl}
+                onClick={handleCopyURLToClipBoard}>
+                {t("Copy Share URL")}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
