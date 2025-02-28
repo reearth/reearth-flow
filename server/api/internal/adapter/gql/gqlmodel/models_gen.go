@@ -275,7 +275,7 @@ type Project struct {
 	Name              string       `json:"name"`
 	Parameters        []*Parameter `json:"parameters"`
 	UpdatedAt         time.Time    `json:"updatedAt"`
-	SharedURL         *string      `json:"sharedUrl,omitempty"`
+	SharedToken       *string      `json:"sharedToken,omitempty"`
 	Version           int          `json:"version"`
 	Workspace         *Workspace   `json:"workspace,omitempty"`
 	WorkspaceID       ID           `json:"workspaceId"`
@@ -305,8 +305,8 @@ type ProjectPayload struct {
 }
 
 type ProjectSharingInfoPayload struct {
-	ProjectID  ID      `json:"projectId"`
-	SharingURL *string `json:"sharingUrl,omitempty"`
+	ProjectID    ID      `json:"projectId"`
+	SharingToken *string `json:"sharingToken,omitempty"`
 }
 
 type ProjectSnapshot struct {

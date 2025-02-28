@@ -11,12 +11,12 @@ import type { ActionNodeType, Edge, Node } from "@flow/types";
 type Props = {
   nodes: Node[];
   edges: Edge[];
-  onWorkflowAdd: (position?: XYPosition) => void;
-  onNodesAdd: (newNode: Node[]) => void;
-  onNodesChange: (changes: NodeChange<Node>[]) => void;
-  onEdgesAdd: (newEdges: Edge[]) => void;
-  onEdgesChange: (changes: EdgeChange[]) => void;
-  onNodePickerOpen: (position: XYPosition, nodeType?: ActionNodeType) => void;
+  onWorkflowAdd?: (position?: XYPosition) => void;
+  onNodesAdd?: (newNode: Node[]) => void;
+  onNodesChange?: (changes: NodeChange<Node>[]) => void;
+  onEdgesAdd?: (newEdges: Edge[]) => void;
+  onEdgesChange?: (changes: EdgeChange[]) => void;
+  onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
 
 export const defaultEdgeOptions: DefaultEdgeOptions = {

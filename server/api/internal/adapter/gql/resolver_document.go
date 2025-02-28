@@ -4,11 +4,11 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
-	"github.com/reearth/reearth-flow/api/internal/usecase/websocket"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 )
 
 func (r *queryResolver) LatestProjectSnapshot(ctx context.Context, projectId gqlmodel.ID) (*gqlmodel.ProjectDocument, error) {
-	doc, err := websocket.GetLatest(ctx, string(projectId))
+	doc, err := interactor.GetLatest(ctx, string(projectId))
 	if err != nil {
 		return nil, err
 	}
@@ -22,7 +22,7 @@ func (r *queryResolver) LatestProjectSnapshot(ctx context.Context, projectId gql
 }
 
 func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.ID) ([]*gqlmodel.ProjectSnapshot, error) {
-	history, err := websocket.GetHistory(ctx, string(projectId))
+	history, err := interactor.GetHistory(ctx, string(projectId))
 	if err != nil {
 		return nil, err
 	}
@@ -40,7 +40,7 @@ func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.I
 }
 
 func (r *mutationResolver) RollbackProject(ctx context.Context, projectId gqlmodel.ID, version int) (*gqlmodel.ProjectDocument, error) {
-	doc, err := websocket.Rollback(ctx, string(projectId), version)
+	doc, err := interactor.Rollback(ctx, string(projectId), version)
 	if err != nil {
 		return nil, err
 	}

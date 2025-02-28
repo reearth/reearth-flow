@@ -17,7 +17,7 @@ import {
 import { useT } from "@flow/lib/i18n";
 import { TimeInterval, Trigger } from "@flow/types";
 
-import useHooks from "./useHooks";
+import useHooks from "./hooks";
 
 type Props = {
   selectedTrigger: Trigger;
