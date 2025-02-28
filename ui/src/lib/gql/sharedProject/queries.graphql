@@ -6,9 +6,22 @@ query GetSharedProject($token: String!) {
   }
 }
 
+query GetSharedProjectInfo($projectId: ID!) {
+  projectSharingInfo(projectId: $projectId) {
+    projectId
+    sharingToken
+  }
+}
+
 mutation ShareProject($input: ShareProjectInput!) {
   shareProject(input: $input) {
     projectId
     sharingUrl
+  }
+}
+
+mutation UnshareProject($input: UnshareProjectInput!) {
+  unshareProject(input: $input) {
+    projectId
   }
 }

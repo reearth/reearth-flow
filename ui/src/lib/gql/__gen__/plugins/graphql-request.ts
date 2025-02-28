@@ -1018,12 +1018,26 @@ export type GetSharedProjectQueryVariables = Exact<{
 
 export type GetSharedProjectQuery = { __typename?: 'Query', sharedProject: { __typename?: 'SharedProjectPayload', project: { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } } };
 
+export type GetSharedProjectInfoQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+}>;
+
+
+export type GetSharedProjectInfoQuery = { __typename?: 'Query', projectSharingInfo: { __typename?: 'ProjectSharingInfoPayload', projectId: string, sharingToken?: string | null } };
+
 export type ShareProjectMutationVariables = Exact<{
   input: ShareProjectInput;
 }>;
 
 
 export type ShareProjectMutation = { __typename?: 'Mutation', shareProject?: { __typename?: 'ShareProjectPayload', projectId: string, sharingUrl: string } | null };
+
+export type UnshareProjectMutationVariables = Exact<{
+  input: UnshareProjectInput;
+}>;
+
+
+export type UnshareProjectMutation = { __typename?: 'Mutation', unshareProject?: { __typename?: 'UnshareProjectPayload', projectId: string } | null };
 
 export type CreateTriggerMutationVariables = Exact<{
   input: CreateTriggerInput;
@@ -1340,11 +1354,26 @@ export const GetSharedProjectDocument = gql`
   }
 }
     ${ProjectFragmentDoc}`;
+export const GetSharedProjectInfoDocument = gql`
+    query GetSharedProjectInfo($projectId: ID!) {
+  projectSharingInfo(projectId: $projectId) {
+    projectId
+    sharingToken
+  }
+}
+    `;
 export const ShareProjectDocument = gql`
     mutation ShareProject($input: ShareProjectInput!) {
   shareProject(input: $input) {
     projectId
     sharingUrl
+  }
+}
+    `;
+export const UnshareProjectDocument = gql`
+    mutation UnshareProject($input: UnshareProjectInput!) {
+  unshareProject(input: $input) {
+    projectId
   }
 }
     `;
@@ -1534,8 +1563,14 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     GetSharedProject(variables: GetSharedProjectQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetSharedProjectQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetSharedProjectQuery>(GetSharedProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetSharedProject', 'query', variables);
     },
+    GetSharedProjectInfo(variables: GetSharedProjectInfoQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetSharedProjectInfoQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetSharedProjectInfoQuery>(GetSharedProjectInfoDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetSharedProjectInfo', 'query', variables);
+    },
     ShareProject(variables: ShareProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<ShareProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<ShareProjectMutation>(ShareProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'ShareProject', 'mutation', variables);
+    },
+    UnshareProject(variables: UnshareProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UnshareProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UnshareProjectMutation>(UnshareProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UnshareProject', 'mutation', variables);
     },
     CreateTrigger(variables: CreateTriggerMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateTriggerMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateTriggerMutation>(CreateTriggerDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateTrigger', 'mutation', variables);

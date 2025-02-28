@@ -163,7 +163,7 @@ export default ({
     yWorkflows,
   });
 
-  const { shareProject } = useSharedProject();
+  const { shareProject, unshareProject } = useSharedProject();
 
   const [currentProject] = useCurrentProject();
 
@@ -177,10 +177,13 @@ export default ({
           workspaceId: currentProject.workspaceId,
         });
       } else {
-        console.log("TODO: Unshare project");
+        unshareProject({
+          projectId: currentProject.id,
+          workspaceId: currentProject.workspaceId,
+        });
       }
     },
-    [currentProject, shareProject],
+    [currentProject, shareProject, unshareProject],
   );
 
   const handleLayoutChange = useCallback(

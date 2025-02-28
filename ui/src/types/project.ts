@@ -53,3 +53,7 @@ export type ShareProject = {
   projectId?: string;
   sharingUrl?: string;
 } & ApiResponse;
+
+export type UnshareProject = {
+  projectId?: string;
+} & ApiResponse;

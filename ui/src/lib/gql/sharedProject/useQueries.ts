@@ -3,12 +3,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useGraphQLContext } from "@flow/lib/gql";
 import { Project } from "@flow/types";
 
-import { ShareProjectInput } from "../__gen__/graphql";
+import { ShareProjectInput, UnshareProjectInput } from "../__gen__/graphql";
 import { toProject } from "../convert";
 import { ProjectQueryKeys } from "../project/useQueries";
 
 export enum SharedProjectQueryKeys {
   GetSharedProject = "getSharedProject",
+  GetSharedProjectInfo = "getSharedProjectInfo",
 }
 
 export const useQueries = () => {
@@ -23,6 +24,25 @@ export const useQueries = () => {
 
       if (data?.shareProject) {
         return { ...data.shareProject, workspaceId: input.workspaceId };
+      }
+    },
+    onSuccess: (data) =>
+      // TODO: Maybe update cache and not refetch? What happens after pagination?
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetWorkspaceProjects, data?.workspaceId],
+      }),
+  });
+
+  const unshareProjectMutation = useMutation({
+    mutationFn: async (
+      input: UnshareProjectInput & { workspaceId: string },
+    ) => {
+      const data = await graphQLContext?.UnshareProject({
+        input: { projectId: input.projectId },
+      });
+
+      if (data?.unshareProject) {
+        return { ...data.unshareProject, workspaceId: input.workspaceId };
       }
     },
     onSuccess: (data) =>
@@ -54,8 +74,28 @@ export const useQueries = () => {
     });
   };
 
+  const useGetSharedProjectInfoQuery = (projectId?: string) => {
+    return useQuery({
+      queryKey: [SharedProjectQueryKeys.GetSharedProjectInfo, projectId],
+      queryFn: async () => {
+        const data = await graphQLContext?.GetSharedProjectInfo({
+          projectId: projectId ?? "",
+        });
+        if (!data) throw new Error("No data returned");
+        const { projectSharingInfo } = data;
+
+        return {
+          projectSharingInfo,
+        };
+      },
+      enabled: !!projectId,
+    });
+  };
+
   return {
     shareProjectMutation,
+    unshareProjectMutation,
     useGetSharedProjectQuery,
+    useGetSharedProjectInfoQuery,
   };
 };
