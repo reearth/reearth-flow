@@ -323,7 +323,7 @@ type ComplexityRoot struct {
 
 	Subscription struct {
 		JobStatus func(childComplexity int, jobID gqlmodel.ID) int
-		Logs      func(childComplexity int, since time.Time, jobID gqlmodel.ID) int
+		Logs      func(childComplexity int, jobID gqlmodel.ID) int
 	}
 
 	Trigger struct {
@@ -467,7 +467,7 @@ type QueryResolver interface {
 }
 type SubscriptionResolver interface {
 	JobStatus(ctx context.Context, jobID gqlmodel.ID) (<-chan gqlmodel.JobStatus, error)
-	Logs(ctx context.Context, since time.Time, jobID gqlmodel.ID) (<-chan *gqlmodel.Log, error)
+	Logs(ctx context.Context, jobID gqlmodel.ID) (<-chan *gqlmodel.Log, error)
 }
 type TriggerResolver interface {
 	Workspace(ctx context.Context, obj *gqlmodel.Trigger) (*gqlmodel.Workspace, error)
@@ -1890,7 +1890,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Subscription.Logs(childComplexity, args["since"].(time.Time), args["jobId"].(gqlmodel.ID)), true
+		return e.complexity.Subscription.Logs(childComplexity, args["jobId"].(gqlmodel.ID)), true
 
 	case "Trigger.authToken":
 		if e.complexity.Trigger.AuthToken == nil {
@@ -2599,7 +2599,7 @@ type Log {
 }
 
 extend type Subscription {
-  logs(since: DateTime!, jobId: ID!): Log
+  logs(jobId: ID!): Log
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/parameter.graphql", Input: `type Parameter {
@@ -3945,24 +3945,15 @@ func (ec *executionContext) field_Subscription_jobStatus_args(ctx context.Contex
 func (ec *executionContext) field_Subscription_logs_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 time.Time
-	if tmp, ok := rawArgs["since"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("since"))
-		arg0, err = ec.unmarshalNDateTime2timeᚐTime(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["since"] = arg0
-	var arg1 gqlmodel.ID
+	var arg0 gqlmodel.ID
 	if tmp, ok := rawArgs["jobId"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jobId"))
-		arg1, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["jobId"] = arg1
+	args["jobId"] = arg0
 	return args, nil
 }
 
@@ -12694,7 +12685,7 @@ func (ec *executionContext) _Subscription_logs(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Subscription().Logs(rctx, fc.Args["since"].(time.Time), fc.Args["jobId"].(gqlmodel.ID))
+		return ec.resolvers.Subscription().Logs(rctx, fc.Args["jobId"].(gqlmodel.ID))
 	})
 	if err != nil {
 		ec.Error(ctx, err)

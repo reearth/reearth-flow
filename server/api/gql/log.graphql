@@ -15,5 +15,5 @@ type Log {
 }
 
 extend type Subscription {
-  logs(since: DateTime!, jobId: ID!): Log
+  logs(jobId: ID!): Log
 }

@@ -79,9 +79,8 @@ wscat -c ws://localhost:8080/api/graphql
   "id": "1",
   "type": "start",
   "payload": {
-    "query": "subscription logs($since: DateTime!, $jobId: ID!) { logs(since: $since, jobId: $jobId) { jobId nodeId timestamp logLevel message } }",
+    "query": "subscription logs($jobId: ID!) { logs(jobId: $jobId) { jobId nodeId timestamp logLevel message } }",
     "variables": {
-      "since": "2024-12-31T00:00:00Z",
       "jobId": "2f0307f1-e41f-4952-9b95-37ecb711a5ca"
     }
   }

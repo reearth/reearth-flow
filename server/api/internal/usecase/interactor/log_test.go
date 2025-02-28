@@ -78,10 +78,9 @@ func TestLogInteractor_SubscribeInitialLogs(t *testing.T) {
 
 	li := NewLogInteractor(redisMock)
 
-	since := time.Now().Add(-1 * time.Minute)
 	ctx := context.Background()
 
-	ch, err := li.Subscribe(ctx, since, jobID, &usecase.Operator{})
+	ch, err := li.Subscribe(ctx, jobID, &usecase.Operator{})
 	assert.NoError(t, err)
 
 	select {
@@ -104,7 +103,7 @@ func TestLogInteractor_Unsubscribe(t *testing.T) {
 	jobID := id.NewJobID()
 
 	ctx := context.Background()
-	ch, err := liInterface.Subscribe(ctx, time.Now().Add(-1*time.Minute), jobID, &usecase.Operator{})
+	ch, err := liInterface.Subscribe(ctx, jobID, &usecase.Operator{})
 	if err != nil {
 		t.Fatal(err)
 	}

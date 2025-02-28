@@ -46,13 +46,13 @@ func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.
 
 }
 
-// Subscribe: LogsのSubscription
-func (li *LogInteractor) Subscribe(ctx context.Context, since time.Time, jobID id.JobID, operator *usecase.Operator) (chan *log.Log, error) {
+func (li *LogInteractor) Subscribe(ctx context.Context, jobID id.JobID, operator *usecase.Operator) (chan *log.Log, error) {
 	if li.logsGatewayRedis == nil {
 		return nil, fmt.Errorf("logsGatewayRedis is nil")
 	}
 
 	ch := li.subscriptions.Subscribe(jobID.String())
+	since := time.Now().Add(-10 * time.Minute).UTC()
 
 	go func() {
 		initialLogs, err := li.logsGatewayRedis.GetLogs(ctx, since, time.Now().UTC(), jobID)

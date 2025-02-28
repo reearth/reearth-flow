@@ -23,7 +23,7 @@ func (m *MockLogUsecase) GetLogs(ctx context.Context, since time.Time, jobID id.
 	return args.Get(0).([]*log.Log), args.Error(1)
 }
 
-func (m *MockLogUsecase) Subscribe(ctx context.Context, t time.Time, jobID id.JobID, op *usecase.Operator) (chan *log.Log, error) {
+func (m *MockLogUsecase) Subscribe(ctx context.Context, jobID id.JobID, op *usecase.Operator) (chan *log.Log, error) {
 	ch := make(chan *log.Log)
 	close(ch)
 	return ch, nil
