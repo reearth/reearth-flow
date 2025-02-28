@@ -1,4 +1,4 @@
-package websocket
+package interactor
 
 import (
 	"context"
@@ -17,14 +17,14 @@ var (
 	clientOnce    sync.Once
 )
 
-func Init(gcsBucket string, gcsEndpoint *string) {
+func InitWebsocket(gcsBucket string, gcsEndpoint *string) {
 	clientConfig = websocket.Config{
 		GcsBucket:   gcsBucket,
 		GcsEndpoint: gcsEndpoint,
 	}
 }
 
-func getDefaultClient() interfaces.WebsocketClient {
+func getDefaultWebsocketClient() interfaces.WebsocketClient {
 	clientOnce.Do(func() {
 		log.Info("Creating new document client")
 		client, err := websocket.NewClient(clientConfig)
@@ -41,7 +41,7 @@ func getDefaultClient() interfaces.WebsocketClient {
 }
 
 func GetLatest(ctx context.Context, id string) (*ws.Document, error) {
-	client := getDefaultClient()
+	client := getDefaultWebsocketClient()
 	if client == nil {
 		return nil, fmt.Errorf("document client is not initialized")
 	}
@@ -49,7 +49,7 @@ func GetLatest(ctx context.Context, id string) (*ws.Document, error) {
 }
 
 func GetHistory(ctx context.Context, id string) ([]*ws.History, error) {
-	client := getDefaultClient()
+	client := getDefaultWebsocketClient()
 	if client == nil {
 		return nil, fmt.Errorf("document client is not initialized")
 	}
@@ -57,7 +57,7 @@ func GetHistory(ctx context.Context, id string) ([]*ws.History, error) {
 }
 
 func Rollback(ctx context.Context, id string, version int) (*ws.Document, error) {
-	client := getDefaultClient()
+	client := getDefaultWebsocketClient()
 	if client == nil {
 		return nil, fmt.Errorf("document client is not initialized")
 	}

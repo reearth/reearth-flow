@@ -14,8 +14,6 @@ import (
 type Config struct {
 	GcsBucket   string  `json:"gcs_bucket"`
 	GcsEndpoint *string `json:"gcs_endpoint,omitempty"`
-	RedisUrl    string  `json:"redis_url"`
-	RedisTtl    uint64  `json:"redis_ttl"`
 	ServerURL   string  `json:"server_url"`
 }
 
