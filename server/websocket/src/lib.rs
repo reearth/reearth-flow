@@ -7,14 +7,13 @@ pub mod auth;
 mod broadcast;
 pub mod conf;
 pub mod conn;
-pub mod ffi;
+pub mod doc;
 pub mod storage;
 pub mod thrift;
 pub mod ws;
 
 pub use broadcast::group;
 pub use broadcast::pool;
-pub use ffi::*;
 
 pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
 
