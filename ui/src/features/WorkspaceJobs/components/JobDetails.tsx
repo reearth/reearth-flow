@@ -7,6 +7,7 @@ import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { LogsConsole } from "@flow/features/Editor/components/BottomPanel/components";
 import { useT } from "@flow/lib/i18n";
 import type { Job, Log } from "@flow/types";
+import { formatTimestamp } from "@flow/utils";
 import { parseJSONL } from "@flow/utils/parseJsonL";
 
 type Props = {
@@ -50,12 +51,12 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
             {
               id: "startedAt",
               name: t("Started At"),
-              value: selectedJob.startedAt,
+              value: formatTimestamp(selectedJob.startedAt) || t("N/A"),
             },
             {
               id: "completedAt",
               name: t("Completed At"),
-              value: selectedJob.completedAt || t("N/A"),
+              value: formatTimestamp(selectedJob.completedAt) || t("N/A"),
             },
             {
               id: "outputURLs",

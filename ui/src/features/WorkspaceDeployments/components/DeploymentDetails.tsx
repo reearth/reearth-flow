@@ -7,6 +7,7 @@ import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 // import { LogConsole } from "@flow/features/Editor/components/BottomPanel/components";
 import { useT } from "@flow/lib/i18n";
 import type { Deployment } from "@flow/types";
+import { formatTimestamp } from "@flow/utils";
 
 import { DeploymentEditDialog } from "./DeploymentEditDialog";
 
@@ -58,12 +59,18 @@ const DeploymentDetails: React.FC<Props> = ({
             {
               id: "createdAt",
               name: t("Created At"),
-              value: selectedDeployment.createdAt || t("N/A") || "",
+              value:
+                formatTimestamp(selectedDeployment.createdAt) ||
+                t("Never") ||
+                "",
             },
             {
               id: "updatedAt",
               name: t("Updated At"),
-              value: selectedDeployment.updatedAt || t("Never") || "",
+              value:
+                formatTimestamp(selectedDeployment.updatedAt) ||
+                t("Never") ||
+                "",
             },
             {
               id: "workflowUrl",
