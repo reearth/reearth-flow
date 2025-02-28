@@ -21,6 +21,6 @@ func (r *jobResolver) Workspace(ctx context.Context, obj *gqlmodel.Job) (*gqlmod
 	return dataloaders(ctx).Workspace.Load(obj.WorkspaceID)
 }
 
-func (r *jobResolver) Logs(ctx context.Context, since time.Time, jobId gqlmodel.ID) ([]*gqlmodel.Log, error) {
-	return loaders(ctx).Log.GetLogs(ctx, since, jobId)
+func (r *jobResolver) Logs(ctx context.Context, obj *gqlmodel.Job, since time.Time) ([]*gqlmodel.Log, error) {
+	return loaders(ctx).Log.GetLogs(ctx, since, obj.ID)
 }
