@@ -1,6 +1,9 @@
-import { memo, useState } from "react";
+import { RJSFSchema } from "@rjsf/utils";
+import { JSONSchema7Definition } from "json-schema";
+import { memo, useMemo, useState } from "react";
 
 import { SchemaForm, Button } from "@flow/components";
+import { patchAnyOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
@@ -48,13 +51,13 @@ const ParamEditor: React.FC<Props> = ({
     }
   }
   // This is a patch for the `anyOf` type in JSON Schema.
-  // const patchedSchema = useMemo<RJSFSchema | undefined>(
-  //   () =>
-  //     action?.parameter
-  //       ? patchAnyOfType(action.parameter as JSONSchema7Definition)
-  //       : undefined,
-  //   [action?.parameter],
-  // );
+  const patchedSchema = useMemo<RJSFSchema | undefined>(
+    () =>
+      action?.parameter
+        ? patchAnyOfType(action.parameter as JSONSchema7Definition)
+        : undefined,
+    [action?.parameter],
+  );
 
   const [updatedParams, setUpdatedParams] = useState(nodeMeta.params);
 
@@ -92,7 +95,7 @@ const ParamEditor: React.FC<Props> = ({
         {!action?.parameter && <p>{t("No Parameters Available")}</p>}
         {action && (
           <SchemaForm
-            schema={action?.parameter}
+            schema={patchedSchema}
             defaultFormData={nodeMeta.params}
             onChange={handleChange}
             // onSubmit={handleSubmit}
