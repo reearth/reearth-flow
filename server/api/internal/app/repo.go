@@ -28,8 +28,7 @@ const databaseName = "reearth-flow"
 
 func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
 	interactor.InitWebsocket(
-		conf.WebsocketGCSBucket,
-		conf.WebsocketGCSEndpoint,
+		conf.WebsocketThriftServerURL,
 	)
 
 	gateways := &gateway.Container{}
