@@ -57,7 +57,7 @@ const ActionBar: React.FC<Props> = ({
 
   const [currentProject] = useCurrentProject();
 
-  const { handleProjectExport } = useProjectExport(currentProject?.id);
+  const { handleProjectExport } = useProjectExport(currentProject);
 
   return (
     <>

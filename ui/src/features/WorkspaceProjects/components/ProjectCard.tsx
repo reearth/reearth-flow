@@ -1,5 +1,5 @@
 import { DotsThreeVertical, ShareFat } from "@phosphor-icons/react";
-import { useState } from "react";
+import { MouseEvent, useState } from "react";
 
 import {
   Card,
@@ -10,6 +10,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
   FlowLogo,
   Tooltip,
@@ -19,6 +20,7 @@ import {
 import { useProjectExport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
+import { openLinkInNewTab } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 type Props = {
@@ -53,13 +55,13 @@ const ProjectCard: React.FC<Props> = ({
     copyToClipboard(sharedUrl);
   };
 
-  // const handleOpenSharedProject = (e: MouseEvent) => {
-  //   if (!sharedUrl) return;
-  //   e.stopPropagation();
-  //   openLinkInNewTab(sharedUrl);
-  // };
+  const handleOpenSharedProject = (e: MouseEvent) => {
+    if (!sharedUrl) return;
+    e.stopPropagation();
+    openLinkInNewTab(sharedUrl);
+  };
 
-  const { isExporting, handleProjectExport } = useProjectExport(project.id);
+  const { isExporting, handleProjectExport } = useProjectExport(project);
 
   return (
     <Card
@@ -107,6 +109,7 @@ const ProjectCard: React.FC<Props> = ({
               <DropdownMenuItem onClick={() => setEditProject({ ...project })}>
                 {t("Edit Details")}
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 disabled={!sharedUrl}
                 onClick={handleCopyURLToClipBoard}>
@@ -123,7 +126,9 @@ const ProjectCard: React.FC<Props> = ({
                 }}>
                 {t("Duplicate Project")}
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
+                className="text-destructive"
                 onClick={(e) => {
                   e.stopPropagation();
                   setProjectToBeDeleted(id);
@@ -136,10 +141,10 @@ const ProjectCard: React.FC<Props> = ({
       </div>
       {sharedUrl && (
         <Tooltip>
-          <TooltipTrigger className="absolute right-1 top-1 rounded p-1 text-muted-foreground hover:bg-primary group-hover:text-white">
-            {/* <TooltipTrigger
+          {/* <TooltipTrigger className="absolute right-1 top-1 rounded p-1 text-muted-foreground hover:bg-primary group-hover:text-white"> */}
+          <TooltipTrigger
             className="absolute right-1 top-1 rounded p-1 text-muted-foreground hover:bg-primary group-hover:text-white"
-            onClick={handleOpenSharedProject}> */}
+            onClick={handleOpenSharedProject}>
             <ShareFat />
           </TooltipTrigger>
           <TooltipContent>{t("Public Read Access")}</TooltipContent>

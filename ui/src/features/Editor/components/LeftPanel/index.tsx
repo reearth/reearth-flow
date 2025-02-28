@@ -86,7 +86,7 @@ const LeftPanel: React.FC<Props> = ({
     ) || []),
     ...(createTreeDataItem("subworkflow", Graph, nodes, t("Subworkflows")) ||
       []),
-    ...(createTreeDataItem("batch", RectangleDashed, nodes, t("Batch Nodes")) ||
+    ...(createTreeDataItem("batch", RectangleDashed, nodes, t("Batches")) ||
       []),
   ];
 

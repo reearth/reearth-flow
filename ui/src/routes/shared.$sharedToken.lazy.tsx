@@ -64,6 +64,7 @@ const EditorComponent = () => {
     <div className="h-screen">
       <SharedCanvas
         yWorkflows={state.yWorkflows}
+        project={sharedProject}
         undoTrackerActionWrapper={state.undoTrackerActionWrapper}
       />
     </div>

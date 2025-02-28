@@ -4,20 +4,23 @@ import { useY } from "react-yjs";
 import { Array as YArray } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import { useProjectExport } from "@flow/hooks";
 import { rebuildWorkflow } from "@flow/lib/yjs/conversions";
 import { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import useYNode from "@flow/lib/yjs/useYNode";
-import { Edge, Node } from "@flow/types";
+import { Edge, Node, Project } from "@flow/types";
 
 import useNodeLocker from "../Editor/useNodeLocker";
 import useUIState from "../Editor/useUIState";
 
 export default ({
   yWorkflows,
+  project,
   undoTrackerActionWrapper,
 }: {
   yWorkflows: YArray<YWorkflow>;
+  project?: Project;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
   const { fitView } = useReactFlow();
@@ -100,6 +103,8 @@ export default ({
     [handleWorkflowOpen, fitView, handleNodeLocking],
   );
 
+  const { handleProjectExport } = useProjectExport(project);
+
   return {
     currentWorkflowId,
     nodes,
@@ -108,6 +113,7 @@ export default ({
     isMainWorkflow,
     hoveredDetails,
     locallyLockedNode,
+    handleProjectExport,
     handleNodeHover,
     handleNodesChange: handleYNodesChange,
     handleNodeDoubleClick,
