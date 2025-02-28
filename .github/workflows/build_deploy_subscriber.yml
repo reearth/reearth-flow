@@ -1,4 +1,4 @@
-name: Build and Deploy API
+name: Build and Deploy Subscriber
 
 on:
   workflow_call:
@@ -20,8 +20,8 @@ on:
         type: string
 
 jobs:
-  build-api:
-    name: Build API
+  build-subscriber:
+    name: Build Subscriber
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -34,52 +34,44 @@ jobs:
         with:
           go-version: "1.21"
 
-      - name: Install Protoc and Thrift
+      - name: Build Subscriber
         run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler thrift-compiler
-
-      - name: Build API
-        run: |
-          cd server/api
-          go build -v -o reearth-flow-api .
-
+          cd server/subscriber
+          go build -v -o reearth-flow-subscriber .
       - name: Create distribution directory
         run: |
-          mkdir -p server/api/dist
-          mv server/api/reearth-flow-api server/api/dist/
-
+          mkdir -p server/subscriber/dist
+          mv server/subscriber/reearth-flow-subscriber server/subscriber/dist/
       - name: Rename Artifacts
         if: ${{ inputs.name != 'blank' }}
         run: |
-          cd server/api/dist
-          mv reearth-flow-api reearth-flow-api_${{ inputs.name }}
-
+          cd server/subscriber/dist
+          mv reearth-flow-subscriber reearth-flow-subscriber_${{ inputs.name }}
       - name: List Artifacts
-        run: ls -l server/api/dist
+        run: ls -l server/subscriber/dist
 
-      - name: Upload API Artifacts
+      - name: Upload Subscriber Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: api-artifacts
-          path: server/api/dist/*
+          name: subscriber-artifacts
+          path: server/subscriber/dist/*
 
   build-docker-image:
     name: Build and Push Docker Image
-    needs: build-api
+    needs: build-subscriber
     runs-on: ubuntu-latest
     if: ${{ inputs.name != 'blank' || inputs.new_tag != 'blank' }}
     env:
-      IMAGE_NAME: reearth/reearth-flow-api
+      IMAGE_NAME: reearth/reearth-flow-subscriber
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Download API Artifacts
+      - name: Download Subscriber Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: api-artifacts
-          path: server/api/dist
+          name: subscriber-artifacts
+          path: server/subscriber/dist
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -99,12 +91,10 @@ jobs:
           TAG="${{ inputs.new_tag_short != 'blank' && inputs.new_tag_short || '' }}"
           NAME="${{ inputs.name }}"
           SHA="${{ inputs.sha_short }}"
-
           if [[ -n "$TAG" ]]; then
             PLATFORMS="linux/amd64,linux/arm64"
             VERSION="$TAG"
             TAGS="$IMAGE_NAME:$TAG"
-
             if [[ ! "$TAG" =~ '-' ]]; then
               TAGS+=",${IMAGE_NAME}:${TAG%.*}"
               TAGS+=",${IMAGE_NAME}:${TAG%%.*}"
@@ -115,16 +105,13 @@ jobs:
             VERSION="$SHA"
             TAGS="$IMAGE_NAME:$NAME"
           fi
-
           echo "platforms=$PLATFORMS" >> $GITHUB_OUTPUT
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tags=$TAGS" >> $GITHUB_OUTPUT
-
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: server/api/Dockerfile
+          context: server/subscriber
           platforms: ${{ steps.options.outputs.platforms }}
           push: true
           build-args: VERSION=${{ steps.options.outputs.version }}
@@ -143,10 +130,10 @@ jobs:
       contents: read
       id-token: write
     env:
-      IMAGE: reearth/reearth-flow-api:nightly
-      IMAGE_GCP: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-api:nightly
+      IMAGE: reearth/reearth-flow-subscriber:nightly
+      IMAGE_GCP: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-subscriber:nightly
       GCP_REGION: us-central1
-      CLOUD_RUN_SERVICE: reearth-flow-api
+      CLOUD_RUN_SERVICE: reearth-flow-subscriber
     steps:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
@@ -165,7 +152,6 @@ jobs:
           docker pull $IMAGE
           docker tag $IMAGE $IMAGE_GCP
           docker push $IMAGE_GCP
-
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy $CLOUD_RUN_SERVICE \

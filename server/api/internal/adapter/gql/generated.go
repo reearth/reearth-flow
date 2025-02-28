@@ -42,11 +42,11 @@ type Config struct {
 
 type ResolverRoot interface {
 	Deployment() DeploymentResolver
-	Document() DocumentResolver
 	Job() JobResolver
 	Me() MeResolver
 	Mutation() MutationResolver
 	Project() ProjectResolver
+	ProjectDocument() ProjectDocumentResolver
 	Query() QueryResolver
 	Subscription() SubscriptionResolver
 	Trigger() TriggerResolver
@@ -132,19 +132,6 @@ type ComplexityRoot struct {
 		Deployment func(childComplexity int) int
 	}
 
-	Document struct {
-		Clock     func(childComplexity int) int
-		ID        func(childComplexity int) int
-		Timestamp func(childComplexity int) int
-		Update    func(childComplexity int) int
-	}
-
-	DocumentSnapshot struct {
-		Clock     func(childComplexity int) int
-		Timestamp func(childComplexity int) int
-		Update    func(childComplexity int) int
-	}
-
 	Job struct {
 		CompletedAt  func(childComplexity int) int
 		Debug        func(childComplexity int) int
@@ -194,12 +181,12 @@ type ComplexityRoot struct {
 		DeleteProject             func(childComplexity int, input gqlmodel.DeleteProjectInput) int
 		DeleteTrigger             func(childComplexity int, triggerID gqlmodel.ID) int
 		DeleteWorkspace           func(childComplexity int, input gqlmodel.DeleteWorkspaceInput) int
-		DocumentRollback          func(childComplexity int, id gqlmodel.ID, clock int) int
 		ExecuteDeployment         func(childComplexity int, input gqlmodel.ExecuteDeploymentInput) int
 		RemoveAsset               func(childComplexity int, input gqlmodel.RemoveAssetInput) int
 		RemoveMemberFromWorkspace func(childComplexity int, input gqlmodel.RemoveMemberFromWorkspaceInput) int
 		RemoveMyAuth              func(childComplexity int, input gqlmodel.RemoveMyAuthInput) int
 		RemoveParameter           func(childComplexity int, input gqlmodel.RemoveParameterInput) int
+		RollbackProject           func(childComplexity int, projectID gqlmodel.ID, version int) int
 		RunProject                func(childComplexity int, input gqlmodel.RunProjectInput) int
 		ShareProject              func(childComplexity int, input gqlmodel.ShareProjectInput) int
 		Signup                    func(childComplexity int, input gqlmodel.SignupInput) int
@@ -243,7 +230,7 @@ type ComplexityRoot struct {
 		IsBasicAuthActive func(childComplexity int) int
 		Name              func(childComplexity int) int
 		Parameters        func(childComplexity int) int
-		SharedURL         func(childComplexity int) int
+		SharedToken       func(childComplexity int) int
 		UpdatedAt         func(childComplexity int) int
 		Version           func(childComplexity int) int
 		Workspace         func(childComplexity int) int
@@ -256,33 +243,46 @@ type ComplexityRoot struct {
 		TotalCount func(childComplexity int) int
 	}
 
+	ProjectDocument struct {
+		ID        func(childComplexity int) int
+		Timestamp func(childComplexity int) int
+		Updates   func(childComplexity int) int
+		Version   func(childComplexity int) int
+	}
+
 	ProjectPayload struct {
 		Project func(childComplexity int) int
 	}
 
 	ProjectSharingInfoPayload struct {
-		ProjectID  func(childComplexity int) int
-		SharingURL func(childComplexity int) int
+		ProjectID    func(childComplexity int) int
+		SharingToken func(childComplexity int) int
+	}
+
+	ProjectSnapshot struct {
+		Timestamp func(childComplexity int) int
+		Updates   func(childComplexity int) int
+		Version   func(childComplexity int) int
 	}
 
 	Query struct {
-		Assets              func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
-		DeploymentByVersion func(childComplexity int, input gqlmodel.GetByVersionInput) int
-		DeploymentHead      func(childComplexity int, input gqlmodel.GetHeadInput) int
-		DeploymentVersions  func(childComplexity int, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) int
-		Deployments         func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
-		DocumentLatest      func(childComplexity int, id gqlmodel.ID) int
-		DocumentSnapshot    func(childComplexity int, id gqlmodel.ID) int
-		Job                 func(childComplexity int, id gqlmodel.ID) int
-		Jobs                func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
-		Me                  func(childComplexity int) int
-		Node                func(childComplexity int, id gqlmodel.ID, typeArg gqlmodel.NodeType) int
-		Nodes               func(childComplexity int, id []gqlmodel.ID, typeArg gqlmodel.NodeType) int
-		ProjectSharingInfo  func(childComplexity int, projectID gqlmodel.ID) int
-		Projects            func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) int
-		SearchUser          func(childComplexity int, nameOrEmail string) int
-		SharedProject       func(childComplexity int, token string) int
-		Triggers            func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		Assets                func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
+		DeploymentByVersion   func(childComplexity int, input gqlmodel.GetByVersionInput) int
+		DeploymentHead        func(childComplexity int, input gqlmodel.GetHeadInput) int
+		DeploymentVersions    func(childComplexity int, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) int
+		Deployments           func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		Job                   func(childComplexity int, id gqlmodel.ID) int
+		Jobs                  func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		LatestProjectSnapshot func(childComplexity int, projectID gqlmodel.ID) int
+		Me                    func(childComplexity int) int
+		Node                  func(childComplexity int, id gqlmodel.ID, typeArg gqlmodel.NodeType) int
+		Nodes                 func(childComplexity int, id []gqlmodel.ID, typeArg gqlmodel.NodeType) int
+		ProjectHistory        func(childComplexity int, projectID gqlmodel.ID) int
+		ProjectSharingInfo    func(childComplexity int, projectID gqlmodel.ID) int
+		Projects              func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) int
+		SearchUser            func(childComplexity int, nameOrEmail string) int
+		SharedProject         func(childComplexity int, token string) int
+		Triggers              func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
 	}
 
 	RemoveAssetPayload struct {
@@ -381,9 +381,6 @@ type DeploymentResolver interface {
 
 	Workspace(ctx context.Context, obj *gqlmodel.Deployment) (*gqlmodel.Workspace, error)
 }
-type DocumentResolver interface {
-	Update(ctx context.Context, obj *gqlmodel.Document) ([]int, error)
-}
 type JobResolver interface {
 	Deployment(ctx context.Context, obj *gqlmodel.Job) (*gqlmodel.Deployment, error)
 
@@ -401,7 +398,7 @@ type MutationResolver interface {
 	UpdateDeployment(ctx context.Context, input gqlmodel.UpdateDeploymentInput) (*gqlmodel.DeploymentPayload, error)
 	DeleteDeployment(ctx context.Context, input gqlmodel.DeleteDeploymentInput) (*gqlmodel.DeleteDeploymentPayload, error)
 	ExecuteDeployment(ctx context.Context, input gqlmodel.ExecuteDeploymentInput) (*gqlmodel.JobPayload, error)
-	DocumentRollback(ctx context.Context, id gqlmodel.ID, clock int) (*gqlmodel.Document, error)
+	RollbackProject(ctx context.Context, projectID gqlmodel.ID, version int) (*gqlmodel.ProjectDocument, error)
 	CancelJob(ctx context.Context, input gqlmodel.CancelJobInput) (*gqlmodel.CancelJobPayload, error)
 	DeclareParameter(ctx context.Context, projectID gqlmodel.ID, input gqlmodel.DeclareParameterInput) (*gqlmodel.Parameter, error)
 	UpdateParameterValue(ctx context.Context, paramID gqlmodel.ID, input gqlmodel.UpdateParameterValueInput) (*gqlmodel.Parameter, error)
@@ -434,6 +431,9 @@ type ProjectResolver interface {
 
 	Workspace(ctx context.Context, obj *gqlmodel.Project) (*gqlmodel.Workspace, error)
 }
+type ProjectDocumentResolver interface {
+	Updates(ctx context.Context, obj *gqlmodel.ProjectDocument) ([]int, error)
+}
 type QueryResolver interface {
 	Node(ctx context.Context, id gqlmodel.ID, typeArg gqlmodel.NodeType) (gqlmodel.Node, error)
 	Nodes(ctx context.Context, id []gqlmodel.ID, typeArg gqlmodel.NodeType) ([]gqlmodel.Node, error)
@@ -442,8 +442,8 @@ type QueryResolver interface {
 	DeploymentByVersion(ctx context.Context, input gqlmodel.GetByVersionInput) (*gqlmodel.Deployment, error)
 	DeploymentHead(ctx context.Context, input gqlmodel.GetHeadInput) (*gqlmodel.Deployment, error)
 	DeploymentVersions(ctx context.Context, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) ([]*gqlmodel.Deployment, error)
-	DocumentLatest(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Document, error)
-	DocumentSnapshot(ctx context.Context, id gqlmodel.ID) ([]*gqlmodel.DocumentSnapshot, error)
+	LatestProjectSnapshot(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectDocument, error)
+	ProjectHistory(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.ProjectSnapshot, error)
 	Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
 	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
@@ -732,55 +732,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.DeploymentPayload.Deployment(childComplexity), true
-
-	case "Document.clock":
-		if e.complexity.Document.Clock == nil {
-			break
-		}
-
-		return e.complexity.Document.Clock(childComplexity), true
-
-	case "Document.id":
-		if e.complexity.Document.ID == nil {
-			break
-		}
-
-		return e.complexity.Document.ID(childComplexity), true
-
-	case "Document.timestamp":
-		if e.complexity.Document.Timestamp == nil {
-			break
-		}
-
-		return e.complexity.Document.Timestamp(childComplexity), true
-
-	case "Document.update":
-		if e.complexity.Document.Update == nil {
-			break
-		}
-
-		return e.complexity.Document.Update(childComplexity), true
-
-	case "DocumentSnapshot.clock":
-		if e.complexity.DocumentSnapshot.Clock == nil {
-			break
-		}
-
-		return e.complexity.DocumentSnapshot.Clock(childComplexity), true
-
-	case "DocumentSnapshot.timestamp":
-		if e.complexity.DocumentSnapshot.Timestamp == nil {
-			break
-		}
-
-		return e.complexity.DocumentSnapshot.Timestamp(childComplexity), true
-
-	case "DocumentSnapshot.update":
-		if e.complexity.DocumentSnapshot.Update == nil {
-			break
-		}
-
-		return e.complexity.DocumentSnapshot.Update(childComplexity), true
 
 	case "Job.completedAt":
 		if e.complexity.Job.CompletedAt == nil {
@@ -1099,18 +1050,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.DeleteWorkspace(childComplexity, args["input"].(gqlmodel.DeleteWorkspaceInput)), true
 
-	case "Mutation.documentRollback":
-		if e.complexity.Mutation.DocumentRollback == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_documentRollback_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.DocumentRollback(childComplexity, args["id"].(gqlmodel.ID), args["clock"].(int)), true
-
 	case "Mutation.executeDeployment":
 		if e.complexity.Mutation.ExecuteDeployment == nil {
 			break
@@ -1170,6 +1109,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemoveParameter(childComplexity, args["input"].(gqlmodel.RemoveParameterInput)), true
+
+	case "Mutation.rollbackProject":
+		if e.complexity.Mutation.RollbackProject == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_rollbackProject_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RollbackProject(childComplexity, args["projectId"].(gqlmodel.ID), args["version"].(int)), true
 
 	case "Mutation.runProject":
 		if e.complexity.Mutation.RunProject == nil {
@@ -1469,12 +1420,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Project.Parameters(childComplexity), true
 
-	case "Project.sharedUrl":
-		if e.complexity.Project.SharedURL == nil {
+	case "Project.sharedToken":
+		if e.complexity.Project.SharedToken == nil {
 			break
 		}
 
-		return e.complexity.Project.SharedURL(childComplexity), true
+		return e.complexity.Project.SharedToken(childComplexity), true
 
 	case "Project.updatedAt":
 		if e.complexity.Project.UpdatedAt == nil {
@@ -1525,6 +1476,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProjectConnection.TotalCount(childComplexity), true
 
+	case "ProjectDocument.id":
+		if e.complexity.ProjectDocument.ID == nil {
+			break
+		}
+
+		return e.complexity.ProjectDocument.ID(childComplexity), true
+
+	case "ProjectDocument.timestamp":
+		if e.complexity.ProjectDocument.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.ProjectDocument.Timestamp(childComplexity), true
+
+	case "ProjectDocument.updates":
+		if e.complexity.ProjectDocument.Updates == nil {
+			break
+		}
+
+		return e.complexity.ProjectDocument.Updates(childComplexity), true
+
+	case "ProjectDocument.version":
+		if e.complexity.ProjectDocument.Version == nil {
+			break
+		}
+
+		return e.complexity.ProjectDocument.Version(childComplexity), true
+
 	case "ProjectPayload.project":
 		if e.complexity.ProjectPayload.Project == nil {
 			break
@@ -1539,12 +1518,33 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProjectSharingInfoPayload.ProjectID(childComplexity), true
 
-	case "ProjectSharingInfoPayload.sharingUrl":
-		if e.complexity.ProjectSharingInfoPayload.SharingURL == nil {
+	case "ProjectSharingInfoPayload.sharingToken":
+		if e.complexity.ProjectSharingInfoPayload.SharingToken == nil {
 			break
 		}
 
-		return e.complexity.ProjectSharingInfoPayload.SharingURL(childComplexity), true
+		return e.complexity.ProjectSharingInfoPayload.SharingToken(childComplexity), true
+
+	case "ProjectSnapshot.timestamp":
+		if e.complexity.ProjectSnapshot.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.ProjectSnapshot.Timestamp(childComplexity), true
+
+	case "ProjectSnapshot.updates":
+		if e.complexity.ProjectSnapshot.Updates == nil {
+			break
+		}
+
+		return e.complexity.ProjectSnapshot.Updates(childComplexity), true
+
+	case "ProjectSnapshot.version":
+		if e.complexity.ProjectSnapshot.Version == nil {
+			break
+		}
+
+		return e.complexity.ProjectSnapshot.Version(childComplexity), true
 
 	case "Query.assets":
 		if e.complexity.Query.Assets == nil {
@@ -1606,30 +1606,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Deployments(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
 
-	case "Query.documentLatest":
-		if e.complexity.Query.DocumentLatest == nil {
-			break
-		}
-
-		args, err := ec.field_Query_documentLatest_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.DocumentLatest(childComplexity, args["id"].(gqlmodel.ID)), true
-
-	case "Query.DocumentSnapshot":
-		if e.complexity.Query.DocumentSnapshot == nil {
-			break
-		}
-
-		args, err := ec.field_Query_DocumentSnapshot_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Query.DocumentSnapshot(childComplexity, args["id"].(gqlmodel.ID)), true
-
 	case "Query.job":
 		if e.complexity.Query.Job == nil {
 			break
@@ -1653,6 +1629,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Jobs(childComplexity, args["workspaceId"].(gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
+
+	case "Query.latestProjectSnapshot":
+		if e.complexity.Query.LatestProjectSnapshot == nil {
+			break
+		}
+
+		args, err := ec.field_Query_latestProjectSnapshot_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.LatestProjectSnapshot(childComplexity, args["projectId"].(gqlmodel.ID)), true
 
 	case "Query.me":
 		if e.complexity.Query.Me == nil {
@@ -1684,6 +1672,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Nodes(childComplexity, args["id"].([]gqlmodel.ID), args["type"].(gqlmodel.NodeType)), true
+
+	case "Query.projectHistory":
+		if e.complexity.Query.ProjectHistory == nil {
+			break
+		}
+
+		args, err := ec.field_Query_projectHistory_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.ProjectHistory(childComplexity, args["projectId"].(gqlmodel.ID)), true
 
 	case "Query.projectSharingInfo":
 		if e.complexity.Query.ProjectSharingInfo == nil {
@@ -2426,30 +2426,30 @@ extend type Mutation {
   executeDeployment(input: ExecuteDeploymentInput!): JobPayload
 }
 `, BuiltIn: false},
-	{Name: "../../../gql/document.graphql", Input: `type Document implements Node {
+	{Name: "../../../gql/document.graphql", Input: `type ProjectDocument implements Node {
   id: ID!
-  update: [Int!]!
-  clock: Int!
   timestamp: DateTime!
+  updates: [Int!]!
+  version: Int!
 }
 
-type DocumentSnapshot {
-  update: [Int!]!
-  clock: Int!
+type ProjectSnapshot {
   timestamp: DateTime!
+  updates: [Int!]!
+  version: Int!
 }
 
 # Query
 
 extend type Query {
-  documentLatest(id: ID!): Document
-  DocumentSnapshot(id: ID!): [DocumentSnapshot!]!
+  latestProjectSnapshot(projectId: ID!): ProjectDocument
+  projectHistory(projectId: ID!): [ProjectSnapshot!]!
 }
 
 # Mutation
 
 extend type Mutation {
-  documentRollback(id: ID!, clock: Int!): Document
+  rollbackProject(projectId: ID!, version: Int!): ProjectDocument
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/job.graphql", Input: `type Job implements Node {
@@ -2595,7 +2595,7 @@ extend type Mutation {
   name: String!
   parameters: [Parameter!]!
   updatedAt: DateTime!
-  sharedUrl: String
+  sharedToken: String
   version: Int!
   workspace: Workspace
   workspaceId: ID!
@@ -2684,7 +2684,7 @@ input UnshareProjectInput {
 
 type ProjectSharingInfoPayload {
   projectId: ID!
-  sharingUrl: String
+  sharingToken: String
 }
 
 type SharedProjectPayload {
@@ -3168,30 +3168,6 @@ func (ec *executionContext) field_Mutation_deleteWorkspace_args(ctx context.Cont
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_documentRollback_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 gqlmodel.ID
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["id"] = arg0
-	var arg1 int
-	if tmp, ok := rawArgs["clock"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("clock"))
-		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["clock"] = arg1
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_executeDeployment_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -3264,6 +3240,30 @@ func (ec *executionContext) field_Mutation_removeParameter_args(ctx context.Cont
 		}
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_rollbackProject_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.ID
+	if tmp, ok := rawArgs["projectId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
+	var arg1 int
+	if tmp, ok := rawArgs["version"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("version"))
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["version"] = arg1
 	return args, nil
 }
 
@@ -3465,21 +3465,6 @@ func (ec *executionContext) field_Mutation_updateWorkspace_args(ctx context.Cont
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_DocumentSnapshot_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 gqlmodel.ID
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["id"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -3615,21 +3600,6 @@ func (ec *executionContext) field_Query_deployments_args(ctx context.Context, ra
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_documentLatest_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 gqlmodel.ID
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["id"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Query_job_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -3666,6 +3636,21 @@ func (ec *executionContext) field_Query_jobs_args(ctx context.Context, rawArgs m
 		}
 	}
 	args["pagination"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_latestProjectSnapshot_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.ID
+	if tmp, ok := rawArgs["projectId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
 	return args, nil
 }
 
@@ -3714,6 +3699,21 @@ func (ec *executionContext) field_Query_nodes_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["type"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_projectHistory_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.ID
+	if tmp, ok := rawArgs["projectId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
 	return args, nil
 }
 
@@ -5126,8 +5126,8 @@ func (ec *executionContext) fieldContext_Deployment_project(_ context.Context, f
 				return ec.fieldContext_Project_parameters(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
-			case "sharedUrl":
-				return ec.fieldContext_Project_sharedUrl(ctx, field)
+			case "sharedToken":
+				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
 			case "workspace":
@@ -5644,314 +5644,6 @@ func (ec *executionContext) fieldContext_DeploymentPayload_deployment(_ context.
 				return ec.fieldContext_Deployment_workspaceId(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Deployment", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Document_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Document) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Document_id(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.ID, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(gqlmodel.ID)
-	fc.Result = res
-	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Document_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Document",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Document_update(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Document) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Document_update(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Document().Update(rctx, obj)
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]int)
-	fc.Result = res
-	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Document_update(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Document",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Document_clock(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Document) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Document_clock(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Clock, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Document_clock(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Document",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Document_timestamp(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Document) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Document_timestamp(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Timestamp, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(time.Time)
-	fc.Result = res
-	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_Document_timestamp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Document",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DateTime does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DocumentSnapshot_update(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.DocumentSnapshot) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DocumentSnapshot_update(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Update, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]int)
-	fc.Result = res
-	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_DocumentSnapshot_update(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DocumentSnapshot",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DocumentSnapshot_clock(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.DocumentSnapshot) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DocumentSnapshot_clock(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Clock, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(int)
-	fc.Result = res
-	return ec.marshalNInt2int(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_DocumentSnapshot_clock(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DocumentSnapshot",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DocumentSnapshot_timestamp(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.DocumentSnapshot) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_DocumentSnapshot_timestamp(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Timestamp, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(time.Time)
-	fc.Result = res
-	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_DocumentSnapshot_timestamp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DocumentSnapshot",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DateTime does not have child fields")
 		},
 	}
 	return fc, nil
@@ -7408,8 +7100,8 @@ func (ec *executionContext) fieldContext_Mutation_executeDeployment(ctx context.
 	return fc, nil
 }
 
-func (ec *executionContext) _Mutation_documentRollback(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Mutation_documentRollback(ctx, field)
+func (ec *executionContext) _Mutation_rollbackProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_rollbackProject(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -7422,7 +7114,7 @@ func (ec *executionContext) _Mutation_documentRollback(ctx context.Context, fiel
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().DocumentRollback(rctx, fc.Args["id"].(gqlmodel.ID), fc.Args["clock"].(int))
+		return ec.resolvers.Mutation().RollbackProject(rctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["version"].(int))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -7431,12 +7123,12 @@ func (ec *executionContext) _Mutation_documentRollback(ctx context.Context, fiel
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*gqlmodel.Document)
+	res := resTmp.(*gqlmodel.ProjectDocument)
 	fc.Result = res
-	return ec.marshalODocument2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDocument(ctx, field.Selections, res)
+	return ec.marshalOProjectDocument2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectDocument(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Mutation_documentRollback(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Mutation_rollbackProject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Mutation",
 		Field:      field,
@@ -7445,15 +7137,15 @@ func (ec *executionContext) fieldContext_Mutation_documentRollback(ctx context.C
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_Document_id(ctx, field)
-			case "update":
-				return ec.fieldContext_Document_update(ctx, field)
-			case "clock":
-				return ec.fieldContext_Document_clock(ctx, field)
+				return ec.fieldContext_ProjectDocument_id(ctx, field)
 			case "timestamp":
-				return ec.fieldContext_Document_timestamp(ctx, field)
+				return ec.fieldContext_ProjectDocument_timestamp(ctx, field)
+			case "updates":
+				return ec.fieldContext_ProjectDocument_updates(ctx, field)
+			case "version":
+				return ec.fieldContext_ProjectDocument_version(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Document", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type ProjectDocument", field.Name)
 		},
 	}
 	defer func() {
@@ -7463,7 +7155,7 @@ func (ec *executionContext) fieldContext_Mutation_documentRollback(ctx context.C
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_documentRollback_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Mutation_rollbackProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -9977,8 +9669,8 @@ func (ec *executionContext) fieldContext_Project_updatedAt(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _Project_sharedUrl(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Project_sharedUrl(ctx, field)
+func (ec *executionContext) _Project_sharedToken(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Project_sharedToken(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -9991,7 +9683,7 @@ func (ec *executionContext) _Project_sharedUrl(ctx context.Context, field graphq
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.SharedURL, nil
+		return obj.SharedToken, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10005,7 +9697,7 @@ func (ec *executionContext) _Project_sharedUrl(ctx context.Context, field graphq
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Project_sharedUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Project_sharedToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Project",
 		Field:      field,
@@ -10222,8 +9914,8 @@ func (ec *executionContext) fieldContext_ProjectConnection_nodes(_ context.Conte
 				return ec.fieldContext_Project_parameters(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
-			case "sharedUrl":
-				return ec.fieldContext_Project_sharedUrl(ctx, field)
+			case "sharedToken":
+				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
 			case "workspace":
@@ -10333,6 +10025,182 @@ func (ec *executionContext) fieldContext_ProjectConnection_totalCount(_ context.
 	return fc, nil
 }
 
+func (ec *executionContext) _ProjectDocument_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectDocument) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectDocument_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectDocument_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectDocument",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectDocument_timestamp(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectDocument) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectDocument_timestamp(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectDocument_timestamp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectDocument",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectDocument_updates(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectDocument) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectDocument_updates(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.ProjectDocument().Updates(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectDocument_updates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectDocument",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectDocument_version(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectDocument) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectDocument_version(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Version, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectDocument_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectDocument",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProjectPayload_project(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectPayload) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_ProjectPayload_project(ctx, field)
 	if err != nil {
@@ -10394,8 +10262,8 @@ func (ec *executionContext) fieldContext_ProjectPayload_project(_ context.Contex
 				return ec.fieldContext_Project_parameters(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
-			case "sharedUrl":
-				return ec.fieldContext_Project_sharedUrl(ctx, field)
+			case "sharedToken":
+				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
 			case "workspace":
@@ -10453,8 +10321,8 @@ func (ec *executionContext) fieldContext_ProjectSharingInfoPayload_projectId(_ c
 	return fc, nil
 }
 
-func (ec *executionContext) _ProjectSharingInfoPayload_sharingUrl(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectSharingInfoPayload) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_ProjectSharingInfoPayload_sharingUrl(ctx, field)
+func (ec *executionContext) _ProjectSharingInfoPayload_sharingToken(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectSharingInfoPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectSharingInfoPayload_sharingToken(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -10467,7 +10335,7 @@ func (ec *executionContext) _ProjectSharingInfoPayload_sharingUrl(ctx context.Co
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.SharingURL, nil
+		return obj.SharingToken, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10481,7 +10349,7 @@ func (ec *executionContext) _ProjectSharingInfoPayload_sharingUrl(ctx context.Co
 	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_ProjectSharingInfoPayload_sharingUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_ProjectSharingInfoPayload_sharingToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "ProjectSharingInfoPayload",
 		Field:      field,
@@ -10489,6 +10357,138 @@ func (ec *executionContext) fieldContext_ProjectSharingInfoPayload_sharingUrl(_ 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectSnapshot_timestamp(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectSnapshot) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectSnapshot_timestamp(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectSnapshot_timestamp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectSnapshot_updates(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectSnapshot) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectSnapshot_updates(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Updates, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]int)
+	fc.Result = res
+	return ec.marshalNInt2ᚕintᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectSnapshot_updates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectSnapshot_version(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectSnapshot) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectSnapshot_version(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Version, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectSnapshot_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectSnapshot",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -10964,8 +10964,8 @@ func (ec *executionContext) fieldContext_Query_deploymentVersions(ctx context.Co
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_documentLatest(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_documentLatest(ctx, field)
+func (ec *executionContext) _Query_latestProjectSnapshot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_latestProjectSnapshot(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -10978,7 +10978,7 @@ func (ec *executionContext) _Query_documentLatest(ctx context.Context, field gra
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().DocumentLatest(rctx, fc.Args["id"].(gqlmodel.ID))
+		return ec.resolvers.Query().LatestProjectSnapshot(rctx, fc.Args["projectId"].(gqlmodel.ID))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -10987,12 +10987,12 @@ func (ec *executionContext) _Query_documentLatest(ctx context.Context, field gra
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(*gqlmodel.Document)
+	res := resTmp.(*gqlmodel.ProjectDocument)
 	fc.Result = res
-	return ec.marshalODocument2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDocument(ctx, field.Selections, res)
+	return ec.marshalOProjectDocument2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectDocument(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_documentLatest(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_latestProjectSnapshot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -11001,15 +11001,15 @@ func (ec *executionContext) fieldContext_Query_documentLatest(ctx context.Contex
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
 			case "id":
-				return ec.fieldContext_Document_id(ctx, field)
-			case "update":
-				return ec.fieldContext_Document_update(ctx, field)
-			case "clock":
-				return ec.fieldContext_Document_clock(ctx, field)
+				return ec.fieldContext_ProjectDocument_id(ctx, field)
 			case "timestamp":
-				return ec.fieldContext_Document_timestamp(ctx, field)
+				return ec.fieldContext_ProjectDocument_timestamp(ctx, field)
+			case "updates":
+				return ec.fieldContext_ProjectDocument_updates(ctx, field)
+			case "version":
+				return ec.fieldContext_ProjectDocument_version(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Document", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type ProjectDocument", field.Name)
 		},
 	}
 	defer func() {
@@ -11019,15 +11019,15 @@ func (ec *executionContext) fieldContext_Query_documentLatest(ctx context.Contex
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_documentLatest_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_latestProjectSnapshot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_DocumentSnapshot(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_Query_DocumentSnapshot(ctx, field)
+func (ec *executionContext) _Query_projectHistory(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_projectHistory(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -11040,7 +11040,7 @@ func (ec *executionContext) _Query_DocumentSnapshot(ctx context.Context, field g
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().DocumentSnapshot(rctx, fc.Args["id"].(gqlmodel.ID))
+		return ec.resolvers.Query().ProjectHistory(rctx, fc.Args["projectId"].(gqlmodel.ID))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -11052,12 +11052,12 @@ func (ec *executionContext) _Query_DocumentSnapshot(ctx context.Context, field g
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*gqlmodel.DocumentSnapshot)
+	res := resTmp.([]*gqlmodel.ProjectSnapshot)
 	fc.Result = res
-	return ec.marshalNDocumentSnapshot2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDocumentSnapshotᚄ(ctx, field.Selections, res)
+	return ec.marshalNProjectSnapshot2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshotᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_DocumentSnapshot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_projectHistory(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -11065,14 +11065,14 @@ func (ec *executionContext) fieldContext_Query_DocumentSnapshot(ctx context.Cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "update":
-				return ec.fieldContext_DocumentSnapshot_update(ctx, field)
-			case "clock":
-				return ec.fieldContext_DocumentSnapshot_clock(ctx, field)
 			case "timestamp":
-				return ec.fieldContext_DocumentSnapshot_timestamp(ctx, field)
+				return ec.fieldContext_ProjectSnapshot_timestamp(ctx, field)
+			case "updates":
+				return ec.fieldContext_ProjectSnapshot_updates(ctx, field)
+			case "version":
+				return ec.fieldContext_ProjectSnapshot_version(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type DocumentSnapshot", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type ProjectSnapshot", field.Name)
 		},
 	}
 	defer func() {
@@ -11082,7 +11082,7 @@ func (ec *executionContext) fieldContext_Query_DocumentSnapshot(ctx context.Cont
 		}
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_DocumentSnapshot_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+	if fc.Args, err = ec.field_Query_projectHistory_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -11391,8 +11391,8 @@ func (ec *executionContext) fieldContext_Query_projectSharingInfo(ctx context.Co
 			switch field.Name {
 			case "projectId":
 				return ec.fieldContext_ProjectSharingInfoPayload_projectId(ctx, field)
-			case "sharingUrl":
-				return ec.fieldContext_ProjectSharingInfoPayload_sharingUrl(ctx, field)
+			case "sharingToken":
+				return ec.fieldContext_ProjectSharingInfoPayload_sharingToken(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProjectSharingInfoPayload", field.Name)
 		},
@@ -12063,8 +12063,8 @@ func (ec *executionContext) fieldContext_SharedProjectPayload_project(_ context.
 				return ec.fieldContext_Project_parameters(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
-			case "sharedUrl":
-				return ec.fieldContext_Project_sharedUrl(ctx, field)
+			case "sharedToken":
+				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
 			case "workspace":
@@ -16929,13 +16929,13 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._Deployment(ctx, sel, obj)
-	case gqlmodel.Document:
-		return ec._Document(ctx, sel, &obj)
-	case *gqlmodel.Document:
+	case gqlmodel.ProjectDocument:
+		return ec._ProjectDocument(ctx, sel, &obj)
+	case *gqlmodel.ProjectDocument:
 		if obj == nil {
 			return graphql.Null
 		}
-		return ec._Document(ctx, sel, obj)
+		return ec._ProjectDocument(ctx, sel, obj)
 	case gqlmodel.Job:
 		return ec._Job(ctx, sel, &obj)
 	case *gqlmodel.Job:
@@ -17641,140 +17641,6 @@ func (ec *executionContext) _DeploymentPayload(ctx context.Context, sel ast.Sele
 	return out
 }
 
-var documentImplementors = []string{"Document", "Node"}
-
-func (ec *executionContext) _Document(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.Document) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, documentImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("Document")
-		case "id":
-			out.Values[i] = ec._Document_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "update":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Document_update(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			if field.Deferrable != nil {
-				dfs, ok := deferred[field.Deferrable.Label]
-				di := 0
-				if ok {
-					dfs.AddField(field)
-					di = len(dfs.Values) - 1
-				} else {
-					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
-					deferred[field.Deferrable.Label] = dfs
-				}
-				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
-					return innerFunc(ctx, dfs)
-				})
-
-				// don't run the out.Concurrently() call below
-				out.Values[i] = graphql.Null
-				continue
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-		case "clock":
-			out.Values[i] = ec._Document_clock(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		case "timestamp":
-			out.Values[i] = ec._Document_timestamp(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				atomic.AddUint32(&out.Invalids, 1)
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var documentSnapshotImplementors = []string{"DocumentSnapshot"}
-
-func (ec *executionContext) _DocumentSnapshot(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.DocumentSnapshot) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, documentSnapshotImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("DocumentSnapshot")
-		case "update":
-			out.Values[i] = ec._DocumentSnapshot_update(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "clock":
-			out.Values[i] = ec._DocumentSnapshot_clock(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "timestamp":
-			out.Values[i] = ec._DocumentSnapshot_timestamp(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.processDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var jobImplementors = []string{"Job", "Node"}
 
 func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.Job) graphql.Marshaler {
@@ -18172,9 +18038,9 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_executeDeployment(ctx, field)
 			})
-		case "documentRollback":
+		case "rollbackProject":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_documentRollback(ctx, field)
+				return ec._Mutation_rollbackProject(ctx, field)
 			})
 		case "cancelJob":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -18566,8 +18432,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "sharedUrl":
-			out.Values[i] = ec._Project_sharedUrl(ctx, field, obj)
+		case "sharedToken":
+			out.Values[i] = ec._Project_sharedToken(ctx, field, obj)
 		case "version":
 			out.Values[i] = ec._Project_version(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -18683,6 +18549,91 @@ func (ec *executionContext) _ProjectConnection(ctx context.Context, sel ast.Sele
 	return out
 }
 
+var projectDocumentImplementors = []string{"ProjectDocument", "Node"}
+
+func (ec *executionContext) _ProjectDocument(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.ProjectDocument) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, projectDocumentImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProjectDocument")
+		case "id":
+			out.Values[i] = ec._ProjectDocument_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "timestamp":
+			out.Values[i] = ec._ProjectDocument_timestamp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "updates":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._ProjectDocument_updates(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "version":
+			out.Values[i] = ec._ProjectDocument_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var projectPayloadImplementors = []string{"ProjectPayload"}
 
 func (ec *executionContext) _ProjectPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.ProjectPayload) graphql.Marshaler {
@@ -18738,8 +18689,57 @@ func (ec *executionContext) _ProjectSharingInfoPayload(ctx context.Context, sel 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "sharingUrl":
-			out.Values[i] = ec._ProjectSharingInfoPayload_sharingUrl(ctx, field, obj)
+		case "sharingToken":
+			out.Values[i] = ec._ProjectSharingInfoPayload_sharingToken(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var projectSnapshotImplementors = []string{"ProjectSnapshot"}
+
+func (ec *executionContext) _ProjectSnapshot(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.ProjectSnapshot) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, projectSnapshotImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProjectSnapshot")
+		case "timestamp":
+			out.Values[i] = ec._ProjectSnapshot_timestamp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updates":
+			out.Values[i] = ec._ProjectSnapshot_updates(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "version":
+			out.Values[i] = ec._ProjectSnapshot_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -18927,7 +18927,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "documentLatest":
+		case "latestProjectSnapshot":
 			field := field
 
 			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
@@ -18936,7 +18936,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_documentLatest(ctx, field)
+				res = ec._Query_latestProjectSnapshot(ctx, field)
 				return res
 			}
 
@@ -18946,7 +18946,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "DocumentSnapshot":
+		case "projectHistory":
 			field := field
 
 			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
@@ -18955,7 +18955,7 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 						ec.Error(ctx, ec.Recover(ctx, r))
 					}
 				}()
-				res = ec._Query_DocumentSnapshot(ctx, field)
+				res = ec._Query_projectHistory(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -20661,60 +20661,6 @@ func (ec *executionContext) marshalNDeploymentConnection2ᚖgithubᚗcomᚋreear
 	return ec._DeploymentConnection(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNDocumentSnapshot2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDocumentSnapshotᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.DocumentSnapshot) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNDocumentSnapshot2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDocumentSnapshot(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNDocumentSnapshot2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDocumentSnapshot(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.DocumentSnapshot) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._DocumentSnapshot(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNEventSourceType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEventSourceType(ctx context.Context, v interface{}) (gqlmodel.EventSourceType, error) {
 	var res gqlmodel.EventSourceType
 	err := res.UnmarshalGQL(v)
@@ -21152,6 +21098,60 @@ func (ec *executionContext) marshalNProjectSharingInfoPayload2ᚖgithubᚗcomᚋ
 		return graphql.Null
 	}
 	return ec._ProjectSharingInfoPayload(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNProjectSnapshot2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshotᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.ProjectSnapshot) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNProjectSnapshot2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshot(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNProjectSnapshot2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshot(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.ProjectSnapshot) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ProjectSnapshot(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRemoveAssetInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRemoveAssetInput(ctx context.Context, v interface{}) (gqlmodel.RemoveAssetInput, error) {
@@ -21919,13 +21919,6 @@ func (ec *executionContext) marshalODeploymentPayload2ᚖgithubᚗcomᚋreearth�
 	return ec._DeploymentPayload(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalODocument2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDocument(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.Document) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Document(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx context.Context, v interface{}) (*gqlmodel.ID, error) {
 	if v == nil {
 		return nil, nil
@@ -22032,6 +22025,13 @@ func (ec *executionContext) marshalOProject2ᚖgithubᚗcomᚋreearthᚋreearth�
 		return graphql.Null
 	}
 	return ec._Project(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOProjectDocument2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectDocument(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.ProjectDocument) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ProjectDocument(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOProjectPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.ProjectPayload) graphql.Marshaler {

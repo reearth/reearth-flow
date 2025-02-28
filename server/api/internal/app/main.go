@@ -11,7 +11,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
-	grpcserver "github.com/reearth/reearth-flow/api/internal/infrastructure/grpc"
+	thriftserver "github.com/reearth/reearth-flow/api/internal/infrastructure/thrift"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
@@ -55,11 +55,11 @@ func Start(debug bool, version string) {
 	}
 
 	httpServer := NewServer(ctx, serverCfg)
-	grpcServer := grpcserver.NewServer("", conf.JWTProviders())
+	thriftServer := thriftserver.NewServer("", conf.JWTProviders())
 
 	mainHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.ProtoMajor == 2 && strings.Contains(r.Header.Get("Content-Type"), "application/grpc") {
-			grpcServer.ServeHTTP(w, r)
+		if strings.HasPrefix(r.URL.Path, "/AuthService") {
+			thriftServer.ServeHTTP(w, r)
 			return
 		}
 		httpServer.ServeHTTP(w, r)
@@ -121,12 +121,14 @@ func NewServer(ctx context.Context, cfg *ServerConfig) *WebServer {
 	}
 	address := fmt.Sprintf("%s:%s", host, port)
 
-	w := &WebServer{
-		address: address,
-	}
+	e := initEcho(ctx, cfg)
 
-	w.appServer = initEcho(ctx, cfg)
-	return w
+	authServer(ctx, e, &cfg.Config.AuthSrv, cfg.Repos)
+
+	return &WebServer{
+		address:   address,
+		appServer: e,
+	}
 }
 
 func (w *WebServer) ServeHTTP(wr http.ResponseWriter, r *http.Request) {

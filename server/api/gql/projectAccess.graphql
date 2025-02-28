@@ -12,7 +12,7 @@ input UnshareProjectInput {
 
 type ProjectSharingInfoPayload {
   projectId: ID!
-  sharingUrl: String
+  sharingToken: String
 }
 
 type SharedProjectPayload {

@@ -71,8 +71,8 @@ func (b *Builder) NewID() *Builder {
 	return b
 }
 
-func (b *Builder) SharedURL(sharedURL *string) *Builder {
-	b.p.sharedUrl = sharedURL
+func (b *Builder) SharedToken(sharedToken *string) *Builder {
+	b.p.sharedToken = sharedToken
 	return b
 }
 

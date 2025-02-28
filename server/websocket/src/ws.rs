@@ -138,6 +138,12 @@ pub async fn ws_handler(
 ) -> Response {
     let doc_id = normalize_doc_id(&doc_id);
 
+    #[cfg(feature = "auth")]
+    let user_token = Some(query.token.clone());
+
+    #[cfg(not(feature = "auth"))]
+    let user_token: Option<String> = None;
+
     // Verify token
     #[cfg(feature = "auth")]
     {
@@ -174,7 +180,9 @@ pub async fn ws_handler(
         }
     };
 
-    ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, state.pool.clone()))
+    ws.on_upgrade(move |socket| {
+        handle_socket(socket, bcast, doc_id, state.pool.clone(), user_token)
+    })
 }
 
 async fn handle_socket(
@@ -182,14 +190,17 @@ async fn handle_socket(
     bcast: Arc<crate::BroadcastGroup>,
     doc_id: String,
     pool: Arc<BroadcastPool>,
+    user_token: Option<String>,
 ) {
     bcast.increment_connections();
 
     let (sender, receiver) = socket.split();
-    let conn = crate::conn::Connection::with_broadcast_group(
-        bcast,
+
+    let conn = crate::conn::Connection::with_broadcast_group_and_user(
+        bcast.clone(),
         WarpSink(sender),
         WarpStream(receiver),
+        user_token,
     )
     .await;
 

@@ -210,22 +210,57 @@ func (i *Job) updateJobStatus(ctx context.Context, j *job.Job, status job.Status
 }
 
 func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
-	config := i.monitor.Get(j.ID().String())
-
-	outputs, err := i.file.ListJobArtifacts(ctx, j.ID().String())
-	if err != nil {
-		log.Errorfc(ctx, "failed to list job artifacts: %v", err)
-	} else {
-		j.SetOutputURLs(outputs)
+	if j == nil {
+		return fmt.Errorf("job cannot be nil")
 	}
 
-	logURL := i.file.GetJobLogURL(j.ID().String())
-	j.SetLogsURL(logURL)
+	jobID := j.ID().String()
+	log.Debugfc(ctx, "job: handling completion for jobID=%s with status=%s", jobID, j.Status())
 
+	config := i.monitor.Get(jobID)
+
+	if err := i.updateJobArtifacts(ctx, j); err != nil {
+		log.Errorfc(ctx, "job: failed to update artifacts for jobID=%s: %v", jobID, err)
+	}
+
+	if err := i.saveJobState(ctx, j); err != nil {
+		return fmt.Errorf("failed to save job state: %w", err)
+	}
+
+	if config == nil || config.NotificationURL == nil || *config.NotificationURL == "" {
+		return nil
+	}
+
+	if err := i.sendCompletionNotification(ctx, j, *config.NotificationURL); err != nil {
+		return fmt.Errorf("failed to send notification: %w", err)
+	}
+
+	return nil
+}
+
+func (i *Job) updateJobArtifacts(ctx context.Context, j *job.Job) error {
+	jobID := j.ID().String()
+
+	outputs, err := i.file.ListJobArtifacts(ctx, jobID)
+	if err != nil {
+		return fmt.Errorf("failed to list job artifacts: %w", err)
+	}
+	j.SetOutputURLs(outputs)
+
+	logURL := i.file.GetJobLogURL(jobID)
+	if logURL != "" {
+		j.SetLogsURL(logURL)
+	}
+
+	return nil
+}
+
+func (i *Job) saveJobState(ctx context.Context, j *job.Job) error {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to begin transaction: %w", err)
 	}
+
 	defer func() {
 		if err := tx.End(ctx); err != nil {
 			log.Errorfc(ctx, "transaction end failed: %v", err)
@@ -233,38 +268,43 @@ func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 	}()
 
 	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return err
+		return fmt.Errorf("failed to save job: %w", err)
 	}
 
 	tx.Commit()
+	return nil
+}
 
-	if config == nil || config.NotificationURL == nil {
-		return nil
-	}
-
-	var logs []string
-	if exists, _ := i.file.CheckJobLogExists(ctx, j.ID().String()); exists {
-		logs = append(logs, logURL)
-	}
+func (i *Job) sendCompletionNotification(ctx context.Context, j *job.Job, notificationURL string) error {
+	jobID := j.ID().String()
 
 	status := "failed"
-	if j.Status() == job.StatusCompleted {
+	switch j.Status() {
+	case job.StatusCompleted:
 		status = "succeeded"
-	} else if j.Status() == job.StatusCancelled {
+	case job.StatusCancelled:
 		status = "cancelled"
 	}
 
+	var logs []string
+	logExists, err := i.file.CheckJobLogExists(ctx, jobID)
+	if err != nil {
+		log.Warnfc(ctx, "job: failed to check log existence for jobID=%s: %v", jobID, err)
+	} else if logExists {
+		logs = append(logs, j.LogsURL())
+	}
+
 	payload := notification.Payload{
-		RunID:        j.ID().String(),
+		RunID:        jobID,
 		DeploymentID: j.Deployment().String(),
 		Status:       status,
 		Logs:         logs,
-		Outputs:      outputs,
+		Outputs:      j.OutputURLs(),
 	}
 
-	log.Debugfc(ctx, "job: sending notification payload for jobID=%s: %+v", j.ID(), payload)
+	log.Debugfc(ctx, "job: sending notification for jobID=%s to URL=%s", jobID, notificationURL)
 
-	return i.notifier.Send(*config.NotificationURL, payload)
+	return i.notifier.Send(notificationURL, payload)
 }
 
 func (i *Job) Subscribe(ctx context.Context, jobID id.JobID, operator *usecase.Operator) (chan job.Status, error) {
