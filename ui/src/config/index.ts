@@ -23,7 +23,7 @@ export type Config = {
 
 const defaultConfig: Config = {
   version: "X.X.X",
-  brandName: "Flow",
+  brandName: "Re:Earth Flow",
 };
 
 export default async function loadConfig() {
@@ -36,8 +36,8 @@ export default async function loadConfig() {
     ...(await (await fetch("/reearth_config.json")).json()),
   };
 
-  if (window.REEARTH_CONFIG.brandName) {
-    document.title = window.REEARTH_CONFIG.brandName + " v" + config.version;
+  if (config.brandName) {
+    document.title = config.brandName;
   }
 
   window.REEARTH_CONFIG = config;

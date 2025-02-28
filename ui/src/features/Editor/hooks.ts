@@ -5,10 +5,12 @@ import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useShortcuts } from "@flow/hooks";
+import { useSharedProject } from "@flow/lib/gql";
 import { checkForReader } from "@flow/lib/reactFlow";
 import { useYjsStore } from "@flow/lib/yjs";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
+import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
@@ -161,6 +163,29 @@ export default ({
     yWorkflows,
   });
 
+  const { shareProject, unshareProject } = useSharedProject();
+
+  const [currentProject] = useCurrentProject();
+
+  const handleProjectShare = useCallback(
+    (share: boolean) => {
+      if (!currentProject) return;
+
+      if (share) {
+        shareProject({
+          projectId: currentProject.id,
+          workspaceId: currentProject.workspaceId,
+        });
+      } else {
+        unshareProject({
+          projectId: currentProject.id,
+          workspaceId: currentProject.workspaceId,
+        });
+      }
+    },
+    [currentProject, shareProject, unshareProject],
+  );
+
   const handleLayoutChange = useCallback(
     async (algorithm: Algorithm, direction: Direction, _spacing: number) => {
       // We need to wait for the layout to finish before fitting the view
@@ -228,6 +253,7 @@ export default ({
     handleRightPanelOpen,
     handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowDeployment,
+    handleProjectShare,
     handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowChange: handleCurrentWorkflowIdChange,

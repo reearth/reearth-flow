@@ -19,8 +19,8 @@ const BottomSection: React.FC<Props> = ({ route }) => {
         </div>
         <div>
           <div className="h-px bg-primary" />
-          <div className="flex items-center justify-between p-2">
-            <p className="select-none px-2 text-xs font-thin text-muted-foreground">
+          <div className="flex items-center px-2 py-1">
+            <p className="select-none text-xs font-thin text-muted-foreground">
               {t("Version ")}
               {version ?? "X.X.X"}
             </p>

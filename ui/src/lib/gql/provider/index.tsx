@@ -3,10 +3,18 @@ import { TanStackQueryProvider } from "./TanStackQueryProvider";
 
 export { useGraphQLContext } from "./GraphQLRequestProvider";
 
-const GraphQLProvider = ({ children }: { children?: React.ReactNode }) => {
+const GraphQLProvider = ({
+  gqlAccessToken,
+  children,
+}: {
+  gqlAccessToken?: string;
+  children?: React.ReactNode;
+}) => {
   return (
     <TanStackQueryProvider>
-      <GraphQLRequestProvider>{children}</GraphQLRequestProvider>
+      <GraphQLRequestProvider accesstoken={gqlAccessToken}>
+        {children}
+      </GraphQLRequestProvider>
     </TanStackQueryProvider>
   );
 };

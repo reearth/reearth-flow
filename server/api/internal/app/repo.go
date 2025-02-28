@@ -11,8 +11,8 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcs"
 	mongorepo "github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
-	"github.com/reearth/reearth-flow/api/internal/usecase/websocket"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmongo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
@@ -27,8 +27,7 @@ import (
 const databaseName = "reearth-flow"
 
 func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
-	// Initialize document package
-	websocket.Init(
+	interactor.InitWebsocket(
 		conf.WebsocketGCSBucket,
 		conf.WebsocketGCSEndpoint,
 	)
@@ -47,7 +46,6 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 		log.Fatalf("mongo error: %+v\n", err)
 	}
 
-	// repos
 	accountDatabase := conf.DB_Account
 	accountRepoCompat := false
 	if accountDatabase == "" {

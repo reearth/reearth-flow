@@ -1,5 +1,6 @@
-import { createLazyFileRoute } from "@tanstack/react-router";
+import { createLazyFileRoute, useParams } from "@tanstack/react-router";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
+import { useEffect, useState } from "react";
 
 import { LoadingSplashscreen } from "@flow/components";
 import Editor from "@flow/features/Editor";
@@ -9,11 +10,12 @@ import {
 } from "@flow/features/PageWrapper";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useFullscreen, useShortcuts } from "@flow/hooks";
+import { useAuth } from "@flow/lib/auth";
 import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
 // import { useShortcut } from "@flow/hooks/useShortcut";
 
 export const Route = createLazyFileRoute(
-  "/workspaces_/$workspaceId_/projects_/$projectId",
+  "/workspaces/$workspaceId_/projects_/$projectId",
 )({
   component: () => (
     <WorkspaceIdWrapper>
@@ -29,6 +31,19 @@ export const Route = createLazyFileRoute(
 const EditorComponent = () => {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const { handleFullscreenToggle } = useFullscreen();
+
+  const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
+
+  const { getAccessToken } = useAuth();
+
+  useEffect(() => {
+    if (!accessToken) {
+      (async () => {
+        const token = await getAccessToken();
+        setAccessToken(token);
+      })();
+    }
+  }, [accessToken, getAccessToken]);
 
   useShortcuts([
     {
@@ -49,7 +64,13 @@ const EditorComponent = () => {
     },
   ]);
 
+  const { projectId }: { projectId: string } = useParams({
+    strict: false,
+  });
+
   const { state, isSynced, undoManager } = useYjsSetup({
+    accessToken,
+    projectId,
     workflowId: DEFAULT_ENTRY_GRAPH_ID,
   });
 
