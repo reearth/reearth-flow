@@ -73,13 +73,8 @@ const DeploymentDetails: React.FC<Props> = ({
                 "",
             },
             {
-              id: "workflowUrl",
-              name: t("Workflow Url"),
-              value: selectedDeployment.workflowUrl || t("N/A") || "",
-            },
-            {
               id: "workflowDownload",
-              name: t("Workflow Url"),
+              name: t("Workflow Download"),
               value: selectedDeployment.workflowUrl,
               type: "download",
             },

@@ -36,7 +36,12 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
             {
               id: "id",
               name: t("ID"),
-              value: selectedJob.id,
+              value:
+                selectedJob.id +
+                selectedJob.id +
+                selectedJob.id +
+                selectedJob.id +
+                selectedJob.id,
             },
             {
               id: "deploymentId",
@@ -61,9 +66,8 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
             {
               id: "outputURLs",
               name: t("Output URLs"),
-              value: Array.isArray(selectedJob.outputURLs)
-                ? (selectedJob.outputURLs?.join(", ") ?? t("N/A"))
-                : selectedJob.outputURLs || t("N/A"),
+              value: selectedJob.outputURLs || t("N/A"),
+              type: "link",
             },
           ]
         : undefined,
@@ -135,11 +139,14 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
         </div>
         <div className="w-full border-b" />
         <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
-          <DetailsBox title={t("Job Details")} content={details} />
+          <DetailsBox collapsible title={t("Job Details")} content={details} />
         </div>
         <div className="mt-6 min-h-0 max-w-[1200px] flex-1">
-          {!isFetching && logs && <LogsConsole data={logs} />}
-          {isFetching && <LoadingSkeleton />}
+          {isFetching ? (
+            <LoadingSkeleton />
+          ) : logs ? (
+            <LogsConsole data={logs} />
+          ) : null}
         </div>
       </div>
     )

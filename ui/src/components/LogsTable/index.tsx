@@ -31,23 +31,23 @@ import {
   IconButton,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { LogLevel } from "@flow/types";
+import { Log, LogLevel } from "@flow/types";
 
 import { Table, TableBody, TableCell, TableRow } from "../Table";
 
-type LogProps<TData, TValue> = {
-  columns: ColumnDef<TData, TValue>[];
-  data: TData[];
+type LogProps = {
+  columns: ColumnDef<Log, unknown>[];
+  data: Log[];
   selectColumns?: boolean;
   showFiltering?: boolean;
 };
 
-const LogsTable = <TData, TValue>({
+const LogsTable = ({
   columns,
   data,
   selectColumns = false,
   showFiltering = false,
-}: LogProps<TData, TValue>) => {
+}: LogProps) => {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -201,7 +201,7 @@ const LogsTable = <TData, TValue>({
                         onCheckedChange={(value) =>
                           column.toggleVisibility(!!value)
                         }>
-                        {column.id}
+                        {column.columnDef.header?.toString()}
                       </DropdownMenuCheckboxItem>
                     );
                   })}
@@ -219,6 +219,7 @@ const LogsTable = <TData, TValue>({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
+                  className={`${row.original.status === "ERROR" ? "text-destructive" : row.original.status === "WARN" ? "text-warning" : ""}`}
                   data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell className="cursor-pointer" key={cell.id}>

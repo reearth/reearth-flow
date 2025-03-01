@@ -16,16 +16,16 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ data }) => {
   const columns: ColumnDef<Log>[] = [
     {
       accessorKey: "timeStamp",
-      header: "Timestamp",
+      header: t("Timestamp"),
       cell: ({ getValue }) => formatTimestamp(getValue<string>()),
     },
     {
       accessorKey: "status",
-      header: "Status",
+      header: t("Status"),
     },
     {
       accessorKey: "message",
-      header: "message",
+      header: t("Message"),
     },
   ];
 
