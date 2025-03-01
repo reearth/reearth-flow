@@ -1,14 +1,16 @@
-use std::collections::hash_map::Entry;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
-use itertools::Itertools;
-use nusamai_projection::crs::EpsgCode;
 use once_cell::sync::Lazy;
-use reearth_flow_geometry::algorithm::line_intersection::line_intersection;
+use reearth_flow_geometry::algorithm::intersects::Intersects;
+use reearth_flow_geometry::algorithm::line_intersection::{self, line_intersection, LineIntersection};
+use reearth_flow_geometry::algorithm::GeoFloat;
+use reearth_flow_geometry::types::coordnum::CoordNum;
 use reearth_flow_geometry::types::geometry::Geometry2D;
-use reearth_flow_geometry::types::line::Line2DFloat;
+use reearth_flow_geometry::types::line::{Line, Line2D};
 use reearth_flow_geometry::types::line_string::LineString2D;
-use reearth_flow_runtime::executor_operation::Context;
+use reearth_flow_geometry::types::multi_line_string::MultiLineString2D;
+use reearth_flow_geometry::types::no_value::NoValue;
+use reearth_flow_geometry::types::point::Point2D;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -17,7 +19,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
 use rstar::{RTree, RTreeObject};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -84,33 +86,23 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
             .into());
         };
         Ok(Box::new(LineOnLineOverlayer {
-            params,
-            buffer2d: HashMap::new(),
-            previous_group_key: None,
+            group_by: params.group_by,
+            buffer: HashMap::new(),
         }))
     }
-}
-
-#[derive(Debug, Clone)]
-struct LineFeature {
-    attributes: HashMap<uuid::Uuid, HashMap<Attribute, AttributeValue>>,
-    overlap: u64,
-    epsg: Option<EpsgCode>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct LineOnLineOverlayerParam {
     group_by: Option<Vec<Attribute>>,
-    output_attribute: Attribute,
 }
 
 #[allow(clippy::type_complexity)]
 #[derive(Debug, Clone)]
 pub struct LineOnLineOverlayer {
-    params: LineOnLineOverlayerParam,
-    buffer2d: HashMap<String, (bool, Vec<Feature>, RTree<LineString2D<f64>>)>, // (complete_grouped, features)
-    previous_group_key: Option<String>,
+    group_by: Option<Vec<Attribute>>,
+    buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
 impl Processor for LineOnLineOverlayer {
@@ -124,76 +116,65 @@ impl Processor for LineOnLineOverlayer {
         if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
-        };
+        }
         match &geometry.value {
-            GeometryValue::FlowGeometry2D(geos) => {
-                let line_string = geos.as_line_string();
-                let multi_line_string = geos.as_multi_line_string();
-                if line_string.is_none() && multi_line_string.is_none() {
-                    fw.send(
-                        ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()),
-                    );
-                    return Ok(());
-                }
-                let key = if let Some(group_by) = &self.params.group_by {
-                    group_by
-                        .iter()
-                        .map(|k| feature.get(&k).map(|v| v.to_string()).unwrap_or_default())
-                        .collect::<Vec<_>>()
-                        .join("\t")
+            GeometryValue::None => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            }
+            GeometryValue::FlowGeometry2D(_) => {
+
+                let key = if let Some(group_by) = &self.group_by {
+                    AttributeValue::Array(
+                        group_by
+                            .iter()
+                            .filter_map(|attr| feature.attributes.get(attr).cloned())
+                            .collect(),
+                    )
                 } else {
-                    "_all".to_string()
+                    AttributeValue::Null
                 };
 
-                match self.buffer2d.entry(key.clone()) {
-                    Entry::Occupied(mut entry) => {
-                        self.previous_group_key = Some(key.clone());
-                        {
-                            let (_, buffer, rtree) = entry.get_mut();
-                            buffer.push(feature.clone());
-                            if let Some(line_string) = line_string {
-                                rtree.insert(line_string.clone());
-                            }
-                            if let Some(multi_line_string) = multi_line_string {
-                                for line_string in multi_line_string.iter() {
-                                    rtree.insert(line_string.clone());
-                                }
-                            }
-                        }
+                if !self.buffer.contains_key(&key) {
+                    let overlayed = self.overlay();
+                    for feature in &overlayed.line {
+                        fw.send(ctx.new_with_feature_and_port(feature.clone(), LINE_PORT.clone()));
                     }
-                    Entry::Vacant(entry) => {
-                        let mut rtree = RTree::new();
-                        if let Some(line_string) = line_string {
-                            rtree.insert(line_string.clone());
-                        }
-                        if let Some(multi_line_string) = multi_line_string {
-                            for line_string in multi_line_string.iter() {
-                                rtree.insert(line_string.clone());
-                            }
-                        }
-                        entry.insert((false, vec![feature.clone()], rtree));
-                        if let Some(previous_group_key) = &self.previous_group_key {
-                            if let Entry::Occupied(mut entry) =
-                                self.buffer2d.entry(previous_group_key.clone())
-                            {
-                                let (complete_grouped_change, _, _) = entry.get_mut();
-                                *complete_grouped_change = true;
-                            }
-                            self.change_group(ctx, fw);
-                        }
-                        self.previous_group_key = Some(key.clone());
+                    for feature in &overlayed.point {
+                        fw.send(
+                            ctx.new_with_feature_and_port(feature.clone(), POINT_PORT.clone()),
+                        );
                     }
+                    self.buffer.clear();
                 }
+                self.buffer
+                    .entry(key.clone())
+                    .or_default()
+                    .push(feature.clone());
             }
-            _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
+            _ => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            }
         }
         Ok(())
     }
 
     fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
-        for (_, (_, buffer, rtree)) in self.buffer2d.iter() {
-            self.handle_2d_line_strings(ctx.clone().into(), fw, buffer, rtree);
+        let overlayed = self.overlay();
+        for feature in &overlayed.line {
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                feature.clone(),
+                LINE_PORT.clone(),
+            ));
         }
+        for feature in &overlayed.point {
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                feature.clone(),
+                POINT_PORT.clone(),
+            ));
+        }
+
         Ok(())
     }
 
@@ -202,174 +183,280 @@ impl Processor for LineOnLineOverlayer {
     }
 }
 
-impl LineOnLineOverlayer {
-    fn change_group(&mut self, ctx: ExecutorContext, fw: &ProcessorChannelForwarder) {
-        let mut remove_2d_keys = Vec::new();
-        for (key, (complete_grouped, buffer, rtree)) in self.buffer2d.iter() {
-            if !*complete_grouped {
-                continue;
+// struct LineRepository2D {
+//     multi_line_strings: Vec<(MultiLineString2D<f64>, bool)>, // (MultiLineString, is_from_MultiLineString)
+//     wrapped_lines: Vec<WrappedLine2D>, // lines with their index in multi_line_strings
+//     overlay_graph: Vec<HashSet<usize>>, // graph of intersected lines
+// }
+
+// impl LineRepository2D {
+//     fn new(features: &[Feature]) -> Self {
+//         let multi_line_strings = features
+//             .iter()
+//             .filter_map(|f| f.geometry.value.as_flow_geometry_2d())
+//             .filter_map(|g| {
+//                 if let Geometry2D::LineString(line) = g {
+//                     Some((MultiLineString2D::new(vec![line.clone()]), false))
+//                 } else if let Geometry2D::MultiLineString(multi_line) = g {
+//                     Some((multi_line.clone(), true))
+//                 } else {
+//                     None
+//                 }
+//             })
+//             .collect::<Vec<_>>();
+
+//         let mut wrapped_lines = Vec::new();
+
+//         for (i, multi_line_string) in multi_line_strings.iter().enumerate() {
+//             for (j, line_string) in multi_line_string.0.iter().enumerate() {
+//                 for line in line_string.lines() {
+//                     wrapped_lines.push(WrappedLine2D {
+//                         line: line.clone(),
+//                         l_index: wrapped_lines.len(),
+//                         ls_index: j,
+//                         mls_index: i,
+//                     });
+//                 }
+//             }
+//         }
+
+//         let line_rtree = RTree::bulk_load(wrapped_lines.clone());
+
+//         let mut overlay_graph = vec![HashSet::new(); multi_line_strings.len()];
+//         for i in 0..wrapped_lines.len() {
+//             let wrapped_line = &wrapped_lines[i];
+//             let envelope = wrapped_line.line.envelope();
+//             let candidates = line_rtree.locate_in_envelope_intersecting(&envelope);   
+//         }
+
+//         Self {
+//             multi_line_strings,
+//             lines,
+//             overlay_graph,
+//         }
+//     }
+// }
+
+
+// struct WrappedLine2D {
+//     line: Line2D<f64>,
+//     index: usize,
+// }
+
+fn line_length_2d(line: Line2D<f64>) -> f64 {
+    let delta = line.delta();
+    (delta.x * delta.x + delta.y * delta.y).sqrt()
+}
+
+// split line with intersection
+// if the intersection is not on the line, return None
+fn line_split_with_intersection_2d(line: Line2D<f64>, intersecton: LineIntersection<f64, NoValue>) -> Option<(Line2D<f64>, Line2D<f64>)> {
+    match intersecton {
+        LineIntersection::SinglePoint { intersection, .. } => {
+            if !line.intersects(&intersection) { // TODO: consider is_proper
+                return None;
             }
-            remove_2d_keys.push(key.clone());
-            self.handle_2d_line_strings(ctx.clone().into(), fw, buffer, rtree);
+
+            let first = Line::new(line.start, intersection);
+            let second = Line::new(intersection, line.end);
+            Some((first, second))
         }
-        for key in remove_2d_keys {
-            self.buffer2d.remove(&key);
+        LineIntersection::Collinear { intersection } => {
+            if !line.intersects(&intersection) {
+                return None;
+            }
+
+            let length_line = line_length_2d(line);
+
+            let length_1 = line_length_2d(Line::new(line.start, intersection.start));
+            let length_2 = line_length_2d(Line::new(intersection.start, intersection.end));
+            let length_3 = line_length_2d(Line::new(intersection.end, line.end));
+
+            let length_123 = length_1 + length_2 + length_3;
+
+            if (length_line-length_123).abs() < f64::EPSILON {
+                Some((Line::new(line.start, intersection.start), Line::new(intersection.end, line.end)))
+            } else {
+                Some((Line::new(line.start, intersection.end), Line::new(intersection.start, line.end)))
+            }
+        }
+    }
+}
+
+fn line_split_with_multiple_intersections_2d(line: Line2D<f64>, intersections: Vec<LineIntersection<f64, NoValue>>) -> Vec<Line2D<f64>> {
+    let mut current_lines = vec![line];
+    for intersection in intersections {
+        let mut lines = Vec::new();
+        for current_line in current_lines {
+            if let Some((first, second)) = line_split_with_intersection_2d(current_line, intersection) {
+                lines.push(first);
+                lines.push(second);
+            } else {
+                lines.push(current_line);
+            }
+        }
+        current_lines = lines;
+    }
+
+    current_lines
+}
+
+fn line_string_from_connected_lines_2d(lines: Vec<Line2D<f64>>) -> LineString2D<f64> {
+    let mut points = Vec::new();
+    for i in 0..lines.len() {
+        if i == 0 {
+            points.push(lines[i].start);
+        }
+        points.push(lines[i].end);
+    }
+
+    LineString2D::new(points)
+}
+
+struct ToSplit {
+    index: usize,
+    intersection: LineIntersection<f64, NoValue>,
+}
+
+fn split_line_string(ls: &LineString2D<f64>, tosplits: &Vec<ToSplit>) -> Vec<LineString2D<f64>> {
+    let mut new_ls = Vec::new();
+    let mut lines_buffer = Vec::new();
+
+    for (i, line) in ls.lines().enumerate() {
+        let intersections =
+        tosplits.iter()
+        .filter(|tosplit| tosplit.index == i)
+        .map(|tosplit| tosplit.intersection).collect::<Vec<_>>();
+        if intersections.is_empty() {
+            lines_buffer.push(line.clone());
+        } else {
+            let intersected = line_split_with_multiple_intersections_2d(line.clone(), intersections);
+            match intersected.len() {
+                0 => (),
+                1 => {
+                    lines_buffer.push(intersected[0].clone());
+                }
+                _ => {
+                    for i in 0..intersected.len()-1 {
+                        lines_buffer.push(intersected[i].clone());
+                        new_ls.push(line_string_from_connected_lines_2d(lines_buffer.clone()));
+                        lines_buffer.clear();
+                    }
+                    lines_buffer.push(intersected[intersected.len()-1].clone());
+                }
+            }
         }
     }
 
-    fn handle_2d_line_strings(
-        &self,
-        ctx: Context,
-        fw: &ProcessorChannelForwarder,
-        features: &[Feature],
-        rtree: &RTree<LineString2D<f64>>,
-    ) {
-        let mut line_features = HashMap::<Line2DFloat, LineFeature>::new();
-        for feature in features.iter() {
-            let line_string = feature
-                .geometry
-                .value
-                .as_flow_geometry_2d()
-                .and_then(|g| g.as_line_string());
-            let multi_line_string = feature
-                .geometry
-                .value
-                .as_flow_geometry_2d()
-                .and_then(|g| g.as_multi_line_string());
-            if line_string.is_none() && multi_line_string.is_none() {
-                continue;
-            }
-            let line_strings = if let Some(line_string) = line_string {
-                vec![line_string]
-            } else if let Some(multi_line_string) = multi_line_string {
-                multi_line_string.iter().cloned().collect::<Vec<_>>()
-            } else {
-                continue;
-            };
-            let mut out_line_strings = Vec::new();
-            for line_string in line_strings {
-                let output_envelope = line_string.envelope();
-                let candidates = rtree.locate_in_envelope_intersecting(&output_envelope);
-                let mut intersect = false;
-                for candidate in candidates {
-                    if line_string.approx_eq(candidate, EPSILON) {
-                        continue;
-                    }
-                    for line1 in line_string.lines() {
-                        for line2 in candidate.lines() {
-                            if let Some(reearth_flow_geometry::algorithm::line_intersection::LineIntersection::Collinear { intersection }) =  line_intersection(line1, line2) {
-                                intersect = true;
-                                let line_float = Line2DFloat(intersection);
-                                match line_features.entry(line_float.clone()) {
-                                    Entry::Occupied(mut entry) => {
-                                        let line_feature = entry.get_mut();
-                                        line_feature.overlap += 1;
-                                        line_feature
-                                            .attributes
-                                            .insert(feature.id, feature.attributes.clone());
-                                    }
-                                    Entry::Vacant(entry) => {
-                                        let mut attributes = HashMap::new();
-                                        for (k, v) in feature.iter() {
-                                            attributes.insert(k.clone(), v.clone());
-                                        }
-                                        let line_feature = LineFeature {
-                                            epsg: feature.geometry.epsg,
-                                            attributes: HashMap::from([(feature.id, attributes)]),
-                                            overlap: 1,
-                                        };
-                                        entry.insert(line_feature);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if !intersect {
-                    out_line_strings.push(line_string.clone());
-                }
-            }
-            for line_string in out_line_strings.iter() {
-                let mut line_string_feature = feature.clone();
-                line_string_feature.attributes.insert(
-                    self.params.output_attribute.clone(),
-                    AttributeValue::Number(serde_json::Number::from(1)),
-                );
-                line_string_feature.refresh_id();
-                line_string_feature.geometry = Geometry {
-                    epsg: feature.geometry.epsg,
-                    value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(
-                        line_string.clone(),
-                    )),
-                };
-                fw.send(ExecutorContext::new_with_context_feature_and_port(
-                    &ctx,
-                    line_string_feature.clone(),
-                    LINE_PORT.clone(),
-                ));
+    new_ls.push(line_string_from_connected_lines_2d(lines_buffer.clone()));
+
+    new_ls
+}
+
+struct LineStringIntersectionResult {
+    ls1: Vec<LineString2D<f64>>,
+    ls2: Vec<LineString2D<f64>>,
+    intersections: Vec<LineIntersection<f64, NoValue>>,
+}
+
+// intersection 
+fn line_string_intersection_2d(ls1: &LineString2D<f64>, ls2: &LineString2D<f64>) -> LineStringIntersectionResult {
+    let mut tosplits_ls1 = Vec::new();
+    let mut tosplits_ls2 = Vec::new();
+
+    for (i1, line1) in ls1.lines().enumerate() {
+        for (i2, line2) in ls2.lines().enumerate() {
+            if let Some(intersection) = line_intersection(line1, line2) {
+                tosplits_ls1.push(ToSplit { index: i1, intersection });
+                tosplits_ls2.push(ToSplit { index: i2, intersection });
             }
         }
-        for (line, line_feature) in line_features.iter() {
-            let mut feature = Feature::new();
-            feature.attributes.insert(
-                self.params.output_attribute.clone(),
-                AttributeValue::Number(serde_json::Number::from(line_feature.overlap)),
-            );
-            let feature_attributes = line_feature
-                .attributes
-                .values()
-                .map(|kv| {
-                    kv.iter()
-                        .map(|(k, v)| (k.to_string(), v.clone()))
-                        .collect::<HashMap<_, _>>()
-                })
-                .collect_vec();
-            feature.attributes.insert(
-                Attribute::new("features"),
-                AttributeValue::Array(
-                    feature_attributes
-                        .into_iter()
-                        .map(AttributeValue::Map)
-                        .collect(),
-                ),
-            );
-            if line_feature.overlap > 1 {
-                let mut start_feature = feature.clone();
-                start_feature.refresh_id();
-                let start_point = line.0.start_point();
-                start_feature.geometry = Geometry {
-                    epsg: line_feature.epsg,
-                    value: GeometryValue::FlowGeometry2D(Geometry2D::Point(start_point)),
-                };
-                fw.send(ExecutorContext::new_with_context_feature_and_port(
-                    &ctx,
-                    start_feature,
-                    POINT_PORT.clone(),
-                ));
-                let mut end_feature = feature.clone();
-                end_feature.refresh_id();
-                let end_point = line.0.end_point();
-                end_feature.geometry = Geometry {
-                    epsg: line_feature.epsg,
-                    value: GeometryValue::FlowGeometry2D(Geometry2D::Point(end_point)),
-                };
-                fw.send(ExecutorContext::new_with_context_feature_and_port(
-                    &ctx,
-                    end_feature,
-                    POINT_PORT.clone(),
-                ));
-            }
-            let mut line_feat = feature.clone();
-            line_feat.refresh_id();
-            line_feat.geometry = Geometry {
-                epsg: line_feature.epsg,
-                value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(line.0.into())),
-            };
-            fw.send(ExecutorContext::new_with_context_feature_and_port(
-                &ctx,
-                line_feat,
-                LINE_PORT.clone(),
-            ));
+    }
+
+    let new_ls1 = split_line_string(ls1, &tosplits_ls1);
+    let new_ls2 = split_line_string(ls2, &tosplits_ls2);
+
+    LineStringIntersectionResult {
+        ls1: new_ls1,
+        ls2: new_ls2,
+        intersections: tosplits_ls1.iter().map(|tosplit| tosplit.intersection.clone()).collect(),
+    }
+}
+
+struct OverlayedFeatures {
+    point: Vec<Feature>,
+    line: Vec<Feature>,
+}
+
+impl OverlayedFeatures {
+    fn new() -> Self {
+        Self {
+            point: Vec::new(),
+            line: Vec::new(),
         }
+    }
+
+    fn extend(&mut self, other: OverlayedFeatures) {
+        self.point.extend(other.point);
+        self.line.extend(other.line);
+    }
+}
+
+impl LineOnLineOverlayer {
+    fn overlay(&self) -> OverlayedFeatures {
+        let mut overlayed = OverlayedFeatures::new();
+        for buffer in self.buffer.values() {
+            let buffered_features_2d = buffer
+                .iter()
+                .filter(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry2D(_)))
+                .collect::<Vec<_>>();
+            overlayed.extend(self.overlay_2d(buffered_features_2d));
+        }
+
+        overlayed
+    }
+
+    fn overlay_2d(&self, features_2d: Vec<&Feature>) -> OverlayedFeatures {
+        let mut overlayed = OverlayedFeatures::new();
+
+        let line_strings = features_2d
+            .iter()
+            .filter_map(|f| f.geometry.value.as_flow_geometry_2d())
+            .filter_map(|g| {
+                if let Geometry2D::LineString(line) = g {
+                    Some(vec![line.clone()])
+                } else if let Geometry2D::MultiLineString(multi_line) = g {
+                    Some(multi_line.0.clone())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        // let graph = OverlayGraph::bulk_load(&multi_line_strings);
+
+        // line_intersection
+
+        // for i in 0..multi_line_strings.len() {
+        //     graph.intersected_iter(i).for_each(|j| {
+        //         let line1 = &multi_line_strings[i];
+        //         let line2 = &multi_line_strings_incoming[j];
+        //         let intersection = line1.intersection(line2);
+        //         if let Some(intersection) = intersection {
+        //             let mut feature = Feature::new();
+        //             feature.attributes.insert(
+        //                 self.params.output_attribute.clone(),
+        //                 AttributeValue::Number(serde_json::Number::from(1)),
+        //             );
+        //             feature.geometry = Geometry {
+        //                 epsg: feature.geometry.epsg,
+        //                 value: GeometryValue::FlowGeometry2D(Geometry2D::Point(intersection)),
+        //             };
+        //             overlayed.point.push(feature);
+        //         }
+        //     });
+        // }
+
+        OverlayedFeatures::new()
     }
 }
