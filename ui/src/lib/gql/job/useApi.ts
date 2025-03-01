@@ -36,7 +36,7 @@ export const useJob = () => {
       });
       toast({
         title: t("Job Cancelled"),
-        description: t("Job has been successfully canceled."),
+        description: t("Job has been successfully cancelled."),
       });
       return { job, ...rest };
     } catch (_err) {
