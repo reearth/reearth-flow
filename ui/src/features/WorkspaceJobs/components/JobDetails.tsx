@@ -36,12 +36,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
             {
               id: "id",
               name: t("ID"),
-              value:
-                selectedJob.id +
-                selectedJob.id +
-                selectedJob.id +
-                selectedJob.id +
-                selectedJob.id,
+              value: selectedJob.id,
             },
             {
               id: "deploymentId",

@@ -10,9 +10,9 @@ export enum LogLevel {
 
 export type Log = {
   // id: string;
+  // nodeId?: string;
   workflowId: string;
   jobId: string;
-  nodeId?: string;
   timeStamp: string;
   status: LogLevel;
   message: string;
