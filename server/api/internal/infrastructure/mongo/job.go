@@ -68,7 +68,14 @@ func (r *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
 }
 
 func (r *Job) FindByWorkspace(ctx context.Context, workspace accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error) {
-	filter := bson.M{"workspaceid": workspace.String()}
+	filter := bson.M{
+		"workspaceid": workspace.String(),
+		"$or": []bson.M{
+			{"debug": false},
+			{"debug": nil},
+			{"debug": bson.M{"$exists": false}},
+		},
+	}
 
 	total, err := r.client.Count(ctx, filter)
 	if err != nil {
@@ -128,6 +135,11 @@ func (r *Job) FindByWorkspace(ctx context.Context, workspace accountdomain.Works
 func (r *Job) CountByWorkspace(ctx context.Context, ws accountdomain.WorkspaceID) (int, error) {
 	count, err := r.client.Count(ctx, bson.M{
 		"workspaceid": ws.String(),
+		"$or": []bson.M{
+			{"debug": false},
+			{"debug": nil},
+			{"debug": bson.M{"$exists": false}},
+		},
 	})
 	return int(count), err
 }

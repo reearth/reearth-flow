@@ -35,30 +35,39 @@ jobs:
           toolchain: stable
           override: true
 
+      - name: Install Protocol Buffers Compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+      - name: Install Thrift Compiler
+        run: |
+          sudo apt-get install -y thrift-compiler
+
       - name: Build Websocket
         run: |
-          cd websocket
-          cargo build --release --features gcs-storage
+          cd server/websocket
+          cargo build --release
 
       - name: Create distribution directory
         run: |
-          mkdir -p websocket/dist
-          mv websocket/target/release/main websocket/dist/reearth-flow-websocket
+          mkdir -p server/websocket/dist
+          cp server/target/release/websocket server/websocket/dist/reearth-flow-websocket
 
       - name: Rename Artifacts
         if: ${{ inputs.name != 'blank' }}
         run: |
-          cd websocket/dist
+          cd server/websocket/dist
           mv reearth-flow-websocket reearth-flow-websocket_${{ inputs.name }}
 
       - name: List Artifacts
-        run: ls -l websocket/dist
+        run: ls -l server/websocket/dist
 
       - name: Upload Websocket Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: websocket-artifacts
-          path: websocket/dist/*
+          path: server/websocket/dist/*
 
   build-docker-image:
     name: Build and Push Docker Image
@@ -79,7 +88,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: websocket-artifacts
-          path: websocket/dist
+          path: server/websocket/dist
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -129,8 +138,8 @@ jobs:
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
         with:
-          context: websocket
-          file: websocket/Websocket.Dockerfile
+          context: server/websocket
+          file: server/websocket/Dockerfile.websocket
           platforms: ${{ steps.options.outputs.platforms }}
           push: true
           build-args: VERSION=${{ steps.options.outputs.version }}

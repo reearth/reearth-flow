@@ -28,8 +28,8 @@ graphs:
         with:
           processorType: "Attribute"
           programmingLanguage: "Python"
-          sourceCodeFilePath: "fixture/testdata/wasm/runtime_executor/attribute_python/sample.py"
-          wasmFilePath: "fixture/testdata/wasm/runtime_executor/attribute_python/sample.wasm"
+          sourceCodeFilePath: |
+            "fixture/testdata/wasm/runtime_executor/attribute_python/sample.py"
 
       - id: 756F498A-7A5C-4579-AB1C-FCBBA8121869
         name: FileWriter

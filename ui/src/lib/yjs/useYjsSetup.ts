@@ -1,4 +1,3 @@
-import { useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
@@ -9,11 +8,15 @@ import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { yWorkflowConstructor } from "./conversions";
 import type { YWorkflow } from "./types";
 
-export default ({ workflowId }: { workflowId?: string }) => {
-  const { projectId }: { projectId: string } = useParams({
-    strict: false,
-  });
-
+export default ({
+  workflowId,
+  projectId,
+  accessToken,
+}: {
+  workflowId?: string;
+  projectId?: string;
+  accessToken?: string;
+}) => {
   const [undoManager, setUndoManager] = useState<Y.UndoManager | null>(null);
 
   const [state, setState] = useState<{
@@ -31,10 +34,19 @@ export default ({ workflowId }: { workflowId?: string }) => {
     let yWebSocketProvider: WebsocketProvider | null = null;
 
     if (workflowId && websocket && projectId) {
+      let params: Record<string, string> | undefined;
+      if (accessToken) {
+        params = {
+          token: accessToken,
+        };
+      }
       yWebSocketProvider = new WebsocketProvider(
         websocket,
         `${projectId}:${workflowId}`,
         yDoc,
+        {
+          params,
+        },
       );
 
       yWebSocketProvider.once("sync", () => {
@@ -64,7 +76,7 @@ export default ({ workflowId }: { workflowId?: string }) => {
       setIsSynced(false); // Mark as not synced
       yWebSocketProvider?.destroy(); // Cleanup on unmount
     };
-  }, [projectId, workflowId]);
+  }, [projectId, workflowId, accessToken]);
 
   const { yDoc, yWorkflows, undoTrackerActionWrapper } = state || {};
 

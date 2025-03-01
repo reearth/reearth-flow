@@ -26,8 +26,7 @@ jobs:
               engine/schema/**
               .github/workflows/ci.yml
               .github/workflows/ci_api.yml
-              .github/workflows/build_api.yml
-              .github/workflows/deploy_api_nightly.yml
+              .github/workflows/build_deploy_api.yml
               CHANGELOG.md
 
       - name: changed files for subscriber
@@ -38,6 +37,7 @@ jobs:
               server/subscriber/**
               .github/workflows/ci.yml
               .github/workflows/ci_subscriber.yml
+              .github/workflows/build_deploy_subscriber.yml
               CHANGELOG.md
 
       - name: changed files for ui
@@ -48,8 +48,7 @@ jobs:
             ui/**
             .github/workflows/ci.yml
             .github/workflows/ci_ui.yml
-            .github/workflows/build_ui.yml
-            .github/workflows/deploy_ui_nightly.yml
+            .github/workflows/build_deploy_ui.yml
             CHANGELOG.md
 
       - name: changed files for websocket
@@ -57,9 +56,10 @@ jobs:
         uses: tj-actions/changed-files@v45
         with:
           files: |
-            websocket/**
+            server/websocket/**
             .github/workflows/ci.yml
             .github/workflows/ci_websocket.yml
+            .github/workflows/build_deploy_websocket.yml
             CHANGELOG.md
 
       - name: changed files for engine
@@ -70,6 +70,7 @@ jobs:
             engine/**
             .github/workflows/ci.yml
             .github/workflows/ci_engine.yml
+            .github/workflows/build_docker_push_worker.yml
             CHANGELOG.md
   ci-api:
     needs: prepare
@@ -163,6 +164,20 @@ jobs:
       - ci-collect-info
     uses: ./.github/workflows/build_deploy_ui.yml
     if: ${{ !failure() && needs.ci-ui.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
+    with:
+      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
+      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
+      name: ${{ needs.ci-collect-info.outputs.name }}
+      sha: ${{ github.sha }}
+    secrets: inherit
+  build-and-deploy-subscriber:
+    needs:
+      - ci
+      - ci-subscriber
+      - ci-collect-info
+    uses: ./.github/workflows/build_deploy_subscriber.yml
+    if: ${{ !failure() && needs.ci-subscriber.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
     with:
       sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
       new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}

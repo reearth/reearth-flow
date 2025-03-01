@@ -21,6 +21,7 @@ export const toProject = (project: ProjectFragment): Project => ({
   updatedAt: formatDate(project.updatedAt),
   description: project.description,
   workspaceId: project.workspaceId,
+  sharedToken: project.sharedToken ?? undefined,
   deployment: project.deployment ? toDeployment(project.deployment) : undefined,
 });
 

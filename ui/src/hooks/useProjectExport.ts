@@ -6,17 +6,13 @@ import * as Y from "yjs";
 
 import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useProject } from "@flow/lib/gql";
 import { yWorkflowConstructor } from "@flow/lib/yjs/conversions";
 import { YWorkflow } from "@flow/lib/yjs/types";
+import { Project } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
-export default (projectId?: string) => {
+export default (project?: Project) => {
   const [isExporting, setIsExporting] = useState<boolean>(false);
-
-  const { useGetProject } = useProject();
-
-  const { project } = useGetProject(projectId);
 
   const handleProjectExport = useCallback(async () => {
     if (!project) return;

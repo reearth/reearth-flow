@@ -185,6 +185,7 @@ type Job struct {
 	CompletedAt  *time.Time  `json:"completedAt,omitempty"`
 	Deployment   *Deployment `json:"deployment,omitempty"`
 	DeploymentID ID          `json:"deploymentId"`
+	Debug        *bool       `json:"debug,omitempty"`
 	ID           ID          `json:"id"`
 	LogsURL      *string     `json:"logsURL,omitempty"`
 	OutputURLs   []string    `json:"outputURLs,omitempty"`
@@ -265,6 +266,7 @@ type Project struct {
 	Name              string       `json:"name"`
 	Parameters        []*Parameter `json:"parameters"`
 	UpdatedAt         time.Time    `json:"updatedAt"`
+	SharedToken       *string      `json:"sharedToken,omitempty"`
 	Version           int          `json:"version"`
 	Workspace         *Workspace   `json:"workspace,omitempty"`
 	WorkspaceID       ID           `json:"workspaceId"`
@@ -279,8 +281,29 @@ type ProjectConnection struct {
 	TotalCount int        `json:"totalCount"`
 }
 
+type ProjectDocument struct {
+	ID        ID        `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+	Updates   []int     `json:"updates"`
+	Version   int       `json:"version"`
+}
+
+func (ProjectDocument) IsNode()        {}
+func (this ProjectDocument) GetID() ID { return this.ID }
+
 type ProjectPayload struct {
 	Project *Project `json:"project"`
+}
+
+type ProjectSharingInfoPayload struct {
+	ProjectID    ID      `json:"projectId"`
+	SharingToken *string `json:"sharingToken,omitempty"`
+}
+
+type ProjectSnapshot struct {
+	Timestamp time.Time `json:"timestamp"`
+	Updates   []int     `json:"updates"`
+	Version   int       `json:"version"`
 }
 
 type Query struct {
@@ -565,22 +588,24 @@ func (e EventSourceType) MarshalGQL(w io.Writer) {
 type JobStatus string
 
 const (
-	JobStatusPending   JobStatus = "PENDING"
-	JobStatusRunning   JobStatus = "RUNNING"
+	JobStatusCancelled JobStatus = "CANCELLED"
 	JobStatusCompleted JobStatus = "COMPLETED"
 	JobStatusFailed    JobStatus = "FAILED"
+	JobStatusPending   JobStatus = "PENDING"
+	JobStatusRunning   JobStatus = "RUNNING"
 )
 
 var AllJobStatus = []JobStatus{
-	JobStatusPending,
-	JobStatusRunning,
+	JobStatusCancelled,
 	JobStatusCompleted,
 	JobStatusFailed,
+	JobStatusPending,
+	JobStatusRunning,
 }
 
 func (e JobStatus) IsValid() bool {
 	switch e {
-	case JobStatusPending, JobStatusRunning, JobStatusCompleted, JobStatusFailed:
+	case JobStatusCancelled, JobStatusCompleted, JobStatusFailed, JobStatusPending, JobStatusRunning:
 		return true
 	}
 	return false

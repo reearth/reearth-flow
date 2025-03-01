@@ -9,6 +9,11 @@ func ToProject(p *project.Project) *Project {
 		return nil
 	}
 
+	var sharedToken *string
+	if p.SharedToken() != nil {
+		sharedToken = p.SharedToken()
+	}
+
 	return &Project{
 		ID:                IDFrom(p.ID()),
 		CreatedAt:         p.CreatedAt(),
@@ -18,6 +23,7 @@ func ToProject(p *project.Project) *Project {
 		BasicAuthPassword: p.BasicAuthPassword(),
 		Name:              p.Name(),
 		Description:       p.Description(),
+		SharedToken:       sharedToken,
 		UpdatedAt:         p.UpdatedAt(),
 		WorkspaceID:       IDFrom(p.Workspace()),
 	}

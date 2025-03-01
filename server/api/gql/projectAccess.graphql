@@ -10,6 +10,11 @@ input UnshareProjectInput {
 
 # Payload
 
+type ProjectSharingInfoPayload {
+  projectId: ID!
+  sharingToken: String
+}
+
 type SharedProjectPayload {
   project: Project!
 }
@@ -27,6 +32,7 @@ type UnshareProjectPayload {
 
 extend type Query {
   sharedProject(token: String!): SharedProjectPayload!
+  projectSharingInfo(projectId: ID!): ProjectSharingInfoPayload!
 }
 
 extend type Mutation {

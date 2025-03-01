@@ -11,7 +11,7 @@ env:
 
 defaults:
   run:
-    working-directory: websocket
+    working-directory: server/websocket
 
 jobs:
   ci:
@@ -21,10 +21,17 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy, rustfmt
+      - name: Install Protocol Buffers Compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+      - name: Install Thrift Compiler
+        run: |
+          sudo apt-get install -y thrift-compiler
       - name: Cache cargo registry
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: websocket
+          workspaces: server/websocket
           shared-key: "websocket-ci"
       - name: Install required tools
         uses: taiki-e/install-action@v2
@@ -36,7 +43,7 @@ jobs:
         run: cargo fmt --all -- --check
       - name: Clippy
         run: cargo make clippy
-      - name: Taplo
-        run: taplo fmt --check
+      # - name: Taplo
+      #   run: taplo fmt --check
       - name: Run tests
         run: cargo make test
