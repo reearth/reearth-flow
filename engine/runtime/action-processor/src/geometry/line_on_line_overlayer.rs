@@ -2,7 +2,9 @@ use std::collections::{HashMap, HashSet};
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::algorithm::intersects::Intersects;
-use reearth_flow_geometry::algorithm::line_intersection::{self, line_intersection, LineIntersection};
+use reearth_flow_geometry::algorithm::line_intersection::{
+    self, line_intersection, LineIntersection,
+};
 use reearth_flow_geometry::algorithm::GeoFloat;
 use reearth_flow_geometry::types::coordnum::CoordNum;
 use reearth_flow_geometry::types::geometry::Geometry2D;
@@ -10,7 +12,7 @@ use reearth_flow_geometry::types::line::{Line, Line2D};
 use reearth_flow_geometry::types::line_string::LineString2D;
 use reearth_flow_geometry::types::multi_line_string::MultiLineString2D;
 use reearth_flow_geometry::types::no_value::NoValue;
-use reearth_flow_geometry::types::point::Point2D;
+use reearth_flow_geometry::types::point::{Point, Point2D};
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -122,7 +124,6 @@ impl Processor for LineOnLineOverlayer {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             }
             GeometryValue::FlowGeometry2D(_) => {
-
                 let key = if let Some(group_by) = &self.group_by {
                     AttributeValue::Array(
                         group_by
@@ -140,9 +141,7 @@ impl Processor for LineOnLineOverlayer {
                         fw.send(ctx.new_with_feature_and_port(feature.clone(), LINE_PORT.clone()));
                     }
                     for feature in &overlayed.point {
-                        fw.send(
-                            ctx.new_with_feature_and_port(feature.clone(), POINT_PORT.clone()),
-                        );
+                        fw.send(ctx.new_with_feature_and_port(feature.clone(), POINT_PORT.clone()));
                     }
                     self.buffer.clear();
                 }
@@ -183,66 +182,6 @@ impl Processor for LineOnLineOverlayer {
     }
 }
 
-// struct LineRepository2D {
-//     multi_line_strings: Vec<(MultiLineString2D<f64>, bool)>, // (MultiLineString, is_from_MultiLineString)
-//     wrapped_lines: Vec<WrappedLine2D>, // lines with their index in multi_line_strings
-//     overlay_graph: Vec<HashSet<usize>>, // graph of intersected lines
-// }
-
-// impl LineRepository2D {
-//     fn new(features: &[Feature]) -> Self {
-//         let multi_line_strings = features
-//             .iter()
-//             .filter_map(|f| f.geometry.value.as_flow_geometry_2d())
-//             .filter_map(|g| {
-//                 if let Geometry2D::LineString(line) = g {
-//                     Some((MultiLineString2D::new(vec![line.clone()]), false))
-//                 } else if let Geometry2D::MultiLineString(multi_line) = g {
-//                     Some((multi_line.clone(), true))
-//                 } else {
-//                     None
-//                 }
-//             })
-//             .collect::<Vec<_>>();
-
-//         let mut wrapped_lines = Vec::new();
-
-//         for (i, multi_line_string) in multi_line_strings.iter().enumerate() {
-//             for (j, line_string) in multi_line_string.0.iter().enumerate() {
-//                 for line in line_string.lines() {
-//                     wrapped_lines.push(WrappedLine2D {
-//                         line: line.clone(),
-//                         l_index: wrapped_lines.len(),
-//                         ls_index: j,
-//                         mls_index: i,
-//                     });
-//                 }
-//             }
-//         }
-
-//         let line_rtree = RTree::bulk_load(wrapped_lines.clone());
-
-//         let mut overlay_graph = vec![HashSet::new(); multi_line_strings.len()];
-//         for i in 0..wrapped_lines.len() {
-//             let wrapped_line = &wrapped_lines[i];
-//             let envelope = wrapped_line.line.envelope();
-//             let candidates = line_rtree.locate_in_envelope_intersecting(&envelope);   
-//         }
-
-//         Self {
-//             multi_line_strings,
-//             lines,
-//             overlay_graph,
-//         }
-//     }
-// }
-
-
-// struct WrappedLine2D {
-//     line: Line2D<f64>,
-//     index: usize,
-// }
-
 fn line_length_2d(line: Line2D<f64>) -> f64 {
     let delta = line.delta();
     (delta.x * delta.x + delta.y * delta.y).sqrt()
@@ -250,10 +189,14 @@ fn line_length_2d(line: Line2D<f64>) -> f64 {
 
 // split line with intersection
 // if the intersection is not on the line, return None
-fn line_split_with_intersection_2d(line: Line2D<f64>, intersecton: LineIntersection<f64, NoValue>) -> Option<(Line2D<f64>, Line2D<f64>)> {
+fn line_split_with_intersection_2d(
+    line: Line2D<f64>,
+    intersecton: LineIntersection<f64, NoValue>,
+) -> Option<(Line2D<f64>, Line2D<f64>)> {
     match intersecton {
         LineIntersection::SinglePoint { intersection, .. } => {
-            if !line.intersects(&intersection) { // TODO: consider is_proper
+            if !line.intersects(&intersection) {
+                // TODO: consider is_proper
                 return None;
             }
 
@@ -274,21 +217,32 @@ fn line_split_with_intersection_2d(line: Line2D<f64>, intersecton: LineIntersect
 
             let length_123 = length_1 + length_2 + length_3;
 
-            if (length_line-length_123).abs() < f64::EPSILON {
-                Some((Line::new(line.start, intersection.start), Line::new(intersection.end, line.end)))
+            if (length_line - length_123).abs() < f64::EPSILON {
+                Some((
+                    Line::new(line.start, intersection.start),
+                    Line::new(intersection.end, line.end),
+                ))
             } else {
-                Some((Line::new(line.start, intersection.end), Line::new(intersection.start, line.end)))
+                Some((
+                    Line::new(line.start, intersection.end),
+                    Line::new(intersection.start, line.end),
+                ))
             }
         }
     }
 }
 
-fn line_split_with_multiple_intersections_2d(line: Line2D<f64>, intersections: Vec<LineIntersection<f64, NoValue>>) -> Vec<Line2D<f64>> {
+fn line_split_with_multiple_intersections_2d(
+    line: Line2D<f64>,
+    intersections: Vec<LineIntersection<f64, NoValue>>,
+) -> Vec<Line2D<f64>> {
     let mut current_lines = vec![line];
     for intersection in intersections {
         let mut lines = Vec::new();
         for current_line in current_lines {
-            if let Some((first, second)) = line_split_with_intersection_2d(current_line, intersection) {
+            if let Some((first, second)) =
+                line_split_with_intersection_2d(current_line, intersection)
+            {
                 lines.push(first);
                 lines.push(second);
             } else {
@@ -314,7 +268,7 @@ fn line_string_from_connected_lines_2d(lines: Vec<Line2D<f64>>) -> LineString2D<
 }
 
 struct ToSplit {
-    index: usize,
+    line_index: usize,
     intersection: LineIntersection<f64, NoValue>,
 }
 
@@ -323,26 +277,28 @@ fn split_line_string(ls: &LineString2D<f64>, tosplits: &Vec<ToSplit>) -> Vec<Lin
     let mut lines_buffer = Vec::new();
 
     for (i, line) in ls.lines().enumerate() {
-        let intersections =
-        tosplits.iter()
-        .filter(|tosplit| tosplit.index == i)
-        .map(|tosplit| tosplit.intersection).collect::<Vec<_>>();
+        let intersections = tosplits
+            .iter()
+            .filter(|tosplit| tosplit.line_index == i)
+            .map(|tosplit| tosplit.intersection)
+            .collect::<Vec<_>>();
         if intersections.is_empty() {
             lines_buffer.push(line.clone());
         } else {
-            let intersected = line_split_with_multiple_intersections_2d(line.clone(), intersections);
+            let intersected =
+                line_split_with_multiple_intersections_2d(line.clone(), intersections);
             match intersected.len() {
                 0 => (),
                 1 => {
                     lines_buffer.push(intersected[0].clone());
                 }
                 _ => {
-                    for i in 0..intersected.len()-1 {
+                    for i in 0..intersected.len() - 1 {
                         lines_buffer.push(intersected[i].clone());
                         new_ls.push(line_string_from_connected_lines_2d(lines_buffer.clone()));
                         lines_buffer.clear();
                     }
-                    lines_buffer.push(intersected[intersected.len()-1].clone());
+                    lines_buffer.push(intersected[intersected.len() - 1].clone());
                 }
             }
         }
@@ -353,33 +309,150 @@ fn split_line_string(ls: &LineString2D<f64>, tosplits: &Vec<ToSplit>) -> Vec<Lin
     new_ls
 }
 
+struct IntersectionGraph {
+    // index of line string -> index of line string -> intersection
+    graph: Vec<HashMap<usize, LineIntersection<f64, NoValue>>>,
+}
+
+impl IntersectionGraph {
+    fn new(line_strings: &Vec<LineString2D<f64>>) -> Self {
+        #[derive(Debug, Clone)]
+        struct WrappedLine2D {
+            line: Line2D<f64>,
+            line_string_index: usize,
+        }
+
+        impl RTreeObject for WrappedLine2D {
+            type Envelope = rstar::AABB<Point2D<f64>>;
+
+            fn envelope(&self) -> Self::Envelope {
+                self.line.envelope()
+            }
+        }
+
+        let mut wrapped_lines = Vec::new();
+
+        for (line_string_index, line_string) in line_strings.iter().enumerate() {
+            for line in line_string.lines() {
+                wrapped_lines.push(WrappedLine2D {
+                    line: line.clone(),
+                    line_string_index,
+                });
+            }
+        }
+
+        let line_rtree = RTree::bulk_load(wrapped_lines.clone());
+
+        let mut graph = vec![HashMap::new(); line_strings.len()];
+
+        for wrapped_line in wrapped_lines {
+            let envelope = wrapped_line.line.envelope();
+            let candidates = line_rtree.locate_in_envelope_intersecting(&envelope);
+            for candidate in candidates {
+                if wrapped_line.line_string_index >= candidate.line_string_index {
+                    continue;
+                }
+
+                if graph[wrapped_line.line_string_index].contains_key(&candidate.line_string_index)
+                {
+                    continue;
+                }
+
+                if wrapped_line.line.intersects(&candidate.line) {
+                    if let Some(intersection) = line_intersection(wrapped_line.line, candidate.line)
+                    {
+                        graph[wrapped_line.line_string_index]
+                            .insert(candidate.line_string_index, intersection.clone());
+                        graph[candidate.line_string_index]
+                            .insert(wrapped_line.line_string_index, intersection);
+                    }
+                }
+            }
+        }
+
+        Self { graph }
+    }
+
+    fn intersected_iter(
+        &self,
+        i: usize,
+    ) -> impl Iterator<Item = (usize, &LineIntersection<f64, NoValue>)> {
+        self.graph[i]
+            .iter()
+            .map(|(j, intersection)| (*j, intersection))
+    }
+
+    fn intersections(&self) -> Vec<LineIntersection<f64, NoValue>> {
+        let mut intersections = Vec::new();
+        for i in 0..self.graph.len() {
+            for (j, intersection) in self.intersected_iter(i) {
+                if i < j {
+                    intersections.push(intersection.clone());
+                }
+            }
+        }
+
+        intersections.into_iter().collect()
+    }
+}
+
+// struct LineStringIntersectionResult {
+//     ls1: Vec<LineString2D<f64>>,
+//     ls2: Vec<LineString2D<f64>>,
+//     intersections: Vec<LineIntersection<f64, NoValue>>,
+// }
+
+// intersection
+// fn line_string_intersection_2d(ls1: &LineString2D<f64>, ls2: &LineString2D<f64>) -> LineStringIntersectionResult {
+//     let mut tosplits_ls1 = Vec::new();
+//     let mut tosplits_ls2 = Vec::new();
+
+//     for (i1, line1) in ls1.lines().enumerate() {
+//         for (i2, line2) in ls2.lines().enumerate() {
+//             if let Some(intersection) = line_intersection(line1, line2) {
+//                 tosplits_ls1.push(ToSplit { index: i1, intersection });
+//                 tosplits_ls2.push(ToSplit { index: i2, intersection });
+//             }
+//         }
+//     }
+
+//     let new_ls1 = split_line_string(ls1, &tosplits_ls1);
+//     let new_ls2 = split_line_string(ls2, &tosplits_ls2);
+
+//     LineStringIntersectionResult {
+//         ls1: new_ls1,
+//         ls2: new_ls2,
+//         intersections: tosplits_ls1.iter().map(|tosplit| tosplit.intersection.clone()).collect(),
+//     }
+// }
+
 struct LineStringIntersectionResult {
-    ls1: Vec<LineString2D<f64>>,
-    ls2: Vec<LineString2D<f64>>,
+    // [[final line string; len of lines in line string]; the number of line strings]
+    lss: Vec<Vec<LineString2D<f64>>>,
     intersections: Vec<LineIntersection<f64, NoValue>>,
 }
 
-// intersection 
-fn line_string_intersection_2d(ls1: &LineString2D<f64>, ls2: &LineString2D<f64>) -> LineStringIntersectionResult {
-    let mut tosplits_ls1 = Vec::new();
-    let mut tosplits_ls2 = Vec::new();
+fn line_string_intersection_2d(lss: &Vec<LineString2D<f64>>) -> LineStringIntersectionResult {
+    let overlay_graph = IntersectionGraph::new(lss);
 
-    for (i1, line1) in ls1.lines().enumerate() {
-        for (i2, line2) in ls2.lines().enumerate() {
-            if let Some(intersection) = line_intersection(line1, line2) {
-                tosplits_ls1.push(ToSplit { index: i1, intersection });
-                tosplits_ls2.push(ToSplit { index: i2, intersection });
-            }
+    let mut new_lss = Vec::new();
+
+    for (i, line_string) in lss.iter().enumerate() {
+        let mut tosplits = Vec::new();
+        for (j, intersection) in overlay_graph.intersected_iter(i) {
+            tosplits.push(ToSplit {
+                line_index: j,
+                intersection: intersection.clone(),
+            });
         }
+
+        let new_ls = split_line_string(line_string, &tosplits);
+        new_lss.push(new_ls);
     }
 
-    let new_ls1 = split_line_string(ls1, &tosplits_ls1);
-    let new_ls2 = split_line_string(ls2, &tosplits_ls2);
-
     LineStringIntersectionResult {
-        ls1: new_ls1,
-        ls2: new_ls2,
-        intersections: tosplits_ls1.iter().map(|tosplit| tosplit.intersection.clone()).collect(),
+        lss: new_lss,
+        intersections: overlay_graph.intersections(),
     }
 }
 
@@ -396,7 +469,7 @@ impl OverlayedFeatures {
         }
     }
 
-    fn extend(&mut self, other: OverlayedFeatures) {
+    fn extend(&mut self, other: Self) {
         self.point.extend(other.point);
         self.line.extend(other.line);
     }
@@ -417,8 +490,6 @@ impl LineOnLineOverlayer {
     }
 
     fn overlay_2d(&self, features_2d: Vec<&Feature>) -> OverlayedFeatures {
-        let mut overlayed = OverlayedFeatures::new();
-
         let line_strings = features_2d
             .iter()
             .filter_map(|f| f.geometry.value.as_flow_geometry_2d())
@@ -431,32 +502,57 @@ impl LineOnLineOverlayer {
                     None
                 }
             })
+            .flatten()
             .collect::<Vec<_>>();
 
-        // let graph = OverlayGraph::bulk_load(&multi_line_strings);
+        let line_string_intersection_result = line_string_intersection_2d(&line_strings);
 
-        // line_intersection
+        let mut overlayed = OverlayedFeatures::new();
 
-        // for i in 0..multi_line_strings.len() {
-        //     graph.intersected_iter(i).for_each(|j| {
-        //         let line1 = &multi_line_strings[i];
-        //         let line2 = &multi_line_strings_incoming[j];
-        //         let intersection = line1.intersection(line2);
-        //         if let Some(intersection) = intersection {
-        //             let mut feature = Feature::new();
-        //             feature.attributes.insert(
-        //                 self.params.output_attribute.clone(),
-        //                 AttributeValue::Number(serde_json::Number::from(1)),
-        //             );
-        //             feature.geometry = Geometry {
-        //                 epsg: feature.geometry.epsg,
-        //                 value: GeometryValue::FlowGeometry2D(Geometry2D::Point(intersection)),
-        //             };
-        //             overlayed.point.push(feature);
-        //         }
-        //     });
-        // }
+        for (i, new_lss) in line_string_intersection_result.lss.iter().enumerate() {
+            let attributes = features_2d[i].attributes.clone();
+            for new_ls in new_lss {
+                let mut feature = Feature::new();
+                feature.attributes = attributes.clone();
+                feature.geometry.value =
+                    GeometryValue::FlowGeometry2D(Geometry2D::LineString(new_ls.clone()));
+                overlayed.line.push(feature);
+            }
+        }
 
-        OverlayedFeatures::new()
+        let last_feature = features_2d.last().unwrap();
+
+        for intersection in line_string_intersection_result.intersections {
+            let mut feature = Feature::new();
+
+            if let Some(group_by) = &self.group_by {
+                feature.attributes = group_by
+                    .iter()
+                    .filter_map(|attr| {
+                        let value = last_feature.get(attr).cloned()?;
+                        Some((attr.clone(), value))
+                    })
+                    .collect::<HashMap<_, _>>();
+            } else {
+                feature.attributes = HashMap::new();
+            }
+
+            match intersection {
+                LineIntersection::SinglePoint { intersection, .. } => {
+                    feature.geometry.value =
+                        GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(intersection)));
+                }
+                LineIntersection::Collinear { intersection } => {
+                    feature.geometry.value =
+                        GeometryValue::FlowGeometry2D(Geometry2D::LineString(LineString2D::new(
+                            vec![intersection.start.clone(), intersection.end.clone()],
+                        )));
+                }
+            }
+
+            overlayed.point.push(feature);
+        }
+
+        overlayed
     }
 }
