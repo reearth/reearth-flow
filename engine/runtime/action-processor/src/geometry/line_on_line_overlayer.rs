@@ -1,16 +1,11 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::algorithm::intersects::Intersects;
-use reearth_flow_geometry::algorithm::line_intersection::{
-    self, line_intersection, LineIntersection,
-};
-use reearth_flow_geometry::algorithm::GeoFloat;
-use reearth_flow_geometry::types::coordnum::CoordNum;
+use reearth_flow_geometry::algorithm::line_intersection::{line_intersection, LineIntersection};
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::line::{Line, Line2D};
 use reearth_flow_geometry::types::line_string::LineString2D;
-use reearth_flow_geometry::types::multi_line_string::MultiLineString2D;
 use reearth_flow_geometry::types::no_value::NoValue;
 use reearth_flow_geometry::types::point::{Point, Point2D};
 use reearth_flow_runtime::node::REJECTED_PORT;
@@ -31,7 +26,7 @@ use super::errors::GeometryProcessorError;
 
 pub static POINT_PORT: Lazy<Port> = Lazy::new(|| Port::new("point"));
 pub static LINE_PORT: Lazy<Port> = Lazy::new(|| Port::new("line"));
-const EPSILON: f64 = 0.001;
+static EPSILON: f64 = 1e-6;
 
 #[derive(Debug, Clone, Default)]
 pub struct LineOnLineOverlayerFactory;
@@ -194,14 +189,28 @@ fn line_split_with_intersection_2d(
     intersecton: LineIntersection<f64, NoValue>,
 ) -> Option<(Line2D<f64>, Line2D<f64>)> {
     match intersecton {
-        LineIntersection::SinglePoint { intersection, .. } => {
-            if !line.intersects(&intersection) {
-                // TODO: consider is_proper
+        LineIntersection::SinglePoint {
+            intersection,
+            is_proper,
+        } => {
+            if !is_proper {
+                return None;
+            }
+            // if intersection is not on line, return None
+            let length_line = line_length_2d(line);
+
+            let length_1 = line_length_2d(Line::new(line.start, intersection));
+            let length_2 = line_length_2d(Line::new(intersection, line.end));
+
+            let length_12 = length_1 + length_2;
+
+            if (length_line - length_12).abs() >= EPSILON {
                 return None;
             }
 
             let first = Line::new(line.start, intersection);
             let second = Line::new(intersection, line.end);
+
             Some((first, second))
         }
         LineIntersection::Collinear { intersection } => {
@@ -217,7 +226,7 @@ fn line_split_with_intersection_2d(
 
             let length_123 = length_1 + length_2 + length_3;
 
-            if (length_line - length_123).abs() < f64::EPSILON {
+            if (length_line - length_123).abs() < EPSILON {
                 Some((
                     Line::new(line.start, intersection.start),
                     Line::new(intersection.end, line.end),
@@ -243,6 +252,7 @@ fn line_split_with_multiple_intersections_2d(
             if let Some((first, second)) =
                 line_split_with_intersection_2d(current_line, intersection)
             {
+                //println!("first: {:?}, second: {:?}", first, second);
                 lines.push(first);
                 lines.push(second);
             } else {
@@ -554,5 +564,141 @@ impl LineOnLineOverlayer {
         }
 
         overlayed
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use reearth_flow_geometry::types::coordinate::Coordinate2D;
+
+    use super::*;
+
+    #[test]
+    fn test_line_length_2d() {
+        let line = Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(3.0, 4.0));
+        assert_eq!(line_length_2d(line), 5.0);
+    }
+
+    #[test]
+    fn test_line_split_with_intersection_2d_single_point() {
+        let line = Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(4.0, 4.0));
+        let intersection = LineIntersection::SinglePoint {
+            intersection: Coordinate2D::new_(1.0, 1.0),
+            is_proper: true,
+        };
+        let result = line_split_with_intersection_2d(line, intersection).unwrap();
+        assert_eq!(
+            result.0,
+            Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(1.0, 1.0))
+        );
+        assert_eq!(
+            result.1,
+            Line2D::new(Coordinate2D::new_(1.0, 1.0), Coordinate2D::new_(4.0, 4.0))
+        );
+
+        let intersection = LineIntersection::SinglePoint {
+            intersection: Coordinate2D::new_(1.0, 3.0),
+            is_proper: true,
+        };
+
+        let result = line_split_with_intersection_2d(line, intersection);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_line_split_with_intersection_2d_collinear() {
+        let line = Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(4.0, 4.0));
+        let intersection = LineIntersection::Collinear {
+            intersection: Line2D::new(Coordinate2D::new_(1.0, 1.0), Coordinate2D::new_(3.0, 3.0)),
+        };
+        let result = line_split_with_intersection_2d(line, intersection).unwrap();
+        assert_eq!(
+            result.0,
+            Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(1.0, 1.0))
+        );
+        assert_eq!(
+            result.1,
+            Line2D::new(Coordinate2D::new_(3.0, 3.0), Coordinate2D::new_(4.0, 4.0))
+        );
+
+        let intersection = LineIntersection::Collinear {
+            intersection: Line2D::new(Coordinate2D::new_(3.0, 3.0), Coordinate2D::new_(1.0, 1.0)),
+        };
+
+        let result = line_split_with_intersection_2d(line, intersection).unwrap();
+        assert_eq!(
+            result.0,
+            Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(1.0, 1.0))
+        );
+        assert_eq!(
+            result.1,
+            Line2D::new(Coordinate2D::new_(3.0, 3.0), Coordinate2D::new_(4.0, 4.0))
+        );
+    }
+
+    #[test]
+    fn test_line_split_with_multiple_intersections_2d() {
+        let line = Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(4.0, 4.0));
+        let intersections = vec![
+            LineIntersection::SinglePoint {
+                intersection: Coordinate2D::new_(1.0, 1.0),
+                is_proper: true,
+            },
+            LineIntersection::SinglePoint {
+                intersection: Coordinate2D::new_(3.0, 3.0),
+                is_proper: true,
+            },
+        ];
+        let result = line_split_with_multiple_intersections_2d(line, intersections);
+        assert_eq!(result.len(), 3);
+        assert_eq!(
+            result[0],
+            Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(1.0, 1.0))
+        );
+        assert_eq!(
+            result[1],
+            Line2D::new(Coordinate2D::new_(1.0, 1.0), Coordinate2D::new_(3.0, 3.0))
+        );
+        assert_eq!(
+            result[2],
+            Line2D::new(Coordinate2D::new_(3.0, 3.0), Coordinate2D::new_(4.0, 4.0))
+        );
+    }
+
+    #[test]
+    fn test_line_string_from_connected_lines_2d() {
+        let lines = vec![
+            Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(1.0, 1.0)),
+            Line2D::new(Coordinate2D::new_(1.0, 1.0), Coordinate2D::new_(2.0, 2.0)),
+        ];
+        let result = line_string_from_connected_lines_2d(lines);
+        let expected = LineString2D::new(vec![
+            Coordinate2D::new_(0.0, 0.0),
+            Coordinate2D::new_(1.0, 1.0),
+            Coordinate2D::new_(2.0, 2.0),
+        ])
+        .points()
+        .collect::<Vec<_>>();
+        for (i, point) in result.points().enumerate() {
+            assert_eq!(point, expected[i]);
+        }
+    }
+
+    #[test]
+    fn test_split_line_string() {
+        let line_string = LineString2D::new(vec![
+            Coordinate2D::new_(0.0, 0.0),
+            Coordinate2D::new_(3.0, 3.0),
+            Coordinate2D::new_(4.0, 4.0),
+        ]);
+        let tosplits = vec![ToSplit {
+            line_index: 0,
+            intersection: LineIntersection::SinglePoint {
+                intersection: Coordinate2D::new_(2.0, 2.0),
+                is_proper: true,
+            },
+        }];
+        let result = split_line_string(&line_string, &tosplits);
+        assert_eq!(result.len(), 2);
     }
 }
