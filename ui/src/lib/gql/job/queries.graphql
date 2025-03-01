@@ -17,3 +17,11 @@ query GetJob($id: ID!) {
     ...Job
   }
 }
+
+mutation CancelJob($input: CancelJobInput!) {
+  cancelJob(input: $input) {
+    job {
+      ...Job
+    }
+  }
+}

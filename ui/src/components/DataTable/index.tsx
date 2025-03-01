@@ -188,7 +188,7 @@ function DataTable<TData, TValue>({
                     return (
                       <TableHead
                         key={header.id}
-                        className={`${condensed ? "h-8" : "h-10"}`}>
+                        className={`${condensed ? "h-8" : "h-10"} whitespace-nowrap`}>
                         {header.isPlaceholder
                           ? null
                           : flexRender(

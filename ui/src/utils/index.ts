@@ -5,3 +5,4 @@ export * from "./cancellableDebounce";
 export * from "./isDefined";
 export * from "./lastOfUrl";
 export * from "./openLinkInNewTab";
+export * from "./timestamp";
