@@ -9,6 +9,7 @@ import BasicBoiler from "@flow/components/BasicBoiler";
 import { JOBS_FETCH_RATE } from "@flow/lib/gql/job/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { Job } from "@flow/types";
+import { formatTimestamp } from "@flow/utils/timestamp";
 
 import { JobRunDialog, JobDetails } from "./components";
 import useHooks from "./hooks";
@@ -28,6 +29,7 @@ const JobsManager: React.FC = () => {
     totalPages,
     currentOrder,
     setCurrentOrder,
+    handleCancelJob,
   } = useHooks();
 
   const columns: ColumnDef<Job>[] = [
@@ -36,8 +38,8 @@ const JobsManager: React.FC = () => {
       header: t("ID"),
     },
     {
-      accessorKey: "projectName",
-      header: t("Project Name"),
+      accessorKey: "deploymentId",
+      header: t("Deployment Id"),
     },
     {
       accessorKey: "status",
@@ -46,17 +48,19 @@ const JobsManager: React.FC = () => {
     {
       accessorKey: "startedAt",
       header: t("Started At"),
+      cell: ({ getValue }) => formatTimestamp(getValue<string>()),
     },
     {
       accessorKey: "completedAt",
       header: t("Completed At"),
+      cell: ({ getValue }) => formatTimestamp(getValue<string>()),
     },
   ];
   const resultsPerPage = JOBS_FETCH_RATE;
 
   return selectedJob ? (
     <div className="flex flex-1">
-      <JobDetails selectedJob={selectedJob} />
+      <JobDetails selectedJob={selectedJob} onJobCancel={handleCancelJob} />
     </div>
   ) : (
     <div className="flex h-full flex-1 flex-col">
