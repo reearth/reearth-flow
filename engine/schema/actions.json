@@ -2476,7 +2476,7 @@
         "title": "LineOnLineOverlayerParam",
         "type": "object",
         "required": [
-          "outputAttribute"
+          "tolerance"
         ],
         "properties": {
           "groupBy": {
@@ -2488,8 +2488,9 @@
               "$ref": "#/definitions/Attribute"
             }
           },
-          "outputAttribute": {
-            "$ref": "#/definitions/Attribute"
+          "tolerance": {
+            "type": "number",
+            "format": "double"
           }
         },
         "definitions": {
