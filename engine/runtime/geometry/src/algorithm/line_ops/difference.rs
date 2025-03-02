@@ -72,6 +72,7 @@ pub fn line_difference_2d<T: GeoFloat>(
     segments
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 
