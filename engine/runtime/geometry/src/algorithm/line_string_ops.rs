@@ -19,8 +19,12 @@ use super::{
     GeoFloat,
 };
 
+/// Trait that defines additional operations on a line string.
 pub trait LineStringOps<T: GeoFloat, Z: GeoFloat> {
+    /// Returns a vector of intersections between `self` and another line string.
     fn intersection(&self, other: LineString<T, Z>) -> Vec<LineIntersection<T, Z>>;
+
+    /// Splits the line string using the provided coordinates as split points with a given tolerance.
     fn split(&self, points: Vec<Coordinate<T, Z>>, torelance: T) -> Vec<LineString<T, Z>>;
 }
 
@@ -84,6 +88,7 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
         coordinates: Vec<Coordinate<f64, NoValue>>,
         torelance: f64,
     ) -> Vec<LineString<f64, NoValue>> {
+        // Helper function to split a single line by multiple coordinates.
         fn split_line_by_multiple_coords(
             line: Line<f64, NoValue>,
             coords: Vec<Coordinate<f64, NoValue>>,
@@ -92,6 +97,7 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
             let mut lines = vec![line];
             for coord in coords {
                 let mut new_lines = Vec::new();
+                // Split each current segment by the coordinate.
                 for line in lines {
                     new_lines.extend(line.split(&coord, torelance));
                 }
@@ -100,6 +106,7 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
             lines
         }
 
+        // Helper function to connect a vector of line segments into a single linestring.
         fn connected_lines_into_line_string(lines: Vec<Line2D<f64>>) -> LineString2D<f64> {
             let mut points = Vec::new();
             for i in 0..lines.len() {
@@ -112,6 +119,7 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
             LineString2D::new(points)
         }
 
+        // Create a vector of HashSets to collect coordinate indexes for each line segment.
         let mut coords_around_line = vec![HashSet::new(); self.line_string.lines().len()];
         for (coords_index, coords) in coordinates.iter().enumerate() {
             let point = Point2D::new(coords.x, coords.y, NoValue);
@@ -126,6 +134,7 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
         let mut new_lss = Vec::new();
         let mut lines_buffer = Vec::new();
 
+        // Iterate through each line segment and apply splitting if needed.
         for (line_index, line) in self.line_string.lines().enumerate() {
             let coords_indexes = coords_around_line[line_index]
                 .iter()
@@ -156,5 +165,88 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
         new_lss.push(connected_lines_into_line_string(lines_buffer.clone()));
 
         new_lss
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::types::coordinate::Coordinate2D;
+
+    use super::*;
+
+    #[test]
+    fn test_intersection() {
+        let line_string1 = LineString2D::new(vec![
+            Coordinate2D::new_(0.0, 0.0),
+            Coordinate2D::new_(5.0, 5.0),
+        ]);
+        let line_string2 = LineString2D::new(vec![
+            Coordinate2D::new_(0.0, 5.0),
+            Coordinate2D::new_(5.0, 0.0),
+        ]);
+
+        let tree1 = LineStringWithTree2D::new(line_string1);
+        let intersections = tree1.intersection(line_string2);
+
+        assert_eq!(intersections.len(), 1);
+
+        if let LineIntersection::SinglePoint { intersection, .. } = &intersections[0] {
+            assert_eq!(intersection.x, 2.5);
+            assert_eq!(intersection.y, 2.5);
+        } else {
+            panic!("Expected a point intersection");
+        }
+    }
+
+    #[test]
+    fn test_no_intersection() {
+        let line_string1 = LineString2D::new(vec![
+            Coordinate2D::new_(0.0, 0.0),
+            Coordinate2D::new_(1.0, 1.0),
+        ]);
+        let line_string2 = LineString2D::new(vec![
+            Coordinate2D::new_(2.0, 2.0),
+            Coordinate2D::new_(3.0, 3.0),
+        ]);
+
+        let tree1 = LineStringWithTree2D::new(line_string1);
+        let intersections = tree1.intersection(line_string2);
+
+        assert_eq!(intersections.len(), 0);
+    }
+
+    #[test]
+    fn test_split() {
+        let line_string = LineString2D::new(vec![
+            Coordinate2D::new_(0.0, 0.0),
+            Coordinate2D::new_(10.0, 0.0),
+        ]);
+
+        let tree = LineStringWithTree2D::new(line_string);
+        let split_points = vec![
+            Coordinate2D::new_(2.0, 0.0),
+            Coordinate2D::new_(5.0, 0.0),
+            Coordinate2D::new_(8.0, 0.0),
+        ];
+        let tolerance = 1e-6;
+        let split_lines = tree.split(split_points, tolerance);
+
+        assert_eq!(split_lines.len(), 4);
+    }
+
+    #[test]
+    fn test_split_no_points() {
+        let line_string = LineString2D::new(vec![
+            Coordinate2D::new_(0.0, 0.0),
+            Coordinate2D::new_(10.0, 0.0),
+        ]);
+
+        let tree = LineStringWithTree2D::new(line_string);
+        let split_points = vec![Coordinate2D::new_(2.0, 2.0)];
+        let tolerance = 1e-6;
+        let split_lines = tree.split(split_points, tolerance);
+
+        assert_eq!(split_lines.len(), 1);
+        assert_eq!(split_lines[0].points().len(), 2);
     }
 }
