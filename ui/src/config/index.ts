@@ -37,16 +37,6 @@ export default async function loadConfig() {
     ...(await (await fetch("/reearth_config.json")).json()),
   };
 
-  if (config.brandName) {
-    document.title = config.brandName;
-  }
-  if (config.brandLogoUrl) {
-    const favicon = document.querySelector(
-      "link[rel='icon']",
-    ) as HTMLLinkElement;
-    favicon.href = config.brandLogoUrl;
-  }
-
   window.REEARTH_CONFIG = config;
 }
 
