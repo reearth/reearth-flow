@@ -11,6 +11,7 @@ declare global {
 
 export type Config = {
   version?: string;
+  brandLogoUrl?: string;
   brandName?: string;
   devMode?: boolean;
   tosUrl?: string;
@@ -38,6 +39,12 @@ export default async function loadConfig() {
 
   if (config.brandName) {
     document.title = config.brandName;
+  }
+  if (config.brandLogoUrl) {
+    const favicon = document.querySelector(
+      "link[rel='icon']",
+    ) as HTMLLinkElement;
+    favicon.href = config.brandLogoUrl;
   }
 
   window.REEARTH_CONFIG = config;
