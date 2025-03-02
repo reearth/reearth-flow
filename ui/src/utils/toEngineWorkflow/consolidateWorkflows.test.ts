@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import type { Workflow, EngineReadyGraph } from "@flow/types";
 
 import { generateUUID } from "../generateUUID";
@@ -22,34 +21,26 @@ describe("consolidateWorkflows", () => {
   });
 
   it("should correctly consolidate workflows with a main workflow", () => {
+    const workflow1Id = generateUUID();
+    const workflow2Id = generateUUID();
     const mockWorkflows: Workflow[] = [
       {
-        id: DEFAULT_ENTRY_GRAPH_ID,
+        id: workflow1Id,
         name: "Main Workflow",
+        isMain: true,
         nodes: [],
         edges: [],
       },
-      { id: "sub1", name: "Sub Workflow 1", nodes: [], edges: [] },
+      { id: workflow2Id, name: "Sub Workflow 1", nodes: [], edges: [] },
     ];
 
     // Generate predictable UUIDs
     let uuidCounter = 0;
     vi.mocked(generateUUID).mockImplementation(() => `uuid-${++uuidCounter}`);
 
-    // Create expected workflows with the new entry ID
-    const expectedConvertedWorkflows = [
-      {
-        id: "uuid-1", // This replaces DEFAULT_ENTRY_GRAPH_ID
-        name: "Main Workflow",
-        nodes: [],
-        edges: [],
-      },
-      { id: "sub1", name: "Sub Workflow 1", nodes: [], edges: [] },
-    ];
-
     const mockSubGraphs: EngineReadyGraph[] = [
       {
-        id: "uuid-1",
+        id: workflow1Id,
         name: "Main Workflow",
         nodes: [],
         edges: [],
@@ -61,15 +52,12 @@ describe("consolidateWorkflows", () => {
 
     const result = consolidateWorkflows("somename", mockWorkflows);
 
-    expect(result).toEqual({
-      id: "uuid-2",
-      name: "somename",
-      entryGraphId: "uuid-1",
-      graphs: mockSubGraphs,
-    });
+    expect(result?.name).toEqual("somename");
+    expect(result?.entryGraphId).toEqual(workflow1Id);
+    expect(result?.graphs).toEqual(mockSubGraphs);
 
-    expect(createSubGraphs).toHaveBeenCalledWith(expectedConvertedWorkflows);
-    expect(generateUUID).toHaveBeenCalledTimes(2);
+    expect(createSubGraphs).toHaveBeenCalledWith(mockWorkflows);
+    expect(generateUUID).toHaveBeenCalledTimes(3);
   });
 
   it("should return undefined when no main workflow exists", () => {

@@ -57,7 +57,7 @@ describe("rebuildWorkflow", () => {
       },
     ];
 
-    const yWorkflow = yWorkflowConstructor(id, name, nodes, edges);
+    const yWorkflow = yWorkflowConstructor(id, name, false, nodes, edges);
 
     yWorkflows.push([yWorkflow]);
 
@@ -75,7 +75,7 @@ describe("rebuildWorkflow", () => {
     const id = "empty-workflow";
     const name = "Empty Workflow";
 
-    const yWorkflow = yWorkflowConstructor(id, name, [], []);
+    const yWorkflow = yWorkflowConstructor(id, name, false, [], []);
     yWorkflows.push([yWorkflow]);
 
     const workflow = rebuildWorkflow(yWorkflow);

@@ -12,4 +12,4 @@ export type YNodesArray = Y.Array<YNode>;
 
 export type YEdgesArray = Y.Array<YEdge>;
 
-export type YWorkflow = Y.Map<Y.Text | YNodesArray | YEdgesArray>;
+export type YWorkflow = Y.Map<Y.Text | YNodesArray | YEdgesArray | boolean>;

@@ -8,7 +8,6 @@ import {
   ProjectIdWrapper,
   WorkspaceIdWrapper,
 } from "@flow/features/PageWrapper";
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useFullscreen, useShortcuts } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
@@ -64,14 +63,11 @@ const EditorComponent = () => {
     },
   ]);
 
-  const { projectId }: { projectId: string } = useParams({
-    strict: false,
-  });
+  const { projectId }: { projectId: string } = useParams({ strict: false });
 
   const { state, isSynced, undoManager } = useYjsSetup({
     accessToken,
     projectId,
-    workflowId: DEFAULT_ENTRY_GRAPH_ID,
   });
 
   return !state || !isSynced ? (

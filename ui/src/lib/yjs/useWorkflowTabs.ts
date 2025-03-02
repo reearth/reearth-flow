@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { Edge, Node } from "@flow/types";
+import type { Workflow } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 export default ({
@@ -10,12 +9,18 @@ export default ({
   setCurrentWorkflowId,
 }: {
   currentWorkflowId: string;
-  rawWorkflows: Record<string, string | Node[] | Edge[]>[];
+  rawWorkflows: Workflow[];
   setCurrentWorkflowId: (id: string) => void;
 }) => {
+  const mainWorkflow = useMemo(
+    () => rawWorkflows.find((rw) => rw.isMain),
+    [rawWorkflows],
+  );
+
   const isMainWorkflow = useMemo(
-    () => currentWorkflowId === DEFAULT_ENTRY_GRAPH_ID,
-    [currentWorkflowId],
+    () =>
+      rawWorkflows.find((rw) => rw.id === mainWorkflow?.id)?.isMain ?? false,
+    [mainWorkflow, rawWorkflows],
   );
 
   // This works as a semi-static base for the rest of the state in this hook.
@@ -32,14 +37,15 @@ export default ({
 
   const handleCurrentWorkflowIdChange = useCallback(
     (id?: string) => {
-      if (!id) return setCurrentWorkflowId(DEFAULT_ENTRY_GRAPH_ID);
+      if (!id)
+        return setCurrentWorkflowId(mainWorkflow?.id ?? rawWorkflows[0].id);
       setCurrentWorkflowId(id);
     },
-    [setCurrentWorkflowId],
+    [mainWorkflow?.id, rawWorkflows, setCurrentWorkflowId],
   );
 
   const [openWorkflowIds, setOpenWorkflowIds] = useState<string[]>([
-    DEFAULT_ENTRY_GRAPH_ID,
+    mainWorkflow?.id ?? rawWorkflows[0].id,
   ]);
 
   const openWorkflows: {
@@ -72,16 +78,18 @@ export default ({
         const currentWorkflowIndex = openWorkflowIds.findIndex(
           (wid) => wid === currentWorkflowId,
         );
-        if (
-          workflowId !== DEFAULT_ENTRY_GRAPH_ID &&
-          index === currentWorkflowIndex
-        ) {
+        if (workflowId !== mainWorkflow?.id && index === currentWorkflowIndex) {
           handleCurrentWorkflowIdChange(ids[index - 1]);
         }
         return filteredIds;
       });
     },
-    [openWorkflowIds, currentWorkflowId, handleCurrentWorkflowIdChange],
+    [
+      openWorkflowIds,
+      mainWorkflow?.id,
+      currentWorkflowId,
+      handleCurrentWorkflowIdChange,
+    ],
   );
 
   return {

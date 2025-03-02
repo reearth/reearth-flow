@@ -4,7 +4,6 @@ import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import { config } from "@flow/config";
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { YWorkflow } from "@flow/lib/yjs/types";
@@ -68,7 +67,7 @@ export default () => {
         if (websocket && projectMeta) {
           const yWebSocketProvider = new WebsocketProvider(
             websocket,
-            `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
+            `${project.id}:main`, // TODO: This probably should be dynamic. Originally it was projectID:workflowID, but wasn't setup correctly. Might split rooms based on canvas tab. Changing this will break existing projects. @KaWaite
             yDoc,
           );
 

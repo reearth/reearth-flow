@@ -3,7 +3,6 @@ import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useY } from "react-yjs";
 import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useShortcuts } from "@flow/hooks";
 import { useSharedProject } from "@flow/lib/gql";
 import { checkForReader } from "@flow/lib/reactFlow";
@@ -30,7 +29,7 @@ export default ({
   const { fitView } = useReactFlow();
 
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(
-    DEFAULT_ENTRY_GRAPH_ID,
+    yWorkflows.get(0)?.get("id")?.toString() ?? "",
   );
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
@@ -68,7 +67,7 @@ export default ({
   });
 
   const rawNodes = useY(
-    currentYWorkflow.get("nodes") ?? new YArray(),
+    (currentYWorkflow.get("nodes") ?? new YArray()) as YArray<Node>, // TODO: this is typed wrong. Need to fix @KaWaite
   ) as Node[];
 
   // Non-persistant state needs to be managed here
@@ -85,7 +84,7 @@ export default ({
   );
 
   const rawEdges = useY(
-    currentYWorkflow.get("edges") ?? new YArray(),
+    (currentYWorkflow.get("edges") ?? new YArray()) as YArray<Edge>, // TODO: this is typed wrong. Need to fix @KaWaite
   ) as Edge[];
 
   // Non-persistant state needs to be managed here

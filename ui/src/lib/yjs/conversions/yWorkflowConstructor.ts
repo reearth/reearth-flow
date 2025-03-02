@@ -80,6 +80,7 @@ export const yEdgeConstructor = (edge: Edge): YEdge => {
 export const yWorkflowConstructor = (
   id: string,
   name: string,
+  isMain?: boolean,
   nodes?: Node[],
   edges?: Edge[],
 ) => {
@@ -97,5 +98,8 @@ export const yWorkflowConstructor = (
   yWorkflow.set("name", yName);
   yWorkflow.set("nodes", yNodes);
   yWorkflow.set("edges", yEdges);
+  if (isMain !== undefined) {
+    yWorkflow.set("isMain", isMain);
+  }
   return yWorkflow;
 };

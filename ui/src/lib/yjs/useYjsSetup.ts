@@ -3,17 +3,15 @@ import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import { config } from "@flow/config";
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import { generateUUID } from "@flow/utils";
 
 import { yWorkflowConstructor } from "./conversions";
 import type { YWorkflow } from "./types";
 
 export default ({
-  workflowId,
   projectId,
   accessToken,
 }: {
-  workflowId?: string;
   projectId?: string;
   accessToken?: string;
 }) => {
@@ -33,7 +31,7 @@ export default ({
     const { websocket } = config();
     let yWebSocketProvider: WebsocketProvider | null = null;
 
-    if (workflowId && websocket && projectId) {
+    if (websocket && projectId) {
       let params: Record<string, string> | undefined;
       if (accessToken) {
         params = {
@@ -42,7 +40,7 @@ export default ({
       }
       yWebSocketProvider = new WebsocketProvider(
         websocket,
-        `${projectId}:${workflowId}`,
+        `${projectId}:main`, // TODO: This probably should be dynamic. Originally it was projectID:workflowID, but wasn't setup correctly. Might split rooms based on canvas tab. Changing this will break existing projects. @KaWaite
         yDoc,
         {
           params,
@@ -53,8 +51,9 @@ export default ({
         if (yWorkflows.length === 0) {
           yDoc.transact(() => {
             const yWorkflow = yWorkflowConstructor(
-              DEFAULT_ENTRY_GRAPH_ID,
+              generateUUID(),
               "Main Workflow",
+              true,
             );
             yWorkflows.insert(0, [yWorkflow]);
           });
@@ -76,7 +75,7 @@ export default ({
       setIsSynced(false); // Mark as not synced
       yWebSocketProvider?.destroy(); // Cleanup on unmount
     };
-  }, [projectId, workflowId, accessToken]);
+  }, [projectId, accessToken]);
 
   const { yDoc, yWorkflows, undoTrackerActionWrapper } = state || {};
 

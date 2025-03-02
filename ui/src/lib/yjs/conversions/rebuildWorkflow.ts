@@ -134,6 +134,8 @@ export const rebuildWorkflow = (yWorkflow: YWorkflow): Workflow => {
       workflow.id = value.toString();
     } else if (key === "name" && value instanceof Y.Text) {
       workflow.name = value.toString();
+    } else if (key === "isMain" && typeof value !== "undefined") {
+      workflow.isMain = value as boolean;
     } else if (key === "nodes" && value instanceof Y.Array) {
       // Convert nodes to plain objects
       workflow.nodes = value

@@ -21,8 +21,8 @@ describe("yWorkflowConstructor", () => {
 
     yWorkflows.push([yWorkflow]);
 
-    expect(yWorkflow.get("id")?.toJSON()).toEqual(id);
-    expect(yWorkflow.get("name")?.toJSON()).toEqual(name);
+    expect((yWorkflow.get("id") as Y.Text)?.toJSON()).toEqual(id);
+    expect((yWorkflow.get("name") as Y.Text)?.toJSON()).toEqual(name);
   });
 
   test("should create a YWorkflow with the provided nodes and edges", () => {
@@ -66,11 +66,11 @@ describe("yWorkflowConstructor", () => {
     const edges: Edge[] = [
       { id: "edge-1", source: "node-1", target: "node-2" },
     ];
-    const yWorkflow = yWorkflowConstructor(id, name, nodes, edges);
+    const yWorkflow = yWorkflowConstructor(id, name, false, nodes, edges);
     yWorkflows.push([yWorkflow]);
 
-    expect(yWorkflow.get("id")?.toJSON()).toEqual(id);
-    expect(yWorkflow.get("name")?.toJSON()).toEqual(name);
+    expect((yWorkflow.get("id") as Y.Text)?.toJSON()).toEqual(id);
+    expect((yWorkflow.get("name") as Y.Text)?.toJSON()).toEqual(name);
     expect(
       (yWorkflow.get("nodes") as YNodesArray).map((yn) => reassembleNode(yn)),
     ).toEqual(nodes);
@@ -88,8 +88,8 @@ describe("yWorkflowConstructor", () => {
     const yWorkflow = yWorkflowConstructor(id, name);
     yWorkflows.push([yWorkflow]);
 
-    expect(yWorkflow.get("id")?.toJSON()).toEqual(id);
-    expect(yWorkflow.get("name")?.toJSON()).toEqual(name);
+    expect((yWorkflow.get("id") as Y.Text)?.toJSON()).toEqual(id);
+    expect((yWorkflow.get("name") as Y.Text)?.toJSON()).toEqual(name);
     expect((yWorkflow.get("nodes") as YNodesArray)?.toArray()).toEqual([]);
     expect((yWorkflow.get("edges") as YEdgesArray)?.toArray()).toEqual([]);
   });

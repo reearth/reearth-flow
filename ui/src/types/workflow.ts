@@ -8,6 +8,7 @@ export type Workflow = {
   edges?: Edge[];
   createdAt?: string;
   updatedAt?: string;
+  isMain?: boolean;
   // projectId?: string;
   // workspaceId?: string;
   // status??

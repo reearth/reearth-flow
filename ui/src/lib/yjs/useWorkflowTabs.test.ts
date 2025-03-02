@@ -1,6 +1,8 @@
 import { renderHook } from "@testing-library/react";
 import * as Y from "yjs";
 
+import { generateUUID } from "@flow/utils";
+
 import { rebuildWorkflow, yWorkflowConstructor } from "./conversions";
 import type { YWorkflow } from "./types";
 import useWorkflowTabs from "./useWorkflowTabs";
@@ -8,10 +10,15 @@ import useWorkflowTabs from "./useWorkflowTabs";
 describe("useWorkflowTabs", () => {
   const yDoc = new Y.Doc();
   const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-  const yWorkflowMain = yWorkflowConstructor("main", "Workflow-1");
+  const mainWorkflowId = generateUUID();
+  const yWorkflowMain = yWorkflowConstructor(
+    mainWorkflowId,
+    "Workflow-1",
+    true,
+  );
   const yWorkflow2 = yWorkflowConstructor("2", "Workflow-2");
   yWorkflows.push([yWorkflowMain, yWorkflow2]);
-  const currentWorkflowId = "main";
+  const currentWorkflowId = mainWorkflowId;
 
   const { result: result1 } = renderHook(() =>
     yWorkflows.map((w) => rebuildWorkflow(w)),
@@ -30,7 +37,7 @@ describe("useWorkflowTabs", () => {
   });
   it("should set openWorkflows appropriately", () => {
     expect(result2.current.openWorkflows).toEqual([
-      { id: "main", name: "Workflow-1" },
+      { id: mainWorkflowId, name: "Workflow-1" },
     ]);
   });
 });

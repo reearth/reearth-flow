@@ -4,11 +4,8 @@ import * as Y from "yjs";
 import { Array as YArray } from "yjs";
 
 import { config } from "@flow/config";
-import {
-  DEFAULT_ENTRY_GRAPH_ID,
-  DEFAULT_ROUTING_PORT,
-} from "@flow/global-constants";
-import type { Action, Edge, Node } from "@flow/types";
+import { DEFAULT_ROUTING_PORT } from "@flow/global-constants";
+import type { Action, Edge, Node, Workflow } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
 import { fetcher } from "../fetch/transformers/useFetch";
@@ -27,7 +24,7 @@ export default ({
   undoTrackerActionWrapper,
 }: {
   yWorkflows: YArray<YWorkflow>;
-  rawWorkflows: Record<string, string | Node[] | Edge[]>[];
+  rawWorkflows: Workflow[];
   currentWorkflowId: string;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
@@ -35,6 +32,8 @@ export default ({
   const currentYWorkflow = yWorkflows.get(
     rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
   );
+
+  const mainWorkflow = rawWorkflows.find((rw) => rw.isMain);
 
   const fetchRouterConfigs = useCallback(async () => {
     const [inputRouter, outputRouter] = await Promise.all([
@@ -96,6 +95,7 @@ export default ({
       const newYWorkflow = yWorkflowConstructor(
         workflowId,
         workflowName,
+        false,
         workflowNodes,
         initialEdges,
       );
@@ -287,6 +287,7 @@ export default ({
       const newYWorkflow = yWorkflowConstructor(
         workflowId,
         workflowName,
+        false,
         nodes,
         edges,
       );
@@ -303,7 +304,7 @@ export default ({
 
         const removeNodes = (nodeIds: string[]) => {
           nodeIds.forEach((nid) => {
-            if (nid === DEFAULT_ENTRY_GRAPH_ID) return;
+            if (nid === mainWorkflow?.id) return;
 
             const index = localWorkflows.findIndex((w) => w.id === nid);
             if (index === -1) return;
@@ -323,7 +324,7 @@ export default ({
 
         removeNodes(nodeIds);
       }),
-    [rawWorkflows, yWorkflows, undoTrackerActionWrapper],
+    [rawWorkflows, mainWorkflow?.id, yWorkflows, undoTrackerActionWrapper],
   );
 
   const handleYWorkflowRename = useCallback(

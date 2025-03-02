@@ -1,7 +1,7 @@
 import { Dispatch, SetStateAction, useCallback } from "react";
 import * as Y from "yjs";
 
-import type { Edge, Node, NodeChange } from "@flow/types";
+import type { Node, NodeChange, Workflow } from "@flow/types";
 
 import { fromYjsText, yNodeConstructor } from "./conversions";
 import type { YNodesArray, YNodeValue, YWorkflow } from "./types";
@@ -18,7 +18,7 @@ export default ({
 }: {
   currentYWorkflow: YWorkflow;
   yWorkflows: Y.Array<YWorkflow>;
-  rawWorkflows: Record<string, string | Node[] | Edge[]>[];
+  rawWorkflows: Workflow[];
   setSelectedNodeIds: Dispatch<SetStateAction<string[]>>;
   undoTrackerActionWrapper: (callback: () => void) => void;
   handleYWorkflowsRemove?: (workflowId: string[]) => void;
@@ -129,13 +129,17 @@ export default ({
                       return nodes.some(
                         (n) =>
                           n.id ===
-                          (currentYWorkflow.get("id")?.toJSON() as string),
+                          ((
+                            currentYWorkflow.get("id") as Y.Text
+                          )?.toJSON() as string),
                       );
                     });
                     const parentYWorkflow = yWorkflows.get(workflowIndex);
                     if (parentYWorkflow) {
                       removeParentYWorkflowNodePseudoPort(
-                        currentYWorkflow.get("id")?.toJSON() as string,
+                        (
+                          currentYWorkflow.get("id") as Y.Text
+                        )?.toJSON() as string,
                         parentYWorkflow,
                         nodeToDelete,
                       );
@@ -193,9 +197,9 @@ export default ({
         // if params.routingPort exists, it's parent is a subworkflow and
         // we need to update pseudoInputs and pseudoOutputs on the parent node.
         if (newParams.routingPort) {
-          const currentWorkflowId = currentYWorkflow
-            .get("id")
-            ?.toJSON() as string;
+          const currentWorkflowId = (
+            currentYWorkflow.get("id") as Y.Text
+          )?.toJSON() as string;
 
           const parentWorkflowIndex = rawWorkflows.findIndex((w) => {
             const nodes = w.nodes as Node[];

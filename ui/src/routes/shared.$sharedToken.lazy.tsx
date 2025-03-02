@@ -3,7 +3,6 @@ import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 
 import { LoadingSplashscreen } from "@flow/components";
 import SharedCanvas from "@flow/features/SharedCanvas";
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useFullscreen, useShortcuts } from "@flow/hooks";
 import { GraphQLProvider, useSharedProject } from "@flow/lib/gql";
 import { I18nProvider } from "@flow/lib/i18n";
@@ -53,10 +52,7 @@ const EditorComponent = () => {
 
   const { sharedProject } = useGetSharedProject(sharedToken);
 
-  const { state, isSynced } = useYjsSetup({
-    projectId: sharedProject?.id,
-    workflowId: DEFAULT_ENTRY_GRAPH_ID,
-  });
+  const { state, isSynced } = useYjsSetup({ projectId: sharedProject?.id });
 
   return !state || !isSynced ? (
     <LoadingSplashscreen />
