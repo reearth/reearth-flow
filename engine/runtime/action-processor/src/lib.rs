@@ -10,5 +10,3 @@ pub(crate) mod xml;
 
 #[cfg(test)]
 pub(crate) mod tests;
-
-mod temp;

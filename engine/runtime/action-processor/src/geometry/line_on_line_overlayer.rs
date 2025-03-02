@@ -1,14 +1,12 @@
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
-use reearth_flow_geometry::algorithm::intersects::Intersects;
-use reearth_flow_geometry::algorithm::line_intersection::{line_intersection, LineIntersection};
+use reearth_flow_geometry::algorithm::line_intersection::LineIntersection;
+use reearth_flow_geometry::algorithm::line_string_ops::{LineStringOps, LineStringWithTree2D};
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::geometry::Geometry2D;
-use reearth_flow_geometry::types::line::{Line, Line2D};
 use reearth_flow_geometry::types::line_string::LineString2D;
-use reearth_flow_geometry::types::no_value::NoValue;
-use reearth_flow_geometry::types::point::{Point, Point2D};
+use reearth_flow_geometry::types::point::Point;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -18,18 +16,14 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
-use rstar::{RTree, RTreeObject};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
-use crate::temp::{line_difference_2d, line_length_2d, point_on_line_2d};
 
 use super::errors::GeometryProcessorError;
 
 pub static POINT_PORT: Lazy<Port> = Lazy::new(|| Port::new("point"));
 pub static LINE_PORT: Lazy<Port> = Lazy::new(|| Port::new("line"));
-static EPSILON: f64 = 1e-6;
 
 #[derive(Debug, Clone, Default)]
 pub struct LineOnLineOverlayerFactory;
@@ -87,6 +81,7 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
         };
         Ok(Box::new(LineOnLineOverlayer {
             group_by: params.group_by,
+            torelance: params.torelance,
             buffer: HashMap::new(),
         }))
     }
@@ -96,12 +91,14 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
 #[serde(rename_all = "camelCase")]
 pub struct LineOnLineOverlayerParam {
     group_by: Option<Vec<Attribute>>,
+    torelance: f64,
 }
 
 #[allow(clippy::type_complexity)]
 #[derive(Debug, Clone)]
 pub struct LineOnLineOverlayer {
     group_by: Option<Vec<Attribute>>,
+    torelance: f64,
     buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
@@ -180,280 +177,55 @@ impl Processor for LineOnLineOverlayer {
     }
 }
 
-// split line with intersection
-// if the intersection is not on the line, return None
-fn line_split_with_intersection_2d(
-    line: Line2D<f64>,
-    intersecton: LineIntersection<f64, NoValue>,
-) -> Option<Vec<Line2D<f64>>> {
-    let result = match intersecton {
-        LineIntersection::SinglePoint {
-            intersection,
-            ..
-        } => {
-            if !point_on_line_2d(line, intersection) {
-                return None;
-            }
-            let first = Line::new(line.start, intersection);
-            let second = Line::new(intersection, line.end);
-
-            Some(vec![first, second])
-        }
-        LineIntersection::Collinear { intersection } => {
-            let result = line_difference_2d(line, intersection);
-            Some(result)
-        }
-    };
-
-    // remove zero length lines
-    result.map(|lines| {
-        lines
-            .into_iter()
-            .filter(|line| line_length_2d(*line) > EPSILON)
-            .collect()
-    })
-}
-
-fn line_split_with_multiple_intersections_2d(
-    line: Line2D<f64>,
-    intersections: Vec<LineIntersection<f64, NoValue>>,
-) -> Vec<Line2D<f64>> {
-    let mut current_lines = vec![line];
-    for intersection in intersections {
-        let mut new_lines = Vec::new();
-        for current_line in current_lines {
-            if let Some(lines) = line_split_with_intersection_2d(current_line, intersection) {
-                new_lines.extend(lines);
-            } else {
-                new_lines.push(current_line);
-            }
-        }
-        current_lines = new_lines;
-    }
-
-    current_lines
-}
-
-fn line_string_from_connected_lines_2d(lines: Vec<Line2D<f64>>) -> LineString2D<f64> {
-    let mut points = Vec::new();
-    for i in 0..lines.len() {
-        if i == 0 {
-            points.push(lines[i].start);
-        }
-        points.push(lines[i].end);
-    }
-
-    LineString2D::new(points)
-}
-
-fn split_line_string(ls: &LineString2D<f64>, splits: &Vec<IntersectionWithIndex>) -> Vec<LineString2D<f64>> {
-    let mut new_ls = Vec::new();
-    let mut lines_buffer = Vec::new();
-
-    for (i, line) in ls.lines().enumerate() {
-        let intersections = splits
-            .iter()
-            .filter(|tosplit| tosplit.line_index == i)
-            .map(|tosplit| tosplit.intersection.clone())
-            .collect::<Vec<_>>();
-        if intersections.is_empty() {
-            lines_buffer.push(line.clone());
-        } else {
-            let intersected =
-                line_split_with_multiple_intersections_2d(line.clone(), intersections);
-            println!("{:?}", intersected.len());
-            match intersected.len() {
-                0 => {
-                }
-                1 => {
-                    lines_buffer.push(intersected[0].clone());
-                }
-                _ => {
-                    for i in 0..intersected.len() - 1 {
-                        lines_buffer.push(intersected[i].clone());
-                        new_ls.push(line_string_from_connected_lines_2d(lines_buffer.clone()));
-                        lines_buffer.clear();
-                    }
-                    lines_buffer.push(intersected[intersected.len() - 1].clone());
-                }
-            }
-        }
-    }
-
-    new_ls.push(line_string_from_connected_lines_2d(lines_buffer.clone()));
-
-    new_ls
-}
-
-#[derive(Debug, Clone)]
-struct IntersectionWithIndex {
-    line_index: usize,
-    intersection: LineIntersection<f64, NoValue>,
-}
-
-struct IntersectionGraph {
-    // index of line string -> index of line string -> intersection
-    graph: Vec<HashMap<usize, Vec<IntersectionWithIndex>>>,
-}
-
-impl IntersectionGraph {
-    fn new(line_strings: &Vec<LineString2D<f64>>) -> Self {
-        #[derive(Debug, Clone)]
-        struct WrappedLine2D {
-            line: Line2D<f64>,
-            line_index: usize,
-            line_string_index: usize,
-        }
-
-
-        impl RTreeObject for WrappedLine2D {
-            type Envelope = rstar::AABB<Point2D<f64>>;
-
-            fn envelope(&self) -> Self::Envelope {
-                self.line.envelope()
-            }
-        }
-
-        let mut wrapped_lines = Vec::new();
-
-        for (line_string_index, line_string) in line_strings.iter().enumerate() {
-            for (line_index, line) in line_string.lines().enumerate() {
-                wrapped_lines.push(WrappedLine2D {
-                    line: line.clone(),
-                    line_index,
-                    line_string_index,
-                });
-            }
-        }
-
-        let line_rtree = RTree::bulk_load(wrapped_lines.clone());
-
-        let mut graph = vec![HashMap::new(); line_strings.len()];
-
-        for wrapped_line in wrapped_lines {
-            let envelope = wrapped_line.line.envelope();
-            let candidates = line_rtree.locate_in_envelope_intersecting(&envelope);
-            for candidate in candidates {
-                if wrapped_line.line_string_index >= candidate.line_string_index {
-                    continue;
-                }
-
-                if graph[wrapped_line.line_string_index].contains_key(&candidate.line_string_index) {
-                    continue;
-                }
-
-                if wrapped_line.line.intersects(&candidate.line) {
-                    if let Some(intersection) = line_intersection(wrapped_line.line, candidate.line)
-                    {
-                        if let LineIntersection::SinglePoint { is_proper, .. } = intersection {
-                            if !is_proper {
-                                continue;
-                            }
-                        }
-
-                        graph[candidate.line_string_index]
-                            .entry(wrapped_line.line_string_index)
-                            .or_insert(Vec::new())
-                            .push(IntersectionWithIndex {
-                                line_index: candidate.line_index,
-                                intersection: intersection.clone(),
-                            });
-
-                        graph[wrapped_line.line_string_index]
-                            .entry(candidate.line_string_index)
-                            .or_insert(Vec::new())
-                            .push(IntersectionWithIndex {
-                                line_index: wrapped_line.line_index,
-                                intersection,
-                            });
-                    }
-                }
-            }
-        }
-
-        Self { graph }
-    }
-
-    fn intersected_iter(
-        &self,
-        i: usize,
-    ) -> impl Iterator<Item = (usize, &Vec<IntersectionWithIndex>)> + '_ {
-        self.graph[i]
-            .iter()
-            .map(|(j, intersection)| (*j, intersection))
-    }
-
-    fn intersections(&self) -> Vec<LineIntersection<f64, NoValue>> {
-        let mut intersections = Vec::new();
-        for i in 0..self.graph.len() {
-            for (j, intersection) in self.intersected_iter(i) {
-                if i < j {
-                    let ints = intersection.iter().map(|i| i.intersection.clone());
-                    intersections.extend(ints);
-                }
-            }
-        }
-
-        intersections.into_iter().collect()
-    }
-}
-
-// struct LineStringIntersectionResult {
-//     ls1: Vec<LineString2D<f64>>,
-//     ls2: Vec<LineString2D<f64>>,
-//     intersections: Vec<LineIntersection<f64, NoValue>>,
-// }
-
-// intersection
-// fn line_string_intersection_2d(ls1: &LineString2D<f64>, ls2: &LineString2D<f64>) -> LineStringIntersectionResult {
-//     let mut tosplits_ls1 = Vec::new();
-//     let mut tosplits_ls2 = Vec::new();
-
-//     for (i1, line1) in ls1.lines().enumerate() {
-//         for (i2, line2) in ls2.lines().enumerate() {
-//             if let Some(intersection) = line_intersection(line1, line2) {
-//                 tosplits_ls1.push(ToSplit { index: i1, intersection });
-//                 tosplits_ls2.push(ToSplit { index: i2, intersection });
-//             }
-//         }
-//     }
-
-//     let new_ls1 = split_line_string(ls1, &tosplits_ls1);
-//     let new_ls2 = split_line_string(ls2, &tosplits_ls2);
-
-//     LineStringIntersectionResult {
-//         ls1: new_ls1,
-//         ls2: new_ls2,
-//         intersections: tosplits_ls1.iter().map(|tosplit| tosplit.intersection.clone()).collect(),
-//     }
-// }
-
 struct LineStringIntersectionResult {
-    // [[final line string; len of lines in line string]; the number of line strings]
-    lss: Vec<Vec<LineString2D<f64>>>,
-    intersections: Vec<LineIntersection<f64, NoValue>>,
-    intersection_graph: IntersectionGraph,
+    // [[final line string; len of lines in line string]; len of line strings]
+    line_strings: Vec<Vec<LineString2D<f64>>>,
+    split_points: Vec<Coordinate2D<f64>>,
 }
 
-fn line_string_intersection_2d(lss: &Vec<LineString2D<f64>>) -> LineStringIntersectionResult {
-    let graph = IntersectionGraph::new(lss);
-
-    let mut new_lss = Vec::new();
+fn line_string_intersection_2d(
+    lss: &Vec<LineString2D<f64>>,
+    torelance: f64,
+) -> LineStringIntersectionResult {
+    let mut result_line_strings = Vec::new();
+    let mut result_split_points = Vec::new();
 
     for (i, line_string) in lss.iter().enumerate() {
-        let mut splits = Vec::new();
-        for intersection in graph.intersected_iter(i) {
-            splits.extend(intersection.1.iter().map(|i| i.clone()));
-        };
-        
-        let new_ls = split_line_string(line_string, &splits);
-        new_lss.push(new_ls);
+        let packed_line_string = LineStringWithTree2D::new(line_string.clone());
+
+        let intersections = lss
+            .iter()
+            .enumerate()
+            .filter_map(|(j, other_line_string)| {
+                if i == j {
+                    return None;
+                }
+                let intersections = packed_line_string.intersection(other_line_string);
+                Some(intersections)
+            })
+            .flatten()
+            .collect::<Vec<_>>();
+
+        let split_points = intersections
+            .iter()
+            .map(|intersection| match intersection {
+                LineIntersection::SinglePoint { intersection, .. } => vec![intersection.clone()],
+                LineIntersection::Collinear { intersection } => {
+                    vec![intersection.start.clone(), intersection.end.clone()]
+                }
+            })
+            .flatten()
+            .collect::<Vec<_>>();
+
+        let splitted = packed_line_string.split(&split_points, torelance);
+
+        result_line_strings.push(splitted);
+        result_split_points.extend(split_points);
     }
 
     LineStringIntersectionResult {
-        lss: new_lss,
-        intersections: graph.intersections(),
-        intersection_graph: graph,
+        line_strings: result_line_strings,
+        split_points: result_split_points,
     }
 }
 
@@ -506,11 +278,16 @@ impl LineOnLineOverlayer {
             .flatten()
             .collect::<Vec<_>>();
 
-        let line_string_intersection_result = line_string_intersection_2d(&line_strings);
+        let line_string_intersection_result =
+            line_string_intersection_2d(&line_strings, self.torelance);
 
         let mut overlayed = OverlayedFeatures::new();
 
-        for (i, new_lss) in line_string_intersection_result.lss.iter().enumerate() {
+        for (i, new_lss) in line_string_intersection_result
+            .line_strings
+            .iter()
+            .enumerate()
+        {
             let attributes = features_2d[i].attributes.clone();
             for new_ls in new_lss {
                 let mut feature = Feature::new();
@@ -523,7 +300,7 @@ impl LineOnLineOverlayer {
 
         let last_feature = features_2d.last().unwrap();
 
-        for intersection in line_string_intersection_result.intersections {
+        for intersection in line_string_intersection_result.split_points {
             let mut feature = Feature::new();
 
             if let Some(group_by) = &self.group_by {
@@ -538,187 +315,11 @@ impl LineOnLineOverlayer {
                 feature.attributes = HashMap::new();
             }
 
-            match intersection {
-                LineIntersection::SinglePoint { intersection, .. } => {
-                    feature.geometry.value =
-                        GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(intersection)));
-                }
-                LineIntersection::Collinear { intersection } => {
-                    feature.geometry.value =
-                        GeometryValue::FlowGeometry2D(Geometry2D::LineString(LineString2D::new(
-                            vec![intersection.start.clone(), intersection.end.clone()],
-                        )));
-                }
-            }
-
+            feature.geometry.value =
+                GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(intersection.clone())));
             overlayed.point.push(feature);
         }
 
         overlayed
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use reearth_flow_geometry::types::coordinate::Coordinate2D;
-
-    use super::*;
-
-    #[test]
-    fn test_line_split_with_intersection_2d_single_point() {
-        let line = Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(4.0, 4.0));
-        let intersection = LineIntersection::SinglePoint {
-            intersection: Coordinate2D::new_(1.0, 1.0),
-            is_proper: true,
-        };
-        let result = line_split_with_intersection_2d(line, intersection).unwrap();
-        assert_eq!(
-            result[0],
-            Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(1.0, 1.0))
-        );
-        assert_eq!(
-            result[1],
-            Line2D::new(Coordinate2D::new_(1.0, 1.0), Coordinate2D::new_(4.0, 4.0))
-        );
-
-        let intersection = LineIntersection::SinglePoint {
-            intersection: Coordinate2D::new_(1.0, 3.0),
-            is_proper: true,
-        };
-
-        let result = line_split_with_intersection_2d(line, intersection);
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn test_line_split_with_intersection_2d_collinear() {
-        let line = Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(4.0, 4.0));
-        let intersection = LineIntersection::Collinear {
-            intersection: Line2D::new(Coordinate2D::new_(1.0, 1.0), Coordinate2D::new_(3.0, 3.0)),
-        };
-        let result = line_split_with_intersection_2d(line, intersection).unwrap();
-        assert_eq!(
-            result[0],
-            Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(1.0, 1.0))
-        );
-        assert_eq!(
-            result[1],
-            Line2D::new(Coordinate2D::new_(3.0, 3.0), Coordinate2D::new_(4.0, 4.0))
-        );
-
-        let intersection = LineIntersection::Collinear {
-            intersection: Line2D::new(Coordinate2D::new_(3.0, 3.0), Coordinate2D::new_(1.0, 1.0)),
-        };
-
-        let result = line_split_with_intersection_2d(line, intersection).unwrap();
-        assert_eq!(
-            result[0],
-            Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(1.0, 1.0))
-        );
-        assert_eq!(
-            result[1],
-            Line2D::new(Coordinate2D::new_(3.0, 3.0), Coordinate2D::new_(4.0, 4.0))
-        );
-    }
-
-    #[test]
-    fn test_line_split_with_multiple_intersections_2d() {
-        let line = Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(4.0, 4.0));
-        let intersections = vec![
-            LineIntersection::SinglePoint {
-                intersection: Coordinate2D::new_(1.0, 1.0),
-                is_proper: true,
-            },
-            LineIntersection::SinglePoint {
-                intersection: Coordinate2D::new_(3.0, 3.0),
-                is_proper: true,
-            },
-        ];
-        let result = line_split_with_multiple_intersections_2d(line, intersections);
-        assert_eq!(result.len(), 3);
-        assert_eq!(
-            result[0],
-            Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(1.0, 1.0))
-        );
-        assert_eq!(
-            result[1],
-            Line2D::new(Coordinate2D::new_(1.0, 1.0), Coordinate2D::new_(3.0, 3.0))
-        );
-        assert_eq!(
-            result[2],
-            Line2D::new(Coordinate2D::new_(3.0, 3.0), Coordinate2D::new_(4.0, 4.0))
-        );
-    }
-
-    #[test]
-    fn test_line_string_from_connected_lines_2d() {
-        let lines = vec![
-            Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(1.0, 1.0)),
-            Line2D::new(Coordinate2D::new_(1.0, 1.0), Coordinate2D::new_(2.0, 2.0)),
-        ];
-        let result = line_string_from_connected_lines_2d(lines);
-        let expected = LineString2D::new(vec![
-            Coordinate2D::new_(0.0, 0.0),
-            Coordinate2D::new_(1.0, 1.0),
-            Coordinate2D::new_(2.0, 2.0),
-        ])
-        .points()
-        .collect::<Vec<_>>();
-        for (i, point) in result.points().enumerate() {
-            assert_eq!(point, expected[i]);
-        }
-    }
-
-    #[test]
-    fn test_split_line_string() {
-        let line_string = LineString2D::new(vec![
-            Coordinate2D::new_(0.0, 0.0),
-            Coordinate2D::new_(3.0, 3.0),
-            Coordinate2D::new_(4.0, 4.0),
-        ]);
-        let tosplits = vec![IntersectionWithIndex {
-            line_index: 0,
-            intersection: LineIntersection::SinglePoint {
-                intersection: Coordinate2D::new_(2.0, 2.0),
-                is_proper: true,
-            },
-        }];
-        let result = split_line_string(&line_string, &tosplits);
-        assert_eq!(result.len(), 2);
-    }
-
-    #[test]
-    fn test_line_string_intersection_2d() {
-        let ls1 = LineString2D::new(vec![
-            Coordinate2D::new_(0.0, 0.0),
-            Coordinate2D::new_(1.0, 2.0),
-            Coordinate2D::new_(3.0, 2.0),
-            Coordinate2D::new_(4.0, 0.0),
-        ]);
-        let ls2 = LineString2D::new(vec![
-            Coordinate2D::new_(2.0, 0.0),
-            Coordinate2D::new_(2.0, 3.0),
-        ]);
-        let l3 = LineString2D::new(vec![
-            Coordinate2D::new_(0.0, 2.0),
-            Coordinate2D::new_(2.0, 1.0),
-            Coordinate2D::new_(2.0, 3.0),
-            Coordinate2D::new_(4.0, 2.0),
-        ]);
-
-        let result = line_string_intersection_2d(&vec![ls1, ls2, l3]);
-        for (i, lss) in result.lss.iter().enumerate() {
-            println!("connection: {}", i);
-            for s in result.intersection_graph.graph[i].iter() {
-                println!("{:?}", s);
-            }
-            println!("linestring");
-            for ls in lss.iter() {
-                println!("{:?}", ls);
-            }
-            println!("===");
-        }
-        // assert_eq!(result.lss.len(), 3);
-        // assert_eq!(result.intersections.len(), 4);
     }
 }
