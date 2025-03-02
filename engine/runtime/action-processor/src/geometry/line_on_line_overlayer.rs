@@ -202,6 +202,10 @@ fn line_string_intersection_2d(
                     return None;
                 }
                 let intersections = packed_line_string.intersection(other_line_string);
+                if intersections.is_empty() {
+                    return None;
+                }
+
                 Some(intersections)
             })
             .collect::<Vec<_>>();

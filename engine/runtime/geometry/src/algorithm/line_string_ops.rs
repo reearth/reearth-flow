@@ -75,12 +75,18 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
             let packed_lines = self.rtree.locate_in_envelope_intersecting(&envelope);
 
             for packed_line in packed_lines {
-                if packed_line.line.intersects(&other_line) {
-                    let intersection = line_intersection(packed_line.line, other_line);
-                    if let Some(intersection) = intersection {
-                        result.push(intersection);
-                    }
+                if !packed_line.line.intersects(&other_line) {
+                    continue;
                 }
+
+                let intersection =
+                    if let Some(intersection) = line_intersection(packed_line.line, other_line) {
+                        intersection
+                    } else {
+                        continue;
+                    };
+
+                result.push(intersection);
             }
         }
 
