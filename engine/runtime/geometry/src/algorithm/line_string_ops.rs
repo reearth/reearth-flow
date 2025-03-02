@@ -25,7 +25,7 @@ pub trait LineStringOps<T: GeoFloat, Z: GeoFloat> {
     fn intersection(&self, other: &LineString<T, Z>) -> Vec<LineIntersection<T, Z>>;
 
     /// Splits the line string using the provided coordinates as split points with a given tolerance.
-    fn split(&self, coordinates: &Vec<Coordinate<T, Z>>, tolerance: T) -> Vec<LineString<T, Z>>;
+    fn split(&self, coordinates: &[Coordinate<T, Z>], tolerance: T) -> Vec<LineString<T, Z>>;
 }
 
 #[derive(Debug, Clone)]
@@ -76,8 +76,7 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
 
             for packed_line in packed_lines {
                 if packed_line.line.intersects(&other_line) {
-                    let intersection =
-                        line_intersection(packed_line.line.clone(), other_line.clone());
+                    let intersection = line_intersection(packed_line.line, other_line);
                     if let Some(intersection) = intersection {
                         result.push(intersection);
                     }
@@ -90,7 +89,7 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
 
     fn split(
         &self,
-        coordinates: &Vec<Coordinate<f64, NoValue>>,
+        coordinates: &[Coordinate<f64, NoValue>],
         tolerance: f64,
     ) -> Vec<LineString<f64, NoValue>> {
         // Helper function to split a single line by multiple coordinates.
@@ -114,11 +113,11 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
         // Helper function to connect a vector of line segments into a single linestring.
         fn connected_lines_into_line_string(lines: Vec<Line2D<f64>>) -> LineString2D<f64> {
             let mut points = Vec::new();
-            for i in 0..lines.len() {
+            for (i, line) in lines.iter().enumerate() {
                 if i == 0 {
-                    points.push(lines[i].start);
+                    points.push(line.start);
                 }
-                points.push(lines[i].end);
+                points.push(line.end);
             }
 
             LineString2D::new(points)
@@ -146,24 +145,24 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
                 .cloned()
                 .collect::<Vec<_>>();
             if coords_indexes.is_empty() {
-                lines_buffer.push(line.clone());
+                lines_buffer.push(line);
             } else {
                 let split_points = coords_indexes
                     .iter()
-                    .map(|index| coordinates[*index].clone())
+                    .map(|index| coordinates[*index])
                     .collect::<Vec<_>>();
-                let splits = split_line_by_multiple_coords(line.clone(), split_points, tolerance);
+                let splits = split_line_by_multiple_coords(line, split_points, tolerance);
 
                 if splits.is_empty() {
                     continue;
                 }
 
-                for i in 0..splits.len() - 1 {
-                    lines_buffer.push(splits[i].clone());
+                for line in splits.iter().take(splits.len() - 1) {
+                    lines_buffer.push(*line);
                     new_lss.push(connected_lines_into_line_string(lines_buffer.clone()));
                     lines_buffer.clear();
                 }
-                lines_buffer.push(splits[splits.len() - 1].clone());
+                lines_buffer.push(*splits.last().unwrap());
             }
         }
 

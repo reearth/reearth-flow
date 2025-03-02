@@ -184,7 +184,7 @@ struct LineStringIntersectionResult {
 }
 
 fn line_string_intersection_2d(
-    lss: &Vec<LineString2D<f64>>,
+    lss: &[LineString2D<f64>],
     tolerance: f64,
 ) -> LineStringIntersectionResult {
     let mut result_line_strings = Vec::new();
@@ -208,13 +208,12 @@ fn line_string_intersection_2d(
 
         let split_points = intersections
             .iter()
-            .map(|intersection| match intersection {
-                LineIntersection::SinglePoint { intersection, .. } => vec![intersection.clone()],
+            .flat_map(|intersection| match intersection {
+                LineIntersection::SinglePoint { intersection, .. } => vec![*intersection],
                 LineIntersection::Collinear { intersection } => {
-                    vec![intersection.start.clone(), intersection.end.clone()]
+                    vec![intersection.start, intersection.end]
                 }
             })
-            .flatten()
             .collect::<Vec<_>>();
 
         let splitted = packed_line_string.split(&split_points, tolerance);
@@ -316,7 +315,7 @@ impl LineOnLineOverlayer {
             }
 
             feature.geometry.value =
-                GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(intersection.clone())));
+                GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(intersection)));
             overlayed.point.push(feature);
         }
 
