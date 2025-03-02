@@ -7,6 +7,7 @@ import { useShortcuts } from "@flow/hooks";
 import { useSharedProject } from "@flow/lib/gql";
 import { checkForReader } from "@flow/lib/reactFlow";
 import { useYjsStore } from "@flow/lib/yjs";
+import { rebuildWorkflow } from "@flow/lib/yjs/conversions";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
@@ -28,8 +29,10 @@ export default ({
 }) => {
   const { fitView } = useReactFlow();
 
+  const rawWorkflows = yWorkflows.map((w) => rebuildWorkflow(w));
+
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(
-    yWorkflows.get(0)?.get("id")?.toString() ?? "",
+    rawWorkflows.find((rw) => rw.isMain)?.id ?? rawWorkflows[0].id,
   );
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
@@ -43,7 +46,6 @@ export default ({
   const {
     canUndo,
     canRedo,
-    rawWorkflows,
     currentYWorkflow,
     handleYWorkflowAdd,
     // handleYWorkflowAddFromSelection,
@@ -60,6 +62,7 @@ export default ({
   } = useYjsStore({
     currentWorkflowId,
     yWorkflows,
+    rawWorkflows,
     undoManager,
     setSelectedNodeIds,
     setSelectedEdgeIds,

@@ -87,6 +87,7 @@ export const yWorkflowConstructor = (
   const yWorkflow = new Y.Map() as YWorkflow;
   const yId = toYjsText(id) ?? new Y.Text();
   const yName = toYjsText(name) ?? new Y.Text();
+  const yIsMain = isMain !== undefined || id === "main"; // backwards compatibility
   const yNodes =
     toYjsArray<YNode>(nodes?.map((n) => yNodeConstructor(n))) ??
     new Y.Array<YNode>();
@@ -98,8 +99,7 @@ export const yWorkflowConstructor = (
   yWorkflow.set("name", yName);
   yWorkflow.set("nodes", yNodes);
   yWorkflow.set("edges", yEdges);
-  if (isMain !== undefined) {
-    yWorkflow.set("isMain", isMain);
-  }
+  yWorkflow.set("isMain", yIsMain);
+
   return yWorkflow;
 };

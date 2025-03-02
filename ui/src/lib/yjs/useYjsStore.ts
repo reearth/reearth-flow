@@ -1,7 +1,8 @@
 import { Dispatch, SetStateAction } from "react";
 import * as Y from "yjs";
 
-import { rebuildWorkflow } from "./conversions";
+import { Workflow } from "@flow/types";
+
 import type { YWorkflow } from "./types";
 import useYEdge from "./useYEdge";
 import useYHistory from "./useYHistory";
@@ -12,6 +13,7 @@ import useYWorkflow from "./useYWorkflow";
 export default ({
   currentWorkflowId,
   yWorkflows,
+  rawWorkflows,
   undoManager,
   setSelectedNodeIds,
   setSelectedEdgeIds,
@@ -19,13 +21,12 @@ export default ({
 }: {
   currentWorkflowId: string;
   yWorkflows: Y.Array<YWorkflow>;
+  rawWorkflows: Workflow[];
   undoManager: Y.UndoManager | null;
   setSelectedNodeIds: Dispatch<SetStateAction<string[]>>;
   setSelectedEdgeIds: Dispatch<SetStateAction<string[]>>;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
-  const rawWorkflows = yWorkflows.map((w) => rebuildWorkflow(w));
-
   const {
     currentYWorkflow,
     handleYWorkflowAdd,

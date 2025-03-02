@@ -132,6 +132,9 @@ export const rebuildWorkflow = (yWorkflow: YWorkflow): Workflow => {
   yWorkflow.forEach((value, key) => {
     if (key === "id" && value instanceof Y.Text) {
       workflow.id = value.toString();
+      if (value.toString() === "main") {
+        workflow.isMain = true;
+      }
     } else if (key === "name" && value instanceof Y.Text) {
       workflow.name = value.toString();
     } else if (key === "isMain" && typeof value !== "undefined") {
