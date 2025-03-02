@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reearth_flow_geometry::algorithm::line_intersection::LineIntersection;
 use reearth_flow_geometry::algorithm::line_string_ops::{LineStringOps, LineStringWithTree2D};
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
@@ -18,7 +19,7 @@ use reearth_flow_runtime::{
 use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Number, Value};
 
 use super::errors::GeometryProcessorError;
 
@@ -177,23 +178,23 @@ impl Processor for LineOnLineOverlayer {
     }
 }
 
-struct LineStringIntersectionResult {
-    // [[final line string; len of lines in line string]; len of line strings]
-    line_strings: Vec<Vec<LineString2D<f64>>>,
+struct OverlayResultLineString {
+    line_strings: Vec<LineString2D<f64>>,
+    overlay_count: usize,
+}
+
+struct OverlayResult {
+    result_line_strings: Vec<OverlayResultLineString>,
     split_points: Vec<Coordinate2D<f64>>,
 }
 
 fn line_string_intersection_2d(
-    lss: &[LineString2D<f64>],
+    line_strings: &[LineString2D<f64>],
     tolerance: f64,
-) -> LineStringIntersectionResult {
-    let mut result_line_strings = Vec::new();
-    let mut result_split_points = Vec::new();
-
-    for (i, line_string) in lss.iter().enumerate() {
+) -> OverlayResult {
+    let results = line_strings.par_iter().enumerate().map(|(i, line_string)| {
         let packed_line_string = LineStringWithTree2D::new(line_string.clone());
-
-        let intersections = lss
+        let intersections_by_others = line_strings
             .iter()
             .enumerate()
             .filter_map(|(j, other_line_string)| {
@@ -203,8 +204,11 @@ fn line_string_intersection_2d(
                 let intersections = packed_line_string.intersection(other_line_string);
                 Some(intersections)
             })
-            .flatten()
             .collect::<Vec<_>>();
+
+        let overlay_count = intersections_by_others.len();
+
+        let intersections = intersections_by_others.iter().flatten().collect::<Vec<_>>();
 
         let split_points = intersections
             .iter()
@@ -218,13 +222,20 @@ fn line_string_intersection_2d(
 
         let splitted = packed_line_string.split(&split_points, tolerance);
 
-        result_line_strings.push(splitted);
-        result_split_points.extend(split_points);
-    }
+        (
+            OverlayResultLineString {
+                line_strings: splitted,
+                overlay_count,
+            },
+            split_points,
+        )
+    });
 
-    LineStringIntersectionResult {
-        line_strings: result_line_strings,
-        split_points: result_split_points,
+    let (result_line_strings, split_points): (Vec<_>, Vec<_>) = results.unzip();
+
+    OverlayResult {
+        result_line_strings,
+        split_points: split_points.into_iter().flatten().collect(),
     }
 }
 
@@ -282,17 +293,22 @@ impl LineOnLineOverlayer {
 
         let mut overlayed = OverlayedFeatures::new();
 
-        for (i, new_lss) in line_string_intersection_result
-            .line_strings
+        for (i, result_lss) in line_string_intersection_result
+            .result_line_strings
             .iter()
             .enumerate()
         {
             let attributes = features_2d[i].attributes.clone();
-            for new_ls in new_lss {
+            let overlay_count = result_lss.overlay_count;
+            for result_ls in result_lss.line_strings.iter() {
                 let mut feature = Feature::new();
                 feature.attributes = attributes.clone();
+                feature.attributes.insert(
+                    Attribute::new("overlayCount"),
+                    AttributeValue::Number(Number::from(overlay_count)),
+                );
                 feature.geometry.value =
-                    GeometryValue::FlowGeometry2D(Geometry2D::LineString(new_ls.clone()));
+                    GeometryValue::FlowGeometry2D(Geometry2D::LineString(result_ls.clone()));
                 overlayed.line.push(feature);
             }
         }
