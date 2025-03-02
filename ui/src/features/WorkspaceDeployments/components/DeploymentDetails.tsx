@@ -7,13 +7,14 @@ import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 // import { LogConsole } from "@flow/features/Editor/components/BottomPanel/components";
 import { useT } from "@flow/lib/i18n";
 import type { Deployment } from "@flow/types";
+import { formatTimestamp } from "@flow/utils";
 
 import { DeploymentEditDialog } from "./DeploymentEditDialog";
 
 type Props = {
   selectedDeployment?: Deployment;
   setDeploymentToBeDeleted: (deployment?: Deployment) => void;
-  onDeploymentRun: () => void;
+  onDeploymentRun: (deployment?: Deployment) => Promise<void>;
 };
 
 const DeploymentDetails: React.FC<Props> = ({
@@ -58,21 +59,22 @@ const DeploymentDetails: React.FC<Props> = ({
             {
               id: "createdAt",
               name: t("Created At"),
-              value: selectedDeployment.createdAt || t("N/A") || "",
+              value:
+                formatTimestamp(selectedDeployment.createdAt) ||
+                t("Never") ||
+                "",
             },
             {
               id: "updatedAt",
               name: t("Updated At"),
-              value: selectedDeployment.updatedAt || t("Never") || "",
-            },
-            {
-              id: "workflowUrl",
-              name: t("Workflow Url"),
-              value: selectedDeployment.workflowUrl || t("N/A") || "",
+              value:
+                formatTimestamp(selectedDeployment.updatedAt) ||
+                t("Never") ||
+                "",
             },
             {
               id: "workflowDownload",
-              name: t("Workflow Url"),
+              name: t("Workflow Download"),
               value: selectedDeployment.workflowUrl,
               type: "download",
             },
@@ -89,7 +91,10 @@ const DeploymentDetails: React.FC<Props> = ({
             <CaretLeft />
           </Button>
           <div className="flex gap-2">
-            <Button variant="default" size="sm" onClick={onDeploymentRun}>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => onDeploymentRun(selectedDeployment)}>
               <Play />
               {t("Run")}
             </Button>

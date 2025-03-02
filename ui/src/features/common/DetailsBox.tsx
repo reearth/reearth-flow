@@ -1,4 +1,5 @@
-import { Download } from "@phosphor-icons/react";
+import { CaretDown, CaretUp, Download } from "@phosphor-icons/react";
+import { useState } from "react";
 
 import { Button } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -7,17 +8,20 @@ import { openLinkInNewTab } from "@flow/utils";
 export type DetailsBoxContent = {
   id: string;
   name: string;
-  value: string;
+  value: string | string[];
   type?: "link" | "download" | "status";
 };
 
 type Props = {
   title: string;
   content?: DetailsBoxContent[];
+  collapsible?: boolean;
 };
 
-const DetailsBox: React.FC<Props> = ({ title, content }) => {
+const DetailsBox: React.FC<Props> = ({ title, content, collapsible }) => {
   const t = useT();
+  const [collapsed, setCollapsed] = useState(false);
+
   const filteredContent = content?.filter(
     (detail) => detail.type !== "download" && detail.type !== "status",
   );
@@ -60,41 +64,84 @@ const DetailsBox: React.FC<Props> = ({ title, content }) => {
 
   return (
     <div className="rounded-md border dark:font-thin">
-      <div className="flex justify-between border-b px-4 py-2">
-        <p className="text-xl">{title}</p>
+      <div
+        className={`flex ${collapsible ? "cursor-pointer" : ""} justify-between px-4 py-2`}
+        onClick={() => collapsible && setCollapsed(!collapsed)}>
+        <div className="flex items-center gap-4">
+          <p className="text-xl">{title}</p>
+          {collapsible ? collapsed ? <CaretUp /> : <CaretDown /> : null}
+        </div>
         <div className="flex items-center gap-2">
-          {downloadContent?.map((detail) => (
-            <Button
-              key={detail.id}
-              className="p-0"
-              variant="outline"
-              type="button">
-              <a
-                className="flex h-full items-center gap-2 rounded px-4 py-2"
-                href={detail.value}
-                onClick={() => detail.value && handleDownload(detail.value)}>
-                <Download />
-                <p className="font-light">{detail.name}</p>
-              </a>
-            </Button>
-          ))}
+          {!collapsed &&
+            downloadContent?.map((detail) =>
+              Array.isArray(detail.value) ? (
+                detail.value.map((value, index) => (
+                  <Button
+                    key={detail.id + index}
+                    className="p-0"
+                    variant="outline"
+                    size="sm"
+                    type="button">
+                    <a
+                      className="flex h-full items-center gap-2 rounded px-4 py-2"
+                      href={value}
+                      onClick={() => value && handleDownload(value)}>
+                      <Download />
+                      <p className="max-w-[100px] truncate font-light">
+                        {value.split("/").pop()}
+                      </p>
+                    </a>
+                  </Button>
+                ))
+              ) : (
+                <Button
+                  key={detail.id}
+                  className="p-0"
+                  variant="outline"
+                  size="sm"
+                  type="button">
+                  <a
+                    className="flex h-full items-center gap-2 rounded px-4 py-2"
+                    href={detail.value}
+                    onClick={() =>
+                      typeof detail.value === "string" &&
+                      handleDownload(detail.value)
+                    }>
+                    <Download />
+                    <p className="font-light">{detail.name}</p>
+                  </a>
+                </Button>
+              ),
+            )}
           {status && (
             <div
-              className={`${status === "completed" ? "bg-success" : status === "running" ? "active-node-status" : status === "failed" ? "bg-destructive" : "queued-node-status"} size-4 rounded-full`}
+              className={`${status === "completed" ? "bg-success" : status === "running" ? "active-node-status" : status === "cancelled" ? "bg-warning" : status === "failed" ? "bg-destructive" : "queued-node-status"} size-4 rounded-full`}
             />
           )}
         </div>
       </div>
-      <div className="flex gap-4 p-4">
+      <div
+        className={`flex flex-col gap-1 border-t p-4 ${collapsed ? "hidden" : ""}`}>
         {filteredContent ? (
-          <>
-            <div className="flex flex-col gap-2">
-              {filteredContent.map(({ name }) => (
-                <p>{name}</p>
-              ))}
-            </div>
-            <div className="flex flex-col gap-2">
-              {filteredContent.map(({ value, type }) => (
+          filteredContent.map(({ name, value, type }) => (
+            <div key={name + value + type} className="flex items-center">
+              <p className="w-[150px] shrink-0">{name}</p>
+              {Array.isArray(value) ? (
+                <div className="flex flex-col gap-1">
+                  {value.map((v, idx) => (
+                    <div key={idx} className="flex items-center gap-4">
+                      <p>({idx + 1})</p>
+                      <p
+                        className={`${type === "link" ? "cursor-pointer text-sm font-light text-blue-400 hover:text-blue-300" : "font-light"}`}
+                        onClick={
+                          type === "link" && v ? openLinkInNewTab(v) : undefined
+                        }>
+                        {v}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
                 <p
                   className={`${type === "link" ? "cursor-pointer font-light text-blue-400 hover:text-blue-300" : "font-light"}`}
                   onClick={
@@ -104,9 +151,9 @@ const DetailsBox: React.FC<Props> = ({ title, content }) => {
                   }>
                   {value}
                 </p>
-              ))}
+              )}
             </div>
-          </>
+          ))
         ) : (
           <p>{t("No content to display")}</p>
         )}

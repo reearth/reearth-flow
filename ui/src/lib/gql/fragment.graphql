@@ -48,6 +48,8 @@ fragment Job on Job {
   status
   startedAt
   completedAt
+  logsURL
+  outputURLs
   deployment {
     ...Deployment
   }
