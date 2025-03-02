@@ -10,7 +10,13 @@ const FlowLogo: React.FC<{
 }> = ({ className, wrapperClassName, id, style }) => {
   const { brandLogoUrl } = config();
   return brandLogoUrl ? (
-    <img id={id} style={style} className={className} src={brandLogoUrl} />
+    <img
+      id={id}
+      style={style}
+      className={className}
+      src={brandLogoUrl}
+      alt="Flow Logo"
+    />
   ) : (
     <div id={id} className={wrapperClassName}>
       <svg
