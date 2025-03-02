@@ -106,6 +106,7 @@ export default ({
 
       newEdges = addEdge(
         {
+          id: generateUUID(),
           source: sourceNode.id,
           target: targetNode.id,
           sourceHandle: e.sourceHandle ?? null,
