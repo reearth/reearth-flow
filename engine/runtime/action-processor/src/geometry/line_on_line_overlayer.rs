@@ -81,7 +81,7 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
         };
         Ok(Box::new(LineOnLineOverlayer {
             group_by: params.group_by,
-            torelance: params.torelance,
+            tolerance: params.tolerance,
             buffer: HashMap::new(),
         }))
     }
@@ -91,14 +91,14 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
 #[serde(rename_all = "camelCase")]
 pub struct LineOnLineOverlayerParam {
     group_by: Option<Vec<Attribute>>,
-    torelance: f64,
+    tolerance: f64,
 }
 
 #[allow(clippy::type_complexity)]
 #[derive(Debug, Clone)]
 pub struct LineOnLineOverlayer {
     group_by: Option<Vec<Attribute>>,
-    torelance: f64,
+    tolerance: f64,
     buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
@@ -185,7 +185,7 @@ struct LineStringIntersectionResult {
 
 fn line_string_intersection_2d(
     lss: &Vec<LineString2D<f64>>,
-    torelance: f64,
+    tolerance: f64,
 ) -> LineStringIntersectionResult {
     let mut result_line_strings = Vec::new();
     let mut result_split_points = Vec::new();
@@ -217,7 +217,7 @@ fn line_string_intersection_2d(
             .flatten()
             .collect::<Vec<_>>();
 
-        let splitted = packed_line_string.split(&split_points, torelance);
+        let splitted = packed_line_string.split(&split_points, tolerance);
 
         result_line_strings.push(splitted);
         result_split_points.extend(split_points);
@@ -279,7 +279,7 @@ impl LineOnLineOverlayer {
             .collect::<Vec<_>>();
 
         let line_string_intersection_result =
-            line_string_intersection_2d(&line_strings, self.torelance);
+            line_string_intersection_2d(&line_strings, self.tolerance);
 
         let mut overlayed = OverlayedFeatures::new();
 

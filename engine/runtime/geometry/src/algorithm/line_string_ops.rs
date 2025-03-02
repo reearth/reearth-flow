@@ -25,7 +25,7 @@ pub trait LineStringOps<T: GeoFloat, Z: GeoFloat> {
     fn intersection(&self, other: &LineString<T, Z>) -> Vec<LineIntersection<T, Z>>;
 
     /// Splits the line string using the provided coordinates as split points with a given tolerance.
-    fn split(&self, coordinates: &Vec<Coordinate<T, Z>>, torelance: T) -> Vec<LineString<T, Z>>;
+    fn split(&self, coordinates: &Vec<Coordinate<T, Z>>, tolerance: T) -> Vec<LineString<T, Z>>;
 }
 
 #[derive(Debug, Clone)]
@@ -91,20 +91,20 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
     fn split(
         &self,
         coordinates: &Vec<Coordinate<f64, NoValue>>,
-        torelance: f64,
+        tolerance: f64,
     ) -> Vec<LineString<f64, NoValue>> {
         // Helper function to split a single line by multiple coordinates.
         fn split_line_by_multiple_coords(
             line: Line<f64, NoValue>,
             coords: Vec<Coordinate<f64, NoValue>>,
-            torelance: f64,
+            tolerance: f64,
         ) -> Vec<Line<f64, NoValue>> {
             let mut lines = vec![line];
             for coord in coords {
                 let mut new_lines = Vec::new();
                 // Split each current segment by the coordinate.
                 for line in lines {
-                    new_lines.extend(line.split(&coord, torelance));
+                    new_lines.extend(line.split(&coord, tolerance));
                 }
                 lines = new_lines;
             }
@@ -152,7 +152,7 @@ impl LineStringOps<f64, NoValue> for LineStringWithTree2D {
                     .iter()
                     .map(|index| coordinates[*index].clone())
                     .collect::<Vec<_>>();
-                let splits = split_line_by_multiple_coords(line.clone(), split_points, torelance);
+                let splits = split_line_by_multiple_coords(line.clone(), split_points, tolerance);
 
                 if splits.is_empty() {
                     continue;

@@ -6,7 +6,7 @@ use crate::{
 pub fn line_difference_2d<T: GeoFloat>(
     line0: Line2D<T>,
     line1: Line2D<T>,
-    torelance: T,
+    tolerance: T,
 ) -> Vec<Line2D<T>> {
     // Linear interpolation
     fn lerp<T: GeoFloat>(a: Coordinate2D<T>, b: Coordinate2D<T>, t: T) -> Coordinate2D<T> {
@@ -30,7 +30,7 @@ pub fn line_difference_2d<T: GeoFloat>(
     let cross = (line0.end.x - line0.start.x) * (line1.end.y - line1.start.y)
         - (line0.end.y - line0.start.y) * (line1.end.x - line1.start.x);
 
-    if cross.abs() > torelance {
+    if cross.abs() > tolerance {
         // No intersection (lines are not on the same straight line)
         return vec![line0];
     }
