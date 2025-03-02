@@ -7,6 +7,7 @@ use reearth_flow_geometry::algorithm::line_string_ops::{LineStringOps, LineStrin
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::line_string::LineString2D;
+use reearth_flow_geometry::types::no_value::NoValue;
 use reearth_flow_geometry::types::point::Point;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
@@ -178,71 +179,6 @@ impl Processor for LineOnLineOverlayer {
     }
 }
 
-struct OverlayResultLineString {
-    line_strings: Vec<LineString2D<f64>>,
-    overlay_count: usize,
-}
-
-struct OverlayResult {
-    result_line_strings: Vec<OverlayResultLineString>,
-    split_points: Vec<Coordinate2D<f64>>,
-}
-
-fn line_string_intersection_2d(
-    line_strings: &[LineString2D<f64>],
-    tolerance: f64,
-) -> OverlayResult {
-    let results = line_strings.par_iter().enumerate().map(|(i, line_string)| {
-        let packed_line_string = LineStringWithTree2D::new(line_string.clone());
-        let intersections_by_others = line_strings
-            .iter()
-            .enumerate()
-            .filter_map(|(j, other_line_string)| {
-                if i == j {
-                    return None;
-                }
-                let intersections = packed_line_string.intersection(other_line_string);
-                if intersections.is_empty() {
-                    return None;
-                }
-
-                Some(intersections)
-            })
-            .collect::<Vec<_>>();
-
-        let overlay_count = intersections_by_others.len();
-
-        let intersections = intersections_by_others.iter().flatten().collect::<Vec<_>>();
-
-        let split_points = intersections
-            .iter()
-            .flat_map(|intersection| match intersection {
-                LineIntersection::SinglePoint { intersection, .. } => vec![*intersection],
-                LineIntersection::Collinear { intersection } => {
-                    vec![intersection.start, intersection.end]
-                }
-            })
-            .collect::<Vec<_>>();
-
-        let splitted = packed_line_string.split(&split_points, tolerance);
-
-        (
-            OverlayResultLineString {
-                line_strings: splitted,
-                overlay_count,
-            },
-            split_points,
-        )
-    });
-
-    let (result_line_strings, split_points): (Vec<_>, Vec<_>) = results.unzip();
-
-    OverlayResult {
-        result_line_strings,
-        split_points: split_points.into_iter().flatten().collect(),
-    }
-}
-
 struct OverlayedFeatures {
     point: Vec<Feature>,
     line: Vec<Feature>,
@@ -319,7 +255,7 @@ impl LineOnLineOverlayer {
 
         let last_feature = features_2d.last().unwrap();
 
-        for intersection in line_string_intersection_result.split_points {
+        for result_coords in line_string_intersection_result.split_coords {
             let mut feature = Feature::new();
 
             if let Some(group_by) = &self.group_by {
@@ -335,10 +271,122 @@ impl LineOnLineOverlayer {
             }
 
             feature.geometry.value =
-                GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(intersection)));
+                GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(result_coords.coordinates)));
             overlayed.point.push(feature);
         }
 
         overlayed
+    }
+}
+
+/// Line strings to output
+struct OverlayResultLineString {
+    line_strings: Vec<LineString2D<f64>>,
+    overlay_count: usize,
+}
+
+/// Coordinates of the intersection point to output
+struct OverlayResultCoordinates {
+    i_by: usize,
+    i_other: usize,
+    coordinates: Coordinate2D<f64>,
+}
+
+/// Result of overlaying line strings
+struct OverlayResult {
+    result_line_strings: Vec<OverlayResultLineString>,
+    split_coords: Vec<OverlayResultCoordinates>,
+}
+
+/// Calculate the intersection between line strings
+fn line_string_intersection_2d(
+    line_strings: &[LineString2D<f64>],
+    tolerance: f64,
+) -> OverlayResult {
+    let results = line_strings.par_iter().enumerate().map(|(i, line_string)| {
+        let packed_line_string = LineStringWithTree2D::new(line_string.clone());
+
+        struct IntersectionWithIndex {
+            i_by: usize,
+            i_other: usize,
+            intersection: LineIntersection<f64, NoValue>,
+        }
+
+        let inters_with_index = line_strings
+            .iter()
+            .enumerate()
+            .filter_map(|(j, other_line_string)| {
+                if i == j {
+                    return None;
+                }
+                let intersections = packed_line_string.intersection(other_line_string);
+                if intersections.is_empty() {
+                    return None;
+                }
+
+                let inters = intersections
+                    .into_iter()
+                    .map(|intersection| IntersectionWithIndex {
+                        i_by: i,
+                        i_other: j,
+                        intersection,
+                    })
+                    .collect::<Vec<_>>();
+
+                Some(inters)
+            })
+            .collect::<Vec<_>>();
+
+        let overlay_count = inters_with_index.len();
+
+        let split_coords_with_index = inters_with_index
+            .iter()
+            .flatten()
+            .flat_map(|inter| {
+                let coords = match inter.intersection {
+                    LineIntersection::SinglePoint { intersection, .. } => vec![intersection],
+                    LineIntersection::Collinear { intersection } => {
+                        // treat collinear as points
+                        vec![intersection.start, intersection.end]
+                    }
+                };
+
+                coords
+                    .into_iter()
+                    .map(|coordinates| OverlayResultCoordinates {
+                        coordinates,
+                        i_by: inter.i_by,
+                        i_other: inter.i_other,
+                    })
+            })
+            .collect::<Vec<_>>();
+
+        let split_coords = split_coords_with_index
+            .iter()
+            .map(|split| split.coordinates)
+            .collect::<Vec<_>>();
+
+        let result_line_strings = packed_line_string.split(&split_coords, tolerance);
+
+        // remove duplicates
+        let result_coords = split_coords_with_index
+            .into_iter()
+            .filter(|split| split.i_by > split.i_other)
+            .collect::<Vec<_>>();
+
+        (
+            OverlayResultLineString {
+                line_strings: result_line_strings,
+                overlay_count,
+            },
+            result_coords,
+        )
+    });
+
+    let (result_line_strings, split_coords): (Vec<_>, Vec<_>) = results.unzip();
+
+    OverlayResult {
+        result_line_strings,
+        split_coords: split_coords.into_iter().flatten().collect::<Vec<_>>(),
     }
 }
