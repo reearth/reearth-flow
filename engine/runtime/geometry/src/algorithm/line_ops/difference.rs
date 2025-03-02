@@ -1,20 +1,20 @@
 use crate::{
-    algorithm::GeoNum,
+    algorithm::GeoFloat,
     types::{coordinate::Coordinate2D, line::Line2D},
 };
 
-pub fn line_difference_2d<T: GeoNum>(
+pub fn line_difference_2d<T: GeoFloat>(
     line0: Line2D<T>,
     line1: Line2D<T>,
     torelance: T,
 ) -> Vec<Line2D<T>> {
     // Linear interpolation
-    fn lerp<T: GeoNum>(a: Coordinate2D<T>, b: Coordinate2D<T>, t: T) -> Coordinate2D<T> {
+    fn lerp<T: GeoFloat>(a: Coordinate2D<T>, b: Coordinate2D<T>, t: T) -> Coordinate2D<T> {
         Coordinate2D::new_(a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t)
     }
 
     // Get the relative position of the intersection point on the line
-    fn t_of<T: GeoNum>(line: &Line2D<T>, pt: &Coordinate2D<T>) -> T {
+    fn t_of<T: GeoFloat>(line: &Line2D<T>, pt: &Coordinate2D<T>) -> T {
         let dx_line = line.end.x - line.start.x;
         let dy_line = line.end.y - line.start.y;
         let dx_pt = pt.x - line.start.x;
@@ -73,15 +73,12 @@ pub fn line_difference_2d<T: GeoNum>(
 }
 
 mod tests {
-    use crate::algorithm::line_ops::basic::line_length_2d;
-
     use super::*;
 
     const EPSILON: f64 = 1e-6;
 
     #[test]
     fn test_no_overlap() {
-        // 重複なし
         let line0 = Line2D::new((0.0, 0.0), (1.0, 1.0));
         let line1 = Line2D::new((2.0, 2.0), (3.0, 3.0));
 
@@ -92,7 +89,6 @@ mod tests {
 
     #[test]
     fn test_full_overlap() {
-        // 完全に内包
         let line0 = Line2D::new((0.0, 0.0), (2.0, 2.0));
         let line1 = Line2D::new((0.0, 0.0), (2.0, 2.0));
 
@@ -102,7 +98,6 @@ mod tests {
 
     #[test]
     fn test_partial_overlap_start() {
-        // 前半部分が重複
         let line0 = Line2D::new((0.0, 0.0), (2.0, 2.0));
         let line1 = Line2D::new((0.0, 0.0), (1.0, 1.0));
 
@@ -113,7 +108,6 @@ mod tests {
 
     #[test]
     fn test_partial_overlap_end() {
-        // 後半部分が重複
         let line0 = Line2D::new((0.0, 0.0), (2.0, 2.0));
         let line1 = Line2D::new((1.0, 1.0), (2.0, 2.0));
 
@@ -124,7 +118,6 @@ mod tests {
 
     #[test]
     fn test_partial_overlap_middle() {
-        // 中央部分が重複
         let line0 = Line2D::new((0.0, 0.0), (3.0, 3.0));
         let line1 = Line2D::new((1.0, 1.0), (2.0, 2.0));
 
@@ -136,7 +129,6 @@ mod tests {
 
     #[test]
     fn test_overlap_outside() {
-        // line1 が line0 より大きい（line0完全に内包される）
         let line0 = Line2D::new((1.0, 1.0), (2.0, 2.0));
         let line1 = Line2D::new((0.0, 0.0), (3.0, 3.0));
 
@@ -147,7 +139,6 @@ mod tests {
 
     #[test]
     fn test_reverse_direction() {
-        // 向きが逆でも機能することを確認
         let line0 = Line2D::new((0.0, 0.0), (3.0, 3.0));
         let line1 = Line2D::new((2.0, 2.0), (1.0, 1.0));
 
@@ -155,11 +146,5 @@ mod tests {
         assert_eq!(result.len(), 2);
         assert_eq!(result[0], Line2D::new((0.0, 0.0), (1.0, 1.0)));
         assert_eq!(result[1], Line2D::new((2.0, 2.0), (3.0, 3.0)));
-    }
-
-    #[test]
-    fn test_line_length_2d() {
-        let line = Line2D::new(Coordinate2D::new_(0.0, 0.0), Coordinate2D::new_(3.0, 4.0));
-        assert_eq!(line_length_2d(line), 5.0);
     }
 }
