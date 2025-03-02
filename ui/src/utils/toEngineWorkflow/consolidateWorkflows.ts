@@ -8,15 +8,15 @@ export const consolidateWorkflows = (
   name: string,
   workflows: Workflow[],
 ): EngineReadyWorkflow | undefined => {
-  const defaultEntryWorkflow = workflows.find((wf) => wf.isMain);
-  if (!defaultEntryWorkflow) return undefined;
+  const mainWorkflowId = workflows.find((wf) => wf.isMain)?.id;
+  if (!mainWorkflowId) return undefined;
 
   const subGraphs = createSubGraphs(workflows);
 
   const consolidatedWorkflow = {
     id: generateUUID(),
     name,
-    entryGraphId: defaultEntryWorkflow.id,
+    entryGraphId: mainWorkflowId,
     // with // TODO: conversion of data.params to with
     graphs: subGraphs,
   };

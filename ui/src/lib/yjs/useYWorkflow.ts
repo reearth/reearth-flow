@@ -1,5 +1,5 @@
 import { XYPosition } from "@xyflow/react";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import * as Y from "yjs";
 import { Array as YArray } from "yjs";
 
@@ -33,7 +33,10 @@ export default ({
     rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
   );
 
-  const mainWorkflow = rawWorkflows.find((rw) => rw.isMain);
+  const mainWorkflow = useMemo(
+    () => rawWorkflows.find((rw) => rw.isMain),
+    [rawWorkflows],
+  );
 
   const fetchRouterConfigs = useCallback(async () => {
     const [inputRouter, outputRouter] = await Promise.all([
@@ -335,10 +338,11 @@ export default ({
         }
 
         // Update subworkflow node in main workflow if this is a subworkflow
-        const mainWorkflow = yWorkflows.get(0);
-        const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesArray;
+        const mainYWorkflowIndex = rawWorkflows.findIndex((rw) => rw.isMain);
+        const mainYWorkflow = yWorkflows.get(mainYWorkflowIndex);
+        const mainYWorkflowNodes = mainYWorkflow?.get("nodes") as YNodesArray;
 
-        for (const node of mainWorkflowNodes) {
+        for (const node of mainYWorkflowNodes) {
           // Get the id from the YNode
           const nodeId = (node.get("id") as Y.Text).toString();
 
@@ -351,7 +355,7 @@ export default ({
           }
         }
       }),
-    [undoTrackerActionWrapper, yWorkflows],
+    [undoTrackerActionWrapper, rawWorkflows, yWorkflows],
   );
 
   return {

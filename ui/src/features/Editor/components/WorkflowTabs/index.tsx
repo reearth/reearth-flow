@@ -1,4 +1,4 @@
-import { memo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 
 import { ScrollArea } from "@flow/components";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
@@ -33,7 +33,7 @@ const WorkflowTabs: React.FC<Props> = ({
   const [name, setName] = useState<string | undefined>();
   const [editId, setEditId] = useState<string | undefined>();
 
-  const mainWorkflow = openWorkflows?.[0];
+  const mainWorkflow = useMemo(() => openWorkflows?.[0], [openWorkflows]);
 
   const subWorkflows: Workflow[] | undefined = openWorkflows?.slice(1);
 
