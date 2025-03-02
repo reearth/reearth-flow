@@ -4,14 +4,14 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum LineStreamType<T: GeoFloat> {
-    Line2D(Line2D<T>),
+pub enum LineStreamType<T> {
+    Line(T),
     Split,
 }
 
 /// Joins line segments into continuous line strings.
-fn join_line_stream_2d<T: GeoFloat>(
-    line_stream: Vec<LineStreamType<T>>,
+pub fn join_line_stream_2d<T: GeoFloat>(
+    line_stream: Vec<LineStreamType<Line2D<T>>>,
     torelance: T,
 ) -> Vec<LineString2D<T>> {
     if line_stream.is_empty() {
@@ -24,7 +24,7 @@ fn join_line_stream_2d<T: GeoFloat>(
     let mut coords_buffer = vec![];
     for line in line_stream {
         match line {
-            LineStreamType::Line2D(line) => {
+            LineStreamType::Line(line) => {
                 if let Some(end_point) = end_point {
                     if Line2D::new(end_point, line.start).length() < torelance {
                         coords_buffer.push(line.end);

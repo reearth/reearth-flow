@@ -25,6 +25,8 @@ pub mod is_convex;
 pub mod kernels;
 pub mod line_intersection;
 pub mod line_ops;
+pub mod line_stream;
+pub mod line_string_ops;
 pub mod map_coords;
 pub mod relate;
 pub mod remove_repeated_points;

@@ -3,7 +3,6 @@ use crate::types::{coordinate::Coordinate2D, line::Line2D};
 use super::GeoFloat;
 
 mod difference;
-mod join;
 
 pub trait LineOps: Sized {
     type Scalar: GeoFloat;
@@ -13,9 +12,6 @@ pub trait LineOps: Sized {
 
     /// Split the line at the point. If the point is not on the line, return the original line
     fn split(&self, point: &Coordinate2D<Self::Scalar>, torelance: Self::Scalar) -> Vec<Self>;
-
-    /// Join the lines if the end of the first line is close to the start of the second line.
-    fn join_forward(&self, other: &Self, torelance: Self::Scalar) -> Option<Self>;
 }
 
 impl<T: GeoFloat> LineOps for Line2D<T> {
@@ -45,13 +41,5 @@ impl<T: GeoFloat> LineOps for Line2D<T> {
         let second = Line2D::new(*point, self.end);
 
         vec![first, second]
-    }
-
-    fn join_forward(&self, other: &Self, torelance: T) -> Option<Self> {
-        if Line2D::new(self.end, other.start).length() < torelance {
-            Some(Line2D::new(self.start, other.end))
-        } else {
-            None
-        }
     }
 }
