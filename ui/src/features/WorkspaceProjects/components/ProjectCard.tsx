@@ -111,9 +111,7 @@ const ProjectCard: React.FC<Props> = ({
               onClick={(e) => e.stopPropagation()}>
               <DotsThreeVertical className="size-[24px]" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
               <DropdownMenuItem onClick={() => setEditProject({ ...project })}>
                 {t("Edit Details")}
               </DropdownMenuItem>
