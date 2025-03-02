@@ -34,7 +34,7 @@ graphs:
         action: GeoJsonWriter
         with:
           output: |
-            file::join_path(env.get("outputPath"), "a001-7-line-on-line-line.geojson")
+            file::join_path(env.get("outputPath"), "a001-7-line-on-line-overlayer-line.geojson")
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906e
         name: GeoJsonWriter
@@ -42,7 +42,7 @@ graphs:
         action: GeoJsonWriter
         with:
           output: |
-            file::join_path(env.get("outputPath"), "a001-7-line-on-line-point.geojson")
+            file::join_path(env.get("outputPath"), "a001-7-line-on-line-overlayer-point.geojson")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
