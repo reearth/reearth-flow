@@ -295,35 +295,30 @@ export default ({
     [yWorkflows],
   );
 
-  const handleYWorkflowsRemove = useCallback(
-    (nodeIds: string[]) =>
+  const handleYWorkflowRemove = useCallback(
+    (workflowId: string) =>
       undoTrackerActionWrapper(() => {
-        const workflowIds: string[] = [];
-        const localWorkflows = [...rawWorkflows];
+        const workflows = yWorkflows.toJSON();
 
-        const removeNodes = (nodeIds: string[]) => {
-          nodeIds.forEach((nid) => {
-            if (nid === DEFAULT_ENTRY_GRAPH_ID) return;
+        const removeWorkflows = (id: string) => {
+          if (id === DEFAULT_ENTRY_GRAPH_ID) return;
 
-            const index = localWorkflows.findIndex((w) => w.id === nid);
-            if (index === -1) return;
+          const index = workflows.findIndex((w) => w.id === id);
+          if (index === -1) return;
 
-            // Loop over workflow at current index and remove any subworkflow nodes
-            (localWorkflows[index].nodes as Node[]).forEach((node) => {
-              if (node.type === "subworkflow") {
-                removeNodes([node.id]);
-              }
-            });
-
-            workflowIds.push(nid);
-            yWorkflows.delete(index);
-            localWorkflows.splice(index, 1);
+          // Loop over workflow at current index and remove any subworkflow nodes
+          (workflows[index].nodes as Node[]).forEach((node) => {
+            if (node.type === "subworkflow" && node.data.subworkflowId) {
+              removeWorkflows(node.data.subworkflowId);
+            }
           });
+
+          yWorkflows.delete(index);
         };
 
-        removeNodes(nodeIds);
+        removeWorkflows(workflowId);
       }),
-    [rawWorkflows, yWorkflows, undoTrackerActionWrapper],
+    [yWorkflows, undoTrackerActionWrapper],
   );
 
   const handleYWorkflowRename = useCallback(
@@ -357,7 +352,7 @@ export default ({
     currentYWorkflow,
     handleYWorkflowAdd,
     handleYWorkflowUpdate,
-    handleYWorkflowsRemove,
+    handleYWorkflowRemove,
     handleYWorkflowRename,
     handleYWorkflowAddFromSelection,
   };

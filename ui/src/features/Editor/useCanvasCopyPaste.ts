@@ -65,13 +65,16 @@ export default ({
       if (newNode.type === "batch") {
         parentIdMapArray.push({ prevId: n.id, newId: newNode.id });
       } else if (newNode.type === "subworkflow") {
+        const subworkflowId = generateUUID();
         const newSubworkflowNodes = (rawWorkflows.find((w) => w.id === n.id)
           ?.nodes ?? []) as Node[];
         const newSubworkflowEdges = (rawWorkflows.find((w) => w.id === n.id)
           ?.edges ?? []) as Edge[];
 
+        newNode.data.subworkflowId = subworkflowId;
+
         handleWorkflowUpdate(
-          newNode.id,
+          subworkflowId,
           newSubworkflowNodes,
           newSubworkflowEdges,
         );
