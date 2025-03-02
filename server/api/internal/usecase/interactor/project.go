@@ -269,7 +269,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (starte
 	tx.Commit()
 
 	if i.job != nil {
-		if err := i.job.StartMonitoring(ctx, j, nil, operator); err != nil {
+		if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
 			return true, fmt.Errorf("failed to start job monitoring: %v", err)
 		}
 	}
