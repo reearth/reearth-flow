@@ -113,6 +113,7 @@ export default ({
           pseudoOutputs: [
             { nodeId: outputNodeId, portName: DEFAULT_ROUTING_PORT },
           ],
+          subworkflowId: workflowId,
         },
         selected: true,
       });
@@ -282,48 +283,55 @@ export default ({
   );
 
   const handleYWorkflowUpdate = useCallback(
-    (workflowId: string, nodes?: Node[], edges?: Edge[]) => {
-      const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
-      const newYWorkflow = yWorkflowConstructor(
-        workflowId,
-        workflowName,
-        nodes,
-        edges,
-      );
-      yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
-    },
-    [yWorkflows],
+    (workflowId: string, nodes?: Node[], edges?: Edge[]) =>
+      undoTrackerActionWrapper(() => {
+        const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
+        const newYWorkflow = yWorkflowConstructor(
+          workflowId,
+          workflowName,
+          nodes,
+          edges,
+        );
+        yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
+      }),
+    [yWorkflows, undoTrackerActionWrapper],
   );
 
-  const handleYWorkflowsRemove = useCallback(
-    (nodeIds: string[]) =>
+  const handleYWorkflowRemove = useCallback(
+    (workflowId: string) =>
       undoTrackerActionWrapper(() => {
-        const workflowIds: string[] = [];
-        const localWorkflows = [...rawWorkflows];
+        const workflows = yWorkflows.toJSON();
 
-        const removeNodes = (nodeIds: string[]) => {
-          nodeIds.forEach((nid) => {
-            if (nid === DEFAULT_ENTRY_GRAPH_ID) return;
+        const workflowsToRemove = new Set<string>();
 
-            const index = localWorkflows.findIndex((w) => w.id === nid);
-            if (index === -1) return;
+        const markWorkflowForRemoval = (id: string) => {
+          if (id === DEFAULT_ENTRY_GRAPH_ID) return;
+          if (workflowsToRemove.has(id)) return; // Avoid circular references
 
-            // Loop over workflow at current index and remove any subworkflow nodes
-            (localWorkflows[index].nodes as Node[]).forEach((node) => {
-              if (node.type === "subworkflow") {
-                removeNodes([node.id]);
-              }
-            });
+          workflowsToRemove.add(id);
 
-            workflowIds.push(nid);
-            yWorkflows.delete(index);
-            localWorkflows.splice(index, 1);
+          const workflow = workflows.find((w) => w.id === id);
+          if (!workflow) return;
+
+          (workflow.nodes as Node[]).forEach((node) => {
+            if (node.type === "subworkflow" && node.data.subworkflowId) {
+              markWorkflowForRemoval(node.data.subworkflowId);
+            }
           });
         };
 
-        removeNodes(nodeIds);
+        markWorkflowForRemoval(workflowId);
+
+        const indexesToRemove = Array.from(workflowsToRemove)
+          .map((id) => workflows.findIndex((w) => w.id === id))
+          .filter((index) => index !== -1)
+          .sort((a, b) => b - a); // Sort in descending order to avoid index shifting
+
+        indexesToRemove.forEach((index) => {
+          yWorkflows.delete(index);
+        });
       }),
-    [rawWorkflows, yWorkflows, undoTrackerActionWrapper],
+    [yWorkflows, undoTrackerActionWrapper],
   );
 
   const handleYWorkflowRename = useCallback(
@@ -357,7 +365,7 @@ export default ({
     currentYWorkflow,
     handleYWorkflowAdd,
     handleYWorkflowUpdate,
-    handleYWorkflowsRemove,
+    handleYWorkflowRemove,
     handleYWorkflowRename,
     handleYWorkflowAddFromSelection,
   };

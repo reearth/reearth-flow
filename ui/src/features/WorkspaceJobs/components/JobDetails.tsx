@@ -62,7 +62,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
               id: "outputURLs",
               name: t("Output URLs"),
               value: selectedJob.outputURLs || t("N/A"),
-              type: "link",
+              type: selectedJob.outputURLs ? "link" : undefined,
             },
           ]
         : undefined,
