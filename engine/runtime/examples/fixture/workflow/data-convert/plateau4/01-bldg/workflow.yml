@@ -43,6 +43,26 @@ graphs:
           dataset: |
             env.get("__value")["path"]
 
+      - id: 33e32a91-5ade-4265-8665-b061f552839c
+        name: AttributeManagerForCityCodeAndCityName
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: cityCode
+              method: convert
+              value: |
+                let attributes = env.get("__value").cityGmlAttributes;
+                let buildingIdAttributes = attributes["uro:BuildingIDAttribute"] ?? {};
+                buildingIdAttributes["uro:city_code"] ?? env.get("__value").cityCode
+
+            - attribute: cityName
+              method: convert
+              value: |
+                let attributes = env.get("__value").cityGmlAttributes;
+                let buildingIdAttributes = attributes["uro:BuildingIDAttribute"] ?? {};
+                buildingIdAttributes["uro:city"] ?? env.get("__value").cityName
+
       - id: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
         name: FeatureSorter
         type: action
@@ -190,9 +210,15 @@ graphs:
           maxZoom: 18
           attachTexture: false
           output: |
-            file::join_path(env.get("outputPath"), "bldg_lod1")
+            file::join_path(env.get("outputPath"), "bldg_lod1_" + env.get("__value").city_code)
           compressOutput: |
-            file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod1.zip")
+            let city_gml_prefix = file::extract_filename_without_ext(env.get("cityGmlPath"))[0..5];
+            if city_gml_prefix == env.get("__value").city_code {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod1.zip")
+            } else {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code)
+            27140_sakai-shi_city_2024_citygml_1_op_bldg_3dtiles_27141_sakai-ku_lod2.zip
+            }
 
       - id: a61799d5-176e-4fb9-aa64-5d350adf0bb8
         name: cesium3DTilesWriterByLod2
@@ -285,6 +311,11 @@ graphs:
         toPort: default
       - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        to: 33e32a91-5ade-4265-8665-b061f552839c
+        fromPort: default
+        toPort: default
+      - id: f79ef31d-45f5-4aa5-ade2-620ab74bb35a
+        from: 33e32a91-5ade-4265-8665-b061f552839c
         to: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
         fromPort: default
         toPort: default

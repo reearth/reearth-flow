@@ -177,6 +177,102 @@ Flattens features by attributes
 ### Category
 * Attribute
 
+## AttributeConversionTable
+### Type
+* processor
+### Description
+Converts attributes from conversion table
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AttributeConversionTableParam",
+  "type": "object",
+  "required": [
+    "format",
+    "rules"
+  ],
+  "properties": {
+    "dataset": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "format": {
+      "$ref": "#/definitions/ConversionTableFormat"
+    },
+    "inline": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/AttributeConversionTableRule"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "AttributeConversionTableRule": {
+      "type": "object",
+      "required": [
+        "conversionTableKeys",
+        "conversionTableTo",
+        "featureFroms",
+        "featureTo"
+      ],
+      "properties": {
+        "conversionTableKeys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conversionTableTo": {
+          "type": "string"
+        },
+        "featureFroms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "featureTo": {
+          "$ref": "#/definitions/Attribute"
+        }
+      }
+    },
+    "ConversionTableFormat": {
+      "type": "string",
+      "enum": [
+        "csv",
+        "tsv",
+        "json"
+      ]
+    },
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Attribute
+
 ## AttributeDuplicateFilter
 ### Type
 * processor
