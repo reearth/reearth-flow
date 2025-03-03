@@ -11,10 +11,12 @@ import type { YWorkflow } from "./types";
 export default ({
   workflowId,
   projectId,
+  workspaceId,
   accessToken,
 }: {
   workflowId?: string;
   projectId?: string;
+  workspaceId?: string;
   accessToken?: string;
 }) => {
   const [undoManager, setUndoManager] = useState<Y.UndoManager | null>(null);
@@ -33,16 +35,17 @@ export default ({
     const { websocket } = config();
     let yWebSocketProvider: WebsocketProvider | null = null;
 
-    if (workflowId && websocket && projectId) {
+    if (workflowId && websocket && projectId && workspaceId) {
       let params: Record<string, string> | undefined;
       if (accessToken) {
         params = {
           token: accessToken,
         };
       }
+      const docPath = `workspaces/${workspaceId}/projects/${projectId}`;
       yWebSocketProvider = new WebsocketProvider(
         websocket,
-        `${projectId}:${workflowId}`,
+        docPath,
         yDoc,
         {
           params,
@@ -76,7 +79,7 @@ export default ({
       setIsSynced(false); // Mark as not synced
       yWebSocketProvider?.destroy(); // Cleanup on unmount
     };
-  }, [projectId, workflowId, accessToken]);
+  }, [projectId, workflowId, workspaceId, accessToken]);
 
   const { yDoc, yWorkflows, undoTrackerActionWrapper } = state || {};
 

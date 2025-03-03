@@ -132,11 +132,20 @@ impl Stream for WarpStream {
 
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
-    Path(doc_id): Path<String>,
+    Path(doc_path): Path<String>,
     #[cfg(feature = "auth")] Query(query): Query<AuthQuery>,
     State(state): State<Arc<AppState>>,
 ) -> Response {
-    let doc_id = normalize_doc_id(&doc_id);
+    let parts: Vec<&str> = doc_path.split('/').collect();
+    if parts.len() < 4 || parts[0] != "workspaces" || parts[2] != "projects" {
+        return Response::builder()
+            .status(400)
+            .body(axum::body::Body::from("Invalid path format"))
+            .unwrap();
+    }
+
+    let room_id = parts[1];
+    let doc_id = normalize_doc_id(parts[3]);
 
     #[cfg(feature = "auth")]
     let user_token = Some(query.token.clone());
@@ -169,10 +178,15 @@ pub async fn ws_handler(
         }
     }
 
-    let bcast = match state.pool.get_or_create_group(&doc_id).await {
+    let normalized_path = format!("workspaces/{}/projects/{}", room_id, doc_id);
+    let bcast = match state.pool.get_or_create_group(&normalized_path).await {
         Ok(group) => group,
         Err(e) => {
-            tracing::error!("Failed to get or create group for {}: {}", doc_id, e);
+            tracing::error!(
+                "Failed to get or create group for {}: {}",
+                normalized_path,
+                e
+            );
             return Response::builder()
                 .status(500)
                 .body(axum::body::Body::empty())
@@ -181,7 +195,13 @@ pub async fn ws_handler(
     };
 
     ws.on_upgrade(move |socket| {
-        handle_socket(socket, bcast, doc_id, state.pool.clone(), user_token)
+        handle_socket(
+            socket,
+            bcast,
+            normalized_path,
+            state.pool.clone(),
+            user_token,
+        )
     })
 }
 

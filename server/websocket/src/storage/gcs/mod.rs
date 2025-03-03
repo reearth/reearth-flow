@@ -19,9 +19,23 @@ use hex;
 use serde::Deserialize;
 use time::OffsetDateTime;
 use tracing::debug;
+use uuid;
 use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 
 const PROJECTS_PREFIX: &str = "projects/";
+
+fn extract_ids_from_path(path: &str) -> Option<(String, String)> {
+    let parts: Vec<&str> = path.split('/').collect();
+    if parts.len() >= 4 && parts[0] == "workspaces" && parts[2] == "projects" {
+        Some((parts[1].to_string(), parts[3].to_string()))
+    } else {
+        None
+    }
+}
+
+fn generate_gcs_path(room_id: &str, doc_id: &str) -> String {
+    format!("projects/{}/{}/{}", room_id, doc_id, uuid::Uuid::new_v4())
+}
 
 /// Type wrapper around GCS Client struct. Used to extend GCS with [DocOps]
 /// methods used for convenience when working with Yrs documents.
@@ -87,6 +101,11 @@ impl GcsStore {
             None => return Ok(Vec::new()),
         };
 
+        let (room_id, doc_id) = match extract_ids_from_path(doc_id) {
+            Some(ids) => ids,
+            None => return Ok(Vec::new()),
+        };
+
         // Create prefix that matches all updates for this OID
         let prefix_bytes = [V1, KEYSPACE_DOC]
             .iter()
@@ -94,7 +113,11 @@ impl GcsStore {
             .chain(&[SUB_UPDATE])
             .copied()
             .collect::<Vec<_>>();
-        let prefix_str = format!("{}{}", PROJECTS_PREFIX, hex::encode(&prefix_bytes));
+        let prefix_str = format!(
+            "{}{}",
+            generate_gcs_path(&room_id, &doc_id),
+            hex::encode(&prefix_bytes)
+        );
 
         // List objects with the specified prefix
         let request = ListObjectsRequest {
@@ -253,7 +276,13 @@ impl KVStore for GcsStore {
 
     async fn get(&self, key: &[u8]) -> Result<Option<Self::Return>, Self::Error> {
         let key_hex = hex::encode(key);
-        let object_path = format!("{}{}", PROJECTS_PREFIX, key_hex);
+        // Extract room_id and doc_id from the key
+        let key_str = String::from_utf8_lossy(key);
+        let (room_id, doc_id) = match extract_ids_from_path(&key_str) {
+            Some(ids) => ids,
+            None => return Ok(None),
+        };
+        let object_path = format!("{}{}", generate_gcs_path(&room_id, &doc_id), key_hex);
         let request = GetObjectRequest {
             bucket: self.bucket.clone(),
             object: object_path,
@@ -280,7 +309,13 @@ impl KVStore for GcsStore {
 
     async fn upsert(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error> {
         let key_hex = hex::encode(key);
-        let object_path = format!("{}{}", PROJECTS_PREFIX, key_hex);
+        // Extract room_id and doc_id from the key
+        let key_str = String::from_utf8_lossy(key);
+        let (room_id, doc_id) = match extract_ids_from_path(&key_str) {
+            Some(ids) => ids,
+            None => return Ok(()),
+        };
+        let object_path = format!("{}{}", generate_gcs_path(&room_id, &doc_id), key_hex);
         debug!(
             "Writing to GCS storage - key: {:?}, hex: {}",
             key, object_path
@@ -303,7 +338,12 @@ impl KVStore for GcsStore {
 
     async fn remove(&self, key: &[u8]) -> Result<(), Self::Error> {
         let key_hex = hex::encode(key);
-        let object_path = format!("{}{}", PROJECTS_PREFIX, key_hex);
+        let key_str = String::from_utf8_lossy(key);
+        let (room_id, doc_id) = match extract_ids_from_path(&key_str) {
+            Some(ids) => ids,
+            None => return Ok(()),
+        };
+        let object_path = format!("{}{}", generate_gcs_path(&room_id, &doc_id), key_hex);
         let request = DeleteObjectRequest {
             bucket: self.bucket.clone(),
             object: object_path,
@@ -317,9 +357,15 @@ impl KVStore for GcsStore {
     }
 
     async fn remove_range(&self, from: &[u8], to: &[u8]) -> Result<(), Self::Error> {
+        let from_str = String::from_utf8_lossy(from);
+        let (room_id, doc_id) = match extract_ids_from_path(&from_str) {
+            Some(ids) => ids,
+            None => return Ok(()),
+        };
+
         let request = ListObjectsRequest {
             bucket: self.bucket.clone(),
-            prefix: Some(PROJECTS_PREFIX.to_string()),
+            prefix: Some(generate_gcs_path(&room_id, &doc_id)),
             ..Default::default()
         };
 
@@ -338,7 +384,7 @@ impl KVStore for GcsStore {
             .filter(|obj| {
                 let name_without_prefix = obj
                     .name
-                    .strip_prefix(PROJECTS_PREFIX)
+                    .strip_prefix(&generate_gcs_path(&room_id, &doc_id))
                     .unwrap_or(&obj.name)
                     .to_string();
                 name_without_prefix >= from_hex && name_without_prefix <= to_hex
@@ -361,9 +407,21 @@ impl KVStore for GcsStore {
     }
 
     async fn iter_range(&self, from: &[u8], to: &[u8]) -> Result<Self::Cursor, Self::Error> {
+        let from_str = String::from_utf8_lossy(from);
+        let (room_id, doc_id) = match extract_ids_from_path(&from_str) {
+            Some(ids) => ids,
+            None => {
+                return Ok(GcsRange {
+                    objects: vec![],
+                    values: vec![],
+                    current: 0,
+                })
+            }
+        };
+
         let request = ListObjectsRequest {
             bucket: self.bucket.clone(),
-            prefix: Some(PROJECTS_PREFIX.to_string()),
+            prefix: Some(generate_gcs_path(&room_id, &doc_id)),
             ..Default::default()
         };
 
@@ -379,7 +437,7 @@ impl KVStore for GcsStore {
                 debug!("Checking object: {:?}", obj.name.as_str());
                 let name_without_prefix = obj
                     .name
-                    .strip_prefix(PROJECTS_PREFIX)
+                    .strip_prefix(&generate_gcs_path(&room_id, &doc_id))
                     .unwrap_or(&obj.name)
                     .to_string();
                 name_without_prefix >= from_hex && name_without_prefix <= to_hex
@@ -420,9 +478,15 @@ impl KVStore for GcsStore {
 
     async fn peek_back(&self, key: &[u8]) -> Result<Option<Self::Entry>, Self::Error> {
         let key_hex = hex::encode(key);
+        let key_str = String::from_utf8_lossy(key);
+        let (room_id, doc_id) = match extract_ids_from_path(&key_str) {
+            Some(ids) => ids,
+            None => return Ok(None),
+        };
+
         let request = ListObjectsRequest {
             bucket: self.bucket.clone(),
-            prefix: Some(PROJECTS_PREFIX.to_string()),
+            prefix: Some(generate_gcs_path(&room_id, &doc_id)),
             ..Default::default()
         };
 
@@ -438,7 +502,7 @@ impl KVStore for GcsStore {
             .filter(|obj| {
                 let name_without_prefix = obj
                     .name
-                    .strip_prefix(PROJECTS_PREFIX)
+                    .strip_prefix(&generate_gcs_path(&room_id, &doc_id))
                     .unwrap_or(&obj.name)
                     .to_string();
                 name_without_prefix < key_hex
@@ -460,7 +524,8 @@ impl KVStore for GcsStore {
                 .await?;
 
             Ok(Some(GcsEntry {
-                key: hex::decode(&obj.name[PROJECTS_PREFIX.len()..]).unwrap_or_default(),
+                key: hex::decode(&obj.name[generate_gcs_path(&room_id, &doc_id).len()..])
+                    .unwrap_or_default(),
                 value,
             }))
         } else {
