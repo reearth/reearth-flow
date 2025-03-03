@@ -150,24 +150,29 @@ const ActionsList: React.FC<Props> = ({
             key={order}
             value={order}>
             {Array.isArray(actions) ? (
-              actions?.map((action, index) => (
-                <Fragment key={action.name}>
-                  <ActionComponent
-                    action={action}
-                    selected={selected === action.name}
-                    onTypeClick={(type) =>
-                      setSearchTerm((st) => (st === type ? "" : type))
-                    }
-                    onCategoryClick={(category) =>
-                      setSearchTerm((st) => (st === category ? "" : category))
-                    }
-                    onSingleClick={handleSingleClick}
-                    onDoubleClick={handleDoubleClick}
-                    onSelect={() => handleActionSelect(action.name)}
-                  />
-                  {index !== actions.length - 1 && <div className="border-b" />}
-                </Fragment>
-              ))
+              actions?.map((action, index) => {
+                if (action.type === "reader" && hasReader) return null;
+                return (
+                  <Fragment key={action.name}>
+                    <ActionComponent
+                      action={action}
+                      selected={selected === action.name}
+                      onTypeClick={(type) =>
+                        setSearchTerm((st) => (st === type ? "" : type))
+                      }
+                      onCategoryClick={(category) =>
+                        setSearchTerm((st) => (st === category ? "" : category))
+                      }
+                      onSingleClick={handleSingleClick}
+                      onDoubleClick={handleDoubleClick}
+                      onSelect={() => handleActionSelect(action.name)}
+                    />
+                    {index !== actions.length - 1 && (
+                      <div className="border-b" />
+                    )}
+                  </Fragment>
+                );
+              })
             ) : (
               <Accordion type="single" collapsible>
                 {actions ? (
@@ -186,31 +191,37 @@ const ActionsList: React.FC<Props> = ({
                           <p className="capitalize">{key}</p>
                         </AccordionTrigger>
                         <AccordionContent className="flex flex-col gap-1">
-                          {categoryActions?.map((action, index) => (
-                            <Fragment key={action.name}>
-                              <ActionComponent
-                                action={action}
-                                selected={selected === action.name}
-                                onTypeClick={(type) =>
-                                  setSearchTerm((st) =>
-                                    st === type ? "" : type,
-                                  )
-                                }
-                                onCategoryClick={(category) =>
-                                  setSearchTerm((st) =>
-                                    st === category ? "" : category,
-                                  )
-                                }
-                                onSingleClick={handleSingleClick}
-                                onDoubleClick={handleDoubleClick}
-                                onSelect={() => handleActionSelect(action.name)}
-                              />
-                              {categoryActions &&
-                                index !== categoryActions.length - 1 && (
-                                  <div className="border-b" />
-                                )}
-                            </Fragment>
-                          ))}
+                          {categoryActions?.map((action, index) => {
+                            if (action.type === "reader" && hasReader)
+                              return null;
+                            return (
+                              <Fragment key={action.name}>
+                                <ActionComponent
+                                  action={action}
+                                  selected={selected === action.name}
+                                  onTypeClick={(type) =>
+                                    setSearchTerm((st) =>
+                                      st === type ? "" : type,
+                                    )
+                                  }
+                                  onCategoryClick={(category) =>
+                                    setSearchTerm((st) =>
+                                      st === category ? "" : category,
+                                    )
+                                  }
+                                  onSingleClick={handleSingleClick}
+                                  onDoubleClick={handleDoubleClick}
+                                  onSelect={() =>
+                                    handleActionSelect(action.name)
+                                  }
+                                />
+                                {categoryActions &&
+                                  index !== categoryActions.length - 1 && (
+                                    <div className="border-b" />
+                                  )}
+                              </Fragment>
+                            );
+                          })}
                         </AccordionContent>
                       </AccordionItem>
                     ))
