@@ -210,15 +210,9 @@ graphs:
           maxZoom: 18
           attachTexture: false
           output: |
-            file::join_path(env.get("outputPath"), "bldg_lod1_" + env.get("__value").city_code)
+            file::join_path(env.get("outputPath"), "bldg_lod1")
           compressOutput: |
-            let city_gml_prefix = file::extract_filename_without_ext(env.get("cityGmlPath"))[0..5];
-            if city_gml_prefix == env.get("__value").city_code {
-              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod1.zip")
-            } else {
-              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code)
-            27140_sakai-shi_city_2024_citygml_1_op_bldg_3dtiles_27141_sakai-ku_lod2.zip
-            }
+            file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod1.zip")
 
       - id: a61799d5-176e-4fb9-aa64-5d350adf0bb8
         name: cesium3DTilesWriterByLod2

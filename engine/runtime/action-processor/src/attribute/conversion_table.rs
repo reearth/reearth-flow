@@ -243,6 +243,15 @@ fn read_csv(
         let record: Vec<String> = rd.map_err(|e| {
             super::errors::AttributeProcessorError::ConversionTable(format!("{:?}", e))
         })?;
+        if record.len() < header.len() {
+            return Err(super::errors::AttributeProcessorError::ConversionTable(
+                format!(
+                    "CSV row has fewer columns ({}) than header ({})",
+                    record.len(),
+                    header.len()
+                ),
+            ));
+        }
         let row = record
             .iter()
             .enumerate()
