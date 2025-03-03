@@ -231,11 +231,11 @@ jobs:
         name: ${{ needs.ci-collect-info.outputs.name }}
         sha: ${{ github.sha }}
       secrets: inherit
-    update-policies:
-      needs:
-        - ci
-        - ci-policies
-        - ci-collect-info
-      uses: ./.github/workflows/update_policies.yml
-      if: ${{ !failure() && needs.ci-policies.result == 'success' && github.event_name == 'push' && github.ref_name == 'main' }}
-      secrets: inherit
+  update-policies:
+    needs:
+      - ci
+      - ci-policies
+      - ci-collect-info
+    uses: ./.github/workflows/update_policies.yml
+    if: ${{ !failure() && needs.ci-policies.result == 'success' && github.event_name == 'push' && github.ref_name == 'main' }}
+    secrets: inherit
