@@ -45,23 +45,23 @@ jobs:
           local_files=$(ls policies/flow_*.yaml 2>/dev/null || true)
           echo "$local_files"
 
-          for file in policies/flow_*.yaml; do
-            if [ -f "$file" ]; then
-              file_name=$(basename "$file")
-              echo "Uploading/Updating: $file_name"
-              if ! gsutil cp "$file" "${GCS_BUCKET_PATH}/$file_name"; then
-                echo "Error: Failed to upload $file_name"
-                exit 1
-              fi
-            fi
-          done
-
           for bucket_file in "${GCS_BUCKET_PATH}"/flow_*.yaml; do
             file_name=$(basename "$bucket_file")
             if [ ! -f "policies/$file_name" ] && [[ "$file_name" == flow_* ]]; then
               echo "Deleting: $file_name"
               if ! gsutil rm "$bucket_file"; then
                 echo "Error: Failed to delete $bucket_file"
+                exit 1
+              fi
+            fi
+          done
+
+          for file in policies/flow_*.yaml; do
+            if [ -f "$file" ]; then
+              file_name=$(basename "$file")
+              echo "Uploading/Updating: $file_name"
+              if ! gsutil cp "$file" "${GCS_BUCKET_PATH}/$file_name"; then
+                echo "Error: Failed to upload $file_name"
                 exit 1
               fi
             fi
