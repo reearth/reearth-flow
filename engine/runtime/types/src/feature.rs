@@ -402,6 +402,23 @@ impl Feature {
         self.attributes.get(&Attribute::new(key.to_string()))
     }
 
+    pub fn get_by_keys<T: AsRef<str> + std::fmt::Display>(
+        &self,
+        keys: &[T],
+    ) -> Option<AttributeValue> {
+        let mut result = Vec::new();
+        for key in keys {
+            if let Some(v) = self.get(&Attribute::new(key.to_string())) {
+                result.push(v.clone());
+            }
+        }
+        if result.is_empty() {
+            None
+        } else {
+            Some(AttributeValue::Array(result))
+        }
+    }
+
     pub fn insert<T: AsRef<str> + std::fmt::Display>(
         &mut self,
         key: T,
