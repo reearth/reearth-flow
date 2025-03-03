@@ -113,6 +113,7 @@ export default ({
           pseudoOutputs: [
             { nodeId: outputNodeId, portName: DEFAULT_ROUTING_PORT },
           ],
+          subworkflowId: workflowId,
         },
         selected: true,
       });
