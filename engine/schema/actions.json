@@ -178,6 +178,102 @@
       ]
     },
     {
+      "name": "AttributeConversionTable",
+      "type": "processor",
+      "description": "Converts attributes from conversion table",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeConversionTableParam",
+        "type": "object",
+        "required": [
+          "format",
+          "rules"
+        ],
+        "properties": {
+          "dataset": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "format": {
+            "$ref": "#/definitions/ConversionTableFormat"
+          },
+          "inline": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rules": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/AttributeConversionTableRule"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "AttributeConversionTableRule": {
+            "type": "object",
+            "required": [
+              "conversionTableKeys",
+              "conversionTableTo",
+              "featureFroms",
+              "featureTo"
+            ],
+            "properties": {
+              "conversionTableKeys": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "conversionTableTo": {
+                "type": "string"
+              },
+              "featureFroms": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Attribute"
+                }
+              },
+              "featureTo": {
+                "$ref": "#/definitions/Attribute"
+              }
+            }
+          },
+          "ConversionTableFormat": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "tsv",
+              "json"
+            ]
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
       "name": "AttributeDuplicateFilter",
       "type": "processor",
       "description": "Filters features by duplicate attributes",
