@@ -26,7 +26,6 @@ export const yNodeConstructor = (node: Node): YNode => {
       outputs: toYjsArray(
         node.data.outputs?.map((output) => toYjsText(output)),
       ),
-      status: toYjsText(node.data.status),
       params: node.data.params,
       // Subworkflow specific
       subworkflowId:

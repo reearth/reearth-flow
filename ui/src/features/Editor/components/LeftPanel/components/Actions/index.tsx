@@ -101,7 +101,6 @@ const ActionsList: React.FC<Props> = ({
           officialName: action.name,
           inputs: [...action.inputPorts],
           outputs: [...action.outputPorts],
-          status: "idle",
         },
       };
       onNodesAdd([newNode]);

@@ -65,7 +65,6 @@ export default ({
         data: {
           officialName: inputRouter.name,
           outputs: inputRouter.outputPorts,
-          status: "idle",
           params: {
             routingPort: DEFAULT_ROUTING_PORT,
           },
@@ -81,7 +80,6 @@ export default ({
         data: {
           officialName: outputRouter.name,
           inputs: outputRouter.inputPorts,
-          status: "idle",
           params: {
             routingPort: DEFAULT_ROUTING_PORT,
           },
@@ -106,7 +104,6 @@ export default ({
         position,
         data: {
           officialName: workflowName,
-          status: "idle",
           pseudoInputs: [
             { nodeId: inputNodeId, portName: DEFAULT_ROUTING_PORT },
           ],

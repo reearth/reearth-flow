@@ -5,8 +5,6 @@ import type {
 } from "@xyflow/react";
 import { ComponentType } from "react";
 
-import type { Status } from "./shared";
-
 type NodeParam = Record<string, any>;
 
 export type PseudoPort = {
@@ -19,7 +17,6 @@ export type NodeData = {
   customName?: string;
   inputs?: string[];
   outputs?: string[];
-  status?: Status;
   params?: NodeParam;
   // subworkflow nodes
   subworkflowId?: string;

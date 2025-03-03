@@ -19,7 +19,6 @@ const createBaseNode = ({ position, type }: CreateNodeOptions): Node => ({
   type,
   data: {
     officialName: type,
-    status: "idle",
   },
 });
 
@@ -59,7 +58,6 @@ const createActionNode = async (
       officialName: action.name,
       inputs: [...action.inputPorts],
       outputs: [...action.outputPorts],
-      status: "idle",
     },
   };
 };

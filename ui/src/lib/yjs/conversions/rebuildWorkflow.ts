@@ -39,10 +39,6 @@ export const reassembleNode = (yNode: YNode): Node => {
       (yNode.get("data") as Y.Map<any>)?.get("outputs").toArray() as Y.Text[]
     ).map((input) => input.toString());
   }
-  // NOTE: Status might be better not to be persisted
-  if ((yNode.get("data") as Y.Map<any>)?.get("status") !== undefined) {
-    data.status = (yNode.get("data") as Y.Map<any>)?.get("status").toString();
-  }
   if ((yNode.get("data") as Y.Map<any>)?.get("params") !== undefined) {
     data.params = (yNode.get("data") as Y.Map<any>)?.get("params");
   }

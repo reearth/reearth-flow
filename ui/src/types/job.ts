@@ -1,4 +1,5 @@
-import { ApiResponse } from "./api";
+import type { ApiResponse } from "./api";
+import type { NodeExecution } from "./nodeExecutions";
 
 export type JobStatus =
   | "queued"
@@ -16,6 +17,7 @@ export type Job = {
   completedAt: string;
   outputURLs?: string[];
   logsURL?: string;
+  nodeExecutions?: NodeExecution[];
 };
 
 export type CancelJob = {
