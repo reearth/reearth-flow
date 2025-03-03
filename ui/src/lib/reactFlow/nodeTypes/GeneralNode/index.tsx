@@ -4,11 +4,9 @@ import { memo, useMemo } from "react";
 
 import { Node } from "@flow/types";
 import type { NodePosition, NodeType } from "@flow/types";
-import { isDefined } from "@flow/utils";
-
-import { getPropsFrom } from "../utils";
 
 import { Handles } from "./components";
+import useHooks from "./hooks";
 
 export type GeneralNodeProps = NodeProps<Node> & {
   className?: string;
@@ -21,89 +19,33 @@ export type GeneralNodeProps = NodeProps<Node> & {
 
 const typeIconClasses = "w-[10px] h-[100%]";
 
-const borderColorTypesObject = {
-  reader: "border-node-reader",
-  writer: "border-node-writer",
-  transformer: "border-node-transformer",
-  subworkflow: "border-node-subworkflow",
-  default: "border-primary/20",
-};
-
-const selectedColorTypesObject = {
-  reader: "border-node-reader-selected",
-  writer: "border-node-writer-selected",
-  transformer: "border-node-transformer-selected",
-  subworkflow: "border-node-subworkflow-selected",
-  default: "border-zinc-600",
-};
-
-const selectedColorTypesBackgroundsObject = {
-  reader: "bg-node-reader-selected",
-  writer: "bg-node-writer-selected",
-  transformer: "bg-node-transformer-selected",
-  subworkflow: "bg-node-subworkflow-selected",
-  default: "bg-zinc-600",
-};
-
 const GeneralNode: React.FC<GeneralNodeProps> = ({
   className,
   data,
   type,
   selected,
 }) => {
+  const { officialName, customName } = data;
+
   const {
-    officialName,
-    customName,
-    status,
-    inputs: defaultInputs,
-    outputs: defaultOutputs,
-  } = data;
+    nodeExecution,
+    inputs,
+    outputs,
+    metaProps,
+    borderColor,
+    selectedColor,
+    selectedBackgroundColor,
+  } = useHooks({ data, type });
 
-  const inputs: string[] = useMemo(() => {
-    if (data.params?.conditions) {
-      const i = data.params.conditions
-        .map((condition: any) => condition.inputPort)
-        .filter(isDefined);
-      return i.length ? i : defaultInputs;
-    }
-    return defaultInputs;
-  }, [data.params?.conditions, defaultInputs]);
+  const { status } = useMemo(() => nodeExecution, [nodeExecution]);
 
-  const outputs: string[] = useMemo(() => {
-    if (data.params?.conditions) {
-      const i = data.params.conditions
-        .map((condition: any) => condition.outputPort)
-        .filter(isDefined);
-      return i.length ? i : defaultOutputs;
-    }
-    return defaultOutputs;
-  }, [data.params?.conditions, defaultOutputs]);
-
-  const metaProps = getPropsFrom(status);
-
-  const borderColorTypes = Object.keys(borderColorTypesObject).includes(type)
-    ? borderColorTypesObject[type as keyof typeof borderColorTypesObject]
-    : borderColorTypesObject.default;
-
-  const selectedColorTypes = Object.keys(selectedColorTypesObject).includes(
-    type,
-  )
-    ? selectedColorTypesObject[type as keyof typeof selectedColorTypesObject]
-    : selectedColorTypesObject.default;
-
-  const selectedColorTypesBackgrounds = Object.keys(
-    selectedColorTypesBackgroundsObject,
-  ).includes(type)
-    ? selectedColorTypesBackgroundsObject[
-        type as keyof typeof selectedColorTypesBackgroundsObject
-      ]
-    : selectedColorTypesBackgroundsObject.default;
+  // console.log("node execution", nodeExecution);
 
   return (
     <div className="rounded-sm bg-secondary">
       <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
         <div
-          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? selectedColorTypes : borderColorTypes} ${selected ? selectedColorTypesBackgrounds : className} `}>
+          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className} `}>
           {type === "reader" ? (
             <Database className={typeIconClasses} />
           ) : type === "writer" ? (
@@ -115,11 +57,11 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
           ) : null}
         </div>
         <div
-          className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? selectedColorTypes : borderColorTypes}`}>
+          className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? selectedColor : borderColor}`}>
           <p className="self-center truncate text-xs dark:font-light">
             {customName || officialName}
           </p>
-          {status === "success" ? (
+          {status === "succeeded" ? (
             <div className="self-center">
               <Eye />
             </div>
