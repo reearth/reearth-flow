@@ -392,7 +392,6 @@ where
     } else {
         let last_oid = if let Some(e) = db.peek_back([V1, KEYSPACE_DOC].as_ref()).await? {
             let value = e.value();
-
             OID::from_be_bytes(value.try_into().unwrap())
         } else {
             0
