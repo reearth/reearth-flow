@@ -1,7 +1,7 @@
 import type { NodeExecution } from "@flow/types";
 
 export default () => {
-  const nodeExecution: NodeExecution = {
+  const nodeExecution: NodeExecution | undefined = {
     nodeId: "1",
     status: "running",
     startedAt: "2021-08-02T00:00:00Z",

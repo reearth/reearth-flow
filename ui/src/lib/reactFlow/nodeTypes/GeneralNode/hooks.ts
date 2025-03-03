@@ -9,9 +9,16 @@ import { getNodeColors } from "./nodeColors";
 import useNodeStatus from "./useNodeStatus";
 
 export default ({ data, type }: { data: NodeData; type: string }) => {
-  const { inputs: defaultInputs, outputs: defaultOutputs } = data;
+  const {
+    officialName,
+    customName,
+    inputs: defaultInputs,
+    outputs: defaultOutputs,
+  } = data;
 
   const { nodeExecution } = useNodeStatus();
+
+  const { status } = useMemo(() => nodeExecution, [nodeExecution]) ?? {};
 
   const inputs: string[] = useMemo(() => {
     if (data.params?.conditions) {
@@ -33,15 +40,17 @@ export default ({ data, type }: { data: NodeData; type: string }) => {
     return defaultOutputs;
   }, [data.params?.conditions, defaultOutputs]);
 
-  const metaProps = getPropsFrom(nodeExecution.status);
+  const metaProps = getPropsFrom(status);
 
   const [borderColor, selectedColor, selectedBackgroundColor] =
     getNodeColors(type);
 
   return {
-    nodeExecution,
+    officialName,
+    customName,
     inputs,
     outputs,
+    status,
     metaProps,
     borderColor,
     selectedColor,

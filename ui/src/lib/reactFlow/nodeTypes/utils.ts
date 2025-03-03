@@ -8,7 +8,9 @@ export const getPropsFrom = (status?: NodeStatus) => {
         ? "bg-destructive"
         : status === "running"
           ? "active-node-status"
-          : "bg-primary";
+          : status === "pending"
+            ? "queued-node-status"
+            : "bg-primary";
 
   const isAnimated = status === "running";
   return {

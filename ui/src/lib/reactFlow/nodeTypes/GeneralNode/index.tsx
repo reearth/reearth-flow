@@ -1,6 +1,6 @@
 import { Database, Disc, Eye, Graph, Lightning } from "@phosphor-icons/react";
 import { NodeProps } from "@xyflow/react";
-import { memo, useMemo } from "react";
+import { memo } from "react";
 
 import { Node } from "@flow/types";
 import type { NodePosition, NodeType } from "@flow/types";
@@ -25,19 +25,17 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   type,
   selected,
 }) => {
-  const { officialName, customName } = data;
-
   const {
-    nodeExecution,
+    officialName,
+    customName,
     inputs,
     outputs,
+    status,
     metaProps,
     borderColor,
     selectedColor,
     selectedBackgroundColor,
   } = useHooks({ data, type });
-
-  const { status } = useMemo(() => nodeExecution, [nodeExecution]);
 
   // console.log("node execution", nodeExecution);
 
@@ -45,7 +43,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     <div className="rounded-sm bg-secondary">
       <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
         <div
-          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className} `}>
+          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${status === "failed" ? "border-destructive" : selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className} `}>
           {type === "reader" ? (
             <Database className={typeIconClasses} />
           ) : type === "writer" ? (
@@ -57,7 +55,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
           ) : null}
         </div>
         <div
-          className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? selectedColor : borderColor}`}>
+          className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${status === "failed" ? "border-destructive" : selected ? selectedColor : borderColor}`}>
           <p className="self-center truncate text-xs dark:font-light">
             {customName || officialName}
           </p>
