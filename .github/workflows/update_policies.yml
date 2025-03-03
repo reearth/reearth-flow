@@ -38,19 +38,19 @@ jobs:
           # List all files in the bucket before sync
           echo "All files in bucket (before sync):"
           gsutil ls "${GCS_BUCKET_PATH}/" || true
-          echo ""
+          echo "----------------------------------------"
 
           # List current policy files in the bucket
           echo "Current flow files in bucket:"
           bucket_files=$(gsutil ls "${GCS_BUCKET_PATH}/flow_*.yaml" || true)
           echo "$bucket_files"
-          echo ""
+          echo "----------------------------------------"
 
           # List local policy files that will be uploaded
           echo "Local policy files:"
           local_files=$(ls policies/flow_*.yaml 2>/dev/null || true)
           echo "$local_files"
-          echo ""
+          echo "----------------------------------------"
 
           # Delete bucket files that no longer exist locally
           echo "=== Starting cleanup process ==="
@@ -69,7 +69,7 @@ jobs:
             echo "No flow_*.yaml files found in bucket to delete"
           fi
           echo "=== Cleanup complete ==="
-          echo ""
+          echo "----------------------------------------"
 
           # Upload/update local policy files to the bucket
           echo "=== Starting Upload/update process ==="
@@ -84,7 +84,7 @@ jobs:
             fi
           done
           echo "=== Upload/update complete==="
-          echo ""
+          echo "----------------------------------------"
 
           # List all files in the bucket after sync
           echo "Sync completed. All files in bucket:"
