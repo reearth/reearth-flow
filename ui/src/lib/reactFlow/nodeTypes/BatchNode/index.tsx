@@ -19,9 +19,15 @@ const batchNodeSchema: RJSFSchema = {
     backgroundColor: {
       type: "string",
       format: "color",
+      default: "#323236",
       title: "Background Color",
     },
-    textColor: { type: "string", format: "color", title: "Text Color" },
+    textColor: {
+      type: "string",
+      format: "color",
+      title: "Text Color",
+      default: "#fafafa",
+    },
   },
 };
 

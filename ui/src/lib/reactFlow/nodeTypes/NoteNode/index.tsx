@@ -18,10 +18,16 @@ const noteNodeSchema: RJSFSchema = {
   properties: {
     customName: { type: "string", title: "Name" },
     description: { type: "string", format: "textarea", title: "Description" },
-    textColor: { type: "string", format: "color", title: "Text Color" },
+    textColor: {
+      type: "string",
+      format: "color",
+      default: "#fafafa",
+      title: "Text Color",
+    },
     backgroundColor: {
       type: "string",
       format: "color",
+      default: "#212121",
       title: "Background Color",
     },
   },
