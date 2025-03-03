@@ -19,7 +19,6 @@ const (
 	ResourceTrigger       = "trigger"
 	ResourceUser          = "user"
 	ResourceWorkspace     = "workspace"
-	ResourceHoge          = "hoge"
 )
 
 const (
@@ -47,7 +46,12 @@ func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDef
 	return builder.
 		AddResource(ResourceAsset, []generator.ActionDefinition{
 			generator.NewActionDefinition(ActionAny, []string{
-				roleReader,
+				roleMaintainer,
+			}),
+		}).
+		AddResource(ResourceDeployment, []generator.ActionDefinition{
+			generator.NewActionDefinition(ActionAny, []string{
+				roleMaintainer,
 			}),
 		}).
 		AddResource(ResourceJob, []generator.ActionDefinition{
@@ -155,11 +159,6 @@ func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDef
 			}),
 			generator.NewActionDefinition(ActionDelete, []string{
 				roleOwner,
-			}),
-		}).
-		AddResource(ResourceHoge, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionAny, []string{
-				roleMaintainer,
 			}),
 		}).
 		Build()
