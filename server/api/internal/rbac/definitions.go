@@ -67,6 +67,7 @@ func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDef
 		AddResource(ResourceProject, []generator.ActionDefinition{
 			generator.NewActionDefinition(ActionList, []string{
 				roleSelf,
+				roleMaintainer,
 			}),
 			generator.NewActionDefinition(ActionCreate, []string{
 				roleMaintainer,
@@ -107,28 +108,35 @@ func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDef
 			}),
 			generator.NewActionDefinition(ActionAny, []string{
 				roleSelf,
+				roleMaintainer,
 			}),
 		}).
 		AddResource(ResourceUser, []generator.ActionDefinition{
 			generator.NewActionDefinition(ActionRead, []string{
 				roleSelf,
+				roleMaintainer,
 			}),
 			generator.NewActionDefinition(ActionEdit, []string{
 				roleSelf,
+				roleMaintainer,
 			}),
 		}).
 		AddResource(ResourceWorkspace, []generator.ActionDefinition{
 			generator.NewActionDefinition(ActionList, []string{
 				roleSelf,
+				roleMaintainer,
 			}),
 			generator.NewActionDefinition(ActionCreate, []string{
 				roleSelf,
+				roleMaintainer,
 			}),
 			generator.NewActionDefinition(ActionEdit, []string{
 				roleOwner,
+				roleMaintainer,
 			}),
 			generator.NewActionDefinition(ActionDelete, []string{
 				roleOwner,
+				roleMaintainer,
 			}),
 		}).
 		Build()
