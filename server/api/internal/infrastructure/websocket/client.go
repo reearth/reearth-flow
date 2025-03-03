@@ -12,9 +12,7 @@ import (
 )
 
 type Config struct {
-	GcsBucket   string  `json:"gcs_bucket"`
-	GcsEndpoint *string `json:"gcs_endpoint,omitempty"`
-	ServerURL   string  `json:"server_url"`
+	ServerURL string `json:"server_url"`
 }
 
 type Client struct {
@@ -28,7 +26,8 @@ func NewClient(config Config) (*Client, error) {
 		config.ServerURL = "http://localhost:8000"
 	}
 
-	trans, err := thrift.NewTHttpClient(config.ServerURL + "/doc")
+	docEndpoint := config.ServerURL + "/doc"
+	trans, err := thrift.NewTHttpClient(docEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Thrift HTTP client: %w", err)
 	}
