@@ -1,4 +1,4 @@
-import { Keyboard, SignOut, User } from "@phosphor-icons/react";
+import { ArrowSquareOut, Keyboard, SignOut, User } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
@@ -64,42 +64,46 @@ const UserMenu: React.FC<Props> = ({
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          className="w-[200px]"
-          side={dropdownPosition ?? "bottom"}
-          align="end"
+          side={dropdownPosition ?? "right"}
+          align="start"
           sideOffset={dropdownOffset ?? 4}>
-          <div className="mb-2 rounded px-2 py-1">
+          <div className="mb-2 rounded p-2">
             <p className="text-xs font-thin">{t("Username: ")}</p>
-            <p className="truncate text-sm font-light">
-              {me?.name ?? me?.email}
-            </p>
+            <p className="truncate px-2 text-sm">{me?.name ?? me?.email}</p>
           </div>
+          <DropdownMenuSeparator />
           <DropdownMenuItem
             className="gap-2"
             onClick={() => setOpenAccountUpdateDialog(true)}>
-            <User weight="thin" />
+            <User weight="light" />
             <p>{t("Account settings")}</p>
           </DropdownMenuItem>
           <DropdownMenuItem
             className="gap-2"
             onClick={() => setOpenShortcutDialog(true)}>
-            <Keyboard weight="thin" />
+            <Keyboard weight="light" />
             <p>{t("Keyboard shortcuts")}</p>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {tosUrl && (
-            <DropdownMenuItem onClick={handleTosPageOpen}>
+            <DropdownMenuItem className="gap-2" onClick={handleTosPageOpen}>
+              <ArrowSquareOut weight="light" />
               <p>{t("Terms of Service")}</p>
             </DropdownMenuItem>
           )}
           {documentationUrl && (
-            <DropdownMenuItem onClick={handleDocumentationPageOpen}>
+            <DropdownMenuItem
+              className="gap-2"
+              onClick={handleDocumentationPageOpen}>
+              <ArrowSquareOut weight="light" />
               <p>{t("Documentation")}</p>
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout} className="gap-2">
-            <SignOut className="size-[15px] stroke-1" />
+          <DropdownMenuItem
+            className="gap-2 text-warning"
+            onClick={handleLogout}>
+            <SignOut weight="light" />
             <p>{t("Log out")}</p>
           </DropdownMenuItem>
         </DropdownMenuContent>

@@ -11,6 +11,7 @@ declare global {
 
 export type Config = {
   version?: string;
+  brandLogoUrl?: string;
   brandName?: string;
   devMode?: boolean;
   tosUrl?: string;
@@ -35,10 +36,6 @@ export default async function loadConfig() {
     ...defaultConfig,
     ...(await (await fetch("/reearth_config.json")).json()),
   };
-
-  if (config.brandName) {
-    document.title = config.brandName;
-  }
 
   window.REEARTH_CONFIG = config;
 }

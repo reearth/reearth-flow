@@ -14,14 +14,14 @@ export default ({
   rawWorkflows,
   setSelectedNodeIds,
   undoTrackerActionWrapper,
-  handleYWorkflowsRemove,
+  handleYWorkflowRemove,
 }: {
   currentYWorkflow: YWorkflow;
   yWorkflows: Y.Array<YWorkflow>;
   rawWorkflows: Record<string, string | Node[] | Edge[]>[];
   setSelectedNodeIds: Dispatch<SetStateAction<string[]>>;
   undoTrackerActionWrapper: (callback: () => void) => void;
-  handleYWorkflowsRemove?: (workflowId: string[]) => void;
+  handleYWorkflowRemove?: (workflowId: string) => void;
 }) => {
   const handleYNodesAdd = useCallback(
     (newNodes: Node[]) => {
@@ -122,7 +122,7 @@ export default ({
                     nodeToDelete.type === "subworkflow" &&
                     nodeToDelete.data.subworkflowId
                   ) {
-                    handleYWorkflowsRemove?.([nodeToDelete.data.subworkflowId]);
+                    handleYWorkflowRemove?.(nodeToDelete.data.subworkflowId);
                   } else if (nodeToDelete.data.params?.routingPort) {
                     const workflowIndex = rawWorkflows.findIndex((w) => {
                       const nodes = w.nodes as Node[];
@@ -167,11 +167,11 @@ export default ({
     },
     [
       currentYWorkflow,
-      setSelectedNodeIds,
-      undoTrackerActionWrapper,
-      handleYWorkflowsRemove,
       rawWorkflows,
       yWorkflows,
+      setSelectedNodeIds,
+      undoTrackerActionWrapper,
+      handleYWorkflowRemove,
     ],
   );
 

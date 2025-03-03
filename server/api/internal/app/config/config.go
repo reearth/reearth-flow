@@ -88,8 +88,7 @@ type (
 		Worker_TaskCount                       string   `envconfig:"WORKER_TASK_COUNT" default:"1" pp:",omitempty"`
 
 		// websocket
-		WebsocketGCSBucket   string  `envconfig:"REEARTH_FLOW_WEBSOCKET_GCS_BUCKET" default:"yrs-dev" pp:",omitempty"`
-		WebsocketGCSEndpoint *string `envconfig:"REEARTH_FLOW_WEBSOCKET_GCS_ENDPOINT" default:"http://localhost:4443" pp:",omitempty"`
+		WebsocketThriftServerURL string `envconfig:"REEARTH_FLOW_WEBSOCKET_THRIFT_SERVER_URL" default:"http://localhost:8000" pp:",omitempty"`
 	}
 )
 

@@ -35,6 +35,10 @@ pub(super) enum AttributeProcessorError {
     FlattenerFactory(String),
     #[error("Attribute Flattener error: {0}")]
     Flattener(String),
+    #[error("Attribute ConversionTable error: {0}")]
+    ConversionTableFactory(String),
+    #[error("Attribute ConversionTable error: {0}")]
+    ConversionTable(String),
 }
 
 #[allow(dead_code)]
