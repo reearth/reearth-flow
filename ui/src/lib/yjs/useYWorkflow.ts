@@ -282,17 +282,18 @@ export default ({
   );
 
   const handleYWorkflowUpdate = useCallback(
-    (workflowId: string, nodes?: Node[], edges?: Edge[]) => {
-      const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
-      const newYWorkflow = yWorkflowConstructor(
-        workflowId,
-        workflowName,
-        nodes,
-        edges,
-      );
-      yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
-    },
-    [yWorkflows],
+    (workflowId: string, nodes?: Node[], edges?: Edge[]) =>
+      undoTrackerActionWrapper(() => {
+        const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
+        const newYWorkflow = yWorkflowConstructor(
+          workflowId,
+          workflowName,
+          nodes,
+          edges,
+        );
+        yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
+      }),
+    [yWorkflows, undoTrackerActionWrapper],
   );
 
   const handleYWorkflowRemove = useCallback(
@@ -300,23 +301,34 @@ export default ({
       undoTrackerActionWrapper(() => {
         const workflows = yWorkflows.toJSON();
 
-        const removeWorkflows = (id: string) => {
+        const workflowsToRemove = new Set<string>();
+
+        const markWorkflowForRemoval = (id: string) => {
           if (id === DEFAULT_ENTRY_GRAPH_ID) return;
+          if (workflowsToRemove.has(id)) return; // Avoid circular references
 
-          const index = workflows.findIndex((w) => w.id === id);
-          if (index === -1) return;
+          workflowsToRemove.add(id);
 
-          // Loop over workflow at current index and remove any subworkflow nodes
-          (workflows[index].nodes as Node[]).forEach((node) => {
+          const workflow = workflows.find((w) => w.id === id);
+          if (!workflow) return;
+
+          (workflow.nodes as Node[]).forEach((node) => {
             if (node.type === "subworkflow" && node.data.subworkflowId) {
-              removeWorkflows(node.data.subworkflowId);
+              markWorkflowForRemoval(node.data.subworkflowId);
             }
           });
-
-          yWorkflows.delete(index);
         };
 
-        removeWorkflows(workflowId);
+        markWorkflowForRemoval(workflowId);
+
+        const indexesToRemove = Array.from(workflowsToRemove)
+          .map((id) => workflows.findIndex((w) => w.id === id))
+          .filter((index) => index !== -1)
+          .sort((a, b) => b - a); // Sort in descending order to avoid index shifting
+
+        indexesToRemove.forEach((index) => {
+          yWorkflows.delete(index);
+        });
       }),
     [yWorkflows, undoTrackerActionWrapper],
   );
