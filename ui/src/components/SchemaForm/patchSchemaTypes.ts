@@ -1,6 +1,10 @@
 import { RJSFSchema } from "@rjsf/utils";
 import { JSONSchema7, JSONSchema7Definition } from "json-schema";
 
+// This is a workaround for the `anyOf` type for RJSF/JSON Schema. Currently if "null" only is passed as a type in `anyof` it won't work as expected.
+// We should regualry check this issue and update RJSF once a fix is published. (https://github.com/rjsf-team/react-jsonschema-form/issues/4380)
+// Update March 2025: a new function was added to check if anyOf is nested in a oneOf as it will override the anyOf simplification
+
 // Utility function to check if schema is a valid JSONSchema
 const isJSONSchema = (schema: JSONSchema7Definition): schema is JSONSchema7 =>
   typeof schema !== "boolean";
