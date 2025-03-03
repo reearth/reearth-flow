@@ -43,8 +43,8 @@ impl BroadcastPool {
         self.store.clone()
     }
 
-    pub async fn get_or_create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
-        let entry = self.groups.entry(doc_id.to_string());
+    pub async fn get_or_create_group(&self, doc_path: &str) -> Result<Arc<BroadcastGroup>> {
+        let entry = self.groups.entry(doc_path.to_string());
 
         match entry {
             dashmap::mapref::entry::Entry::Occupied(entry) => Ok(entry.get().clone()),
@@ -54,18 +54,18 @@ impl BroadcastPool {
 
                     {
                         let mut txn = doc.transact_mut();
-                        match self.store.load_doc(doc_id, &mut txn).await {
+                        match self.store.load_doc(doc_path, &mut txn).await {
                             Ok(_) => {
                                 tracing::debug!(
                                     "Successfully loaded existing document: {}",
-                                    doc_id
+                                    doc_path
                                 );
                             }
                             Err(e) => {
                                 if e.to_string().contains("not found") {
-                                    tracing::info!("Creating new document: {}", doc_id);
+                                    tracing::info!("Creating new document: {}", doc_path);
                                 } else {
-                                    tracing::error!("Failed to load document {}: {}", doc_id, e);
+                                    tracing::error!("Failed to load document {}: {}", doc_path, e);
                                     return Err(anyhow!("Failed to load document: {}", e));
                                 }
                             }
@@ -83,7 +83,7 @@ impl BroadcastPool {
                         self.store.clone(),
                         BroadcastConfig {
                             storage_enabled: true,
-                            doc_name: Some(doc_id.to_string()),
+                            doc_name: Some(doc_path.to_string()),
                             redis_config: self.redis_config.clone(),
                         },
                     )
@@ -110,8 +110,8 @@ impl BroadcastPool {
         });
     }
 
-    pub async fn remove_connection(&self, doc_id: &str) {
-        if let Some(group) = self.groups.get(doc_id) {
+    pub async fn remove_connection(&self, doc_path: &str) {
+        if let Some(group) = self.groups.get(doc_path) {
             let remaining = group.decrement_connections();
             if remaining == 0 {
                 // Add a small delay before cleanup to reduce likelihood of race conditions

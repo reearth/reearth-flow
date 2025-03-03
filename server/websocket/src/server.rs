@@ -64,7 +64,7 @@ pub async fn start_server(state: Arc<AppState>, port: &str) -> Result<(), anyhow
     };
 
     let app = Router::new()
-        .route("/{doc_id}", get(ws_handler))
+        .route("/workspaces/{room_id}/projects/{doc_id}", get(ws_handler))
         .route(
             "/doc",
             get(|| async { "Document API - Use HTTP POST for Thrift requests" }),
@@ -72,7 +72,10 @@ pub async fn start_server(state: Arc<AppState>, port: &str) -> Result<(), anyhow
         .route("/doc", post(handle_thrift_request))
         .with_state(server_state);
 
-    info!("WebSocket endpoint available at ws://{}/[doc_id]", addr);
+    info!(
+        "WebSocket endpoint available at ws://{}/workspaces/:room_id/projects/:doc_id",
+        addr
+    );
     info!("Thrift HTTP endpoint available at http://{}/doc", addr);
     axum::serve(listener, app).await?;
 
@@ -82,20 +85,22 @@ pub async fn start_server(state: Arc<AppState>, port: &str) -> Result<(), anyhow
 #[cfg(feature = "auth")]
 async fn ws_handler(
     ws: WebSocketUpgrade,
-    Path(doc_id): Path<String>,
+    Path((room_id, doc_id)): Path<(String, String)>,
     Query(query): Query<AuthQuery>,
     State(state): State<ServerState>,
 ) -> Response<Body> {
-    crate::ws::ws_handler(ws, Path(doc_id), Query(query), State(state.app_state)).await
+    let doc_path = format!("workspaces/{}/projects/{}", room_id, doc_id);
+    crate::ws::ws_handler(ws, Path(doc_path), Query(query), State(state.app_state)).await
 }
 
 #[cfg(not(feature = "auth"))]
 async fn ws_handler(
     ws: WebSocketUpgrade,
-    Path(doc_id): Path<String>,
+    Path((room_id, doc_id)): Path<(String, String)>,
     State(state): State<ServerState>,
 ) -> Response<Body> {
-    crate::ws::ws_handler(ws, Path(doc_id), State(state.app_state)).await
+    let doc_path = format!("workspaces/{}/projects/{}", room_id, doc_id);
+    crate::ws::ws_handler(ws, Path(doc_path), State(state.app_state)).await
 }
 
 async fn handle_thrift_request(

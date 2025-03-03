@@ -64,13 +64,14 @@ const EditorComponent = () => {
     },
   ]);
 
-  const { projectId }: { projectId: string } = useParams({
+  const { projectId, workspaceId }: { projectId: string; workspaceId: string } = useParams({
     strict: false,
   });
 
   const { state, isSynced, undoManager } = useYjsSetup({
     accessToken,
     projectId,
+    workspaceId,
     workflowId: DEFAULT_ENTRY_GRAPH_ID,
   });
 
