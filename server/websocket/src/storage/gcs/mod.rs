@@ -21,7 +21,7 @@ use time::OffsetDateTime;
 use tracing::debug;
 use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 
-const PROJECTS_PREFIX: &str = "doc_projects/";
+const PROJECTS_PREFIX: &str = "projects/";
 
 /// Type wrapper around GCS Client struct. Used to extend GCS with [DocOps]
 /// methods used for convenience when working with Yrs documents.
