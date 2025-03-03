@@ -17,16 +17,14 @@ var (
 	clientOnce    sync.Once
 )
 
-func InitWebsocket(gcsBucket string, gcsEndpoint *string) {
+func InitWebsocket(websocketThriftServerURL string) {
 	clientConfig = websocket.Config{
-		GcsBucket:   gcsBucket,
-		GcsEndpoint: gcsEndpoint,
+		ServerURL: websocketThriftServerURL,
 	}
 }
 
 func getDefaultWebsocketClient() interfaces.WebsocketClient {
 	clientOnce.Do(func() {
-		log.Info("Creating new websocket client")
 		client, err := websocket.NewClient(clientConfig)
 		if err != nil {
 			log.Errorf("Failed to create websocket client: %v", err)

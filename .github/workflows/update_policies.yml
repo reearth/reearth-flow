@@ -34,17 +34,45 @@ jobs:
       - name: Sync policies with Cloud Storage
         run: |
           set -euo pipefail
+
+          # List all files in the bucket before sync
           echo "All files in bucket (before sync):"
           gsutil ls "${GCS_BUCKET_PATH}/" || true
+          echo "----------------------------------------"
 
+          # List current policy files in the bucket
           echo "Current flow files in bucket:"
           bucket_files=$(gsutil ls "${GCS_BUCKET_PATH}/flow_*.yaml" || true)
           echo "$bucket_files"
+          echo "----------------------------------------"
 
+          # List local policy files that will be uploaded
           echo "Local policy files:"
           local_files=$(ls policies/flow_*.yaml 2>/dev/null || true)
           echo "$local_files"
+          echo "----------------------------------------"
 
+          # Delete bucket files that no longer exist locally
+          echo "=== Starting cleanup process ==="
+          if gsutil ls "${GCS_BUCKET_PATH}/flow_*.yaml" 2>/dev/null; then
+            for bucket_file in $(gsutil ls "${GCS_BUCKET_PATH}/flow_*.yaml"); do
+              file_name=$(basename "$bucket_file")
+              if [ ! -f "policies/$file_name" ] && [[ "$file_name" == flow_* ]]; then
+                echo "Deleting: $file_name"
+                if ! gsutil rm "$bucket_file"; then
+                  echo "Error: Failed to delete $bucket_file"
+                  exit 1
+                fi
+              fi
+            done
+          else
+            echo "No flow_*.yaml files found in bucket to delete"
+          fi
+          echo "=== Cleanup complete ==="
+          echo "----------------------------------------"
+
+          # Upload/update local policy files to the bucket
+          echo "=== Starting Upload/update process ==="
           for file in policies/flow_*.yaml; do
             if [ -f "$file" ]; then
               file_name=$(basename "$file")
@@ -55,18 +83,10 @@ jobs:
               fi
             fi
           done
+          echo "=== Upload/update complete==="
+          echo "----------------------------------------"
 
-          for bucket_file in "${GCS_BUCKET_PATH}"/flow_*.yaml; do
-            file_name=$(basename "$bucket_file")
-            if [ ! -f "policies/$file_name" ] && [[ "$file_name" == flow_* ]]; then
-              echo "Deleting: $file_name"
-              if ! gsutil rm "$bucket_file"; then
-                echo "Error: Failed to delete $bucket_file"
-                exit 1
-              fi
-            fi
-          done
-
+          # List all files in the bucket after sync
           echo "Sync completed. All files in bucket:"
           gsutil ls "${GCS_BUCKET_PATH}/" || true
         working-directory: server/api
