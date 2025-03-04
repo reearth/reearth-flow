@@ -309,7 +309,6 @@ impl BroadcastGroup {
             None
         };
 
-        // Execute both operations concurrently if Redis is enabled
         match redis_future {
             Some(redis_future) => {
                 tracing::info!(
