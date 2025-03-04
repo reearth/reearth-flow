@@ -1,3 +1,4 @@
+# Latest Project Document
 type ProjectDocument implements Node {
   id: ID!
   timestamp: DateTime!
@@ -5,6 +6,7 @@ type ProjectDocument implements Node {
   version: Int!
 }
 
+# Project Snapshot history vector
 type ProjectSnapshot {
   timestamp: DateTime!
   updates: [Int!]!

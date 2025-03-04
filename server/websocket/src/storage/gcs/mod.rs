@@ -17,7 +17,6 @@ use google_cloud_storage::{
 };
 use hex;
 use serde::Deserialize;
-use std::time::{Duration, Instant};
 use time::OffsetDateTime;
 use tracing::debug;
 use yrs::{updates::decoder::Decode, Doc, Transact, Update};
@@ -124,6 +123,7 @@ impl GcsStore {
                 .await
             {
                 if let Ok(update) = Update::decode_v1(&data) {
+                    // Extract clock from object name
                     if let Ok(key_bytes) = hex::decode(&obj.name) {
                         if key_bytes.len() >= 12 {
                             let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
@@ -261,74 +261,21 @@ impl KVStore for GcsStore {
     }
 
     async fn upsert(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error> {
-        self.batch_upsert(&[(key, value)]).await
-    }
+        let key_hex = hex::encode(key);
+        debug!("Writing to GCS storage - key: {:?}, hex: {}", key, key_hex);
+        debug!("Value length: {} bytes", value.len());
 
-    async fn batch_upsert(&self, entries: &[(&[u8], &[u8])]) -> Result<(), Self::Error> {
-        const BATCH_SIZE: usize = 2;
-        const BATCH_TIMEOUT: Duration = Duration::from_secs(1);
-
-        let mut current_batch = Vec::new();
-        let mut last_flush = Instant::now();
-
-        for (key, value) in entries {
-            current_batch.push((key, value));
-
-            if current_batch.len() >= BATCH_SIZE || last_flush.elapsed() >= BATCH_TIMEOUT {
-                let mut futures = Vec::new();
-
-                for (key, value) in current_batch.drain(..) {
-                    let key_hex = hex::encode(key);
-                    debug!("Writing to GCS storage - key: {:?}, hex: {}", key, key_hex);
-                    debug!("Value length: {} bytes", value.len());
-
-                    let upload_type = UploadType::Simple(Media::new(key_hex.clone()));
-                    let bucket = self.bucket.clone();
-                    let value = value.to_vec();
-
-                    futures.push(async move {
-                        self.client
-                            .upload_object(
-                                &UploadObjectRequest {
-                                    bucket,
-                                    ..Default::default()
-                                },
-                                value,
-                                &upload_type,
-                            )
-                            .await
-                    });
-                }
-
-                join_all(futures).await;
-                last_flush = Instant::now();
-            }
-        }
-
-        if !current_batch.is_empty() {
-            let mut futures = Vec::new();
-            for (key, value) in current_batch {
-                let key_hex = hex::encode(key);
-                let upload_type = UploadType::Simple(Media::new(key_hex.clone()));
-                let bucket = self.bucket.clone();
-                let value = value.to_vec();
-
-                futures.push(async move {
-                    self.client
-                        .upload_object(
-                            &UploadObjectRequest {
-                                bucket,
-                                ..Default::default()
-                            },
-                            value,
-                            &upload_type,
-                        )
-                        .await
-                });
-            }
-            join_all(futures).await;
-        }
-
+        let upload_type = UploadType::Simple(Media::new(key_hex.clone()));
+        self.client
+            .upload_object(
+                &UploadObjectRequest {
+                    bucket: self.bucket.clone(),
+                    ..Default::default()
+                },
+                value.to_vec(),
+                &upload_type,
+            )
+            .await?;
         Ok(())
     }
 
