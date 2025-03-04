@@ -5,6 +5,7 @@ import * as Y from "yjs";
 
 import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import { useAuth } from "@flow/lib/auth";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { YWorkflow } from "@flow/lib/yjs/types";
@@ -12,7 +13,9 @@ import { useCurrentWorkspace } from "@flow/stores";
 import { ProjectToImport } from "@flow/types";
 
 export default () => {
+  const { getAccessToken } = useAuth();
   const t = useT();
+
   const [currentWorkspace] = useCurrentWorkspace();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -66,27 +69,32 @@ export default () => {
 
         const { websocket } = config();
         if (websocket && projectMeta) {
-          const yWebSocketProvider = new WebsocketProvider(
-            websocket,
-            `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
-            yDoc,
-          );
+          (async () => {
+            const token = await getAccessToken();
 
-          yWebSocketProvider.once("sync", () => {
-            const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-            if (!yWorkflows.length) {
-              console.warn("Imported project has no workflows");
-            }
+            const yWebSocketProvider = new WebsocketProvider(
+              websocket,
+              `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
+              yDoc,
+              { params: { token } },
+            );
 
-            setIsProjectImporting(false);
-          });
+            yWebSocketProvider.once("sync", () => {
+              const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+              if (!yWorkflows.length) {
+                console.warn("Imported project has no workflows");
+              }
+
+              setIsProjectImporting(false);
+            });
+          })();
         }
       } catch (error) {
         console.error("Error importing project:", error);
         setIsProjectImporting(false);
       }
     },
-    [currentWorkspace, t, createProject],
+    [currentWorkspace, t, createProject, getAccessToken],
   );
 
   return {
