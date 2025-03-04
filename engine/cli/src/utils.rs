@@ -43,9 +43,10 @@ impl ActionSchema {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct I18nSchema {
-    pub name: String,
-    pub description: String,
+pub(crate) struct I18nSchema {
+    pub(crate) name: String,
+    pub(crate) description: String,
+    pub(crate) parameter: Option<serde_json::Value>,
 }
 
 pub(crate) fn create_action_schema(
@@ -54,64 +55,106 @@ pub(crate) fn create_action_schema(
     i18n: &HashMap<String, I18nSchema>,
 ) -> ActionSchema {
     let (name, description, parameter, input_ports, output_ports, categories) = match kind {
-        NodeKind::Source(factory) => (
-            factory.name().to_string(),
-            i18n.get(&factory.name().to_string())
-                .map(|schema| schema.description.clone())
-                .unwrap_or(factory.description().to_string()),
-            factory
-                .parameter_schema()
-                .map_or(serde_json::Value::Null, |schema| {
-                    serde_json::from_str(serde_json::to_string(&schema).unwrap().as_str()).unwrap()
-                }),
-            vec![],
-            factory
-                .get_output_ports()
-                .iter()
-                .map(|p| p.to_string())
-                .collect(),
-            factory.categories().iter().map(|c| c.to_string()).collect(),
-        ),
-        NodeKind::Processor(factory) => (
-            factory.name().to_string(),
-            i18n.get(&factory.name().to_string())
-                .map(|schema| schema.description.clone())
-                .unwrap_or(factory.description().to_string()),
-            factory
-                .parameter_schema()
-                .map_or(serde_json::Value::Null, |schema| {
-                    serde_json::from_str(serde_json::to_string(&schema).unwrap().as_str()).unwrap()
-                }),
-            factory
-                .get_input_ports()
-                .iter()
-                .map(|p| p.to_string())
-                .collect(),
-            factory
-                .get_output_ports()
-                .iter()
-                .map(|p| p.to_string())
-                .collect(),
-            factory.categories().iter().map(|c| c.to_string()).collect(),
-        ),
-        NodeKind::Sink(factory) => (
-            factory.name().to_string(),
-            i18n.get(&factory.name().to_string())
-                .map(|schema| schema.description.clone())
-                .unwrap_or(factory.description().to_string()),
-            factory
-                .parameter_schema()
-                .map_or(serde_json::Value::Null, |schema| {
-                    serde_json::from_str(serde_json::to_string(&schema).unwrap().as_str()).unwrap()
-                }),
-            factory
-                .get_input_ports()
-                .iter()
-                .map(|p| p.to_string())
-                .collect(),
-            vec![],
-            factory.categories().iter().map(|c| c.to_string()).collect(),
-        ),
+        NodeKind::Source(factory) => {
+            let i18n_schema = i18n.get(&factory.name().to_string());
+            (
+                factory.name().to_string(),
+                i18n_schema
+                    .map(|schema| schema.description.clone())
+                    .unwrap_or(factory.description().to_string()),
+                factory
+                    .parameter_schema()
+                    .map_or(serde_json::Value::Null, |schema| {
+                        let mut parameter_schema: serde_json::Value =
+                            serde_json::from_str(serde_json::to_string(&schema).unwrap().as_str())
+                                .unwrap();
+                        if let Some(parameter) =
+                            i18n_schema.and_then(|schema| schema.parameter.clone())
+                        {
+                            reearth_flow_common::json::json_merge_patch(
+                                &mut parameter_schema,
+                                &parameter,
+                            );
+                        }
+                        parameter_schema
+                    }),
+                vec![],
+                factory
+                    .get_output_ports()
+                    .iter()
+                    .map(|p| p.to_string())
+                    .collect(),
+                factory.categories().iter().map(|c| c.to_string()).collect(),
+            )
+        }
+        NodeKind::Processor(factory) => {
+            let i18n_schema = i18n.get(&factory.name().to_string());
+            (
+                factory.name().to_string(),
+                i18n_schema
+                    .map(|schema| schema.description.clone())
+                    .unwrap_or(factory.description().to_string()),
+                factory
+                    .parameter_schema()
+                    .map_or(serde_json::Value::Null, |schema| {
+                        let mut parameter_schema: serde_json::Value =
+                            serde_json::from_str(serde_json::to_string(&schema).unwrap().as_str())
+                                .unwrap();
+                        if let Some(parameter) =
+                            i18n_schema.and_then(|schema| schema.parameter.clone())
+                        {
+                            reearth_flow_common::json::json_merge_patch(
+                                &mut parameter_schema,
+                                &parameter,
+                            );
+                        }
+                        parameter_schema
+                    }),
+                factory
+                    .get_input_ports()
+                    .iter()
+                    .map(|p| p.to_string())
+                    .collect(),
+                factory
+                    .get_output_ports()
+                    .iter()
+                    .map(|p| p.to_string())
+                    .collect(),
+                factory.categories().iter().map(|c| c.to_string()).collect(),
+            )
+        }
+        NodeKind::Sink(factory) => {
+            let i18n_schema = i18n.get(&factory.name().to_string());
+            (
+                factory.name().to_string(),
+                i18n_schema
+                    .map(|schema| schema.description.clone())
+                    .unwrap_or(factory.description().to_string()),
+                factory
+                    .parameter_schema()
+                    .map_or(serde_json::Value::Null, |schema| {
+                        let mut parameter_schema: serde_json::Value =
+                            serde_json::from_str(serde_json::to_string(&schema).unwrap().as_str())
+                                .unwrap();
+                        if let Some(parameter) =
+                            i18n_schema.and_then(|schema| schema.parameter.clone())
+                        {
+                            reearth_flow_common::json::json_merge_patch(
+                                &mut parameter_schema,
+                                &parameter,
+                            );
+                        }
+                        parameter_schema
+                    }),
+                factory
+                    .get_input_ports()
+                    .iter()
+                    .map(|p| p.to_string())
+                    .collect(),
+                vec![],
+                factory.categories().iter().map(|c| c.to_string()).collect(),
+            )
+        }
     };
 
     ActionSchema::new(
