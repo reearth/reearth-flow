@@ -30,6 +30,7 @@ const typeIconClasses = "w-[10px] h-[100%]";
 
 const GeneralNode: React.FC<GeneralNodeProps> = ({
   className,
+  id,
   data,
   type,
   selected,
@@ -46,7 +47,8 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     borderColor,
     selectedColor,
     selectedBackgroundColor,
-  } = useHooks({ data, type });
+    handleNodeDelete,
+  } = useHooks({ id, data, type });
 
   return (
     <ContextMenu>
@@ -98,7 +100,9 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
           {t("Preview Intermediate Data")}
           <Eye weight="light" />
         </ContextMenuItem>
-        <ContextMenuItem className="justify-between gap-4 text-xs text-destructive">
+        <ContextMenuItem
+          className="justify-between gap-4 text-xs text-destructive"
+          onClick={handleNodeDelete}>
           {t("Delete Node")}
           <TrashSimple weight="light" />
         </ContextMenuItem>

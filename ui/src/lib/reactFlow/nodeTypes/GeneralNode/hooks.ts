@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { NodeData } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
@@ -8,7 +9,15 @@ import { getPropsFrom } from "../utils";
 import { getNodeColors } from "./nodeColors";
 import useNodeStatus from "./useNodeStatus";
 
-export default ({ data, type }: { data: NodeData; type: string }) => {
+export default ({
+  id,
+  data,
+  type,
+}: {
+  id: string;
+  data: NodeData;
+  type: string;
+}) => {
   const {
     officialName,
     customName,
@@ -45,6 +54,12 @@ export default ({ data, type }: { data: NodeData; type: string }) => {
   const [borderColor, selectedColor, selectedBackgroundColor] =
     getNodeColors(type);
 
+  const { onNodesChange } = useEditorContext();
+
+  const handleNodeDelete = () => {
+    onNodesChange?.([{ id, type: "remove" }]);
+  };
+
   return {
     officialName,
     customName,
@@ -55,5 +70,6 @@ export default ({ data, type }: { data: NodeData; type: string }) => {
     borderColor,
     selectedColor,
     selectedBackgroundColor,
+    handleNodeDelete,
   };
 };
