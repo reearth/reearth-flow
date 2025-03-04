@@ -92,7 +92,7 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 
 	varString := strings.Join(varArgs, " ")
 	workflowCommand := fmt.Sprintf(
-		"%s --workflow %q --metadata-path %q --pubsub-backend noop %s",
+		"%s --workflow %q --metadata-path %q %s",
 		binaryPath,
 		workflowsURL,
 		metadataURL,
