@@ -111,7 +111,6 @@ impl BroadcastGroup {
                         tracing::warn!("[GROUP] Broadcast channel closed");
                     }
 
-                    // 只保存到pending_updates，不进行实时存储
                     let update_clone = u.update.clone();
                     let updates_arc = pending_updates_clone.clone();
                     tokio::spawn(async move {
