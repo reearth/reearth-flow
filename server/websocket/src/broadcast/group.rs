@@ -83,15 +83,22 @@ impl BroadcastGroup {
     }
 
     pub async fn new(awareness: AwarenessRef, buffer_capacity: usize) -> Result<Self> {
+        tracing::info!(
+            "[GROUP] Starting new BroadcastGroup with buffer capacity: {}",
+            buffer_capacity
+        );
         let (sender, _receiver) = channel(buffer_capacity);
         let awareness_c = Arc::downgrade(&awareness);
+        tracing::info!("[GROUP] About to acquire awareness write lock");
         let mut lock = awareness.write().await;
+        tracing::info!("[GROUP] Acquired awareness write lock");
         let sink = sender.clone();
 
         let (_storage_tx, storage_rx) = tokio::sync::mpsc::unbounded_channel();
         let pending_updates = Arc::new(Mutex::new(Vec::new()));
         let pending_updates_clone = pending_updates.clone();
 
+        tracing::info!("[GROUP] Setting up document subscription");
         let doc_sub = {
             lock.doc_mut()
                 .observe_update_v1(move |_txn, u| {
@@ -101,12 +108,12 @@ impl BroadcastGroup {
                     encoder.write_buf(&u.update);
                     let msg = encoder.to_vec();
                     if let Err(_e) = sink.send(msg) {
-                        tracing::warn!("broadcast channel closed");
+                        tracing::warn!("[GROUP] Broadcast channel closed");
                     }
 
+                    // 只保存到pending_updates，不进行实时存储
                     let update_clone = u.update.clone();
                     let updates_arc = pending_updates_clone.clone();
-
                     tokio::spawn(async move {
                         let mut updates = updates_arc.lock().await;
                         updates.push(update_clone);
@@ -114,6 +121,7 @@ impl BroadcastGroup {
                 })
                 .map_err(|e| anyhow!("Failed to observe document updates: {}", e))?
         };
+        tracing::info!("[GROUP] Document subscription set up");
 
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
         let sink = sender.clone();
@@ -158,6 +166,7 @@ impl BroadcastGroup {
             }
         });
 
+        tracing::info!("[GROUP] BroadcastGroup created successfully");
         Ok(BroadcastGroup {
             connections: Arc::new(AtomicUsize::new(0)),
             awareness_ref: awareness,
@@ -180,35 +189,91 @@ impl BroadcastGroup {
         store: Arc<GcsStore>,
         config: BroadcastConfig,
     ) -> Result<Self> {
+        tracing::info!(
+            "[GROUP] Starting with_storage with buffer capacity: {}, storage enabled: {}",
+            buffer_capacity,
+            config.storage_enabled
+        );
+
         if !config.storage_enabled {
+            tracing::info!("[GROUP] Storage disabled, creating regular BroadcastGroup");
             return Self::new(awareness, buffer_capacity).await;
         }
 
+        tracing::info!("[GROUP] Creating base BroadcastGroup");
         let mut group = Self::new(awareness, buffer_capacity).await?;
 
         let doc_name = config
             .doc_name
             .expect("doc_name required when storage enabled");
+        tracing::info!("[GROUP] Using document name: {}", doc_name);
+
         let redis_ttl = config.redis_config.as_ref().map(|c| c.ttl as usize);
+        tracing::info!("[GROUP] Redis TTL: {:?}", redis_ttl);
+
+        let start_time = std::time::Instant::now();
+        tracing::info!(
+            "[GROUP] Starting document loading process for: {}",
+            doc_name
+        );
 
         let redis = if let Some(redis_config) = config.redis_config {
+            tracing::info!(
+                "[GROUP] Initializing Redis connection to: {}",
+                redis_config.url
+            );
             match Self::init_redis_connection(&redis_config.url).await {
                 Ok(conn) => {
-                    if (Self::load_from_redis(&conn, &doc_name, &group.awareness_ref).await)
-                        .is_err()
-                    {
+                    tracing::info!(
+                        "[GROUP] Redis connection established in {:?}, attempting to load document",
+                        start_time.elapsed()
+                    );
+
+                    let redis_load_start = std::time::Instant::now();
+                    let redis_result =
+                        Self::load_from_redis(&conn, &doc_name, &group.awareness_ref).await;
+
+                    if redis_result.is_err() {
+                        tracing::info!(
+                            "[GROUP] Failed to load from Redis in {:?}, falling back to storage",
+                            redis_load_start.elapsed()
+                        );
+
+                        let storage_load_start = std::time::Instant::now();
                         Self::load_from_storage(&store, &doc_name, &group.awareness_ref).await;
+                        tracing::info!(
+                            "[GROUP] Loaded from storage in {:?}",
+                            storage_load_start.elapsed()
+                        );
+                    } else {
+                        tracing::info!(
+                            "[GROUP] Document loaded from Redis successfully in {:?}",
+                            redis_load_start.elapsed()
+                        );
                     }
                     Some(conn)
                 }
                 Err(e) => {
-                    tracing::error!("Failed to initialize Redis connection: {}", e);
+                    tracing::error!("[GROUP] Failed to initialize Redis connection: {}", e);
+                    tracing::info!("[GROUP] Falling back to storage");
+
+                    let storage_load_start = std::time::Instant::now();
                     Self::load_from_storage(&store, &doc_name, &group.awareness_ref).await;
+                    tracing::info!(
+                        "[GROUP] Loaded from storage in {:?}",
+                        storage_load_start.elapsed()
+                    );
                     None
                 }
             }
         } else {
+            tracing::info!("[GROUP] No Redis config, loading from storage");
+            let storage_load_start = std::time::Instant::now();
             Self::load_from_storage(&store, &doc_name, &group.awareness_ref).await;
+            tracing::info!(
+                "[GROUP] Loaded from storage in {:?}",
+                storage_load_start.elapsed()
+            );
             None
         };
 
@@ -218,15 +283,21 @@ impl BroadcastGroup {
         group.redis_ttl = redis_ttl;
 
         group.storage_rx = None;
-
+        tracing::info!(
+            "[GROUP] BroadcastGroup with storage created successfully in total time: {:?}",
+            start_time.elapsed()
+        );
         Ok(group)
     }
 
     async fn init_redis_connection(
         url: &str,
     ) -> Result<Arc<Mutex<RedisConnection>>, redis::RedisError> {
+        tracing::info!("[GROUP] Initializing Redis connection to: {}", url);
         let client = redis::Client::open(url)?;
+        tracing::info!("[GROUP] Redis client created, getting connection");
         let conn = client.get_multiplexed_async_connection().await?;
+        tracing::info!("[GROUP] Redis connection established");
         Ok(Arc::new(Mutex::new(conn)))
     }
 
@@ -235,34 +306,95 @@ impl BroadcastGroup {
         doc_name: &str,
         awareness: &AwarenessRef,
     ) -> Result<(), Error> {
+        tracing::info!("[GROUP] Loading document '{}' from Redis", doc_name);
+        let start_time = std::time::Instant::now();
+
+        let lock_start = std::time::Instant::now();
         let mut conn = redis.lock().await;
+        tracing::info!(
+            "[GROUP] Acquired Redis connection lock in {:?}",
+            lock_start.elapsed()
+        );
+
         let cache_key = format!("doc:{}", doc_name);
 
+        tracing::info!("[GROUP] Fetching document data from Redis");
+        let fetch_start = std::time::Instant::now();
         let cached_data: Vec<u8> = conn
             .get(&cache_key)
             .await
             .map_err(|e| Error::Other(e.into()))?;
+        tracing::info!(
+            "[GROUP] Document data fetched from Redis in {:?}, size: {} bytes",
+            fetch_start.elapsed(),
+            cached_data.len()
+        );
+
+        let decode_start = std::time::Instant::now();
         let update = Update::decode_v1(&cached_data)?;
+        tracing::info!(
+            "[GROUP] Update decoded successfully in {:?}",
+            decode_start.elapsed()
+        );
 
+        tracing::info!("[GROUP] Acquiring awareness write lock");
+        let lock_start = std::time::Instant::now();
         let awareness_guard = awareness.write().await;
-        let mut txn = awareness_guard.doc().transact_mut();
-        txn.apply_update(update)?;
+        tracing::info!(
+            "[GROUP] Awareness write lock acquired in {:?}",
+            lock_start.elapsed()
+        );
 
-        tracing::debug!("Successfully loaded document from Redis cache");
+        let apply_start = std::time::Instant::now();
+        let mut txn = awareness_guard.doc().transact_mut();
+        tracing::info!("[GROUP] Applying update to document");
+        txn.apply_update(update)?;
+        tracing::info!("[GROUP] Update applied in {:?}", apply_start.elapsed());
+
+        tracing::info!(
+            "[GROUP] Document loaded from Redis successfully in total time: {:?}",
+            start_time.elapsed()
+        );
         Ok(())
     }
 
     async fn load_from_storage(store: &Arc<GcsStore>, doc_name: &str, awareness: &AwarenessRef) {
+        tracing::info!("[GROUP] Loading document '{}' from storage", doc_name);
+        let start_time = std::time::Instant::now();
+
+        tracing::info!("[GROUP] Acquiring awareness write lock");
+        let lock_start = std::time::Instant::now();
         let awareness = awareness.write().await;
+        tracing::info!(
+            "[GROUP] Awareness write lock acquired in {:?}",
+            lock_start.elapsed()
+        );
+
         let mut txn = awareness.doc().transact_mut();
+        tracing::info!("[GROUP] Loading document from storage");
+        let load_start = std::time::Instant::now();
         match store.load_doc(doc_name, &mut txn).await {
             Ok(_) => {
-                tracing::debug!("Successfully loaded document '{}' from storage", doc_name);
+                tracing::info!(
+                    "[GROUP] Successfully loaded document '{}' from storage in {:?}",
+                    doc_name,
+                    load_start.elapsed()
+                );
             }
             Err(e) => {
-                tracing::error!("Failed to load document '{}' from storage: {}", doc_name, e);
+                tracing::error!(
+                    "[GROUP] Failed to load document '{}' from storage: {} (after {:?})",
+                    doc_name,
+                    e,
+                    load_start.elapsed()
+                );
             }
         }
+
+        tracing::info!(
+            "[GROUP] Document loading process completed in total time: {:?}",
+            start_time.elapsed()
+        );
     }
 
     async fn handle_update(
@@ -364,6 +496,7 @@ impl BroadcastGroup {
         <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
+        tracing::info!("[GROUP] Creating subscription with default protocol");
         self.subscribe_with(sink, stream, DefaultProtocol)
     }
 
@@ -379,12 +512,22 @@ impl BroadcastGroup {
         <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
+        tracing::info!(
+            "[GROUP] Creating subscription with user token: {}",
+            user_token.is_some()
+        );
         if let Some(token) = user_token {
             let awareness = self.awareness().clone();
             let client_id = rand::random::<u64>();
+            tracing::info!(
+                "[GROUP] Setting up user awareness state with client ID: {}",
+                client_id
+            );
 
             tokio::spawn(async move {
+                tracing::info!("[GROUP] Acquiring awareness write lock for user state");
                 let awareness = awareness.write().await;
+                tracing::info!("[GROUP] Awareness write lock acquired for user state");
                 let mut local_state = std::collections::HashMap::new();
 
                 local_state.insert(
@@ -395,8 +538,11 @@ impl BroadcastGroup {
                     }),
                 );
 
+                tracing::info!("[GROUP] Setting local state for user");
                 if let Err(e) = awareness.set_local_state(Some(local_state)) {
-                    tracing::error!("Failed to set awareness state: {}", e);
+                    tracing::error!("[GROUP] Failed to set awareness state: {}", e);
+                } else {
+                    tracing::info!("[GROUP] User awareness state set successfully");
                 }
             });
         }
@@ -417,38 +563,56 @@ impl BroadcastGroup {
         E: std::error::Error + Send + Sync + 'static,
         P: Protocol + Send + Sync + 'static,
     {
+        tracing::info!("[GROUP] Setting up subscription with custom protocol");
         let sink_task = {
             let sink = sink.clone();
             let mut receiver = self.sender.subscribe();
+            tracing::info!("[GROUP] Created broadcast receiver");
             tokio::spawn(async move {
+                tracing::info!("[GROUP] Starting sink task");
                 while let Ok(msg) = receiver.recv().await {
+                    tracing::debug!("[GROUP] Received message of size: {} bytes", msg.len());
                     let mut sink = sink.lock().await;
                     if sink.send(msg).await.is_err() {
+                        tracing::warn!("[GROUP] Failed to send message to sink, ending task");
                         return Ok(());
                     }
                 }
-                Ok(())
-            })
-        };
-        let stream_task = {
-            let awareness = self.awareness().clone();
-            tokio::spawn(async move {
-                while let Some(res) = stream.next().await {
-                    if let Ok(data) = res.map_err(|e| Error::Other(Box::new(e))) {
-                        if let Ok(msg) = Message::decode_v1(&data) {
-                            if let Ok(Some(reply)) =
-                                Self::handle_msg(&protocol, &awareness, msg).await
-                            {
-                                let mut sink = sink.lock().await;
-                                let _ = sink.send(reply.encode_v1()).await;
-                            }
-                        }
-                    }
-                }
+                tracing::info!("[GROUP] Sink task completed");
                 Ok(())
             })
         };
 
+        let stream_task = {
+            let awareness = self.awareness().clone();
+            tracing::info!("[GROUP] Setting up stream task");
+            tokio::spawn(async move {
+                tracing::info!("[GROUP] Starting stream task");
+                while let Some(res) = stream.next().await {
+                    if let Ok(data) = res.map_err(|e| Error::Other(Box::new(e))) {
+                        tracing::debug!("[GROUP] Received data of size: {} bytes", data.len());
+                        if let Ok(msg) = Message::decode_v1(&data) {
+                            tracing::debug!("[GROUP] Decoded message successfully");
+                            if let Ok(Some(reply)) =
+                                Self::handle_msg(&protocol, &awareness, msg).await
+                            {
+                                tracing::debug!("[GROUP] Handled message, sending reply");
+                                let mut sink = sink.lock().await;
+                                let _ = sink.send(reply.encode_v1()).await;
+                            }
+                        } else {
+                            tracing::warn!("[GROUP] Failed to decode message");
+                        }
+                    } else {
+                        tracing::warn!("[GROUP] Error receiving data from stream");
+                    }
+                }
+                tracing::info!("[GROUP] Stream task completed");
+                Ok(())
+            })
+        };
+
+        tracing::info!("[GROUP] Subscription created with sink and stream tasks");
         Subscription {
             sink_task,
             stream_task,
@@ -662,11 +826,34 @@ pub struct Subscription {
 }
 
 impl Subscription {
-    pub async fn completed(self) -> Result<(), Error> {
+    pub async fn completed(mut self) -> Result<(), Error> {
+        tracing::info!("[SUB] Starting to wait for subscription completion");
+
         let res = select! {
-            r1 = self.sink_task => r1,
-            r2 = self.stream_task => r2,
+            r1 = &mut self.sink_task => {
+                tracing::info!("[SUB] Sink task completed first");
+                r1
+            },
+            r2 = &mut self.stream_task => {
+                tracing::info!("[SUB] Stream task completed first");
+                r2
+            },
         };
+
+        match &res {
+            Ok(Ok(_)) => tracing::info!("[SUB] Subscription completed successfully"),
+            Ok(Err(e)) => tracing::error!("[SUB] Subscription completed with error: {}", e),
+            Err(e) => tracing::error!("[SUB] Subscription join error: {}", e),
+        }
+
         res.map_err(|e| Error::Other(e.into()))?
+    }
+}
+
+impl Drop for Subscription {
+    fn drop(&mut self) {
+        tracing::info!("[SUB] Subscription being dropped");
+        self.sink_task.abort();
+        self.stream_task.abort();
     }
 }

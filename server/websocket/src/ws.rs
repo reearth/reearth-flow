@@ -137,6 +137,10 @@ pub async fn ws_handler(
     State(state): State<Arc<AppState>>,
 ) -> Response {
     let doc_id = normalize_doc_id(&doc_id);
+    tracing::info!(
+        "[WS] Received WebSocket connection request for doc_id: {}",
+        doc_id
+    );
 
     #[cfg(feature = "auth")]
     let user_token = Some(query.token.clone());
@@ -147,20 +151,25 @@ pub async fn ws_handler(
     // Verify token
     #[cfg(feature = "auth")]
     {
+        tracing::info!("[WS] Starting token verification for doc_id: {}", doc_id);
         let authorized = state.auth.verify_token(&query.token).await;
         match authorized {
             Ok(true) => {
-                tracing::debug!("Token verified successfully");
+                tracing::info!("[WS] Token verified successfully for doc_id: {}", doc_id);
             }
             Ok(false) => {
-                tracing::error!("Token verification failed");
+                tracing::error!("[WS] Token verification failed for doc_id: {}", doc_id);
                 return Response::builder()
                     .status(401)
                     .body(axum::body::Body::empty())
                     .unwrap();
             }
             Err(e) => {
-                tracing::error!("Token verification error: {}", e);
+                tracing::error!(
+                    "[WS] Token verification error for doc_id: {}: {}",
+                    doc_id,
+                    e
+                );
                 return Response::builder()
                     .status(500)
                     .body(axum::body::Body::empty())
@@ -169,10 +178,20 @@ pub async fn ws_handler(
         }
     }
 
+    tracing::info!(
+        "[WS] Attempting to get or create broadcast group for doc_id: {}",
+        doc_id
+    );
     let bcast = match state.pool.get_or_create_group(&doc_id).await {
-        Ok(group) => group,
+        Ok(group) => {
+            tracing::info!(
+                "[WS] Successfully got broadcast group for doc_id: {}",
+                doc_id
+            );
+            group
+        }
         Err(e) => {
-            tracing::error!("Failed to get or create group for {}: {}", doc_id, e);
+            tracing::error!("[WS] Failed to get or create group for {}: {}", doc_id, e);
             return Response::builder()
                 .status(500)
                 .body(axum::body::Body::empty())
@@ -180,7 +199,9 @@ pub async fn ws_handler(
         }
     };
 
+    tracing::info!("[WS] Setting up WebSocket upgrade for doc_id: {}", doc_id);
     ws.on_upgrade(move |socket| {
+        tracing::info!("[WS] WebSocket upgraded for doc_id: {}", doc_id);
         handle_socket(socket, bcast, doc_id, state.pool.clone(), user_token)
     })
 }
@@ -192,10 +213,21 @@ async fn handle_socket(
     pool: Arc<BroadcastPool>,
     user_token: Option<String>,
 ) {
+    tracing::info!("[WS] Starting handle_socket for doc_id: {}", doc_id);
     bcast.increment_connections();
+    tracing::info!(
+        "[WS] Incremented connections for doc_id: {}, current count: {}",
+        doc_id,
+        bcast.connection_count()
+    );
 
     let (sender, receiver) = socket.split();
+    tracing::info!("[WS] Split WebSocket for doc_id: {}", doc_id);
 
+    tracing::info!(
+        "[WS] Creating connection with broadcast group for doc_id: {}",
+        doc_id
+    );
     let conn = crate::conn::Connection::with_broadcast_group_and_user(
         bcast.clone(),
         WarpSink(sender),
@@ -203,11 +235,27 @@ async fn handle_socket(
         user_token,
     )
     .await;
+    tracing::info!(
+        "[WS] Connection created for doc_id: {}, waiting for completion",
+        doc_id
+    );
 
     if let Err(e) = conn.await {
-        tracing::error!("WebSocket connection error: {}", e);
+        tracing::error!(
+            "[WS] WebSocket connection error for doc_id: {}: {}",
+            doc_id,
+            e
+        );
+    } else {
+        tracing::info!(
+            "[WS] WebSocket connection completed normally for doc_id: {}",
+            doc_id
+        );
     }
+
+    tracing::info!("[WS] Removing connection for doc_id: {}", doc_id);
     pool.remove_connection(&doc_id).await;
+    tracing::info!("[WS] Connection removed for doc_id: {}", doc_id);
 }
 
 fn normalize_doc_id(doc_id: &str) -> String {
