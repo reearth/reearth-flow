@@ -5,7 +5,7 @@ import {
   Export,
   PencilSimple,
   ShareFat,
-  TrashSimple,
+  Trash,
 } from "@phosphor-icons/react";
 import { MouseEvent, useState } from "react";
 
@@ -160,7 +160,7 @@ const ProjectCard: React.FC<Props> = ({
                   setProjectToBeDeleted(id);
                 }}>
                 {t("Delete Project")}
-                <TrashSimple weight="light" />
+                <Trash weight="light" />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

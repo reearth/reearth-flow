@@ -1,9 +1,16 @@
-import { createContext, FC, PropsWithChildren, useContext } from "react";
+import {
+  createContext,
+  FC,
+  MouseEvent,
+  PropsWithChildren,
+  useContext,
+} from "react";
 
-import { NodeChange } from "@flow/types";
+import { Node, NodeChange } from "@flow/types";
 
 export type EditorContextType = {
   onNodesChange?: (changes: NodeChange[]) => void;
+  onParamsEditorOpen?: (_e: MouseEvent | undefined, node: Node) => void;
 };
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);

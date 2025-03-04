@@ -5,7 +5,7 @@ import {
   GearFine,
   Graph,
   Lightning,
-  TrashSimple,
+  Trash,
 } from "@phosphor-icons/react";
 import { NodeProps } from "@xyflow/react";
 import { memo } from "react";
@@ -14,6 +14,7 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -48,6 +49,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     selectedColor,
     selectedBackgroundColor,
     handleNodeDelete,
+    handleParamsEditorOpen,
   } = useHooks({ id, data, type });
 
   return (
@@ -86,7 +88,9 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
         </div>
       </ContextMenuTrigger>
       <ContextMenuContent>
-        <ContextMenuItem className="justify-between gap-4 text-xs">
+        <ContextMenuItem
+          className="justify-between gap-4 text-xs"
+          onClick={handleParamsEditorOpen}>
           {t("Node Settings")}
           <GearFine weight="light" />
         </ContextMenuItem>
@@ -100,11 +104,12 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
           {t("Preview Intermediate Data")}
           <Eye weight="light" />
         </ContextMenuItem>
+        <ContextMenuSeparator />
         <ContextMenuItem
           className="justify-between gap-4 text-xs text-destructive"
           onClick={handleNodeDelete}>
           {t("Delete Node")}
-          <TrashSimple weight="light" />
+          <Trash weight="light" />
         </ContextMenuItem>
       </ContextMenuContent>
     </ContextMenu>

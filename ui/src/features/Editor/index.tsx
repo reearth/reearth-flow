@@ -67,8 +67,9 @@ export default function Editor({
   const editorContext: EditorContextType = useMemo(
     () => ({
       onNodesChange: handleNodesChange,
+      onParamsEditorOpen: handleNodeDoubleClick,
     }),
-    [handleNodesChange],
+    [handleNodesChange, handleNodeDoubleClick],
   );
 
   return (
