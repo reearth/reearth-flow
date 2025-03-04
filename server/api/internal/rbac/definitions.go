@@ -139,27 +139,5 @@ func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDef
 				roleMaintainer,
 			}),
 		}).
-		AddResource(ResourceUser, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionRead, []string{
-				roleSelf,
-			}),
-			generator.NewActionDefinition(ActionEdit, []string{
-				roleSelf,
-			}),
-		}).
-		AddResource(ResourceWorkspace, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionList, []string{
-				roleSelf,
-			}),
-			generator.NewActionDefinition(ActionCreate, []string{
-				roleSelf,
-			}),
-			generator.NewActionDefinition(ActionEdit, []string{
-				roleOwner,
-			}),
-			generator.NewActionDefinition(ActionDelete, []string{
-				roleOwner,
-			}),
-		}).
 		Build()
 }
