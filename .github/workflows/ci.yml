@@ -3,12 +3,6 @@ on:
   push:
     branches: [main, release/*, release]
   pull_request:
-  workflow_dispatch:
-    inputs:
-      force_update_policies:
-        description: 'Force update policies'
-        type: boolean
-        default: false
 
 jobs:
   prepare:
@@ -17,7 +11,6 @@ jobs:
       ui: ${{ steps.ui.outputs.any_changed }}
       api: ${{ steps.api.outputs.any_changed }}
       subscriber: ${{ steps.subscriber.outputs.any_changed }}
-      policies: ${{ steps.policies.outputs.any_changed }}
       engine: ${{ steps.engine.outputs.any_changed }}
       websocket: ${{ steps.websocket.outputs.any_changed }}
       policies: ${{ steps.policies.outputs.any_changed }}
@@ -48,17 +41,6 @@ jobs:
               .github/workflows/ci_subscriber.yml
               .github/workflows/build_deploy_subscriber.yml
               CHANGELOG.md
-
-      - name: changed files for policies
-        id: policies
-        uses: tj-actions/changed-files@v45
-        with:
-          files: |
-            server/api/internal/rbac/**
-            .github/workflows/ci.yml
-            .github/workflows/ci_policies.yml
-            .github/workflows/update_policies.yml
-            CHANGELOG.md
 
       - name: changed files for ui
         id: ui
@@ -112,10 +94,6 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.subscriber == 'true'
     uses: ./.github/workflows/ci_subscriber.yml
-  ci-policies:
-    needs: prepare
-    if: needs.prepare.outputs.policies == 'true'
-    uses: ./.github/workflows/ci_policies.yml
   ci-ui:
     needs: prepare
     if: needs.prepare.outputs.ui == 'true'
@@ -137,7 +115,6 @@ jobs:
     needs:
       - ci-api
       - ci-subscriber
-      - ci-policies
       - ci-ui
       - ci-websocket
       - ci-engine
@@ -185,20 +162,6 @@ jobs:
           NEW_TAG_SHORT: ${{ steps.info.outputs.new_tag_short }}
           NAME: ${{ steps.info.outputs.name }}
         run: echo "sha_short=$SHA_SHORT, new_tag=$NEW_TAG, new_tag_short=$NEW_TAG_SHORT, name=$NAME"
-  update-policies:
-    needs:
-      - ci
-      - ci-policies
-      - ci-collect-info
-    uses: ./.github/workflows/update_policies.yml
-    if: |
-      !failure() &&
-      needs.ci-policies.result == 'success' &&
-      (
-        (github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/'))) ||
-        inputs.force_update_policies
-      )
-    secrets: inherit
   build-and-deploy-api:
     needs:
       - ci
