@@ -75,7 +75,6 @@ impl BroadcastPool {
                     Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
                 };
 
-                // Create new broadcast group
                 let group = Arc::new(
                     BroadcastGroup::with_storage(
                         awareness,
@@ -96,9 +95,6 @@ impl BroadcastPool {
     }
 
     pub async fn cleanup_empty_groups(&self) {
-        // Only remove groups that still have zero connections when we check
-        // This prevents race conditions where a new connection was added
-        // between marking for cleanup and actual cleanup
         self.groups.retain(|_, group| {
             let count = group.connection_count();
             if count == 0 {
@@ -112,7 +108,22 @@ impl BroadcastPool {
 
     pub async fn remove_connection(&self, doc_id: &str) {
         if let Some(group) = self.groups.get(doc_id) {
+            let group_clone = group.clone();
             let remaining = group.decrement_connections();
+
+            if let Err(e) = group_clone.flush_updates().await {
+                tracing::error!(
+                    "Failed to flush updates for group '{}' on disconnect: {}",
+                    doc_id,
+                    e
+                );
+            } else {
+                tracing::info!(
+                    "Successfully flushed updates for group '{}' on disconnect",
+                    doc_id
+                );
+            }
+
             if remaining == 0 {
                 // Add a small delay before cleanup to reduce likelihood of race conditions
                 // with new connections being established
@@ -122,6 +133,37 @@ impl BroadcastPool {
                     pool.cleanup_empty_groups().await;
                 });
             }
+        }
+    }
+
+    pub async fn flush_all_updates(&self) -> Result<(), anyhow::Error> {
+        tracing::info!("Flushing updates for all groups");
+        let mut errors = Vec::new();
+
+        for entry in self.groups.iter() {
+            let doc_id = entry.key().clone();
+            let group = entry.value().clone();
+
+            tracing::info!("Flushing updates for group '{}'", doc_id);
+            if let Err(e) = group.flush_updates().await {
+                tracing::error!("Failed to flush updates for group '{}': {}", doc_id, e);
+                errors.push((doc_id, e));
+            }
+        }
+
+        if errors.is_empty() {
+            tracing::info!("Successfully flushed updates for all groups");
+            Ok(())
+        } else {
+            let error_msg = errors
+                .iter()
+                .map(|(id, e)| format!("{}: {}", id, e))
+                .collect::<Vec<_>>()
+                .join(", ");
+            Err(anyhow!(
+                "Failed to flush updates for some groups: {}",
+                error_msg
+            ))
         }
     }
 }
