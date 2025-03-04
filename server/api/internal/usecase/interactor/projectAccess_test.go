@@ -18,7 +18,7 @@ func TestProjectAccess_Fetch(t *testing.T) {
 	// prepare
 	ctx := context.Background()
 	mem := memory.New()
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
 		return true, nil
 	})
 	i := &ProjectAccess{
@@ -101,7 +101,7 @@ func TestProjectAccess_Share(t *testing.T) {
 		SharedPath: "shared",
 	}
 
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
 		return true, nil
 	})
 
@@ -170,7 +170,7 @@ func TestProjectAccess_Unshare(t *testing.T) {
 		Host:       "https://example.com",
 		SharedPath: "shared",
 	}
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
 		return true, nil
 	})
 	i := &ProjectAccess{

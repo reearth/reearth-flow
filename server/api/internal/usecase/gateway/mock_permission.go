@@ -20,7 +20,7 @@ func NewMockPermissionChecker() *MockPermissionChecker {
 	}
 }
 
-func (m *MockPermissionChecker) CheckPermission(ctx context.Context, authInfo *appx.AuthInfo, resource string, action string) (bool, error) {
+func (m *MockPermissionChecker) CheckPermission(ctx context.Context, authInfo *appx.AuthInfo, userId string, resource string, action string) (bool, error) {
 	if m.Error != nil {
 		return false, m.Error
 	}

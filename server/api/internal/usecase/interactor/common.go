@@ -73,7 +73,16 @@ func workspaceMemberCountEnforcer(_ *repo.Container) accountinteractor.Workspace
 
 func checkPermission(ctx context.Context, permissionChecker gateway.PermissionChecker, resource string, action string) error {
 	authInfo := adapter.GetAuthInfo(ctx)
-	hasPermission, err := permissionChecker.CheckPermission(ctx, authInfo, resource, action)
+	if authInfo == nil {
+		return fmt.Errorf("auth info not found")
+	}
+
+	user := adapter.User(ctx)
+	if user == nil {
+		return fmt.Errorf("user not found")
+	}
+
+	hasPermission, err := permissionChecker.CheckPermission(ctx, authInfo, user.ID().String(), resource, action)
 	if err != nil {
 		return fmt.Errorf("failed to check permission: %w", err)
 	}

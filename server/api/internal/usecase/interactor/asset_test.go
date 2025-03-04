@@ -30,7 +30,7 @@ func TestAsset_Create(t *testing.T) {
 	mfs := afero.NewMemMapFs()
 	f, _ := fs.NewFile(mfs, "", "")
 
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
 		return true, nil
 	})
 

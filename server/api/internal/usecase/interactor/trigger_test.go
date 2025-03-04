@@ -39,7 +39,7 @@ func TestTrigger_Create(t *testing.T) {
 		Deployment: mongo.NewDeployment(mongox.NewClientWithDatabase(c)),
 	}
 	gateway := &gateway.Container{}
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
 		return true, nil
 	})
 	job := NewJob(&repo, gateway, mockPermissionCheckerTrue)
@@ -124,7 +124,7 @@ func TestTrigger_Update(t *testing.T) {
 		Deployment: mongo.NewDeployment(mongox.NewClientWithDatabase(c)),
 	}
 	gateway := &gateway.Container{}
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
 		return true, nil
 	})
 	job := NewJob(&repo, gateway, mockPermissionCheckerTrue)
@@ -208,7 +208,7 @@ func TestTrigger_Fetch(t *testing.T) {
 		Trigger: mongo.NewTrigger(mongox.NewClientWithDatabase(c)),
 	}
 	gateway := &gateway.Container{}
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
 		return true, nil
 	})
 	job := NewJob(&repo, gateway, mockPermissionCheckerTrue)
@@ -244,7 +244,7 @@ func TestTrigger_Delete(t *testing.T) {
 		Trigger: mongo.NewTrigger(mongox.NewClientWithDatabase(c)),
 	}
 	gateway := &gateway.Container{}
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
 		return true, nil
 	})
 	job := NewJob(&repo, gateway, mockPermissionCheckerTrue)

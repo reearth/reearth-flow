@@ -31,7 +31,7 @@ func setupProject(t *testing.T, permissionChecker *mockPermissionChecker) *Proje
 func TestProject_Create(t *testing.T) {
 	ctx := context.Background()
 
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
 		return true, nil
 	})
 
@@ -75,7 +75,7 @@ func TestProject_Create(t *testing.T) {
 				Description: lo.ToPtr("ddd"),
 				Archived:    lo.ToPtr(false),
 			},
-			permission: NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+			permission: NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
 				return false, nil
 			}),
 			wantErr: errors.New("permission denied"),
