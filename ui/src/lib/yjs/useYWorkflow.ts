@@ -8,10 +8,10 @@ import {
   DEFAULT_ENTRY_GRAPH_ID,
   DEFAULT_ROUTING_PORT,
 } from "@flow/global-constants";
+import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
+import { useT } from "@flow/lib/i18n";
 import type { Action, Edge, Node } from "@flow/types";
 import { generateUUID } from "@flow/utils";
-
-import { fetcher } from "../fetch/transformers/useFetch";
 
 import {
   yEdgeConstructor,
@@ -31,6 +31,7 @@ export default ({
   currentWorkflowId: string;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
+  const t = useT();
   const { api } = config();
   const currentYWorkflow = yWorkflows.get(
     rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
@@ -126,7 +127,7 @@ export default ({
         const routers = await fetchRouterConfigs();
         undoTrackerActionWrapper(() => {
           const workflowId = generateUUID();
-          const workflowName = `Sub Workflow-${yWorkflows.length}`;
+          const workflowName = t("Subworkflow");
 
           const { newYWorkflow, newSubworkflowNode } = createYWorkflow(
             workflowId,
@@ -156,6 +157,7 @@ export default ({
       yWorkflows,
       currentWorkflowId,
       rawWorkflows,
+      t,
       createYWorkflow,
       fetchRouterConfigs,
       undoTrackerActionWrapper,
@@ -220,7 +222,7 @@ export default ({
           );
 
           const workflowId = generateUUID();
-          const workflowName = `Sub Workflow-${yWorkflows.length}`;
+          const workflowName = t("Subworkflow");
 
           const { newYWorkflow, newSubworkflowNode } = createYWorkflow(
             workflowId,
@@ -273,6 +275,7 @@ export default ({
       yWorkflows,
       currentWorkflowId,
       rawWorkflows,
+      t,
       createYWorkflow,
       fetchRouterConfigs,
       undoTrackerActionWrapper,
@@ -282,7 +285,7 @@ export default ({
   const handleYWorkflowUpdate = useCallback(
     (workflowId: string, nodes?: Node[], edges?: Edge[]) =>
       undoTrackerActionWrapper(() => {
-        const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
+        const workflowName = t("Subworkflow");
         const newYWorkflow = yWorkflowConstructor(
           workflowId,
           workflowName,
@@ -291,7 +294,7 @@ export default ({
         );
         yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
       }),
-    [yWorkflows, undoTrackerActionWrapper],
+    [yWorkflows, t, undoTrackerActionWrapper],
   );
 
   const handleYWorkflowRemove = useCallback(

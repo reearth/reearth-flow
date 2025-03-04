@@ -45,7 +45,7 @@ export default () => {
       },
       // {
       //   keyBinding: EditorKeyBindings["groupToSubWorkFlow"],
-      //   description: t("Create new sub workflow from selected nodes"),
+      //   description: t("Create new subworkflow from selected nodes"),
       // },
       {
         keyBinding: EditorKeyBindings["bottomPanelLogs"],
