@@ -573,7 +573,7 @@ impl Drop for BroadcastGroup {
         self.awareness_updater.abort();
 
         if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
-            let doc_name_log = doc_name.clone(); // Clone for logging
+            let doc_name_log = doc_name.clone();
             tracing::info!("Preparing to store updates for document '{}'", doc_name_log);
 
             if let Ok(rt) = tokio::runtime::Handle::try_current() {
