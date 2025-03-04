@@ -64,10 +64,10 @@ export default function Editor({
     handleLayoutChange,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
 
-  const editorContext: EditorContextType = useMemo(
-    () => ({
+  const editorContext = useMemo(
+    (): EditorContextType => ({
       onNodesChange: handleNodesChange,
-      onParamsEditorOpen: handleNodeDoubleClick,
+      onSecondaryNodeAction: handleNodeDoubleClick,
     }),
     [handleNodesChange, handleNodeDoubleClick],
   );

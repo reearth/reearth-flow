@@ -30,7 +30,7 @@ const NodeContextMenu: React.FC<Props> = ({
 
   const node = useMemo(() => getNode(nodeId), [getNode, nodeId]);
 
-  const { onNodesChange, onParamsEditorOpen } = useEditorContext();
+  const { onNodesChange, onSecondaryNodeAction } = useEditorContext();
 
   const handleNodeDelete = useCallback(() => {
     onNodesChange?.([{ id: nodeId, type: "remove" }]);
@@ -38,8 +38,8 @@ const NodeContextMenu: React.FC<Props> = ({
 
   const handleParamsEditorOpen = useCallback(() => {
     if (!node) return;
-    onParamsEditorOpen?.(undefined, node);
-  }, [node, onParamsEditorOpen]);
+    onSecondaryNodeAction?.(undefined, node);
+  }, [node, onSecondaryNodeAction]);
 
   return (
     <ContextMenu>
