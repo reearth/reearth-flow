@@ -308,6 +308,7 @@
   "Member's Role has been successfully updated.": "",
   "Member's Role Could Not Be Updated": "",
   "There was an error when trying to update the members persmissons.": "",
+  "Open Subworkflow Canvas": "",
   "Node Settings": "Paramètres du nœud",
   "Preview Intermediate Data": "Aperçu des données intermédiaires",
   "Delete Node": "Supprimer le nœud",

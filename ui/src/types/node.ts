@@ -34,6 +34,10 @@ export const actionNodeTypes = ["reader", "writer", "transformer"] as const;
 
 export type ActionNodeType = (typeof actionNodeTypes)[number];
 
+export const isActionNodeType = (value: string): value is ActionNodeType => {
+  return actionNodeTypes.includes(value as ActionNodeType);
+};
+
 export const deployableNodeTypes = [...actionNodeTypes, "subworkflow"];
 
 export const nodeTypes = [

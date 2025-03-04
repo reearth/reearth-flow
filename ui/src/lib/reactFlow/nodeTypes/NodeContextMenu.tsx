@@ -1,4 +1,4 @@
-import { GearFine, Graph, Trash } from "@phosphor-icons/react";
+import { Eye, GearFine, Graph, Trash } from "@phosphor-icons/react";
 import { useReactFlow } from "@xyflow/react";
 import { useCallback, useMemo } from "react";
 
@@ -11,7 +11,7 @@ import {
 } from "@flow/components";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
-import { Node, NodeType } from "@flow/types";
+import { isActionNodeType, Node, NodeType } from "@flow/types";
 
 type Props = {
   nodeId: string;
@@ -36,7 +36,7 @@ const NodeContextMenu: React.FC<Props> = ({
     onNodesChange?.([{ id: nodeId, type: "remove" }]);
   }, [nodeId, onNodesChange]);
 
-  const handleParamsEditorOpen = useCallback(() => {
+  const handleSecondaryNodeAction = useCallback(() => {
     if (!node) return;
     onSecondaryNodeAction?.(undefined, node);
   }, [node, onSecondaryNodeAction]);
@@ -48,18 +48,25 @@ const NodeContextMenu: React.FC<Props> = ({
         {nodeType === "subworkflow" ? (
           <ContextMenuItem
             className="justify-between gap-4 text-xs"
-            onClick={handleParamsEditorOpen}>
+            onClick={handleSecondaryNodeAction}>
             {t("Open Subworkflow Canvas")}
             <Graph weight="light" />
           </ContextMenuItem>
         ) : (
           <ContextMenuItem
             className="justify-between gap-4 text-xs"
-            onClick={handleParamsEditorOpen}>
+            onClick={handleSecondaryNodeAction}>
             {t("Node Settings")}
             <GearFine weight="light" />
           </ContextMenuItem>
         )}
+        {isActionNodeType(nodeType) && (
+          <ContextMenuItem className="justify-between gap-4 text-xs" disabled>
+            {t("Preview Intermediate Data")}
+            <Eye weight="light" />
+          </ContextMenuItem>
+        )}
+
         {/* <ContextMenuItem
           className="justify-between gap-4 text-xs"
           disabled={!selected}>
