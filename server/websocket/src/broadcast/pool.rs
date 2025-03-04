@@ -112,7 +112,23 @@ impl BroadcastPool {
 
     pub async fn remove_connection(&self, doc_id: &str) {
         if let Some(group) = self.groups.get(doc_id) {
+            let group_clone = group.clone();
             let remaining = group.decrement_connections();
+
+            // Flush updates before potentially removing the group
+            if let Err(e) = group_clone.flush_updates().await {
+                tracing::error!(
+                    "Failed to flush updates for group '{}' on disconnect: {}",
+                    doc_id,
+                    e
+                );
+            } else {
+                tracing::info!(
+                    "Successfully flushed updates for group '{}' on disconnect",
+                    doc_id
+                );
+            }
+
             if remaining == 0 {
                 // Add a small delay before cleanup to reduce likelihood of race conditions
                 // with new connections being established
@@ -122,6 +138,38 @@ impl BroadcastPool {
                     pool.cleanup_empty_groups().await;
                 });
             }
+        }
+    }
+
+    /// Manually flush updates for all groups
+    pub async fn flush_all_updates(&self) -> Result<(), anyhow::Error> {
+        tracing::info!("Flushing updates for all groups");
+        let mut errors = Vec::new();
+
+        for entry in self.groups.iter() {
+            let doc_id = entry.key().clone();
+            let group = entry.value().clone();
+
+            tracing::info!("Flushing updates for group '{}'", doc_id);
+            if let Err(e) = group.flush_updates().await {
+                tracing::error!("Failed to flush updates for group '{}': {}", doc_id, e);
+                errors.push((doc_id, e));
+            }
+        }
+
+        if errors.is_empty() {
+            tracing::info!("Successfully flushed updates for all groups");
+            Ok(())
+        } else {
+            let error_msg = errors
+                .iter()
+                .map(|(id, e)| format!("{}: {}", id, e))
+                .collect::<Vec<_>>()
+                .join(", ");
+            Err(anyhow!(
+                "Failed to flush updates for some groups: {}",
+                error_msg
+            ))
         }
     }
 }

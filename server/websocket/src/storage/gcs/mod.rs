@@ -265,7 +265,7 @@ impl KVStore for GcsStore {
     }
 
     async fn batch_upsert(&self, entries: &[(&[u8], &[u8])]) -> Result<(), Self::Error> {
-        const BATCH_SIZE: usize = 100;
+        const BATCH_SIZE: usize = 2;
         const BATCH_TIMEOUT: Duration = Duration::from_secs(1);
 
         let mut current_batch = Vec::new();

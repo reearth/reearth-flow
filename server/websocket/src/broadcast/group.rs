@@ -22,7 +22,7 @@ use yrs::sync::protocol::{MSG_SYNC, MSG_SYNC_UPDATE};
 use yrs::sync::{DefaultProtocol, Error, Message, Protocol, SyncMessage};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
-use yrs::{Transact, Update};
+use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
 /// Redis cache configuration
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -56,6 +56,8 @@ pub struct BroadcastGroup {
     doc_name: Option<String>,
     redis_ttl: Option<usize>,
     storage_rx: Option<tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>>,
+    // Buffer to store updates until disconnect
+    pending_updates: Arc<Mutex<Vec<Vec<u8>>>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -91,7 +93,9 @@ impl BroadcastGroup {
         let mut lock = awareness.write().await;
         let sink = sender.clone();
 
-        let (storage_tx, storage_rx) = tokio::sync::mpsc::unbounded_channel();
+        let (_storage_tx, storage_rx) = tokio::sync::mpsc::unbounded_channel();
+        let pending_updates = Arc::new(Mutex::new(Vec::new()));
+        let pending_updates_clone = pending_updates.clone();
 
         let doc_sub = {
             lock.doc_mut()
@@ -105,10 +109,16 @@ impl BroadcastGroup {
                         tracing::warn!("broadcast channel closed");
                     }
 
-                    // Send update to storage channel
-                    if let Err(e) = storage_tx.send(u.update.clone()) {
-                        tracing::error!("Failed to send update to storage channel: {}", e);
-                    }
+                    // Use a non-blocking approach to store updates
+                    // Clone what we need for the async task
+                    let update_clone = u.update.clone();
+                    let updates_arc = pending_updates_clone.clone();
+
+                    // Spawn a task to handle the update asynchronously
+                    tokio::spawn(async move {
+                        let mut updates = updates_arc.lock().await;
+                        updates.push(update_clone);
+                    });
                 })
                 .map_err(|e| anyhow!("Failed to observe document updates: {}", e))?
         };
@@ -169,6 +179,7 @@ impl BroadcastGroup {
             doc_name: None,
             redis_ttl: None,
             storage_rx: Some(storage_rx),
+            pending_updates,
         })
     }
 
@@ -217,18 +228,9 @@ impl BroadcastGroup {
         group.doc_name = Some(doc_name.clone());
         group.redis_ttl = redis_ttl;
 
-        // Start storage processing task
-        if let Some(mut rx) = group.storage_rx.take() {
-            let store = group.storage.clone().unwrap();
-            let redis = group.redis.clone();
-            let redis_ttl = group.redis_ttl;
-
-            tokio::spawn(async move {
-                while let Some(update) = rx.recv().await {
-                    Self::handle_update(update, &doc_name, &store, &redis, redis_ttl).await;
-                }
-            });
-        }
+        // We no longer need to start the storage processing task
+        // as updates will be stored only on disconnect
+        group.storage_rx = None;
 
         Ok(group)
     }
@@ -283,13 +285,24 @@ impl BroadcastGroup {
         redis: &Option<Arc<Mutex<RedisConnection>>>,
         redis_ttl: Option<usize>,
     ) {
+        tracing::info!(
+            "handle_update called for document '{}' with update size {} bytes",
+            doc_name,
+            update.len()
+        );
+
         // Store in persistent storage and update Redis cache in parallel
+        tracing::info!("Pushing update to GCS for document '{}'", doc_name);
         let store_future = store.push_update(doc_name, &update);
 
         let redis_future = if let (Some(redis), Some(ttl)) = (redis, redis_ttl) {
             let cache_key = format!("doc:{}", doc_name);
             let redis = redis.clone();
             let update = update.clone();
+            tracing::info!(
+                "Preparing to update Redis cache for document '{}'",
+                doc_name
+            );
             Some(async move {
                 let mut conn = redis.lock().await;
                 if let Err(e) = conn
@@ -297,27 +310,53 @@ impl BroadcastGroup {
                     .await
                 {
                     tracing::error!("Failed to update Redis cache: {}", e);
+                } else {
+                    tracing::info!(
+                        "Successfully updated Redis cache for document '{}'",
+                        doc_name
+                    );
                 }
             })
         } else {
+            tracing::info!("Redis not configured for document '{}'", doc_name);
             None
         };
 
         // Execute both operations concurrently if Redis is enabled
         match redis_future {
             Some(redis_future) => {
+                tracing::info!(
+                    "Executing GCS and Redis operations concurrently for document '{}'",
+                    doc_name
+                );
                 let (store_result, _) = tokio::join!(store_future, redis_future);
                 if let Err(e) = store_result {
-                    tracing::error!("Failed to store update in GCS: {}", e);
+                    tracing::error!(
+                        "Failed to store update in GCS for document '{}': {}",
+                        doc_name,
+                        e
+                    );
                 } else {
-                    tracing::debug!("Successfully stored update in GCS {:?}", store_result);
+                    tracing::info!(
+                        "Successfully stored update in GCS for document '{}': {:?}",
+                        doc_name,
+                        store_result
+                    );
                 }
             }
             None => {
+                tracing::info!("Executing GCS operation only for document '{}'", doc_name);
                 if let Err(e) = store_future.await {
-                    tracing::error!("Failed to store update in GCS: {}", e);
+                    tracing::error!(
+                        "Failed to store update in GCS for document '{}': {}",
+                        doc_name,
+                        e
+                    );
                 } else {
-                    tracing::debug!("Successfully stored update in GCS");
+                    tracing::info!(
+                        "Successfully stored update in GCS for document '{}'",
+                        doc_name
+                    );
                 }
             }
         }
@@ -470,10 +509,80 @@ impl BroadcastGroup {
             }
         }
     }
+
+    /// Manually flush pending updates to storage
+    pub async fn flush_updates(&self) -> Result<(), Error> {
+        if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
+            tracing::info!("Manually flushing updates for document '{}'", doc_name);
+
+            // Get pending updates
+            let updates = {
+                let mut pending = self.pending_updates.lock().await;
+                tracing::info!(
+                    "Found {} pending updates for document '{}'",
+                    pending.len(),
+                    doc_name
+                );
+                if pending.is_empty() {
+                    tracing::info!("No updates to store for document '{}'", doc_name);
+                    return Ok(());
+                }
+                std::mem::take(&mut *pending)
+            };
+
+            // Create a temporary doc to merge updates
+            let doc = Doc::new();
+            let mut txn = doc.transact_mut();
+
+            // Apply all updates to the temporary doc
+            let mut has_updates = false;
+            for (i, update) in updates.iter().enumerate() {
+                if let Ok(decoded) = Update::decode_v1(update) {
+                    if let Err(e) = txn.apply_update(decoded) {
+                        tracing::warn!("Failed to apply update {} during manual flush: {}", i, e);
+                    } else {
+                        has_updates = true;
+                        tracing::info!(
+                            "Successfully applied update {} for document '{}'",
+                            i,
+                            doc_name
+                        );
+                    }
+                } else {
+                    tracing::warn!("Failed to decode update {} during manual flush", i);
+                }
+            }
+
+            if !has_updates {
+                tracing::info!("No valid updates to store for document '{}'", doc_name);
+                return Ok(());
+            }
+
+            // Get the merged state as a single update
+            let state_vector = StateVector::default();
+            let merged_update = txn.encode_state_as_update_v1(&state_vector);
+            tracing::info!(
+                "Created merged update of size {} bytes for document '{}'",
+                merged_update.len(),
+                doc_name
+            );
+
+            tracing::info!("Storing merged update for document '{}'", doc_name);
+            Self::handle_update(merged_update, doc_name, store, &self.redis, self.redis_ttl).await;
+            tracing::info!("Stored merged updates for document '{}'", doc_name);
+
+            Ok(())
+        } else {
+            tracing::info!("No storage or doc_name available, not storing updates");
+            Ok(())
+        }
+    }
 }
 
 impl Drop for BroadcastGroup {
     fn drop(&mut self) {
+        tracing::info!("BroadcastGroup::drop called");
+
         // Cancel all subscriptions
         if let Some(sub) = self.doc_sub.take() {
             drop(sub);
@@ -482,6 +591,94 @@ impl Drop for BroadcastGroup {
             drop(sub);
         }
         self.awareness_updater.abort();
+
+        // Store merged updates on disconnect if we have storage and doc_name
+        if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
+            let doc_name_log = doc_name.clone(); // Clone for logging
+            tracing::info!("Preparing to store updates for document '{}'", doc_name_log);
+
+            // Use tokio runtime to execute async code in Drop
+            if let Ok(rt) = tokio::runtime::Handle::try_current() {
+                let store = store.clone();
+                let doc_name = doc_name.clone();
+                let redis = self.redis.clone();
+                let redis_ttl = self.redis_ttl;
+                let pending_updates = self.pending_updates.clone();
+
+                rt.spawn(async move {
+                    // Get pending updates
+                    let updates = {
+                        let mut pending = pending_updates.lock().await;
+                        tracing::info!(
+                            "Found {} pending updates for document '{}'",
+                            pending.len(),
+                            doc_name
+                        );
+                        if pending.is_empty() {
+                            tracing::info!("No updates to store for document '{}'", doc_name);
+                            return;
+                        }
+                        std::mem::take(&mut *pending)
+                    };
+
+                    // Create a temporary doc to merge updates
+                    let doc = Doc::new();
+                    let mut txn = doc.transact_mut();
+
+                    // Apply all updates to the temporary doc
+                    let mut has_updates = false;
+                    for (i, update) in updates.iter().enumerate() {
+                        if let Ok(decoded) = Update::decode_v1(update) {
+                            if let Err(e) = txn.apply_update(decoded) {
+                                tracing::warn!(
+                                    "Failed to apply update {} during merge in Drop: {}",
+                                    i,
+                                    e
+                                );
+                            } else {
+                                has_updates = true;
+                                tracing::info!(
+                                    "Successfully applied update {} for document '{}'",
+                                    i,
+                                    doc_name
+                                );
+                            }
+                        } else {
+                            tracing::warn!("Failed to decode update {} during merge in Drop", i);
+                        }
+                    }
+
+                    if !has_updates {
+                        tracing::info!("No valid updates to store for document '{}'", doc_name);
+                        return;
+                    }
+
+                    // Get the merged state as a single update
+                    let state_vector = StateVector::default();
+                    let merged_update = txn.encode_state_as_update_v1(&state_vector);
+                    tracing::info!(
+                        "Created merged update of size {} bytes for document '{}'",
+                        merged_update.len(),
+                        doc_name
+                    );
+
+                    tracing::info!("Storing merged update for document '{}'", doc_name);
+                    Self::handle_update(merged_update, &doc_name, &store, &redis, redis_ttl).await;
+                    tracing::info!(
+                        "Stored merged updates on disconnect for document '{}'",
+                        doc_name
+                    );
+                });
+                tracing::info!(
+                    "Spawned task to store updates for document '{}'",
+                    doc_name_log
+                );
+            } else {
+                tracing::error!("Failed to get tokio runtime handle for storing merged updates");
+            }
+        } else {
+            tracing::info!("No storage or doc_name available, not storing updates");
+        }
     }
 }
 
