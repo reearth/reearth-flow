@@ -83,8 +83,9 @@ export default ({
   }, [fitView]);
 
   const { locallyLockedNode, handleNodeLocking } = useNodeLocker({
-    selectedNodeIds,
     nodes,
+    selectedNodeIds,
+    setSelectedNodeIds,
   });
 
   const handleNodeDoubleClick = useCallback(

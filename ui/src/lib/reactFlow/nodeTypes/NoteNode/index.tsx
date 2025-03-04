@@ -3,7 +3,7 @@ import { RJSFSchema } from "@rjsf/utils";
 import { NodeProps, NodeResizer } from "@xyflow/react";
 import { memo } from "react";
 
-import { Node } from "@flow/types";
+import { Node, NodeType } from "@flow/types";
 
 import { convertHextoRgba } from "../utils";
 
@@ -44,7 +44,12 @@ export const noteNodeAction = {
   parameter: noteNodeSchema,
 };
 
-export const baseNoteNode = {
+export const baseNoteNode: {
+  type: NodeType;
+  content: string;
+  measured: { width: number; height: number };
+  style: { width: string; height: string; minWidth: string; minHeight: string };
+} = {
   type: "note",
   content: "New Note",
   measured: {

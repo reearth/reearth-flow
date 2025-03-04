@@ -3,7 +3,7 @@ import { RJSFSchema } from "@rjsf/utils";
 import { NodeProps, NodeResizer } from "@xyflow/react";
 import { memo } from "react";
 
-import { Node } from "@flow/types";
+import { Node, NodeType } from "@flow/types";
 
 import NodeContextMenu from "../NodeContextMenu";
 
@@ -43,7 +43,11 @@ export const batchNodeAction = {
   parameter: batchNodeSchema,
 };
 
-export const baseBatchNode = {
+export const baseBatchNode: {
+  type: NodeType;
+  style: { width: string; height: string };
+  zIndex: number;
+} = {
   type: "batch",
   style: { width: initialSize.width + "px", height: initialSize.height + "px" },
   zIndex: -1001,

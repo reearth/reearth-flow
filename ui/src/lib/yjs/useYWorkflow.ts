@@ -10,7 +10,7 @@ import {
 } from "@flow/global-constants";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { useT } from "@flow/lib/i18n";
-import type { Action, Edge, Node } from "@flow/types";
+import type { Action, Edge, Node, NodeType } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
 import {
@@ -61,7 +61,7 @@ export default ({
       // newInputNode is not a YNode because it will be converted in the yWorkflowConstructor
       const newInputNode: Node = {
         id: inputNodeId,
-        type: inputRouter.type,
+        type: inputRouter.type as NodeType,
         position: { x: 200, y: 200 },
         data: {
           officialName: inputRouter.name,
@@ -76,7 +76,7 @@ export default ({
       // newOutputNode is not a YNode because it will be converted in the yWorkflowConstructor
       const newOutputNode: Node = {
         id: outputNodeId,
-        type: outputRouter.type,
+        type: outputRouter.type as NodeType,
         position: { x: 1000, y: 200 },
         data: {
           officialName: outputRouter.name,

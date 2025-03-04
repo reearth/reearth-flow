@@ -16,7 +16,7 @@ type CreateNodeOptions = {
 const createBaseNode = ({ position, type }: CreateNodeOptions): Node => ({
   id: generateUUID(),
   position,
-  type,
+  type: type as NodeType,
   data: {
     officialName: type,
   },

@@ -45,7 +45,7 @@ export const nodeTypes = [
 
 export type NodeType = (typeof nodeTypes)[number];
 
-export type Node = Omit<ReactFlowNode<NodeData>, "type"> & { type: string };
+export type Node = Omit<ReactFlowNode<NodeData>, "type"> & { type: NodeType };
 
 export type NodeTypes = Record<
   NodeType,
