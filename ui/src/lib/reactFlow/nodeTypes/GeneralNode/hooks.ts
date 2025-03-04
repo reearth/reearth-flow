@@ -1,8 +1,6 @@
-import { useReactFlow } from "@xyflow/react";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
-import { useEditorContext } from "@flow/features/Editor/editorContext";
-import { Node, NodeData } from "@flow/types";
+import type { NodeData } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 import { getPropsFrom } from "../utils";
@@ -10,16 +8,7 @@ import { getPropsFrom } from "../utils";
 import { getNodeColors } from "./nodeColors";
 import useNodeStatus from "./useNodeStatus";
 
-export default ({
-  id,
-  data,
-  type,
-}: {
-  id: string;
-  data: NodeData;
-  type: string;
-}) => {
-  const { getNode } = useReactFlow<Node>();
+export default ({ data, type }: { data: NodeData; type: string }) => {
   const {
     officialName,
     customName,
@@ -56,18 +45,6 @@ export default ({
   const [borderColor, selectedColor, selectedBackgroundColor] =
     getNodeColors(type);
 
-  const { onNodesChange, onParamsEditorOpen } = useEditorContext();
-
-  const handleNodeDelete = useCallback(() => {
-    onNodesChange?.([{ id, type: "remove" }]);
-  }, [id, onNodesChange]);
-
-  const handleParamsEditorOpen = useCallback(() => {
-    const node = getNode(id);
-    if (!node) return;
-    onParamsEditorOpen?.(undefined, node);
-  }, [id, onParamsEditorOpen, getNode]);
-
   return {
     officialName,
     customName,
@@ -78,7 +55,5 @@ export default ({
     borderColor,
     selectedColor,
     selectedBackgroundColor,
-    handleNodeDelete,
-    handleParamsEditorOpen,
   };
 };
