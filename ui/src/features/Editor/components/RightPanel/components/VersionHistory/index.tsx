@@ -1,32 +1,33 @@
-import { useState } from "react";
-
-import { ScrollArea } from "@flow/components";
+import { FlowLogo, LoadingSkeleton, ScrollArea } from "@flow/components";
+import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
-import { VersionHistory } from "@flow/mock_data/versionHistoryData";
 import { formatDate } from "@flow/utils";
 
+import useHooks from "./hooks";
 import { Version } from "./Version";
 import { VersionHistoryChangeDialog } from "./VersionHistoryChangeDialog";
 
 type Props = {
-  versionHistory: VersionHistory[];
+  projectId?: string;
 };
 
-const VersionHistoryList: React.FC<Props> = ({ versionHistory }) => {
+const VersionHistoryList: React.FC<Props> = ({ projectId }) => {
   const t = useT();
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(
-    null,
-  );
+  const {
+    history,
+    isFetching,
+    selectedProjectSnapshotVersion,
+    setSelectedProjectSnapshotVersion,
+    openVersionChangeDialog,
+    setOpenVersionChangeDialog,
+    onRollbackProject,
+  } = useHooks({ projectId: projectId ?? "" });
+  const currentVersion = history && history.length > 0 ? history[0] : null;
+  const previousVersions =
+    history && history.length > 1 ? history.slice(1) : [];
 
-  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
-
-  const [openVersionChangeDialog, setOpenVersionChangeDialog] = useState(false);
-
-  const currentVersion = versionHistory.length > 0 ? versionHistory[0] : null;
-  const olderVersions = versionHistory.slice(1);
-  const handleVersionClick = (id: string, version: string) => {
-    setSelectedVersionId(id);
-    setSelectedVersion(version);
+  const handleVersionClick = (version: number) => {
+    setSelectedProjectSnapshotVersion(version);
   };
 
   const handleDoubleClick = () => {
@@ -41,7 +42,7 @@ const VersionHistoryList: React.FC<Props> = ({ versionHistory }) => {
             <div>
               <p className="text-sm font-light">{t("Current Version")}</p>
               <p className="flex-[2] text-xs font-thin">
-                {formatDate(currentVersion.createdAt)}
+                {formatDate(currentVersion.timestamp)}
               </p>
             </div>
             <p className="rounded border bg-logo/30 p-1 text-xs font-thin">
@@ -53,23 +54,33 @@ const VersionHistoryList: React.FC<Props> = ({ versionHistory }) => {
             </p>
           </div>
         )}
-        <div className="flex flex-col overflow-auto">
-          {olderVersions.map((history) => (
-            <Version
-              key={history.id}
-              version={history}
-              isSelected={history.id === selectedVersionId}
-              onClick={() => handleVersionClick(history.id, history.version)}
-              onDoubleClick={handleDoubleClick}
-            />
-          ))}
-          <div className="pb-8" />
-        </div>
+        {isFetching ? (
+          <LoadingSkeleton className="pt-12" />
+        ) : previousVersions && previousVersions.length > 0 ? (
+          <div className="flex flex-col overflow-auto">
+            {previousVersions?.map((version) => (
+              <Version
+                // key={version}
+                version={version}
+                isSelected={version.version === selectedProjectSnapshotVersion}
+                onClick={() => handleVersionClick(version.version)}
+                onDoubleClick={handleDoubleClick}
+              />
+            ))}
+            <div className="pb-8" />
+          </div>
+        ) : (
+          <BasicBoiler
+            text={t("No Versions Available")}
+            icon={<FlowLogo className="size-16 text-accent" />}
+          />
+        )}
       </ScrollArea>
-      {openVersionChangeDialog && selectedVersion && (
+      {openVersionChangeDialog && selectedProjectSnapshotVersion && (
         <VersionHistoryChangeDialog
-          selectedVersion={selectedVersion}
+          selectedProjectSnapshotVersion={selectedProjectSnapshotVersion}
           onDialogClose={() => setOpenVersionChangeDialog(false)}
+          onRollbackProject={onRollbackProject}
         />
       )}
     </div>
