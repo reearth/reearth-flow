@@ -24,7 +24,6 @@ use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
-/// Redis cache configuration
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct RedisConfig {
     /// Redis URL
@@ -33,14 +32,10 @@ pub struct RedisConfig {
     pub ttl: u64,
 }
 
-/// Connection configuration options
 #[derive(Debug, Clone)]
 pub struct BroadcastConfig {
-    /// Whether to enable persistent storage
     pub storage_enabled: bool,
-    /// Document name for storage (required if storage enabled)
     pub doc_name: Option<String>,
-    /// Redis configuration (optional)
     pub redis_config: Option<RedisConfig>,
 }
 
@@ -109,12 +104,9 @@ impl BroadcastGroup {
                         tracing::warn!("broadcast channel closed");
                     }
 
-                    // Use a non-blocking approach to store updates
-                    // Clone what we need for the async task
                     let update_clone = u.update.clone();
                     let updates_arc = pending_updates_clone.clone();
 
-                    // Spawn a task to handle the update asynchronously
                     tokio::spawn(async move {
                         let mut updates = updates_arc.lock().await;
                         updates.push(update_clone);
@@ -130,10 +122,9 @@ impl BroadcastGroup {
             let added = event.added();
             let updated = event.updated();
             let removed = event.removed();
-            // Pre-calculate total capacity needed
             let total_len = added.len() + updated.len() + removed.len();
             if total_len == 0 {
-                return; // Early return if no changes
+                return;
             }
 
             let mut changed = Vec::with_capacity(total_len);
@@ -195,13 +186,11 @@ impl BroadcastGroup {
 
         let mut group = Self::new(awareness, buffer_capacity).await?;
 
-        // Set storage-related fields
         let doc_name = config
             .doc_name
             .expect("doc_name required when storage enabled");
         let redis_ttl = config.redis_config.as_ref().map(|c| c.ttl as usize);
 
-        // Initialize Redis and load data
         let redis = if let Some(redis_config) = config.redis_config {
             match Self::init_redis_connection(&redis_config.url).await {
                 Ok(conn) => {
@@ -228,8 +217,6 @@ impl BroadcastGroup {
         group.doc_name = Some(doc_name.clone());
         group.redis_ttl = redis_ttl;
 
-        // We no longer need to start the storage processing task
-        // as updates will be stored only on disconnect
         group.storage_rx = None;
 
         Ok(group)
@@ -510,12 +497,10 @@ impl BroadcastGroup {
         }
     }
 
-    /// Manually flush pending updates to storage
     pub async fn flush_updates(&self) -> Result<(), Error> {
         if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
             tracing::info!("Manually flushing updates for document '{}'", doc_name);
 
-            // Get pending updates
             let updates = {
                 let mut pending = self.pending_updates.lock().await;
                 tracing::info!(
@@ -530,11 +515,9 @@ impl BroadcastGroup {
                 std::mem::take(&mut *pending)
             };
 
-            // Create a temporary doc to merge updates
             let doc = Doc::new();
             let mut txn = doc.transact_mut();
 
-            // Apply all updates to the temporary doc
             let mut has_updates = false;
             for (i, update) in updates.iter().enumerate() {
                 if let Ok(decoded) = Update::decode_v1(update) {
@@ -558,7 +541,6 @@ impl BroadcastGroup {
                 return Ok(());
             }
 
-            // Get the merged state as a single update
             let state_vector = StateVector::default();
             let merged_update = txn.encode_state_as_update_v1(&state_vector);
             tracing::info!(
@@ -583,7 +565,6 @@ impl Drop for BroadcastGroup {
     fn drop(&mut self) {
         tracing::info!("BroadcastGroup::drop called");
 
-        // Cancel all subscriptions
         if let Some(sub) = self.doc_sub.take() {
             drop(sub);
         }
@@ -592,12 +573,10 @@ impl Drop for BroadcastGroup {
         }
         self.awareness_updater.abort();
 
-        // Store merged updates on disconnect if we have storage and doc_name
         if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
             let doc_name_log = doc_name.clone(); // Clone for logging
             tracing::info!("Preparing to store updates for document '{}'", doc_name_log);
 
-            // Use tokio runtime to execute async code in Drop
             if let Ok(rt) = tokio::runtime::Handle::try_current() {
                 let store = store.clone();
                 let doc_name = doc_name.clone();
@@ -606,7 +585,6 @@ impl Drop for BroadcastGroup {
                 let pending_updates = self.pending_updates.clone();
 
                 rt.spawn(async move {
-                    // Get pending updates
                     let updates = {
                         let mut pending = pending_updates.lock().await;
                         tracing::info!(
@@ -621,11 +599,9 @@ impl Drop for BroadcastGroup {
                         std::mem::take(&mut *pending)
                     };
 
-                    // Create a temporary doc to merge updates
                     let doc = Doc::new();
                     let mut txn = doc.transact_mut();
 
-                    // Apply all updates to the temporary doc
                     let mut has_updates = false;
                     for (i, update) in updates.iter().enumerate() {
                         if let Ok(decoded) = Update::decode_v1(update) {
@@ -653,7 +629,6 @@ impl Drop for BroadcastGroup {
                         return;
                     }
 
-                    // Get the merged state as a single update
                     let state_vector = StateVector::default();
                     let merged_update = txn.encode_state_as_update_v1(&state_vector);
                     tracing::info!(

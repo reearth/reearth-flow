@@ -75,7 +75,6 @@ impl BroadcastPool {
                     Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
                 };
 
-                // Create new broadcast group
                 let group = Arc::new(
                     BroadcastGroup::with_storage(
                         awareness,
@@ -96,9 +95,6 @@ impl BroadcastPool {
     }
 
     pub async fn cleanup_empty_groups(&self) {
-        // Only remove groups that still have zero connections when we check
-        // This prevents race conditions where a new connection was added
-        // between marking for cleanup and actual cleanup
         self.groups.retain(|_, group| {
             let count = group.connection_count();
             if count == 0 {
@@ -115,7 +111,6 @@ impl BroadcastPool {
             let group_clone = group.clone();
             let remaining = group.decrement_connections();
 
-            // Flush updates before potentially removing the group
             if let Err(e) = group_clone.flush_updates().await {
                 tracing::error!(
                     "Failed to flush updates for group '{}' on disconnect: {}",
@@ -141,7 +136,6 @@ impl BroadcastPool {
         }
     }
 
-    /// Manually flush updates for all groups
     pub async fn flush_all_updates(&self) -> Result<(), anyhow::Error> {
         tracing::info!("Flushing updates for all groups");
         let mut errors = Vec::new();
