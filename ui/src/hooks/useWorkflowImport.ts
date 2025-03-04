@@ -4,6 +4,7 @@ import * as Y from "yjs";
 
 import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import { useAuth } from "@flow/lib/auth";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { yWorkflowConstructor } from "@flow/lib/yjs/conversions";
@@ -19,6 +20,8 @@ import {
 } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
 export default () => {
+  const { getAccessToken } = useAuth();
+
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
 
@@ -91,20 +94,25 @@ export default () => {
 
             const { websocket } = config();
             if (websocket && project) {
-              const yWebSocketProvider = new WebsocketProvider(
-                websocket,
-                `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
-                yDoc,
-              );
+              (async () => {
+                const token = await getAccessToken();
 
-              yWebSocketProvider.once("sync", () => {
-                const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-                if (!yWorkflows.length) {
-                  console.warn("Imported project has no workflows");
-                }
+                const yWebSocketProvider = new WebsocketProvider(
+                  websocket,
+                  `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
+                  yDoc,
+                  { params: { token } },
+                );
 
-                setIsWorkflowImporting(false);
-              });
+                yWebSocketProvider.once("sync", () => {
+                  const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+                  if (!yWorkflows.length) {
+                    console.warn("Imported project has no workflows");
+                  }
+
+                  setIsWorkflowImporting(false);
+                });
+              })();
             }
           }
         }
@@ -116,7 +124,7 @@ export default () => {
 
       reader.readAsText(file);
     },
-    [currentWorkspace, t, createProject],
+    [currentWorkspace, t, createProject, getAccessToken],
   );
 
   return {
