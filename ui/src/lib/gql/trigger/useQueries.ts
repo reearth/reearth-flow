@@ -146,6 +146,8 @@ export const useQueries = () => {
         return { triggers, totalCount, totalPages, currentPage };
       },
       enabled: !!workspaceId,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
     });
 
   return {
