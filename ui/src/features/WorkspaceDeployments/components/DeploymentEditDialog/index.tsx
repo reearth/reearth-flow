@@ -40,21 +40,23 @@ const DeploymentEditDialog: React.FC<Props> = ({
       <DialogContent size="sm">
         <DialogTitle>{t("Edit Deployment")}</DialogTitle>
         <DialogContentWrapper>
-          <DialogContentSection className="flex flex-col">
-            <Label>{t("Workflow file: ")}</Label>
-            <Input
-              type="file"
-              accept={ALLOWED_WORKFLOW_FILE_EXTENSIONS}
-              onChange={handleWorkflowFileUpload}
-            />
-            {invalidFile && (
-              <p className="text-xs text-red-500 dark:text-red-400">
-                {t(
-                  "There is a problem with file you tried to upload. Please verify its contents and try again.",
-                )}
-              </p>
-            )}
-          </DialogContentSection>
+          {!selectedDeployment.projectName && (
+            <DialogContentSection className="flex flex-col">
+              <Label>{t("Workflow file: ")}</Label>
+              <Input
+                type="file"
+                accept={ALLOWED_WORKFLOW_FILE_EXTENSIONS}
+                onChange={handleWorkflowFileUpload}
+              />
+              {invalidFile && (
+                <p className="text-xs text-red-500 dark:text-red-400">
+                  {t(
+                    "There is a problem with file you tried to upload. Please verify its contents and try again.",
+                  )}
+                </p>
+              )}
+            </DialogContentSection>
+          )}
           <div className="border-b border-primary text-center" />
           <DialogContentSection className="flex flex-col">
             <Label>{t("Description")}</Label>
