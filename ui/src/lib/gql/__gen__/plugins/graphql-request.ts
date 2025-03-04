@@ -1337,7 +1337,7 @@ export const GetProjectHistoryDocument = gql`
 }
     `;
 export const RollbackProjectDocument = gql`
-    mutation rollbackProject($projectId: ID!, $version: Int!) {
+    mutation RollbackProject($projectId: ID!, $version: Int!) {
   rollbackProject(projectId: $projectId, version: $version) {
     id
     timestamp
@@ -1630,8 +1630,8 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     GetProjectHistory(variables: GetProjectHistoryQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetProjectHistoryQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetProjectHistoryQuery>(GetProjectHistoryDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetProjectHistory', 'query', variables);
     },
-    rollbackProject(variables: RollbackProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RollbackProjectMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<RollbackProjectMutation>(RollbackProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'rollbackProject', 'mutation', variables);
+    RollbackProject(variables: RollbackProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RollbackProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<RollbackProjectMutation>(RollbackProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RollbackProject', 'mutation', variables);
     },
     GetJobs(variables: GetJobsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetJobsQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetJobsQuery>(GetJobsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetJobs', 'query', variables);

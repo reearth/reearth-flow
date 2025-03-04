@@ -59,7 +59,7 @@ export const useQueries = () => {
       projectId: string;
       version: number;
     }) => {
-      const data = await graphQLContext?.rollbackProject({
+      const data = await graphQLContext?.RollbackProject({
         projectId,
         version,
       });

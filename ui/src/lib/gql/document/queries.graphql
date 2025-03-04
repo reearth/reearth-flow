@@ -15,7 +15,7 @@ query GetProjectHistory($projectId: ID!) {
   }
 }
 
-mutation rollbackProject($projectId: ID!, $version: Int!) {
+mutation RollbackProject($projectId: ID!, $version: Int!) {
   rollbackProject(projectId: $projectId, version: $version) {
     id
     timestamp
