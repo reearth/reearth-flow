@@ -1,0 +1,25 @@
+query GetLatestProjectSnapshot($projectId: ID!) {
+  latestProjectSnapshot(projectId: $projectId) {
+    id
+    timestamp
+    updates
+    version
+  }
+}
+
+query GetProjectHistory($projectId: ID!) {
+  projectHistory(projectId: $projectId) {
+    timestamp
+    updates
+    version
+  }
+}
+
+mutation RollbackProject($projectId: ID!, $version: Int!) {
+  rollbackProject(projectId: $projectId, version: $version) {
+    id
+    timestamp
+    updates
+    version
+  }
+}
