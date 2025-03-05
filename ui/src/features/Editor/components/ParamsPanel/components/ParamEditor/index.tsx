@@ -44,7 +44,7 @@ const ParamEditor: React.FC<Props> = ({
   let { action } = useGetActionById(nodeMeta.officialName);
   const firstRenderRef = useRef(true);
 
-  // For nodes such as note and batch that are not in the actions list and therefore have no params
+  // For nodes such as note and batch that are not in the actions list and therefore have no params.
   if (!action) {
     switch (nodeMeta.officialName) {
       case "batch":
@@ -66,7 +66,6 @@ const ParamEditor: React.FC<Props> = ({
     }
   }
 
-  // Only set the default customization schema if it doesn't exist yet
   const [actionWithCustomization, setActionWithCustomization] =
     useState(action);
 
@@ -96,8 +95,6 @@ const ParamEditor: React.FC<Props> = ({
         : undefined,
     [actionWithCustomization?.parameter],
   );
-
-  const patchedSchemaCustomization = actionWithCustomization?.customization;
 
   const [updatedParams, setUpdatedParams] = useState(nodeMeta.params);
   const [updatedCustomization, setUpdatedCustomization] = useState(
@@ -186,7 +183,7 @@ const ParamEditor: React.FC<Props> = ({
                     {t("Customization Options")}
                   </h4>
                   <SchemaForm
-                    schema={patchedSchemaCustomization}
+                    schema={actionWithCustomization?.customization}
                     defaultFormData={updatedCustomization}
                     onChange={handleCustomizationChange}
                   />
