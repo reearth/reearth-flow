@@ -731,7 +731,7 @@ impl BroadcastGroup {
         doc_name: &str,
     ) -> Result<Doc, Error> {
         let awareness = awareness_ref.read().await;
-        let doc = awareness.doc().clone();
+        let _doc = awareness.doc().clone();
         drop(awareness);
 
         Self::load_from_storage(store, doc_name, awareness_ref).await;
