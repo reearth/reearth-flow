@@ -18,14 +18,14 @@ import (
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 )
 
-var devMode bool
+var skipPermissionCheck bool
 
 type ContainerConfig struct {
-	SignupSecret    string
-	AuthSrvUIDomain string
-	Host            string
-	SharedPath      string
-	Dev             bool
+	SignupSecret        string
+	AuthSrvUIDomain     string
+	Host                string
+	SharedPath          string
+	SkipPermissionCheck bool
 }
 
 func NewContainer(r *repo.Container, g *gateway.Container,
@@ -33,7 +33,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 	permissionChecker gateway.PermissionChecker,
 	config ContainerConfig,
 ) interfaces.Container {
-	setDevMode(config.Dev)
+	setSkipPermissionCheck(config.SkipPermissionCheck)
 
 	job := NewJob(r, g, permissionChecker)
 
@@ -75,13 +75,13 @@ func workspaceMemberCountEnforcer(_ *repo.Container) accountinteractor.Workspace
 	}
 }
 
-func setDevMode(isDev bool) {
-	devMode = isDev
+func setSkipPermissionCheck(isSkipPermissionCheck bool) {
+	skipPermissionCheck = isSkipPermissionCheck
 }
 
 func checkPermission(ctx context.Context, permissionChecker gateway.PermissionChecker, resource string, action string) error {
-	if devMode {
-		log.Printf("INFO: Dev mode enabled, skipping permission check for resource=%s action=%s", resource, action)
+	if skipPermissionCheck {
+		log.Printf("INFO: SkipPermissionCheck enabled, skipping permission check for resource=%s action=%s", resource, action)
 		return nil
 	}
 

@@ -24,34 +24,35 @@ type (
 	Mailer mailer.Mailer
 	Config struct {
 		mailer.Config
-		Port             string            `default:"8080"`
-		ServerHost       string            `pp:",omitempty"`
-		Host             string            `default:"http://localhost:8080"`
-		AccountsApiHost  string            `envconfig:"REEARTH_ACCOUNTS_API_HOST" pp:",omitempty"`
-		Host_Web         string            `pp:",omitempty"`
-		Dev              bool              `pp:",omitempty"`
-		DB               string            `default:"mongodb://localhost"`
-		DB_Account       string            `pp:",omitempty"`
-		DB_Users         []appx.NamedURI   `pp:",omitempty"`
-		GraphQL          GraphQLConfig     `pp:",omitempty"`
-		GCPProject       string            `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
-		GCPRegion        string            `envconfig:"GOOGLE_CLOUD_REGION" pp:",omitempty"`
-		Profiler         string            `pp:",omitempty"`
-		Tracer           string            `pp:",omitempty"`
-		TracerSample     float64           `pp:",omitempty"`
-		AssetBaseURL     string            `default:"http://localhost:8080/assets"`
-		WorkflowBaseURL  string            `default:"http://localhost:8080/workflows"`
-		Origins          []string          `pp:",omitempty"`
-		Web_Disabled     bool              `pp:",omitempty"`
-		Web_App_Disabled bool              `pp:",omitempty"`
-		Web              map[string]string `pp:",omitempty"`
-		Web_Config       JSON              `pp:",omitempty"`
-		Web_Title        string            `pp:",omitempty"`
-		Web_FaviconURL   string            `pp:",omitempty"`
-		SignupSecret     string            `pp:",omitempty"`
-		SignupDisabled   bool              `pp:",omitempty"`
-		HTTPSREDIRECT    bool              `pp:",omitempty"`
-		SharedPath       string            `default:"shared"`
+		Port                string            `default:"8080"`
+		ServerHost          string            `pp:",omitempty"`
+		Host                string            `default:"http://localhost:8080"`
+		AccountsApiHost     string            `envconfig:"REEARTH_ACCOUNTS_API_HOST" pp:",omitempty"`
+		Host_Web            string            `pp:",omitempty"`
+		Dev                 bool              `pp:",omitempty"`
+		DB                  string            `default:"mongodb://localhost"`
+		DB_Account          string            `pp:",omitempty"`
+		DB_Users            []appx.NamedURI   `pp:",omitempty"`
+		GraphQL             GraphQLConfig     `pp:",omitempty"`
+		GCPProject          string            `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
+		GCPRegion           string            `envconfig:"GOOGLE_CLOUD_REGION" pp:",omitempty"`
+		Profiler            string            `pp:",omitempty"`
+		Tracer              string            `pp:",omitempty"`
+		TracerSample        float64           `pp:",omitempty"`
+		AssetBaseURL        string            `default:"http://localhost:8080/assets"`
+		WorkflowBaseURL     string            `default:"http://localhost:8080/workflows"`
+		Origins             []string          `pp:",omitempty"`
+		Web_Disabled        bool              `pp:",omitempty"`
+		Web_App_Disabled    bool              `pp:",omitempty"`
+		Web                 map[string]string `pp:",omitempty"`
+		Web_Config          JSON              `pp:",omitempty"`
+		Web_Title           string            `pp:",omitempty"`
+		Web_FaviconURL      string            `pp:",omitempty"`
+		SignupSecret        string            `pp:",omitempty"`
+		SignupDisabled      bool              `pp:",omitempty"`
+		HTTPSREDIRECT       bool              `pp:",omitempty"`
+		SharedPath          string            `default:"shared"`
+		SkipPermissionCheck bool              `default:"false"`
 
 		// storage
 		GCS GCSConfig `pp:",omitempty"`
