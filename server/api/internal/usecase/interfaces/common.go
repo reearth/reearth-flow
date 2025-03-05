@@ -25,6 +25,7 @@ type Container struct {
 	Asset         Asset
 	Deployment    Deployment
 	Job           Job
+	Log           Log
 	Parameter     Parameter
 	Project       Project
 	ProjectAccess ProjectAccess

@@ -102,6 +102,14 @@ impl<T: CoordNum> Line2D<T> {
     }
 }
 
+impl<T: CoordFloat> Line2D<T> {
+    pub fn length(&self) -> T {
+        let dx = self.end.x - self.start.x;
+        let dy = self.end.y - self.start.y;
+        (dx * dx + dy * dy).sqrt()
+    }
+}
+
 impl From<Line3D<f64>> for Line2D<f64> {
     fn from(line: Line3D<f64>) -> Self {
         Line::new(line.start.x_y(), line.end.x_y())

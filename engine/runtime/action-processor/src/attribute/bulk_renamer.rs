@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 #[derive(Debug, Clone, Default)]
-pub struct BulkAttributeRenamerFactory;
+pub(super) struct BulkAttributeRenamerFactory;
 
 impl ProcessorFactory for BulkAttributeRenamerFactory {
     fn name(&self) -> &str {
@@ -91,29 +91,34 @@ impl ProcessorFactory for BulkAttributeRenamerFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct BulkAttributeRenamer {
+struct BulkAttributeRenamer {
     params: BulkAttributeRenamerParam,
     regex: Option<Regex>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct BulkAttributeRenamerParam {
-    pub rename_type: RenameType,
-    pub rename_action: RenameAction,
-    pub text_to_find: Option<String>,
-    pub rename_value: String,
-    pub selected_attributes: Option<Vec<String>>,
+struct BulkAttributeRenamerParam {
+    /// # Type of attributes to rename
+    rename_type: RenameType,
+    /// # Action to perform on the attribute
+    rename_action: RenameAction,
+    /// # Regular expression pattern to match
+    text_to_find: Option<String>,
+    /// # Value to add or remove
+    rename_value: String,
+    /// # Attributes to rename
+    selected_attributes: Option<Vec<String>>,
 }
 
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
-pub enum RenameType {
+enum RenameType {
     All,
     Selected,
 }
 
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
-pub enum RenameAction {
+enum RenameAction {
     AddPrefix,
     AddSuffix,
     RemovePrefix,
