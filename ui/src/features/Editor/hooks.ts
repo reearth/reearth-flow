@@ -12,13 +12,18 @@ import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useShortcuts } from "@flow/hooks";
-import { useSharedProject } from "@flow/lib/gql";
+import { useProject, useSharedProject } from "@flow/lib/gql";
 import { checkForReader } from "@flow/lib/reactFlow";
 import { useYjsStore } from "@flow/lib/yjs";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
-import { useCurrentProject } from "@flow/stores";
+import {
+  loadStateFromIndexedDB,
+  updateJobId,
+  useCurrentProject,
+} from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
+import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useDeployment from "./useDeployment";
@@ -212,6 +217,44 @@ export default ({
     [fitView, handleYLayoutChange],
   );
 
+  // TODO: update runProject to get jobId in response and finalize here
+  const { runProject } = useProject();
+  // const {useJobCancel} = useJob();
+
+  const handleDebugRunStart = useCallback(async () => {
+    console.log("start debug run");
+    if (!currentProject) return;
+
+    const engineReadyWorkflow = createEngineReadyWorkflow(
+      currentProject.name,
+      rawWorkflows,
+    );
+
+    if (!engineReadyWorkflow) return;
+
+    const job = await runProject(
+      currentProject.id,
+      currentProject.workspaceId,
+      engineReadyWorkflow,
+    );
+
+    console.log("job started: ", job.started);
+    if (job.started) {
+      console.log("set job id to indexDB");
+      await updateJobId("someJobIdsomeJobIdsomeJobIdsomeJobId");
+    }
+  }, [currentProject, rawWorkflows, runProject]);
+
+  const handleDebugRunStop = useCallback(async () => {
+    const debugRunState = await loadStateFromIndexedDB("debugRun");
+    if (!debugRunState) return;
+
+    console.log("stop debug run", debugRunState?.jobId);
+    // TODO: stop debug run
+    // useJobCancel("someJobIdsomeJobIdsomeJobIdsomeJobId");
+    await updateJobId(undefined);
+  }, []);
+
   useShortcuts([
     {
       keyBinding: { key: "r", commandKey: false },
@@ -249,7 +292,7 @@ export default ({
     // },
   ]);
 
-  console.log("rawWorkflows", rawWorkflows);
+  // console.log("rawWorkflows", rawWorkflows);
 
   return {
     currentWorkflowId,
@@ -288,5 +331,7 @@ export default ({
     handleEdgesAdd: handleYEdgesAdd,
     handleEdgesChange: handleYEdgesChange,
     handleEdgeHover,
+    handleDebugRunStart,
+    handleDebugRunStop,
   };
 };

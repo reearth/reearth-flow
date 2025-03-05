@@ -61,6 +61,8 @@ export default function Editor({
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
+    handleDebugRunStart,
+    handleDebugRunStop,
     handleLayoutChange,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
 
@@ -103,6 +105,8 @@ export default function Editor({
               onRightPanelOpen={handleRightPanelOpen}
               onWorkflowUndo={handleWorkflowUndo}
               onWorkflowRedo={handleWorkflowRedo}
+              onDebugRunStart={handleDebugRunStart}
+              onDebugRunStop={handleDebugRunStop}
               onLayoutChange={handleLayoutChange}>
               <Canvas
                 nodes={nodes}

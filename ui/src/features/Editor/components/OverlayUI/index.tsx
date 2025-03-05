@@ -40,6 +40,8 @@ type OverlayUIProps = {
   onRightPanelOpen: (content?: "version-history") => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
+  onDebugRunStart: () => Promise<void>;
+  onDebugRunStop: () => Promise<void>;
   onLayoutChange: (
     algorithm: Algorithm,
     direction: Direction,
@@ -63,6 +65,8 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onRightPanelOpen,
   onWorkflowUndo,
   onWorkflowRedo,
+  onDebugRunStart,
+  onDebugRunStop,
   onLayoutChange,
   children: canvas,
 }) => {
@@ -100,6 +104,8 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             allowedToDeploy={allowedToDeploy}
             onProjectShare={onProjectShare}
             onWorkflowDeployment={onWorkflowDeployment}
+            onDebugRunStart={onDebugRunStart}
+            onDebugRunStop={onDebugRunStop}
             onRightPanelOpen={onRightPanelOpen}
           />
         </div>

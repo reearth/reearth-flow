@@ -126,7 +126,7 @@ export async function updateClipboardState(newCopyingState: any) {
   await saveStateToIndexedDB({ clipboard: newCopyingState }, GENERAL_KEY);
 }
 
-export async function updateJobId(newJobId: string) {
+export async function updateJobId(newJobId: string | undefined) {
   await saveStateToIndexedDB({ jobId: newJobId }, DEBUG_RUN_KEY);
 }
 

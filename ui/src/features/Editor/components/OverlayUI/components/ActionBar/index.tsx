@@ -31,6 +31,8 @@ type Props = {
     deploymentId?: string,
   ) => Promise<void>;
   onProjectShare: (share: boolean) => void;
+  onDebugRunStart: () => Promise<void>;
+  onDebugRunStop: () => Promise<void>;
   onRightPanelOpen: (content?: "version-history") => void;
 };
 
@@ -38,9 +40,14 @@ const ActionBar: React.FC<Props> = ({
   allowedToDeploy,
   onWorkflowDeployment,
   onProjectShare,
+  onDebugRunStart,
+  onDebugRunStop,
   onRightPanelOpen,
 }) => {
   const t = useT();
+  const [currentProject] = useCurrentProject();
+
+  const { handleProjectExport } = useProjectExport(currentProject);
 
   const [showDeployDialog, setShowDeployDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
@@ -55,10 +62,6 @@ const ActionBar: React.FC<Props> = ({
     setShowShareDialog(true);
   };
 
-  const [currentProject] = useCurrentProject();
-
-  const { handleProjectExport } = useProjectExport(currentProject);
-
   return (
     <>
       <div className="rounded-md border bg-secondary">
@@ -69,12 +72,14 @@ const ActionBar: React.FC<Props> = ({
               tooltipText={t("Run project workflow")}
               tooltipOffset={tooltipOffset}
               icon={<Play weight="thin" />}
+              onClick={onDebugRunStart}
             />
             <IconButton
               className="rounded-none"
               tooltipText={t("Stop project workflow")}
               tooltipOffset={tooltipOffset}
               icon={<Stop weight="thin" />}
+              onClick={onDebugRunStop}
             />
             <IconButton
               className="rounded-none"

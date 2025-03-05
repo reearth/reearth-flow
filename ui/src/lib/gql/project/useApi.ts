@@ -121,7 +121,6 @@ export const useProject = () => {
         description: t(
           "Debug run has been successfully started for the project.",
         ),
-        variant: "destructive",
       });
       return { projectId: data.projectId, started: data.started, ...rest };
     } catch (_err) {

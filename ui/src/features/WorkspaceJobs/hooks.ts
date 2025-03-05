@@ -19,7 +19,7 @@ export default () => {
   const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
     OrderDirection.Desc,
   );
-  const { useGetJobs, useCancelJob } = useJob();
+  const { useGetJobs, useJobCancel } = useJob();
 
   const { page, refetch, isFetching } = useGetJobs(currentWorkspace?.id, {
     page: currentPage,
@@ -55,8 +55,8 @@ export default () => {
 
   const handleCancelJob = useCallback(async () => {
     if (!selectedJob) return;
-    await useCancelJob(selectedJob.id);
-  }, [selectedJob, useCancelJob]);
+    await useJobCancel(selectedJob.id);
+  }, [selectedJob, useJobCancel]);
 
   return {
     ref,

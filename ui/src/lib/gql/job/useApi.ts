@@ -28,7 +28,7 @@ export const useJob = () => {
     };
   };
 
-  const useCancelJob = async (jobId: string): Promise<CancelJob> => {
+  const useJobCancel = async (jobId: string): Promise<CancelJob> => {
     const { mutateAsync, ...rest } = cancelJobMutation;
     try {
       const job: Job | undefined = await mutateAsync({
@@ -52,6 +52,6 @@ export const useJob = () => {
   return {
     useGetJob,
     useGetJobs,
-    useCancelJob,
+    useJobCancel,
   };
 };
