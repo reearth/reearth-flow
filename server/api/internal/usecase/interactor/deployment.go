@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"fmt"
+	stdlog "log"
 	"net/url"
 	"strconv"
 	"strings"
@@ -49,7 +50,16 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 }
 
 func (i *Deployment) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceDeployment, action)
+	err := checkPermission(ctx, i.permissionChecker, rbac.ResourceDeployment, action)
+
+	// Once the operation check in the oss environment is completed, delete the log output and return an error.
+	if err != nil {
+		stdlog.Printf("WARNING: Permission check failed for Deployment %s: %v", action, err)
+	} else {
+		stdlog.Printf("DEBUG: Permission check succeeded for Deployment %s", action)
+	}
+
+	return nil
 }
 
 func (i *Deployment) Fetch(ctx context.Context, ids []id.DeploymentID) ([]*deployment.Deployment, error) {
