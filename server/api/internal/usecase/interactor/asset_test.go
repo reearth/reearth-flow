@@ -6,6 +6,7 @@ import (
 	"io"
 	"testing"
 
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/fs"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -13,6 +14,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
 	"github.com/reearth/reearth-flow/api/pkg/file"
+	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmemory"
 	"github.com/reearth/reearthx/appx"
@@ -21,7 +23,15 @@ import (
 )
 
 func TestAsset_Create(t *testing.T) {
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
 	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
+
 	aid := asset.NewID()
 	defer asset.MockNewID(aid)()
 

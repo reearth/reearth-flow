@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -12,6 +13,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearthx/account/accountdomain"
+	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/mongox/mongotest"
@@ -20,7 +22,15 @@ import (
 )
 
 func TestTrigger_Create(t *testing.T) {
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
 	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
+
 	c := mongotest.Connect(t)(t)
 
 	wid := accountdomain.NewWorkspaceID()
@@ -84,7 +94,15 @@ func TestTrigger_Create(t *testing.T) {
 }
 
 func TestTrigger_Update(t *testing.T) {
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
 	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
+
 	c := mongotest.Connect(t)(t)
 
 	tid := id.NewTriggerID()
@@ -175,7 +193,15 @@ func TestTrigger_Update(t *testing.T) {
 }
 
 func TestTrigger_Fetch(t *testing.T) {
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
 	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
+
 	c := mongotest.Connect(t)(t)
 
 	tid1 := id.NewTriggerID()
@@ -224,7 +250,15 @@ func TestTrigger_Fetch(t *testing.T) {
 }
 
 func TestTrigger_Delete(t *testing.T) {
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
 	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
+
 	c := mongotest.Connect(t)(t)
 
 	tid := id.NewTriggerID()

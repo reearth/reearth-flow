@@ -6,8 +6,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/log"
+	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,6 +35,15 @@ func TestNewLogInteractor(t *testing.T) {
 }
 
 func TestLogInteractor_GetLogs(t *testing.T) {
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
+	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
+
 	nodeID := log.NodeID(id.NewNodeID())
 	jobID := id.NewJobID()
 	redisLogs := []*log.Log{
@@ -48,7 +59,7 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 		li := NewLogInteractor(redisMock, mockPermissionCheckerTrue)
 
 		since := time.Now().Add(-30 * time.Minute)
-		out, err := li.GetLogs(context.Background(), since, id.NewJobID())
+		out, err := li.GetLogs(ctx, since, id.NewJobID())
 		assert.NoError(t, err)
 		assert.Equal(t, redisLogs, out)
 	})
@@ -58,7 +69,7 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 		li := NewLogInteractor(brokenRedis, mockPermissionCheckerTrue)
 
 		since := time.Now()
-		out, err := li.GetLogs(context.Background(), since, id.NewJobID())
+		out, err := li.GetLogs(ctx, since, id.NewJobID())
 		assert.Nil(t, out)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get logs from Redis")
@@ -67,7 +78,7 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 	t.Run("redis gateway is nil", func(t *testing.T) {
 		li := NewLogInteractor(nil, mockPermissionCheckerTrue)
 		since := time.Now().Add(-30 * time.Minute)
-		out, err := li.GetLogs(context.Background(), since, jobID)
+		out, err := li.GetLogs(ctx, since, jobID)
 		assert.Nil(t, out)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "logsGatewayRedis is nil")
@@ -86,7 +97,14 @@ func TestLogInteractor_SubscribeInitialLogs(t *testing.T) {
 	})
 	li := NewLogInteractor(redisMock, mockPermissionCheckerTrue)
 
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
 	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
 
 	ch, err := li.Subscribe(ctx, jobID)
 	assert.NoError(t, err)
@@ -113,7 +131,15 @@ func TestLogInteractor_Unsubscribe(t *testing.T) {
 	}
 	jobID := id.NewJobID()
 
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
 	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
+
 	ch, err := liInterface.Subscribe(ctx, jobID)
 	if err != nil {
 		t.Fatal(err)
