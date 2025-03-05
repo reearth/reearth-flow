@@ -204,18 +204,18 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error
 	return nil
 }
 
-func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (started bool, err error) {
+func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job.Job, err error) {
 	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
-		return false, err
+		return nil, err
 	}
 
 	if p.Workflow == nil {
-		return false, nil
+		return nil, nil
 	}
 
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	ctx = tx.Context()
@@ -227,7 +227,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (starte
 
 	prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	debug := true
@@ -241,38 +241,38 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (starte
 		StartedAt(time.Now()).
 		Build()
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
 	if err != nil {
-		return false, fmt.Errorf("failed to upload metadata: %v", err)
+		return nil, fmt.Errorf("failed to upload metadata: %v", err)
 	}
 	if metadataURL != nil {
 		j.SetMetadataURL(metadataURL.String())
 	}
 
 	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return false, err
+		return nil, err
 	}
 
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), p.Workflow.Path, j.MetadataURL(), nil, p.ProjectID, prj.Workspace())
 	if err != nil {
-		return false, fmt.Errorf("failed to submit job: %v", err)
+		return nil, fmt.Errorf("failed to submit job: %v", err)
 	}
 	j.SetGCPJobID(gcpJobID)
 
 	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return false, err
+		return nil, err
 	}
 
 	tx.Commit()
 
 	if i.job != nil {
 		if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
-			return true, fmt.Errorf("failed to start job monitoring: %v", err)
+			return j, fmt.Errorf("failed to start job monitoring: %v", err)
 		}
 	}
 
-	return true, nil
+	return j, nil
 }

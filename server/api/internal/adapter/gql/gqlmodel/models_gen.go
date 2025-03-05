@@ -350,8 +350,7 @@ type RunProjectInput struct {
 }
 
 type RunProjectPayload struct {
-	ProjectID ID   `json:"projectId"`
-	Started   bool `json:"started"`
+	Job *Job `json:"job"`
 }
 
 type ShareProjectInput struct {

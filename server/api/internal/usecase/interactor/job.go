@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/rbac"
@@ -24,12 +25,14 @@ type Job struct {
 	jobRepo           repo.Job
 	workspaceRepo     accountrepo.Workspace
 	transaction       usecasex.Transaction
-	file              gateway.File
+	file               gateway.File
 	batch             gateway.Batch
 	monitor           *monitor.Monitor
-	subscriptions     *subscription.Manager
-	notifier          notification.Notifier
+	subscriptions     *subscription.JobManager
+	notifier           notification.Notifier
 	permissionChecker gateway.PermissionChecker
+	watchersMu        sync.Mutex
+    activeWatchers    map[string]bool
 }
 
 type NotificationPayload struct {
@@ -48,9 +51,11 @@ func NewJob(r *repo.Container, gr *gateway.Container, permissionChecker gateway.
 		file:              gr.File,
 		batch:             gr.Batch,
 		monitor:           monitor.NewMonitor(),
-		subscriptions:     subscription.NewManager(),
+		subscriptions:     subscription.NewJobManager(),
 		notifier:          notification.NewHTTPNotifier(),
 		permissionChecker: permissionChecker,
+		watchersMu: 	   sync.Mutex{},
+		activeWatchers:    make(map[string]bool),
 	}
 }
 
@@ -354,9 +359,23 @@ func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, e
 
 	ch := i.subscriptions.Subscribe(jobID.String())
 	ch <- j.Status()
+
+	i.watchersMu.Lock()
+    if i.activeWatchers == nil {
+        i.activeWatchers = make(map[string]bool)
+    }
+    i.activeWatchers[jobID.String()] = true
+    i.watchersMu.Unlock()
+	
 	return ch, nil
 }
 
 func (i *Job) Unsubscribe(jobID id.JobID, ch chan job.Status) {
 	i.subscriptions.Unsubscribe(jobID.String(), ch)
+
+	if i.subscriptions.CountSubscribers(jobID.String()) == 0 {
+        i.watchersMu.Lock()
+        delete(i.activeWatchers, jobID.String()) 
+        i.watchersMu.Unlock()
+    }
 }
