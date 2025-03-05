@@ -5,6 +5,7 @@ use crate::AwarenessRef;
 use anyhow::anyhow;
 use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
+use md5;
 use rand;
 use redis::aio::MultiplexedConnection as RedisConnection;
 use redis::AsyncCommands;
@@ -23,7 +24,6 @@ use yrs::sync::{DefaultProtocol, Error, Message, Protocol, SyncMessage};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
-use md5;
 
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct RedisConfig {
@@ -735,7 +735,7 @@ impl Drop for BroadcastGroup {
                 rt.spawn(async move {
                     let mut processed_updates = std::collections::HashSet::new();
                     let mut all_updates = Vec::new();
-                    
+
                     {
                         let mut pending = pending_updates.lock().await;
                         tracing::info!(
@@ -743,7 +743,7 @@ impl Drop for BroadcastGroup {
                             pending.len(),
                             doc_name
                         );
-                        
+
                         for update in pending.iter() {
                             let update_hash = format!("{:x}", md5::compute(update));
                             if processed_updates.insert(update_hash) {
@@ -752,7 +752,7 @@ impl Drop for BroadcastGroup {
                         }
                         pending.clear();
                     }
-                    
+
                     if let Some(redis_conn) = &redis {
                         let redis_key = format!("pending_updates:{}", doc_name);
                         match redis_conn.lock().await.lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1).await {
@@ -762,14 +762,14 @@ impl Drop for BroadcastGroup {
                                     redis_updates.len(),
                                     doc_name
                                 );
-                                
+
                                 for update in redis_updates {
                                     let update_hash = format!("{:x}", md5::compute(&update));
                                     if processed_updates.insert(update_hash) {
                                         all_updates.push(update);
                                     }
                                 }
-                                
+
                                 if let Err(e) = redis_conn.lock().await.del::<_, ()>(&redis_key).await {
                                     tracing::error!("Failed to clear Redis pending updates: {}", e);
                                 }
@@ -779,7 +779,7 @@ impl Drop for BroadcastGroup {
                             }
                         }
                     }
-                    
+
                     if all_updates.is_empty() {
                         tracing::info!("No updates to store for document '{}'", doc_name);
                         return;
@@ -788,7 +788,7 @@ impl Drop for BroadcastGroup {
                     let doc = Doc::new();
                     let mut txn = doc.transact_mut();
                     let mut has_updates = false;
-                    
+
                     for (i, update) in all_updates.iter().enumerate() {
                         if let Ok(decoded) = Update::decode_v1(update) {
                             if let Err(e) = txn.apply_update(decoded) {
@@ -826,31 +826,31 @@ impl Drop for BroadcastGroup {
                     let max_retries = 3;
                     let mut retry_count = 0;
                     let mut last_error = None;
-                    
+
                     while retry_count < max_retries {
                         tracing::info!(
-                            "Attempt {} to store merged update for document '{}'", 
-                            retry_count + 1, 
+                            "Attempt {} to store merged update for document '{}'",
+                            retry_count + 1,
                             doc_name
                         );
-                        
+
                         match store.push_update(&doc_name, &merged_update).await {
                             Ok(_) => {
                                 tracing::info!(
                                     "Successfully stored merged updates on disconnect for document '{}'",
                                     doc_name
                                 );
-                                
+
                                 if let (Some(redis_conn), Some(ttl)) = (&redis, redis_ttl) {
                                     let cache_key = format!("doc:{}", doc_name);
                                     if let Err(e) = redis_conn.lock().await
                                         .set_ex::<_, _, String>(&cache_key, merged_update.as_slice(), ttl.try_into().unwrap())
-                                        .await 
+                                        .await
                                     {
                                         tracing::error!("Failed to update Redis cache: {}", e);
                                     }
                                 }
-                                
+
                                 return;
                             }
                             Err(e) => {
@@ -866,7 +866,7 @@ impl Drop for BroadcastGroup {
                             }
                         }
                     }
-                    
+
                     tracing::error!(
                         "CRITICAL: Failed to store updates after {} attempts: {}",
                         max_retries,
