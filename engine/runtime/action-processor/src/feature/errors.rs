@@ -1,6 +1,5 @@
 use thiserror::Error;
 
-#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub(super) enum FeatureProcessorError {
     #[error("Feature Merger Factory error: {0}")]
