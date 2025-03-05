@@ -27,7 +27,7 @@ type (
 		Port             string            `default:"8080"`
 		ServerHost       string            `pp:",omitempty"`
 		Host             string            `default:"http://localhost:8080"`
-		AccountsHost     string            `envconfig:"REEARTH_ACCOUNTS_HOST" pp:",omitempty"`
+		AccountsApiHost  string            `envconfig:"REEARTH_ACCOUNTS_API_HOST" pp:",omitempty"`
 		Host_Web         string            `pp:",omitempty"`
 		Dev              bool              `pp:",omitempty"`
 		DB               string            `default:"mongodb://localhost"`
