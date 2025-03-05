@@ -46,6 +46,8 @@ models:
         resolver: true
       deployment:
         resolver: true
+      logs:
+        resolver: true
   Parameter:
     fields:
       project:

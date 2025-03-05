@@ -4,12 +4,14 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth0"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/fs"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpbatch"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcs"
 	mongorepo "github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
+	redisrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -25,6 +27,7 @@ import (
 )
 
 const databaseName = "reearth-flow"
+const accountDatabaseName = "reearth-account"
 
 func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
 	interactor.InitWebsocket(
@@ -48,7 +51,7 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 	accountDatabase := conf.DB_Account
 	accountRepoCompat := false
 	if accountDatabase == "" {
-		accountDatabase = databaseName
+		accountDatabase = accountDatabaseName
 		accountRepoCompat = true
 	}
 
@@ -72,6 +75,8 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 	if err != nil {
 		log.Fatalf("Failed to init mongo: %+v\n", err)
 	}
+	// Log
+	gateways.LogRedis = initLogRedis(ctx, conf)
 
 	// File
 	gateways.File = initFile(ctx, conf)
@@ -163,4 +168,22 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 	}
 
 	return
+}
+
+func initLogRedis(ctx context.Context, conf *config.Config) gateway.Log {
+	if conf.Redis_URL == "" {
+		return nil
+	}
+
+	log.Infofc(ctx, "log: redis storage is used: %s\n", conf.Redis_URL)
+	opt, err := redis.ParseURL(conf.Redis_URL)
+	if err != nil {
+		log.Fatalf("failed to parse redis url: %s\n", err.Error())
+	}
+	client := redis.NewClient(opt)
+	logRedisRepo, err := redisrepo.NewRedisLog(client)
+	if err != nil {
+		log.Warnf("log: failed to init redis storage: %s\n", err.Error())
+	}
+	return logRedisRepo
 }

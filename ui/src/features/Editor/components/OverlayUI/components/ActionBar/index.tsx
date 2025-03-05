@@ -1,6 +1,6 @@
 import {
   DotsThreeVertical,
-  DownloadSimple,
+  Export,
   LetterCircleV,
   Play,
   RocketLaunch,
@@ -94,28 +94,22 @@ const ActionBar: React.FC<Props> = ({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  className="flex gap-2"
+                  className="flex justify-between gap-4"
                   onClick={handleShowShareDialog}>
+                  <p>{t("Share Project")}</p>
                   <ShareFat weight="light" />
-                  <p className="text-sm font-extralight">
-                    {t("Share Project")}
-                  </p>
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="flex gap-2"
+                  className="flex justify-between gap-4"
                   onClick={handleProjectExport}>
-                  <DownloadSimple weight="light" />
-                  <p className="text-sm font-extralight">
-                    {t("Export Project")}
-                  </p>
+                  <p>{t("Export Project")}</p>
+                  <Export weight="light" />
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="flex gap-2"
+                  className="flex justify-between gap-4"
                   onClick={() => onRightPanelOpen("version-history")}>
+                  <p>{t("Version History")}</p>
                   <LetterCircleV weight="light" />
-                  <p className="text-sm font-extralight">
-                    {t("Version History")}
-                  </p>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

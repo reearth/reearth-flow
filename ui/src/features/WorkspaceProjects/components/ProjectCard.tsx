@@ -1,4 +1,12 @@
-import { DotsThreeVertical, ShareFat } from "@phosphor-icons/react";
+import {
+  ClipboardText,
+  Copy,
+  DotsThreeVertical,
+  Export,
+  PencilSimple,
+  ShareFat,
+  Trash,
+} from "@phosphor-icons/react";
 import { MouseEvent, useState } from "react";
 
 import {
@@ -111,35 +119,48 @@ const ProjectCard: React.FC<Props> = ({
               onClick={(e) => e.stopPropagation()}>
               <DotsThreeVertical className="size-[24px]" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-              <DropdownMenuItem onClick={() => setEditProject({ ...project })}>
+            <DropdownMenuContent
+              align="end"
+              onClick={(e) => e.stopPropagation()}>
+              <DropdownMenuItem
+                className="justify-between gap-2 text-warning"
+                onClick={() => setEditProject({ ...project })}>
                 {t("Edit Details")}
+                <PencilSimple />
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleProjectExport}>
+              <DropdownMenuItem
+                className="justify-between gap-2"
+                onClick={handleProjectExport}>
                 {t("Export Project")}
+                <Export weight="light" />
               </DropdownMenuItem>
               <DropdownMenuItem
+                className="justify-between gap-2"
                 disabled
                 onClick={(e) => {
                   e.stopPropagation();
                   // handleProjectDuplication();
                 }}>
                 {t("Duplicate Project")}
+                <Copy weight="light" />
               </DropdownMenuItem>
               <DropdownMenuItem
+                className="justify-between gap-2"
                 disabled={!sharedUrl}
                 onClick={handleCopyURLToClipBoard}>
                 {t("Copy Share URL")}
+                <ClipboardText weight="light" />
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                className="text-destructive"
+                className="justify-between gap-4 text-destructive"
                 onClick={(e) => {
                   e.stopPropagation();
                   setProjectToBeDeleted(id);
                 }}>
                 {t("Delete Project")}
+                <Trash weight="light" />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
