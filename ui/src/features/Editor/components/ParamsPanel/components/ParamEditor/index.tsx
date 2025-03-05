@@ -97,15 +97,7 @@ const ParamEditor: React.FC<Props> = ({
     [actionWithCustomization?.parameter],
   );
 
-  const patchedSchemaCustomization = useMemo<RJSFSchema | undefined>(
-    () =>
-      actionWithCustomization?.customization
-        ? patchAnyOfType(
-            actionWithCustomization.customization as JSONSchema7Definition,
-          )
-        : undefined,
-    [actionWithCustomization?.customization],
-  );
+  const patchedSchemaCustomization = actionWithCustomization?.customization;
 
   const [updatedParams, setUpdatedParams] = useState(nodeMeta.params);
   const [updatedCustomization, setUpdatedCustomization] = useState(

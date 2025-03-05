@@ -50,8 +50,6 @@ export const yNodeConstructor = (node: Node): YNode => {
       ),
       // Batch & Note specific
       content: toYjsText(node.data.content),
-      backgroundColor: toYjsText(node.data.backgroundColor),
-      textColor: toYjsText(node.data.textColor),
     }),
     style: toYjsMap({
       width: node.style?.width,

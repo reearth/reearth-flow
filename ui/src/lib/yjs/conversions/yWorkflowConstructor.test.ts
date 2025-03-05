@@ -58,8 +58,6 @@ describe("yWorkflowConstructor", () => {
             { nodeId: "node-5", portName: "port4" },
           ],
           content: "Content",
-          backgroundColor: "#FFFFFF",
-          textColor: "#000000",
         },
       },
     ];

@@ -70,16 +70,6 @@ export const reassembleNode = (yNode: YNode): Node => {
   if ((yNode.get("data") as Y.Map<any>)?.get("content") !== undefined) {
     data.content = (yNode.get("data") as Y.Map<any>)?.get("content").toString();
   }
-  if ((yNode.get("data") as Y.Map<any>)?.get("backgroundColor") !== undefined) {
-    data.backgroundColor = (yNode.get("data") as Y.Map<any>)
-      ?.get("backgroundColor")
-      .toString();
-  }
-  if ((yNode.get("data") as Y.Map<any>)?.get("textColor") !== undefined) {
-    data.textColor = (yNode.get("data") as Y.Map<any>)
-      ?.get("textColor")
-      .toString();
-  }
 
   const style = {
     width: (yNode.get("style") as Y.Map<any>)?.get("width").toString(),
