@@ -52,7 +52,7 @@ func (r *subscriptionResolver) Logs(ctx context.Context, jobID gqlmodel.ID) (<-c
 		return nil, err
 	}
 
-	logsCh, err := usecases(ctx).Log.Subscribe(ctx, jid, getOperator(ctx))
+	logsCh, err := usecases(ctx).Log.Subscribe(ctx, jid)
 	if err != nil {
 		return nil, err
 	}

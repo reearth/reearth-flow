@@ -22,7 +22,7 @@ func (l *LogLoader) GetLogs(ctx context.Context, since time.Time, jobID gqlmodel
 	if err != nil {
 		return nil, err
 	}
-	res, err := l.usecase.GetLogs(ctx, since, newJobID, getOperator(ctx))
+	res, err := l.usecase.GetLogs(ctx, since, newJobID)
 	if err != nil {
 		return nil, err
 	}

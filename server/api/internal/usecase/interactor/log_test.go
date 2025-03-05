@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/log"
+	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -24,7 +24,10 @@ func (m *mockLogGateway) GetLogs(ctx context.Context, since time.Time, until tim
 func TestNewLogInteractor(t *testing.T) {
 	t.Run("successfully create LogInteractor", func(t *testing.T) {
 		redisMock := &mockLogGateway{}
-		li := NewLogInteractor(redisMock)
+		mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+			return true, nil
+		})
+		li := NewLogInteractor(redisMock, mockPermissionCheckerTrue)
 		assert.NotNil(t, li)
 	})
 }
@@ -37,31 +40,34 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 		log.NewLog(jobID, &nodeID, time.Now(), log.LevelInfo, "redis log 2"),
 	}
 	redisMock := &mockLogGateway{logs: redisLogs}
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+		return true, nil
+	})
 
 	t.Run("get Redis logs", func(t *testing.T) {
-		li := NewLogInteractor(redisMock)
+		li := NewLogInteractor(redisMock, mockPermissionCheckerTrue)
 
 		since := time.Now().Add(-30 * time.Minute)
-		out, err := li.GetLogs(context.Background(), since, id.NewJobID(), &usecase.Operator{})
+		out, err := li.GetLogs(context.Background(), since, id.NewJobID())
 		assert.NoError(t, err)
 		assert.Equal(t, redisLogs, out)
 	})
 
 	t.Run("redis error", func(t *testing.T) {
 		brokenRedis := &mockLogGateway{err: errors.New("redis error")}
-		li := NewLogInteractor(brokenRedis)
+		li := NewLogInteractor(brokenRedis, mockPermissionCheckerTrue)
 
 		since := time.Now()
-		out, err := li.GetLogs(context.Background(), since, id.NewJobID(), &usecase.Operator{})
+		out, err := li.GetLogs(context.Background(), since, id.NewJobID())
 		assert.Nil(t, out)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get logs from Redis")
 	})
 
 	t.Run("redis gateway is nil", func(t *testing.T) {
-		li := NewLogInteractor(nil)
+		li := NewLogInteractor(nil, mockPermissionCheckerTrue)
 		since := time.Now().Add(-30 * time.Minute)
-		out, err := li.GetLogs(context.Background(), since, jobID, &usecase.Operator{})
+		out, err := li.GetLogs(context.Background(), since, jobID)
 		assert.Nil(t, out)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "logsGatewayRedis is nil")
@@ -75,12 +81,14 @@ func TestLogInteractor_SubscribeInitialLogs(t *testing.T) {
 	redisMock := &mockLogGateway{
 		logs: []*log.Log{initialLog},
 	}
-
-	li := NewLogInteractor(redisMock)
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+		return true, nil
+	})
+	li := NewLogInteractor(redisMock, mockPermissionCheckerTrue)
 
 	ctx := context.Background()
 
-	ch, err := li.Subscribe(ctx, jobID, &usecase.Operator{})
+	ch, err := li.Subscribe(ctx, jobID)
 	assert.NoError(t, err)
 
 	select {
@@ -95,7 +103,10 @@ func TestLogInteractor_SubscribeInitialLogs(t *testing.T) {
 
 func TestLogInteractor_Unsubscribe(t *testing.T) {
 	redisMock := &mockLogGateway{}
-	liInterface := NewLogInteractor(redisMock)
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+		return true, nil
+	})
+	liInterface := NewLogInteractor(redisMock, mockPermissionCheckerTrue)
 	li, ok := liInterface.(*LogInteractor)
 	if !ok {
 		t.Fatal("expected *LogInteractor")
@@ -103,7 +114,7 @@ func TestLogInteractor_Unsubscribe(t *testing.T) {
 	jobID := id.NewJobID()
 
 	ctx := context.Background()
-	ch, err := liInterface.Subscribe(ctx, jobID, &usecase.Operator{})
+	ch, err := liInterface.Subscribe(ctx, jobID)
 	if err != nil {
 		t.Fatal(err)
 	}
