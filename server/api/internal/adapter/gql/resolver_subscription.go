@@ -38,7 +38,8 @@ func (r *subscriptionResolver) JobStatus(ctx context.Context, jobID gqlmodel.ID)
 				if !ok {
 					return
 				}
-				resultCh <- gqlmodel.JobStatus(status)
+				res := gqlmodel.JobStatus(status)
+				resultCh <- res
 			}
 		}
 	}()
