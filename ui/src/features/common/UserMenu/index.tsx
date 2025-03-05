@@ -23,12 +23,14 @@ import { AccountUpdateDialog } from "./AccountUpdateDialog";
 type Props = {
   className?: string;
   dropdownPosition?: "left" | "right" | "bottom" | "top";
+  dropdownAlign?: "start" | "center" | "end";
   dropdownOffset?: number;
 };
 
 const UserMenu: React.FC<Props> = ({
   className,
-  dropdownPosition,
+  dropdownPosition = "right",
+  dropdownAlign,
   dropdownOffset,
 }) => {
   const t = useT();
@@ -64,8 +66,9 @@ const UserMenu: React.FC<Props> = ({
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          side={dropdownPosition ?? "right"}
-          align="start"
+          className="min-w-[175px]"
+          side={dropdownPosition}
+          align={dropdownAlign}
           sideOffset={dropdownOffset ?? 4}>
           <div className="mb-2 rounded p-2">
             <p className="text-xs font-thin">{t("Username: ")}</p>
@@ -73,38 +76,40 @@ const UserMenu: React.FC<Props> = ({
           </div>
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            className="gap-2"
+            className="justify-between gap-4"
             onClick={() => setOpenAccountUpdateDialog(true)}>
+            <p>{t("Account Settings")}</p>
             <User weight="light" />
-            <p>{t("Account settings")}</p>
           </DropdownMenuItem>
           <DropdownMenuItem
-            className="gap-2"
+            className="justify-between gap-4"
             onClick={() => setOpenShortcutDialog(true)}>
+            <p>{t("Keyboard Shortcuts")}</p>
             <Keyboard weight="light" />
-            <p>{t("Keyboard shortcuts")}</p>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {tosUrl && (
-            <DropdownMenuItem className="gap-2" onClick={handleTosPageOpen}>
-              <ArrowSquareOut weight="light" />
+            <DropdownMenuItem
+              className="justify-between gap-4"
+              onClick={handleTosPageOpen}>
               <p>{t("Terms of Service")}</p>
+              <ArrowSquareOut weight="light" />
             </DropdownMenuItem>
           )}
           {documentationUrl && (
             <DropdownMenuItem
-              className="gap-2"
+              className="justify-between gap-4"
               onClick={handleDocumentationPageOpen}>
-              <ArrowSquareOut weight="light" />
               <p>{t("Documentation")}</p>
+              <ArrowSquareOut weight="light" />
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            className="gap-2 text-warning"
+            className="justify-between gap-4 text-warning"
             onClick={handleLogout}>
+            <p>{t("Log Out")}</p>
             <SignOut weight="light" />
-            <p>{t("Log out")}</p>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

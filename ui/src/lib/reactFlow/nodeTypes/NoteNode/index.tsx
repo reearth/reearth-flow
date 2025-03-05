@@ -3,8 +3,9 @@ import { RJSFSchema } from "@rjsf/utils";
 import { NodeProps, NodeResizer } from "@xyflow/react";
 import { memo } from "react";
 
-import { Node } from "@flow/types";
+import { Node, NodeType } from "@flow/types";
 
+import NodeContextMenu from "../NodeContextMenu";
 import { convertHextoRgba } from "../utils";
 
 export type NoteNodeProps = NodeProps<Node>;
@@ -44,7 +45,12 @@ export const noteNodeAction = {
   parameter: noteNodeSchema,
 };
 
-export const baseNoteNode = {
+export const baseNoteNode: {
+  type: NodeType;
+  content: string;
+  measured: { width: number; height: number };
+  style: { width: string; height: string; minWidth: string; minHeight: string };
+} = {
   type: "note",
   content: "New Note",
   measured: {
@@ -88,67 +94,52 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
           // }}
         />
       )}
-      <div
-        className="z-0 h-full rounded-sm bg-secondary/50 p-2"
-        ref={(element) => {
-          if (element) {
-            element.style.setProperty(
-              "background-color",
-              rgbaColor,
-              "important",
-            );
-          }
-        }}
-        style={{
-          minWidth: minSize.width,
-          minHeight: minSize.height,
-        }}>
+      <NodeContextMenu nodeId={props.id} nodeType={props.type}>
         <div
-          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t bg-accent/50 px-2 py-1 ${props.selected ? "border-border" : "border-transparent"}`}
-          ref={(element) => {
-            if (element)
-              element.style.setProperty(
-                "color",
-                data.params?.textColor || "",
-                "important",
-              );
-          }}>
-          <Note />
-          <p>{data.params?.customName ?? data.officialName}</p>
-        </div>
-        <div
+          className="z-0 h-full rounded-sm bg-secondary/50 p-2"
           ref={(element) => {
             if (element) {
+              element.style.setProperty(
+                "background-color",
+                rgbaColor,
+                "important",
+              );
+            }
+          }}
+          style={{
+            minWidth: minSize.width,
+            minHeight: minSize.height,
+          }}>
+          <div
+            className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t bg-accent/50 px-2 py-1 ${props.selected ? "border-border" : "border-transparent"}`}
+            ref={(element) => {
               if (element)
                 element.style.setProperty(
                   "color",
                   data.params?.textColor || "",
                   "important",
                 );
-            }
-          }}>
-          <p className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none">
-            {data.params?.description}
-          </p>
+            }}>
+            <Note />
+            <p>{data.params?.customName ?? data.officialName}</p>
+          </div>
+          <div
+            ref={(element) => {
+              if (element) {
+                if (element)
+                  element.style.setProperty(
+                    "color",
+                    data.params?.textColor || "",
+                    "important",
+                  );
+              }
+            }}>
+            <p className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none">
+              {data.params?.description}
+            </p>
+          </div>
         </div>
-
-        {/* <textarea
-          defaultValue={data.content}
-          style={{
-            minWidth: "inherit",
-            minHeight: "inherit",
-          }}
-          ref={(element) => {
-            if (element)
-              element.style.setProperty(
-                "color",
-                data.params?.textColor || "",
-                "important",
-              );
-          }}
-          className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none"
-        /> */}
-      </div>
+      </NodeContextMenu>
     </>
   );
 };

@@ -30,7 +30,7 @@ const TopSection: React.FC<Props> = ({ route }) => {
             <FlowLogo className="size-8" />
             <h1 className="select-none font-light">{brandName ?? "Flow"}</h1>
           </div>
-          <UserMenu />
+          <UserMenu dropdownAlign="center" dropdownPosition="bottom" />
         </div>
         <div className="h-px bg-primary" />
       </div>

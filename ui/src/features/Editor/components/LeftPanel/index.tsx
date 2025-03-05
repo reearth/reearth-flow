@@ -220,7 +220,7 @@ const LeftPanel: React.FC<Props> = ({
             /> */}
             <UserMenu
               className="flex w-full justify-center"
-              dropdownPosition="right"
+              dropdownAlign="end"
             />
           </nav>
         </div>

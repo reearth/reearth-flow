@@ -5,8 +5,6 @@ import type {
 } from "@xyflow/react";
 import { ComponentType } from "react";
 
-import type { Status } from "./shared";
-
 type NodeParam = Record<string, any>;
 
 export type PseudoPort = {
@@ -19,7 +17,6 @@ export type NodeData = {
   customName?: string;
   inputs?: string[];
   outputs?: string[];
-  status?: Status;
   params?: NodeParam;
   // subworkflow nodes
   subworkflowId?: string;
@@ -37,6 +34,10 @@ export const actionNodeTypes = ["reader", "writer", "transformer"] as const;
 
 export type ActionNodeType = (typeof actionNodeTypes)[number];
 
+export const isActionNodeType = (value: string): value is ActionNodeType => {
+  return actionNodeTypes.includes(value as ActionNodeType);
+};
+
 export const deployableNodeTypes = [...actionNodeTypes, "subworkflow"];
 
 export const nodeTypes = [
@@ -48,7 +49,7 @@ export const nodeTypes = [
 
 export type NodeType = (typeof nodeTypes)[number];
 
-export type Node = Omit<ReactFlowNode<NodeData>, "type"> & { type: string };
+export type Node = Omit<ReactFlowNode<NodeData>, "type"> & { type: NodeType };
 
 export type NodeTypes = Record<
   NodeType,

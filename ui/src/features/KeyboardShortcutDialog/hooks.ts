@@ -12,14 +12,14 @@ import {
 export default () => {
   const t = useT();
 
-  const title = t("Keyboard shortcuts");
+  const title = t("Keyboard Shortcuts");
 
   const generalShortcuts: Shortcuts<GeneralKeys> = {
     title: t("General shortcuts"),
     shortcuts: [
       {
         keyBinding: GeneralKeyBindings["shortcutsDialog"],
-        description: t("Open the keyboard shortcuts dialog"),
+        description: t("Open the Keyboard Shortcuts Dialog"),
       },
     ],
   };
@@ -29,39 +29,39 @@ export default () => {
     shortcuts: [
       {
         keyBinding: EditorKeyBindings["fullscreen"],
-        description: t("Toggle fullscreen mode"),
+        description: t("Toggle Fullscreen Mode"),
       },
       {
         keyBinding: EditorKeyBindings["readerDialog"],
-        description: t("Open the reader dialog"),
+        description: t("Open the Reader Dialog"),
       },
       {
         keyBinding: EditorKeyBindings["transformerDialog"],
-        description: t("Open the transformer dialog"),
+        description: t("Open the Transformer Dialog"),
       },
       {
         keyBinding: EditorKeyBindings["writerDialog"],
-        description: t("Open the writer dialog"),
+        description: t("Open the Writer Dialog"),
       },
       // {
       //   keyBinding: EditorKeyBindings["groupToSubWorkFlow"],
-      //   description: t("Create new sub workflow from selected nodes"),
+      //   description: t("Create new subworkflow from selected nodes"),
       // },
       {
         keyBinding: EditorKeyBindings["bottomPanelLogs"],
-        description: t("Toggle the logs panel"),
+        description: t("Toggle the Logs Panel"),
       },
       {
         keyBinding: EditorKeyBindings["bottomPanelPreview"],
-        description: t("Toggle the preview panel"),
+        description: t("Toggle the Preview Panel"),
       },
       {
         keyBinding: EditorKeyBindings["leftPanelCanvasNavigator"],
-        description: t("Toggle the canvas navigator panel"),
+        description: t("Toggle the Canvas Navigator Panel"),
       },
       {
         keyBinding: EditorKeyBindings["leftPanelActionsList"],
-        description: t("Toggle the actions list panel"),
+        description: t("Toggle the Actions List Panel"),
       },
       // {
       //   keyBinding: EditorKeyBindings["leftPanelResources"],
@@ -71,35 +71,35 @@ export default () => {
   };
 
   const canvasShortcuts: Shortcuts<CanvasKeys> = {
-    title: t("Canvas shortcuts"),
+    title: t("Canvas Shortcuts"),
     shortcuts: [
       {
         keyBinding: CanvasKeyBindings["copy"],
-        description: t("Copy the selected nodes"),
+        description: t("Copy the Selected Nodes"),
       },
       {
         keyBinding: CanvasKeyBindings["paste"],
-        description: t("Paste the copied nodes"),
+        description: t("Paste the Copied Nodes"),
       },
       {
         keyBinding: CanvasKeyBindings["undo"],
-        description: t("Undo the last action"),
+        description: t("Undo the Last Action"),
       },
       {
         keyBinding: CanvasKeyBindings["redo"],
-        description: t("Redo the last action"),
+        description: t("Redo the Last Action"),
       },
       {
         keyBinding: CanvasKeyBindings["zoomIn"],
-        description: t("Zoom in on the canvas"),
+        description: t("Zoom in on the Canvas"),
       },
       {
         keyBinding: CanvasKeyBindings["zoomOut"],
-        description: t("Zoom out on the canvas"),
+        description: t("Zoom out on the Canvas"),
       },
       {
         keyBinding: CanvasKeyBindings["fitView"],
-        description: t("Fit the canvas to the viewport"),
+        description: t("Fit the Canvas to the Viewport"),
       },
     ],
   };

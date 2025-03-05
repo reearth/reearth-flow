@@ -1,7 +1,13 @@
 import { config } from "@flow/config";
 import { DEFAULT_NODE_SIZE } from "@flow/global-constants";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
-import type { Action, EngineReadyNode, Node, PseudoPort } from "@flow/types";
+import type {
+  Action,
+  EngineReadyNode,
+  Node,
+  NodeType,
+  PseudoPort,
+} from "@flow/types";
 
 export const convertNodes = async (
   engineNodes: EngineReadyNode[],
@@ -31,7 +37,7 @@ export const convertNodes = async (
 
       const canvasNode: Node = {
         id: en.id,
-        type: canvasNodeType,
+        type: (canvasNodeType as NodeType) || undefined,
         position: { x: 0, y: 0 }, // this is temporary before we have a layout
         measured: DEFAULT_NODE_SIZE,
         data: {

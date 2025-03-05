@@ -1,5 +1,12 @@
 import { useReactFlow } from "@xyflow/react";
-import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
+import {
+  MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useY } from "react-yjs";
 import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
@@ -104,7 +111,7 @@ export default ({
   const hasReader = checkForReader(nodes);
 
   const { lockedNodeIds, locallyLockedNode, handleNodeLocking } = useNodeLocker(
-    { selectedNodeIds, nodes },
+    { nodes, selectedNodeIds, setSelectedNodeIds },
   );
 
   const {
@@ -119,20 +126,28 @@ export default ({
     setCurrentWorkflowId,
   });
 
+  // Passed to editor context so needs to be a ref
+  const handleNodeDoubleClickRef =
+    useRef<(e: MouseEvent | undefined, node: Node) => void>(undefined);
+  handleNodeDoubleClickRef.current = (
+    _e: MouseEvent | undefined,
+    node: Node,
+  ) => {
+    if (node.type === "subworkflow" && node.data.subworkflowId) {
+      handleWorkflowOpen(node.data.subworkflowId);
+    } else {
+      fitView({
+        nodes: [{ id: node.id }],
+        duration: 500,
+        padding: 2,
+      });
+      handleNodeLocking(node.id);
+    }
+  };
   const handleNodeDoubleClick = useCallback(
-    (_e: MouseEvent | undefined, node: Node) => {
-      if (node.type === "subworkflow" && node.data.subworkflowId) {
-        handleWorkflowOpen(node.data.subworkflowId);
-      } else {
-        fitView({
-          nodes: [{ id: node.id }],
-          duration: 500,
-          padding: 2,
-        });
-        handleNodeLocking(node.id);
-      }
-    },
-    [handleWorkflowOpen, fitView, handleNodeLocking],
+    (e: MouseEvent | undefined, node: Node) =>
+      handleNodeDoubleClickRef.current?.(e, node),
+    [],
   );
 
   const { handleCopy, handlePaste } = useCanvasCopyPaste({
@@ -233,6 +248,8 @@ export default ({
     //   callback: () => handleYWorkflowAddFromSelection(nodes, edges),
     // },
   ]);
+
+  console.log("rawWorkflows", rawWorkflows);
 
   return {
     currentWorkflowId,
