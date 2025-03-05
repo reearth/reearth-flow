@@ -26,7 +26,16 @@ export const useLogs = (jobId: string) => {
     queryKey: [LogSubscriptionKeys.GetLogs, jobId],
     queryFn: () =>
       new Promise<RealTimeLogsSubscription["logs"]>((resolve, reject) => {
-        let active = true;
+        let initialDataReceived = false;
+        let connectionActive = true;
+
+        // Add connection monitoring
+        const heartbeatInterval = setInterval(() => {
+          console.log(
+            "WebSocket connection check:",
+            connectionActive ? "active" : "inactive",
+          );
+        }, 10000);
 
         const unsubscribe = wsClient.subscribe<RealTimeLogsSubscription>(
           {
@@ -35,34 +44,51 @@ export const useLogs = (jobId: string) => {
           },
           {
             next: (data) => {
-              console.log("next", data);
+              console.log(
+                "Received log data packet:",
+                new Date().toISOString(),
+              );
+              connectionActive = true;
+
               if (data.data) {
                 // Update the cache with new data
-                queryClient.setQueryData(["logs", jobId], data.data);
+                queryClient.setQueryData(
+                  [LogSubscriptionKeys.GetLogs, jobId],
+                  (oldData: any) => {
+                    console.log("old data", oldData);
+                    const newLogs = data.data?.logs;
+                    if (!oldData) return newLogs;
 
-                // Only resolve the initial promise if we haven't already
-                if (active) {
-                  active = false;
+                    return {
+                      ...oldData,
+                      logs: [...(oldData.logs || []), newLogs],
+                    };
+                  },
+                );
+
+                if (!initialDataReceived) {
+                  initialDataReceived = true;
                   resolve(data.data.logs);
                 }
               }
             },
             error: (error) => {
-              if (active) {
+              console.error("Subscription error", error);
+              if (!initialDataReceived) {
                 reject(error);
               }
             },
             complete: () => {
-              console.log("complete");
+              console.log("Subscription complete");
+              connectionActive = false;
+              clearInterval(heartbeatInterval);
               // Handle completion
             },
           },
         );
 
-        console.log("subscribe", active);
-
         return () => {
-          active = false;
+          clearInterval(heartbeatInterval);
           unsubscribe();
         };
       }),
