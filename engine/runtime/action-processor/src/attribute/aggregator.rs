@@ -17,7 +17,7 @@ use serde_json::Value;
 use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct AttributeAggregatorFactory;
+pub(super) struct AttributeAggregatorFactory;
 
 impl ProcessorFactory for AttributeAggregatorFactory {
     fn name(&self) -> &str {
@@ -118,7 +118,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct AttributeAggregator {
+struct AttributeAggregator {
     global_params: Option<HashMap<String, serde_json::Value>>,
     aggregate_attributes: Vec<CompliledAggregateAttribute>,
     calculation: Option<rhai::AST>,
@@ -130,19 +130,27 @@ pub struct AttributeAggregator {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct AttributeAggregatorParam {
+struct AttributeAggregatorParam {
+    /// # List of attributes to aggregate
     aggregate_attributes: Vec<AggregateAttribute>,
+    /// # Calculation to perform
     calculation: Option<Expr>,
+    /// # Value to use for calculation
     calculation_value: Option<i64>,
+    /// # Attribute to store calculation result
     calculation_attribute: Attribute,
+    /// # Method to use for aggregation
     method: Method,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AggregateAttribute {
+    /// # New attribute to create
     new_attribute: Attribute,
+    /// # Existing attribute to use
     attribute: Option<Attribute>,
+    /// # Value to use for attribute
     attribute_value: Option<Expr>,
 }
 
@@ -154,7 +162,8 @@ struct CompliledAggregateAttribute {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-pub(super) enum Method {
+/// # Method to use for aggregation
+enum Method {
     #[serde(rename = "max")]
     Max,
     #[serde(rename = "min")]
