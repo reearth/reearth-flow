@@ -299,8 +299,8 @@ github.com/ravilushqa/otelgqlgen v0.15.0 h1:U85nrlweMXTGaMChUViYM39/MXBZVeVVlpuH
 github.com/ravilushqa/otelgqlgen v0.15.0/go.mod h1:o+1Eju0VySmgq2BP8Vupz2YrN21Bj7D7imBqu3m2uB8=
 github.com/redis/go-redis/v9 v9.2.0 h1:zwMdX0A4eVzse46YN18QhuDiM4uf3JmkOB4VZrdt5uI=
 github.com/redis/go-redis/v9 v9.2.0/go.mod h1:hdY0cQFCN4fnSYT6TkisLufl/4W5UIXyv0b/CLO2V2M=
-github.com/reearth/reearthx v0.0.0-20250130135542-7860571926f2 h1:SRNjUqHjxUvGUm85PDiy43ZdEu9AJWX95TFRBYRTa+0=
-github.com/reearth/reearthx v0.0.0-20250130135542-7860571926f2/go.mod h1:/ByvE9o0WANHL2nhOyZjOXWwY8cCgze0OmwyNzxcYoA=
+github.com/reearth/reearthx v0.0.0-20250304143104-c870998d0d8b h1:fyFjRt6rr0XyOJ/oHdSemGSNyQ327rSP9hVEW/Y4x8M=
+github.com/reearth/reearthx v0.0.0-20250304143104-c870998d0d8b/go.mod h1:/ByvE9o0WANHL2nhOyZjOXWwY8cCgze0OmwyNzxcYoA=
 github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjRBZyWFQ=
 github.com/rogpeppe/go-internal v1.10.0/go.mod h1:UQnix2H7Ngw/k4C5ijL5+65zddjncjaFoBhdsK/akog=
 github.com/rs/cors v1.10.1 h1:L0uuZVXIKlI1SShY2nhFfo44TYvDPQ1w4oFkUJNfhyo=
