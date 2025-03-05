@@ -47,8 +47,6 @@ describe("useYNode", () => {
           pseudoInputs: [],
           pseudoOutputs: [],
           content: "content",
-          backgroundColor: "backgroundColor",
-          textColor: "textColor",
         },
         style: { width: 0, height: 0 },
       },
@@ -70,8 +68,6 @@ describe("useYNode", () => {
         outputs: node.data.outputs,
         params: node.data.params,
         content: node.data.content,
-        backgroundColor: node.data.backgroundColor,
-        textColor: node.data.textColor,
       },
     }));
 

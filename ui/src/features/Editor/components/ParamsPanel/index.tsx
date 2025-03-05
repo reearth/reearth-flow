@@ -33,9 +33,7 @@ const ParamsPanel: React.FC<Props> = ({
     async (nodeId: string, data: any, type: "params" | "customization") => {
       if (type === "params") {
         await Promise.resolve(onParamsSubmit?.(nodeId, data));
-        console.log("PARARMS DATA", data);
       } else if (type === "customization") {
-        console.log("CUSTOMIZATION DATA", data);
         await Promise.resolve(onCustomizationSubmit?.(nodeId, data));
       }
       handleClose();

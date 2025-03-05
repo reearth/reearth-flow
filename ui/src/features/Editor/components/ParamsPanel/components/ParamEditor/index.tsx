@@ -9,7 +9,9 @@ import {
   TabsContent,
   TabsTrigger,
   TabsList,
+  FlowLogo,
 } from "@flow/components";
+import BasicBoiler from "@flow/components/BasicBoiler";
 import { patchAnyOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
@@ -76,13 +78,13 @@ const ParamEditor: React.FC<Props> = ({
       if (!action.customization) {
         setActionWithCustomization({
           ...action,
-          customization: generalNodeSchema,
+          customization: generalNodeSchema(nodeMeta.officialName),
         });
       } else {
         setActionWithCustomization(action);
       }
     }
-  }, [action]);
+  }, [action, nodeMeta]);
 
   // This is a patch for the `anyOf` type in JSON Schema.
   const patchedSchemaParams = useMemo<RJSFSchema | undefined>(
@@ -137,22 +139,35 @@ const ParamEditor: React.FC<Props> = ({
         className="flex h-full flex-col gap-4">
         <div className="flex justify-between gap-2">
           <p className="text-lg dark:font-thin">
-            {activeTab === "params" ? t("Parameters") : t("Node Customization")}
+            {activeTab === "params"
+              ? t("Parameters")
+              : activeTab === "customization"
+                ? t("Customization")
+                : t("Details")}
           </p>
-          <Button onClick={handleSubmit}>{t("Submit")}</Button>
+          {activeTab !== "details" && (
+            <Button onClick={handleSubmit}>{t("Submit")}</Button>
+          )}
         </div>
         <TabsList className="flex justify-between">
           <TabsTrigger className="flex-1" value="params">
             {t("Parameters")}
           </TabsTrigger>
           <TabsTrigger className="flex-1" value="customization">
-            {t("Node Customization")}
+            {t("Customization")}
+          </TabsTrigger>
+          <TabsTrigger className="flex-1" value="details">
+            {t("Details")}
           </TabsTrigger>
         </TabsList>
         <TabsContent value="params">
-          <div className="min-h-0 overflow-scroll rounded border bg-card px-2">
+          <div className="min-h-32 overflow-scroll rounded border bg-card px-2">
             {!actionWithCustomization?.parameter && (
-              <p>{t("No Parameters Available")}</p>
+              <BasicBoiler
+                text={t("No Parameters Available")}
+                className="size-4 pt-16 [&>div>p]:text-sm"
+                icon={<FlowLogo className="size-12 text-accent" />}
+              />
             )}
             {actionWithCustomization && (
               <SchemaForm
@@ -164,23 +179,61 @@ const ParamEditor: React.FC<Props> = ({
           </div>
         </TabsContent>
         <TabsContent value="customization">
-          <div className="min-h-0 overflow-scroll rounded border bg-card px-2">
+          <div className="min-h-32 overflow-scroll rounded border bg-card px-2 pt-4">
             {!actionWithCustomization?.customization && (
-              <p>{t("No Customization Available")}</p>
+              <BasicBoiler
+                text={t("No Customization Available")}
+                className="size-4 pt-16 [&>div>p]:text-sm"
+                icon={<FlowLogo className="size-12 text-accent" />}
+              />
             )}
             {actionWithCustomization && (
-              <div>
-                <div className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  <p>{t("Node Details")}</p>
-                  <p>
-                    {t("Action Name")}: {action?.name}
-                  </p>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="mb-3 text-base font-medium">
+                    {t("Customization Options")}
+                  </h4>
+                  <SchemaForm
+                    schema={patchedSchemaCustomization}
+                    defaultFormData={updatedCustomization}
+                    onChange={handleCustomizationChange}
+                  />
                 </div>
-                <SchemaForm
-                  schema={patchedSchemaCustomization}
-                  defaultFormData={updatedCustomization}
-                  onChange={handleCustomizationChange}
-                />
+              </div>
+            )}
+          </div>
+        </TabsContent>
+        <TabsContent value="details">
+          <div className="min-h-32 overflow-scroll rounded border bg-card px-2 pt-4">
+            {!actionWithCustomization && (
+              <BasicBoiler
+                text={t("No Details Available")}
+                className="size-4 pt-16 [&>div>p]:text-sm"
+                icon={<FlowLogo className="size-12 text-accent" />}
+              />
+            )}
+            {actionWithCustomization && (
+              <div className="space-y-4">
+                <div className="rounded-md bg-muted/30 p-2">
+                  <h4 className="mb-2 text-base font-medium">
+                    {t("Node Details")}
+                  </h4>
+                  <div className="space-y-1">
+                    <p className="flex items-center text-sm">
+                      <span className="mr-2 font-medium">
+                        {t("Action Name")}:
+                      </span>
+                      <span className="text-white">
+                        {nodeMeta.officialName}
+                      </span>
+                    </p>
+                    {actionWithCustomization?.description && (
+                      <p className="text-sm text-muted-foreground">
+                        {actionWithCustomization.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>

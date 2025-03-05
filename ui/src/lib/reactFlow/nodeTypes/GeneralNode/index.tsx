@@ -15,12 +15,17 @@ export type GeneralNodeProps = NodeProps<Node> & {
 };
 
 const typeIconClasses = "w-[10px] h-[100%]";
-export const generalNodeSchema: RJSFSchema = {
+export const generalNodeSchema = (officialName: string): RJSFSchema => ({
   type: "object",
   properties: {
-    customName: { type: "string", title: "Name" },
+    customName: {
+      type: "string",
+      title: "Name",
+      format: "text",
+      default: officialName,
+    },
   },
-};
+});
 
 const GeneralNode: React.FC<GeneralNodeProps> = ({
   className,

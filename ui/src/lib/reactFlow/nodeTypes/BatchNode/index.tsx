@@ -32,10 +32,6 @@ const batchNodeCustomizationSchema: RJSFSchema = {
   },
 };
 
-const batchNodeParamsSchema: RJSFSchema = {
-  type: "object",
-};
-
 export const batchNodeAction = {
   name: "batch",
   description: "Batch node",
@@ -44,7 +40,7 @@ export const batchNodeAction = {
   inputPorts: ["input"],
   outputPorts: ["output"],
   builtin: true,
-  parameter: batchNodeParamsSchema,
+  parameter: null,
   customization: batchNodeCustomizationSchema,
 };
 
