@@ -13,6 +13,7 @@ Overlays an area on another area
   "type": "object",
   "properties": {
     "groupBy": {
+      "title": "Group by",
       "type": [
         "array",
         "null"
@@ -364,7 +365,12 @@ Extracts file path information from attributes
   ],
   "properties": {
     "attribute": {
-      "$ref": "#/definitions/Attribute"
+      "title": "Attribute to extract file path from",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
     }
   },
   "definitions": {
@@ -398,6 +404,7 @@ Flattens features by attributes
   ],
   "properties": {
     "attributes": {
+      "title": "Attributes to flatten",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
@@ -434,6 +441,7 @@ Manages attributes
   ],
   "properties": {
     "operations": {
+      "title": "Operations to perform",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Operation"
@@ -461,12 +469,19 @@ Manages attributes
       ],
       "properties": {
         "attribute": {
+          "title": "Attribute name",
           "type": "string"
         },
         "method": {
-          "$ref": "#/definitions/Method"
+          "title": "Operation to perform",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Method"
+            }
+          ]
         },
         "value": {
+          "title": "Value to use for the operation",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -504,6 +519,7 @@ Maps attributes
   ],
   "properties": {
     "mappers": {
+      "title": "Mappers",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Mapper"
@@ -518,18 +534,21 @@ Maps attributes
       "type": "object",
       "properties": {
         "attribute": {
+          "title": "Attribute name",
           "type": [
             "string",
             "null"
           ]
         },
         "childAttribute": {
+          "title": "Child attribute name",
           "type": [
             "string",
             "null"
           ]
         },
         "expr": {
+          "title": "Expression to evaluate",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -540,6 +559,7 @@ Maps attributes
           ]
         },
         "multipleExpr": {
+          "title": "Expression to evaluate multiple attributes",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -550,12 +570,14 @@ Maps attributes
           ]
         },
         "parentAttribute": {
+          "title": "Parent attribute name",
           "type": [
             "string",
             "null"
           ]
         },
         "valueAttribute": {
+          "title": "Attribute name to get value from",
           "type": [
             "string",
             "null"
@@ -606,13 +628,20 @@ Buffers a geometry
   ],
   "properties": {
     "bufferType": {
-      "$ref": "#/definitions/BufferType"
+      "title": "Buffer type",
+      "allOf": [
+        {
+          "$ref": "#/definitions/BufferType"
+        }
+      ]
     },
     "distance": {
+      "title": "Buffer distance",
       "type": "number",
       "format": "double"
     },
     "interpolationAngle": {
+      "title": "Buffer interpolation angle",
       "type": "number",
       "format": "double"
     }
@@ -939,6 +968,7 @@ Decompresses a directory
   ],
   "properties": {
     "archiveAttributes": {
+      "title": "Attribute to extract file path from",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
@@ -1105,9 +1135,15 @@ Reads features from citygml file
   ],
   "properties": {
     "dataset": {
-      "$ref": "#/definitions/Expr"
+      "title": "Dataset to read",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
     },
     "flatten": {
+      "title": "Flatten the dataset",
       "type": [
         "boolean",
         "null"
@@ -1145,10 +1181,12 @@ Counts features
   ],
   "properties": {
     "countStart": {
+      "title": "Start count",
       "type": "integer",
       "format": "int64"
     },
     "groupBy": {
+      "title": "Attributes to group by",
       "type": [
         "array",
         "null"
@@ -1158,6 +1196,7 @@ Counts features
       }
     },
     "outputAttribute": {
+      "title": "Attribute to output the count",
       "type": "string"
     }
   },
@@ -1239,16 +1278,23 @@ Extracts features by file path
   ],
   "properties": {
     "destPrefix": {
+      "title": "Destination prefix",
       "type": [
         "string",
         "null"
       ]
     },
     "extractArchive": {
+      "title": "Extract archive",
       "type": "boolean"
     },
     "sourceDataset": {
-      "$ref": "#/definitions/Expr"
+      "title": "Source dataset",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
     }
   },
   "definitions": {
@@ -1282,6 +1328,7 @@ Filters features based on conditions
   ],
   "properties": {
     "conditions": {
+      "title": "Conditions to filter by",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Condition"
@@ -1297,10 +1344,20 @@ Filters features based on conditions
       ],
       "properties": {
         "expr": {
-          "$ref": "#/definitions/Expr"
+          "title": "Condition expression",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         },
         "outputPort": {
-          "$ref": "#/definitions/Port"
+          "title": "Output port",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Port"
+            }
+          ]
         }
       }
     },
@@ -1336,7 +1393,12 @@ Filter Geometry by lod
   ],
   "properties": {
     "filterKey": {
-      "$ref": "#/definitions/Attribute"
+      "title": "Attributes to filter by",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
     }
   },
   "definitions": {
@@ -1452,7 +1514,12 @@ Reads features from various formats
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "title": "Dataset",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         },
         "format": {
           "type": "string",
@@ -1461,6 +1528,7 @@ Reads features from various formats
           ]
         },
         "offset": {
+          "description": "The offset of the first row to read",
           "type": [
             "integer",
             "null"
@@ -1478,7 +1546,12 @@ Reads features from various formats
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "title": "Dataset",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         },
         "format": {
           "type": "string",
@@ -1487,6 +1560,7 @@ Reads features from various formats
           ]
         },
         "offset": {
+          "description": "The offset of the first row to read",
           "type": [
             "integer",
             "null"
@@ -1504,7 +1578,12 @@ Reads features from various formats
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "title": "Dataset",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         },
         "format": {
           "type": "string",
@@ -1546,13 +1625,19 @@ Sorts features by attributes
   ],
   "properties": {
     "attributes": {
+      "title": "Attributes to sort by",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
       }
     },
     "order": {
-      "$ref": "#/definitions/Order"
+      "title": "Order to sort by",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Order"
+        }
+      ]
     }
   },
   "definitions": {
@@ -1592,6 +1677,7 @@ Transforms features by expressions
   ],
   "properties": {
     "transformers": {
+      "title": "Transformers to apply",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Transform"
@@ -1609,7 +1695,12 @@ Transforms features by expressions
       ],
       "properties": {
         "expr": {
-          "$ref": "#/definitions/Expr"
+          "title": "Expression to transform the feature",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         }
       }
     }
@@ -1639,6 +1730,7 @@ Filters features by feature type
   ],
   "properties": {
     "targetTypes": {
+      "description": "Target feature types",
       "type": "array",
       "items": {
         "type": "string"
@@ -1680,7 +1772,12 @@ Writes features from various formats
           ]
         },
         "output": {
-          "$ref": "#/definitions/Expr"
+          "title": "Output path",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         }
       }
     },
@@ -1698,7 +1795,12 @@ Writes features from various formats
           ]
         },
         "output": {
-          "$ref": "#/definitions/Expr"
+          "title": "Output path",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         }
       }
     },
@@ -1716,7 +1818,12 @@ Writes features from various formats
           ]
         },
         "output": {
-          "$ref": "#/definitions/Expr"
+          "title": "Output path",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         }
       }
     }
@@ -1787,6 +1894,7 @@ Extracts properties from a file
   ],
   "properties": {
     "filePathAttribute": {
+      "title": "Attribute to extract file path from",
       "type": "string"
     }
   }
@@ -2213,7 +2321,12 @@ Coerces the geometry of a feature to a specific geometry
   ],
   "properties": {
     "coercerType": {
-      "$ref": "#/definitions/CoercerType"
+      "description": "The type of geometry to coerce to",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CoercerType"
+        }
+      ]
     }
   },
   "definitions": {
@@ -2664,7 +2777,12 @@ Explodes list attributes
   ],
   "properties": {
     "sourceAttribute": {
-      "$ref": "#/definitions/Attribute"
+      "description": "The attribute to explode",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
     }
   },
   "definitions": {
@@ -3278,10 +3396,20 @@ Calls Rhai script
   ],
   "properties": {
     "isTarget": {
-      "$ref": "#/definitions/Expr"
+      "title": "Rhai script to determine if the feature is the target",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
     },
     "process": {
-      "$ref": "#/definitions/Expr"
+      "title": "Rhai script to process the feature",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
     }
   },
   "definitions": {
@@ -3399,6 +3527,7 @@ Calculates statistics of features
   ],
   "properties": {
     "aggregateAttribute": {
+      "title": "Attribute to aggregate by",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -3409,6 +3538,7 @@ Calculates statistics of features
       ]
     },
     "aggregateName": {
+      "title": "Name of the attribute to aggregate by",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -3419,6 +3549,7 @@ Calculates statistics of features
       ]
     },
     "calculations": {
+      "title": "Calculations to perform",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Calculation"
@@ -3437,10 +3568,20 @@ Calculates statistics of features
       ],
       "properties": {
         "expr": {
-          "$ref": "#/definitions/Expr"
+          "title": "Calculation to perform",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         },
         "newAttribute": {
-          "$ref": "#/definitions/Attribute"
+          "title": "New attribute name",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
         }
       }
     },

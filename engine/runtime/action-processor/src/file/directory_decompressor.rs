@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
-pub(crate) struct DirectoryDecompressorFactory;
+pub(super) struct DirectoryDecompressorFactory;
 
 impl ProcessorFactory for DirectoryDecompressorFactory {
     fn name(&self) -> &str {
@@ -80,6 +80,7 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct DirectoryDecompressorParam {
+    /// # Attribute to extract file path from
     archive_attributes: Vec<Attribute>,
 }
 

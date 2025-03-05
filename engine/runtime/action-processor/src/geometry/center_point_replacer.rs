@@ -15,10 +15,10 @@ use reearth_flow_types::{Feature, Geometry, GeometryValue};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-pub static POINT_PORT: Lazy<Port> = Lazy::new(|| Port::new("point"));
+static POINT_PORT: Lazy<Port> = Lazy::new(|| Port::new("point"));
 
 #[derive(Debug, Clone, Default)]
-pub struct CenterPointReplacerFactory;
+pub(super) struct CenterPointReplacerFactory;
 
 impl ProcessorFactory for CenterPointReplacerFactory {
     fn name(&self) -> &str {
@@ -56,7 +56,7 @@ impl ProcessorFactory for CenterPointReplacerFactory {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct CenterPointReplacer;
+struct CenterPointReplacer;
 
 impl Processor for CenterPointReplacer {
     fn process(
