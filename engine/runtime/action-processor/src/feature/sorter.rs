@@ -16,7 +16,7 @@ use serde_json::Value;
 use super::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureSorterFactory;
+pub(super) struct FeatureSorterFactory;
 
 impl ProcessorFactory for FeatureSorterFactory {
     fn name(&self) -> &str {
@@ -79,15 +79,17 @@ impl ProcessorFactory for FeatureSorterFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct FeatureSorter {
+struct FeatureSorter {
     params: FeatureSorterParam,
     buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct FeatureSorterParam {
+struct FeatureSorterParam {
+    /// # Attributes to sort by
     attributes: Vec<Attribute>,
+    /// # Order to sort by
     order: Order,
 }
 

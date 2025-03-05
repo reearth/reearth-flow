@@ -20,7 +20,7 @@ use super::errors;
 use super::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureReaderFactory;
+pub(super) struct FeatureReaderFactory;
 
 impl ProcessorFactory for FeatureReaderFactory {
     fn name(&self) -> &str {
@@ -135,20 +135,21 @@ impl ProcessorFactory for FeatureReaderFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct FeatureReader {
+struct FeatureReader {
     global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureReaderParam,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CommonReaderParam {
-    pub(super) dataset: Expr,
+struct CommonReaderParam {
+    /// # Dataset
+    dataset: Expr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(tag = "format")]
-pub enum FeatureReaderParam {
+enum FeatureReaderParam {
     #[serde(rename = "csv")]
     Csv {
         #[serde(flatten)]

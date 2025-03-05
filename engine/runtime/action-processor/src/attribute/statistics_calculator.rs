@@ -18,7 +18,7 @@ use super::errors::AttributeProcessorError;
 pub static COMPLETE_PORT: Lazy<Port> = Lazy::new(|| Port::new("complete"));
 
 #[derive(Debug, Clone, Default)]
-pub struct StatisticsCalculatorFactory;
+pub(super) struct StatisticsCalculatorFactory;
 
 impl ProcessorFactory for StatisticsCalculatorFactory {
     fn name(&self) -> &str {
@@ -96,7 +96,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct StatisticsCalculator {
+struct StatisticsCalculator {
     aggregate_name: Option<Attribute>,
     aggregate_attribute: Option<Attribute>,
     calculations: Vec<CompiledCalculation>,
@@ -112,16 +112,21 @@ struct CompiledCalculation {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct StatisticsCalculatorParam {
+struct StatisticsCalculatorParam {
+    /// # Name of the attribute to aggregate by
     aggregate_name: Option<Attribute>,
+    /// # Attribute to aggregate by
     aggregate_attribute: Option<Attribute>,
+    /// # Calculations to perform
     calculations: Vec<Calculation>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Calculation {
+    /// # New attribute name
     new_attribute: Attribute,
+    /// # Calculation to perform
     expr: Expr,
 }
 

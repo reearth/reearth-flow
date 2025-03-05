@@ -18,10 +18,10 @@ use crate::utils::decompressor::extract_archive;
 
 use super::errors::FeatureProcessorError;
 
-pub static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
+static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureFilePathExtractorFactory;
+pub(super) struct FeatureFilePathExtractorFactory;
 
 impl ProcessorFactory for FeatureFilePathExtractorFactory {
     fn name(&self) -> &str {
@@ -97,21 +97,24 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct FeatureFilePathExtractorParam {
+struct FeatureFilePathExtractorParam {
+    /// # Source dataset
     source_dataset: Expr,
+    /// # Extract archive
     extract_archive: bool,
+    /// # Destination prefix
     dest_prefix: Option<String>,
 }
 
 #[derive(Debug, Clone)]
-pub struct FeatureFilePathExtractorCompiledParam {
+struct FeatureFilePathExtractorCompiledParam {
     source_dataset: rhai::AST,
     extract_archive: bool,
     dest_prefix: Option<String>,
 }
 
 #[derive(Debug, Clone)]
-pub struct FeatureFilePathExtractor {
+struct FeatureFilePathExtractor {
     params: FeatureFilePathExtractorCompiledParam,
     with: Option<HashMap<String, Value>>,
 }

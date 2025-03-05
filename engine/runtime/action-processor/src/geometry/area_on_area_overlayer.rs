@@ -21,11 +21,11 @@ use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
 
-pub static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
-pub static REMNANTS_PORT: Lazy<Port> = Lazy::new(|| Port::new("remnants"));
+static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
+static REMNANTS_PORT: Lazy<Port> = Lazy::new(|| Port::new("remnants"));
 
 #[derive(Debug, Clone, Default)]
-pub struct AreaOnAreaOverlayerFactory;
+pub(super) struct AreaOnAreaOverlayerFactory;
 
 impl ProcessorFactory for AreaOnAreaOverlayerFactory {
     fn name(&self) -> &str {
@@ -93,12 +93,13 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct AreaOnAreaOverlayerParam {
+struct AreaOnAreaOverlayerParam {
+    /// # Group by
     group_by: Option<Vec<Attribute>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct AreaOnAreaOverlayer {
+struct AreaOnAreaOverlayer {
     group_by: Option<Vec<Attribute>>,
     buffer: HashMap<AttributeValue, Vec<Feature>>,
 }

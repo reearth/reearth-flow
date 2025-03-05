@@ -15,7 +15,7 @@ use serde_json::Value;
 use super::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct ListExploderFactory;
+pub(super) struct ListExploderFactory;
 
 impl ProcessorFactory for ListExploderFactory {
     fn name(&self) -> &str {
@@ -74,7 +74,8 @@ impl ProcessorFactory for ListExploderFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ListExploder {
+struct ListExploder {
+    /// The attribute to explode
     source_attribute: Attribute,
 }
 

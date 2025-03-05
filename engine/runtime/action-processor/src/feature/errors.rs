@@ -2,7 +2,7 @@ use thiserror::Error;
 
 #[allow(dead_code)]
 #[derive(Error, Debug)]
-pub(crate) enum FeatureProcessorError {
+pub(super) enum FeatureProcessorError {
     #[error("Feature Merger Factory error: {0}")]
     MergerFactory(String),
     #[error("Feature Merger error: {0}")]
@@ -55,5 +55,4 @@ pub(crate) enum FeatureProcessorError {
     FeatureWriter(String),
 }
 
-#[allow(dead_code)]
-pub(crate) type Result<T, E = FeatureProcessorError> = std::result::Result<T, E>;
+pub(super) type Result<T, E = FeatureProcessorError> = std::result::Result<T, E>;

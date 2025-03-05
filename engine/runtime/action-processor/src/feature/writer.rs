@@ -19,7 +19,7 @@ use serde_json::Value;
 use super::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureWriterFactory;
+pub(super) struct FeatureWriterFactory;
 
 impl ProcessorFactory for FeatureWriterFactory {
     fn name(&self) -> &str {
@@ -125,7 +125,7 @@ impl ProcessorFactory for FeatureWriterFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct FeatureWriter {
+struct FeatureWriter {
     global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureWriterParam,
     pub(super) buffer: HashMap<Uri, Vec<Feature>>,
@@ -133,13 +133,14 @@ pub struct FeatureWriter {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CommonWriterParam {
+struct CommonWriterParam {
+    /// # Output path
     pub(super) output: Expr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(tag = "format")]
-pub enum FeatureWriterParam {
+enum FeatureWriterParam {
     #[serde(rename = "csv")]
     Csv {
         #[serde(flatten)]

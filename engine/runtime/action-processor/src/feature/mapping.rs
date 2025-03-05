@@ -19,7 +19,7 @@ use super::{
     writer::FeatureWriterFactory,
 };
 
-pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
+pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
         Box::<FeatureMergerFactory>::default(),
         Box::<FeatureSorterFactory>::default(),

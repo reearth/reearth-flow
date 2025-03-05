@@ -49,7 +49,7 @@ impl Bounds {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct BoundsExtractorFactory;
+pub(super) struct BoundsExtractorFactory;
 
 impl ProcessorFactory for BoundsExtractorFactory {
     fn name(&self) -> &str {

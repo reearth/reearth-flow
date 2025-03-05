@@ -17,7 +17,7 @@ use serde_json::Value;
 use super::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureTransformerFactory;
+pub(super) struct FeatureTransformerFactory;
 
 impl ProcessorFactory for FeatureTransformerFactory {
     fn name(&self) -> &str {
@@ -89,20 +89,22 @@ impl ProcessorFactory for FeatureTransformerFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct FeatureTransformer {
+struct FeatureTransformer {
     global_params: Option<HashMap<String, serde_json::Value>>,
     transformers: Vec<CompiledTransform>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct FeatureTransformerParam {
+struct FeatureTransformerParam {
+    /// # Transformers to apply
     transformers: Vec<Transform>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Transform {
+    /// # Expression to transform the feature
     expr: Expr,
 }
 

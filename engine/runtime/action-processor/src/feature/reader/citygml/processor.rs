@@ -19,7 +19,7 @@ use crate::feature::errors;
 use crate::feature::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureCityGmlReaderFactory;
+pub(crate) struct FeatureCityGmlReaderFactory;
 
 impl ProcessorFactory for FeatureCityGmlReaderFactory {
     fn name(&self) -> &str {
@@ -114,7 +114,9 @@ pub struct FeatureCityGmlReader {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCityGmlReaderParam {
+    /// # Dataset to read
     dataset: Expr,
+    /// # Flatten the dataset
     flatten: Option<bool>,
 }
 

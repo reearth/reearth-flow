@@ -16,7 +16,7 @@ use serde_json::Value;
 use super::errors::FileProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct FilePropertyExtractorFactory;
+pub(super) struct FilePropertyExtractorFactory;
 
 impl ProcessorFactory for FilePropertyExtractorFactory {
     fn name(&self) -> &str {
@@ -76,7 +76,7 @@ impl ProcessorFactory for FilePropertyExtractorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub enum FileType {
+enum FileType {
     File,
     Directory,
 }
@@ -92,7 +92,7 @@ impl std::fmt::Display for FileType {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct FileProperty {
+struct FileProperty {
     file_type: FileType,
     file_size: i64,
     file_atime: i64,
@@ -135,7 +135,8 @@ impl From<FileProperty> for HashMap<Attribute, AttributeValue> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct FilePropertyExtractor {
+struct FilePropertyExtractor {
+    /// # Attribute to extract file path from
     file_path_attribute: String,
 }
 
