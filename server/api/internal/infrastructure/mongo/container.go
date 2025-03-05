@@ -35,8 +35,10 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 		Job:           NewJob(client),
 		Workflow:      NewWorkflow(client),
 		Parameter:     NewParameter(client),
+		Permittable:   accountmongo.NewPermittable(client), // TODO: Delete this once the permission check migration is complete.
 		Project:       NewProject(client),
 		ProjectAccess: NewProjectAccess(client),
+		Role:          accountmongo.NewRole(client), // TODO: Delete this once the permission check migration is complete.
 		Lock:          lock,
 		Transaction:   client.Transaction(),
 		Trigger:       NewTrigger(client),
@@ -68,8 +70,10 @@ func Init(r *repo.Container) error {
 		func() error { return r.Deployment.(*DeploymentAdapter).Deployment.Init(ctx) },
 		func() error { return r.Job.(*Job).Init(ctx) },
 		func() error { return r.Parameter.(*Parameter).Init(ctx) },
+		func() error { return r.Permittable.(*accountmongo.Permittable).Init(ctx) }, // TODO: Delete this once the permission check migration is complete.
 		func() error { return r.Project.(*Project).Init(ctx) },
 		func() error { return r.ProjectAccess.(*ProjectAccess).Init(ctx) },
+		func() error { return r.Role.(*accountmongo.Role).Init(ctx) }, // TODO: Delete this once the permission check migration is complete.
 		func() error { return r.Trigger.(*Trigger).Init(ctx) },
 		func() error { return r.User.(*accountmongo.User).Init() },
 		func() error { return r.Workspace.(*accountmongo.Workspace).Init() },

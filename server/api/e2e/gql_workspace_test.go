@@ -152,26 +152,25 @@ func TestAddMemberToWorkspace(t *testing.T) {
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK)
 
-	// TODO: Remove comment out once the permission check migration is complete.
-	// w, err = r.Workspace.FindByID(context.Background(), wId1)
-	// assert.Nil(t, err)
-	// assert.True(t, w.Members().HasUser(uId2))
-	// assert.Equal(t, w.Members().User(uId2).Role, workspace.RoleReader)
+	w, err = r.Workspace.FindByID(context.Background(), wId1)
+	assert.Nil(t, err)
+	assert.True(t, w.Members().HasUser(uId2))
+	assert.Equal(t, w.Members().User(uId2).Role, workspace.RoleReader)
 
-	// query = fmt.Sprintf(`mutation { addMemberToWorkspace(input: {workspaceId: "%s", userId: "%s", role: READER}){ workspace{ id } }}`, wId1, uId2)
-	// request = GraphQLRequest{
-	// 	Query: query,
-	// }
-	// jsonData, err = json.Marshal(request)
-	// if err != nil {
-	// 	assert.Nil(t, err)
-	// }
-	// e.POST("/api/graphql").
-	// 	WithHeader("authorization", "Bearer test").
-	// 	WithHeader("Content-Type", "application/json").
-	// 	WithHeader("X-Reearth-Debug-User", uId1.String()).
-	// 	WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object().
-	// 	Value("errors").Array().Value(0).Object().Value("message").IsEqual("input: addMemberToWorkspace user already joined")
+	query = fmt.Sprintf(`mutation { addMemberToWorkspace(input: {workspaceId: "%s", userId: "%s", role: READER}){ workspace{ id } }}`, wId1, uId2)
+	request = GraphQLRequest{
+		Query: query,
+	}
+	jsonData, err = json.Marshal(request)
+	if err != nil {
+		assert.Nil(t, err)
+	}
+	e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", uId1.String()).
+		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object().
+		Value("errors").Array().Value(0).Object().Value("message").IsEqual("input: addMemberToWorkspace user already joined")
 }
 
 func TestRemoveMemberFromWorkspace(t *testing.T) {
