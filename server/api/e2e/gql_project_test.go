@@ -18,6 +18,7 @@ func TestProjectWorkflows(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
+		Dev: true,
 	}, true, baseSeederUser, true)
 
 	projectId := testCreateProject(t, e)

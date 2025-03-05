@@ -101,6 +101,7 @@ func TestProjectShareFlow(t *testing.T) {
 		},
 		Host:       "https://example.com",
 		SharedPath: "shared",
+		Dev:        true,
 	}, true, baseSeederUser, true)
 
 	// create a project

@@ -18,13 +18,14 @@ import (
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 )
 
-var ErrPermissionDenied = fmt.Errorf("permission denied")
+var devMode bool
 
 type ContainerConfig struct {
 	SignupSecret    string
 	AuthSrvUIDomain string
 	Host            string
 	SharedPath      string
+	Dev             bool
 }
 
 func NewContainer(r *repo.Container, g *gateway.Container,
@@ -32,6 +33,8 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 	permissionChecker gateway.PermissionChecker,
 	config ContainerConfig,
 ) interfaces.Container {
+	setDevMode(config.Dev)
+
 	job := NewJob(r, g, permissionChecker)
 
 	return interfaces.Container{
@@ -72,7 +75,16 @@ func workspaceMemberCountEnforcer(_ *repo.Container) accountinteractor.Workspace
 	}
 }
 
+func setDevMode(isDev bool) {
+	devMode = isDev
+}
+
 func checkPermission(ctx context.Context, permissionChecker gateway.PermissionChecker, resource string, action string) error {
+	if devMode {
+		log.Printf("INFO: Dev mode enabled, skipping permission check for resource=%s action=%s", resource, action)
+		return nil
+	}
+
 	authInfo := adapter.GetAuthInfo(ctx)
 	if authInfo == nil {
 		return fmt.Errorf("auth info not found")

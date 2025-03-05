@@ -18,6 +18,7 @@ func TestCreateTimeDrivenTrigger(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
+		Dev: true,
 	}, true, baseSeederUser, true)
 
 	deploymentId := createTestDeployment(t, e)
@@ -194,6 +195,7 @@ func TestUpdateTrigger(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
+		Dev: true,
 	}, true, baseSeederUser, true)
 
 	deploymentId := createTestDeployment(t, e)
@@ -304,6 +306,7 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
+		Dev: true,
 	}, true, baseSeederUser, true)
 
 	deploymentId := createTestDeployment(t, e)

@@ -83,6 +83,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 		AuthSrvUIDomain: cfg.Config.Host_Web,
 		Host:            cfg.Config.Host,
 		SharedPath:      cfg.Config.SharedPath,
+		Dev:             cfg.Config.Dev,
 	}))
 
 	// auth srv
