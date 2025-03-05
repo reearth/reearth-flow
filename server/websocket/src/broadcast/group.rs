@@ -19,10 +19,10 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use yrs::encoding::write::Write;
 use yrs::sync::protocol::{MSG_SYNC, MSG_SYNC_UPDATE};
-use yrs::sync::{DefaultProtocol, Error, Message, Protocol, SyncMessage};
+use yrs::sync::{Awareness, DefaultProtocol, Error, Message, Protocol, SyncMessage};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
-use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
+use yrs::{Doc, ReadTxn, Transact, Update};
 
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct RedisConfig {
@@ -514,7 +514,20 @@ impl BroadcastGroup {
                 std::mem::take(&mut *pending)
             };
 
-            let doc = Doc::new();
+            let doc = match self.load_current_document_state(doc_name, store).await {
+                Ok(loaded_doc) => {
+                    tracing::info!(
+                        "Successfully loaded existing document state for '{}'",
+                        doc_name
+                    );
+                    loaded_doc
+                }
+                Err(e) => {
+                    tracing::warn!("Could not load document state, creating new: {}", e);
+                    Doc::new()
+                }
+            };
+
             let mut txn = doc.transact_mut();
 
             let mut has_updates = false;
@@ -540,7 +553,7 @@ impl BroadcastGroup {
                 return Ok(());
             }
 
-            let state_vector = StateVector::default();
+            let state_vector = txn.state_vector();
             let merged_update = txn.encode_state_as_update_v1(&state_vector);
             tracing::info!(
                 "Created merged update of size {} bytes for document '{}'",
@@ -550,12 +563,54 @@ impl BroadcastGroup {
 
             tracing::info!("Storing merged update for document '{}'", doc_name);
             Self::handle_update(merged_update, doc_name, store, &self.redis, self.redis_ttl).await;
+
+            self.broadcast_update_notification().await;
+
             tracing::info!("Stored merged updates for document '{}'", doc_name);
 
             Ok(())
         } else {
             tracing::info!("No storage or doc_name available, not storing updates");
             Ok(())
+        }
+    }
+
+    async fn load_current_document_state(
+        &self,
+        doc_name: &str,
+        store: &Arc<GcsStore>,
+    ) -> Result<Doc, Error> {
+        if let Some(redis) = &self.redis {
+            match Self::load_from_redis(redis, doc_name, &self.awareness_ref).await {
+                Ok(_) => {
+                    let awareness = self.awareness_ref.read().await;
+                    let doc = awareness.doc().clone();
+                    return Ok(doc);
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to load from Redis, trying GCS: {}", e);
+                }
+            }
+        }
+
+        let doc = Doc::new();
+        let awareness_ref = Arc::new(tokio::sync::RwLock::new(Awareness::new(doc.clone())));
+        Self::load_from_storage(store, doc_name, &awareness_ref).await;
+
+        Ok(doc)
+    }
+
+    async fn broadcast_update_notification(&self) {
+        let mut encoder = EncoderV1::new();
+        encoder.write_var(MSG_SYNC);
+        encoder.write_var(MSG_SYNC_UPDATE);
+        encoder.write_buf([]);
+        let message = encoder.to_vec();
+
+        if let Err(e) = self.broadcast(message) {
+            tracing::error!("Failed to broadcast update notification: {}", e);
+        } else {
+            tracing::info!("Successfully broadcasted update notification to all clients");
         }
     }
 }
@@ -582,6 +637,7 @@ impl Drop for BroadcastGroup {
                 let redis = self.redis.clone();
                 let redis_ttl = self.redis_ttl;
                 let pending_updates = self.pending_updates.clone();
+                let awareness_ref = self.awareness_ref.clone();
 
                 rt.spawn(async move {
                     let updates = {
@@ -598,7 +654,19 @@ impl Drop for BroadcastGroup {
                         std::mem::take(&mut *pending)
                     };
 
-                    let doc = Doc::new();
+                    let doc = match Self::load_document_state(&awareness_ref, &store, &doc_name)
+                        .await
+                    {
+                        Ok(loaded_doc) => {
+                            tracing::info!("Successfully loaded document state for '{}'", doc_name);
+                            loaded_doc
+                        }
+                        Err(_) => {
+                            tracing::warn!("Could not load document state, creating new");
+                            Doc::new()
+                        }
+                    };
+
                     let mut txn = doc.transact_mut();
 
                     let mut has_updates = false;
@@ -628,7 +696,7 @@ impl Drop for BroadcastGroup {
                         return;
                     }
 
-                    let state_vector = StateVector::default();
+                    let state_vector = txn.state_vector();
                     let merged_update = txn.encode_state_as_update_v1(&state_vector);
                     tracing::info!(
                         "Created merged update of size {} bytes for document '{}'",
@@ -653,6 +721,25 @@ impl Drop for BroadcastGroup {
         } else {
             tracing::info!("No storage or doc_name available, not storing updates");
         }
+    }
+}
+
+impl BroadcastGroup {
+    async fn load_document_state(
+        awareness_ref: &AwarenessRef,
+        store: &Arc<GcsStore>,
+        doc_name: &str,
+    ) -> Result<Doc, Error> {
+        let awareness = awareness_ref.read().await;
+        let _doc = awareness.doc().clone();
+        drop(awareness);
+
+        Self::load_from_storage(store, doc_name, awareness_ref).await;
+
+        let awareness = awareness_ref.read().await;
+        let updated_doc = awareness.doc().clone();
+
+        Ok(updated_doc)
     }
 }
 
