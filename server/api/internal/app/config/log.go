@@ -5,19 +5,14 @@ import (
 )
 
 type RedisLogConfig struct {
-	Addr     string `envconfig:"REEARTH_FLOW_REDIS_ADDR" pp:",omitempty"`
-	Password string `envconfig:"REEARTH_FLOW_REDIS_PASSWORD" pp:",omitempty"`
-	DB       int    `envconfig:"REEARTH_FLOW_REDIS_DB" pp:",omitempty"`
+	RedisURL string `pp:",omitempty"`
 }
 
 func (r RedisLogConfig) IsConfigured() bool {
-	if r.Addr == "" {
+	if r.RedisURL == "" {
 		return false
 	}
-	if r.DB < 0 || r.DB > 15 {
-		return false
-	}
-	if !strings.Contains(r.Addr, ":") {
+	if !strings.Contains(r.RedisURL, ":") {
 		return false
 	}
 	return true

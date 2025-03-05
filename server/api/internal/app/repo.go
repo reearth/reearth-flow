@@ -171,13 +171,12 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 
 func initLogRedis(ctx context.Context, conf *config.Config) gateway.Log {
 	if conf.RedisLog.IsConfigured() {
-		log.Infofc(ctx, "log: redis storage is used: %s\n", conf.RedisLog.Addr)
-		opts := &redis.Options{
-			Addr:     conf.RedisLog.Addr,
-			Password: conf.RedisLog.Password,
-			DB:       conf.RedisLog.DB,
+		log.Infofc(ctx, "log: redis storage is used: %s\n", conf.RedisLog.RedisURL)
+		opt, err := redis.ParseURL(conf.RedisLog.RedisURL)
+		if err != nil {
+			log.Fatalf("failed to parse redis url: %s\n", err.Error())
 		}
-		client := redis.NewClient(opts)
+		client := redis.NewClient(opt)
 		logRedisRepo, err := redisrepo.NewRedisLog(client)
 		if err != nil {
 			log.Warnf("log: failed to init redis storage: %s\n", err.Error())
