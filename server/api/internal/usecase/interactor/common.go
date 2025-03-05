@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -82,12 +83,19 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 		return fmt.Errorf("user not found")
 	}
 
+	// Once the operation check in the oss environment is completed, delete the log output and
 	hasPermission, err := permissionChecker.CheckPermission(ctx, authInfo, user.ID().String(), resource, action)
 	if err != nil {
-		return fmt.Errorf("failed to check permission: %w", err)
+		log.Printf("WARNING: Permission check error for user=%s resource=%s action=%s: %v", user.ID().String(), resource, action, err)
+		return nil
 	}
+
 	if !hasPermission {
-		return ErrPermissionDenied
+		log.Printf("WARNING: Permission denied for user=%s resource=%s action=%s", user.ID().String(), resource, action)
+		return nil
 	}
+
+	log.Printf("DEBUG: Permission granted for user=%s resource=%s action=%s", user.ID().String(), resource, action)
+
 	return nil
 }
