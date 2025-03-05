@@ -26,12 +26,12 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
   });
 
   // TODO: pass node status of source node
-  const nodeRunning = Math.random() < 0.5;
+  // const nodeRunning = Math.random() < 0.5;
 
   return (
     <>
       <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} />
-      {nodeRunning && (
+      {/* {nodeRunning && (
         <>
           <path
             d={edgePath}
@@ -67,7 +67,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
             </circle>
           </g>
         </>
-      )}
+      )} */}
     </>
   );
 };
