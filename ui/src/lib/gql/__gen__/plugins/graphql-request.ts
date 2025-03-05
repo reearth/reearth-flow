@@ -213,12 +213,18 @@ export type Job = Node & {
   deployment?: Maybe<Deployment>;
   deploymentId: Scalars['ID']['output'];
   id: Scalars['ID']['output'];
+  logs?: Maybe<Array<Maybe<Log>>>;
   logsURL?: Maybe<Scalars['String']['output']>;
   outputURLs?: Maybe<Array<Scalars['String']['output']>>;
   startedAt: Scalars['DateTime']['output'];
   status: JobStatus;
   workspace?: Maybe<Workspace>;
   workspaceId: Scalars['ID']['output'];
+};
+
+
+export type JobLogsArgs = {
+  since: Scalars['DateTime']['input'];
 };
 
 export type JobConnection = {
@@ -239,6 +245,23 @@ export enum JobStatus {
   Failed = 'FAILED',
   Pending = 'PENDING',
   Running = 'RUNNING'
+}
+
+export type Log = {
+  __typename?: 'Log';
+  jobId: Scalars['ID']['output'];
+  logLevel: LogLevel;
+  message: Scalars['String']['output'];
+  nodeId?: Maybe<Scalars['ID']['output']>;
+  timestamp: Scalars['DateTime']['output'];
+};
+
+export enum LogLevel {
+  Debug = 'DEBUG',
+  Error = 'ERROR',
+  Info = 'INFO',
+  Trace = 'TRACE',
+  Warn = 'WARN'
 }
 
 export type Me = {
@@ -756,10 +779,16 @@ export type SignupPayload = {
 export type Subscription = {
   __typename?: 'Subscription';
   jobStatus: JobStatus;
+  logs?: Maybe<Log>;
 };
 
 
 export type SubscriptionJobStatusArgs = {
+  jobId: Scalars['ID']['input'];
+};
+
+
+export type SubscriptionLogsArgs = {
   jobId: Scalars['ID']['input'];
 };
 
@@ -1045,6 +1074,13 @@ export type UnshareProjectMutationVariables = Exact<{
 
 
 export type UnshareProjectMutation = { __typename?: 'Mutation', unshareProject?: { __typename?: 'UnshareProjectPayload', projectId: string } | null };
+
+export type RealTimeLogsSubscriptionVariables = Exact<{
+  jobId: Scalars['ID']['input'];
+}>;
+
+
+export type RealTimeLogsSubscription = { __typename?: 'Subscription', logs?: { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string } | null };
 
 export type CreateTriggerMutationVariables = Exact<{
   input: CreateTriggerInput;
@@ -1395,6 +1431,17 @@ export const UnshareProjectDocument = gql`
   }
 }
     `;
+export const RealTimeLogsDocument = gql`
+    subscription RealTimeLogs($jobId: ID!) {
+  logs(jobId: $jobId) {
+    jobId
+    nodeId
+    timestamp
+    logLevel
+    message
+  }
+}
+    `;
 export const CreateTriggerDocument = gql`
     mutation CreateTrigger($input: CreateTriggerInput!) {
   createTrigger(input: $input) {
@@ -1592,6 +1639,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     UnshareProject(variables: UnshareProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UnshareProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<UnshareProjectMutation>(UnshareProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UnshareProject', 'mutation', variables);
+    },
+    RealTimeLogs(variables: RealTimeLogsSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RealTimeLogsSubscription> {
+      return withWrapper((wrappedRequestHeaders) => client.request<RealTimeLogsSubscription>(RealTimeLogsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RealTimeLogs', 'subscription', variables);
     },
     CreateTrigger(variables: CreateTriggerMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateTriggerMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateTriggerMutation>(CreateTriggerDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateTrigger', 'mutation', variables);

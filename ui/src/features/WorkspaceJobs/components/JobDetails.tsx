@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, LoadingSkeleton } from "@flow/components";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { LogsConsole } from "@flow/features/Editor/components/BottomPanel/components";
+import { useLogs } from "@flow/lib/gql/logs/useSubscriptions";
 import { useT } from "@flow/lib/i18n";
 import type { Job, Log } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
@@ -90,7 +91,6 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
             }
           }
           return {
-            workflowId: selectedJob.workspaceId,
             jobId: selectedJob.id,
             message: parsedLog.msg,
             timeStamp: parsedLog.ts,
@@ -116,6 +116,9 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
   useEffect(() => {
     getAllLogs();
   }, [getAllLogs]);
+  const { data } = useLogs(selectedJob?.id || "");
+
+  console.log(data);
 
   return (
     selectedJob && (
