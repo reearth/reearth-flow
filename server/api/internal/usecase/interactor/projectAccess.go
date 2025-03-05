@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	stdLog "log"
 
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -36,16 +35,7 @@ func NewProjectAccess(r *repo.Container, gr *gateway.Container, config Container
 }
 
 func (i *ProjectAccess) checkPermission(ctx context.Context, action string) error {
-	err := checkPermission(ctx, i.permissionChecker, rbac.ResourceProjectAccess, action)
-
-	// Once the operation check in the oss environment is completed, delete the log output and return an error.
-	if err != nil {
-		stdLog.Printf("WARNING: Permission check failed for ProjectAccess %s: %v", action, err)
-	} else {
-		stdLog.Printf("DEBUG: Permission check succeeded for ProjectAccess %s", action)
-	}
-
-	return nil
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProjectAccess, action)
 }
 
 func (i *ProjectAccess) Fetch(ctx context.Context, token string) (project *project.Project, err error) {

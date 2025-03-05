@@ -2,7 +2,6 @@ package interactor
 
 import (
 	"context"
-	stdLog "log"
 
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -31,16 +30,7 @@ func NewParameter(r *repo.Container, permissionChecker gateway.PermissionChecker
 }
 
 func (i *Parameter) checkPermission(ctx context.Context, action string) error {
-	err := checkPermission(ctx, i.permissionChecker, rbac.ResourceParameter, action)
-
-	// Once the operation check in the oss environment is completed, delete the log output and return an error.
-	if err != nil {
-		stdLog.Printf("WARNING: Permission check failed for Parameter %s: %v", action, err)
-	} else {
-		stdLog.Printf("DEBUG: Permission check succeeded for Parameter %s", action)
-	}
-
-	return nil
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceParameter, action)
 }
 
 func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.DeclareParameterParam) (*parameter.Parameter, error) {

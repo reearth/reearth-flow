@@ -2,7 +2,6 @@ package interactor
 
 import (
 	"context"
-	stdlog "log"
 	"net/url"
 	"path"
 
@@ -30,16 +29,7 @@ func NewAsset(r *repo.Container, g *gateway.Container, permissionChecker gateway
 }
 
 func (i *Asset) checkPermission(ctx context.Context, action string) error {
-	err := checkPermission(ctx, i.permissionChecker, rbac.ResourceAsset, action)
-
-	// Once the operation check in the oss environment is completed, delete the log output and return an error.
-	if err != nil {
-		stdlog.Printf("WARNING: Permission check failed for Asset %s: %v", action, err)
-	} else {
-		stdlog.Printf("DEBUG: Permission check succeeded for Asset %s", action)
-	}
-
-	return nil
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceAsset, action)
 }
 
 func (i *Asset) Fetch(ctx context.Context, assets []id.AssetID) ([]*asset.Asset, error) {

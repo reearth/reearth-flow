@@ -3,7 +3,6 @@ package interactor
 import (
 	"context"
 	"fmt"
-	stdLog "log"
 	"sync"
 	"time"
 
@@ -34,16 +33,7 @@ func NewLogInteractor(lgRedis gateway.Log, permissionChecker gateway.PermissionC
 }
 
 func (li *LogInteractor) checkPermission(ctx context.Context, action string) error {
-	err := checkPermission(ctx, li.permissionChecker, rbac.ResourceLog, action)
-
-	// Once the operation check in the oss environment is completed, delete the log output and return an error.
-	if err != nil {
-		stdLog.Printf("WARNING: Permission check failed for Log %s: %v", action, err)
-	} else {
-		stdLog.Printf("DEBUG: Permission check succeeded for Log %s", action)
-	}
-
-	return nil
+	return checkPermission(ctx, li.permissionChecker, rbac.ResourceLog, action)
 }
 
 func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.JobID) ([]*log.Log, error) {

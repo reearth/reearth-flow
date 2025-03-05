@@ -3,7 +3,6 @@ package interactor
 import (
 	"context"
 	"fmt"
-	stdLog "log"
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/rbac"
@@ -56,16 +55,7 @@ func NewJob(r *repo.Container, gr *gateway.Container, permissionChecker gateway.
 }
 
 func (i *Job) checkPermission(ctx context.Context, action string) error {
-	err := checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action)
-
-	// Once the operation check in the oss environment is completed, delete the log output and return an error.
-	if err != nil {
-		stdLog.Printf("WARNING: Permission check failed for Job %s: %v", action, err)
-	} else {
-		stdLog.Printf("DEBUG: Permission check succeeded for Job %s", action)
-	}
-
-	return nil
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action)
 }
 
 func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {

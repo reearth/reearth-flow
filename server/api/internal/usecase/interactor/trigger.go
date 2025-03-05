@@ -3,7 +3,6 @@ package interactor
 import (
 	"context"
 	"fmt"
-	stdLog "log"
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/rbac"
@@ -45,16 +44,7 @@ func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 }
 
 func (i *Trigger) checkPermission(ctx context.Context, action string) error {
-	err := checkPermission(ctx, i.permissionChecker, rbac.ResourceTrigger, action)
-
-	// Once the operation check in the oss environment is completed, delete the log output and return an error.
-	if err != nil {
-		stdLog.Printf("WARNING: Permission check failed for Trigger %s: %v", action, err)
-	} else {
-		stdLog.Printf("DEBUG: Permission check succeeded for Trigger %s", action)
-	}
-
-	return nil
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceTrigger, action)
 }
 
 func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Trigger, error) {
