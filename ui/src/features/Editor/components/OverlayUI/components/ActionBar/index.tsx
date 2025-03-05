@@ -20,7 +20,7 @@ import { useProjectExport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 
-import { DeployDialog, ShareDialog } from "./components";
+import { DebugStopDialog, DeployDialog, ShareDialog } from "./components";
 
 const tooltipOffset = 6;
 
@@ -51,15 +51,24 @@ const ActionBar: React.FC<Props> = ({
 
   const [showDeployDialog, setShowDeployDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showDebugStopDialog, setShowDebugStopDialog] = useState(false);
 
   const handleShowDeployDialog = () => {
     setShowShareDialog(false);
+    setShowDebugStopDialog(false);
     setShowDeployDialog(true);
   };
 
   const handleShowShareDialog = () => {
     setShowDeployDialog(false);
+    setShowDebugStopDialog(false);
     setShowShareDialog(true);
+  };
+
+  const handleShowDebugStopDialog = () => {
+    setShowShareDialog(false);
+    setShowDeployDialog(false);
+    setShowDebugStopDialog(true);
   };
 
   return (
@@ -79,7 +88,7 @@ const ActionBar: React.FC<Props> = ({
               tooltipText={t("Stop project workflow")}
               tooltipOffset={tooltipOffset}
               icon={<Stop weight="thin" />}
-              onClick={onDebugRunStop}
+              onClick={handleShowDebugStopDialog}
             />
             <IconButton
               className="rounded-none"
@@ -132,6 +141,12 @@ const ActionBar: React.FC<Props> = ({
         <ShareDialog
           setShowDialog={setShowShareDialog}
           onProjectShare={onProjectShare}
+        />
+      )}
+      {showDebugStopDialog && (
+        <DebugStopDialog
+          onDebugRunStop={onDebugRunStop}
+          setShowDialog={setShowDebugStopDialog}
         />
       )}
     </>
