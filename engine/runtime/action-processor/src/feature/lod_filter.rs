@@ -15,15 +15,15 @@ use serde_json::Value;
 
 use super::errors::FeatureProcessorError;
 
-pub static UP_TO_LOD0: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod0"));
-pub static UP_TO_LOD1: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod1"));
-pub static UP_TO_LOD2: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod2"));
-pub static UP_TO_LOD3: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod3"));
-pub static UP_TO_LOD4: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod4"));
-pub static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
+static UP_TO_LOD0: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod0"));
+static UP_TO_LOD1: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod1"));
+static UP_TO_LOD2: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod2"));
+static UP_TO_LOD3: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod3"));
+static UP_TO_LOD4: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod4"));
+static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
 
 #[derive(Debug, Clone, Default)]
-pub(crate) struct FeatureLodFilterFactory;
+pub(super) struct FeatureLodFilterFactory;
 
 impl ProcessorFactory for FeatureLodFilterFactory {
     fn name(&self) -> &str {
@@ -93,7 +93,8 @@ impl ProcessorFactory for FeatureLodFilterFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct FeatureLodFilterParam {
+struct FeatureLodFilterParam {
+    /// # Attributes to filter by
     filter_key: Attribute,
 }
 
@@ -102,7 +103,7 @@ struct LodCount {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct FeatureLodFilter {
+struct FeatureLodFilter {
     filter_key: Attribute,
     buffer_features: HashMap<AttributeValue, Vec<Feature>>,
     max_lod: HashMap<AttributeValue, u8>,

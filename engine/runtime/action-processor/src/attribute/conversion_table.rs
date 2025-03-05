@@ -144,7 +144,7 @@ impl ProcessorFactory for AttributeConversionTableFactory {
 }
 
 #[derive(Debug, Clone)]
-pub(super) struct AttributeConversionTable {
+struct AttributeConversionTable {
     rules: Vec<AttributeConversionTableRule>,
     conversion_table: HashMap<uuid::Uuid, HashMap<String, AttributeValue>>,
     conversion_table_indexes: HashMap<String, HashMap<AttributeValue, uuid::Uuid>>,
@@ -153,9 +153,13 @@ pub(super) struct AttributeConversionTable {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeConversionTableParam {
+    /// # Rules to convert attributes
     rules: Vec<AttributeConversionTableRule>,
+    /// # Dataset URI
     dataset: Option<Expr>,
+    /// # Inline conversion table
     inline: Option<String>,
+    /// # Format of conversion table
     format: ConversionTableFormat,
 }
 
@@ -170,9 +174,13 @@ pub enum ConversionTableFormat {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeConversionTableRule {
+    /// # Attributes to convert from
     feature_froms: Vec<Attribute>,
+    /// # Attribute to convert to
     feature_to: Attribute,
+    /// # Keys to match in conversion table
     conversion_table_keys: Vec<String>,
+    /// # Attribute to convert to
     conversion_table_to: String,
 }
 

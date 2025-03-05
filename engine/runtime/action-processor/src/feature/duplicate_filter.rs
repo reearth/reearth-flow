@@ -11,7 +11,7 @@ use reearth_flow_types::Feature;
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureDuplicateFilterFactory;
+pub(super) struct FeatureDuplicateFilterFactory;
 
 impl ProcessorFactory for FeatureDuplicateFilterFactory {
     fn name(&self) -> &str {
@@ -53,7 +53,7 @@ impl ProcessorFactory for FeatureDuplicateFilterFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct FeatureDuplicateFilter {
+struct FeatureDuplicateFilter {
     buffer: HashSet<Feature>,
 }
 

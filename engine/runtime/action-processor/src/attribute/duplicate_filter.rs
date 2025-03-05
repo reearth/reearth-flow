@@ -15,7 +15,7 @@ use serde_json::Value;
 use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct AttributeDuplicateFilterFactory;
+pub(super) struct AttributeDuplicateFilterFactory;
 
 impl ProcessorFactory for AttributeDuplicateFilterFactory {
     fn name(&self) -> &str {
@@ -78,14 +78,15 @@ impl ProcessorFactory for AttributeDuplicateFilterFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct AttributeDuplicateFilter {
+struct AttributeDuplicateFilter {
     params: AttributeDuplicateFilterParam,
     buffer: HashMap<String, Feature>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct AttributeDuplicateFilterParam {
+struct AttributeDuplicateFilterParam {
+    /// # Attributes to filter by
     filter_by: Vec<Attribute>,
 }
 

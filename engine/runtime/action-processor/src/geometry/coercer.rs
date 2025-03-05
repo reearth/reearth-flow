@@ -18,7 +18,7 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct GeometryCoercerFactory;
+pub(super) struct GeometryCoercerFactory;
 
 impl ProcessorFactory for GeometryCoercerFactory {
     fn name(&self) -> &str {
@@ -82,7 +82,8 @@ enum CoercerType {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct GeometryCoercer {
+struct GeometryCoercer {
+    /// The type of geometry to coerce to
     coercer_type: CoercerType,
 }
 
