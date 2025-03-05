@@ -56,12 +56,14 @@ Aggregates features by attributes
   ],
   "properties": {
     "aggregateAttributes": {
+      "title": "List of attributes to aggregate",
       "type": "array",
       "items": {
         "$ref": "#/definitions/AggregateAttribute"
       }
     },
     "calculation": {
+      "title": "Calculation to perform",
       "anyOf": [
         {
           "$ref": "#/definitions/Expr"
@@ -72,9 +74,15 @@ Aggregates features by attributes
       ]
     },
     "calculationAttribute": {
-      "$ref": "#/definitions/Attribute"
+      "title": "Attribute to store calculation result",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
     },
     "calculationValue": {
+      "title": "Value to use for calculation",
       "type": [
         "integer",
         "null"
@@ -82,7 +90,12 @@ Aggregates features by attributes
       "format": "int64"
     },
     "method": {
-      "$ref": "#/definitions/Method"
+      "title": "Method to use for aggregation",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Method"
+        }
+      ]
     }
   },
   "definitions": {
@@ -93,6 +106,7 @@ Aggregates features by attributes
       ],
       "properties": {
         "attribute": {
+          "title": "Existing attribute to use",
           "anyOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -103,6 +117,7 @@ Aggregates features by attributes
           ]
         },
         "attributeValue": {
+          "title": "Value to use for attribute",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -113,7 +128,12 @@ Aggregates features by attributes
           ]
         },
         "newAttribute": {
-          "$ref": "#/definitions/Attribute"
+          "title": "New attribute to create",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
         }
       }
     },
@@ -124,6 +144,7 @@ Aggregates features by attributes
       "type": "string"
     },
     "Method": {
+      "title": "Method to use for aggregation",
       "type": "string",
       "enum": [
         "max",
@@ -154,6 +175,7 @@ Flattens features by attributes
   "type": "object",
   "properties": {
     "ignoreAttributes": {
+      "title": "Attributes to ignore",
       "type": [
         "array",
         "null"
@@ -194,6 +216,7 @@ Converts attributes from conversion table
   ],
   "properties": {
     "dataset": {
+      "title": "Dataset URI",
       "anyOf": [
         {
           "$ref": "#/definitions/Expr"
@@ -204,15 +227,22 @@ Converts attributes from conversion table
       ]
     },
     "format": {
-      "$ref": "#/definitions/ConversionTableFormat"
+      "title": "Format of conversion table",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ConversionTableFormat"
+        }
+      ]
     },
     "inline": {
+      "title": "Inline conversion table",
       "type": [
         "string",
         "null"
       ]
     },
     "rules": {
+      "title": "Rules to convert attributes",
       "type": "array",
       "items": {
         "$ref": "#/definitions/AttributeConversionTableRule"
@@ -233,22 +263,30 @@ Converts attributes from conversion table
       ],
       "properties": {
         "conversionTableKeys": {
+          "title": "Keys to match in conversion table",
           "type": "array",
           "items": {
             "type": "string"
           }
         },
         "conversionTableTo": {
+          "title": "Attribute to convert to",
           "type": "string"
         },
         "featureFroms": {
+          "title": "Attributes to convert from",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Attribute"
           }
         },
         "featureTo": {
-          "$ref": "#/definitions/Attribute"
+          "title": "Attribute to convert to",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
         }
       }
     },
@@ -289,6 +327,7 @@ Filters features by duplicate attributes
   ],
   "properties": {
     "filterBy": {
+      "title": "Attributes to filter by",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
@@ -614,15 +653,27 @@ Renames attributes by adding/removing prefixes or suffixes, or replacing text
   ],
   "properties": {
     "renameAction": {
-      "$ref": "#/definitions/RenameAction"
+      "title": "Action to perform on the attribute",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RenameAction"
+        }
+      ]
     },
     "renameType": {
-      "$ref": "#/definitions/RenameType"
+      "title": "Type of attributes to rename",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RenameType"
+        }
+      ]
     },
     "renameValue": {
+      "title": "Value to add or remove",
       "type": "string"
     },
     "selectedAttributes": {
+      "title": "Attributes to rename",
       "type": [
         "array",
         "null"
@@ -632,6 +683,7 @@ Renames attributes by adding/removing prefixes or suffixes, or replacing text
       }
     },
     "textToFind": {
+      "title": "Regular expression pattern to match",
       "type": [
         "string",
         "null"

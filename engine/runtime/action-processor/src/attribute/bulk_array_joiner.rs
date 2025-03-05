@@ -15,7 +15,7 @@ use serde_json::Value;
 use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct AttributeBulkArrayJoinerFactory;
+pub(super) struct AttributeBulkArrayJoinerFactory;
 
 impl ProcessorFactory for AttributeBulkArrayJoinerFactory {
     fn name(&self) -> &str {
@@ -77,13 +77,14 @@ impl ProcessorFactory for AttributeBulkArrayJoinerFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct AttributeBulkArrayJoiner {
+struct AttributeBulkArrayJoiner {
     ignore_attributes: Vec<Attribute>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct AttributeBulkArrayJoinerParam {
+struct AttributeBulkArrayJoinerParam {
+    /// # Attributes to ignore
     ignore_attributes: Option<Vec<Attribute>>,
 }
 
