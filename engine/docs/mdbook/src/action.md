@@ -2563,7 +2563,7 @@ Intersection points are turned into point features that can contain the merged l
   "title": "LineOnLineOverlayerParam",
   "type": "object",
   "required": [
-    "outputAttribute"
+    "tolerance"
   ],
   "properties": {
     "groupBy": {
@@ -2575,8 +2575,9 @@ Intersection points are turned into point features that can contain the merged l
         "$ref": "#/definitions/Attribute"
       }
     },
-    "outputAttribute": {
-      "$ref": "#/definitions/Attribute"
+    "tolerance": {
+      "type": "number",
+      "format": "double"
     }
   },
   "definitions": {
