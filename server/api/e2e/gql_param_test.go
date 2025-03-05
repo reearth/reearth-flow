@@ -73,7 +73,6 @@ func TestDeclareParameter(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-		Dev: true,
 	}, true, baseSeederUser, true)
 
 	// Create a test project first

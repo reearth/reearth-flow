@@ -19,7 +19,6 @@ func TestProjectsPagination(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-		Dev: true,
 	}, true, baseSeederUser, true)
 
 	// Create multiple projects for testing
@@ -263,7 +262,6 @@ func TestJobsPagination(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-		Dev: true,
 	}, true, baseSeederUser, true)
 
 	deploymentQuery := `mutation($input: CreateDeploymentInput!) {
@@ -665,7 +663,6 @@ func TestTriggersPagination(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-		Dev: true,
 	}, true, baseSeederUser, true)
 
 	// Create a test deployment first
