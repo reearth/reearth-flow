@@ -1,7 +1,7 @@
 import { EdgeTypes } from "@xyflow/react";
 
-import CustomEdge from "./CustomEdge";
+import DefaultEdge from "./DefaultEdge";
 
 export const edgeTypes: EdgeTypes = {
-  default: CustomEdge,
+  default: DefaultEdge,
 };

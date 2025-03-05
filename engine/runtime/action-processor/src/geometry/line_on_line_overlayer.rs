@@ -1,14 +1,14 @@
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 
-use itertools::Itertools;
-use nusamai_projection::crs::EpsgCode;
 use once_cell::sync::Lazy;
-use reearth_flow_geometry::algorithm::line_intersection::line_intersection;
+use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
+use reearth_flow_geometry::algorithm::line_intersection::LineIntersection;
+use reearth_flow_geometry::algorithm::line_string_ops::{LineStringOps, LineStringWithTree2D};
+use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::geometry::Geometry2D;
-use reearth_flow_geometry::types::line::Line2DFloat;
 use reearth_flow_geometry::types::line_string::LineString2D;
-use reearth_flow_runtime::executor_operation::Context;
+use reearth_flow_geometry::types::no_value::NoValue;
+use reearth_flow_geometry::types::point::Point;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -17,17 +17,15 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
-use rstar::{RTree, RTreeObject};
+use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Number, Value};
 
 use super::errors::GeometryProcessorError;
 
 pub static POINT_PORT: Lazy<Port> = Lazy::new(|| Port::new("point"));
 pub static LINE_PORT: Lazy<Port> = Lazy::new(|| Port::new("line"));
-const EPSILON: f64 = 0.001;
 
 #[derive(Debug, Clone, Default)]
 pub struct LineOnLineOverlayerFactory;
@@ -84,33 +82,26 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
             .into());
         };
         Ok(Box::new(LineOnLineOverlayer {
-            params,
-            buffer2d: HashMap::new(),
-            previous_group_key: None,
+            group_by: params.group_by,
+            tolerance: params.tolerance,
+            buffer: HashMap::new(),
         }))
     }
-}
-
-#[derive(Debug, Clone)]
-struct LineFeature {
-    attributes: HashMap<uuid::Uuid, HashMap<Attribute, AttributeValue>>,
-    overlap: u64,
-    epsg: Option<EpsgCode>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct LineOnLineOverlayerParam {
     group_by: Option<Vec<Attribute>>,
-    output_attribute: Attribute,
+    tolerance: f64,
 }
 
 #[allow(clippy::type_complexity)]
 #[derive(Debug, Clone)]
 pub struct LineOnLineOverlayer {
-    params: LineOnLineOverlayerParam,
-    buffer2d: HashMap<String, (bool, Vec<Feature>, RTree<LineString2D<f64>>)>, // (complete_grouped, features)
-    previous_group_key: Option<String>,
+    group_by: Option<Vec<Attribute>>,
+    tolerance: f64,
+    buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
 impl Processor for LineOnLineOverlayer {
@@ -124,76 +115,62 @@ impl Processor for LineOnLineOverlayer {
         if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
-        };
+        }
         match &geometry.value {
-            GeometryValue::FlowGeometry2D(geos) => {
-                let line_string = geos.as_line_string();
-                let multi_line_string = geos.as_multi_line_string();
-                if line_string.is_none() && multi_line_string.is_none() {
-                    fw.send(
-                        ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()),
-                    );
-                    return Ok(());
-                }
-                let key = if let Some(group_by) = &self.params.group_by {
-                    group_by
-                        .iter()
-                        .map(|k| feature.get(&k).map(|v| v.to_string()).unwrap_or_default())
-                        .collect::<Vec<_>>()
-                        .join("\t")
+            GeometryValue::None => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            }
+            GeometryValue::FlowGeometry2D(_) => {
+                let key = if let Some(group_by) = &self.group_by {
+                    AttributeValue::Array(
+                        group_by
+                            .iter()
+                            .filter_map(|attr| feature.attributes.get(attr).cloned())
+                            .collect(),
+                    )
                 } else {
-                    "_all".to_string()
+                    AttributeValue::Null
                 };
 
-                match self.buffer2d.entry(key.clone()) {
-                    Entry::Occupied(mut entry) => {
-                        self.previous_group_key = Some(key.clone());
-                        {
-                            let (_, buffer, rtree) = entry.get_mut();
-                            buffer.push(feature.clone());
-                            if let Some(line_string) = line_string {
-                                rtree.insert(line_string.clone());
-                            }
-                            if let Some(multi_line_string) = multi_line_string {
-                                for line_string in multi_line_string.iter() {
-                                    rtree.insert(line_string.clone());
-                                }
-                            }
-                        }
+                if !self.buffer.contains_key(&key) {
+                    let overlayed = self.overlay();
+                    for feature in &overlayed.line {
+                        fw.send(ctx.new_with_feature_and_port(feature.clone(), LINE_PORT.clone()));
                     }
-                    Entry::Vacant(entry) => {
-                        let mut rtree = RTree::new();
-                        if let Some(line_string) = line_string {
-                            rtree.insert(line_string.clone());
-                        }
-                        if let Some(multi_line_string) = multi_line_string {
-                            for line_string in multi_line_string.iter() {
-                                rtree.insert(line_string.clone());
-                            }
-                        }
-                        entry.insert((false, vec![feature.clone()], rtree));
-                        if let Some(previous_group_key) = &self.previous_group_key {
-                            if let Entry::Occupied(mut entry) =
-                                self.buffer2d.entry(previous_group_key.clone())
-                            {
-                                let (complete_grouped_change, _, _) = entry.get_mut();
-                                *complete_grouped_change = true;
-                            }
-                            self.change_group(ctx, fw);
-                        }
-                        self.previous_group_key = Some(key.clone());
+                    for feature in &overlayed.point {
+                        fw.send(ctx.new_with_feature_and_port(feature.clone(), POINT_PORT.clone()));
                     }
+                    self.buffer.clear();
                 }
+                self.buffer
+                    .entry(key.clone())
+                    .or_default()
+                    .push(feature.clone());
             }
-            _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone())),
+            _ => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            }
         }
         Ok(())
     }
 
     fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
-        for (_, (_, buffer, rtree)) in self.buffer2d.iter() {
-            self.handle_2d_line_strings(ctx.clone().into(), fw, buffer, rtree);
+        let overlayed = self.overlay();
+        for feature in &overlayed.line {
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                feature.clone(),
+                LINE_PORT.clone(),
+            ));
         }
+        for feature in &overlayed.point {
+            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+                &ctx,
+                feature.clone(),
+                POINT_PORT.clone(),
+            ));
+        }
+
         Ok(())
     }
 
@@ -202,174 +179,214 @@ impl Processor for LineOnLineOverlayer {
     }
 }
 
-impl LineOnLineOverlayer {
-    fn change_group(&mut self, ctx: ExecutorContext, fw: &ProcessorChannelForwarder) {
-        let mut remove_2d_keys = Vec::new();
-        for (key, (complete_grouped, buffer, rtree)) in self.buffer2d.iter() {
-            if !*complete_grouped {
-                continue;
-            }
-            remove_2d_keys.push(key.clone());
-            self.handle_2d_line_strings(ctx.clone().into(), fw, buffer, rtree);
-        }
-        for key in remove_2d_keys {
-            self.buffer2d.remove(&key);
+struct OverlayedFeatures {
+    point: Vec<Feature>,
+    line: Vec<Feature>,
+}
+
+impl OverlayedFeatures {
+    fn new() -> Self {
+        Self {
+            point: Vec::new(),
+            line: Vec::new(),
         }
     }
 
-    fn handle_2d_line_strings(
-        &self,
-        ctx: Context,
-        fw: &ProcessorChannelForwarder,
-        features: &[Feature],
-        rtree: &RTree<LineString2D<f64>>,
-    ) {
-        let mut line_features = HashMap::<Line2DFloat, LineFeature>::new();
-        for feature in features.iter() {
-            let line_string = feature
-                .geometry
-                .value
-                .as_flow_geometry_2d()
-                .and_then(|g| g.as_line_string());
-            let multi_line_string = feature
-                .geometry
-                .value
-                .as_flow_geometry_2d()
-                .and_then(|g| g.as_multi_line_string());
-            if line_string.is_none() && multi_line_string.is_none() {
-                continue;
-            }
-            let line_strings = if let Some(line_string) = line_string {
-                vec![line_string]
-            } else if let Some(multi_line_string) = multi_line_string {
-                multi_line_string.iter().cloned().collect::<Vec<_>>()
-            } else {
-                continue;
-            };
-            let mut out_line_strings = Vec::new();
-            for line_string in line_strings {
-                let output_envelope = line_string.envelope();
-                let candidates = rtree.locate_in_envelope_intersecting(&output_envelope);
-                let mut intersect = false;
-                for candidate in candidates {
-                    if line_string.approx_eq(candidate, EPSILON) {
-                        continue;
-                    }
-                    for line1 in line_string.lines() {
-                        for line2 in candidate.lines() {
-                            if let Some(reearth_flow_geometry::algorithm::line_intersection::LineIntersection::Collinear { intersection }) =  line_intersection(line1, line2) {
-                                intersect = true;
-                                let line_float = Line2DFloat(intersection);
-                                match line_features.entry(line_float.clone()) {
-                                    Entry::Occupied(mut entry) => {
-                                        let line_feature = entry.get_mut();
-                                        line_feature.overlap += 1;
-                                        line_feature
-                                            .attributes
-                                            .insert(feature.id, feature.attributes.clone());
-                                    }
-                                    Entry::Vacant(entry) => {
-                                        let mut attributes = HashMap::new();
-                                        for (k, v) in feature.iter() {
-                                            attributes.insert(k.clone(), v.clone());
-                                        }
-                                        let line_feature = LineFeature {
-                                            epsg: feature.geometry.epsg,
-                                            attributes: HashMap::from([(feature.id, attributes)]),
-                                            overlap: 1,
-                                        };
-                                        entry.insert(line_feature);
-                                    }
-                                }
-                            }
-                        }
-                    }
+    fn extend(&mut self, other: Self) {
+        self.point.extend(other.point);
+        self.line.extend(other.line);
+    }
+}
+
+impl LineOnLineOverlayer {
+    fn overlay(&self) -> OverlayedFeatures {
+        let mut overlayed = OverlayedFeatures::new();
+        for buffer in self.buffer.values() {
+            let buffered_features_2d = buffer
+                .iter()
+                .filter(|f| matches!(&f.geometry.value, GeometryValue::FlowGeometry2D(_)))
+                .collect::<Vec<_>>();
+            overlayed.extend(self.overlay_2d(buffered_features_2d));
+        }
+
+        overlayed
+    }
+
+    fn overlay_2d(&self, features_2d: Vec<&Feature>) -> OverlayedFeatures {
+        let line_strings = features_2d
+            .iter()
+            .filter_map(|f| f.geometry.value.as_flow_geometry_2d())
+            .filter_map(|g| {
+                if let Geometry2D::LineString(line) = g {
+                    Some(vec![line.clone()])
+                } else if let Geometry2D::MultiLineString(multi_line) = g {
+                    Some(multi_line.0.clone())
+                } else {
+                    None
                 }
-                if !intersect {
-                    out_line_strings.push(line_string.clone());
-                }
-            }
-            for line_string in out_line_strings.iter() {
-                let mut line_string_feature = feature.clone();
-                line_string_feature.attributes.insert(
-                    self.params.output_attribute.clone(),
-                    AttributeValue::Number(serde_json::Number::from(1)),
+            })
+            .flatten()
+            .collect::<Vec<_>>();
+
+        let line_string_intersection_result =
+            line_string_intersection_2d(&line_strings, self.tolerance);
+
+        let mut overlayed = OverlayedFeatures::new();
+
+        for (i, result_lss) in line_string_intersection_result
+            .result_line_strings
+            .iter()
+            .enumerate()
+        {
+            let attributes = features_2d[i].attributes.clone();
+            let overlay_count = result_lss.overlay_count;
+            for result_ls in result_lss.line_strings.iter() {
+                let mut feature = Feature::new();
+                feature.attributes = attributes.clone();
+                feature.attributes.insert(
+                    Attribute::new("overlayCount"),
+                    AttributeValue::Number(Number::from(overlay_count)),
                 );
-                line_string_feature.refresh_id();
-                line_string_feature.geometry = Geometry {
-                    epsg: feature.geometry.epsg,
-                    value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(
-                        line_string.clone(),
-                    )),
-                };
-                fw.send(ExecutorContext::new_with_context_feature_and_port(
-                    &ctx,
-                    line_string_feature.clone(),
-                    LINE_PORT.clone(),
-                ));
+                feature.geometry.value =
+                    GeometryValue::FlowGeometry2D(Geometry2D::LineString(result_ls.clone()));
+                overlayed.line.push(feature);
             }
         }
-        for (line, line_feature) in line_features.iter() {
+
+        let last_feature = features_2d.last().unwrap();
+
+        for result_coords in line_string_intersection_result.split_coords {
             let mut feature = Feature::new();
-            feature.attributes.insert(
-                self.params.output_attribute.clone(),
-                AttributeValue::Number(serde_json::Number::from(line_feature.overlap)),
-            );
-            let feature_attributes = line_feature
-                .attributes
-                .values()
-                .map(|kv| {
-                    kv.iter()
-                        .map(|(k, v)| (k.to_string(), v.clone()))
-                        .collect::<HashMap<_, _>>()
-                })
-                .collect_vec();
-            feature.attributes.insert(
-                Attribute::new("features"),
-                AttributeValue::Array(
-                    feature_attributes
-                        .into_iter()
-                        .map(AttributeValue::Map)
-                        .collect(),
-                ),
-            );
-            if line_feature.overlap > 1 {
-                let mut start_feature = feature.clone();
-                start_feature.refresh_id();
-                let start_point = line.0.start_point();
-                start_feature.geometry = Geometry {
-                    epsg: line_feature.epsg,
-                    value: GeometryValue::FlowGeometry2D(Geometry2D::Point(start_point)),
-                };
-                fw.send(ExecutorContext::new_with_context_feature_and_port(
-                    &ctx,
-                    start_feature,
-                    POINT_PORT.clone(),
-                ));
-                let mut end_feature = feature.clone();
-                end_feature.refresh_id();
-                let end_point = line.0.end_point();
-                end_feature.geometry = Geometry {
-                    epsg: line_feature.epsg,
-                    value: GeometryValue::FlowGeometry2D(Geometry2D::Point(end_point)),
-                };
-                fw.send(ExecutorContext::new_with_context_feature_and_port(
-                    &ctx,
-                    end_feature,
-                    POINT_PORT.clone(),
-                ));
+
+            if let Some(group_by) = &self.group_by {
+                feature.attributes = group_by
+                    .iter()
+                    .filter_map(|attr| {
+                        let value = last_feature.get(attr).cloned()?;
+                        Some((attr.clone(), value))
+                    })
+                    .collect::<HashMap<_, _>>();
+            } else {
+                feature.attributes = HashMap::new();
             }
-            let mut line_feat = feature.clone();
-            line_feat.refresh_id();
-            line_feat.geometry = Geometry {
-                epsg: line_feature.epsg,
-                value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(line.0.into())),
-            };
-            fw.send(ExecutorContext::new_with_context_feature_and_port(
-                &ctx,
-                line_feat,
-                LINE_PORT.clone(),
-            ));
+
+            feature.geometry.value =
+                GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(result_coords.coordinates)));
+            overlayed.point.push(feature);
         }
+
+        overlayed
+    }
+}
+
+/// Line strings to output
+struct OverlayResultLineString {
+    line_strings: Vec<LineString2D<f64>>,
+    overlay_count: usize,
+}
+
+/// Coordinates of the intersection point to output
+struct OverlayResultCoordinates {
+    i_by: usize,
+    i_other: usize,
+    coordinates: Coordinate2D<f64>,
+}
+
+/// Result of overlaying line strings
+struct OverlayResult {
+    result_line_strings: Vec<OverlayResultLineString>,
+    split_coords: Vec<OverlayResultCoordinates>,
+}
+
+/// Calculate the intersection between line strings
+fn line_string_intersection_2d(
+    line_strings: &[LineString2D<f64>],
+    tolerance: f64,
+) -> OverlayResult {
+    let results = line_strings.par_iter().enumerate().map(|(i, line_string)| {
+        let packed_line_string = LineStringWithTree2D::new(line_string.clone());
+
+        struct IntersectionWithIndex {
+            i_by: usize,
+            i_other: usize,
+            intersection: LineIntersection<f64, NoValue>,
+        }
+
+        let inters_with_index = line_strings
+            .iter()
+            .enumerate()
+            .filter_map(|(j, other_line_string)| {
+                if i == j {
+                    return None;
+                }
+                let intersections = packed_line_string.intersection(other_line_string);
+                if intersections.is_empty() {
+                    return None;
+                }
+
+                let inters = intersections
+                    .into_iter()
+                    .map(|intersection| IntersectionWithIndex {
+                        i_by: i,
+                        i_other: j,
+                        intersection,
+                    })
+                    .collect::<Vec<_>>();
+
+                Some(inters)
+            })
+            .collect::<Vec<_>>();
+
+        let overlay_count = inters_with_index.len();
+
+        let split_coords_with_index = inters_with_index
+            .iter()
+            .flatten()
+            .flat_map(|inter| {
+                let coords = match inter.intersection {
+                    LineIntersection::SinglePoint { intersection, .. } => vec![intersection],
+                    LineIntersection::Collinear { intersection } => {
+                        // treat collinear as points
+                        vec![intersection.start, intersection.end]
+                    }
+                };
+
+                coords
+                    .into_iter()
+                    .map(|coordinates| OverlayResultCoordinates {
+                        coordinates,
+                        i_by: inter.i_by,
+                        i_other: inter.i_other,
+                    })
+            })
+            .collect::<Vec<_>>();
+
+        let split_coords = split_coords_with_index
+            .iter()
+            .map(|split| split.coordinates)
+            .collect::<Vec<_>>();
+
+        let result_line_strings = packed_line_string.split(&split_coords, tolerance);
+
+        // remove duplicates
+        let result_coords = split_coords_with_index
+            .into_iter()
+            .filter(|split| split.i_by > split.i_other)
+            .collect::<Vec<_>>();
+
+        (
+            OverlayResultLineString {
+                line_strings: result_line_strings,
+                overlay_count,
+            },
+            result_coords,
+        )
+    });
+
+    let (result_line_strings, split_coords): (Vec<_>, Vec<_>) = results.unzip();
+
+    OverlayResult {
+        result_line_strings,
+        split_coords: split_coords.into_iter().flatten().collect::<Vec<_>>(),
     }
 }

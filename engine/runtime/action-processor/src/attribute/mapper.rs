@@ -16,7 +16,7 @@ use serde_json::Value;
 use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct AttributeMapperFactory;
+pub(super) struct AttributeMapperFactory;
 
 impl ProcessorFactory for AttributeMapperFactory {
     fn name(&self) -> &str {
@@ -110,23 +110,30 @@ impl ProcessorFactory for AttributeMapperFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct AttributeMapperParam {
+struct AttributeMapperParam {
+    /// # Mappers
     mappers: Vec<Mapper>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Mapper {
+    /// # Attribute name
     attribute: Option<String>,
+    /// # Expression to evaluate
     expr: Option<Expr>,
+    /// # Attribute name to get value from
     value_attribute: Option<String>,
+    /// # Parent attribute name
     parent_attribute: Option<String>,
+    /// # Child attribute name
     child_attribute: Option<String>,
+    /// # Expression to evaluate multiple attributes
     multiple_expr: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
-pub struct CompiledAttributeMapperParam {
+struct CompiledAttributeMapperParam {
     mappers: Vec<CompiledMapper>,
 }
 

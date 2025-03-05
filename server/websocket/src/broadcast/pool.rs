@@ -111,6 +111,10 @@ impl BroadcastPool {
             let group_clone = group.clone();
             let remaining = group.decrement_connections();
 
+            tracing::info!(
+                "Connection disconnected for document '{}', flushing updates",
+                doc_id
+            );
             if let Err(e) = group_clone.flush_updates().await {
                 tracing::error!(
                     "Failed to flush updates for group '{}' on disconnect: {}",
@@ -125,13 +129,11 @@ impl BroadcastPool {
             }
 
             if remaining == 0 {
-                // Add a small delay before cleanup to reduce likelihood of race conditions
-                // with new connections being established
-                let pool = self.clone();
-                tokio::spawn(async move {
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                    pool.cleanup_empty_groups().await;
-                });
+                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                if group_clone.connection_count() == 0 {
+                    tracing::info!("Removing empty group for document '{}'", doc_id);
+                    self.groups.remove(doc_id);
+                }
             }
         }
     }

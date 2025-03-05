@@ -193,6 +193,7 @@ type Job struct {
 	Status       JobStatus   `json:"status"`
 	Workspace    *Workspace  `json:"workspace,omitempty"`
 	WorkspaceID  ID          `json:"workspaceId"`
+	Logs         []*Log      `json:"logs,omitempty"`
 }
 
 func (Job) IsNode()        {}
@@ -206,6 +207,14 @@ type JobConnection struct {
 
 type JobPayload struct {
 	Job *Job `json:"job"`
+}
+
+type Log struct {
+	JobID     ID        `json:"jobId"`
+	NodeID    *ID       `json:"nodeId,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
+	LogLevel  LogLevel  `json:"logLevel"`
+	Message   string    `json:"message"`
 }
 
 type Me struct {
@@ -629,6 +638,53 @@ func (e *JobStatus) UnmarshalGQL(v interface{}) error {
 }
 
 func (e JobStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type LogLevel string
+
+const (
+	LogLevelError LogLevel = "ERROR"
+	LogLevelWarn  LogLevel = "WARN"
+	LogLevelInfo  LogLevel = "INFO"
+	LogLevelDebug LogLevel = "DEBUG"
+	LogLevelTrace LogLevel = "TRACE"
+)
+
+var AllLogLevel = []LogLevel{
+	LogLevelError,
+	LogLevelWarn,
+	LogLevelInfo,
+	LogLevelDebug,
+	LogLevelTrace,
+}
+
+func (e LogLevel) IsValid() bool {
+	switch e {
+	case LogLevelError, LogLevelWarn, LogLevelInfo, LogLevelDebug, LogLevelTrace:
+		return true
+	}
+	return false
+}
+
+func (e LogLevel) String() string {
+	return string(e)
+}
+
+func (e *LogLevel) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = LogLevel(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid LogLevel", str)
+	}
+	return nil
+}
+
+func (e LogLevel) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
