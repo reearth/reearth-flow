@@ -214,9 +214,31 @@ export default ({
     [currentYWorkflow, rawWorkflows, yWorkflows, undoTrackerActionWrapper],
   );
 
+  const handleYNodeCustomizationUpdate = useCallback(
+    (nodeId: string, newCustomization: any) =>
+      undoTrackerActionWrapper(() => {
+        const yNodes = currentYWorkflow?.get("nodes") as
+          | YNodesArray
+          | undefined;
+        if (!yNodes) return;
+
+        const nodes = yNodes.toJSON() as Node[];
+
+        const nodeIndex = nodes.findIndex((n) => n.id === nodeId);
+        const prevNode = nodes[nodeIndex];
+
+        if (!prevNode) return;
+
+        const yData = yNodes.get(nodeIndex)?.get("data") as Y.Map<YNodeValue>;
+        yData?.set("customization", newCustomization);
+      }),
+    [currentYWorkflow, undoTrackerActionWrapper],
+  );
+
   return {
     handleYNodesAdd,
     handleYNodesChange,
     handleYNodeParamsUpdate,
+    handleYNodeCustomizationUpdate,
   };
 };

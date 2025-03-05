@@ -1,4 +1,5 @@
 import { Database, Disc, Eye, Graph, Lightning } from "@phosphor-icons/react";
+import { RJSFSchema } from "@rjsf/utils";
 import { NodeProps } from "@xyflow/react";
 import { memo } from "react";
 
@@ -14,6 +15,12 @@ export type GeneralNodeProps = NodeProps<Node> & {
 };
 
 const typeIconClasses = "w-[10px] h-[100%]";
+export const generalNodeSchema: RJSFSchema = {
+  type: "object",
+  properties: {
+    customName: { type: "string", title: "Name" },
+  },
+};
 
 const GeneralNode: React.FC<GeneralNodeProps> = ({
   className,
@@ -53,7 +60,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
           <div
             className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${status === "failed" ? "border-destructive" : selected ? selectedColor : borderColor}`}>
             <p className="self-center truncate text-xs dark:font-light">
-              {customName || officialName}
+              {data.customization?.customName || customName || officialName}
             </p>
             {status === "succeeded" ? (
               <div className="self-center">

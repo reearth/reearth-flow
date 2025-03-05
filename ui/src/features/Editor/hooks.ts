@@ -59,6 +59,7 @@ export default ({
     handleYNodesAdd,
     handleYNodesChange,
     handleYNodeParamsUpdate,
+    handleYNodeCustomizationUpdate,
     handleYEdgesAdd,
     handleYEdgesChange,
     handleYWorkflowUndo,
@@ -249,7 +250,7 @@ export default ({
     // },
   ]);
 
-  console.log("rawWorkflows", rawWorkflows);
+  // console.log("rawWorkflows", rawWorkflows);
 
   return {
     currentWorkflowId,
@@ -282,6 +283,7 @@ export default ({
     handleNodesChange: handleYNodesChange,
     handleNodeHover,
     handleNodeParamsUpdate: handleYNodeParamsUpdate,
+    handleNodeCustomizationUpdate: handleYNodeCustomizationUpdate,
     handleNodeDoubleClick,
     handleNodePickerOpen,
     handleNodePickerClose,

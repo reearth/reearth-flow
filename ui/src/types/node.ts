@@ -6,7 +6,7 @@ import type {
 import { ComponentType } from "react";
 
 type NodeParam = Record<string, any>;
-
+type NodeCustomization = Record<string, any>;
 export type PseudoPort = {
   nodeId: string;
   portName: string;
@@ -18,6 +18,7 @@ export type NodeData = {
   inputs?: string[];
   outputs?: string[];
   params?: NodeParam;
+  customization?: NodeCustomization;
   // subworkflow nodes
   subworkflowId?: string;
   pseudoInputs?: PseudoPort[];

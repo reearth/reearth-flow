@@ -10,6 +10,7 @@ export type Action = {
   inputPorts: string[];
   outputPorts: string[];
   parameter: RJSFSchema;
+  customization?: RJSFSchema;
   builtin: boolean;
 };
 

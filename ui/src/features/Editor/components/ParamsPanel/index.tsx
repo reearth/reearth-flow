@@ -10,9 +10,14 @@ import { ParamEditor } from "./components";
 type Props = {
   selected?: Node;
   onParamsSubmit?: (nodeId: string, data: any) => void;
+  onCustomizationSubmit?: (nodeId: string, data: any) => void;
 };
 
-const ParamsPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
+const ParamsPanel: React.FC<Props> = ({
+  selected,
+  onParamsSubmit,
+  onCustomizationSubmit,
+}) => {
   // This is a little hacky, but it works. We need to dispatch a click event to the react-flow__pane
   // to unlock the node when user wants to close the right panel. - @KaWaite
   const handleClose = useCallback(() => {
@@ -24,12 +29,18 @@ const ParamsPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
     paneElement.dispatchEvent(clickEvent);
   }, []);
 
-  const handleParamsSubmit = useCallback(
-    async (nodeId: string, data: any) => {
-      await Promise.resolve(onParamsSubmit?.(nodeId, data));
+  const handleSubmit = useCallback(
+    async (nodeId: string, data: any, type: "params" | "customization") => {
+      if (type === "params") {
+        await Promise.resolve(onParamsSubmit?.(nodeId, data));
+        console.log("PARARMS DATA", data);
+      } else if (type === "customization") {
+        console.log("CUSTOMIZATION DATA", data);
+        await Promise.resolve(onCustomizationSubmit?.(nodeId, data));
+      }
       handleClose();
     },
-    [onParamsSubmit, handleClose],
+    [onParamsSubmit, onCustomizationSubmit, handleClose],
   );
 
   const { getViewport, setViewport } = useReactFlow();
@@ -83,7 +94,7 @@ const ParamsPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
               nodeId={selected.id}
               nodeMeta={selected.data}
               nodeType={selected.type}
-              onSubmit={handleParamsSubmit}
+              onSubmit={handleSubmit}
             />
           )}
         </div>

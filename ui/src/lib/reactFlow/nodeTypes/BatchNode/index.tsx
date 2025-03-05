@@ -13,7 +13,7 @@ export type BatchNodeProps = NodeProps<Node>;
 
 export const initialSize = { width: 300, height: 200 };
 
-const batchNodeSchema: RJSFSchema = {
+const batchNodeCustomizationSchema: RJSFSchema = {
   type: "object",
   properties: {
     customName: { type: "string", title: "Name" },
@@ -32,6 +32,10 @@ const batchNodeSchema: RJSFSchema = {
   },
 };
 
+const batchNodeParamsSchema: RJSFSchema = {
+  type: "object",
+};
+
 export const batchNodeAction = {
   name: "batch",
   description: "Batch node",
@@ -40,7 +44,8 @@ export const batchNodeAction = {
   inputPorts: ["input"],
   outputPorts: ["output"],
   builtin: true,
-  parameter: batchNodeSchema,
+  parameter: batchNodeParamsSchema,
+  customization: batchNodeCustomizationSchema,
 };
 
 export const baseBatchNode: {
@@ -98,12 +103,12 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, type, id }) => {
               if (element)
                 element.style.setProperty(
                   "color",
-                  data.params?.textColor || "",
+                  data.customization?.textColor || "",
                   "important",
                 );
             }}>
             <RectangleDashed />
-            <p>{data.params?.customName || data.officialName}</p>
+            <p>{data.customization?.customName || data.officialName}</p>
           </div>
         </div>
       </NodeContextMenu>

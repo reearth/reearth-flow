@@ -51,6 +51,7 @@ export default function Editor({
     handleNodesAdd,
     handleNodesChange,
     handleNodeParamsUpdate,
+    handleNodeCustomizationUpdate,
     handleNodeHover,
     handleNodeDoubleClick,
     handleNodePickerOpen,
@@ -136,6 +137,7 @@ export default function Editor({
           <ParamsPanel
             selected={locallyLockedNode}
             onParamsSubmit={handleNodeParamsUpdate}
+            onCustomizationSubmit={handleNodeCustomizationUpdate}
           />
         </EditorProvider>
       </div>
