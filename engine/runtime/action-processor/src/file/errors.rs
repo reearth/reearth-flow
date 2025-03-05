@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum FileProcessorError {
+pub(crate) enum FileProcessorError {
     #[error("Property Extractor Factory error: {0}")]
     PropertyExtractorFactory(String),
     #[error("Property Extractor error: {0}")]
@@ -12,4 +12,4 @@ pub enum FileProcessorError {
     DirectoryDecompressor(String),
 }
 
-pub type Result<T, E = FileProcessorError> = std::result::Result<T, E>;
+pub(crate) type Result<T, E = FileProcessorError> = std::result::Result<T, E>;

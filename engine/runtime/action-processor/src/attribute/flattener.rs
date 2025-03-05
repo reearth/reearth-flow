@@ -15,7 +15,7 @@ use serde_json::Value;
 use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct AttributeFlattenerFactory;
+pub(super) struct AttributeFlattenerFactory;
 
 impl ProcessorFactory for AttributeFlattenerFactory {
     fn name(&self) -> &str {
@@ -75,13 +75,14 @@ impl ProcessorFactory for AttributeFlattenerFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct AttributeFlattener {
+struct AttributeFlattener {
     params: AttributeFlattenerParam,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct AttributeFlattenerParam {
+struct AttributeFlattenerParam {
+    /// # Attributes to flatten
     attributes: Vec<Attribute>,
 }
 

@@ -16,7 +16,7 @@ use serde_json::{Number, Value};
 use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct AttributeFilePathInfoExtractorFactory;
+pub(super) struct AttributeFilePathInfoExtractorFactory;
 
 impl ProcessorFactory for AttributeFilePathInfoExtractorFactory {
     fn name(&self) -> &str {
@@ -75,7 +75,8 @@ impl ProcessorFactory for AttributeFilePathInfoExtractorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct AttributeFilePathInfoExtractor {
+struct AttributeFilePathInfoExtractor {
+    /// # Attribute to extract file path from
     attribute: Attribute,
 }
 

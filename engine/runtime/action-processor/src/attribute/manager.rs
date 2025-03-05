@@ -18,7 +18,7 @@ use serde_json::Value;
 use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct AttributeManagerFactory;
+pub(super) struct AttributeManagerFactory;
 
 impl ProcessorFactory for AttributeManagerFactory {
     fn name(&self) -> &str {
@@ -84,28 +84,32 @@ impl ProcessorFactory for AttributeManagerFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct AttributeManager {
+struct AttributeManager {
     global_params: Option<HashMap<String, serde_json::Value>>,
     operations: Vec<Operate>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct AttributeManagerParam {
+struct AttributeManagerParam {
+    /// # Operations to perform
     operations: Vec<Operation>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct Operation {
-    pub(super) attribute: String,
-    pub(super) method: Method,
-    pub(super) value: Option<Expr>,
+struct Operation {
+    /// # Attribute name
+    attribute: String,
+    /// # Operation to perform
+    method: Method,
+    /// # Value to use for the operation
+    value: Option<Expr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub(super) enum Method {
+enum Method {
     Convert,
     Create,
     Rename,
@@ -113,7 +117,7 @@ pub(super) enum Method {
 }
 
 #[derive(Debug, Clone)]
-pub(super) enum Operate {
+enum Operate {
     Convert {
         expr: Option<rhai::AST>,
         attribute: String,

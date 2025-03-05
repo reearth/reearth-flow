@@ -12,7 +12,7 @@ use super::{
     mapper::AttributeMapperFactory, statistics_calculator::StatisticsCalculatorFactory,
 };
 
-pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
+pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
         Box::<AttributeMapperFactory>::default(),
         Box::<AttributeManagerFactory>::default(),

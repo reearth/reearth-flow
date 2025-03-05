@@ -18,13 +18,13 @@ use reearth_flow_types::{Feature, Geometry, GeometryValue};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-pub static CLIPPER_PORT: Lazy<Port> = Lazy::new(|| Port::new("clipper"));
-pub static CANDIDATE_PORT: Lazy<Port> = Lazy::new(|| Port::new("candidate"));
-pub static INSIDE_PORT: Lazy<Port> = Lazy::new(|| Port::new("inside"));
-pub static OUTSIDE_PORT: Lazy<Port> = Lazy::new(|| Port::new("outside"));
+static CLIPPER_PORT: Lazy<Port> = Lazy::new(|| Port::new("clipper"));
+static CANDIDATE_PORT: Lazy<Port> = Lazy::new(|| Port::new("candidate"));
+static INSIDE_PORT: Lazy<Port> = Lazy::new(|| Port::new("inside"));
+static OUTSIDE_PORT: Lazy<Port> = Lazy::new(|| Port::new("outside"));
 
 #[derive(Debug, Clone, Default)]
-pub struct ClipperFactory;
+pub(super) struct ClipperFactory;
 
 impl ProcessorFactory for ClipperFactory {
     fn name(&self) -> &str {
@@ -70,7 +70,7 @@ impl ProcessorFactory for ClipperFactory {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Clipper {
+struct Clipper {
     clippers: Vec<Feature>,
     candidates: Vec<Feature>,
 }
