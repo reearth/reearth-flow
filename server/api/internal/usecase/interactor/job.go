@@ -23,16 +23,16 @@ import (
 
 type Job struct {
 	common
-	jobRepo       repo.Job
-	workspaceRepo accountrepo.Workspace
-	transaction   usecasex.Transaction
-	file          gateway.File
-	batch         gateway.Batch
-	monitor       *monitor.Monitor
-	subscriptions *subscription.JobManager
-	notifier      notification.Notifier
-	activeWatchers    map[string]bool
-	watchersMu        sync.Mutex
+	jobRepo        repo.Job
+	workspaceRepo  accountrepo.Workspace
+	transaction    usecasex.Transaction
+	file           gateway.File
+	batch          gateway.Batch
+	monitor        *monitor.Monitor
+	subscriptions  *subscription.JobManager
+	notifier       notification.Notifier
+	activeWatchers map[string]bool
+	watchersMu     sync.Mutex
 }
 
 type NotificationPayload struct {
@@ -45,16 +45,16 @@ type NotificationPayload struct {
 
 func NewJob(r *repo.Container, gr *gateway.Container) interfaces.Job {
 	return &Job{
-		jobRepo:       r.Job,
-		workspaceRepo: r.Workspace,
-		transaction:   r.Transaction,
-		file:          gr.File,
-		batch:         gr.Batch,
-		monitor:       monitor.NewMonitor(),
-		subscriptions: subscription.NewJobManager(),
-		notifier:      notification.NewHTTPNotifier(),
-		activeWatchers:    make(map[string]bool),
-		watchersMu:        sync.Mutex{},
+		jobRepo:        r.Job,
+		workspaceRepo:  r.Workspace,
+		transaction:    r.Transaction,
+		file:           gr.File,
+		batch:          gr.Batch,
+		monitor:        monitor.NewMonitor(),
+		subscriptions:  subscription.NewJobManager(),
+		notifier:       notification.NewHTTPNotifier(),
+		activeWatchers: make(map[string]bool),
+		watchersMu:     sync.Mutex{},
 	}
 }
 
