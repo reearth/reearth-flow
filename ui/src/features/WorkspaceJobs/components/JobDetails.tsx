@@ -114,8 +114,10 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
   }, [selectedJob, setIsFetching]);
 
   useEffect(() => {
-    getAllLogs();
-  }, [getAllLogs]);
+    if (!logs) {
+      getAllLogs();
+    }
+  }, [logs, getAllLogs]);
 
   return (
     selectedJob && (

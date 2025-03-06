@@ -1,7 +1,5 @@
 import { ColumnDef } from "@tanstack/react-table";
 
-import { FlowLogo } from "@flow/components";
-import BasicBoiler from "@flow/components/BasicBoiler";
 import { LogsTable } from "@flow/components/LogsTable";
 import { useT } from "@flow/lib/i18n";
 import type { Log } from "@flow/types";
@@ -28,20 +26,6 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ data }) => {
       header: t("Message"),
     },
   ];
-
-  const hasValidLogs = data.some(
-    (log) => log.timeStamp || log.status || log.message,
-  );
-
-  if (!hasValidLogs) {
-    return (
-      <BasicBoiler
-        className="h-full"
-        text={t("No Logs Available")}
-        icon={<FlowLogo className="size-16 text-accent" />}
-      />
-    );
-  }
 
   return (
     <LogsTable columns={columns} data={data} selectColumns showFiltering />

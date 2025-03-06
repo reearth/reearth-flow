@@ -29,10 +29,12 @@ import {
   Button,
   Input,
   IconButton,
+  FlowLogo,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { Log, LogLevel } from "@flow/types";
 
+import BasicBoiler from "../BasicBoiler";
 import { Table, TableBody, TableCell, TableRow } from "../Table";
 
 type LogProps = {
@@ -104,6 +106,10 @@ const LogsTable = ({
     const value = columnFilters.find((id) => id.id === "status");
     return value?.value;
   }, [columnFilters]);
+
+  const hasValidLogs = data.some(
+    (log) => log.timeStamp || log.status || log.message,
+  );
 
   return (
     <div className="flex size-full flex-col rounded">
@@ -213,10 +219,17 @@ const LogsTable = ({
 
       <div className="h-[calc(100vh-6rem)] w-full overflow-auto">
         <div className="border-b" />
-        <Table>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
+        {!hasValidLogs || !table.getRowModel().rows?.length ? (
+          <BasicBoiler
+            className="h-full"
+            textClassName="text-base"
+            text={t("No Logs Available")}
+            icon={<FlowLogo className="size-16 text-accent" />}
+          />
+        ) : (
+          <Table>
+            <TableBody>
+              {table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
                   className={`${row.original.status === "ERROR" ? "text-destructive" : row.original.status === "WARN" ? "text-warning" : ""}`}
@@ -230,18 +243,10 @@ const LogsTable = ({
                     </TableCell>
                   ))}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center">
-                  {t("No Results")}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </div>
     </div>
   );
