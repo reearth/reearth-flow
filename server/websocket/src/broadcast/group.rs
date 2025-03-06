@@ -5,6 +5,7 @@ use crate::AwarenessRef;
 use anyhow::anyhow;
 use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
+use md5;
 use rand;
 use redis::aio::MultiplexedConnection as RedisConnection;
 use redis::AsyncCommands;
@@ -48,6 +49,8 @@ pub struct BroadcastGroup {
     awareness_sub: Option<yrs::Subscription>,
     storage: Option<Arc<GcsStore>>,
     redis: Option<Arc<Mutex<RedisConnection>>>,
+    redis_pubsub: Option<Arc<Mutex<RedisConnection>>>,
+    redis_pubsub_task: Option<JoinHandle<()>>,
     doc_name: Option<String>,
     redis_ttl: Option<usize>,
     storage_rx: Option<tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>>,
@@ -167,6 +170,8 @@ impl BroadcastGroup {
             awareness_sub: Some(awareness_sub),
             storage: None,
             redis: None,
+            redis_pubsub: None,
+            redis_pubsub_task: None,
             doc_name: None,
             redis_ttl: None,
             storage_rx: Some(storage_rx),
@@ -192,6 +197,7 @@ impl BroadcastGroup {
             .doc_name
             .expect("doc_name required when storage enabled");
         let redis_ttl = config.redis_config.as_ref().map(|c| c.ttl as usize);
+        let redis_url = config.redis_config.as_ref().map(|c| c.url.clone());
 
         tracing::info!("Loading document '{}' directly from GCS storage", doc_name);
         Self::load_from_storage(&store, &doc_name, &group.awareness_ref).await;
@@ -265,6 +271,23 @@ impl BroadcastGroup {
         group.doc_name = Some(doc_name.clone());
         group.redis_ttl = redis_ttl;
 
+        if let Some(url) = redis_url {
+            match Self::init_redis_connection(&url).await {
+                Ok(pubsub_conn) => {
+                    tracing::info!("Successfully initialized Redis pub/sub connection");
+                    let pubsub_task = group.setup_redis_pubsub(doc_name.clone(), url).await;
+                    group.redis_pubsub = Some(pubsub_conn);
+                    group.redis_pubsub_task = Some(pubsub_task);
+
+                    group.awareness_updater.abort();
+                    group.awareness_updater = group.setup_awareness_updater_with_redis();
+                }
+                Err(e) => {
+                    tracing::error!("Failed to initialize Redis pub/sub connection: {}", e);
+                }
+            }
+        }
+
         group.storage_rx = None;
 
         Ok(group)
@@ -314,6 +337,267 @@ impl BroadcastGroup {
         }
     }
 
+    async fn setup_redis_pubsub(&self, doc_name: String, redis_url: String) -> JoinHandle<()> {
+        let doc_channel = format!("doc:updates:{}", doc_name);
+        let awareness_channel = format!("awareness:updates:{}", doc_name);
+
+        let awareness_ref = self.awareness_ref.clone();
+        let sender = self.sender.clone();
+        let pending_updates = self.pending_updates.clone();
+
+        let instance_id = format!(
+            "{:x}",
+            md5::compute(format!("{}:{}", doc_name, rand::random::<u64>()))
+        );
+
+        let processed_msg_ids = Arc::new(Mutex::new(std::collections::HashSet::<String>::new()));
+
+        tokio::spawn(async move {
+            struct PubSubParams<'a> {
+                redis_url: &'a str,
+                doc_channel: &'a str,
+                awareness_channel: &'a str,
+                instance_id: &'a str,
+                processed_msg_ids: &'a Arc<Mutex<std::collections::HashSet<String>>>,
+                awareness_ref: &'a AwarenessRef,
+                sender: &'a Sender<Vec<u8>>,
+                pending_updates: &'a Arc<Mutex<Vec<Vec<u8>>>>,
+            }
+
+            async fn handle_pubsub_connection(params: PubSubParams<'_>) -> bool {
+                let client = match redis::Client::open(params.redis_url) {
+                    Ok(client) => client,
+                    Err(e) => {
+                        tracing::error!("Failed to create Redis client for pub/sub: {}", e);
+                        return true;
+                    }
+                };
+
+                let mut pubsub = match client.get_async_pubsub().await {
+                    Ok(pubsub) => pubsub,
+                    Err(e) => {
+                        tracing::error!("Failed to get Redis pub/sub connection: {}", e);
+                        return true;
+                    }
+                };
+
+                if let Err(e) = pubsub
+                    .subscribe(&[params.doc_channel, params.awareness_channel])
+                    .await
+                {
+                    tracing::error!("Failed to subscribe to Redis channels: {}", e);
+                    return true;
+                }
+
+                tracing::info!(
+                    "Subscribed to Redis channels: {} and {} with instance ID: {}",
+                    params.doc_channel,
+                    params.awareness_channel,
+                    params.instance_id
+                );
+
+                let mut msg_stream = pubsub.on_message();
+
+                while let Some(msg) = msg_stream.next().await {
+                    let channel: String = msg.get_channel().unwrap_or_default();
+
+                    let payload_result: redis::RedisResult<(String, String, Vec<u8>)> =
+                        msg.get_payload();
+
+                    match payload_result {
+                        Ok((src_instance_id, message_id, payload)) => {
+                            if src_instance_id == params.instance_id {
+                                tracing::debug!("Skipping message from our own instance");
+                                continue;
+                            }
+
+                            let should_process = {
+                                let mut processed_ids = params.processed_msg_ids.lock().await;
+                                if processed_ids.contains(&message_id) {
+                                    false
+                                } else {
+                                    processed_ids.insert(message_id.clone());
+                                    if processed_ids.len() > 1000 {
+                                        let to_remove: Vec<String> = processed_ids
+                                            .iter()
+                                            .take(processed_ids.len() - 500)
+                                            .cloned()
+                                            .collect();
+                                        for id in to_remove {
+                                            processed_ids.remove(&id);
+                                        }
+                                    }
+                                    true
+                                }
+                            };
+
+                            if !should_process {
+                                tracing::debug!(
+                                    "Skipping already processed message: {}",
+                                    message_id
+                                );
+                                continue;
+                            }
+
+                            if channel == params.doc_channel {
+                                tracing::debug!(
+                                    "Received document update from Redis pub/sub, size: {} bytes, id: {}",
+                                    payload.len(),
+                                    message_id
+                                );
+
+                                if let Ok(update) = Update::decode_v1(&payload) {
+                                    let awareness = params.awareness_ref.write().await;
+                                    let mut txn = awareness.doc().transact_mut();
+
+                                    if let Err(e) = txn.apply_update(update) {
+                                        tracing::warn!(
+                                            "Failed to apply update from Redis pub/sub: {}",
+                                            e
+                                        );
+                                    } else {
+                                        tracing::debug!(
+                                            "Successfully applied update from Redis pub/sub"
+                                        );
+
+                                        let mut updates = params.pending_updates.lock().await;
+                                        updates.push(payload.clone());
+
+                                        let mut encoder = EncoderV1::new();
+                                        encoder.write_var(MSG_SYNC);
+                                        encoder.write_var(MSG_SYNC_UPDATE);
+                                        encoder.write_buf(&payload);
+                                        let msg = encoder.to_vec();
+
+                                        if params.sender.send(msg).is_err() {
+                                            tracing::warn!(
+                                                "Failed to forward Redis pub/sub update to clients"
+                                            );
+                                        }
+                                    }
+                                } else {
+                                    tracing::warn!("Failed to decode update from Redis pub/sub");
+                                }
+                            } else if channel == params.awareness_channel {
+                                tracing::debug!(
+                                    "Received awareness update from Redis pub/sub, size: {} bytes, id: {}",
+                                    payload.len(),
+                                    message_id
+                                );
+
+                                if params.sender.send(payload.clone()).is_err() {
+                                    tracing::warn!(
+                                        "Failed to forward Redis pub/sub awareness update to clients"
+                                    );
+                                }
+                            }
+                        }
+                        Err(_) => {
+                            let payload: Vec<u8> = match msg.get_payload() {
+                                Ok(data) => data,
+                                Err(e) => {
+                                    tracing::error!(
+                                        "Failed to get payload from Redis pub/sub message: {}",
+                                        e
+                                    );
+                                    continue;
+                                }
+                            };
+
+                            if channel == params.doc_channel {
+                                tracing::debug!(
+                                    "Received legacy document update from Redis pub/sub, size: {} bytes",
+                                    payload.len()
+                                );
+
+                                if let Ok(update) = Update::decode_v1(&payload) {
+                                    let awareness = params.awareness_ref.write().await;
+                                    let mut txn = awareness.doc().transact_mut();
+
+                                    if let Err(e) = txn.apply_update(update) {
+                                        tracing::warn!(
+                                            "Failed to apply legacy update from Redis pub/sub: {}",
+                                            e
+                                        );
+                                    } else {
+                                        tracing::debug!(
+                                            "Successfully applied legacy update from Redis pub/sub"
+                                        );
+
+                                        let mut updates = params.pending_updates.lock().await;
+                                        updates.push(payload.clone());
+
+                                        let mut encoder = EncoderV1::new();
+                                        encoder.write_var(MSG_SYNC);
+                                        encoder.write_var(MSG_SYNC_UPDATE);
+                                        encoder.write_buf(&payload);
+                                        let msg = encoder.to_vec();
+
+                                        if params.sender.send(msg).is_err() {
+                                            tracing::warn!("Failed to forward legacy Redis pub/sub update to clients");
+                                        }
+                                    }
+                                } else {
+                                    tracing::warn!(
+                                        "Failed to decode legacy update from Redis pub/sub"
+                                    );
+                                }
+                            } else if channel == params.awareness_channel {
+                                tracing::debug!(
+                                    "Received legacy awareness update from Redis pub/sub, size: {} bytes",
+                                    payload.len()
+                                );
+
+                                if params.sender.send(payload.clone()).is_err() {
+                                    tracing::warn!(
+                                        "Failed to forward legacy Redis pub/sub awareness update to clients"
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
+
+                tracing::warn!("Redis pub/sub connection closed");
+                true
+            }
+
+            let mut reconnect_attempts = 0;
+
+            loop {
+                let params = PubSubParams {
+                    redis_url: &redis_url,
+                    doc_channel: &doc_channel,
+                    awareness_channel: &awareness_channel,
+                    instance_id: &instance_id,
+                    processed_msg_ids: &processed_msg_ids,
+                    awareness_ref: &awareness_ref,
+                    sender: &sender,
+                    pending_updates: &pending_updates,
+                };
+
+                let should_retry = handle_pubsub_connection(params).await;
+
+                if !should_retry {
+                    break;
+                }
+
+                reconnect_attempts += 1;
+                let delay = std::cmp::min(30, 2u64.pow(reconnect_attempts as u32));
+
+                if reconnect_attempts > 10 {
+                    tracing::error!("Too many Redis reconnection attempts, giving up");
+                    break;
+                }
+
+                tracing::warn!("Reconnecting to Redis in {} seconds...", delay);
+                tokio::time::sleep(std::time::Duration::from_secs(delay)).await;
+            }
+
+            tracing::warn!("Redis pub/sub task terminated");
+        })
+    }
+
     async fn handle_update(
         update: Vec<u8>,
         doc_name: &str,
@@ -327,28 +611,45 @@ impl BroadcastGroup {
             update.len()
         );
 
-        // Store in persistent storage and update Redis cache in parallel
         tracing::info!("Pushing update to GCS for document '{}'", doc_name);
         let store_future = store.push_update(doc_name, &update);
 
         let redis_future = if let (Some(redis), Some(ttl)) = (redis, redis_ttl) {
             let cache_key = format!("doc:{}", doc_name);
+            let pubsub_channel = format!("doc:updates:{}", doc_name);
             let redis = redis.clone();
-            let update = update.clone();
+            let update_clone = update.clone();
             tracing::info!(
                 "Preparing to update Redis cache for document '{}'",
                 doc_name
             );
             Some(async move {
                 let mut conn = redis.lock().await;
+
                 if let Err(e) = conn
-                    .set_ex::<_, _, String>(&cache_key, update.as_slice(), ttl.try_into().unwrap())
+                    .set_ex::<_, _, String>(
+                        &cache_key,
+                        update_clone.as_slice(),
+                        ttl.try_into().unwrap(),
+                    )
                     .await
                 {
                     tracing::error!("Failed to update Redis cache: {}", e);
                 } else {
                     tracing::info!(
                         "Successfully updated Redis cache for document '{}'",
+                        doc_name
+                    );
+                }
+
+                if let Err(e) = conn
+                    .publish::<_, _, ()>(&pubsub_channel, update_clone.as_slice())
+                    .await
+                {
+                    tracing::error!("Failed to publish update to Redis pub/sub: {}", e);
+                } else {
+                    tracing::info!(
+                        "Successfully published update to Redis pub/sub for document '{}'",
                         doc_name
                     );
                 }
@@ -626,7 +927,7 @@ impl BroadcastGroup {
                     tracing::warn!("Failed to apply update {} during manual flush: {}", i, e);
                 } else {
                     has_updates = true;
-                    tracing::info!(
+                    tracing::debug!(
                         "Successfully applied update {} for document '{}'",
                         i,
                         doc_name
@@ -681,30 +982,96 @@ impl BroadcastGroup {
         result
     }
 
-    #[allow(dead_code)]
-    async fn store_update_to_redis(&self, update: &[u8]) {
-        if let (Some(redis), Some(ttl), Some(doc_name)) =
-            (&self.redis, self.redis_ttl, &self.doc_name)
-        {
-            let redis_key = format!("pending_updates:{}", doc_name);
-            let redis = redis.clone();
-            let update = update.to_vec();
+    fn setup_awareness_updater_with_redis(&self) -> JoinHandle<()> {
+        let awareness_c = Arc::downgrade(&self.awareness_ref);
+        let sink = self.sender.clone();
+        let redis = self.redis.clone();
+        let doc_name = self.doc_name.clone();
+        let connections = self.connections.clone();
+        let awareness_ref = self.awareness_ref.clone();
+        let awareness_sub = self.awareness_sub.clone();
 
-            tokio::spawn(async move {
-                let mut conn = redis.lock().await;
-                match conn.lpush::<_, _, ()>(&redis_key, update.as_slice()).await {
-                    Ok(_) => {
-                        tracing::debug!("Successfully stored update to Redis pending_updates list");
-                        let _ = conn
-                            .expire::<_, ()>(&redis_key, ttl.try_into().unwrap())
-                            .await;
-                    }
-                    Err(e) => {
-                        tracing::error!("Failed to store update to Redis: {}", e);
-                    }
+        tokio::task::spawn(async move {
+            let lock = awareness_ref.write().await;
+
+            let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+
+            let _awareness_sub = lock.on_update(move |_awareness, event, _origin| {
+                let added = event.added();
+                let updated = event.updated();
+                let removed = event.removed();
+                let total_len = added.len() + updated.len() + removed.len();
+                if total_len == 0 {
+                    return;
+                }
+
+                let mut changed = Vec::with_capacity(total_len);
+                changed.extend_from_slice(added);
+                changed.extend_from_slice(updated);
+                changed.extend_from_slice(removed);
+
+                if tx.send(changed).is_err() {
+                    tracing::debug!("Failed to send awareness update - receiver likely dropped");
                 }
             });
-        }
+            drop(lock);
+
+            if let Some(sub) = awareness_sub {
+                drop(sub);
+            }
+
+            while let Some(changed_clients) = rx.recv().await {
+                if let Some(awareness) = awareness_c.upgrade() {
+                    let awareness = awareness.read().await;
+                    match awareness.update_with_clients(changed_clients) {
+                        Ok(update) => {
+                            let encoded_update = Message::Awareness(update).encode_v1();
+
+                            let connection_count = connections.load(Ordering::Relaxed);
+                            if connection_count > 0 {
+                                if let Err(e) = sink.send(encoded_update.clone()) {
+                                    tracing::error!("Failed to send awareness update: {}", e);
+                                }
+                            }
+
+                            if let Some(redis) = &redis {
+                                if let Some(doc_name) = &doc_name {
+                                    let awareness_channel =
+                                        format!("awareness:updates:{}", doc_name);
+                                    let redis_clone = redis.clone();
+                                    let encoded_update_clone = encoded_update.clone();
+                                    let doc_name_clone = doc_name.clone();
+
+                                    tokio::spawn(async move {
+                                        let mut conn = redis_clone.lock().await;
+                                        if let Err(e) = conn
+                                            .publish::<_, _, ()>(
+                                                &awareness_channel,
+                                                encoded_update_clone.as_slice(),
+                                            )
+                                            .await
+                                        {
+                                            tracing::error!(
+                                                "Failed to publish awareness update to Redis: {}",
+                                                e
+                                            );
+                                        } else {
+                                            tracing::debug!(
+                                                "Published awareness update to Redis for document '{}'",
+                                                doc_name_clone
+                                            );
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            tracing::error!("Failed to update awareness: {}", e);
+                        }
+                    }
+                }
+            }
+        })
     }
 }
 
@@ -717,6 +1084,9 @@ impl Drop for BroadcastGroup {
         }
         if let Some(sub) = self.awareness_sub.take() {
             drop(sub);
+        }
+        if let Some(task) = self.redis_pubsub_task.take() {
+            task.abort();
         }
         self.awareness_updater.abort();
 
@@ -732,7 +1102,10 @@ impl Drop for BroadcastGroup {
                 let pending_updates = self.pending_updates.clone();
 
                 rt.spawn(async move {
-                    let updates = {
+                    let mut processed_updates = std::collections::HashSet::new();
+                    let mut all_updates = Vec::new();
+
+                    {
                         let mut pending = pending_updates.lock().await;
                         tracing::info!(
                             "Found {} pending updates for document '{}'",
@@ -740,50 +1113,65 @@ impl Drop for BroadcastGroup {
                             doc_name
                         );
 
-                        if pending.is_empty() && redis.is_some() {
-                            let redis_key = format!("pending_updates:{}", doc_name);
-                            let mut redis_conn = redis.as_ref().unwrap().lock().await;
-                            match redis_conn
-                                .lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1)
-                                .await
-                            {
-                                Ok(redis_updates) => {
-                                    if !redis_updates.is_empty() {
-                                        tracing::info!(
-                                            "Found {} pending updates in Redis for document '{}'",
-                                            redis_updates.len(),
-                                            doc_name
-                                        );
-                                        redis_updates
-                                    } else {
-                                        Vec::new()
+                        for update in pending.iter() {
+                            let update_hash = format!("{:x}", md5::compute(update));
+                            if processed_updates.insert(update_hash) {
+                                all_updates.push(update.clone());
+                            }
+                        }
+                        pending.clear();
+                    }
+
+                    if let Some(redis_conn) = &redis {
+                        let redis_key = format!("pending_updates:{}", doc_name);
+                        match redis_conn.lock().await.lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1).await {
+                            Ok(redis_updates) => {
+                                tracing::info!(
+                                    "Found {} pending updates in Redis for document '{}'",
+                                    redis_updates.len(),
+                                    doc_name
+                                );
+
+                                for update in redis_updates {
+                                    let update_hash = format!("{:x}", md5::compute(&update));
+                                    if processed_updates.insert(update_hash) {
+                                        all_updates.push(update);
                                     }
                                 }
-                                Err(e) => {
-                                    tracing::warn!(
-                                        "Failed to load pending updates from Redis: {}",
-                                        e
-                                    );
-                                    Vec::new()
+
+                                if let Err(e) = redis_conn.lock().await.del::<_, ()>(&redis_key).await {
+                                    tracing::error!("Failed to clear Redis pending updates: {}", e);
                                 }
                             }
-                        } else if pending.is_empty() {
-                            tracing::info!("No updates to store for document '{}'", doc_name);
-                            Vec::new()
-                        } else {
-                            std::mem::take(&mut *pending)
+                            Err(e) => {
+                                tracing::error!("Failed to load updates from Redis: {}", e);
+                            }
                         }
-                    };
 
-                    if updates.is_empty() {
+                        let pubsub_channel = format!("doc:status:{}", doc_name);
+                        let status_message = serde_json::json!({
+                            "type": "instance_shutdown",
+                            "timestamp": chrono::Utc::now().timestamp(),
+                            "doc_id": doc_name
+                        }).to_string();
+
+                        if let Err(e) = redis_conn.lock().await.publish::<_, _, ()>(&pubsub_channel, status_message).await {
+                            tracing::error!("Failed to publish shutdown status to Redis: {}", e);
+                        } else {
+                            tracing::info!("Published shutdown status to Redis for document '{}'", doc_name);
+                        }
+                    }
+
+                    if all_updates.is_empty() {
+                        tracing::info!("No updates to store for document '{}'", doc_name);
                         return;
                     }
 
                     let doc = Doc::new();
                     let mut txn = doc.transact_mut();
-
                     let mut has_updates = false;
-                    for (i, update) in updates.iter().enumerate() {
+
+                    for (i, update) in all_updates.iter().enumerate() {
                         if let Ok(decoded) = Update::decode_v1(update) {
                             if let Err(e) = txn.apply_update(decoded) {
                                 tracing::warn!(
@@ -817,25 +1205,66 @@ impl Drop for BroadcastGroup {
                         doc_name
                     );
 
-                    tracing::info!("Storing merged update for document '{}'", doc_name);
-                    Self::handle_update(merged_update, &doc_name, &store, &redis, redis_ttl).await;
-                    tracing::info!(
-                        "Stored merged updates on disconnect for document '{}'",
-                        doc_name
-                    );
+                    let max_retries = 3;
+                    let mut retry_count = 0;
+                    let mut last_error = None;
 
-                    if let Some(redis) = &redis {
-                        let redis_key = format!("pending_updates:{}", doc_name);
-                        let mut redis_conn = redis.lock().await;
-                        if let Err(e) = redis_conn.del::<_, ()>(&redis_key).await {
-                            tracing::warn!("Failed to clear pending updates from Redis: {}", e);
-                        } else {
-                            tracing::info!(
-                                "Cleared pending updates from Redis for document '{}'",
-                                doc_name
-                            );
+                    while retry_count < max_retries {
+                        tracing::info!(
+                            "Attempt {} to store merged update for document '{}'",
+                            retry_count + 1,
+                            doc_name
+                        );
+
+                        match store.push_update(&doc_name, &merged_update).await {
+                            Ok(_) => {
+                                tracing::info!(
+                                    "Successfully stored merged updates on disconnect for document '{}'",
+                                    doc_name
+                                );
+
+                                if let (Some(redis_conn), Some(ttl)) = (&redis, redis_ttl) {
+                                    let cache_key = format!("doc:{}", doc_name);
+                                    if let Err(e) = redis_conn.lock().await
+                                        .set_ex::<_, _, String>(&cache_key, merged_update.as_slice(), ttl.try_into().unwrap())
+                                        .await
+                                    {
+                                        tracing::error!("Failed to update Redis cache: {}", e);
+                                    }
+
+                                    // Also publish the final merged update to Redis pub/sub
+                                    let pubsub_channel = format!("doc:updates:{}", doc_name);
+                                    if let Err(e) = redis_conn.lock().await
+                                        .publish::<_, _, ()>(&pubsub_channel, merged_update.as_slice())
+                                        .await
+                                    {
+                                        tracing::error!("Failed to publish final update to Redis pub/sub: {}", e);
+                                    } else {
+                                        tracing::info!("Published final merged update to Redis pub/sub for document '{}'", doc_name);
+                                    }
+                                }
+
+                                return;
+                            }
+                            Err(e) => {
+                                last_error = Some(e.to_string());
+                                tracing::error!(
+                                    "Failed to store update in GCS (attempt {}/{}): {}",
+                                    retry_count + 1,
+                                    max_retries,
+                                    last_error.as_ref().unwrap()
+                                );
+                                retry_count += 1;
+                                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                            }
                         }
                     }
+
+                    tracing::error!(
+                        "CRITICAL: Failed to store updates after {} attempts: {}",
+                        max_retries,
+                        last_error.unwrap_or_else(|| "Unknown error".to_string())
+                    );
                 });
                 tracing::info!(
                     "Spawned task to store updates for document '{}'",
