@@ -2,8 +2,13 @@ export type GeneralState = {
   clipboard: any | undefined;
 };
 
+type Job = {
+  projectId: string;
+  jobId: string;
+};
+
 export type DebugRunState = {
-  jobId: string | undefined;
+  jobs: Job[];
 };
 
 export type PreferencesState = {
@@ -31,7 +36,7 @@ const initialState = {
     clipboard: undefined,
   },
   [DEBUG_RUN_KEY]: {
-    jobId: undefined,
+    jobs: [],
   },
   [PREFERENCES_KEY]: {
     theme: "dark",
@@ -126,8 +131,32 @@ export async function updateClipboardState(newCopyingState: any) {
   await saveStateToIndexedDB({ clipboard: newCopyingState }, GENERAL_KEY);
 }
 
-export async function updateJobId(newJobId: string | undefined) {
-  await saveStateToIndexedDB({ jobId: newJobId }, DEBUG_RUN_KEY);
+export async function updateJobs({
+  projectId,
+  jobId,
+}: {
+  projectId: string;
+  jobId?: string;
+}) {
+  const existingState = await loadStateFromIndexedDB(DEBUG_RUN_KEY);
+  let jobs: Job[] = existingState?.jobs || [];
+
+  if (!jobId) {
+    jobs =
+      existingState?.jobs.filter((job) => job.projectId !== projectId) || [];
+  } else if (
+    jobId &&
+    existingState?.jobs.some((job) => job.projectId === projectId)
+  ) {
+    jobs = existingState.jobs.map((job) => {
+      if (job.projectId === projectId) {
+        return { projectId, jobId };
+      }
+      return job;
+    });
+  }
+
+  await saveStateToIndexedDB({ jobs }, DEBUG_RUN_KEY);
 }
 
 // async function updatePreferences(newPreferences: Partial<Preferences>) {

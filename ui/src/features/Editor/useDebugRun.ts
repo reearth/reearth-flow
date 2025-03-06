@@ -4,7 +4,7 @@ import { useProject } from "@flow/lib/gql";
 import { useJob } from "@flow/lib/gql/job";
 import {
   loadStateFromIndexedDB,
-  updateJobId,
+  updateJobs,
   useCurrentProject,
 } from "@flow/stores";
 import type { Workflow } from "@flow/types";
@@ -35,21 +35,24 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
 
     console.log("job started: ", data.job);
     if (data.job) {
-      await updateJobId(data.job.id);
+      await updateJobs({ projectId: currentProject.id, jobId: data.job.id });
       // TODO: open logs panel
     }
   }, [currentProject, rawWorkflows, runProject]);
 
   const handleDebugRunStop = useCallback(async () => {
     const debugRunState = await loadStateFromIndexedDB("debugRun");
-    if (!debugRunState?.jobId) return;
+    const debugJob = debugRunState?.jobs?.find(
+      (job) => job.projectId === currentProject?.id,
+    );
+    if (!debugJob) return;
 
-    console.log("stop debug run", debugRunState.jobId);
-    const data = await useJobCancel(debugRunState.jobId);
-    if (data.isSuccess) {
-      await updateJobId(undefined);
+    console.log("stop debug run", debugJob);
+    const data = await useJobCancel(debugJob.jobId);
+    if (data.isSuccess && currentProject?.id) {
+      await updateJobs({ projectId: currentProject.id });
     }
-  }, [useJobCancel]);
+  }, [currentProject?.id, useJobCancel]);
 
   return {
     handleDebugRunStart,

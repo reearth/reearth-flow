@@ -76,9 +76,12 @@ const ActionBar: React.FC<Props> = ({
   const handleDebugRun = async (callback: () => Promise<void>) => {
     await callback();
     const debugRunState = await loadStateFromIndexedDB("debugRun");
-    if (debugRunState?.jobId && !debugWorkflowRunning) {
+    const debugJob = debugRunState?.jobs?.find(
+      (job) => job.projectId === currentProject?.id,
+    );
+    if (debugJob && !debugWorkflowRunning) {
       setDebugWorkflowRunning(true);
-    } else if (!debugRunState?.jobId && debugWorkflowRunning) {
+    } else if (!debugJob && debugWorkflowRunning) {
       setDebugWorkflowRunning(false);
     }
   };
