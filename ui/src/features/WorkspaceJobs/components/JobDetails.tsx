@@ -28,8 +28,9 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
     [navigate, selectedJob?.workspaceId],
   );
 
-  const [logs, setLogs] = useState<Log[] | null>(null);
-  const [isFetching, setIsFetching] = useState<boolean>(false);
+  const [urlLogs, setUrlLogs] = useState<Log[] | null>(null);
+  const [liveLogs, setLiveLogs] = useState<Log[] | null>(null);
+  const [isFetchingLogsUrl, setIsFetchingLogsUrl] = useState<boolean>(false);
   const details: DetailsBoxContent[] | undefined = useMemo(
     () =>
       selectedJob
@@ -54,10 +55,14 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
               name: t("Started At"),
               value: formatTimestamp(selectedJob.startedAt) || t("N/A"),
             },
+
             {
               id: "completedAt",
               name: t("Completed At"),
-              value: formatTimestamp(selectedJob.completedAt) || t("N/A"),
+              value:
+                selectedJob.status === "completed"
+                  ? formatTimestamp(selectedJob.completedAt)
+                  : t("N/A"),
             },
             {
               id: "outputURLs",
@@ -65,14 +70,28 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
               value: selectedJob.outputURLs || t("N/A"),
               type: selectedJob.outputURLs ? "link" : undefined,
             },
+            ...(selectedJob.status === "completed"
+              ? [
+                  {
+                    id: "completedMessage",
+                    name: t("Completed Message"),
+                    value: t("The job has been completed successfully."),
+                  },
+                ]
+              : []),
           ]
         : undefined,
     [t, selectedJob],
   );
 
   const getAllLogs = useCallback(async () => {
-    if (!selectedJob || !selectedJob.logsURL) return;
-    setIsFetching(true);
+    if (
+      !selectedJob ||
+      !selectedJob.logsURL ||
+      selectedJob.status !== "completed"
+    )
+      return;
+    setIsFetchingLogsUrl(true);
     try {
       const response = await fetch(selectedJob.logsURL);
       const textData = await response.text();
@@ -105,20 +124,26 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
           console.log("Error:", error);
         },
       });
-      setLogs(logsArray);
+      setUrlLogs(logsArray);
     } catch (error) {
       console.error("Error fetching logs:", error);
     } finally {
-      setIsFetching(false);
+      setIsFetchingLogsUrl(false);
     }
-  }, [selectedJob, setIsFetching]);
+  }, [selectedJob, setIsFetchingLogsUrl]);
 
   useEffect(() => {
     getAllLogs();
   }, [getAllLogs]);
-  const { data } = useLogs(selectedJob?.id || "");
 
-  console.log(data);
+  const { data, isLoading: isFetchingLiveLogs } = useLogs(
+    selectedJob?.id ?? "",
+  );
+
+  useEffect(() => {
+    setLiveLogs(data);
+  }, [data]);
+  console.log("LIVE LOGS", liveLogs);
 
   return (
     selectedJob && (
@@ -140,11 +165,36 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
           <DetailsBox collapsible title={t("Job Details")} content={details} />
         </div>
         <div className="mt-6 min-h-0 max-w-[1200px] flex-1">
-          {isFetching ? (
-            <LoadingSkeleton />
-          ) : logs ? (
-            <LogsConsole data={logs} />
-          ) : null}
+          {selectedJob.status !== "completed" && (
+            <>
+              {isFetchingLiveLogs ? (
+                <LoadingSkeleton />
+              ) : liveLogs && liveLogs.length > 0 ? (
+                <LogsConsole data={liveLogs} />
+              ) : (
+                <div className="flex h-full items-center justify-center rounded-lg border bg-muted/20 p-6">
+                  <p className="text-muted-foreground">
+                    {t("Waiting for logs...")}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+          {selectedJob.status === "completed" && (
+            <>
+              {isFetchingLogsUrl ? (
+                <LoadingSkeleton />
+              ) : urlLogs && urlLogs.length > 0 ? (
+                <LogsConsole data={urlLogs} />
+              ) : (
+                <div className="flex h-full items-center justify-center rounded-lg border bg-muted/20 p-6">
+                  <p className="text-muted-foreground">
+                    {t("Waiting for logs...")}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     )
