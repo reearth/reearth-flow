@@ -17,6 +17,7 @@ import {
   Infobar,
   NodePickerDialog,
   LayoutOptionsDialog,
+  Logs,
 } from "./components";
 
 type OverlayUIProps = {
@@ -108,6 +109,9 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             onDebugRunStop={onDebugRunStop}
             onRightPanelOpen={onRightPanelOpen}
           />
+        </div>
+        <div className="pointer-events-none absolute inset-y-2 left-2 flex items-end">
+          <Logs />
         </div>
         <div className="absolute bottom-2 right-2">
           <CanvasActionBar />

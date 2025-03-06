@@ -18,7 +18,7 @@ import {
 } from "@flow/components";
 import { useProjectExport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import { useCurrentProject } from "@flow/stores";
+import { loadStateFromIndexedDB, useCurrentProject } from "@flow/stores";
 
 import { DebugStopDialog, DeployDialog, ShareDialog } from "./components";
 
@@ -53,6 +53,8 @@ const ActionBar: React.FC<Props> = ({
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showDebugStopDialog, setShowDebugStopDialog] = useState(false);
 
+  const [debugWorkflowRunning, setDebugWorkflowRunning] = useState(false);
+
   const handleShowDeployDialog = () => {
     setShowShareDialog(false);
     setShowDebugStopDialog(false);
@@ -71,6 +73,24 @@ const ActionBar: React.FC<Props> = ({
     setShowDebugStopDialog(true);
   };
 
+  const handleDebugRun = async (callback: () => Promise<void>) => {
+    await callback();
+    const debugRunState = await loadStateFromIndexedDB("debugRun");
+    if (debugRunState?.jobId && !debugWorkflowRunning) {
+      setDebugWorkflowRunning(true);
+    } else if (!debugRunState?.jobId && debugWorkflowRunning) {
+      setDebugWorkflowRunning(false);
+    }
+  };
+
+  const handleDebugRunStart = async () => {
+    await handleDebugRun(onDebugRunStart);
+  };
+
+  const handleDebugRunStop = async () => {
+    await handleDebugRun(onDebugRunStop);
+  };
+
   return (
     <>
       <div className="rounded-md border bg-secondary">
@@ -80,13 +100,15 @@ const ActionBar: React.FC<Props> = ({
               className="rounded-l-[4px] rounded-r-none"
               tooltipText={t("Run project workflow")}
               tooltipOffset={tooltipOffset}
+              disabled={debugWorkflowRunning}
               icon={<Play weight="thin" />}
-              onClick={onDebugRunStart}
+              onClick={handleDebugRunStart}
             />
             <IconButton
               className="rounded-none"
               tooltipText={t("Stop project workflow")}
               tooltipOffset={tooltipOffset}
+              disabled={!debugWorkflowRunning}
               icon={<Stop weight="thin" />}
               onClick={handleShowDebugStopDialog}
             />
@@ -145,7 +167,7 @@ const ActionBar: React.FC<Props> = ({
       )}
       {showDebugStopDialog && (
         <DebugStopDialog
-          onDebugRunStop={onDebugRunStop}
+          onDebugRunStop={handleDebugRunStop}
           setShowDialog={setShowDebugStopDialog}
         />
       )}
