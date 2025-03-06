@@ -21,7 +21,7 @@ func (r *mutationResolver) DeclareParameter(ctx context.Context, projectID gqlmo
 		Required:  input.Required,
 		Type:      gqlmodel.FromParameterType(input.Type),
 		Value:     input.Value,
-	}, getOperator(ctx))
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (r *mutationResolver) UpdateParameterValue(ctx context.Context, paramID gql
 	res, err := usecases(ctx).Parameter.UpdateParameterValue(ctx, interfaces.UpdateParameterValueParam{
 		ParamID: pid,
 		Value:   input.Value,
-	}, getOperator(ctx))
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (r *mutationResolver) UpdateParameterOrder(ctx context.Context, projectID g
 		NewIndex:  input.NewIndex,
 		ParamID:   paramID,
 		ProjectID: pid,
-	}, getOperator(ctx))
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (r *mutationResolver) RemoveParameter(ctx context.Context, input gqlmodel.R
 		return false, err
 	}
 
-	_, err = usecases(ctx).Parameter.RemoveParameter(ctx, pid, getOperator(ctx))
+	_, err = usecases(ctx).Parameter.RemoveParameter(ctx, pid)
 	if err != nil {
 		return false, err
 	}

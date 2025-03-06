@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -17,23 +17,32 @@ import (
 )
 
 type ProjectAccess struct {
-	common
 	projectRepo       repo.Project
 	projectAccessRepo repo.ProjectAccess
 	transaction       usecasex.Transaction
 	config            ContainerConfig
+	permissionChecker gateway.PermissionChecker
 }
 
-func NewProjectAccess(r *repo.Container, gr *gateway.Container, config ContainerConfig) interfaces.ProjectAccess {
+func NewProjectAccess(r *repo.Container, gr *gateway.Container, config ContainerConfig, permissionChecker gateway.PermissionChecker) interfaces.ProjectAccess {
 	return &ProjectAccess{
 		projectRepo:       r.Project,
 		projectAccessRepo: r.ProjectAccess,
 		transaction:       r.Transaction,
 		config:            config,
+		permissionChecker: permissionChecker,
 	}
 }
 
+func (i *ProjectAccess) checkPermission(ctx context.Context, action string) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProjectAccess, action)
+}
+
 func (i *ProjectAccess) Fetch(ctx context.Context, token string) (project *project.Project, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	pa, err := i.projectAccessRepo.FindByToken(ctx, token)
 	if err != nil {
 		return nil, err
@@ -49,7 +58,11 @@ func (i *ProjectAccess) Fetch(ctx context.Context, token string) (project *proje
 	return i.projectRepo.FindByID(ctx, pa.Project())
 }
 
-func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID, operator *usecase.Operator) (sharingUrl string, err error) {
+func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID) (sharingUrl string, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return "", err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return "", err
@@ -64,9 +77,6 @@ func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID, opera
 
 	prj, err := i.projectRepo.FindByID(ctx, projectID)
 	if err != nil {
-		return "", err
-	}
-	if err := i.CanWriteWorkspace(prj.Workspace(), operator); err != nil {
 		return "", err
 	}
 
@@ -116,7 +126,11 @@ func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID, opera
 	return sharingUrl, nil
 }
 
-func (i *ProjectAccess) Unshare(ctx context.Context, projectID id.ProjectID, operator *usecase.Operator) (err error) {
+func (i *ProjectAccess) Unshare(ctx context.Context, projectID id.ProjectID) (err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return err
@@ -131,9 +145,6 @@ func (i *ProjectAccess) Unshare(ctx context.Context, projectID id.ProjectID, ope
 
 	prj, err := i.projectRepo.FindByID(ctx, projectID)
 	if err != nil {
-		return err
-	}
-	if err := i.CanWriteWorkspace(prj.Workspace(), operator); err != nil {
 		return err
 	}
 

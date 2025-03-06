@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/log"
 	"github.com/stretchr/testify/assert"
@@ -18,12 +17,12 @@ type MockLogUsecase struct {
 	mock.Mock
 }
 
-func (m *MockLogUsecase) GetLogs(ctx context.Context, since time.Time, jobID id.JobID, operator *usecase.Operator) ([]*log.Log, error) {
-	args := m.Called(ctx, since, jobID, operator)
+func (m *MockLogUsecase) GetLogs(ctx context.Context, since time.Time, jobID id.JobID) ([]*log.Log, error) {
+	args := m.Called(ctx, since, jobID)
 	return args.Get(0).([]*log.Log), args.Error(1)
 }
 
-func (m *MockLogUsecase) Subscribe(ctx context.Context, jobID id.JobID, op *usecase.Operator) (chan *log.Log, error) {
+func (m *MockLogUsecase) Subscribe(ctx context.Context, jobID id.JobID) (chan *log.Log, error) {
 	ch := make(chan *log.Log)
 	close(ch)
 	return ch, nil

@@ -18,7 +18,7 @@ func TestCreateTimeDrivenTrigger(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser)
+	}, true, baseSeederUser, true)
 
 	deploymentId := createTestDeployment(t, e)
 	assert.NotEmpty(t, deploymentId)
@@ -194,7 +194,7 @@ func TestUpdateTrigger(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser)
+	}, true, baseSeederUser, true)
 
 	deploymentId := createTestDeployment(t, e)
 	query := `mutation($input: CreateTriggerInput!) {
@@ -304,7 +304,7 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser)
+	}, true, baseSeederUser, true)
 
 	deploymentId := createTestDeployment(t, e)
 	assert.NotEmpty(t, deploymentId)

@@ -29,7 +29,7 @@ func (r *mutationResolver) CreateDeployment(ctx context.Context, input gqlmodel.
 		Workspace:   wsid,
 		Workflow:    gqlmodel.FromFile(&input.File),
 		Description: input.Description,
-	}, getOperator(ctx))
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (r *mutationResolver) UpdateDeployment(ctx context.Context, input gqlmodel.
 		ID:          did,
 		Workflow:    gqlmodel.FromFile(input.File),
 		Description: input.Description,
-	}, getOperator(ctx))
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (r *mutationResolver) DeleteDeployment(ctx context.Context, input gqlmodel.
 		return nil, err
 	}
 
-	if err := usecases(ctx).Deployment.Delete(ctx, did, getOperator(ctx)); err != nil {
+	if err := usecases(ctx).Deployment.Delete(ctx, did); err != nil {
 		return nil, err
 	}
 
@@ -75,7 +75,7 @@ func (r *mutationResolver) ExecuteDeployment(ctx context.Context, input gqlmodel
 
 	res, err := usecases(ctx).Deployment.Execute(ctx, interfaces.ExecuteDeploymentParam{
 		DeploymentID: did,
-	}, getOperator(ctx))
+	})
 	if err != nil {
 		return nil, err
 	}
