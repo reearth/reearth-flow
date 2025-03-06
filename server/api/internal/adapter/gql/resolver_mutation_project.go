@@ -82,5 +82,5 @@ func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunPro
 		return nil, err
 	}
 
-	return &gqlmodel.RunProjectPayload{ProjectID: input.ProjectID, Started: res}, nil
+	return &gqlmodel.RunProjectPayload{Job: gqlmodel.ToJob(res)}, nil
 }

@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
@@ -22,14 +23,16 @@ import (
 
 type Job struct {
 	common
-	jobRepo       repo.Job
-	workspaceRepo accountrepo.Workspace
-	transaction   usecasex.Transaction
-	file          gateway.File
-	batch         gateway.Batch
-	monitor       *monitor.Monitor
-	subscriptions *subscription.Manager
-	notifier      notification.Notifier
+	jobRepo        repo.Job
+	workspaceRepo  accountrepo.Workspace
+	transaction    usecasex.Transaction
+	file           gateway.File
+	batch          gateway.Batch
+	monitor        *monitor.Monitor
+	subscriptions  *subscription.JobManager
+	notifier       notification.Notifier
+	activeWatchers map[string]bool
+	watchersMu     sync.Mutex
 }
 
 type NotificationPayload struct {
@@ -42,14 +45,16 @@ type NotificationPayload struct {
 
 func NewJob(r *repo.Container, gr *gateway.Container) interfaces.Job {
 	return &Job{
-		jobRepo:       r.Job,
-		workspaceRepo: r.Workspace,
-		transaction:   r.Transaction,
-		file:          gr.File,
-		batch:         gr.Batch,
-		monitor:       monitor.NewMonitor(),
-		subscriptions: subscription.NewManager(),
-		notifier:      notification.NewHTTPNotifier(),
+		jobRepo:        r.Job,
+		workspaceRepo:  r.Workspace,
+		transaction:    r.Transaction,
+		file:           gr.File,
+		batch:          gr.Batch,
+		monitor:        monitor.NewMonitor(),
+		subscriptions:  subscription.NewJobManager(),
+		notifier:       notification.NewHTTPNotifier(),
+		activeWatchers: make(map[string]bool),
+		watchersMu:     sync.Mutex{},
 	}
 }
 
@@ -315,11 +320,25 @@ func (i *Job) Subscribe(ctx context.Context, jobID id.JobID, operator *usecase.O
 
 	ch := i.subscriptions.Subscribe(jobID.String())
 	ch <- j.Status()
+
+	i.watchersMu.Lock()
+	if i.activeWatchers == nil {
+		i.activeWatchers = make(map[string]bool)
+	}
+	i.activeWatchers[jobID.String()] = true
+	i.watchersMu.Unlock()
+
 	return ch, nil
 }
 
 func (i *Job) Unsubscribe(jobID id.JobID, ch chan job.Status) {
 	i.subscriptions.Unsubscribe(jobID.String(), ch)
+
+	if i.subscriptions.CountSubscribers(jobID.String()) == 0 {
+		i.watchersMu.Lock()
+		delete(i.activeWatchers, jobID.String())
+		i.watchersMu.Unlock()
+	}
 }
 
 func (i *Job) filterReadableJobs(jobs []*job.Job, operator *usecase.Operator) []*job.Job {

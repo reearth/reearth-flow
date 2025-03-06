@@ -57,7 +57,7 @@ type (
 		S3  S3Config  `pp:",omitempty"`
 
 		// log
-		RedisLog RedisLogConfig `pp:",omitempty"`
+		Redis_URL string `pp:",omitempty"`
 
 		// auth
 		Auth          AuthConfigs   `pp:",omitempty"`

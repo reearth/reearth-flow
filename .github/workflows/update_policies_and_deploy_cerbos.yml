@@ -1,4 +1,4 @@
-name: update-policies
+name: update-policies-and-deploy-cerbos
 on:
   workflow_call:
   workflow_dispatch:
@@ -90,3 +90,34 @@ jobs:
           echo "Sync completed. All files in bucket:"
           gsutil ls "${GCS_BUCKET_PATH}/" || true
         working-directory: server/api
+
+  deploy-cerbos:
+    needs: update-policies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      IMAGE_CERBOS: cerbos/cerbos:0.40.0
+      GCP_REGION: us-central1
+      CLOUD_RUN_SERVICE: cerbos
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          service_account: ${{ secrets.GCP_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCP
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Deploy Cerbos
+        run: |
+          gcloud run deploy $CLOUD_RUN_SERVICE \
+            --image $IMAGE_CERBOS \
+            --region $GCP_REGION \
+            --platform managed \
+            --quiet

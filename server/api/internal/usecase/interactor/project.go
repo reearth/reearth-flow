@@ -189,14 +189,14 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *
 	return nil
 }
 
-func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operator *usecase.Operator) (started bool, err error) {
+func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operator *usecase.Operator) (_ *job.Job, err error) {
 	if p.Workflow == nil {
-		return false, nil
+		return nil, nil
 	}
 
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	ctx = tx.Context()
@@ -208,7 +208,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operato
 
 	prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	debug := true
@@ -222,38 +222,38 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operato
 		StartedAt(time.Now()).
 		Build()
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
 	if err != nil {
-		return false, fmt.Errorf("failed to upload metadata: %v", err)
+		return nil, fmt.Errorf("failed to upload metadata: %v", err)
 	}
 	if metadataURL != nil {
 		j.SetMetadataURL(metadataURL.String())
 	}
 
 	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return false, err
+		return nil, err
 	}
 
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), p.Workflow.Path, j.MetadataURL(), nil, p.ProjectID, prj.Workspace())
 	if err != nil {
-		return false, fmt.Errorf("failed to submit job: %v", err)
+		return nil, fmt.Errorf("failed to submit job: %v", err)
 	}
 	j.SetGCPJobID(gcpJobID)
 
 	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return false, err
+		return nil, err
 	}
 
 	tx.Commit()
 
 	if i.job != nil {
 		if err := i.job.StartMonitoring(ctx, j, nil, operator); err != nil {
-			return true, fmt.Errorf("failed to start job monitoring: %v", err)
+			return nil, fmt.Errorf("failed to start job monitoring: %v", err)
 		}
 	}
 
-	return true, nil
+	return j, nil
 }
