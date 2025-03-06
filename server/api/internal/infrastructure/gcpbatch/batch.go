@@ -19,16 +19,21 @@ import (
 )
 
 type BatchConfig struct {
-	AllowedLocations []string
-	BinaryPath       string
-	BootDiskSizeGB   int
-	BootDiskType     string
-	ImageURI         string
-	MachineType      string
-	ProjectID        string
-	Region           string
-	SAEmail          string
-	TaskCount        int
+	AllowedLocations                []string
+	BinaryPath                      string
+	BootDiskSizeGB                  int
+	BootDiskType                    string
+	ComputeCpuMilli                 int
+	ComputeMemoryMib                int
+	ImageURI                        string
+	MachineType                     string
+	PubSubLogStreamTopic            string
+	PubSubJobCompleteTopic          string
+	PubSubEdgePassThroughEventTopic string
+	ProjectID                       string
+	Region                          string
+	SAEmail                         string
+	TaskCount                       int
 }
 
 type BatchClient interface {
@@ -87,7 +92,7 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 
 	varString := strings.Join(varArgs, " ")
 	workflowCommand := fmt.Sprintf(
-		"%s --workflow %q --metadata-path %q --pubsub-backend noop %s",
+		"%s --workflow %q --metadata-path %q %s",
 		binaryPath,
 		workflowsURL,
 		metadataURL,
@@ -117,14 +122,23 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		AlwaysRun:        false,
 	}
 
+	computeResource := &batchpb.ComputeResource{
+		CpuMilli:  int64(b.config.ComputeCpuMilli),
+		MemoryMib: int64(b.config.ComputeMemoryMib),
+	}
+
 	taskSpec := &batchpb.TaskSpec{
+		ComputeResource: computeResource,
 		Runnables: []*batchpb.Runnable{
 			runnable,
 		},
 		Environment: &batchpb.Environment{
 			Variables: map[string]string{
-				"FLOW_RUNTIME_FEATURE_WRITER_DISABLE": "true",
-				"FLOW_WORKER_ENABLE_JSON_LOG":         "true",
+				"FLOW_RUNTIME_FEATURE_WRITER_DISABLE":       "true",
+				"FLOW_WORKER_ENABLE_JSON_LOG":               "true",
+				"FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC": b.config.PubSubEdgePassThroughEventTopic,
+				"FLOW_WORKER_LOG_STREAM_TOPIC":              b.config.PubSubLogStreamTopic,
+				"FLOW_WORKER_JOB_COMPLETE_TOPIC":            b.config.PubSubJobCompleteTopic,
 			},
 		},
 	}

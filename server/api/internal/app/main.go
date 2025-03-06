@@ -2,19 +2,23 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 
 	"github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	thriftserver "github.com/reearth/reearth-flow/api/internal/infrastructure/thrift"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 	"github.com/reearth/reearthx/log"
 	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 func Start(debug bool, version string) {
@@ -22,17 +26,14 @@ func Start(debug bool, version string) {
 
 	ctx := context.Background()
 
-	// Load config
 	conf, cerr := config.ReadConfig(debug)
 	if cerr != nil {
 		log.Fatalf("failed to load config: %v", cerr)
 	}
 	log.Infof("config: %s", conf.Print())
 
-	// Init profiler
 	initProfiler(conf.Profiler, version)
 
-	// Init tracer
 	closer := initTracer(ctx, conf)
 	defer func() {
 		if closer != nil {
@@ -42,18 +43,52 @@ func Start(debug bool, version string) {
 		}
 	}()
 
-	// Init repositories
 	repos, gateways, acRepos, acGateways := initReposAndGateways(ctx, conf, debug)
 
-	// Start web server
-	NewServer(ctx, &ServerConfig{
+	serverCfg := &ServerConfig{
 		Config:          conf,
 		Debug:           debug,
 		Repos:           repos,
 		AccountRepos:    acRepos,
 		Gateways:        gateways,
 		AccountGateways: acGateways,
-	}).Run()
+	}
+
+	httpServer := NewServer(ctx, serverCfg)
+	thriftServer := thriftserver.NewServer("", conf.JWTProviders())
+
+	mainHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/AuthService") {
+			thriftServer.ServeHTTP(w, r)
+			return
+		}
+		httpServer.ServeHTTP(w, r)
+	})
+
+	log.Infof("Starting server on %s", httpServer.address)
+
+	h2s := &http2.Server{}
+	handler := h2c.NewHandler(mainHandler, h2s)
+
+	server := &http.Server{
+		Addr:    httpServer.address,
+		Handler: handler,
+	}
+
+	go func() {
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("failed to run server: %v", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+
+	log.Info("Shutting down server...")
+	if err := server.Shutdown(ctx); err != nil {
+		log.Errorf("Server forced to shutdown: %v", err)
+	}
 }
 
 type WebServer struct {
@@ -84,41 +119,24 @@ func NewServer(ctx context.Context, cfg *ServerConfig) *WebServer {
 			host = "0.0.0.0"
 		}
 	}
-	address := host + ":" + port
+	address := fmt.Sprintf("%s:%s", host, port)
 
-	w := &WebServer{
-		address: address,
+	e := initEcho(ctx, cfg)
+
+	authServer(ctx, e, &cfg.Config.AuthSrv, cfg.Repos)
+
+	return &WebServer{
+		address:   address,
+		appServer: e,
 	}
-
-	w.appServer = initEcho(ctx, cfg)
-	return w
-}
-
-func (w *WebServer) Run() {
-	defer log.Infof("Server shutdown")
-
-	debugLog := ""
-	if w.appServer.Debug {
-		debugLog += " with debug mode"
-	}
-	log.Infof("server started%s at http://%s\n", debugLog, w.address)
-
-	go func() {
-		err := w.appServer.StartH2CServer(w.address, &http2.Server{})
-		log.Fatalf("failed to run server: %v", err)
-	}()
-
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, os.Interrupt)
-	<-quit
-}
-
-func (w *WebServer) Serve(l net.Listener) error {
-	return w.appServer.Server.Serve(l)
 }
 
 func (w *WebServer) ServeHTTP(wr http.ResponseWriter, r *http.Request) {
 	w.appServer.ServeHTTP(wr, r)
+}
+
+func (w *WebServer) Serve(l net.Listener) error {
+	return w.appServer.Server.Serve(l)
 }
 
 func (w *WebServer) Shutdown(ctx context.Context) error {

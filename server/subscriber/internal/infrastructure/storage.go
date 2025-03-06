@@ -3,9 +3,9 @@ package infrastructure
 import (
 	"context"
 
-	"github.com/reearth/reearth-flow/log-subscriber/internal/infrastructure/redis"
-	"github.com/reearth/reearth-flow/log-subscriber/internal/usecase/gateway"
-	domainLog "github.com/reearth/reearth-flow/log-subscriber/pkg/log"
+	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure/redis"
+	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
+	domainLog "github.com/reearth/reearth-flow/subscriber/pkg/log"
 )
 
 type StorageImpl struct {

@@ -11,6 +11,7 @@ import { Link, useParams } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
+import BasicBoiler from "@flow/components/BasicBoiler";
 import { UserMenu } from "@flow/features/common";
 import { useShortcuts } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
@@ -85,7 +86,7 @@ const LeftPanel: React.FC<Props> = ({
     ) || []),
     ...(createTreeDataItem("subworkflow", Graph, nodes, t("Subworkflows")) ||
       []),
-    ...(createTreeDataItem("batch", RectangleDashed, nodes, t("Batch Nodes")) ||
+    ...(createTreeDataItem("batch", RectangleDashed, nodes, t("Batches")) ||
       []),
   ];
 
@@ -99,20 +100,27 @@ const LeftPanel: React.FC<Props> = ({
       id: "navigator",
       title: t("Canvas Navigation"),
       icon: <TreeView className="size-5" weight="thin" />,
-      component: nodes && (
-        <Tree
-          data={treeContent}
-          className="w-full shrink-0 select-none truncate rounded px-1"
-          onSelectChange={(item) => {
-            setNodeId(item?.id ?? "");
-          }}
-          onDoubleClick={() => {
-            if (nodeId) {
-              handleTreeDataItemDoubleClick(nodeId);
-            }
-          }}
-        />
-      ),
+      component:
+        nodes.length !== 0 ? (
+          <Tree
+            data={treeContent}
+            className="w-full shrink-0 select-none truncate rounded px-1"
+            onSelectChange={(item) => {
+              setNodeId(item?.id ?? "");
+            }}
+            onDoubleClick={() => {
+              if (nodeId) {
+                handleTreeDataItemDoubleClick(nodeId);
+              }
+            }}
+          />
+        ) : (
+          <BasicBoiler
+            text={t("No Nodes in Canvas")}
+            className="size-4 pt-8 [&>div>p]:text-sm"
+            icon={<FlowLogo className="size-12 text-accent" />}
+          />
+        ),
     },
     {
       id: "actions-list",
@@ -156,10 +164,10 @@ const LeftPanel: React.FC<Props> = ({
       keyBinding: { key: "a", shiftKey: true },
       callback: () => handleTabChange("actions-list"),
     },
-    {
-      keyBinding: { key: "r", shiftKey: true },
-      callback: () => handleTabChange("resources"),
-    },
+    // {
+    //   keyBinding: { key: "r", shiftKey: true },
+    //   callback: () => handleTabChange("resources"),
+    // },
   ]);
 
   return (
@@ -185,7 +193,7 @@ const LeftPanel: React.FC<Props> = ({
         <div className="flex h-full flex-col">
           <nav className="flex flex-col items-center gap-5 p-3">
             <Link
-              to={`/workspaces/${workspaceId}`}
+              to={`/workspaces/${workspaceId}/projects`}
               className="flex shrink-0 items-center justify-center gap-2 text-lg font-semibold md:size-8 md:text-base">
               <FlowLogo className="size-7 transition-all hover:size-[30px] hover:text-[#46ce7c]" />
               <span className="sr-only">{t("Dashboard")}</span>
@@ -212,7 +220,7 @@ const LeftPanel: React.FC<Props> = ({
             /> */}
             <UserMenu
               className="flex w-full justify-center"
-              dropdownPosition="right"
+              dropdownAlign="end"
             />
           </nav>
         </div>

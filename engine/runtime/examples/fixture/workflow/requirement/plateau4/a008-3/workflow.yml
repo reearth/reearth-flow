@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
-name: "PLATEAU4-A008-2-workflow"
+name: "PLATEAU4-A008-3-workflow"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a

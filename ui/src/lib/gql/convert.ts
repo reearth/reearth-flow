@@ -21,6 +21,7 @@ export const toProject = (project: ProjectFragment): Project => ({
   updatedAt: formatDate(project.updatedAt),
   description: project.description,
   workspaceId: project.workspaceId,
+  sharedToken: project.sharedToken ?? undefined,
   deployment: project.deployment ? toDeployment(project.deployment) : undefined,
 });
 
@@ -56,6 +57,8 @@ export const toJob = (job: JobFragment): Job => ({
   status: toJobStatus(job.status),
   startedAt: job.startedAt,
   completedAt: job.completedAt,
+  logsURL: job.logsURL ?? undefined,
+  outputURLs: job.outputURLs ?? undefined,
 });
 
 export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
@@ -66,6 +69,8 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
       return "completed";
     case "FAILED":
       return "failed";
+    case "CANCELLED":
+      return "cancelled";
     case "PENDING":
     default:
       return "queued";

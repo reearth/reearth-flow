@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/reearth/reearth-flow/log-subscriber/internal/usecase/interactor"
-	domainLog "github.com/reearth/reearth-flow/log-subscriber/pkg/log"
+	"github.com/reearth/reearth-flow/subscriber/internal/usecase/interactor"
+	domainLog "github.com/reearth/reearth-flow/subscriber/pkg/log"
 )
 
 type Subscriber struct {

@@ -7,10 +7,9 @@ import { useDoubleClick } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
+import { buildNewCanvasNode } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Node } from "@flow/types";
 import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
-
-import { useCreateNode } from "../../../Canvas/useCreateNode";
 
 export type XYPosition = {
   x: number;
@@ -63,8 +62,6 @@ const NodePickerDialog: React.FC<Props> = ({
     }
   }, [selectedIndex, actions, openedActionType?.nodeType]);
 
-  const { createNode } = useCreateNode();
-
   const [handleSingleClick, handleDoubleClick] = useDoubleClick(
     (name?: string) => {
       setSelected((prevName) => (prevName === name ? undefined : name));
@@ -74,7 +71,7 @@ const NodePickerDialog: React.FC<Props> = ({
       // If the position is 0,0 then place it in the center of the screen as this is using shortcut creation and not dnd
       const randomX = getRandomNumberInRange(50, 200);
       const randomY = getRandomNumberInRange(50, 200);
-      const newNode = await createNode({
+      const newNode = await buildNewCanvasNode({
         position:
           openedActionType.position.x === 0 && openedActionType.position.y === 0
             ? screenToFlowPosition({

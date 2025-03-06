@@ -21,8 +21,8 @@ func TestProjectAccess_FindByProjectID(t *testing.T) {
 	pid2 := id.NewProjectID()
 
 	_, _ = c.Collection("projectAccess").InsertMany(ctx, []any{
-		bson.M{"id": paid1.String(), "project": pid1.String(), "ispublic": true, "token": "token"},
-		bson.M{"id": paid2.String(), "project": pid2.String(), "ispublic": true, "token": "token"},
+		bson.M{"id": paid1.String(), "projectid": pid1.String(), "ispublic": true, "token": "token"},
+		bson.M{"id": paid2.String(), "projectid": pid2.String(), "ispublic": true, "token": "token"},
 	})
 
 	pa := NewProjectAccess(mongox.NewClientWithDatabase(c))
@@ -48,8 +48,8 @@ func TestProjectAccess_FindByToken(t *testing.T) {
 	pid2 := id.NewProjectID()
 
 	_, _ = c.Collection("projectAccess").InsertMany(ctx, []any{
-		bson.M{"id": paid1.String(), "project": pid1.String(), "ispublic": true, "token": "token1"},
-		bson.M{"id": paid2.String(), "project": pid2.String(), "ispublic": true, "token": "token2"},
+		bson.M{"id": paid1.String(), "projectid": pid1.String(), "ispublic": true, "token": "token1"},
+		bson.M{"id": paid2.String(), "projectid": pid2.String(), "ispublic": true, "token": "token2"},
 	})
 
 	pa := NewProjectAccess(mongox.NewClientWithDatabase(c))
@@ -72,7 +72,7 @@ func TestProjectAccess_Save(t *testing.T) {
 	paid := id.NewProjectAccessID()
 	pid := id.NewProjectID()
 
-	_, _ = c.Collection("projectAccess").InsertOne(ctx, bson.M{"id": paid.String(), "project": pid.String(), "ispublic": true, "token": "token"})
+	_, _ = c.Collection("projectAccess").InsertOne(ctx, bson.M{"id": paid.String(), "projectid": pid.String(), "ispublic": true, "token": "token"})
 
 	pa := NewProjectAccess(mongox.NewClientWithDatabase(c))
 

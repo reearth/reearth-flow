@@ -27,10 +27,6 @@ const commonArgs = {
       header: "Status",
     },
     {
-      accessorKey: "transformer",
-      header: "Transformer",
-    },
-    {
       accessorKey: "message",
       header: "message",
     },

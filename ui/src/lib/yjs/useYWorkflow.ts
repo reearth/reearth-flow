@@ -8,10 +8,10 @@ import {
   DEFAULT_ENTRY_GRAPH_ID,
   DEFAULT_ROUTING_PORT,
 } from "@flow/global-constants";
-import type { Action, Edge, Node } from "@flow/types";
+import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
+import { useT } from "@flow/lib/i18n";
+import type { Action, Edge, Node, NodeType } from "@flow/types";
 import { generateUUID } from "@flow/utils";
-
-import { fetcher } from "../fetch/transformers/useFetch";
 
 import {
   yEdgeConstructor,
@@ -31,6 +31,7 @@ export default ({
   currentWorkflowId: string;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
+  const t = useT();
   const { api } = config();
   const currentYWorkflow = yWorkflows.get(
     rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
@@ -60,12 +61,11 @@ export default ({
       // newInputNode is not a YNode because it will be converted in the yWorkflowConstructor
       const newInputNode: Node = {
         id: inputNodeId,
-        type: inputRouter.type,
+        type: inputRouter.type as NodeType,
         position: { x: 200, y: 200 },
         data: {
           officialName: inputRouter.name,
           outputs: inputRouter.outputPorts,
-          status: "idle",
           params: {
             routingPort: DEFAULT_ROUTING_PORT,
           },
@@ -76,12 +76,11 @@ export default ({
       // newOutputNode is not a YNode because it will be converted in the yWorkflowConstructor
       const newOutputNode: Node = {
         id: outputNodeId,
-        type: outputRouter.type,
+        type: outputRouter.type as NodeType,
         position: { x: 1000, y: 200 },
         data: {
           officialName: outputRouter.name,
           inputs: outputRouter.inputPorts,
-          status: "idle",
           params: {
             routingPort: DEFAULT_ROUTING_PORT,
           },
@@ -106,13 +105,13 @@ export default ({
         position,
         data: {
           officialName: workflowName,
-          status: "idle",
           pseudoInputs: [
             { nodeId: inputNodeId, portName: DEFAULT_ROUTING_PORT },
           ],
           pseudoOutputs: [
             { nodeId: outputNodeId, portName: DEFAULT_ROUTING_PORT },
           ],
+          subworkflowId: workflowId,
         },
         selected: true,
       });
@@ -128,7 +127,7 @@ export default ({
         const routers = await fetchRouterConfigs();
         undoTrackerActionWrapper(() => {
           const workflowId = generateUUID();
-          const workflowName = `Sub Workflow-${yWorkflows.length}`;
+          const workflowName = t("Subworkflow");
 
           const { newYWorkflow, newSubworkflowNode } = createYWorkflow(
             workflowId,
@@ -158,6 +157,7 @@ export default ({
       yWorkflows,
       currentWorkflowId,
       rawWorkflows,
+      t,
       createYWorkflow,
       fetchRouterConfigs,
       undoTrackerActionWrapper,
@@ -222,7 +222,7 @@ export default ({
           );
 
           const workflowId = generateUUID();
-          const workflowName = `Sub Workflow-${yWorkflows.length}`;
+          const workflowName = t("Subworkflow");
 
           const { newYWorkflow, newSubworkflowNode } = createYWorkflow(
             workflowId,
@@ -275,6 +275,7 @@ export default ({
       yWorkflows,
       currentWorkflowId,
       rawWorkflows,
+      t,
       createYWorkflow,
       fetchRouterConfigs,
       undoTrackerActionWrapper,
@@ -282,48 +283,55 @@ export default ({
   );
 
   const handleYWorkflowUpdate = useCallback(
-    (workflowId: string, nodes?: Node[], edges?: Edge[]) => {
-      const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
-      const newYWorkflow = yWorkflowConstructor(
-        workflowId,
-        workflowName,
-        nodes,
-        edges,
-      );
-      yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
-    },
-    [yWorkflows],
+    (workflowId: string, nodes?: Node[], edges?: Edge[]) =>
+      undoTrackerActionWrapper(() => {
+        const workflowName = t("Subworkflow");
+        const newYWorkflow = yWorkflowConstructor(
+          workflowId,
+          workflowName,
+          nodes,
+          edges,
+        );
+        yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
+      }),
+    [yWorkflows, t, undoTrackerActionWrapper],
   );
 
-  const handleYWorkflowsRemove = useCallback(
-    (nodeIds: string[]) =>
+  const handleYWorkflowRemove = useCallback(
+    (workflowId: string) =>
       undoTrackerActionWrapper(() => {
-        const workflowIds: string[] = [];
-        const localWorkflows = [...rawWorkflows];
+        const workflows = yWorkflows.toJSON();
 
-        const removeNodes = (nodeIds: string[]) => {
-          nodeIds.forEach((nid) => {
-            if (nid === DEFAULT_ENTRY_GRAPH_ID) return;
+        const workflowsToRemove = new Set<string>();
 
-            const index = localWorkflows.findIndex((w) => w.id === nid);
-            if (index === -1) return;
+        const markWorkflowForRemoval = (id: string) => {
+          if (id === DEFAULT_ENTRY_GRAPH_ID) return;
+          if (workflowsToRemove.has(id)) return; // Avoid circular references
 
-            // Loop over workflow at current index and remove any subworkflow nodes
-            (localWorkflows[index].nodes as Node[]).forEach((node) => {
-              if (node.type === "subworkflow") {
-                removeNodes([node.id]);
-              }
-            });
+          workflowsToRemove.add(id);
 
-            workflowIds.push(nid);
-            yWorkflows.delete(index);
-            localWorkflows.splice(index, 1);
+          const workflow = workflows.find((w) => w.id === id);
+          if (!workflow) return;
+
+          (workflow.nodes as Node[]).forEach((node) => {
+            if (node.type === "subworkflow" && node.data.subworkflowId) {
+              markWorkflowForRemoval(node.data.subworkflowId);
+            }
           });
         };
 
-        removeNodes(nodeIds);
+        markWorkflowForRemoval(workflowId);
+
+        const indexesToRemove = Array.from(workflowsToRemove)
+          .map((id) => workflows.findIndex((w) => w.id === id))
+          .filter((index) => index !== -1)
+          .sort((a, b) => b - a); // Sort in descending order to avoid index shifting
+
+        indexesToRemove.forEach((index) => {
+          yWorkflows.delete(index);
+        });
       }),
-    [rawWorkflows, yWorkflows, undoTrackerActionWrapper],
+    [yWorkflows, undoTrackerActionWrapper],
   );
 
   const handleYWorkflowRename = useCallback(
@@ -357,7 +365,7 @@ export default ({
     currentYWorkflow,
     handleYWorkflowAdd,
     handleYWorkflowUpdate,
-    handleYWorkflowsRemove,
+    handleYWorkflowRemove,
     handleYWorkflowRename,
     handleYWorkflowAddFromSelection,
   };

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { Job } from "@flow/types";
 import {
@@ -7,6 +7,7 @@ import {
 } from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
+import { CancelJobInput } from "../__gen__/graphql";
 import { toJob } from "../convert";
 import { useGraphQLContext } from "../provider";
 
@@ -20,7 +21,7 @@ export const JOBS_FETCH_RATE = 15;
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
-
+  const queryClient = useQueryClient();
   const useGetJobsQuery = (
     workspaceId?: string,
     paginationOptions?: PaginationOptions,
@@ -59,8 +60,31 @@ export const useQueries = () => {
       },
     });
 
+  const cancelJobMutation = useMutation({
+    mutationFn: async ({ jobId }: { jobId: string }) => {
+      const input: CancelJobInput = {
+        jobId,
+      };
+
+      const data = await graphQLContext?.CancelJob({
+        input,
+      });
+
+      if (data?.cancelJob.job) {
+        return toJob(data.cancelJob.job);
+      }
+    },
+    onSuccess: (job) => {
+      // TODO: Maybe update cache and not refetch? What happens after pagination?
+      queryClient.invalidateQueries({
+        queryKey: [JobQueryKeys.GetJobs, job?.workspaceId],
+      });
+    },
+  });
+
   return {
     useGetJobsQuery,
     useGetJobQuery,
+    cancelJobMutation,
   };
 };

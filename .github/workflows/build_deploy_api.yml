@@ -34,6 +34,11 @@ jobs:
         with:
           go-version: "1.21"
 
+      - name: Install Protoc and Thrift
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler thrift-compiler
+
       - name: Build API
         run: |
           cd server/api
@@ -118,7 +123,8 @@ jobs:
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
         with:
-          context: server/api
+          context: .
+          file: server/api/Dockerfile
           platforms: ${{ steps.options.outputs.platforms }}
           push: true
           build-args: VERSION=${{ steps.options.outputs.version }}

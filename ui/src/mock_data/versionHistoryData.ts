@@ -1,4 +1,4 @@
-type VersionHistory = {
+export type VersionHistory = {
   id: string;
   version: string;
   createdAt: string;

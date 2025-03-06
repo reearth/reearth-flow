@@ -44,7 +44,7 @@ const BottomPanel: React.FC<Props> = ({
 
   return (
     <div
-      className="box-content flex flex-col justify-end bg-secondary backdrop-blur-md duration-300 ease-in-out"
+      className="z-50 box-content flex flex-col justify-end bg-secondary backdrop-blur-md duration-300 ease-in-out"
       style={{
         height: isOpen
           ? windowSize === "max"

@@ -37,6 +37,7 @@ rhai.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+sqlx.workspace = true
 strum_macros.workspace = true
 thiserror.workspace = true
 tokio.workspace = true

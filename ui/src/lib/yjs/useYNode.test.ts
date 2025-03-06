@@ -26,7 +26,7 @@ describe("useYNode", () => {
         rawWorkflows: [],
         setSelectedNodeIds: () => {},
         undoTrackerActionWrapper: (callback) => act(callback),
-        handleYWorkflowsRemove: () => {},
+        handleYWorkflowRemove: () => {},
       }),
     );
 
@@ -43,7 +43,6 @@ describe("useYNode", () => {
           customName: "",
           inputs: ["input1"],
           outputs: ["output1"],
-          status: "idle",
           params: {},
           pseudoInputs: [],
           pseudoOutputs: [],
@@ -69,7 +68,6 @@ describe("useYNode", () => {
         officialName: node.data.officialName,
         inputs: node.data.inputs,
         outputs: node.data.outputs,
-        status: node.data.status,
         params: node.data.params,
         content: node.data.content,
         backgroundColor: node.data.backgroundColor,

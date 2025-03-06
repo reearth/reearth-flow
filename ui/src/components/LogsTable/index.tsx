@@ -31,23 +31,23 @@ import {
   IconButton,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { LogLevel } from "@flow/types";
+import { Log, LogLevel } from "@flow/types";
 
 import { Table, TableBody, TableCell, TableRow } from "../Table";
 
-type LogProps<TData, TValue> = {
-  columns: ColumnDef<TData, TValue>[];
-  data: TData[];
+type LogProps = {
+  columns: ColumnDef<Log, unknown>[];
+  data: Log[];
   selectColumns?: boolean;
   showFiltering?: boolean;
 };
 
-const LogsTable = <TData, TValue>({
+const LogsTable = ({
   columns,
   data,
   selectColumns = false,
   showFiltering = false,
-}: LogProps<TData, TValue>) => {
+}: LogProps) => {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -84,12 +84,12 @@ const LogsTable = <TData, TValue>({
     if (getStatusValue === status) {
       setColumnFilters([]);
     } else {
-      setColumnFilters([{ id: "level", value: status }]);
+      setColumnFilters([{ id: "status", value: status }]);
     }
   };
 
   const handleTimeStampColumnVisibility = () => {
-    const column = table.getColumn("ts");
+    const column = table.getColumn("timeStamp");
 
     column?.toggleVisibility(!column.getIsVisible());
     return;
@@ -97,11 +97,11 @@ const LogsTable = <TData, TValue>({
 
   const handleResetTable = () => {
     setColumnFilters([]);
-    table.getColumn("ts")?.toggleVisibility(true);
+    table.getColumn("timeStamp")?.toggleVisibility(true);
   };
 
   const getStatusValue = useMemo(() => {
-    const value = columnFilters.find((id) => id.id === "level");
+    const value = columnFilters.find((id) => id.id === "status");
     return value?.value;
   }, [columnFilters]);
 
@@ -163,9 +163,11 @@ const LogsTable = <TData, TValue>({
           <IconButton
             size="icon"
             variant={
-              table.getColumn("ts")?.getIsVisible() ? "default" : "outline"
+              table.getColumn("timeStamp")?.getIsVisible()
+                ? "default"
+                : "outline"
             }
-            tooltipText={t("Include ts")}
+            tooltipText={t("Include Time Stamp")}
             onClick={handleTimeStampColumnVisibility}
             icon={<ClockIcon />}
           />
@@ -199,7 +201,7 @@ const LogsTable = <TData, TValue>({
                         onCheckedChange={(value) =>
                           column.toggleVisibility(!!value)
                         }>
-                        {column.id}
+                        {column.columnDef.header?.toString()}
                       </DropdownMenuCheckboxItem>
                     );
                   })}
@@ -217,6 +219,7 @@ const LogsTable = <TData, TValue>({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
+                  className={`${row.original.status === "ERROR" ? "text-destructive" : row.original.status === "WARN" ? "text-warning" : ""}`}
                   data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell className="cursor-pointer" key={cell.id}>

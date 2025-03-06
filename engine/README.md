@@ -182,6 +182,7 @@ $ cargo run --package reearth-flow-examples --example attribute_reader
 ```console
 $ brew install graphviz
 $ cargo install yaml-include
+$ export RUST_LOG=WARN
 $ yaml-include examples/plateau/testdata/workflow/xml_validator.yml | cargo run --package reearth-flow-cli -- dot --workflow - | dot -Tpng > output.png
 ```
 

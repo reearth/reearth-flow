@@ -8,7 +8,7 @@ use super::{
     property_extractor::FilePropertyExtractorFactory,
 };
 
-pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
+pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
         Box::<FilePropertyExtractorFactory>::default(),
         Box::<DirectoryDecompressorFactory>::default(),

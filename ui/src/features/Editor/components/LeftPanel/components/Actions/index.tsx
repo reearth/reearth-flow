@@ -19,7 +19,7 @@ import { useAction } from "@flow/lib/fetch";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
-import type { Action, ActionsSegregated, Node } from "@flow/types";
+import type { Action, ActionsSegregated, Node, NodeType } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
@@ -92,7 +92,7 @@ const ActionsList: React.FC<Props> = ({
       const randomY = getRandomNumberInRange(50, 200);
       const newNode: Node = {
         id: generateUUID(),
-        type: action.type,
+        type: action.type as NodeType,
         position: screenToFlowPosition({
           x: window.innerWidth / 2 + randomX,
           y: window.innerHeight / 2 - randomY,
@@ -101,7 +101,6 @@ const ActionsList: React.FC<Props> = ({
           officialName: action.name,
           inputs: [...action.inputPorts],
           outputs: [...action.outputPorts],
-          status: "idle",
         },
       };
       onNodesAdd([newNode]);
@@ -150,24 +149,29 @@ const ActionsList: React.FC<Props> = ({
             key={order}
             value={order}>
             {Array.isArray(actions) ? (
-              actions?.map((action, index) => (
-                <Fragment key={action.name}>
-                  <ActionComponent
-                    action={action}
-                    selected={selected === action.name}
-                    onTypeClick={(type) =>
-                      setSearchTerm((st) => (st === type ? "" : type))
-                    }
-                    onCategoryClick={(category) =>
-                      setSearchTerm((st) => (st === category ? "" : category))
-                    }
-                    onSingleClick={handleSingleClick}
-                    onDoubleClick={handleDoubleClick}
-                    onSelect={() => handleActionSelect(action.name)}
-                  />
-                  {index !== actions.length - 1 && <div className="border-b" />}
-                </Fragment>
-              ))
+              actions?.map((action, index) => {
+                if (action.type === "reader" && hasReader) return null;
+                return (
+                  <Fragment key={action.name}>
+                    <ActionComponent
+                      action={action}
+                      selected={selected === action.name}
+                      onTypeClick={(type) =>
+                        setSearchTerm((st) => (st === type ? "" : type))
+                      }
+                      onCategoryClick={(category) =>
+                        setSearchTerm((st) => (st === category ? "" : category))
+                      }
+                      onSingleClick={handleSingleClick}
+                      onDoubleClick={handleDoubleClick}
+                      onSelect={() => handleActionSelect(action.name)}
+                    />
+                    {index !== actions.length - 1 && (
+                      <div className="border-b" />
+                    )}
+                  </Fragment>
+                );
+              })
             ) : (
               <Accordion type="single" collapsible>
                 {actions ? (
@@ -186,31 +190,37 @@ const ActionsList: React.FC<Props> = ({
                           <p className="capitalize">{key}</p>
                         </AccordionTrigger>
                         <AccordionContent className="flex flex-col gap-1">
-                          {categoryActions?.map((action, index) => (
-                            <Fragment key={action.name}>
-                              <ActionComponent
-                                action={action}
-                                selected={selected === action.name}
-                                onTypeClick={(type) =>
-                                  setSearchTerm((st) =>
-                                    st === type ? "" : type,
-                                  )
-                                }
-                                onCategoryClick={(category) =>
-                                  setSearchTerm((st) =>
-                                    st === category ? "" : category,
-                                  )
-                                }
-                                onSingleClick={handleSingleClick}
-                                onDoubleClick={handleDoubleClick}
-                                onSelect={() => handleActionSelect(action.name)}
-                              />
-                              {categoryActions &&
-                                index !== categoryActions.length - 1 && (
-                                  <div className="border-b" />
-                                )}
-                            </Fragment>
-                          ))}
+                          {categoryActions?.map((action, index) => {
+                            if (action.type === "reader" && hasReader)
+                              return null;
+                            return (
+                              <Fragment key={action.name}>
+                                <ActionComponent
+                                  action={action}
+                                  selected={selected === action.name}
+                                  onTypeClick={(type) =>
+                                    setSearchTerm((st) =>
+                                      st === type ? "" : type,
+                                    )
+                                  }
+                                  onCategoryClick={(category) =>
+                                    setSearchTerm((st) =>
+                                      st === category ? "" : category,
+                                    )
+                                  }
+                                  onSingleClick={handleSingleClick}
+                                  onDoubleClick={handleDoubleClick}
+                                  onSelect={() =>
+                                    handleActionSelect(action.name)
+                                  }
+                                />
+                                {categoryActions &&
+                                  index !== categoryActions.length - 1 && (
+                                    <div className="border-b" />
+                                  )}
+                              </Fragment>
+                            );
+                          })}
                         </AccordionContent>
                       </AccordionItem>
                     ))

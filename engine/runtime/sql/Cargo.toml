@@ -1,0 +1,19 @@
+[package]
+description = "Re:Earth Flow sql"
+name = "reearth-flow-sql"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+futures-util.workspace = true
+once_cell.workspace = true
+rand.workspace = true
+regex.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true

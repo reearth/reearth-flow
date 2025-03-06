@@ -9,10 +9,10 @@ use reearth_flow_runtime::{
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
 use std::io::Read;
+use std::{collections::HashMap, sync::Arc};
 
-use reearth_flow_types::{Attribute, AttributeValue};
+use reearth_flow_types::{Attribute, AttributeValue, Expr};
 use tempfile::NamedTempFile;
 use wasmer::{Module, Store};
 use wasmer_wasix::{Pipe, WasiEnv};
@@ -47,7 +47,7 @@ impl ProcessorFactory for WasmRuntimeExecutorFactory {
 
     fn build(
         &self,
-        _ctx: NodeContext,
+        ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
         with: Option<HashMap<String, Value>>,
@@ -72,10 +72,9 @@ impl ProcessorFactory for WasmRuntimeExecutorFactory {
             .into());
         };
 
-        let wasm_binary = self.compile_to_wasm(&params)?;
-
+        let wasm_binary = self.compile_to_wasm(&ctx, &params)?;
         let process = WasmRuntimeExecutor {
-            params,
+            processor_type: params.processor_type,
             wasm_binary,
         };
         Ok(Box::new(process))
@@ -83,7 +82,11 @@ impl ProcessorFactory for WasmRuntimeExecutorFactory {
 }
 
 impl WasmRuntimeExecutorFactory {
-    fn compile_to_wasm(&self, params: &WasmRuntimeExecutorParam) -> super::errors::Result<Vec<u8>> {
+    fn compile_to_wasm(
+        &self,
+        ctx: &NodeContext,
+        params: &WasmRuntimeExecutorParam,
+    ) -> super::errors::Result<Vec<u8>> {
         let temp_wasm_file = NamedTempFile::new().map_err(|e| {
             WasmProcessorError::RuntimeExecutorFactory(format!(
                 "Failed to create temporary file: {}",
@@ -97,15 +100,20 @@ impl WasmRuntimeExecutorFactory {
             )
         })?;
 
+        let expr_engine = Arc::clone(&ctx.expr_engine);
+        let source_code_file_path = expr_engine
+            .eval::<String>(params.source_code_file_path.clone().into_inner().as_str())
+            .map_err(|e| WasmProcessorError::RuntimeExecutorFactory(format!("{:?}", e)))?;
+
         let wasm_binary = match params.programming_language {
             ProgrammingLanguage::Python => {
                 let py2wasm_output = std::process::Command::new("py2wasm")
-                    .args([&params.source_code_file_path, "-o", temp_wasm_path_str])
+                    .args([&source_code_file_path, "-o", temp_wasm_path_str])
                     .output()
                     .map_err(|e| {
                         WasmProcessorError::RuntimeExecutorFactory(format!(
                             "Failed to run py2wasm: {}. Command: py2wasm {} -o {}",
-                            e, params.source_code_file_path, temp_wasm_path_str
+                            e, source_code_file_path, temp_wasm_path_str
                         ))
                     })?;
 
@@ -135,25 +143,25 @@ impl WasmRuntimeExecutorFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct WasmRuntimeExecutor {
-    params: WasmRuntimeExecutorParam,
+pub(crate) struct WasmRuntimeExecutor {
+    processor_type: ProcessorType,
     wasm_binary: Vec<u8>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct WasmRuntimeExecutorParam {
-    pub source_code_file_path: String,
-    pub processor_type: ProcessorType,
-    pub programming_language: ProgrammingLanguage,
+pub(crate) struct WasmRuntimeExecutorParam {
+    source_code_file_path: Expr,
+    processor_type: ProcessorType,
+    programming_language: ProgrammingLanguage,
 }
 
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
-pub enum ProgrammingLanguage {
+pub(crate) enum ProgrammingLanguage {
     Python,
 }
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
-pub enum ProcessorType {
+pub(crate) enum ProcessorType {
     Attribute,
 }
 
@@ -163,7 +171,7 @@ impl Processor for WasmRuntimeExecutor {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        match self.params.processor_type {
+        match self.processor_type {
             ProcessorType::Attribute => self.process_attribute(ctx, fw).map_err(Into::into),
         }
     }

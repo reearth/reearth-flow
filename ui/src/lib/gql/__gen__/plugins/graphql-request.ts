@@ -64,6 +64,15 @@ export enum AssetSortType {
   Size = 'SIZE'
 }
 
+export type CancelJobInput = {
+  jobId: Scalars['ID']['input'];
+};
+
+export type CancelJobPayload = {
+  __typename?: 'CancelJobPayload';
+  job?: Maybe<Job>;
+};
+
 export type CreateAssetInput = {
   file: Scalars['Upload']['input'];
   workspaceId: Scalars['ID']['input'];
@@ -200,9 +209,12 @@ export type GetHeadInput = {
 export type Job = Node & {
   __typename?: 'Job';
   completedAt?: Maybe<Scalars['DateTime']['output']>;
+  debug?: Maybe<Scalars['Boolean']['output']>;
   deployment?: Maybe<Deployment>;
   deploymentId: Scalars['ID']['output'];
   id: Scalars['ID']['output'];
+  logsURL?: Maybe<Scalars['String']['output']>;
+  outputURLs?: Maybe<Array<Scalars['String']['output']>>;
   startedAt: Scalars['DateTime']['output'];
   status: JobStatus;
   workspace?: Maybe<Workspace>;
@@ -222,6 +234,7 @@ export type JobPayload = {
 };
 
 export enum JobStatus {
+  Cancelled = 'CANCELLED',
   Completed = 'COMPLETED',
   Failed = 'FAILED',
   Pending = 'PENDING',
@@ -243,6 +256,7 @@ export type Me = {
 export type Mutation = {
   __typename?: 'Mutation';
   addMemberToWorkspace?: Maybe<AddMemberToWorkspacePayload>;
+  cancelJob: CancelJobPayload;
   createAsset?: Maybe<CreateAssetPayload>;
   createDeployment?: Maybe<DeploymentPayload>;
   createProject?: Maybe<ProjectPayload>;
@@ -259,6 +273,7 @@ export type Mutation = {
   removeMemberFromWorkspace?: Maybe<RemoveMemberFromWorkspacePayload>;
   removeMyAuth?: Maybe<UpdateMePayload>;
   removeParameter: Scalars['Boolean']['output'];
+  rollbackProject?: Maybe<ProjectDocument>;
   runProject?: Maybe<RunProjectPayload>;
   shareProject?: Maybe<ShareProjectPayload>;
   signup?: Maybe<SignupPayload>;
@@ -276,6 +291,11 @@ export type Mutation = {
 
 export type MutationAddMemberToWorkspaceArgs = {
   input: AddMemberToWorkspaceInput;
+};
+
+
+export type MutationCancelJobArgs = {
+  input: CancelJobInput;
 };
 
 
@@ -357,6 +377,12 @@ export type MutationRemoveMyAuthArgs = {
 
 export type MutationRemoveParameterArgs = {
   input: RemoveParameterInput;
+};
+
+
+export type MutationRollbackProjectArgs = {
+  projectId: Scalars['ID']['input'];
+  version: Scalars['Int']['input'];
 };
 
 
@@ -501,6 +527,7 @@ export type Project = Node & {
   isBasicAuthActive: Scalars['Boolean']['output'];
   name: Scalars['String']['output'];
   parameters: Array<Parameter>;
+  sharedToken?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['DateTime']['output'];
   version: Scalars['Int']['output'];
   workspace?: Maybe<Workspace>;
@@ -514,9 +541,30 @@ export type ProjectConnection = {
   totalCount: Scalars['Int']['output'];
 };
 
+export type ProjectDocument = Node & {
+  __typename?: 'ProjectDocument';
+  id: Scalars['ID']['output'];
+  timestamp: Scalars['DateTime']['output'];
+  updates: Array<Scalars['Int']['output']>;
+  version: Scalars['Int']['output'];
+};
+
 export type ProjectPayload = {
   __typename?: 'ProjectPayload';
   project: Project;
+};
+
+export type ProjectSharingInfoPayload = {
+  __typename?: 'ProjectSharingInfoPayload';
+  projectId: Scalars['ID']['output'];
+  sharingToken?: Maybe<Scalars['String']['output']>;
+};
+
+export type ProjectSnapshot = {
+  __typename?: 'ProjectSnapshot';
+  timestamp: Scalars['DateTime']['output'];
+  updates: Array<Scalars['Int']['output']>;
+  version: Scalars['Int']['output'];
 };
 
 export type Query = {
@@ -528,9 +576,12 @@ export type Query = {
   deployments: DeploymentConnection;
   job?: Maybe<Job>;
   jobs: JobConnection;
+  latestProjectSnapshot?: Maybe<ProjectDocument>;
   me?: Maybe<Me>;
   node?: Maybe<Node>;
   nodes: Array<Maybe<Node>>;
+  projectHistory: Array<ProjectSnapshot>;
+  projectSharingInfo: ProjectSharingInfoPayload;
   projects: ProjectConnection;
   searchUser?: Maybe<User>;
   sharedProject: SharedProjectPayload;
@@ -579,6 +630,11 @@ export type QueryJobsArgs = {
 };
 
 
+export type QueryLatestProjectSnapshotArgs = {
+  projectId: Scalars['ID']['input'];
+};
+
+
 export type QueryNodeArgs = {
   id: Scalars['ID']['input'];
   type: NodeType;
@@ -588,6 +644,16 @@ export type QueryNodeArgs = {
 export type QueryNodesArgs = {
   id: Array<Scalars['ID']['input']>;
   type: NodeType;
+};
+
+
+export type QueryProjectHistoryArgs = {
+  projectId: Scalars['ID']['input'];
+};
+
+
+export type QueryProjectSharingInfoArgs = {
+  projectId: Scalars['ID']['input'];
 };
 
 
@@ -869,7 +935,7 @@ export type ExecuteDeploymentMutationVariables = Exact<{
 }>;
 
 
-export type ExecuteDeploymentMutation = { __typename?: 'Mutation', executeDeployment?: { __typename?: 'JobPayload', job: { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } } | null };
+export type ExecuteDeploymentMutation = { __typename?: 'Mutation', executeDeployment?: { __typename?: 'JobPayload', job: { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } } | null };
 
 export type GetDeploymentsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
@@ -879,13 +945,13 @@ export type GetDeploymentsQueryVariables = Exact<{
 
 export type GetDeploymentsQuery = { __typename?: 'Query', deployments: { __typename?: 'DeploymentConnection', totalCount: number, nodes: Array<{ __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
 
-export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
+export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
 export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
 
 export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } };
 
-export type JobFragment = { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
+export type JobFragment = { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
 export type GetJobsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
@@ -893,21 +959,28 @@ export type GetJobsQueryVariables = Exact<{
 }>;
 
 
-export type GetJobsQuery = { __typename?: 'Query', jobs: { __typename?: 'JobConnection', totalCount: number, nodes: Array<{ __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
+export type GetJobsQuery = { __typename?: 'Query', jobs: { __typename?: 'JobConnection', totalCount: number, nodes: Array<{ __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
 
 export type GetJobQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
 
 
-export type GetJobQuery = { __typename?: 'Query', job?: { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | null };
+export type GetJobQuery = { __typename?: 'Query', job?: { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | null };
+
+export type CancelJobMutationVariables = Exact<{
+  input: CancelJobInput;
+}>;
+
+
+export type CancelJobMutation = { __typename?: 'Mutation', cancelJob: { __typename?: 'CancelJobPayload', job?: { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | null } };
 
 export type CreateProjectMutationVariables = Exact<{
   input: CreateProjectInput;
 }>;
 
 
-export type CreateProjectMutation = { __typename?: 'Mutation', createProject?: { __typename?: 'ProjectPayload', project: { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } } | null };
+export type CreateProjectMutation = { __typename?: 'Mutation', createProject?: { __typename?: 'ProjectPayload', project: { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } } | null };
 
 export type GetProjectsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
@@ -915,21 +988,21 @@ export type GetProjectsQueryVariables = Exact<{
 }>;
 
 
-export type GetProjectsQuery = { __typename?: 'Query', projects: { __typename?: 'ProjectConnection', totalCount: number, nodes: Array<{ __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
+export type GetProjectsQuery = { __typename?: 'Query', projects: { __typename?: 'ProjectConnection', totalCount: number, nodes: Array<{ __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
 
 export type GetProjectByIdQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
 }>;
 
 
-export type GetProjectByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace' } | null };
+export type GetProjectByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | { __typename: 'ProjectDocument' } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace' } | null };
 
 export type UpdateProjectMutationVariables = Exact<{
   input: UpdateProjectInput;
 }>;
 
 
-export type UpdateProjectMutation = { __typename?: 'Mutation', updateProject?: { __typename?: 'ProjectPayload', project: { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } } | null };
+export type UpdateProjectMutation = { __typename?: 'Mutation', updateProject?: { __typename?: 'ProjectPayload', project: { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } } | null };
 
 export type DeleteProjectMutationVariables = Exact<{
   input: DeleteProjectInput;
@@ -945,12 +1018,33 @@ export type RunProjectMutationVariables = Exact<{
 
 export type RunProjectMutation = { __typename?: 'Mutation', runProject?: { __typename?: 'RunProjectPayload', projectId: string, started: boolean } | null };
 
-export type OnJobStatusChangeSubscriptionVariables = Exact<{
-  jobId: Scalars['ID']['input'];
+export type GetSharedProjectQueryVariables = Exact<{
+  token: Scalars['String']['input'];
 }>;
 
 
-export type OnJobStatusChangeSubscription = { __typename?: 'Subscription', jobStatus: JobStatus };
+export type GetSharedProjectQuery = { __typename?: 'Query', sharedProject: { __typename?: 'SharedProjectPayload', project: { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } } };
+
+export type GetSharedProjectInfoQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+}>;
+
+
+export type GetSharedProjectInfoQuery = { __typename?: 'Query', projectSharingInfo: { __typename?: 'ProjectSharingInfoPayload', projectId: string, sharingToken?: string | null } };
+
+export type ShareProjectMutationVariables = Exact<{
+  input: ShareProjectInput;
+}>;
+
+
+export type ShareProjectMutation = { __typename?: 'Mutation', shareProject?: { __typename?: 'ShareProjectPayload', projectId: string, sharingUrl: string } | null };
+
+export type UnshareProjectMutationVariables = Exact<{
+  input: UnshareProjectInput;
+}>;
+
+
+export type UnshareProjectMutation = { __typename?: 'Mutation', unshareProject?: { __typename?: 'UnshareProjectPayload', projectId: string } | null };
 
 export type CreateTriggerMutationVariables = Exact<{
   input: CreateTriggerInput;
@@ -1019,7 +1113,7 @@ export type GetWorkspaceByIdQueryVariables = Exact<{
 }>;
 
 
-export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'Project' } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> } | null };
+export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'Project' } | { __typename: 'ProjectDocument' } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> } | null };
 
 export type UpdateWorkspaceMutationVariables = Exact<{
   input: UpdateWorkspaceInput;
@@ -1079,6 +1173,7 @@ export const ProjectFragmentDoc = gql`
   createdAt
   updatedAt
   workspaceId
+  sharedToken
   deployment {
     ...Deployment
   }
@@ -1109,6 +1204,8 @@ export const JobFragmentDoc = gql`
   status
   startedAt
   completedAt
+  logsURL
+  outputURLs
   deployment {
     ...Deployment
   }
@@ -1201,6 +1298,15 @@ export const GetJobDocument = gql`
   }
 }
     ${JobFragmentDoc}`;
+export const CancelJobDocument = gql`
+    mutation CancelJob($input: CancelJobInput!) {
+  cancelJob(input: $input) {
+    job {
+      ...Job
+    }
+  }
+}
+    ${JobFragmentDoc}`;
 export const CreateProjectDocument = gql`
     mutation CreateProject($input: CreateProjectInput!) {
   createProject(input: $input) {
@@ -1257,9 +1363,36 @@ export const RunProjectDocument = gql`
   }
 }
     `;
-export const OnJobStatusChangeDocument = gql`
-    subscription OnJobStatusChange($jobId: ID!) {
-  jobStatus(jobId: $jobId)
+export const GetSharedProjectDocument = gql`
+    query GetSharedProject($token: String!) {
+  sharedProject(token: $token) {
+    project {
+      ...Project
+    }
+  }
+}
+    ${ProjectFragmentDoc}`;
+export const GetSharedProjectInfoDocument = gql`
+    query GetSharedProjectInfo($projectId: ID!) {
+  projectSharingInfo(projectId: $projectId) {
+    projectId
+    sharingToken
+  }
+}
+    `;
+export const ShareProjectDocument = gql`
+    mutation ShareProject($input: ShareProjectInput!) {
+  shareProject(input: $input) {
+    projectId
+    sharingUrl
+  }
+}
+    `;
+export const UnshareProjectDocument = gql`
+    mutation UnshareProject($input: UnshareProjectInput!) {
+  unshareProject(input: $input) {
+    projectId
+  }
 }
     `;
 export const CreateTriggerDocument = gql`
@@ -1427,6 +1560,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     GetJob(variables: GetJobQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetJobQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetJobQuery>(GetJobDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetJob', 'query', variables);
     },
+    CancelJob(variables: CancelJobMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CancelJobMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CancelJobMutation>(CancelJobDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CancelJob', 'mutation', variables);
+    },
     CreateProject(variables: CreateProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateProjectMutation>(CreateProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateProject', 'mutation', variables);
     },
@@ -1445,8 +1581,17 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     RunProject(variables: RunProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RunProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<RunProjectMutation>(RunProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RunProject', 'mutation', variables);
     },
-    OnJobStatusChange(variables: OnJobStatusChangeSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<OnJobStatusChangeSubscription> {
-      return withWrapper((wrappedRequestHeaders) => client.request<OnJobStatusChangeSubscription>(OnJobStatusChangeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'OnJobStatusChange', 'subscription', variables);
+    GetSharedProject(variables: GetSharedProjectQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetSharedProjectQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetSharedProjectQuery>(GetSharedProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetSharedProject', 'query', variables);
+    },
+    GetSharedProjectInfo(variables: GetSharedProjectInfoQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetSharedProjectInfoQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetSharedProjectInfoQuery>(GetSharedProjectInfoDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetSharedProjectInfo', 'query', variables);
+    },
+    ShareProject(variables: ShareProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<ShareProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<ShareProjectMutation>(ShareProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'ShareProject', 'mutation', variables);
+    },
+    UnshareProject(variables: UnshareProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UnshareProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UnshareProjectMutation>(UnshareProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UnshareProject', 'mutation', variables);
     },
     CreateTrigger(variables: CreateTriggerMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateTriggerMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateTriggerMutation>(CreateTriggerDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateTrigger', 'mutation', variables);

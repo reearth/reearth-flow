@@ -145,7 +145,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                         className={cn(
                           "px-2 hover:before:opacity-100 before:absolute before:left-0 before:w-full before:opacity-0 before:bg-primary before:rounded-md before:h-[1.75rem] before:-z-10",
                           selectedItemId === item.id &&
-                            "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-green-800/70",
+                            "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-logo/30",
                         )}
                         onClick={() => handleSelectChange(item)}>
                         {item.icon && (
@@ -223,7 +223,7 @@ const Leaf = forwardRef<
         hover:before:opacity-100 before:absolute before:left-0 before:right-1 before:w-full before:opacity-0 before:bg-primary before:rounded-md before:h-[1.75rem] before:-z-10",
         className,
         isSelected &&
-          "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-green-800/70",
+          "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-logo/30",
       )}
       {...props}>
       {item.icon && (

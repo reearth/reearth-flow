@@ -9,7 +9,8 @@ import {
 } from "@rjsf/utils";
 import { ChangeEvent, useRef } from "react";
 
-import { Input, TextArea } from "@flow/components";
+import { Button, Input, TextArea } from "@flow/components";
+import { useT } from "@flow/lib/i18n";
 
 /** The `BaseInputTemplate` is the template to use to render the basic `<input>` component for the `core` theme.
  * It is used as the template for rendering many of the <input> based widgets that differ by `type` and callbacks only.
@@ -77,25 +78,42 @@ const BaseInputTemplate = <
       onChangeOverride || onChange(value === "" ? options.emptyValue : value)
     );
   };
+  const t = useT();
   // For most text-based params we want TextArea. But for certain schema format types, we want Input to get the appropriate styling @billcookie
   if (schema.format === "color") {
+    const defaultColor = schema.default || "#000000";
     return (
-      <Input
-        id={id}
-        name={id}
-        placeholder={placeholder}
-        autoFocus={autofocus}
-        required={required}
-        disabled={disabled || readonly}
-        {...otherProps}
-        value={value || value === 0 ? value : ""}
-        onChange={(e) =>
-          onChangeOverride ||
-          onChange(e.target.value === "" ? options.emptyValue : e.target.value)
-        }
-        {...textFieldProps}
-        aria-describedby={ariaDescribedByIds<T>(id, !!schema.examples)}
-      />
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Input
+            id={id}
+            name={id}
+            placeholder={placeholder}
+            autoFocus={autofocus}
+            required={required}
+            disabled={disabled || readonly}
+            {...otherProps}
+            value={value || value === 0 ? value : ""}
+            onChange={(e) =>
+              onChangeOverride ||
+              onChange(
+                e.target.value === "" ? options.emptyValue : e.target.value,
+              )
+            }
+            className="h-9 w-full cursor-pointer p-1"
+          />
+          {value !== defaultColor && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onChange(defaultColor)}
+              className="h-9 px-2">
+              {t("Reset Color")}
+            </Button>
+          )}
+        </div>
+      </div>
     );
   }
   return (

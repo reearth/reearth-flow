@@ -12,6 +12,7 @@ import BasicBoiler from "@flow/components/BasicBoiler";
 import { TRIGGERS_FETCH_RATE } from "@flow/lib/gql/trigger/useQueries";
 import { useT } from "@flow/lib/i18n";
 import { Trigger } from "@flow/types";
+import { formatTimestamp } from "@flow/utils";
 
 import {
   TriggerAddDialog,
@@ -57,6 +58,7 @@ const TriggerManager: React.FC = () => {
     {
       accessorKey: "updatedAt",
       header: t("Updated At"),
+      cell: ({ getValue }) => formatTimestamp(getValue<string>()),
     },
     {
       accessorKey: "quickActions",

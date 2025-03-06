@@ -2,6 +2,7 @@ type Job implements Node {
   completedAt: DateTime
   deployment: Deployment
   deploymentId: ID!
+  debug: Boolean
   id: ID!
   logsURL: String
   outputURLs: [String!]
@@ -9,13 +10,15 @@ type Job implements Node {
   status: JobStatus!
   workspace: Workspace
   workspaceId: ID!
+  logs(since: DateTime!): [Log]
 }
 
 enum JobStatus {
-  PENDING
-  RUNNING
+  CANCELLED
   COMPLETED
   FAILED
+  PENDING
+  RUNNING
 }
 
 # InputType

@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	domainLog "github.com/reearth/reearth-flow/log-subscriber/pkg/log"
+	domainLog "github.com/reearth/reearth-flow/subscriber/pkg/log"
 )
 
 type mockLogStorage struct {

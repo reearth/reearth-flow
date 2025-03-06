@@ -12,6 +12,7 @@ import BasicBoiler from "@flow/components/BasicBoiler";
 import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { Deployment } from "@flow/types";
+import { formatTimestamp } from "@flow/utils/timestamp";
 
 import {
   DeploymentAddDialog,
@@ -60,6 +61,7 @@ const DeploymentManager: React.FC = () => {
     {
       accessorKey: "updatedAt",
       header: t("Updated At"),
+      cell: ({ getValue }) => formatTimestamp(getValue<string>()),
     },
     {
       accessorKey: "quickActions",
@@ -133,7 +135,7 @@ const DeploymentManager: React.FC = () => {
               />
             ) : (
               <BasicBoiler
-                text={t("No Deployment")}
+                text={t("No Deployments")}
                 icon={<FlowLogo className="size-16 text-accent" />}
               />
             )}

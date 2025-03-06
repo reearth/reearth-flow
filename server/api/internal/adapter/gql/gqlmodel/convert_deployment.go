@@ -44,12 +44,17 @@ func ToJob(j *job.Job) *Job {
 	if logsURL := j.LogsURL(); logsURL != "" {
 		job.LogsURL = &logsURL
 	}
+	if debug := j.Debug(); debug != nil {
+		job.Debug = debug
+	}
 
 	return job
 }
 
 func ToJobStatus(status job.Status) JobStatus {
 	switch status {
+	case job.StatusCancelled:
+		return JobStatusCancelled
 	case job.StatusPending:
 		return JobStatusPending
 	case job.StatusRunning:

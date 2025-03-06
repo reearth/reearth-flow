@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
-	. "github.com/reearth/reearth-flow/log-subscriber/internal/adapter/pubsub"
-	domainLog "github.com/reearth/reearth-flow/log-subscriber/pkg/log"
+	. "github.com/reearth/reearth-flow/subscriber/internal/adapter/pubsub"
+	domainLog "github.com/reearth/reearth-flow/subscriber/pkg/log"
 )
 
 type mockSubscription struct {

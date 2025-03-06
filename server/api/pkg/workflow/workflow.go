@@ -1,18 +1,40 @@
 package workflow
 
 type Workflow struct {
-	ID        ID `json:"id"`
-	Project   ProjectID
-	Workspace WorkspaceID
-	// Meta *string
-	URL string
+	id        ID
+	project   ProjectID
+	workspace WorkspaceID
+	// Meta      *string
+	url   string
+	graph GraphID
 }
 
-func NewWorkflow(id ID, project ProjectID, workspace WorkspaceID, url string) *Workflow {
+func NewWorkflow(id ID, project ProjectID, workspace WorkspaceID, url string, graph GraphID) *Workflow {
 	return &Workflow{
-		ID:        id,
-		Project:   project,
-		Workspace: workspace,
-		URL:       url,
+		id:        id,
+		project:   project,
+		workspace: workspace,
+		url:       url,
+		graph:     graph,
 	}
+}
+
+func (w *Workflow) ID() ID {
+	return w.id
+}
+
+func (w *Workflow) Project() ProjectID {
+	return w.project
+}
+
+func (w *Workflow) Workspace() WorkspaceID {
+	return w.workspace
+}
+
+func (w *Workflow) URL() string {
+	return w.url
+}
+
+func (w *Workflow) Graph() GraphID {
+	return w.graph
 }

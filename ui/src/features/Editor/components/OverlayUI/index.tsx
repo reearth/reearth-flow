@@ -34,6 +34,7 @@ type OverlayUIProps = {
     description: string,
     deploymentId?: string,
   ) => Promise<void>;
+  onProjectShare: (share: boolean) => void;
   onNodesAdd: (nodes: Node[]) => void;
   onNodePickerClose: () => void;
   onRightPanelOpen: (content?: "version-history") => void;
@@ -56,6 +57,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   isMainWorkflow,
   hasReader,
   onWorkflowDeployment,
+  onProjectShare,
   onNodesAdd,
   onNodePickerClose,
   onRightPanelOpen,
@@ -96,6 +98,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         <div id="right-top" className="absolute right-1 top-1 m-1">
           <ActionBar
             allowedToDeploy={allowedToDeploy}
+            onProjectShare={onProjectShare}
             onWorkflowDeployment={onWorkflowDeployment}
             onRightPanelOpen={onRightPanelOpen}
           />

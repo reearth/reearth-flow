@@ -1,0 +1,27 @@
+# Latest Project Document
+type ProjectDocument implements Node {
+  id: ID!
+  timestamp: DateTime!
+  updates: [Int!]!
+  version: Int!
+}
+
+# Project Snapshot history vector
+type ProjectSnapshot {
+  timestamp: DateTime!
+  updates: [Int!]!
+  version: Int!
+}
+
+# Query
+
+extend type Query {
+  latestProjectSnapshot(projectId: ID!): ProjectDocument
+  projectHistory(projectId: ID!): [ProjectSnapshot!]!
+}
+
+# Mutation
+
+extend type Mutation {
+  rollbackProject(projectId: ID!, version: Int!): ProjectDocument
+}

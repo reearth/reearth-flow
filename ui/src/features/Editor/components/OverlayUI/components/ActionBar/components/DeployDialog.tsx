@@ -65,7 +65,7 @@ const DeployDialog: React.FC<Props> = ({
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
       <DialogContent size="sm">
-        <DialogTitle>{t("Deploy project")}</DialogTitle>
+        <DialogTitle>{t("Deploy Project")}</DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex flex-row items-center">
             <Label>{t("Project to Deploy: ")}</Label>

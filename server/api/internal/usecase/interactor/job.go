@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
@@ -22,14 +23,16 @@ import (
 
 type Job struct {
 	common
-	jobRepo       repo.Job
-	workspaceRepo accountrepo.Workspace
-	transaction   usecasex.Transaction
-	file          gateway.File
-	batch         gateway.Batch
-	monitor       *monitor.Monitor
-	subscriptions *subscription.Manager
-	notifier      notification.Notifier
+	jobRepo        repo.Job
+	workspaceRepo  accountrepo.Workspace
+	transaction    usecasex.Transaction
+	file           gateway.File
+	batch          gateway.Batch
+	monitor        *monitor.Monitor
+	subscriptions  *subscription.JobManager
+	notifier       notification.Notifier
+	activeWatchers map[string]bool
+	watchersMu     sync.Mutex
 }
 
 type NotificationPayload struct {
@@ -42,14 +45,16 @@ type NotificationPayload struct {
 
 func NewJob(r *repo.Container, gr *gateway.Container) interfaces.Job {
 	return &Job{
-		jobRepo:       r.Job,
-		workspaceRepo: r.Workspace,
-		transaction:   r.Transaction,
-		file:          gr.File,
-		batch:         gr.Batch,
-		monitor:       monitor.NewMonitor(),
-		subscriptions: subscription.NewManager(),
-		notifier:      notification.NewHTTPNotifier(),
+		jobRepo:        r.Job,
+		workspaceRepo:  r.Workspace,
+		transaction:    r.Transaction,
+		file:           gr.File,
+		batch:          gr.Batch,
+		monitor:        monitor.NewMonitor(),
+		subscriptions:  subscription.NewJobManager(),
+		notifier:       notification.NewHTTPNotifier(),
+		activeWatchers: make(map[string]bool),
+		watchersMu:     sync.Mutex{},
 	}
 }
 
@@ -90,6 +95,11 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID, operator *usecase.Oper
 	}
 
 	tx.Commit()
+
+	if err := i.handleJobCompletion(ctx, j); err != nil {
+		log.Errorfc(ctx, "job: completion handling failed: %v", err)
+	}
+
 	i.subscriptions.Notify(j.ID().String(), j.Status())
 	i.monitor.Remove(j.ID().String())
 
@@ -205,47 +215,101 @@ func (i *Job) updateJobStatus(ctx context.Context, j *job.Job, status job.Status
 }
 
 func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
-	config := i.monitor.Get(j.ID().String())
-
-	outputs, err := i.file.ListJobArtifacts(ctx, j.ID().String())
-	if err != nil {
-		return err
+	if j == nil {
+		return fmt.Errorf("job cannot be nil")
 	}
 
-	j.SetOutputURLs(outputs)
+	jobID := j.ID().String()
+	log.Debugfc(ctx, "job: handling completion for jobID=%s with status=%s", jobID, j.Status())
 
-	logURL := i.file.GetJobLogURL(j.ID().String())
-	j.SetLogsURL(logURL)
+	config := i.monitor.Get(jobID)
 
-	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return err
+	if err := i.updateJobArtifacts(ctx, j); err != nil {
+		log.Errorfc(ctx, "job: failed to update artifacts for jobID=%s: %v", jobID, err)
 	}
 
-	if config == nil || config.NotificationURL == nil {
+	if err := i.saveJobState(ctx, j); err != nil {
+		return fmt.Errorf("failed to save job state: %w", err)
+	}
+
+	if config == nil || config.NotificationURL == nil || *config.NotificationURL == "" {
 		return nil
 	}
 
-	var logs []string
-	if exists, _ := i.file.CheckJobLogExists(ctx, j.ID().String()); exists {
-		logs = append(logs, logURL)
+	if err := i.sendCompletionNotification(ctx, j, *config.NotificationURL); err != nil {
+		return fmt.Errorf("failed to send notification: %w", err)
 	}
 
+	return nil
+}
+
+func (i *Job) updateJobArtifacts(ctx context.Context, j *job.Job) error {
+	jobID := j.ID().String()
+
+	outputs, err := i.file.ListJobArtifacts(ctx, jobID)
+	if err != nil {
+		return fmt.Errorf("failed to list job artifacts: %w", err)
+	}
+	j.SetOutputURLs(outputs)
+
+	logURL := i.file.GetJobLogURL(jobID)
+	if logURL != "" {
+		j.SetLogsURL(logURL)
+	}
+
+	return nil
+}
+
+func (i *Job) saveJobState(ctx context.Context, j *job.Job) error {
+	tx, err := i.transaction.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer func() {
+		if err := tx.End(ctx); err != nil {
+			log.Errorfc(ctx, "transaction end failed: %v", err)
+		}
+	}()
+
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		return fmt.Errorf("failed to save job: %w", err)
+	}
+
+	tx.Commit()
+	return nil
+}
+
+func (i *Job) sendCompletionNotification(ctx context.Context, j *job.Job, notificationURL string) error {
+	jobID := j.ID().String()
+
 	status := "failed"
-	if j.Status() == job.StatusCompleted {
+	switch j.Status() {
+	case job.StatusCompleted:
 		status = "succeeded"
+	case job.StatusCancelled:
+		status = "cancelled"
+	}
+
+	var logs []string
+	logExists, err := i.file.CheckJobLogExists(ctx, jobID)
+	if err != nil {
+		log.Warnfc(ctx, "job: failed to check log existence for jobID=%s: %v", jobID, err)
+	} else if logExists {
+		logs = append(logs, j.LogsURL())
 	}
 
 	payload := notification.Payload{
-		RunID:        j.ID().String(),
+		RunID:        jobID,
 		DeploymentID: j.Deployment().String(),
 		Status:       status,
 		Logs:         logs,
-		Outputs:      outputs,
+		Outputs:      j.OutputURLs(),
 	}
 
-	log.Debugfc(ctx, "job: sending notification payload for jobID=%s: %+v", j.ID(), payload)
+	log.Debugfc(ctx, "job: sending notification for jobID=%s to URL=%s", jobID, notificationURL)
 
-	return i.notifier.Send(*config.NotificationURL, payload)
+	return i.notifier.Send(notificationURL, payload)
 }
 
 func (i *Job) Subscribe(ctx context.Context, jobID id.JobID, operator *usecase.Operator) (chan job.Status, error) {
@@ -256,11 +320,25 @@ func (i *Job) Subscribe(ctx context.Context, jobID id.JobID, operator *usecase.O
 
 	ch := i.subscriptions.Subscribe(jobID.String())
 	ch <- j.Status()
+
+	i.watchersMu.Lock()
+	if i.activeWatchers == nil {
+		i.activeWatchers = make(map[string]bool)
+	}
+	i.activeWatchers[jobID.String()] = true
+	i.watchersMu.Unlock()
+
 	return ch, nil
 }
 
 func (i *Job) Unsubscribe(jobID id.JobID, ch chan job.Status) {
 	i.subscriptions.Unsubscribe(jobID.String(), ch)
+
+	if i.subscriptions.CountSubscribers(jobID.String()) == 0 {
+		i.watchersMu.Lock()
+		delete(i.activeWatchers, jobID.String())
+		i.watchersMu.Unlock()
+	}
 }
 
 func (i *Job) filterReadableJobs(jobs []*job.Job, operator *usecase.Operator) []*job.Job {

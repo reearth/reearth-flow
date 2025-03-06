@@ -73,21 +73,22 @@ func TestAsset_TotalSizeByWorkspace(t *testing.T) {
 	ctx := context.Background()
 	wid := accountdomain.NewWorkspaceID()
 	wid2 := accountdomain.NewWorkspaceID()
+
 	_, _ = c.Collection("asset").InsertMany(ctx, []any{
-		bson.M{"id": "x", "workspace": wid.String(), "size": 10000000},
-		bson.M{"id": "y", "workspace": wid.String(), "size": 1},
-		bson.M{"id": "z", "workspace": "x", "size": 1},
+		bson.M{"id": "a", "workspaceid": wid.String(), "size": 100},
+		bson.M{"id": "b", "workspaceid": wid.String(), "size": 200},
+		bson.M{"id": "c", "workspaceid": wid2.String(), "size": 300},
 	})
 
 	r := NewAsset(mongox.NewClientWithDatabase(c))
 	got, err := r.TotalSizeByWorkspace(ctx, wid)
-	assert.Equal(t, int64(10000001), got)
 	assert.NoError(t, err)
+	assert.Equal(t, int64(300), got)
 
 	r2 := r.Filtered(repo.WorkspaceFilter{
 		Readable: accountdomain.WorkspaceIDList{wid2},
 	})
 	got, err = r2.TotalSizeByWorkspace(ctx, wid)
-	assert.Equal(t, repo.ErrOperationDenied, err)
-	assert.Zero(t, got)
+	assert.NoError(t, err)
+	assert.Equal(t, int64(0), got)
 }

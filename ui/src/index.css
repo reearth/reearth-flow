@@ -47,7 +47,7 @@
     --ring: 24, 24, 27;
     --radius: 0.5rem;
     /* Custom Flow colors */
-    --logo: 69, 10, 10;
+    --logo: 0, 163, 64;
     /* Workflow colors */
     --node-entrance: 162, 28, 175;
     --node-exit: 126, 34, 206;
@@ -97,7 +97,7 @@
 }
 
 /* Animation for active node */
-@keyframes cycleColors {
+@keyframes cycleActiveColors {
   0% {
     @apply bg-primary;
   }
@@ -127,7 +127,7 @@
 
 .active-node-status {
   animation:
-    cycleColors 3s infinite,
+    cycleActiveColors 3s infinite,
     pulse 1.5s infinite;
 }
 

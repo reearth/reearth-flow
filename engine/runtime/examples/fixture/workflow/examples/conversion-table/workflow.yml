@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
+name: "Example-conversion-table-workflow"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+graphs:
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                testAttribute01: "堺市中区",
+                testAttribute02: "2025-02-01",
+              },
+              #{
+                testAttribute01: "堺市北区",
+                testAttribute02: "2025-02-02",
+              },
+            ]
+
+      - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        name: AttributeConversionTable
+        type: action
+        action: AttributeConversionTable
+        with:
+          format: csv
+          inline: !include ./files/admin_ward_list.csv.txt
+          rules:
+            - featureFroms: ["testAttribute01"]
+              featureTo: "testAttribute03"
+              conversionTableKeys: ["city_name_jp", "ward_name_jp"]
+              conversionTableTo: "ward_name_en"
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        name: FileWriterCSV
+        type: action
+        action: FileWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("currentPath"), "example-conversion-table.csv")
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540d
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        fromPort: default
+        toPort: default
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        fromPort: default
+        toPort: default

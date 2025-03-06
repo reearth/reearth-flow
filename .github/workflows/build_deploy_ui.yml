@@ -51,6 +51,7 @@ jobs:
 
   build-docker-image:
     name: Build and Push Docker Image
+    needs: build-ui
     runs-on: ubuntu-latest
     if: ${{ inputs.name != 'blank' || inputs.new_tag != 'blank' }}
     env:

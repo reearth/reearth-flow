@@ -3,12 +3,14 @@ package interactor
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
@@ -20,22 +22,27 @@ type Project struct {
 	assetRepo     repo.Asset
 	workflowRepo  repo.Workflow
 	projectRepo   repo.Project
+	jobRepo       repo.Job
 	userRepo      accountrepo.User
 	workspaceRepo accountrepo.Workspace
 	transaction   usecasex.Transaction
 	file          gateway.File
 	batch         gateway.Batch
+	job           interfaces.Job
 }
 
-func NewProject(r *repo.Container, gr *gateway.Container) interfaces.Project {
+func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job) interfaces.Project {
 	return &Project{
 		assetRepo:     r.Asset,
 		workflowRepo:  r.Workflow,
 		projectRepo:   r.Project,
+		jobRepo:       r.Job,
 		userRepo:      r.User,
 		workspaceRepo: r.Workspace,
 		transaction:   r.Transaction,
 		file:          gr.File,
+		batch:         gr.Batch,
+		job:           jobUsecase,
 	}
 }
 
@@ -182,14 +189,14 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *
 	return nil
 }
 
-func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operator *usecase.Operator) (started bool, err error) {
+func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operator *usecase.Operator) (_ *job.Job, err error) {
 	if p.Workflow == nil {
-		return false, nil
+		return nil, nil
 	}
 
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	ctx = tx.Context()
@@ -199,19 +206,54 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operato
 		}
 	}()
 
-	fmt.Println("RunProjectParam", p)
-
 	prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	jobID := id.NewJobID()
-	_, err = i.batch.SubmitJob(ctx, jobID, p.Workflow.Path, "", nil, p.ProjectID, prj.Workspace())
+	debug := true
+
+	j, err := job.New().
+		NewID().
+		Debug(&debug).
+		Deployment(id.NewDeploymentID()). // Using a placeholder deployment ID
+		Workspace(prj.Workspace()).
+		Status(job.StatusPending).
+		StartedAt(time.Now()).
+		Build()
 	if err != nil {
-		return false, fmt.Errorf("failed to submit job: %v", err)
+		return nil, err
+	}
+
+	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to upload metadata: %v", err)
+	}
+	if metadataURL != nil {
+		j.SetMetadataURL(metadataURL.String())
+	}
+
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		return nil, err
+	}
+
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), p.Workflow.Path, j.MetadataURL(), nil, p.ProjectID, prj.Workspace())
+	if err != nil {
+		return nil, fmt.Errorf("failed to submit job: %v", err)
+	}
+	j.SetGCPJobID(gcpJobID)
+
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		return nil, err
 	}
 
 	tx.Commit()
-	return true, nil
+
+	if i.job != nil {
+		if err := i.job.StartMonitoring(ctx, j, nil, operator); err != nil {
+			return nil, fmt.Errorf("failed to start job monitoring: %v", err)
+		}
+	}
+
+	return j, nil
 }

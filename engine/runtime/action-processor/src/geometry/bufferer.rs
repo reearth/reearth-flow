@@ -21,7 +21,7 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct BuffererFactory;
+pub(super) struct BuffererFactory;
 
 impl ProcessorFactory for BuffererFactory {
     fn name(&self) -> &str {
@@ -85,9 +85,12 @@ enum BufferType {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct Bufferer {
+struct Bufferer {
+    /// # Buffer type
     buffer_type: BufferType,
+    /// # Buffer distance
     distance: f64,
+    /// # Buffer interpolation angle
     interpolation_angle: f64,
 }
 

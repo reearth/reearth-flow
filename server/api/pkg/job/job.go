@@ -16,6 +16,7 @@ const (
 
 type Job struct {
 	completedAt *time.Time
+	debug       *bool
 	deployment  DeploymentID
 	gcpJobID    string
 	id          ID
@@ -41,6 +42,10 @@ func NewJob(id ID, deployment DeploymentID, workspace WorkspaceID, gcpJobID stri
 
 func (j *Job) ID() ID {
 	return j.id
+}
+
+func (j *Job) Debug() *bool {
+	return j.debug
 }
 
 func (j *Job) Deployment() DeploymentID {
@@ -81,6 +86,10 @@ func (j *Job) OutputURLs() []string {
 
 func (j *Job) SetID(id ID) {
 	j.id = id
+}
+
+func (j *Job) SetDebug(debug *bool) {
+	j.debug = debug
 }
 
 func (j *Job) SetDeployment(deployment DeploymentID) {

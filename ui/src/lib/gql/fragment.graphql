@@ -5,6 +5,7 @@ fragment Project on Project {
   createdAt
   updatedAt
   workspaceId
+  sharedToken
   deployment {
     ...Deployment
   }
@@ -47,6 +48,8 @@ fragment Job on Job {
   status
   startedAt
   completedAt
+  logsURL
+  outputURLs
   deployment {
     ...Deployment
   }

@@ -46,6 +46,8 @@ models:
         resolver: true
       deployment:
         resolver: true
+      logs:
+        resolver: true
   Parameter:
     fields:
       project:
@@ -63,6 +65,10 @@ models:
       workspace:
         resolver: true
       deployment:
+        resolver: true
+  ProjectDocument:
+    fields:
+      updates:
         resolver: true
   Subscription:
     fields:

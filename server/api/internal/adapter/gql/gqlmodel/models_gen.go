@@ -185,6 +185,7 @@ type Job struct {
 	CompletedAt  *time.Time  `json:"completedAt,omitempty"`
 	Deployment   *Deployment `json:"deployment,omitempty"`
 	DeploymentID ID          `json:"deploymentId"`
+	Debug        *bool       `json:"debug,omitempty"`
 	ID           ID          `json:"id"`
 	LogsURL      *string     `json:"logsURL,omitempty"`
 	OutputURLs   []string    `json:"outputURLs,omitempty"`
@@ -192,6 +193,7 @@ type Job struct {
 	Status       JobStatus   `json:"status"`
 	Workspace    *Workspace  `json:"workspace,omitempty"`
 	WorkspaceID  ID          `json:"workspaceId"`
+	Logs         []*Log      `json:"logs,omitempty"`
 }
 
 func (Job) IsNode()        {}
@@ -205,6 +207,14 @@ type JobConnection struct {
 
 type JobPayload struct {
 	Job *Job `json:"job"`
+}
+
+type Log struct {
+	JobID     ID        `json:"jobId"`
+	NodeID    *ID       `json:"nodeId,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
+	LogLevel  LogLevel  `json:"logLevel"`
+	Message   string    `json:"message"`
 }
 
 type Me struct {
@@ -265,6 +275,7 @@ type Project struct {
 	Name              string       `json:"name"`
 	Parameters        []*Parameter `json:"parameters"`
 	UpdatedAt         time.Time    `json:"updatedAt"`
+	SharedToken       *string      `json:"sharedToken,omitempty"`
 	Version           int          `json:"version"`
 	Workspace         *Workspace   `json:"workspace,omitempty"`
 	WorkspaceID       ID           `json:"workspaceId"`
@@ -279,8 +290,29 @@ type ProjectConnection struct {
 	TotalCount int        `json:"totalCount"`
 }
 
+type ProjectDocument struct {
+	ID        ID        `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+	Updates   []int     `json:"updates"`
+	Version   int       `json:"version"`
+}
+
+func (ProjectDocument) IsNode()        {}
+func (this ProjectDocument) GetID() ID { return this.ID }
+
 type ProjectPayload struct {
 	Project *Project `json:"project"`
+}
+
+type ProjectSharingInfoPayload struct {
+	ProjectID    ID      `json:"projectId"`
+	SharingToken *string `json:"sharingToken,omitempty"`
+}
+
+type ProjectSnapshot struct {
+	Timestamp time.Time `json:"timestamp"`
+	Updates   []int     `json:"updates"`
+	Version   int       `json:"version"`
 }
 
 type Query struct {
@@ -318,8 +350,7 @@ type RunProjectInput struct {
 }
 
 type RunProjectPayload struct {
-	ProjectID ID   `json:"projectId"`
-	Started   bool `json:"started"`
+	Job *Job `json:"job"`
 }
 
 type ShareProjectInput struct {
@@ -565,22 +596,24 @@ func (e EventSourceType) MarshalGQL(w io.Writer) {
 type JobStatus string
 
 const (
-	JobStatusPending   JobStatus = "PENDING"
-	JobStatusRunning   JobStatus = "RUNNING"
+	JobStatusCancelled JobStatus = "CANCELLED"
 	JobStatusCompleted JobStatus = "COMPLETED"
 	JobStatusFailed    JobStatus = "FAILED"
+	JobStatusPending   JobStatus = "PENDING"
+	JobStatusRunning   JobStatus = "RUNNING"
 )
 
 var AllJobStatus = []JobStatus{
-	JobStatusPending,
-	JobStatusRunning,
+	JobStatusCancelled,
 	JobStatusCompleted,
 	JobStatusFailed,
+	JobStatusPending,
+	JobStatusRunning,
 }
 
 func (e JobStatus) IsValid() bool {
 	switch e {
-	case JobStatusPending, JobStatusRunning, JobStatusCompleted, JobStatusFailed:
+	case JobStatusCancelled, JobStatusCompleted, JobStatusFailed, JobStatusPending, JobStatusRunning:
 		return true
 	}
 	return false
@@ -604,6 +637,53 @@ func (e *JobStatus) UnmarshalGQL(v interface{}) error {
 }
 
 func (e JobStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type LogLevel string
+
+const (
+	LogLevelError LogLevel = "ERROR"
+	LogLevelWarn  LogLevel = "WARN"
+	LogLevelInfo  LogLevel = "INFO"
+	LogLevelDebug LogLevel = "DEBUG"
+	LogLevelTrace LogLevel = "TRACE"
+)
+
+var AllLogLevel = []LogLevel{
+	LogLevelError,
+	LogLevelWarn,
+	LogLevelInfo,
+	LogLevelDebug,
+	LogLevelTrace,
+}
+
+func (e LogLevel) IsValid() bool {
+	switch e {
+	case LogLevelError, LogLevelWarn, LogLevelInfo, LogLevelDebug, LogLevelTrace:
+		return true
+	}
+	return false
+}
+
+func (e LogLevel) String() string {
+	return string(e)
+}
+
+func (e *LogLevel) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = LogLevel(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid LogLevel", str)
+	}
+	return nil
+}
+
+func (e LogLevel) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

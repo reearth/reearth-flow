@@ -1,20 +1,22 @@
-import { CaretLeft } from "@phosphor-icons/react";
+import { CaretLeft, XCircle } from "@phosphor-icons/react";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button, LoadingSkeleton } from "@flow/components";
-import { config } from "@flow/config";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { LogsConsole } from "@flow/features/Editor/components/BottomPanel/components";
 import { useJobStatus } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
 import type { Job, Log } from "@flow/types";
+import { formatTimestamp } from "@flow/utils";
+import { parseJSONL } from "@flow/utils/parseJsonL";
 
 type Props = {
   selectedJob?: Job;
+  onJobCancel?: () => void;
 };
 
-const JobDetails: React.FC<Props> = ({ selectedJob }) => {
+const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
   const t = useT();
   const { navigate } = useRouter();
 
@@ -25,6 +27,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
       }),
     [navigate, selectedJob?.workspaceId],
   );
+
   const [logs, setLogs] = useState<Log[] | null>(null);
   const [isFetching, setIsFetching] = useState<boolean>(false);
 
@@ -58,50 +61,63 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
             {
               id: "startedAt",
               name: t("Started At"),
-              value: selectedJob.startedAt,
+              value: formatTimestamp(selectedJob.startedAt) || t("N/A"),
             },
             {
               id: "completedAt",
               name: t("Completed At"),
-              value: selectedJob.completedAt || t("N/A"),
+              value: formatTimestamp(selectedJob.completedAt) || t("N/A"),
+            },
+            {
+              id: "outputURLs",
+              name: t("Output URLs"),
+              value: selectedJob.outputURLs || t("N/A"),
+              type: selectedJob.outputURLs ? "link" : undefined,
             },
           ]
         : undefined,
     [t, statusValue, selectedJob],
   );
-  // Note: This is only temporary and will be replaced with a proper log fetching mechanism when the API is ready @Billcookie
+
   const getAllLogs = useCallback(async () => {
-    const BASE_URL = config().api;
-    if (!selectedJob) return;
+    if (!selectedJob || !selectedJob.logsURL) return;
     setIsFetching(true);
     try {
-      const response = await fetch(
-        `${BASE_URL}/artifacts/${selectedJob.id}/action-log/all.log`,
-      );
+      const response = await fetch(selectedJob.logsURL);
       const textData = await response.text();
-      const logsArray = textData
-        .split("\n")
-        .filter((line) => line.trim() !== "")
-        .map((line) => {
-          try {
-            const parsed = JSON.parse(line);
-            return {
-              workflowId: selectedJob.workspaceId,
-              jobId: selectedJob.id,
-              msg: parsed.msg,
-              ts: parsed.ts,
-              level: parsed.level,
-            };
-          } catch (error) {
-            console.error("Failed to parse log line:", line, error);
-            return null;
+
+      // Logs are JSONL there we have ensure they are parsed correctly and cleaned to be used
+      const logsArray = parseJSONL(textData, {
+        transform: (parsedLog) => {
+          if (
+            typeof parsedLog.msg === "string" &&
+            parsedLog.msg.trim() !== ""
+          ) {
+            try {
+              parsedLog.msg = JSON.parse(parsedLog.msg);
+            } catch (innerError) {
+              console.error("Failed to clean msg:", parsedLog.msg, innerError);
+            }
           }
-        })
-        .filter((log) => log !== null);
+          return {
+            workflowId: selectedJob.workspaceId,
+            jobId: selectedJob.id,
+            message: parsedLog.msg,
+            timeStamp: parsedLog.ts,
+            status: parsedLog.level,
+          };
+        },
+        onError: (error, line, index) => {
+          console.warn(
+            `Skipping malformed log at line ${index}:`,
+            line.substring(0, 100),
+          );
+          console.log("Error:", error);
+        },
+      });
       setLogs(logsArray);
     } catch (error) {
       console.error("Error fetching logs:", error);
-      setIsFetching(false);
     } finally {
       setIsFetching(false);
     }
@@ -118,14 +134,24 @@ const JobDetails: React.FC<Props> = ({ selectedJob }) => {
           <Button size="icon" variant="ghost" onClick={handleBack}>
             <CaretLeft />
           </Button>
+          {(selectedJob.status === "queued" ||
+            selectedJob.status === "running") && (
+            <Button variant="destructive" size="sm" onClick={onJobCancel}>
+              <XCircle />
+              {t("Cancel Job")}
+            </Button>
+          )}
         </div>
         <div className="w-full border-b" />
         <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
-          <DetailsBox title={t("Job Details")} content={details} />
+          <DetailsBox collapsible title={t("Job Details")} content={details} />
         </div>
         <div className="mt-6 min-h-0 max-w-[1200px] flex-1">
-          {!isFetching && logs && <LogsConsole data={logs} />}
-          {isFetching && <LoadingSkeleton />}
+          {isFetching ? (
+            <LoadingSkeleton />
+          ) : logs ? (
+            <LogsConsole data={logs} />
+          ) : null}
         </div>
       </div>
     )

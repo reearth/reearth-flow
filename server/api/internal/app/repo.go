@@ -4,13 +4,16 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth0"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/fs"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpbatch"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcs"
 	mongorepo "github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
+	redisrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmongo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
@@ -25,7 +28,11 @@ import (
 
 const databaseName = "reearth-flow"
 
-func initReposAndGateways(ctx context.Context, conf *config.Config, debug bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
+func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
+	interactor.InitWebsocket(
+		conf.WebsocketThriftServerURL,
+	)
+
 	gateways := &gateway.Container{}
 	acGateways := &accountgateway.Container{}
 
@@ -40,7 +47,6 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, debug bool) 
 		log.Fatalf("mongo error: %+v\n", err)
 	}
 
-	// repos
 	accountDatabase := conf.DB_Account
 	accountRepoCompat := false
 	if accountDatabase == "" {
@@ -68,6 +74,8 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, debug bool) 
 	if err != nil {
 		log.Fatalf("Failed to init mongo: %+v\n", err)
 	}
+	// Log
+	gateways.LogRedis = initLogRedis(ctx, conf)
 
 	// File
 	gateways.File = initFile(ctx, conf)
@@ -120,22 +128,37 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		log.Fatalf("invalid boot disk size: %v", err)
 	}
 
+	computeCpuMilli, err := strconv.Atoi(conf.Worker_ComputeCpuMilli)
+	if err != nil {
+		log.Fatalf("invalid boot disk size: %v", err)
+	}
+
+	computeMemoryMib, err := strconv.Atoi(conf.Worker_ComputeMemoryMib)
+	if err != nil {
+		log.Fatalf("invalid task count: %v", err)
+	}
+
 	taskCount, err := strconv.Atoi(conf.Worker_TaskCount)
 	if err != nil {
 		log.Fatalf("invalid task count: %v", err)
 	}
 
 	config := gcpbatch.BatchConfig{
-		AllowedLocations: conf.Worker_AllowedLocations,
-		BinaryPath:       conf.Worker_BinaryPath,
-		BootDiskSizeGB:   bootDiskSize,
-		BootDiskType:     conf.Worker_BootDiskType,
-		ImageURI:         conf.Worker_ImageURL,
-		MachineType:      conf.Worker_MachineType,
-		ProjectID:        conf.GCPProject,
-		Region:           conf.GCPRegion,
-		SAEmail:          conf.Worker_BatchSAEmail,
-		TaskCount:        taskCount,
+		AllowedLocations:                conf.Worker_AllowedLocations,
+		BinaryPath:                      conf.Worker_BinaryPath,
+		BootDiskSizeGB:                  bootDiskSize,
+		BootDiskType:                    conf.Worker_BootDiskType,
+		ComputeCpuMilli:                 computeCpuMilli,
+		ComputeMemoryMib:                computeMemoryMib,
+		ImageURI:                        conf.Worker_ImageURL,
+		MachineType:                     conf.Worker_MachineType,
+		PubSubLogStreamTopic:            conf.Worker_PubSubLogStreamTopic,
+		PubSubJobCompleteTopic:          conf.Worker_PubSubJobCompleteTopic,
+		PubSubEdgePassThroughEventTopic: conf.Worker_PubSubEdgePassThroughEventTopic,
+		ProjectID:                       conf.GCPProject,
+		Region:                          conf.GCPRegion,
+		SAEmail:                         conf.Worker_BatchSAEmail,
+		TaskCount:                       taskCount,
 	}
 
 	batchRepo, err = gcpbatch.NewBatch(ctx, config)
@@ -144,4 +167,22 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 	}
 
 	return
+}
+
+func initLogRedis(ctx context.Context, conf *config.Config) gateway.Log {
+	if conf.Redis_URL == "" {
+		return nil
+	}
+
+	log.Infofc(ctx, "log: redis storage is used: %s\n", conf.Redis_URL)
+	opt, err := redis.ParseURL(conf.Redis_URL)
+	if err != nil {
+		log.Fatalf("failed to parse redis url: %s\n", err.Error())
+	}
+	client := redis.NewClient(opt)
+	logRedisRepo, err := redisrepo.NewRedisLog(client)
+	if err != nil {
+		log.Warnf("log: failed to init redis storage: %s\n", err.Error())
+	}
+	return logRedisRepo
 }

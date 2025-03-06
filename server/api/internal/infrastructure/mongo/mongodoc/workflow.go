@@ -12,23 +12,25 @@ type WorkflowDocument struct {
 	Project   string
 	Workspace string
 	URL       string
+	Graph     string
 }
 
 type WorkflowConsumer = Consumer[*WorkflowDocument, *workflow.Workflow]
 
 func NewWorkflowConsumer(workspaces []accountdomain.WorkspaceID) *WorkflowConsumer {
 	return NewConsumer[*WorkflowDocument, *workflow.Workflow](func(a *workflow.Workflow) bool {
-		return workspaces == nil || slices.Contains(workspaces, a.Workspace)
+		return workspaces == nil || slices.Contains(workspaces, a.Workspace())
 	})
 }
 
-func NewWorkflow(workflow *workflow.Workflow) (*WorkflowDocument, string) {
-	wid := workflow.ID.String()
+func NewWorkflow(wf *workflow.Workflow) (*WorkflowDocument, string) {
+	wid := wf.ID().String()
 	return &WorkflowDocument{
-		ID:        workflow.ID.String(),
-		Project:   workflow.Project.String(),
-		Workspace: workflow.Workspace.String(),
-		URL:       workflow.URL,
+		ID:        wid,
+		Project:   wf.Project().String(),
+		Workspace: wf.Workspace().String(),
+		URL:       wf.URL(),
+		Graph:     wf.Graph().String(),
 	}, wid
 }
 
@@ -45,12 +47,16 @@ func (d *WorkflowDocument) Model() (*workflow.Workflow, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	gid, err := id.GraphIDFrom(d.Graph)
+	if err != nil {
+		return nil, err
+	}
 	wf := workflow.NewWorkflow(
 		wid,
 		pid,
 		tid,
 		d.URL,
+		gid,
 	)
 
 	return wf, nil

@@ -10,6 +10,7 @@
         "type": "object",
         "properties": {
           "groupBy": {
+            "title": "Group by",
             "type": [
               "array",
               "null"
@@ -53,12 +54,14 @@
         ],
         "properties": {
           "aggregateAttributes": {
+            "title": "List of attributes to aggregate",
             "type": "array",
             "items": {
               "$ref": "#/definitions/AggregateAttribute"
             }
           },
           "calculation": {
+            "title": "Calculation to perform",
             "anyOf": [
               {
                 "$ref": "#/definitions/Expr"
@@ -69,9 +72,15 @@
             ]
           },
           "calculationAttribute": {
-            "$ref": "#/definitions/Attribute"
+            "title": "Attribute to store calculation result",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           },
           "calculationValue": {
+            "title": "Value to use for calculation",
             "type": [
               "integer",
               "null"
@@ -79,7 +88,12 @@
             "format": "int64"
           },
           "method": {
-            "$ref": "#/definitions/Method"
+            "title": "Method to use for aggregation",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Method"
+              }
+            ]
           }
         },
         "definitions": {
@@ -90,6 +104,7 @@
             ],
             "properties": {
               "attribute": {
+                "title": "Existing attribute to use",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Attribute"
@@ -100,6 +115,7 @@
                 ]
               },
               "attributeValue": {
+                "title": "Value to use for attribute",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -110,7 +126,12 @@
                 ]
               },
               "newAttribute": {
-                "$ref": "#/definitions/Attribute"
+                "title": "New attribute to create",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  }
+                ]
               }
             }
           },
@@ -121,6 +142,7 @@
             "type": "string"
           },
           "Method": {
+            "title": "Method to use for aggregation",
             "type": "string",
             "enum": [
               "max",
@@ -151,6 +173,7 @@
         "type": "object",
         "properties": {
           "ignoreAttributes": {
+            "title": "Attributes to ignore",
             "type": [
               "array",
               "null"
@@ -162,6 +185,118 @@
         },
         "definitions": {
           "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Attribute"
+      ]
+    },
+    {
+      "name": "AttributeConversionTable",
+      "type": "processor",
+      "description": "Converts attributes from conversion table",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeConversionTableParam",
+        "type": "object",
+        "required": [
+          "format",
+          "rules"
+        ],
+        "properties": {
+          "dataset": {
+            "title": "Dataset URI",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "format": {
+            "title": "Format of conversion table",
+            "allOf": [
+              {
+                "$ref": "#/definitions/ConversionTableFormat"
+              }
+            ]
+          },
+          "inline": {
+            "title": "Inline conversion table",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rules": {
+            "title": "Rules to convert attributes",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/AttributeConversionTableRule"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "AttributeConversionTableRule": {
+            "type": "object",
+            "required": [
+              "conversionTableKeys",
+              "conversionTableTo",
+              "featureFroms",
+              "featureTo"
+            ],
+            "properties": {
+              "conversionTableKeys": {
+                "title": "Keys to match in conversion table",
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "conversionTableTo": {
+                "title": "Attribute to convert to",
+                "type": "string"
+              },
+              "featureFroms": {
+                "title": "Attributes to convert from",
+                "type": "array",
+                "items": {
+                  "$ref": "#/definitions/Attribute"
+                }
+              },
+              "featureTo": {
+                "title": "Attribute to convert to",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  }
+                ]
+              }
+            }
+          },
+          "ConversionTableFormat": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "tsv",
+              "json"
+            ]
+          },
+          "Expr": {
             "type": "string"
           }
         }
@@ -190,6 +325,7 @@
         ],
         "properties": {
           "filterBy": {
+            "title": "Attributes to filter by",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
@@ -226,7 +362,12 @@
         ],
         "properties": {
           "attribute": {
-            "$ref": "#/definitions/Attribute"
+            "title": "Attribute to extract file path from",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           }
         },
         "definitions": {
@@ -260,6 +401,7 @@
         ],
         "properties": {
           "attributes": {
+            "title": "Attributes to flatten",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
@@ -296,6 +438,7 @@
         ],
         "properties": {
           "operations": {
+            "title": "Operations to perform",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Operation"
@@ -323,12 +466,19 @@
             ],
             "properties": {
               "attribute": {
+                "title": "Attribute name",
                 "type": "string"
               },
               "method": {
-                "$ref": "#/definitions/Method"
+                "title": "Operation to perform",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Method"
+                  }
+                ]
               },
               "value": {
+                "title": "Value to use for the operation",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -366,6 +516,7 @@
         ],
         "properties": {
           "mappers": {
+            "title": "Mappers",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Mapper"
@@ -380,18 +531,21 @@
             "type": "object",
             "properties": {
               "attribute": {
+                "title": "Attribute name",
                 "type": [
                   "string",
                   "null"
                 ]
               },
               "childAttribute": {
+                "title": "Child attribute name",
                 "type": [
                   "string",
                   "null"
                 ]
               },
               "expr": {
+                "title": "Expression to evaluate",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -402,6 +556,7 @@
                 ]
               },
               "multipleExpr": {
+                "title": "Expression to evaluate multiple attributes",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Expr"
@@ -412,12 +567,14 @@
                 ]
               },
               "parentAttribute": {
+                "title": "Parent attribute name",
                 "type": [
                   "string",
                   "null"
                 ]
               },
               "valueAttribute": {
+                "title": "Attribute name to get value from",
                 "type": [
                   "string",
                   "null"
@@ -470,13 +627,20 @@
         ],
         "properties": {
           "bufferType": {
-            "$ref": "#/definitions/BufferType"
+            "title": "Buffer type",
+            "allOf": [
+              {
+                "$ref": "#/definitions/BufferType"
+              }
+            ]
           },
           "distance": {
+            "title": "Buffer distance",
             "type": "number",
             "format": "double"
           },
           "interpolationAngle": {
+            "title": "Buffer interpolation angle",
             "type": "number",
             "format": "double"
           }
@@ -517,15 +681,27 @@
         ],
         "properties": {
           "renameAction": {
-            "$ref": "#/definitions/RenameAction"
+            "title": "Action to perform on the attribute",
+            "allOf": [
+              {
+                "$ref": "#/definitions/RenameAction"
+              }
+            ]
           },
           "renameType": {
-            "$ref": "#/definitions/RenameType"
+            "title": "Type of attributes to rename",
+            "allOf": [
+              {
+                "$ref": "#/definitions/RenameType"
+              }
+            ]
           },
           "renameValue": {
+            "title": "Value to add or remove",
             "type": "string"
           },
           "selectedAttributes": {
+            "title": "Attributes to rename",
             "type": [
               "array",
               "null"
@@ -535,6 +711,7 @@
             }
           },
           "textToFind": {
+            "title": "Regular expression pattern to match",
             "type": [
               "string",
               "null"
@@ -796,6 +973,7 @@
         ],
         "properties": {
           "archiveAttributes": {
+            "title": "Attribute to extract file path from",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
@@ -965,9 +1143,15 @@
         ],
         "properties": {
           "dataset": {
-            "$ref": "#/definitions/Expr"
+            "title": "Dataset to read",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           },
           "flatten": {
+            "title": "Flatten the dataset",
             "type": [
               "boolean",
               "null"
@@ -1005,10 +1189,12 @@
         ],
         "properties": {
           "countStart": {
+            "title": "Start count",
             "type": "integer",
             "format": "int64"
           },
           "groupBy": {
+            "title": "Attributes to group by",
             "type": [
               "array",
               "null"
@@ -1018,6 +1204,7 @@
             }
           },
           "outputAttribute": {
+            "title": "Attribute to output the count",
             "type": "string"
           }
         },
@@ -1100,16 +1287,23 @@
         ],
         "properties": {
           "destPrefix": {
+            "title": "Destination prefix",
             "type": [
               "string",
               "null"
             ]
           },
           "extractArchive": {
+            "title": "Extract archive",
             "type": "boolean"
           },
           "sourceDataset": {
-            "$ref": "#/definitions/Expr"
+            "title": "Source dataset",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           }
         },
         "definitions": {
@@ -1143,6 +1337,7 @@
         ],
         "properties": {
           "conditions": {
+            "title": "Conditions to filter by",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Condition"
@@ -1158,10 +1353,20 @@
             ],
             "properties": {
               "expr": {
-                "$ref": "#/definitions/Expr"
+                "title": "Condition expression",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
               },
               "outputPort": {
-                "$ref": "#/definitions/Port"
+                "title": "Output port",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Port"
+                  }
+                ]
               }
             }
           },
@@ -1197,7 +1402,12 @@
         ],
         "properties": {
           "filterKey": {
-            "$ref": "#/definitions/Attribute"
+            "title": "Attributes to filter by",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           }
         },
         "definitions": {
@@ -1313,7 +1523,12 @@
             ],
             "properties": {
               "dataset": {
-                "$ref": "#/definitions/Expr"
+                "title": "Dataset",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
               },
               "format": {
                 "type": "string",
@@ -1322,6 +1537,7 @@
                 ]
               },
               "offset": {
+                "description": "The offset of the first row to read",
                 "type": [
                   "integer",
                   "null"
@@ -1339,7 +1555,12 @@
             ],
             "properties": {
               "dataset": {
-                "$ref": "#/definitions/Expr"
+                "title": "Dataset",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
               },
               "format": {
                 "type": "string",
@@ -1348,6 +1569,7 @@
                 ]
               },
               "offset": {
+                "description": "The offset of the first row to read",
                 "type": [
                   "integer",
                   "null"
@@ -1365,7 +1587,12 @@
             ],
             "properties": {
               "dataset": {
-                "$ref": "#/definitions/Expr"
+                "title": "Dataset",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
               },
               "format": {
                 "type": "string",
@@ -1407,13 +1634,19 @@
         ],
         "properties": {
           "attributes": {
+            "title": "Attributes to sort by",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
             }
           },
           "order": {
-            "$ref": "#/definitions/Order"
+            "title": "Order to sort by",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Order"
+              }
+            ]
           }
         },
         "definitions": {
@@ -1453,6 +1686,7 @@
         ],
         "properties": {
           "transformers": {
+            "title": "Transformers to apply",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Transform"
@@ -1470,7 +1704,12 @@
             ],
             "properties": {
               "expr": {
-                "$ref": "#/definitions/Expr"
+                "title": "Expression to transform the feature",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
               }
             }
           }
@@ -1500,6 +1739,7 @@
         ],
         "properties": {
           "targetTypes": {
+            "description": "Target feature types",
             "type": "array",
             "items": {
               "type": "string"
@@ -1541,7 +1781,12 @@
                 ]
               },
               "output": {
-                "$ref": "#/definitions/Expr"
+                "title": "Output path",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
               }
             }
           },
@@ -1559,7 +1804,12 @@
                 ]
               },
               "output": {
-                "$ref": "#/definitions/Expr"
+                "title": "Output path",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
               }
             }
           },
@@ -1570,6 +1820,16 @@
               "output"
             ],
             "properties": {
+              "converter": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "format": {
                 "type": "string",
                 "enum": [
@@ -1577,7 +1837,12 @@
                 ]
               },
               "output": {
-                "$ref": "#/definitions/Expr"
+                "title": "Output path",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
               }
             }
           }
@@ -1647,6 +1912,7 @@
         ],
         "properties": {
           "filePathAttribute": {
+            "title": "Attribute to extract file path from",
             "type": "string"
           }
         }
@@ -2070,7 +2336,12 @@
         ],
         "properties": {
           "coercerType": {
-            "$ref": "#/definitions/CoercerType"
+            "description": "The type of geometry to coerce to",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CoercerType"
+              }
+            ]
           }
         },
         "definitions": {
@@ -2476,7 +2747,7 @@
         "title": "LineOnLineOverlayerParam",
         "type": "object",
         "required": [
-          "outputAttribute"
+          "tolerance"
         ],
         "properties": {
           "groupBy": {
@@ -2488,8 +2759,9 @@
               "$ref": "#/definitions/Attribute"
             }
           },
-          "outputAttribute": {
-            "$ref": "#/definitions/Attribute"
+          "tolerance": {
+            "type": "number",
+            "format": "double"
           }
         },
         "definitions": {
@@ -2524,7 +2796,12 @@
         ],
         "properties": {
           "sourceAttribute": {
-            "$ref": "#/definitions/Attribute"
+            "description": "The attribute to explode",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
           }
         },
         "definitions": {
@@ -3165,10 +3442,20 @@
         ],
         "properties": {
           "isTarget": {
-            "$ref": "#/definitions/Expr"
+            "title": "Rhai script to determine if the feature is the target",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           },
           "process": {
-            "$ref": "#/definitions/Expr"
+            "title": "Rhai script to process the feature",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
           }
         },
         "definitions": {
@@ -3232,6 +3519,46 @@
       ]
     },
     {
+      "name": "SqlReader",
+      "type": "source",
+      "description": "Reads features from SQL",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "SqlReaderParam",
+        "type": "object",
+        "required": [
+          "databaseUrl",
+          "sql"
+        ],
+        "properties": {
+          "databaseUrl": {
+            "description": "Database URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          },
+          "sql": {
+            "$ref": "#/definitions/Expr"
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "Feature"
+      ]
+    },
+    {
       "name": "StatisticsCalculator",
       "type": "processor",
       "description": "Calculates statistics of features",
@@ -3244,6 +3571,7 @@
         ],
         "properties": {
           "aggregateAttribute": {
+            "title": "Attribute to aggregate by",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -3254,6 +3582,7 @@
             ]
           },
           "aggregateName": {
+            "title": "Name of the attribute to aggregate by",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -3264,6 +3593,7 @@
             ]
           },
           "calculations": {
+            "title": "Calculations to perform",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Calculation"
@@ -3282,10 +3612,20 @@
             ],
             "properties": {
               "expr": {
-                "$ref": "#/definitions/Expr"
+                "title": "Calculation to perform",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  }
+                ]
               },
               "newAttribute": {
-                "$ref": "#/definitions/Attribute"
+                "title": "New attribute name",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  }
+                ]
               }
             }
           },
@@ -3506,10 +3846,13 @@
             "$ref": "#/definitions/ProgrammingLanguage"
           },
           "sourceCodeFilePath": {
-            "type": "string"
+            "$ref": "#/definitions/Expr"
           }
         },
         "definitions": {
+          "Expr": {
+            "type": "string"
+          },
           "ProcessorType": {
             "type": "string",
             "enum": [
@@ -3645,6 +3988,42 @@
       ],
       "categories": [
         "PLATEAU"
+      ]
+    },
+    {
+      "name": "ZipFileWriter",
+      "type": "sink",
+      "description": "Writes features to a zip file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ZipFileWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "output": {
+            "description": "Output path",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
       ]
     }
   ]

@@ -9,7 +9,7 @@ import { ParamEditor } from "./components";
 
 type Props = {
   selected?: Node;
-  onParamsSubmit: (nodeId: string, data: any) => void;
+  onParamsSubmit?: (nodeId: string, data: any) => void;
 };
 
 const ParamsPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
@@ -26,7 +26,7 @@ const ParamsPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
 
   const handleParamsSubmit = useCallback(
     async (nodeId: string, data: any) => {
-      await Promise.resolve(onParamsSubmit(nodeId, data));
+      await Promise.resolve(onParamsSubmit?.(nodeId, data));
       handleClose();
     },
     [onParamsSubmit, handleClose],
@@ -49,6 +49,7 @@ const ParamsPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
       previousViewportRef.current = null;
     }
   }, [setViewport, getViewport, selected]);
+
   return (
     <>
       <div

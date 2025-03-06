@@ -10,25 +10,37 @@ import (
 )
 
 type ProjectDocument struct {
-	ID                string
-	Archived          bool
-	IsBasicAuthActive bool
-	BasicAuthUsername string
+	// Core Identity
+	ID        string
+	Alias     string
+	Name      string
+	Workflow  string
+	Workspace string
+
+	// Authentication
 	BasicAuthPassword string
-	UpdatedAt         time.Time
-	PublishedAt       time.Time
-	Name              string
-	Description       string
-	Alias             string
-	ImageURL          string
-	PublicTitle       string
+	BasicAuthUsername string
+	IsBasicAuthActive bool
+
+	// Content
+	Description string
+	ImageURL    string
+
+	// Metadata
+	Archived    bool
+	PublishedAt time.Time
+	UpdatedAt   time.Time
+
+	// Public Visibility Configuration
 	PublicDescription string
 	PublicImage       string
 	PublicNoIndex     bool
-	Workspace         string // DON'T CHANGE NAME'
-	Workflow          string
-	EnableGA          bool
-	TrackingID        string
+	PublicTitle       string
+	SharedToken       string
+
+	// Analytics
+	EnableGA   bool
+	TrackingID string
 }
 
 type ProjectConsumer = Consumer[*ProjectDocument, *project.Project]
@@ -42,17 +54,23 @@ func NewProjectConsumer(workspaces []accountdomain.WorkspaceID) *ProjectConsumer
 func NewProject(project *project.Project) (*ProjectDocument, string) {
 	pid := project.ID().String()
 
+	var sharedToken string
+	if project.SharedToken() != nil {
+		sharedToken = *project.SharedToken()
+	}
+
 	return &ProjectDocument{
 		ID:                pid,
 		Archived:          project.IsArchived(),
-		IsBasicAuthActive: project.IsBasicAuthActive(),
-		BasicAuthUsername: project.BasicAuthUsername(),
 		BasicAuthPassword: project.BasicAuthPassword(),
-		UpdatedAt:         project.UpdatedAt(),
-		Name:              project.Name(),
+		BasicAuthUsername: project.BasicAuthUsername(),
 		Description:       project.Description(),
-		Workspace:         project.Workspace().String(),
+		IsBasicAuthActive: project.IsBasicAuthActive(),
+		Name:              project.Name(),
+		SharedToken:       sharedToken,
+		UpdatedAt:         project.UpdatedAt(),
 		Workflow:          project.Workflow().String(),
+		Workspace:         project.Workspace().String(),
 	}, pid
 }
 
@@ -61,6 +79,7 @@ func (d *ProjectDocument) Model() (*project.Project, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	tid, err := accountdomain.WorkspaceIDFrom(d.Workspace)
 	if err != nil {
 		return nil, err
@@ -68,16 +87,22 @@ func (d *ProjectDocument) Model() (*project.Project, error) {
 
 	wid, _ := id.WorkflowIDFrom(d.Workflow)
 
+	var sharedToken *string
+	if d.SharedToken != "" {
+		sharedToken = &d.SharedToken
+	}
+
 	return project.New().
 		ID(pid).
+		BasicAuthPassword(d.BasicAuthPassword).
+		BasicAuthUsername(d.BasicAuthUsername).
+		Description(d.Description).
 		IsArchived(d.Archived).
 		IsBasicAuthActive(d.IsBasicAuthActive).
-		BasicAuthUsername(d.BasicAuthUsername).
-		BasicAuthPassword(d.BasicAuthPassword).
-		UpdatedAt(d.UpdatedAt).
 		Name(d.Name).
-		Description(d.Description).
-		Workspace(tid).
+		SharedToken(sharedToken).
+		UpdatedAt(d.UpdatedAt).
 		Workflow(wid).
+		Workspace(tid).
 		Build()
 }

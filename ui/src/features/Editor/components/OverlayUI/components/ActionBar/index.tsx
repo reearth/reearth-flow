@@ -1,9 +1,10 @@
 import {
   DotsThreeVertical,
-  DownloadSimple,
+  Export,
   LetterCircleV,
   Play,
   RocketLaunch,
+  ShareFat,
   Stop,
 } from "@phosphor-icons/react";
 import { memo, useState } from "react";
@@ -19,7 +20,7 @@ import { useProjectExport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 
-import { DeployDialog } from "./components";
+import { DeployDialog, ShareDialog } from "./components";
 
 const tooltipOffset = 6;
 
@@ -29,21 +30,34 @@ type Props = {
     description: string,
     deploymentId?: string,
   ) => Promise<void>;
+  onProjectShare: (share: boolean) => void;
   onRightPanelOpen: (content?: "version-history") => void;
 };
 
 const ActionBar: React.FC<Props> = ({
   allowedToDeploy,
   onWorkflowDeployment,
+  onProjectShare,
   onRightPanelOpen,
 }) => {
   const t = useT();
 
-  const [showDialog, setShowDialog] = useState(false);
+  const [showDeployDialog, setShowDeployDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+
+  const handleShowDeployDialog = () => {
+    setShowShareDialog(false);
+    setShowDeployDialog(true);
+  };
+
+  const handleShowShareDialog = () => {
+    setShowDeployDialog(false);
+    setShowShareDialog(true);
+  };
 
   const [currentProject] = useCurrentProject();
 
-  const { handleProjectExport } = useProjectExport(currentProject?.id);
+  const { handleProjectExport } = useProjectExport(currentProject);
 
   return (
     <>
@@ -67,7 +81,7 @@ const ActionBar: React.FC<Props> = ({
               tooltipText={t("Deploy project workflow")}
               tooltipOffset={tooltipOffset}
               icon={<RocketLaunch weight="thin" />}
-              onClick={() => setShowDialog(true)}
+              onClick={handleShowDeployDialog}
             />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -80,31 +94,39 @@ const ActionBar: React.FC<Props> = ({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
-                  className="flex gap-2"
-                  onClick={handleProjectExport}>
-                  <DownloadSimple weight="light" />
-                  <p className="text-sm font-extralight">
-                    {t("Export Project")}
-                  </p>
+                  className="flex justify-between gap-4"
+                  onClick={handleShowShareDialog}>
+                  <p>{t("Share Project")}</p>
+                  <ShareFat weight="light" />
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="flex gap-2"
+                  className="flex justify-between gap-4"
+                  onClick={handleProjectExport}>
+                  <p>{t("Export Project")}</p>
+                  <Export weight="light" />
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="flex justify-between gap-4"
                   onClick={() => onRightPanelOpen("version-history")}>
+                  <p>{t("Version History")}</p>
                   <LetterCircleV weight="light" />
-                  <p className="text-sm font-extralight">
-                    {t("Version History")}
-                  </p>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
       </div>
-      {showDialog && (
+      {showDeployDialog && (
         <DeployDialog
           allowedToDeploy={allowedToDeploy}
-          setShowDialog={setShowDialog}
+          setShowDialog={setShowDeployDialog}
           onWorkflowDeployment={onWorkflowDeployment}
+        />
+      )}
+      {showShareDialog && (
+        <ShareDialog
+          setShowDialog={setShowShareDialog}
+          onProjectShare={onProjectShare}
         />
       )}
     </>

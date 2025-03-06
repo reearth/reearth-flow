@@ -11,6 +11,7 @@ import (
 
 type JobDocument struct {
 	ID           string     `bson:"id"`
+	Debug        *bool      `bson:"debug"`
 	DeploymentID string     `bson:"deploymentid"`
 	WorkspaceID  string     `bson:"workspaceid"`
 	GCPJobID     string     `bson:"gcpjobid"`
@@ -35,6 +36,7 @@ func NewJob(j *job.Job) (*JobDocument, string) {
 
 	return &JobDocument{
 		ID:           jid,
+		Debug:        j.Debug(),
 		DeploymentID: j.Deployment().String(),
 		WorkspaceID:  j.Workspace().String(),
 		GCPJobID:     j.GCPJobID(),
@@ -63,6 +65,7 @@ func (d *JobDocument) Model() (*job.Job, error) {
 
 	j := job.New().
 		ID(jid).
+		Debug(d.Debug).
 		Deployment(did).
 		Workspace(wid).
 		Status(job.Status(d.Status)).
