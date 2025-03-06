@@ -3,9 +3,9 @@ use crate::storage::kv::DocOps;
 use crate::AwarenessRef;
 use anyhow::anyhow;
 use anyhow::Result;
+use bb8_redis::{bb8, RedisConnectionManager};
 use futures_util::{SinkExt, StreamExt};
 use rand;
-use redis::aio::MultiplexedConnection as RedisConnection;
 use redis::AsyncCommands;
 use serde::Deserialize;
 use serde_json;
@@ -40,6 +40,8 @@ pub struct BroadcastConfig {
     pub redis_config: Option<RedisConfig>,
 }
 
+type RedisPool = bb8::Pool<RedisConnectionManager>;
+
 pub struct BroadcastGroup {
     connections: Arc<AtomicUsize>,
     awareness_ref: AwarenessRef,
@@ -48,7 +50,7 @@ pub struct BroadcastGroup {
     doc_sub: Option<yrs::Subscription>,
     awareness_sub: Option<yrs::Subscription>,
     storage: Option<Arc<GcsStore>>,
-    redis: Option<Arc<Mutex<RedisConnection>>>,
+    redis_pool: Option<Arc<RedisPool>>,
     doc_name: Option<String>,
     redis_ttl: Option<usize>,
     storage_rx: Option<tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>>,
@@ -95,7 +97,7 @@ impl BroadcastGroup {
         if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
             let store_clone = store.clone();
             let doc_name_clone = doc_name.clone();
-            let redis = self.redis.clone();
+            let redis = self.redis_pool.clone();
             let redis_ttl = self.redis_ttl;
             let pending_updates = self.pending_updates.clone();
 
@@ -103,9 +105,9 @@ impl BroadcastGroup {
                 let updates = {
                     let mut pending = pending_updates.lock().await;
                     if pending.is_empty() {
-                        if let Some(redis_conn) = &redis {
+                        if let Some(redis_pool) = &redis {
                             let redis_key = format!("pending_updates:{}", doc_name_clone);
-                            let mut redis_conn = redis_conn.lock().await;
+                            let mut redis_conn = redis_pool.get().await.unwrap();
                             match redis_conn
                                 .lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1)
                                 .await
@@ -199,9 +201,9 @@ impl BroadcastGroup {
                     .await;
                 }
 
-                if let Some(redis_conn) = &redis {
+                if let Some(redis_pool) = &redis {
                     let redis_key = format!("pending_updates:{}", doc_name_clone);
-                    let mut redis_conn = redis_conn.lock().await;
+                    let mut redis_conn = redis_pool.get().await.unwrap();
                     if let Err(e) = redis_conn.del::<_, ()>(&redis_key).await {
                         tracing::warn!("Failed to clear pending updates from Redis: {}", e);
                     }
@@ -300,7 +302,7 @@ impl BroadcastGroup {
             doc_sub: Some(doc_sub),
             awareness_sub: Some(awareness_sub),
             storage: None,
-            redis: None,
+            redis_pool: None,
             doc_name: None,
             redis_ttl: None,
             storage_rx: Some(storage_rx),
@@ -332,7 +334,7 @@ impl BroadcastGroup {
 
         Self::load_from_storage(&store, &doc_name, &group.awareness_ref).await;
 
-        let redis = if let Some(redis_config) = config.redis_config {
+        let redis_pool = if let Some(redis_config) = config.redis_config {
             match Self::init_redis_connection(&redis_config.url).await {
                 Ok(conn) => {
                     let redis_key = format!("pending_updates:{}", doc_name);
@@ -341,7 +343,13 @@ impl BroadcastGroup {
                     let pending_clone = group.pending_updates.clone();
 
                     tokio::spawn(async move {
-                        let mut redis_conn = conn_clone.lock().await;
+                        let mut redis_conn = match conn_clone.get().await {
+                            Ok(conn) => conn,
+                            Err(e) => {
+                                tracing::error!("Failed to get Redis connection: {}", e);
+                                return;
+                            }
+                        };
                         match redis_conn
                             .lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1)
                             .await
@@ -377,7 +385,7 @@ impl BroadcastGroup {
                     let stream_name = Self::compute_redis_stream_name(&doc_name);
                     let consumer_name = format!("instance-{}", rand::random::<u32>());
 
-                    let mut redis_conn = conn.lock().await;
+                    let mut redis_conn = conn.get().await.unwrap();
                     let _: redis::RedisResult<String> = redis::cmd("XGROUP")
                         .arg("CREATE")
                         .arg(&stream_name)
@@ -465,7 +473,7 @@ impl BroadcastGroup {
         };
 
         group.storage = Some(store);
-        group.redis = redis;
+        group.redis_pool = redis_pool;
         group.doc_name = Some(doc_name.clone());
         group.redis_ttl = redis_ttl;
 
@@ -474,21 +482,25 @@ impl BroadcastGroup {
         Ok(group)
     }
 
-    async fn init_redis_connection(
-        url: &str,
-    ) -> Result<Arc<Mutex<RedisConnection>>, redis::RedisError> {
-        let client = redis::Client::open(url)?;
-        let conn = client.get_multiplexed_async_connection().await?;
-        Ok(Arc::new(Mutex::new(conn)))
+    async fn init_redis_connection(url: &str) -> Result<Arc<RedisPool>, redis::RedisError> {
+        let manager = RedisConnectionManager::new(url)?;
+        let pool = bb8::Pool::builder()
+            .max_size(100)
+            .build(manager)
+            .await
+            .map_err(|e| {
+                redis::RedisError::from(std::io::Error::new(std::io::ErrorKind::Other, e))
+            })?;
+        Ok(Arc::new(pool))
     }
 
     #[allow(dead_code)]
     async fn load_from_redis(
-        redis: &Arc<Mutex<RedisConnection>>,
+        redis: &Arc<RedisPool>,
         doc_name: &str,
         awareness: &AwarenessRef,
-    ) -> Result<(), Error> {
-        let mut conn = redis.lock().await;
+    ) -> Result<(), anyhow::Error> {
+        let mut conn = redis.get().await?;
         let cache_key = format!("doc:{}", doc_name);
 
         let cached_data: Vec<u8> = conn
@@ -566,7 +578,7 @@ impl BroadcastGroup {
         update: Vec<u8>,
         doc_name: &str,
         store: &Arc<GcsStore>,
-        redis: &Option<Arc<Mutex<RedisConnection>>>,
+        redis: &Option<Arc<RedisPool>>,
         redis_ttl: Option<usize>,
         write_to_gcs: bool,
     ) {
@@ -585,10 +597,10 @@ impl BroadcastGroup {
             let update = update.clone();
 
             Some(async move {
-                let mut conn = redis.lock().await;
+                let mut conn = redis.get().await.unwrap();
 
                 if let Err(e) = conn
-                    .set_ex::<_, _, String>(&cache_key, update.as_slice(), ttl.try_into().unwrap())
+                    .set_ex::<_, _, ()>(&cache_key, update.as_slice(), ttl.try_into().unwrap())
                     .await
                 {
                     tracing::error!("Failed to update Redis cache: {}", e);
@@ -599,17 +611,18 @@ impl BroadcastGroup {
                         "Failed to store update to Redis pending_updates list: {}",
                         e
                     );
-                } else {
-                    let _ = conn
-                        .expire::<_, ()>(&redis_key, ttl.try_into().unwrap())
-                        .await;
+                } else if let Err(e) = conn
+                    .expire::<_, ()>(&redis_key, ttl.try_into().unwrap())
+                    .await
+                {
+                    tracing::error!("Failed to set expiry on Redis key: {}", e);
                 }
 
                 if let Err(e) = conn.publish::<_, _, ()>(&channel, update.as_slice()).await {
                     tracing::error!("Failed to publish update to Redis channel: {}", e);
                 }
 
-                let cmd_result: redis::RedisResult<String> = redis::cmd("XADD")
+                let cmd_result: redis::RedisResult<()> = redis::cmd("XADD")
                     .arg(&stream_name)
                     .arg("*")
                     .arg("message")
@@ -737,7 +750,7 @@ impl BroadcastGroup {
         };
         let stream_task = {
             let awareness = self.awareness().clone();
-            let redis = self.redis.clone();
+            let redis = self.redis_pool.clone();
             let doc_name = self.doc_name.clone();
             let redis_ttl = self.redis_ttl;
 
@@ -757,7 +770,7 @@ impl BroadcastGroup {
                                         format!("{}:room:{}", REDIS_STREAM_PREFIX, doc_name);
 
                                     tokio::spawn(async move {
-                                        let mut conn = redis.lock().await;
+                                        let mut conn = redis.get().await.unwrap();
 
                                         match conn
                                             .lpush::<_, _, ()>(&redis_key, update.as_slice())
@@ -878,24 +891,16 @@ impl BroadcastGroup {
 
     pub async fn flush_updates(&self) -> Result<(), Error> {
         if self.connection_count() > 0 {
-            tracing::info!("Not flushing updates while connections are active");
             return Ok(());
         }
 
         if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
-            tracing::info!("Manually flushing updates for document '{}'", doc_name);
-
             let updates = {
                 let mut pending = self.pending_updates.lock().await;
-                tracing::info!(
-                    "Found {} pending updates for document '{}'",
-                    pending.len(),
-                    doc_name
-                );
                 if pending.is_empty() {
-                    if let Some(redis) = &self.redis {
+                    if let Some(redis) = &self.redis_pool {
                         let redis_key = format!("pending_updates:{}", doc_name);
-                        let mut redis_conn = redis.lock().await;
+                        let mut redis_conn = redis.get().await.unwrap();
                         match redis_conn
                             .lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1)
                             .await
@@ -918,7 +923,6 @@ impl BroadcastGroup {
                         }
                     }
 
-                    tracing::info!("No updates to store for document '{}'", doc_name);
                     return Ok(());
                 }
                 std::mem::take(&mut *pending)
@@ -926,9 +930,9 @@ impl BroadcastGroup {
 
             let result = self.apply_and_store_updates(updates, doc_name, store).await;
 
-            if let Some(redis) = &self.redis {
+            if let Some(redis) = &self.redis_pool {
                 let redis_key = format!("pending_updates:{}", doc_name);
-                let mut redis_conn = redis.lock().await;
+                let mut redis_conn = redis.get().await.unwrap();
                 if let Err(e) = redis_conn.del::<_, ()>(&redis_key).await {
                     tracing::warn!("Failed to clear pending updates from Redis: {}", e);
                 } else {
@@ -980,23 +984,18 @@ impl BroadcastGroup {
 
         let state_vector = StateVector::default();
         let merged_update = txn.encode_state_as_update_v1(&state_vector);
-        tracing::info!(
-            "Created merged update of size {} bytes for document '{}'",
-            merged_update.len(),
-            doc_name
-        );
 
-        tracing::info!("Storing merged update for document '{}'", doc_name);
+        tracing::debug!("Storing merged update for document '{}'", doc_name);
         Self::handle_update(
             merged_update,
             doc_name,
             store,
-            &self.redis,
+            &self.redis_pool,
             self.redis_ttl,
             true,
         )
         .await;
-        tracing::info!("Stored merged updates for document '{}'", doc_name);
+        tracing::debug!("Stored merged updates for document '{}'", doc_name);
 
         Ok(())
     }
@@ -1009,9 +1008,9 @@ impl BroadcastGroup {
     ) -> Result<(), Error> {
         let result = self.apply_and_store_updates(updates, doc_name, store).await;
 
-        if let Some(redis) = &self.redis {
+        if let Some(redis) = &self.redis_pool {
             let redis_key = format!("pending_updates:{}", doc_name);
-            let mut redis_conn = redis.lock().await;
+            let mut redis_conn = redis.get().await.map_err(|e| Error::Other(e.into()))?;
             if let Err(e) = redis_conn.del::<_, ()>(&redis_key).await {
                 tracing::warn!("Failed to clear pending updates from Redis: {}", e);
             } else {
@@ -1068,8 +1067,6 @@ impl BroadcastGroup {
 
 impl Drop for BroadcastGroup {
     fn drop(&mut self) {
-        tracing::info!("BroadcastGroup::drop called");
-
         if let Some(sub) = self.doc_sub.take() {
             drop(sub);
         }
@@ -1080,7 +1077,6 @@ impl Drop for BroadcastGroup {
 
         if let Some(task) = self.redis_subscriber_task.take() {
             task.abort();
-            tracing::info!("Aborted Redis subscriber task");
         }
 
         self.awareness_updater.abort();
