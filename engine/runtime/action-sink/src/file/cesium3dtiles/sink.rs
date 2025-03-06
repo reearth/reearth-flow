@@ -329,7 +329,6 @@ impl Cesium3DTilesWriter {
                                 let zip_result = reearth_flow_common::zip::write(
                                     writer,
                                     output.path().as_path(),
-                                    output.path().as_path(),
                                 )
                                 .map_err(|e| {
                                     crate::errors::SinkError::cesium3dtiles_writer(e.to_string())
