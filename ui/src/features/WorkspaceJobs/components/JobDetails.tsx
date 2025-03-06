@@ -70,15 +70,6 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
               value: selectedJob.outputURLs || t("N/A"),
               type: selectedJob.outputURLs ? "link" : undefined,
             },
-            ...(selectedJob.status === "completed"
-              ? [
-                  {
-                    id: "completedMessage",
-                    name: t("Completed Message"),
-                    value: t("The job has been completed successfully."),
-                  },
-                ]
-              : []),
           ]
         : undefined,
     [t, selectedJob],
@@ -171,13 +162,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
                 <LoadingSkeleton />
               ) : liveLogs && liveLogs.length > 0 ? (
                 <LogsConsole data={liveLogs} />
-              ) : (
-                <div className="flex h-full items-center justify-center rounded-lg border bg-muted/20 p-6">
-                  <p className="text-muted-foreground">
-                    {t("Waiting for logs...")}
-                  </p>
-                </div>
-              )}
+              ) : null}
             </>
           )}
           {selectedJob.status === "completed" && (
@@ -186,13 +171,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
                 <LoadingSkeleton />
               ) : urlLogs && urlLogs.length > 0 ? (
                 <LogsConsole data={urlLogs} />
-              ) : (
-                <div className="flex h-full items-center justify-center rounded-lg border bg-muted/20 p-6">
-                  <p className="text-muted-foreground">
-                    {t("Waiting for logs...")}
-                  </p>
-                </div>
-              )}
+              ) : null}
             </>
           )}
         </div>
