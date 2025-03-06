@@ -155,7 +155,7 @@ const LogsTable = ({
           />
           <IconButton
             size="icon"
-            variant={getStatusValue === "INFO" ? "default" : "outline"}
+            variant={getStatusValue === "info" ? "default" : "outline"}
             tooltipText={t("Info")}
             onClick={() => handleStatusChange("info")}
             icon={<InfoCircledIcon />}

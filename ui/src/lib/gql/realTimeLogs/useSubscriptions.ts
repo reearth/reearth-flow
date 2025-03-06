@@ -1,7 +1,11 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useCallback } from "react";
 
+import { Log } from "@flow/types";
+
+import { LogFragment } from "../__gen__/graphql";
 import { RealTimeLogsSubscription } from "../__gen__/plugins/graphql-request";
+import { toLog } from "../convert";
 import { useWsClient } from "../subscriptions";
 
 const LOG_SUBSCRIPTION = `
@@ -21,19 +25,53 @@ export enum LogSubscriptionKeys {
 }
 
 export const useLogs = (jobId: string) => {
-  const queryClient = useQueryClient();
   const wsClient = useWsClient();
-  const processedLogsRef = useRef(new Set<string>());
-  const logsArrayRef = useRef<RealTimeLogsSubscription["logs"][]>([]);
-  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const queryClient = useQueryClient();
   const isSubscribedRef = useRef(false);
 
-  // Setup subscription outside of useQuery to prevent multiple subscriptions
+  const query = useQuery<Log[]>({
+    queryKey: [LogSubscriptionKeys.GetLogs, jobId],
+    queryFn: async () => {
+      // This will just retrieve the initial empty array or cached data
+      const cachedData = queryClient.getQueryData<Log[]>([
+        LogSubscriptionKeys.GetLogs,
+        jobId,
+      ]);
+      return cachedData || [];
+    },
+    // Important: initial query should run only once
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+  });
+
+  // Set up subscription separately from React Query
   useEffect(() => {
+    // Important: Use ref instead of state to track subscription
+    // to prevent re-renders and infinite loops
     if (!jobId || isSubscribedRef.current) return;
 
     isSubscribedRef.current = true;
+    const processedLogIds = new Set<string>();
+    let localLogs: Log[] = [];
     let connectionActive = true;
+    let updateTimeout: NodeJS.Timeout | null = null;
+
+    // Initialize local logs with any cached data
+    const cachedData = queryClient.getQueryData<Log[]>([
+      LogSubscriptionKeys.GetLogs,
+      jobId,
+    ]);
+    if (cachedData && cachedData.length > 0) {
+      localLogs = [...cachedData];
+      cachedData.forEach((log) => {
+        // Use 'status' property since this is converted data
+        const logId = `${log.message}-${log.status}`;
+        processedLogIds.add(logId);
+      });
+    }
 
     // Setup connection monitoring
     const heartbeatInterval = setInterval(() => {
@@ -43,21 +81,21 @@ export const useLogs = (jobId: string) => {
       );
     }, 10000);
 
-    // Function to batch updates to the cache
+    // Function to update query cache
     const updateQueryCache = () => {
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-      }
+      if (updateTimeout) clearTimeout(updateTimeout);
 
-      updateTimeoutRef.current = setTimeout(() => {
-        queryClient.setQueryData(
+      updateTimeout = setTimeout(() => {
+        // Update React Query cache
+        queryClient.setQueryData<Log[]>(
           [LogSubscriptionKeys.GetLogs, jobId],
-          [...logsArrayRef.current],
+          [...localLogs],
         );
-        updateTimeoutRef.current = null;
+        updateTimeout = null;
       }, 50);
     };
 
+    // Subscribe to logs
     const unsubscribe = wsClient.subscribe<RealTimeLogsSubscription>(
       {
         query: LOG_SUBSCRIPTION,
@@ -68,28 +106,35 @@ export const useLogs = (jobId: string) => {
           connectionActive = true;
 
           if (data.data?.logs) {
-            const logEntry = data.data.logs;
+            // Get log data and transform it
+            const rawLog = data.data.logs as LogFragment;
+            const logEntry = toLog(rawLog);
 
-            // Create a unique identifier for this log
-            const logId = `${logEntry.message}-${logEntry.logLevel}`;
+            // Create unique ID - IMPORTANT: Use 'status' not 'logLevel' after conversion
+            const logId = `${logEntry.message}-${logEntry.status}`;
 
-            // Skip if we've seen this log before
-            if (processedLogsRef.current.has(logId)) {
-              return;
-            }
+            // Skip if already processed
+            if (processedLogIds.has(logId)) return;
 
             // Mark as processed
-            processedLogsRef.current.add(logId);
+            processedLogIds.add(logId);
 
-            // Add to our array
-            logsArrayRef.current.push(logEntry);
+            // Add to local logs
+            localLogs.push(logEntry);
 
-            // Update cache (debounced)
+            // Sort logs by timestamp
+            localLogs.sort((a, b) => {
+              const dateA = new Date(a.timestamp).getTime();
+              const dateB = new Date(b.timestamp).getTime();
+              return dateA - dateB;
+            });
+
+            // Update React Query cache
             updateQueryCache();
           }
         },
-        error: (error) => {
-          console.error("Subscription error", error);
+        error: (err) => {
+          console.error("Subscription error:", err);
           connectionActive = false;
         },
         complete: () => {
@@ -103,53 +148,17 @@ export const useLogs = (jobId: string) => {
 
     // Cleanup
     return () => {
-      isSubscribedRef.current = false;
       clearInterval(heartbeatInterval);
-      if (updateTimeoutRef.current) {
-        clearTimeout(updateTimeoutRef.current);
-        updateTimeoutRef.current = null;
-      }
+      if (updateTimeout) clearTimeout(updateTimeout);
       unsubscribe();
+      isSubscribedRef.current = false;
     };
-  }, [jobId, wsClient, queryClient]);
-
-  // Use React Query to access the logs
-  const query = useQuery({
-    queryKey: [LogSubscriptionKeys.GetLogs, jobId],
-    queryFn: () => {
-      // This will resolve immediately if we already have logs
-      if (logsArrayRef.current.length > 0) {
-        return Promise.resolve(logsArrayRef.current);
-      }
-
-      // Otherwise create a promise that will resolve when logs arrive
-      return new Promise<RealTimeLogsSubscription["logs"][]>((resolve) => {
-        // Check if we have logs every 100ms
-        const checkInterval = setInterval(() => {
-          if (logsArrayRef.current.length > 0) {
-            clearInterval(checkInterval);
-            resolve(logsArrayRef.current);
-          }
-        }, 100);
-
-        // Timeout after 5 seconds to prevent hanging
-        setTimeout(() => {
-          clearInterval(checkInterval);
-          resolve(logsArrayRef.current);
-        }, 5000);
-      });
-    },
-    refetchInterval: false,
-    staleTime: Infinity,
-    gcTime: Infinity,
-  });
+  }, [jobId, wsClient, queryClient]); // Removed isSubscribed from dependencies
 
   // Function to clear logs
-  const clearLogs = () => {
-    logsArrayRef.current = [];
-    processedLogsRef.current.clear();
-    queryClient.setQueryData([LogSubscriptionKeys.GetLogs, jobId], []);
-  };
+  const clearLogs = useCallback(() => {
+    queryClient.setQueryData<Log[]>([LogSubscriptionKeys.GetLogs, jobId], []);
+  }, [jobId, queryClient]);
 
   return {
     ...query,

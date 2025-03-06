@@ -104,7 +104,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
             jobId: selectedJob.id,
             message: parsedLog.msg,
             timestamp: parsedLog.ts,
-            status: parsedLog.level,
+            status: parsedLog.level.toLowerCase(),
           };
         },
         onError: (error, line, index) => {
