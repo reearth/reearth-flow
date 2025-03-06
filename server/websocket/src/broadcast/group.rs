@@ -598,12 +598,61 @@ impl BroadcastGroup {
     async fn load_from_storage(store: &Arc<GcsStore>, doc_name: &str, awareness: &AwarenessRef) {
         let awareness = awareness.write().await;
         let mut txn = awareness.doc().transact_mut();
-        match store.load_doc(doc_name, &mut txn).await {
-            Ok(_) => {
-                tracing::debug!("Successfully loaded document '{}' from storage", doc_name);
-            }
-            Err(e) => {
-                tracing::error!("Failed to load document '{}' from storage: {}", doc_name, e);
+        
+        let mut attempts = 0;
+        let max_attempts = 3;
+        let timeout_duration = std::time::Duration::from_secs(5);
+        
+        loop {
+            attempts += 1;
+            
+            match tokio::time::timeout(
+                timeout_duration,
+                store.load_doc(doc_name, &mut txn)
+            ).await {
+                Ok(result) => match result {
+                    Ok(_) => {
+                        tracing::debug!("Successfully loaded document '{}' from storage", doc_name);
+                        break;
+                    }
+                    Err(e) => {
+                        if attempts >= max_attempts {
+                            tracing::error!(
+                                "Failed to load document '{}' from storage after {} attempts: {}", 
+                                doc_name, 
+                                max_attempts, 
+                                e
+                            );
+                            break;
+                        } else {
+                            tracing::warn!(
+                                "Failed to load document '{}' from storage (attempt {}/{}): {}. Retrying...", 
+                                doc_name, 
+                                attempts, 
+                                max_attempts, 
+                                e
+                            );
+                            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                        }
+                    }
+                },
+                Err(_) => {
+                    if attempts >= max_attempts {
+                        tracing::error!(
+                            "Timed out loading document '{}' from storage after {} attempts", 
+                            doc_name, 
+                            max_attempts
+                        );
+                        break;
+                    } else {
+                        tracing::warn!(
+                            "Timed out loading document '{}' from storage (attempt {}/{}). Retrying...", 
+                            doc_name, 
+                            attempts, 
+                            max_attempts
+                        );
+                    }
+                }
             }
         }
     }
