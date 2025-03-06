@@ -1,4 +1,4 @@
-import { Globe, Terminal } from "@phosphor-icons/react";
+import { Globe } from "@phosphor-icons/react";
 import { useCallback, useState } from "react";
 
 import { useShortcuts } from "@flow/hooks";
@@ -30,11 +30,6 @@ export default ({
 
   const panelContentOptions: PanelContent[] = [
     {
-      id: "output-log",
-      button: <Terminal className="size-[20px]" weight="thin" />,
-      title: t("Log"),
-    },
-    {
       id: "visual-preview",
       button: <Globe className="size-[20px]" weight="thin" />,
       title: t("Preview"),
@@ -56,12 +51,6 @@ export default ({
   );
 
   useShortcuts([
-    {
-      keyBinding: { key: "l", commandKey: true },
-      callback: () => {
-        handleSelection("output-log");
-      },
-    },
     {
       keyBinding: { key: "p", commandKey: true },
       callback: () => {
