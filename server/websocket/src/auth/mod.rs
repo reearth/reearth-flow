@@ -3,6 +3,7 @@ use crate::thrift::{APITokenVerifyRequest, APITokenVerifyResponse};
 use anyhow::{anyhow, Result};
 use reqwest::Client;
 use serde_json::json;
+use std::time::{SystemTime, UNIX_EPOCH};
 use tracing::debug;
 
 #[derive(Debug, Clone)]
@@ -14,7 +15,13 @@ pub struct AuthService {
 impl AuthService {
     pub async fn new(config: AuthConfig) -> Result<Self> {
         debug!("Connecting to auth service at: {}", config.url);
-        let client = Client::new();
+        let client = reqwest::ClientBuilder::new()
+            .no_deflate()
+            .no_brotli()
+            .no_gzip()
+            .tcp_keepalive(None)
+            .pool_max_idle_per_host(0)
+            .build()?;
         Ok(Self {
             client,
             url: config.url,
@@ -26,10 +33,15 @@ impl AuthService {
 
         let thrift_request = APITokenVerifyRequest::new(token.to_string());
 
+        let timestamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis();
+
         let json_request = json!({
             "method": "VerifyAPIToken",
             "type": "CALL",
-            "seqid": 1,
+            "seqid": timestamp,
             "args": {
                 "request": {
                     "token": thrift_request.token
@@ -43,6 +55,9 @@ impl AuthService {
             .post(&url)
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
+            .header("Cache-Control", "no-cache, no-store, must-revalidate")
+            .header("Pragma", "no-cache")
+            .header("X-Request-Time", timestamp.to_string())
             .json(&json_request)
             .send()
             .await?;
