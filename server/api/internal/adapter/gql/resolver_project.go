@@ -23,7 +23,7 @@ func (r *projectResolver) Parameters(ctx context.Context, obj *gqlmodel.Project)
 		return nil, err
 	}
 
-	parameters, err := usecases(ctx).Parameter.FetchByProject(ctx, sid)
+	parameters, err := usecases(ctx).Parameter.FetchByProject(ctx, sid, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}

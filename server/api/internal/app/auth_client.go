@@ -119,3 +119,15 @@ func addAuth0SubToUser(ctx context.Context, u *user.User, a user.Auth, cfg *Serv
 	}
 	return nil
 }
+
+func AuthRequiredMiddleware() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			ctx := c.Request().Context()
+			if adapter.Operator(ctx) == nil {
+				return echo.ErrUnauthorized
+			}
+			return next(c)
+		}
+	}
+}

@@ -20,7 +20,7 @@ func TestCreateWorkspace(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser)
 	query := `mutation { createWorkspace(input: {name: "test"}){ workspace{ id name } }}`
 	request := GraphQLRequest{
 		Query: query,
@@ -43,7 +43,7 @@ func TestDeleteWorkspace(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser)
 	_, err := r.Workspace.FindByID(context.Background(), wId1)
 	assert.Nil(t, err)
 	query := fmt.Sprintf(`mutation { deleteWorkspace(input: {workspaceId: "%s"}){ workspaceId }}`, wId1)
@@ -85,7 +85,7 @@ func TestUpdateWorkspace(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser)
 
 	w, err := r.Workspace.FindByID(context.Background(), wId1)
 	assert.Nil(t, err)
@@ -132,7 +132,7 @@ func TestAddMemberToWorkspace(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser)
 
 	w, err := r.Workspace.FindByID(context.Background(), wId1)
 	assert.Nil(t, err)
@@ -179,7 +179,7 @@ func TestRemoveMemberFromWorkspace(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser)
 
 	w, err := r.Workspace.FindByID(context.Background(), wId2)
 	assert.Nil(t, err)
@@ -217,7 +217,7 @@ func TestUpdateMemberOfWorkspace(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser)
 
 	w, err := r.Workspace.FindByID(context.Background(), wId2)
 	assert.Nil(t, err)

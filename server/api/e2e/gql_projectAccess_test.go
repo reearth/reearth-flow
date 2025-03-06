@@ -101,7 +101,7 @@ func TestProjectShareFlow(t *testing.T) {
 		},
 		Host:       "https://example.com",
 		SharedPath: "shared",
-	}, true, baseSeederUser, true)
+	}, true, baseSeederUser)
 
 	// create a project
 	pId := testCreateProject(t, e)
@@ -141,6 +141,13 @@ func TestProjectShareFlow(t *testing.T) {
 	// 6. Fetch the project with an invalid token (failure)
 	_, res6 := fetchSharedProject(e, "invalid-token")
 	res6.Object().Value("errors").Array().NotEmpty()
+
+	// 7. Share the project by a user without permission (failure)
+	e2 := e.Builder(func(req *httpexpect.Request) {
+		req.WithHeader("X-Reearth-Debug-User", uId2.String())
+	})
+	_, res7 := shareProject(e2, pId)
+	res7.Object().Value("errors").Array().NotEmpty()
 }
 
 func extractTokenFromURL(url string) string {

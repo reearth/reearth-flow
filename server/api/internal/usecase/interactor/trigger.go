@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/reearth/reearth-flow/api/internal/rbac"
+	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -18,64 +18,46 @@ import (
 )
 
 type Trigger struct {
-	triggerRepo       repo.Trigger
-	deploymentRepo    repo.Deployment
-	jobRepo           repo.Job
-	workspaceRepo     accountrepo.Workspace
-	transaction       usecasex.Transaction
-	batch             gateway.Batch
-	file              gateway.File
-	job               interfaces.Job
-	permissionChecker gateway.PermissionChecker
+	common
+	triggerRepo    repo.Trigger
+	deploymentRepo repo.Deployment
+	jobRepo        repo.Job
+	workspaceRepo  accountrepo.Workspace
+	transaction    usecasex.Transaction
+	batch          gateway.Batch
+	file           gateway.File
+	job            interfaces.Job
 }
 
-func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker) interfaces.Trigger {
+func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job) interfaces.Trigger {
 	return &Trigger{
-		triggerRepo:       r.Trigger,
-		deploymentRepo:    r.Deployment,
-		jobRepo:           r.Job,
-		workspaceRepo:     r.Workspace,
-		transaction:       r.Transaction,
-		batch:             gr.Batch,
-		file:              gr.File,
-		job:               jobUsecase,
-		permissionChecker: permissionChecker,
+		triggerRepo:    r.Trigger,
+		deploymentRepo: r.Deployment,
+		jobRepo:        r.Job,
+		workspaceRepo:  r.Workspace,
+		transaction:    r.Transaction,
+		batch:          gr.Batch,
+		file:           gr.File,
+		job:            jobUsecase,
 	}
 }
 
-func (i *Trigger) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceTrigger, action)
-}
-
-func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Trigger, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return nil, err
-	}
-
+func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID, operator *usecase.Operator) ([]*trigger.Trigger, error) {
 	return i.triggerRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *interfaces.PaginationParam) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+func (i *Trigger) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *interfaces.PaginationParam, operator *usecase.Operator) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
+	if err := i.CanReadWorkspace(id, operator); err != nil {
 		return nil, nil, err
 	}
-
 	return i.triggerRepo.FindByWorkspace(ctx, id, p)
 }
 
-func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigger, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return nil, err
-	}
-
+func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID, operator *usecase.Operator) (*trigger.Trigger, error) {
 	return i.triggerRepo.FindByID(ctx, id)
 }
 
-func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerParam) (result *trigger.Trigger, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
-		return nil, err
-	}
-
+func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerParam, operator *usecase.Operator) (result *trigger.Trigger, err error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -119,11 +101,7 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 	return trg, nil
 }
 
-func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPITriggerParam) (_ *job.Job, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
-		return nil, err
-	}
-
+func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPITriggerParam, operator *usecase.Operator) (_ *job.Job, err error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -180,7 +158,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 
 	j.SetGCPJobID(gcpJobID)
 
-	if err := i.job.StartMonitoring(ctx, j, p.NotificationURL); err != nil {
+	if err := i.job.StartMonitoring(ctx, j, p.NotificationURL, operator); err != nil {
 		return nil, err
 	}
 
@@ -189,11 +167,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	return j, nil
 }
 
-func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerParam) (_ *trigger.Trigger, err error) {
-	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
-		return nil, err
-	}
-
+func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerParam, operator *usecase.Operator) (_ *trigger.Trigger, err error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -240,11 +214,7 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 	return t, nil
 }
 
-func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {
-	if err := i.checkPermission(ctx, rbac.ActionDelete); err != nil {
-		return err
-	}
-
+func (i *Trigger) Delete(ctx context.Context, id id.TriggerID, operator *usecase.Operator) (err error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
