@@ -41,6 +41,11 @@ export const useProject = () => {
       });
       return { project, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Project Could Not Be Created"),
+        description: t("There was an error when creating the project."),
+        variant: "destructive",
+      });
       return { project: undefined, ...rest };
     }
   };
@@ -75,6 +80,11 @@ export const useProject = () => {
       const project = await mutateAsync(input);
       return { project, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Project Could Not Be Updated"),
+        description: t("There was an error when updating the project."),
+        variant: "destructive",
+      });
       return { project: undefined, ...rest };
     }
   };
@@ -91,10 +101,14 @@ export const useProject = () => {
         description: t(
           "Project has been successfully deleted from your workspace.",
         ),
-        variant: "destructive",
       });
       return { projectId: data.projectId, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Project Could Not Be Deleted"),
+        description: t("There was an error when deleting the project."),
+        variant: "destructive",
+      });
       return { projectId: undefined, ...rest };
     }
   };
@@ -123,7 +137,15 @@ export const useProject = () => {
         ),
       });
       return { job: data.job, ...rest };
-    } catch (_err) {
+    } catch (err) {
+      console.log("error", err);
+      toast({
+        title: t("Debug Run Could Not Be Started"),
+        description: t(
+          "There was an error when attempting to run the current workflow.",
+        ),
+        variant: "destructive",
+      });
       return { job: undefined, ...rest };
     }
   };

@@ -2,7 +2,11 @@ import { useCallback } from "react";
 
 import { useProject } from "@flow/lib/gql";
 import { useJob } from "@flow/lib/gql/job";
-import { loadStateFromIndexedDB, useCurrentProject } from "@flow/stores";
+import {
+  loadStateFromIndexedDB,
+  updateJobId,
+  useCurrentProject,
+} from "@flow/stores";
 import type { Workflow } from "@flow/types";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 
@@ -30,6 +34,10 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
     );
 
     console.log("job started: ", data.job);
+    if (data.job) {
+      await updateJobId(data.job.id);
+      // TODO: open logs panel
+    }
   }, [currentProject, rawWorkflows, runProject]);
 
   const handleDebugRunStop = useCallback(async () => {
@@ -38,7 +46,9 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
 
     console.log("stop debug run", debugRunState.jobId);
     const data = await useJobCancel(debugRunState.jobId);
-    console.log("stop debug run data", data);
+    if (data.isSuccess) {
+      await updateJobId(undefined);
+    }
   }, [useJobCancel]);
 
   return {

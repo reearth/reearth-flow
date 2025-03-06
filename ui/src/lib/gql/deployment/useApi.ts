@@ -53,6 +53,11 @@ export const useDeployment = () => {
       });
       return { deployment: data?.deployment, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Deployment Could Not Be Created"),
+        description: t("There was an error when creating the deployment."),
+        variant: "destructive",
+      });
       return { deployment: undefined, ...rest };
     }
   };
@@ -83,6 +88,11 @@ export const useDeployment = () => {
       });
       return { deployment: data?.deployment, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Deployment Could Not Be Created"),
+        description: t("There was an error when creating the deployment."),
+        variant: "destructive",
+      });
       return { deployment: undefined, ...rest };
     }
   };
@@ -105,6 +115,11 @@ export const useDeployment = () => {
       });
       return { deployment, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Deployment Could Not Be Updated"),
+        description: t("There was an error when updating the deployment."),
+        variant: "destructive",
+      });
       return { deployment: undefined, ...rest };
     }
   };
@@ -121,10 +136,14 @@ export const useDeployment = () => {
         description: t(
           "Deployment has been successfully deleted from your workspace.",
         ),
-        variant: "destructive",
       });
       return { deploymentId: data.deploymentId, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Deployment Could Not Be Deleted"),
+        description: t("There was an error when deleting the deployment."),
+        variant: "destructive",
+      });
       return { deploymentId: undefined, ...rest };
     }
   };
@@ -155,6 +174,13 @@ export const useDeployment = () => {
       });
       return { job, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Deployment Could Not Be Executed"),
+        description: t(
+          "There was an error when attempting to run the current deployment.",
+        ),
+        variant: "destructive",
+      });
       return { job: undefined, ...rest };
     }
   };

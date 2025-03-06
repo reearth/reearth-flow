@@ -43,7 +43,7 @@ export const useJob = () => {
       toast({
         title: t("Job Could Not Be Cancelled"),
         description: t("There was an error when cancelling the job."),
-        variant: "warning",
+        variant: "destructive",
       });
       return { job: undefined, ...rest };
     }
