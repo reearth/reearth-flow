@@ -1811,6 +1811,16 @@ Writes features from various formats
         "output"
       ],
       "properties": {
+        "converter": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "format": {
           "type": "string",
           "enum": [
@@ -3938,3 +3948,40 @@ Validates XML content
 * failed
 ### Category
 * PLATEAU
+
+## ZipFileWriter
+### Type
+* sink
+### Description
+Writes features to a zip file
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ZipFileWriterParam",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "output": {
+      "description": "Output path",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
