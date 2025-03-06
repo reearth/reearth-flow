@@ -1147,14 +1147,14 @@ impl Drop for BroadcastGroup {
                                 tracing::error!("Failed to load updates from Redis: {}", e);
                             }
                         }
-                        
+
                         let pubsub_channel = format!("doc:status:{}", doc_name);
                         let status_message = serde_json::json!({
                             "type": "instance_shutdown",
                             "timestamp": chrono::Utc::now().timestamp(),
                             "doc_id": doc_name
                         }).to_string();
-                        
+
                         if let Err(e) = redis_conn.lock().await.publish::<_, _, ()>(&pubsub_channel, status_message).await {
                             tracing::error!("Failed to publish shutdown status to Redis: {}", e);
                         } else {
@@ -1231,7 +1231,7 @@ impl Drop for BroadcastGroup {
                                     {
                                         tracing::error!("Failed to update Redis cache: {}", e);
                                     }
-                                    
+
                                     // Also publish the final merged update to Redis pub/sub
                                     let pubsub_channel = format!("doc:updates:{}", doc_name);
                                     if let Err(e) = redis_conn.lock().await
