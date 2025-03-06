@@ -9,15 +9,10 @@ import { ParamEditor } from "./components";
 
 type Props = {
   selected?: Node;
-  onParamsSubmit?: (nodeId: string, data: any) => void;
-  onCustomizationSubmit?: (nodeId: string, data: any) => void;
+  onDataSubmit?: (nodeId: string, dataField: string, updatedValue: any) => void;
 };
 
-const ParamsPanel: React.FC<Props> = ({
-  selected,
-  onParamsSubmit,
-  onCustomizationSubmit,
-}) => {
+const ParamsPanel: React.FC<Props> = ({ selected, onDataSubmit }) => {
   // This is a little hacky, but it works. We need to dispatch a click event to the react-flow__pane
   // to unlock the node when user wants to close the right panel. - @KaWaite
   const handleClose = useCallback(() => {
@@ -32,13 +27,13 @@ const ParamsPanel: React.FC<Props> = ({
   const handleSubmit = useCallback(
     async (nodeId: string, data: any, type: "params" | "customizations") => {
       if (type === "params") {
-        await Promise.resolve(onParamsSubmit?.(nodeId, data));
+        await Promise.resolve(onDataSubmit?.(nodeId, "params", data));
       } else if (type === "customizations") {
-        await Promise.resolve(onCustomizationSubmit?.(nodeId, data));
+        await Promise.resolve(onDataSubmit?.(nodeId, "customizations", data));
       }
       handleClose();
     },
-    [onParamsSubmit, onCustomizationSubmit, handleClose],
+    [onDataSubmit, handleClose],
   );
 
   const { getViewport, setViewport } = useReactFlow();

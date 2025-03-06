@@ -40,19 +40,15 @@ export default ({
     undoTrackerActionWrapper,
   });
 
-  const {
-    handleYNodesAdd,
-    handleYNodesChange,
-    handleYNodeParamsUpdate,
-    handleYNodeCustomizationUpdate,
-  } = useYNode({
-    currentYWorkflow,
-    rawWorkflows,
-    yWorkflows,
-    setSelectedNodeIds,
-    undoTrackerActionWrapper,
-    handleYWorkflowRemove,
-  });
+  const { handleYNodesAdd, handleYNodesChange, handleYNodeDataUpdate } =
+    useYNode({
+      currentYWorkflow,
+      rawWorkflows,
+      yWorkflows,
+      setSelectedNodeIds,
+      undoTrackerActionWrapper,
+      handleYWorkflowRemove,
+    });
 
   const { handleYEdgesAdd, handleYEdgesChange } = useYEdge({
     currentYWorkflow,
@@ -79,8 +75,7 @@ export default ({
     handleYWorkflowUpdate,
     handleYNodesAdd,
     handleYNodesChange,
-    handleYNodeParamsUpdate,
-    handleYNodeCustomizationUpdate,
+    handleYNodeDataUpdate,
     handleYEdgesAdd,
     handleYEdgesChange,
     handleYWorkflowUndo,

@@ -170,8 +170,8 @@ export default ({
     [],
   );
 
-  const handleYNodeParamsUpdate = useCallback(
-    (nodeId: string, newParams: any) =>
+  const handleYNodeDataUpdate = useCallback(
+    (nodeId: string, dataField: string, updatedValue: any) =>
       undoTrackerActionWrapper(() => {
         const yNodes = currentYWorkflow?.get("nodes") as
           | YNodesArray
@@ -185,9 +185,7 @@ export default ({
 
         if (!prevNode) return;
 
-        // if params.routingPort exists, it's parent is a subworkflow and
-        // we need to update pseudoInputs and pseudoOutputs on the parent node.
-        if (newParams.routingPort) {
+        if (dataField === "params" && updatedValue.routingPort) {
           const currentWorkflowId = currentYWorkflow
             .get("id")
             ?.toJSON() as string;
@@ -204,41 +202,19 @@ export default ({
             currentWorkflowId,
             parentYWorkflow,
             prevNode,
-            newParams,
+            updatedValue,
           );
         }
 
         const yData = yNodes.get(nodeIndex)?.get("data") as Y.Map<YNodeValue>;
-        yData?.set("params", newParams);
+        yData?.set(dataField, updatedValue);
       }),
     [currentYWorkflow, rawWorkflows, yWorkflows, undoTrackerActionWrapper],
-  );
-
-  const handleYNodeCustomizationUpdate = useCallback(
-    (nodeId: string, newCustomization: any) =>
-      undoTrackerActionWrapper(() => {
-        const yNodes = currentYWorkflow?.get("nodes") as
-          | YNodesArray
-          | undefined;
-        if (!yNodes) return;
-
-        const nodes = yNodes.toJSON() as Node[];
-
-        const nodeIndex = nodes.findIndex((n) => n.id === nodeId);
-        const prevNode = nodes[nodeIndex];
-
-        if (!prevNode) return;
-
-        const yData = yNodes.get(nodeIndex)?.get("data") as Y.Map<YNodeValue>;
-        yData?.set("customizations", newCustomization);
-      }),
-    [currentYWorkflow, undoTrackerActionWrapper],
   );
 
   return {
     handleYNodesAdd,
     handleYNodesChange,
-    handleYNodeParamsUpdate,
-    handleYNodeCustomizationUpdate,
+    handleYNodeDataUpdate,
   };
 };

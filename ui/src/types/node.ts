@@ -6,7 +6,9 @@ import type {
 import { ComponentType } from "react";
 
 type NodeParam = Record<string, any>;
-// type NodeCustomization = Record<string, any>;
+// type NodeCustomization<T> = {
+//   customName?: string;
+// } & T
 
 export type PseudoPort = {
   nodeId: string;
@@ -19,7 +21,7 @@ export type NodeData = {
   inputs?: string[];
   outputs?: string[];
   params?: NodeParam;
-  customization?: {
+  customizations?: {
     customName?: string;
     backgroundColor?: string;
     textColor?: string;
