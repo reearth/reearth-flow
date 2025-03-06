@@ -29,8 +29,8 @@ func init() {
 	mongotest.Env = "REEARTH_FLOW_DB"
 }
 
-func StartServer(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder, allowPermission bool) *httpexpect.Expect {
-	e, _, _ := StartServerAndRepos(t, cfg, useMongo, seeder, allowPermission)
+func StartServer(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder) *httpexpect.Expect {
+	e, _, _ := StartServerAndRepos(t, cfg, useMongo, seeder)
 	return e
 }
 
@@ -60,13 +60,13 @@ func initGateway() *gateway.Container {
 	}
 }
 
-func StartServerAndRepos(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder, allowPermission bool) (*httpexpect.Expect, *repo.Container, *gateway.Container) {
+func StartServerAndRepos(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder) (*httpexpect.Expect, *repo.Container, *gateway.Container) {
 	repos := initRepos(t, useMongo, seeder)
 	gateways := initGateway()
-	return StartServerWithRepos(t, cfg, repos, gateways, allowPermission), repos, gateways
+	return StartServerWithRepos(t, cfg, repos, gateways), repos, gateways
 }
 
-func StartServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Container, gateways *gateway.Container, allowPermission bool) *httpexpect.Expect {
+func StartServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Container, gateways *gateway.Container) *httpexpect.Expect {
 	t.Helper()
 
 	if testing.Short() {
@@ -80,17 +80,12 @@ func StartServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Containe
 		t.Fatalf("server failed to listen: %v", err)
 	}
 
-	// mockPermissionChecker
-	mockPermissionChecker := gateway.NewMockPermissionChecker()
-	mockPermissionChecker.Allow = allowPermission
-
 	srv := app.NewServer(ctx, &app.ServerConfig{
-		Config:            cfg,
-		Repos:             repos,
-		Gateways:          gateways,
-		Debug:             true,
-		AccountRepos:      repos.AccountRepos(),
-		PermissionChecker: mockPermissionChecker,
+		Config:       cfg,
+		Repos:        repos,
+		Gateways:     gateways,
+		Debug:        true,
+		AccountRepos: repos.AccountRepos(),
 	})
 
 	ch := make(chan error)
@@ -120,18 +115,18 @@ type GraphQLRequest struct {
 	Variables     map[string]any `json:"variables"`
 }
 
-func StartGQLServer(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder, allowPermission bool) (*httpexpect.Expect, *accountrepo.Container) {
-	e, r := StartGQLServerAndRepos(t, cfg, useMongo, seeder, allowPermission)
+func StartGQLServer(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder) (*httpexpect.Expect, *accountrepo.Container) {
+	e, r := StartGQLServerAndRepos(t, cfg, useMongo, seeder)
 	return e, r
 }
 
-func StartGQLServerAndRepos(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder, allowPermission bool) (*httpexpect.Expect, *accountrepo.Container) {
+func StartGQLServerAndRepos(t *testing.T, cfg *config.Config, useMongo bool, seeder Seeder) (*httpexpect.Expect, *accountrepo.Container) {
 	repos := initRepos(t, useMongo, seeder)
 	acRepos := repos.AccountRepos()
-	return StartGQLServerWithRepos(t, cfg, repos, acRepos, allowPermission), acRepos
+	return StartGQLServerWithRepos(t, cfg, repos, acRepos), acRepos
 }
 
-func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Container, accountrepos *accountrepo.Container, allowPermission bool) *httpexpect.Expect {
+func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Container, accountrepos *accountrepo.Container) *httpexpect.Expect {
 	t.Helper()
 
 	if testing.Short() {
@@ -145,11 +140,6 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 		t.Fatalf("server failed to listen: %v", err)
 	}
 
-	// mockPermissionChecker
-	mockPermissionChecker := gateway.NewMockPermissionChecker()
-	mockPermissionChecker.Allow = allowPermission
-
-	cfg.SkipPermissionCheck = true
 	srv := app.NewServer(ctx, &app.ServerConfig{
 		Config:       cfg,
 		Repos:        repos,
@@ -160,8 +150,7 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 		AccountGateways: &accountgateway.Container{
 			Mailer: mailer.New(ctx, &mailer.Config{}),
 		},
-		Debug:             true,
-		PermissionChecker: mockPermissionChecker,
+		Debug: true,
 	})
 
 	ch := make(chan error)

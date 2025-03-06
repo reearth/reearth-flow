@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/reearth/reearth-flow/api/internal/rbac"
+	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -22,17 +22,17 @@ import (
 )
 
 type Job struct {
-	jobRepo           repo.Job
-	workspaceRepo     accountrepo.Workspace
-	transaction       usecasex.Transaction
-	file              gateway.File
-	batch             gateway.Batch
-	monitor           *monitor.Monitor
-	subscriptions     *subscription.JobManager
-	notifier          notification.Notifier
-	permissionChecker gateway.PermissionChecker
-	watchersMu        sync.Mutex
+	common
+	jobRepo       repo.Job
+	workspaceRepo accountrepo.Workspace
+	transaction   usecasex.Transaction
+	file          gateway.File
+	batch         gateway.Batch
+	monitor       *monitor.Monitor
+	subscriptions *subscription.JobManager
+	notifier      notification.Notifier
 	activeWatchers    map[string]bool
+	watchersMu        sync.Mutex
 }
 
 type NotificationPayload struct {
@@ -43,33 +43,28 @@ type NotificationPayload struct {
 	Outputs      []string `json:"outputs"`
 }
 
-func NewJob(r *repo.Container, gr *gateway.Container, permissionChecker gateway.PermissionChecker) interfaces.Job {
+func NewJob(r *repo.Container, gr *gateway.Container) interfaces.Job {
 	return &Job{
-		jobRepo:           r.Job,
-		workspaceRepo:     r.Workspace,
-		transaction:       r.Transaction,
-		file:              gr.File,
-		batch:             gr.Batch,
-		monitor:           monitor.NewMonitor(),
-		subscriptions:     subscription.NewJobManager(),
-		notifier:          notification.NewHTTPNotifier(),
-		permissionChecker: permissionChecker,
-		watchersMu:        sync.Mutex{},
+		jobRepo:       r.Job,
+		workspaceRepo: r.Workspace,
+		transaction:   r.Transaction,
+		file:          gr.File,
+		batch:         gr.Batch,
+		monitor:       monitor.NewMonitor(),
+		subscriptions: subscription.NewJobManager(),
+		notifier:      notification.NewHTTPNotifier(),
 		activeWatchers:    make(map[string]bool),
+		watchersMu:        sync.Mutex{},
 	}
 }
 
-func (i *Job) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceJob, action)
-}
-
-func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+func (i *Job) Cancel(ctx context.Context, jobID id.JobID, operator *usecase.Operator) (*job.Job, error) {
+	j, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
 		return nil, err
 	}
 
-	j, err := i.jobRepo.FindByID(ctx, jobID)
-	if err != nil {
+	if err := i.CanWriteWorkspace(j.Workspace(), operator); err != nil {
 		return nil, err
 	}
 
@@ -111,43 +106,33 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 	return j, nil
 }
 
-func (i *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return nil, err
-	}
-
+func (i *Job) FindByID(ctx context.Context, id id.JobID, operator *usecase.Operator) (*job.Job, error) {
 	j, err := i.jobRepo.FindByID(ctx, id)
 	if err != nil {
+		return nil, err
+	}
+	if err := i.CanReadWorkspace(j.Workspace(), operator); err != nil {
 		return nil, err
 	}
 	return j, nil
 }
 
-func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return nil, err
-	}
-
+func (i *Job) Fetch(ctx context.Context, ids []id.JobID, operator *usecase.Operator) ([]*job.Job, error) {
 	jobs, err := i.jobRepo.FindByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
-	return jobs, nil
+	return i.filterReadableJobs(jobs, operator), nil
 }
 
-func (i *Job) FindByWorkspace(ctx context.Context, wsID accountdomain.WorkspaceID, p *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+func (i *Job) FindByWorkspace(ctx context.Context, wsID accountdomain.WorkspaceID, p *interfaces.PaginationParam, operator *usecase.Operator) ([]*job.Job, *interfaces.PageBasedInfo, error) {
+	if err := i.CanReadWorkspace(wsID, operator); err != nil {
 		return nil, nil, err
 	}
-
 	return i.jobRepo.FindByWorkspace(ctx, wsID, p)
 }
 
-func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return "", err
-	}
-
+func (i *Job) GetStatus(ctx context.Context, jobID id.JobID, operator *usecase.Operator) (job.Status, error) {
 	j, err := i.jobRepo.FindByID(ctx, jobID)
 	if err != nil {
 		return "", err
@@ -155,11 +140,7 @@ func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error)
 	return j.Status(), nil
 }
 
-func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *string) error {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return err
-	}
-
+func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *string, operator *usecase.Operator) error {
 	log.Debugfc(ctx, "job: starting monitoring for jobID=%s workspace=%s", j.ID(), j.Workspace())
 
 	monitorCtx, cancel := context.WithCancel(context.Background())
@@ -175,10 +156,6 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 }
 
 func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return
-	}
-
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
@@ -195,10 +172,6 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 }
 
 func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return err
-	}
-
 	status, err := i.batch.GetJobStatus(ctx, j.GCPJobID())
 	if err != nil {
 		return err
@@ -221,10 +194,6 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 }
 
 func (i *Job) updateJobStatus(ctx context.Context, j *job.Job, status job.Status) error {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return err
-	}
-
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return err
@@ -248,10 +217,6 @@ func (i *Job) updateJobStatus(ctx context.Context, j *job.Job, status job.Status
 func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 	if j == nil {
 		return fmt.Errorf("job cannot be nil")
-	}
-
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return err
 	}
 
 	jobID := j.ID().String()
@@ -347,12 +312,8 @@ func (i *Job) sendCompletionNotification(ctx context.Context, j *job.Job, notifi
 	return i.notifier.Send(notificationURL, payload)
 }
 
-func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return nil, err
-	}
-
-	j, err := i.FindByID(ctx, jobID)
+func (i *Job) Subscribe(ctx context.Context, jobID id.JobID, operator *usecase.Operator) (chan job.Status, error) {
+	j, err := i.FindByID(ctx, jobID, operator)
 	if err != nil {
 		return nil, err
 	}
@@ -378,4 +339,14 @@ func (i *Job) Unsubscribe(jobID id.JobID, ch chan job.Status) {
 		delete(i.activeWatchers, jobID.String())
 		i.watchersMu.Unlock()
 	}
+}
+
+func (i *Job) filterReadableJobs(jobs []*job.Job, operator *usecase.Operator) []*job.Job {
+	result := make([]*job.Job, 0, len(jobs))
+	for _, j := range jobs {
+		if i.CanReadWorkspace(j.Workspace(), operator) == nil {
+			result = append(result, j)
+		}
+	}
+	return result
 }

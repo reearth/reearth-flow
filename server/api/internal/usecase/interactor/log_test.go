@@ -6,11 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/reearth/reearth-flow/api/internal/adapter"
+	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/log"
-	"github.com/reearth/reearthx/account/accountdomain/user"
-	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -26,24 +24,12 @@ func (m *mockLogGateway) GetLogs(ctx context.Context, since time.Time, until tim
 func TestNewLogInteractor(t *testing.T) {
 	t.Run("successfully create LogInteractor", func(t *testing.T) {
 		redisMock := &mockLogGateway{}
-		mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
-			return true, nil
-		})
-		li := NewLogInteractor(redisMock, mockPermissionCheckerTrue)
+		li := NewLogInteractor(redisMock)
 		assert.NotNil(t, li)
 	})
 }
 
 func TestLogInteractor_GetLogs(t *testing.T) {
-	mockAuthInfo := &appx.AuthInfo{
-		Token: "token",
-	}
-	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
-
-	ctx := context.Background()
-	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachUser(ctx, mockUser)
-
 	nodeID := log.NodeID(id.NewNodeID())
 	jobID := id.NewJobID()
 	redisLogs := []*log.Log{
@@ -51,34 +37,31 @@ func TestLogInteractor_GetLogs(t *testing.T) {
 		log.NewLog(jobID, &nodeID, time.Now(), log.LevelInfo, "redis log 2"),
 	}
 	redisMock := &mockLogGateway{logs: redisLogs}
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
-		return true, nil
-	})
 
 	t.Run("get Redis logs", func(t *testing.T) {
-		li := NewLogInteractor(redisMock, mockPermissionCheckerTrue)
+		li := NewLogInteractor(redisMock)
 
 		since := time.Now().Add(-30 * time.Minute)
-		out, err := li.GetLogs(ctx, since, id.NewJobID())
+		out, err := li.GetLogs(context.Background(), since, id.NewJobID(), &usecase.Operator{})
 		assert.NoError(t, err)
 		assert.Equal(t, redisLogs, out)
 	})
 
 	t.Run("redis error", func(t *testing.T) {
 		brokenRedis := &mockLogGateway{err: errors.New("redis error")}
-		li := NewLogInteractor(brokenRedis, mockPermissionCheckerTrue)
+		li := NewLogInteractor(brokenRedis)
 
 		since := time.Now()
-		out, err := li.GetLogs(ctx, since, id.NewJobID())
+		out, err := li.GetLogs(context.Background(), since, id.NewJobID(), &usecase.Operator{})
 		assert.Nil(t, out)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "failed to get logs from Redis")
 	})
 
 	t.Run("redis gateway is nil", func(t *testing.T) {
-		li := NewLogInteractor(nil, mockPermissionCheckerTrue)
+		li := NewLogInteractor(nil)
 		since := time.Now().Add(-30 * time.Minute)
-		out, err := li.GetLogs(ctx, since, jobID)
+		out, err := li.GetLogs(context.Background(), since, jobID, &usecase.Operator{})
 		assert.Nil(t, out)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "logsGatewayRedis is nil")
@@ -92,21 +75,12 @@ func TestLogInteractor_SubscribeInitialLogs(t *testing.T) {
 	redisMock := &mockLogGateway{
 		logs: []*log.Log{initialLog},
 	}
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
-		return true, nil
-	})
-	li := NewLogInteractor(redisMock, mockPermissionCheckerTrue)
 
-	mockAuthInfo := &appx.AuthInfo{
-		Token: "token",
-	}
-	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+	li := NewLogInteractor(redisMock)
 
 	ctx := context.Background()
-	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachUser(ctx, mockUser)
 
-	ch, err := li.Subscribe(ctx, jobID)
+	ch, err := li.Subscribe(ctx, jobID, &usecase.Operator{})
 	assert.NoError(t, err)
 
 	select {
@@ -121,26 +95,15 @@ func TestLogInteractor_SubscribeInitialLogs(t *testing.T) {
 
 func TestLogInteractor_Unsubscribe(t *testing.T) {
 	redisMock := &mockLogGateway{}
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
-		return true, nil
-	})
-	liInterface := NewLogInteractor(redisMock, mockPermissionCheckerTrue)
+	liInterface := NewLogInteractor(redisMock)
 	li, ok := liInterface.(*LogInteractor)
 	if !ok {
 		t.Fatal("expected *LogInteractor")
 	}
 	jobID := id.NewJobID()
 
-	mockAuthInfo := &appx.AuthInfo{
-		Token: "token",
-	}
-	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
-
 	ctx := context.Background()
-	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
-	ctx = adapter.AttachUser(ctx, mockUser)
-
-	ch, err := liInterface.Subscribe(ctx, jobID)
+	ch, err := liInterface.Subscribe(ctx, jobID, &usecase.Operator{})
 	if err != nil {
 		t.Fatal(err)
 	}
