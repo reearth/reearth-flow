@@ -7,6 +7,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearthx/account/accountdomain"
 )
@@ -44,5 +45,5 @@ type Project interface {
 	Create(context.Context, CreateProjectParam, *usecase.Operator) (*project.Project, error)
 	Update(context.Context, UpdateProjectParam, *usecase.Operator) (*project.Project, error)
 	Delete(context.Context, id.ProjectID, *usecase.Operator) error
-	Run(context.Context, RunProjectParam, *usecase.Operator) (bool, error)
+	Run(context.Context, RunProjectParam, *usecase.Operator) (*job.Job, error)
 }

@@ -303,8 +303,7 @@ type ComplexityRoot struct {
 	}
 
 	RunProjectPayload struct {
-		ProjectID func(childComplexity int) int
-		Started   func(childComplexity int) int
+		Job func(childComplexity int) int
 	}
 
 	ShareProjectPayload struct {
@@ -1819,19 +1818,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.RemoveMemberFromWorkspacePayload.Workspace(childComplexity), true
 
-	case "RunProjectPayload.projectId":
-		if e.complexity.RunProjectPayload.ProjectID == nil {
+	case "RunProjectPayload.job":
+		if e.complexity.RunProjectPayload.Job == nil {
 			break
 		}
 
-		return e.complexity.RunProjectPayload.ProjectID(childComplexity), true
-
-	case "RunProjectPayload.started":
-		if e.complexity.RunProjectPayload.Started == nil {
-			break
-		}
-
-		return e.complexity.RunProjectPayload.Started(childComplexity), true
+		return e.complexity.RunProjectPayload.Job(childComplexity), true
 
 	case "ShareProjectPayload.projectId":
 		if e.complexity.ShareProjectPayload.ProjectID == nil {
@@ -2498,13 +2490,15 @@ extend type Mutation {
   executeDeployment(input: ExecuteDeploymentInput!): JobPayload
 }
 `, BuiltIn: false},
-	{Name: "../../../gql/document.graphql", Input: `type ProjectDocument implements Node {
+	{Name: "../../../gql/document.graphql", Input: `# Latest Project Document
+type ProjectDocument implements Node {
   id: ID!
   timestamp: DateTime!
   updates: [Int!]!
   version: Int!
 }
 
+# Project Snapshot history vector
 type ProjectSnapshot {
   timestamp: DateTime!
   updates: [Int!]!
@@ -2734,8 +2728,7 @@ type DeleteProjectPayload {
 }
 
 type RunProjectPayload {
-  projectId: ID!
-  started: Boolean!
+  job: Job!
 }
 
 # Connection
@@ -8115,10 +8108,8 @@ func (ec *executionContext) fieldContext_Mutation_runProject(ctx context.Context
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "projectId":
-				return ec.fieldContext_RunProjectPayload_projectId(ctx, field)
-			case "started":
-				return ec.fieldContext_RunProjectPayload_started(ctx, field)
+			case "job":
+				return ec.fieldContext_RunProjectPayload_job(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type RunProjectPayload", field.Name)
 		},
@@ -12238,8 +12229,8 @@ func (ec *executionContext) fieldContext_RemoveMemberFromWorkspacePayload_worksp
 	return fc, nil
 }
 
-func (ec *executionContext) _RunProjectPayload_projectId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.RunProjectPayload) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RunProjectPayload_projectId(ctx, field)
+func (ec *executionContext) _RunProjectPayload_job(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.RunProjectPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RunProjectPayload_job(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -12252,7 +12243,7 @@ func (ec *executionContext) _RunProjectPayload_projectId(ctx context.Context, fi
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.ProjectID, nil
+		return obj.Job, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -12264,63 +12255,45 @@ func (ec *executionContext) _RunProjectPayload_projectId(ctx context.Context, fi
 		}
 		return graphql.Null
 	}
-	res := resTmp.(gqlmodel.ID)
+	res := resTmp.(*gqlmodel.Job)
 	fc.Result = res
-	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+	return ec.marshalNJob2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJob(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_RunProjectPayload_projectId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_RunProjectPayload_job(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "RunProjectPayload",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _RunProjectPayload_started(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.RunProjectPayload) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_RunProjectPayload_started(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Started, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(bool)
-	fc.Result = res
-	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_RunProjectPayload_started(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "RunProjectPayload",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
+			switch field.Name {
+			case "completedAt":
+				return ec.fieldContext_Job_completedAt(ctx, field)
+			case "deployment":
+				return ec.fieldContext_Job_deployment(ctx, field)
+			case "deploymentId":
+				return ec.fieldContext_Job_deploymentId(ctx, field)
+			case "debug":
+				return ec.fieldContext_Job_debug(ctx, field)
+			case "id":
+				return ec.fieldContext_Job_id(ctx, field)
+			case "logsURL":
+				return ec.fieldContext_Job_logsURL(ctx, field)
+			case "outputURLs":
+				return ec.fieldContext_Job_outputURLs(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_Job_startedAt(ctx, field)
+			case "status":
+				return ec.fieldContext_Job_status(ctx, field)
+			case "workspace":
+				return ec.fieldContext_Job_workspace(ctx, field)
+			case "workspaceId":
+				return ec.fieldContext_Job_workspaceId(ctx, field)
+			case "logs":
+				return ec.fieldContext_Job_logs(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Job", field.Name)
 		},
 	}
 	return fc, nil
@@ -19834,13 +19807,8 @@ func (ec *executionContext) _RunProjectPayload(ctx context.Context, sel ast.Sele
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("RunProjectPayload")
-		case "projectId":
-			out.Values[i] = ec._RunProjectPayload_projectId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "started":
-			out.Values[i] = ec._RunProjectPayload_started(ctx, field, obj)
+		case "job":
+			out.Values[i] = ec._RunProjectPayload_job(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

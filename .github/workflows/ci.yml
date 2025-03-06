@@ -82,7 +82,7 @@ jobs:
             server/api/internal/rbac/**
             .github/workflows/ci.yml
             .github/workflows/ci_policies.yml
-            .github/workflows/update_policies.yml
+            .github/workflows/update_policies_and_deploy_cerbos.yml
             CHANGELOG.md
 
   ci-api:
@@ -236,6 +236,6 @@ jobs:
       - ci
       - ci-policies
       - ci-collect-info
-    uses: ./.github/workflows/update_policies.yml
+    uses: ./.github/workflows/update_policies_and_deploy_cerbos.yml
     if: ${{ !failure() && needs.ci-policies.result == 'success' && github.event_name == 'push' && github.ref_name == 'main' }}
     secrets: inherit
