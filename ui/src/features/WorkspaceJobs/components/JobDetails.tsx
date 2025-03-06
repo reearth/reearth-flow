@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button, LoadingSkeleton } from "@flow/components";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
-import { LogsConsole } from "@flow/features/Editor/components/BottomPanel/components";
+import LogsConsole from "@flow/features/LogsConsole";
 import { useT } from "@flow/lib/i18n";
 import type { Job, Log } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";

@@ -48,4 +48,4 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ data }) => {
   );
 };
 
-export { LogsConsole };
+export default LogsConsole;

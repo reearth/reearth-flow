@@ -7,12 +7,12 @@ import {
   supportedVisualizations,
   SupportedVisualizations,
 } from "@flow/components";
+import LogsConsole from "@flow/features/LogsConsole";
 import { useT } from "@flow/lib/i18n";
 import mockLogs from "@flow/mock_data/logsv2Data";
-import { Log } from "@flow/types";
+import type { Log } from "@flow/types";
 
 import { DataTable } from "../DataTable";
-import { LogsConsole } from "../LogsConsole";
 import { Map } from "../Map";
 
 export type ContentID = "output-log" | "visual-preview";
