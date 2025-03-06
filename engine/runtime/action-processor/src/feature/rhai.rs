@@ -16,7 +16,7 @@ use serde_json::Value;
 use super::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct RhaiCallerFactory;
+pub(super) struct RhaiCallerFactory;
 
 impl ProcessorFactory for RhaiCallerFactory {
     fn name(&self) -> &str {
@@ -87,7 +87,7 @@ impl ProcessorFactory for RhaiCallerFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct RhaiCaller {
+struct RhaiCaller {
     global_params: Option<HashMap<String, serde_json::Value>>,
     is_target: rhai::AST,
     process: rhai::AST,
@@ -95,8 +95,10 @@ pub struct RhaiCaller {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct RhaiCallerParam {
+struct RhaiCallerParam {
+    /// # Rhai script to determine if the feature is the target
     is_target: Expr,
+    /// # Rhai script to process the feature
     process: Expr,
 }
 

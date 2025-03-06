@@ -20,7 +20,7 @@ func (r *mutationResolver) CreateProject(ctx context.Context, input gqlmodel.Cre
 		Description: input.Description,
 		Name:        input.Name,
 		WorkspaceID: tid,
-	}, getOperator(ctx))
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (r *mutationResolver) UpdateProject(ctx context.Context, input gqlmodel.Upd
 		ID:                pid,
 		IsBasicAuthActive: input.IsBasicAuthActive,
 		Name:              input.Name,
-	}, getOperator(ctx))
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -56,7 +56,7 @@ func (r *mutationResolver) DeleteProject(ctx context.Context, input gqlmodel.Del
 		return nil, err
 	}
 
-	if err := usecases(ctx).Project.Delete(ctx, pid, getOperator(ctx)); err != nil {
+	if err := usecases(ctx).Project.Delete(ctx, pid); err != nil {
 		return nil, err
 	}
 
@@ -77,10 +77,10 @@ func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunPro
 	res, err := usecases(ctx).Project.Run(ctx, interfaces.RunProjectParam{
 		ProjectID: pid,
 		Workflow:  gqlmodel.FromFile(&input.File),
-	}, getOperator(ctx))
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &gqlmodel.RunProjectPayload{ProjectID: input.ProjectID, Started: res}, nil
+	return &gqlmodel.RunProjectPayload{Job: gqlmodel.ToJob(res)}, nil
 }

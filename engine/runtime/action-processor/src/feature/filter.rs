@@ -15,10 +15,10 @@ use serde_json::Value;
 
 use super::errors::FeatureProcessorError;
 
-pub static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
+static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureFilterFactory;
+pub(super) struct FeatureFilterFactory;
 
 impl ProcessorFactory for FeatureFilterFactory {
     fn name(&self) -> &str {
@@ -93,21 +93,24 @@ impl ProcessorFactory for FeatureFilterFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct FeatureFilter {
+struct FeatureFilter {
     global_params: Option<HashMap<String, serde_json::Value>>,
     conditions: Vec<CompiledCondition>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct FeatureFilterParam {
+struct FeatureFilterParam {
+    /// # Conditions to filter by
     conditions: Vec<Condition>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Condition {
+    /// # Condition expression
     expr: Expr,
+    /// # Output port
     output_port: Port,
 }
 

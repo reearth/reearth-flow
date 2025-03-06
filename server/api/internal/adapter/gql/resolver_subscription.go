@@ -19,7 +19,7 @@ func (r *subscriptionResolver) JobStatus(ctx context.Context, jobID gqlmodel.ID)
 		return nil, err
 	}
 
-	statusCh, err := usecases(ctx).Job.Subscribe(ctx, jID, getOperator(ctx))
+	statusCh, err := usecases(ctx).Job.Subscribe(ctx, jID)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,8 @@ func (r *subscriptionResolver) JobStatus(ctx context.Context, jobID gqlmodel.ID)
 				if !ok {
 					return
 				}
-				resultCh <- gqlmodel.JobStatus(status)
+				res := gqlmodel.JobStatus(status)
+				resultCh <- res
 			}
 		}
 	}()
@@ -52,7 +53,7 @@ func (r *subscriptionResolver) Logs(ctx context.Context, jobID gqlmodel.ID) (<-c
 		return nil, err
 	}
 
-	logsCh, err := usecases(ctx).Log.Subscribe(ctx, jid, getOperator(ctx))
+	logsCh, err := usecases(ctx).Log.Subscribe(ctx, jid)
 	if err != nil {
 		return nil, err
 	}
