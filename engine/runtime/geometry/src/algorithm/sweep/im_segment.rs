@@ -230,14 +230,25 @@ impl<C: Cross> PartialEq for IMSegment<C> {
     }
 }
 
+impl<C: Cross> Eq for IMSegment<C> {}
+
 impl<C: Cross> PartialOrd for IMSegment<C> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.inner.read().partial_cmp(&other.inner.read()).map(|o| {
-            o.then_with(|| {
-                let addr_self = Arc::as_ptr(&self.inner) as usize;
-                let addr_other = Arc::as_ptr(&other.inner) as usize;
-                addr_self.cmp(&addr_other)
-            })
-        })
+        Some(self.cmp(other))
+    }
+}
+
+impl<C: Cross> Ord for IMSegment<C> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // self.inner.read().cmp(&other.inner.read()).then_with(|| {
+        //     let addr_self = Arc::as_ptr(&self.inner) as usize;
+        //     let addr_other = Arc::as_ptr(&other.inner) as usize;
+        //     addr_self.cmp(&addr_other)
+        // })
+
+        let self_geom = self.inner.read().geom;
+        let other_geom = other.inner.read().geom;
+
+        self_geom.cmp(&other_geom)
     }
 }

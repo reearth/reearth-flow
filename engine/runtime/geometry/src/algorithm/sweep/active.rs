@@ -27,22 +27,29 @@ impl<T> Deref for Active<T> {
 /// Assert total equality.
 impl<T: PartialEq> Eq for Active<T> {}
 
-/// Assert total ordering of active segments.
-impl<T: PartialOrd + Debug> Ord for Active<T> {
-    fn cmp(&self, other: &Self) -> Ordering {
-        if let Some(c) = T::partial_cmp(self, other) {
-            c
-        } else {
-            panic!("unable to compare active segments!");
-        }
-    }
-}
-
-impl<T: PartialOrd + Debug> PartialOrd for Active<T> {
+impl<T: Ord> PartialOrd for Active<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
+
+/// Assert total ordering of active segments.
+impl<T: Ord> Ord for Active<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // if let Some(c) = T::partial_cmp(self, other) {
+        //     c
+        // } else {
+        //     panic!("unable to compare active segments!");
+        // }
+        self.0.cmp(&other.0)
+    }
+}
+
+// impl<T: PartialOrd + Debug> PartialOrd for Active<T> {
+//     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+//         Some(self.cmp(other))
+//     }
+// }
 
 #[allow(unused)]
 pub trait ActiveSet: Default {

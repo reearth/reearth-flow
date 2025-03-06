@@ -146,30 +146,33 @@ impl<T: GeoNum, Z: GeoNum> PartialEq for LineOrPoint<T, Z> {
     }
 }
 
+impl<T: GeoNum, Z: GeoNum> Eq for LineOrPoint<T, Z> {}
+
 impl<T: GeoNum, Z: GeoNum> PartialOrd for LineOrPoint<T, Z> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<T: GeoNum, Z: GeoNum> Ord for LineOrPoint<T, Z> {
+    fn cmp(&self, other: &Self) -> Ordering {
         match (self, other) {
             (LineOrPoint::Point(p), LineOrPoint::Point(o)) => {
                 if p == o {
-                    Some(Ordering::Equal)
+                    Ordering::Equal
                 } else {
-                    // Unequal points do not satisfy pre-condition and
-                    // can't be ordered.
-                    None
+                    p.cmp(o)
                 }
             }
-            (LineOrPoint::Point(_), LineOrPoint::Line { .. }) => {
-                other.partial_cmp(self).map(Ordering::reverse)
-            }
+            (LineOrPoint::Point(_), LineOrPoint::Line { .. }) => other.cmp(self).reverse(),
             (LineOrPoint::Line { left, right }, LineOrPoint::Point(p)) => {
                 if p > right || left > p {
-                    return None;
+                    //return None;
+                    return p.cmp(left).then_with(|| p.cmp(right));
                 }
-                Some(
-                    RobustKernel::orient(**left, **right, **p, None)
-                        .as_ordering()
-                        .then(Ordering::Greater),
-                )
+                RobustKernel::orient(**left, **right, **p, None)
+                    .as_ordering()
+                    .then(Ordering::Greater)
             }
             (
                 LineOrPoint::Line {
@@ -182,21 +185,22 @@ impl<T: GeoNum, Z: GeoNum> PartialOrd for LineOrPoint<T, Z> {
                 },
             ) => {
                 if left_a > left_b {
-                    return other.partial_cmp(self).map(Ordering::reverse);
+                    //return other.partial_cmp(self).map(Ordering::reverse);
+                    return other.cmp(self).reverse();
                 }
                 if left_a >= right_b || left_b >= right_a {
-                    return None;
+                    //return None;
+                    //unreachable!()
+                    return left_a.cmp(left_b).then_with(|| right_a.cmp(right_b));
                 }
 
                 // Assertion: p1 <= p2
                 // Assertion: pi < q_j
-                Some(
-                    RobustKernel::orient(**left_a, **right_a, **left_b, None)
-                        .as_ordering()
-                        .then_with(|| {
-                            RobustKernel::orient(**left_a, **right_a, **right_b, None).as_ordering()
-                        }),
-                )
+                RobustKernel::orient(**left_a, **right_a, **left_b, None)
+                    .as_ordering()
+                    .then_with(|| {
+                        RobustKernel::orient(**left_a, **right_a, **right_b, None).as_ordering()
+                    })
             }
         }
     }

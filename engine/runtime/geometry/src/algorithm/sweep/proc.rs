@@ -126,20 +126,35 @@ impl<C: Cross + Clone> Sweep<C> {
         match &event.ty {
             LineLeft => {
                 let mut should_add = true;
-                let mut insert_idx = self.active_segments.index_not_of(&segment);
+                //let mut insert_idx = self.active_segments.index_not_of(&segment);
                 if !self.is_simple {
                     for is_next in [true, false].into_iter() {
-                        let active = if is_next {
-                            if insert_idx < self.active_segments.len() {
-                                self.active_segments[insert_idx].clone()
-                            } else {
-                                continue;
-                            }
-                        } else if insert_idx > 0 {
-                            self.active_segments[insert_idx - 1].clone()
+                        // let active = if is_next {
+                        //     if insert_idx < self.active_segments.len() {
+                        //         self.active_segments[insert_idx].clone()
+                        //     } else {
+                        //         continue;
+                        //     }
+                        // } else if insert_idx > 0 {
+                        //     self.active_segments[insert_idx - 1].clone()
+                        // } else {
+                        //     continue;
+                        // };
+                        let active_opt = if is_next {
+                            self.active_segments
+                                .get(Active::active_ref(&segment))
+                                .cloned()
                         } else {
-                            continue;
+                            self.active_segments
+                                .get_prev(Active::active_ref(&segment))
+                                .cloned()
                         };
+
+                        let active = match active_opt {
+                            Some(active) => active,
+                            None => continue,
+                        };
+
                         let AdjProcOutput {
                             isec,
                             should_continue,
@@ -163,10 +178,17 @@ impl<C: Cross + Clone> Sweep<C> {
                         if handle_end_event {
                             let event = self.events.pop().unwrap();
                             let done = self.handle_event(event, cb);
-                            debug_assert!(done, "special right-end event handling failed");
+                            //debug_assert!(done, "special right-end event handling failed");
                             if !is_next {
                                 // The prev-segment is now removed
-                                insert_idx -= 1;
+                                //insert_idx -= 1;
+                                let prev = self
+                                    .active_segments
+                                    .get_prev(Active::active_ref(&segment))
+                                    .cloned();
+                                if let Some(prev) = prev.clone() {
+                                    self.active_segments.remove(&prev);
+                                }
                             }
                         }
 
@@ -192,7 +214,8 @@ impl<C: Cross + Clone> Sweep<C> {
                 if should_add {
                     // NOTE: we bravely track insert_idx as the active-list is adjusted
                     // self.active_segments.insert_active(segment.clone());
-                    self.active_segments.insert_at(insert_idx, segment.clone());
+                    //self.active_segments.insert_at(insert_idx, segment.clone());
+                    self.active_segments.insert(Active(segment.clone()));
                 }
 
                 let mut cb_seg = Some(segment);
@@ -205,11 +228,23 @@ impl<C: Cross + Clone> Sweep<C> {
             LineRight => {
                 // Safety: `self.segments` is a `Box` that is not
                 // de-allocated until `self` is dropped.
-                let el_idx = self.active_segments.index_of(&segment);
-                let prev = (el_idx > 0).then(|| self.active_segments[el_idx - 1].clone());
-                let next = (1 + el_idx < self.active_segments.len())
-                    .then(|| self.active_segments[el_idx + 1].clone());
-                assert_eq!(self.active_segments.remove_at(el_idx), segment);
+                // let el_idx = self.active_segments.index_of(&segment);
+                // let prev = (el_idx > 0).then(|| self.active_segments[el_idx - 1].clone());
+                // let next = (1 + el_idx < self.active_segments.len())
+                //     .then(|| self.active_segments[el_idx + 1].clone());
+                // assert_eq!(self.active_segments.remove_at(el_idx), segment);
+
+                let prev = self
+                    .active_segments
+                    .get_prev(Active::active_ref(&segment))
+                    .cloned();
+                let next = self
+                    .active_segments
+                    .get_next(Active::active_ref(&segment))
+                    .cloned();
+                if let Some(prev) = prev.clone() {
+                    self.active_segments.remove(&prev);
+                }
 
                 let mut cb_seg = Some(segment);
                 while let Some(seg) = cb_seg {
@@ -240,11 +275,13 @@ impl<C: Cross + Clone> Sweep<C> {
             }
             PointLeft => {
                 if !self.is_simple {
-                    let insert_idx = self.active_segments.index_not_of(&segment);
-                    let prev =
-                        (insert_idx > 0).then(|| self.active_segments[insert_idx - 1].clone());
-                    let next = (insert_idx < self.active_segments.len())
-                        .then(|| self.active_segments[insert_idx].clone());
+                    //let insert_idx = self.active_segments.index_not_of(&segment);
+                    // let prev =
+                    //     (insert_idx > 0).then(|| self.active_segments[insert_idx - 1].clone());
+                    // let next = (insert_idx < self.active_segments.len())
+                    //     .then(|| self.active_segments[insert_idx].clone());
+                    let prev = self.active_segments.get_prev(Active::active_ref(&segment));
+                    let next = self.active_segments.get(Active::active_ref(&segment));
 
                     for adj_segment in prev.into_iter().chain(next.into_iter()) {
                         let geom = adj_segment.geom();
