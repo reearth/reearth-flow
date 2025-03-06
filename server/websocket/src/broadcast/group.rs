@@ -495,6 +495,10 @@ impl BroadcastGroup {
         let manager = RedisConnectionManager::new(url)?;
         let pool = bb8::Pool::builder()
             .max_size(100)
+            .min_idle(5)
+            .connection_timeout(std::time::Duration::from_secs(5))
+            .idle_timeout(Some(std::time::Duration::from_secs(500)))
+            .max_lifetime(Some(std::time::Duration::from_secs(7200)))
             .build(manager)
             .await
             .map_err(|e| {
@@ -606,20 +610,23 @@ impl BroadcastGroup {
                 let mut conn = redis.get().await.unwrap();
                 let extended_ttl = ttl.saturating_mul(2);
 
-                let cmd_result: redis::RedisResult<String> = redis::cmd("XADD")
+                let mut pipe = redis::pipe();
+
+                pipe.cmd("XADD")
                     .arg(&stream_name)
                     .arg("*")
                     .arg("update")
-                    .arg(update.as_slice())
-                    .query_async(&mut *conn)
-                    .await;
+                    .arg(update.as_slice());
 
-                if let Err(e) = cmd_result {
+                pipe.cmd("EXPIRE")
+                    .arg(&stream_name)
+                    .arg(extended_ttl as i64);
+
+                let pipe_result: redis::RedisResult<(String, bool)> =
+                    pipe.query_async(&mut *conn).await;
+
+                if let Err(e) = pipe_result {
                     tracing::error!("Failed to add update to Redis stream: {}", e);
-                } else {
-                    let _ = conn
-                        .expire::<_, ()>(&stream_name, extended_ttl.try_into().unwrap())
-                        .await;
                 }
             })
         } else {
