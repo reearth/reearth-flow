@@ -168,7 +168,8 @@
   "Delete Deployment": "デプロイメントを削除",
   "Deployments": "デプロイ",
   "New Deployment": "新規デプロイ",
-  "Deployment ID": "デプロイメントID",å
+  "Loading...": "",
+  "Deployment ID": "デプロイメントID",
   "Started At": "開始日時",
   "Completed At": "終了日時",
   "Output URLs": "出力URL",

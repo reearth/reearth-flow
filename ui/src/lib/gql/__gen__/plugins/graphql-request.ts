@@ -213,12 +213,18 @@ export type Job = Node & {
   deployment?: Maybe<Deployment>;
   deploymentId: Scalars['ID']['output'];
   id: Scalars['ID']['output'];
+  logs?: Maybe<Array<Maybe<Log>>>;
   logsURL?: Maybe<Scalars['String']['output']>;
   outputURLs?: Maybe<Array<Scalars['String']['output']>>;
   startedAt: Scalars['DateTime']['output'];
   status: JobStatus;
   workspace?: Maybe<Workspace>;
   workspaceId: Scalars['ID']['output'];
+};
+
+
+export type JobLogsArgs = {
+  since: Scalars['DateTime']['input'];
 };
 
 export type JobConnection = {
@@ -239,6 +245,23 @@ export enum JobStatus {
   Failed = 'FAILED',
   Pending = 'PENDING',
   Running = 'RUNNING'
+}
+
+export type Log = {
+  __typename?: 'Log';
+  jobId: Scalars['ID']['output'];
+  logLevel: LogLevel;
+  message: Scalars['String']['output'];
+  nodeId?: Maybe<Scalars['ID']['output']>;
+  timestamp: Scalars['DateTime']['output'];
+};
+
+export enum LogLevel {
+  Debug = 'DEBUG',
+  Error = 'ERROR',
+  Info = 'INFO',
+  Trace = 'TRACE',
+  Warn = 'WARN'
 }
 
 export type Me = {
@@ -721,8 +744,7 @@ export type RunProjectInput = {
 
 export type RunProjectPayload = {
   __typename?: 'RunProjectPayload';
-  projectId: Scalars['ID']['output'];
-  started: Scalars['Boolean']['output'];
+  job: Job;
 };
 
 export type ShareProjectInput = {
@@ -756,10 +778,16 @@ export type SignupPayload = {
 export type Subscription = {
   __typename?: 'Subscription';
   jobStatus: JobStatus;
+  logs?: Maybe<Log>;
 };
 
 
 export type SubscriptionJobStatusArgs = {
+  jobId: Scalars['ID']['input'];
+};
+
+
+export type SubscriptionLogsArgs = {
   jobId: Scalars['ID']['input'];
 };
 
@@ -1016,7 +1044,7 @@ export type RunProjectMutationVariables = Exact<{
 }>;
 
 
-export type RunProjectMutation = { __typename?: 'Mutation', runProject?: { __typename?: 'RunProjectPayload', projectId: string, started: boolean } | null };
+export type RunProjectMutation = { __typename?: 'Mutation', runProject?: { __typename?: 'RunProjectPayload', job: { __typename?: 'Job', id: string, status: JobStatus, startedAt: any } } | null };
 
 export type GetSharedProjectQueryVariables = Exact<{
   token: Scalars['String']['input'];
@@ -1045,6 +1073,13 @@ export type UnshareProjectMutationVariables = Exact<{
 
 
 export type UnshareProjectMutation = { __typename?: 'Mutation', unshareProject?: { __typename?: 'UnshareProjectPayload', projectId: string } | null };
+
+export type OnJobStatusChangeSubscriptionVariables = Exact<{
+  jobId: Scalars['ID']['input'];
+}>;
+
+
+export type OnJobStatusChangeSubscription = { __typename?: 'Subscription', jobStatus: JobStatus };
 
 export type CreateTriggerMutationVariables = Exact<{
   input: CreateTriggerInput;
@@ -1358,8 +1393,11 @@ export const DeleteProjectDocument = gql`
 export const RunProjectDocument = gql`
     mutation RunProject($input: RunProjectInput!) {
   runProject(input: $input) {
-    projectId
-    started
+    job {
+      id
+      status
+      startedAt
+    }
   }
 }
     `;
@@ -1393,6 +1431,11 @@ export const UnshareProjectDocument = gql`
   unshareProject(input: $input) {
     projectId
   }
+}
+    `;
+export const OnJobStatusChangeDocument = gql`
+    subscription OnJobStatusChange($jobId: ID!) {
+  jobStatus(jobId: $jobId)
 }
     `;
 export const CreateTriggerDocument = gql`
@@ -1592,6 +1635,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     UnshareProject(variables: UnshareProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UnshareProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<UnshareProjectMutation>(UnshareProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UnshareProject', 'mutation', variables);
+    },
+    OnJobStatusChange(variables: OnJobStatusChangeSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<OnJobStatusChangeSubscription> {
+      return withWrapper((wrappedRequestHeaders) => client.request<OnJobStatusChangeSubscription>(OnJobStatusChangeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'OnJobStatusChange', 'subscription', variables);
     },
     CreateTrigger(variables: CreateTriggerMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateTriggerMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateTriggerMutation>(CreateTriggerDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateTrigger', 'mutation', variables);

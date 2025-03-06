@@ -168,6 +168,7 @@
   "Delete Deployment": "Eliminar despliegue",
   "Deployments": "Despliegues",
   "New Deployment": "Nuevo despliegue",
+  "Loading...": "",
   "Deployment ID": "ID del despliegue",
   "Started At": "Comenzado a las",
   "Completed At": "Completado a las",
