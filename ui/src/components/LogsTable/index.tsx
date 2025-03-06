@@ -89,7 +89,7 @@ const LogsTable = ({
   };
 
   const handleTimeStampColumnVisibility = () => {
-    const column = table.getColumn("timeStamp");
+    const column = table.getColumn("timestamp");
 
     column?.toggleVisibility(!column.getIsVisible());
     return;
@@ -97,7 +97,7 @@ const LogsTable = ({
 
   const handleResetTable = () => {
     setColumnFilters([]);
-    table.getColumn("timeStamp")?.toggleVisibility(true);
+    table.getColumn("timestamp")?.toggleVisibility(true);
   };
 
   const getStatusValue = useMemo(() => {
@@ -127,43 +127,43 @@ const LogsTable = ({
         <div className="flex gap-2">
           <IconButton
             size="icon"
-            variant={getStatusValue === "ERROR" ? "default" : "outline"}
+            variant={getStatusValue === "error" ? "default" : "outline"}
             tooltipText={t("Error")}
-            onClick={() => handleStatusChange(LogLevel.ERROR)}
+            onClick={() => handleStatusChange("error")}
             icon={<CrossCircledIcon />}
           />
           <IconButton
             size="icon"
-            variant={getStatusValue === "WARN" ? "default" : "outline"}
+            variant={getStatusValue === "warn" ? "default" : "outline"}
             tooltipText={t("Warning")}
-            onClick={() => handleStatusChange(LogLevel.WARN)}
+            onClick={() => handleStatusChange("error")}
             icon={<ExclamationTriangleIcon />}
           />
           <IconButton
             size="icon"
-            variant={getStatusValue === "DEBUG" ? "default" : "outline"}
+            variant={getStatusValue === "debug" ? "default" : "outline"}
             tooltipText={t("Debug")}
-            onClick={() => handleStatusChange(LogLevel.DEBUG)}
+            onClick={() => handleStatusChange("debug")}
             icon={<Bug />}
           />
           <IconButton
             size="icon"
-            variant={getStatusValue === "TRACE" ? "default" : "outline"}
+            variant={getStatusValue === "trace" ? "default" : "outline"}
             tooltipText={t("Trace")}
-            onClick={() => handleStatusChange(LogLevel.TRACE)}
+            onClick={() => handleStatusChange("trace")}
             icon={<MagnifyingGlassIcon />}
           />
           <IconButton
             size="icon"
             variant={getStatusValue === "INFO" ? "default" : "outline"}
             tooltipText={t("Info")}
-            onClick={() => handleStatusChange(LogLevel.INFO)}
+            onClick={() => handleStatusChange("info")}
             icon={<InfoCircledIcon />}
           />
           <IconButton
             size="icon"
             variant={
-              table.getColumn("timeStamp")?.getIsVisible()
+              table.getColumn("timestamp")?.getIsVisible()
                 ? "default"
                 : "outline"
             }
@@ -219,7 +219,7 @@ const LogsTable = ({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className={`${row.original.status === "ERROR" ? "text-destructive" : row.original.status === "WARN" ? "text-warning" : ""}`}
+                  className={`${row.original.status === "error" ? "text-destructive" : row.original.status === "warn" ? "text-warning" : ""}`}
                   data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell className="cursor-pointer" key={cell.id}>

@@ -1,35 +1,18 @@
 import { ApiResponse } from "./api";
 
-export enum LogLevel {
-  Debug = "DEBUG",
-  Error = "ERROR",
-  Info = "INFO",
-  Trace = "TRACE",
-  Warn = "WARN",
-}
+export type LogLevel = "info" | "debug" | "warn" | "trace" | "error";
 
 export type Log = {
   // id: string;
-  nodeId?: string;
+  nodeId?: string | null | undefined;
   // workflowId: string;
   jobId: string;
-  timeStamp: string;
+  timestamp: string;
   status: LogLevel;
   message: string;
 };
 
-// export type LiveLog =
-//   | {
-//       __typename?: "Log";
-//       jobId: string;
-//       nodeId?: string | null;
-//       timestamp: string;
-//       logLevel: LogLevel;
-//       message: string;
-//     }
-//   | null
-//   | undefined;
-
 export type GetLogs = {
-  Logs?: Log[];
+  logs?: Log[];
 } & ApiResponse;
+// 2025-03-06T05:40:43.143502792Z

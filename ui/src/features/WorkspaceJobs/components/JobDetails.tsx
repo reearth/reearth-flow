@@ -29,7 +29,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
   );
 
   const [urlLogs, setUrlLogs] = useState<Log[] | null>(null);
-  const [liveLogs, setLiveLogs] = useState<Log[] | null>(null);
+  const [liveLogs, setLiveLogs] = useState<Log[] | null | undefined>(undefined);
   const [isFetchingLogsUrl, setIsFetchingLogsUrl] = useState<boolean>(false);
   const details: DetailsBoxContent[] | undefined = useMemo(
     () =>
@@ -103,7 +103,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
           return {
             jobId: selectedJob.id,
             message: parsedLog.msg,
-            timeStamp: parsedLog.ts,
+            timestamp: parsedLog.ts,
             status: parsedLog.level,
           };
         },
@@ -132,6 +132,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
   );
 
   useEffect(() => {
+    if (!data) return;
     setLiveLogs(data);
   }, [data]);
   console.log("LIVE LOGS", liveLogs);

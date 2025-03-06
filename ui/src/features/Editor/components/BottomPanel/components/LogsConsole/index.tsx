@@ -15,7 +15,7 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ data }) => {
   const t = useT();
   const columns: ColumnDef<Log>[] = [
     {
-      accessorKey: "timeStamp",
+      accessorKey: "timestamp",
       header: t("Timestamp"),
       cell: ({ getValue }) => formatTimestamp(getValue<string>()),
     },
@@ -30,7 +30,7 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ data }) => {
   ];
 
   const hasValidLogs = data.some(
-    (log) => log.timeStamp || log.status || log.message,
+    (log) => log.timestamp || log.status || log.message,
   );
 
   if (!hasValidLogs) {

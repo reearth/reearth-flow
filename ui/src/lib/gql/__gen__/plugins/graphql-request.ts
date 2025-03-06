@@ -744,8 +744,7 @@ export type RunProjectInput = {
 
 export type RunProjectPayload = {
   __typename?: 'RunProjectPayload';
-  projectId: Scalars['ID']['output'];
-  started: Scalars['Boolean']['output'];
+  job: Job;
 };
 
 export type ShareProjectInput = {
@@ -982,6 +981,8 @@ export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: a
 
 export type JobFragment = { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
+export type LogFragment = { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string };
+
 export type GetJobsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
   pagination: PageBasedPagination;
@@ -1045,7 +1046,7 @@ export type RunProjectMutationVariables = Exact<{
 }>;
 
 
-export type RunProjectMutation = { __typename?: 'Mutation', runProject?: { __typename?: 'RunProjectPayload', projectId: string, started: boolean } | null };
+export type RunProjectMutation = { __typename?: 'Mutation', runProject?: { __typename?: 'RunProjectPayload', job: { __typename?: 'Job', id: string, status: JobStatus, startedAt: any } } | null };
 
 export type GetSharedProjectQueryVariables = Exact<{
   token: Scalars['String']['input'];
@@ -1247,6 +1248,15 @@ export const JobFragmentDoc = gql`
   }
 }
     ${DeploymentFragmentDoc}`;
+export const LogFragmentDoc = gql`
+    fragment Log on Log {
+  jobId
+  nodeId
+  timestamp
+  logLevel
+  message
+}
+    `;
 export const WorkspaceFragmentDoc = gql`
     fragment Workspace on Workspace {
   id
@@ -1394,8 +1404,11 @@ export const DeleteProjectDocument = gql`
 export const RunProjectDocument = gql`
     mutation RunProject($input: RunProjectInput!) {
   runProject(input: $input) {
-    projectId
-    started
+    job {
+      id
+      status
+      startedAt
+    }
   }
 }
     `;
