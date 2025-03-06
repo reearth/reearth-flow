@@ -40,7 +40,6 @@ export const batchNodeAction = {
   inputPorts: ["input"],
   outputPorts: ["output"],
   builtin: true,
-  parameter: null,
   customization: batchNodeCustomizationSchema,
 };
 
@@ -99,12 +98,12 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, type, id }) => {
               if (element)
                 element.style.setProperty(
                   "color",
-                  data.customization?.textColor || "",
+                  data.customizations?.textColor || "",
                   "important",
                 );
             }}>
             <RectangleDashed />
-            <p>{data.customization?.customName || data.officialName}</p>
+            <p>{data.customizations?.customName || data.officialName}</p>
           </div>
         </div>
       </NodeContextMenu>

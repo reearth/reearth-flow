@@ -27,6 +27,7 @@ export const yNodeConstructor = (node: Node): YNode => {
         node.data.outputs?.map((output) => toYjsText(output)),
       ),
       params: node.data.params,
+      customizations: node.data.customizations,
       // Subworkflow specific
       subworkflowId:
         node.type === "subworkflow"

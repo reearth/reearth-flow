@@ -230,7 +230,7 @@ export default ({
         if (!prevNode) return;
 
         const yData = yNodes.get(nodeIndex)?.get("data") as Y.Map<YNodeValue>;
-        yData?.set("customization", newCustomization);
+        yData?.set("customizations", newCustomization);
       }),
     [currentYWorkflow, undoTrackerActionWrapper],
   );

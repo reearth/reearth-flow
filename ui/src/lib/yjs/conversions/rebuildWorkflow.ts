@@ -42,6 +42,11 @@ export const reassembleNode = (yNode: YNode): Node => {
   if ((yNode.get("data") as Y.Map<any>)?.get("params") !== undefined) {
     data.params = (yNode.get("data") as Y.Map<any>)?.get("params");
   }
+  if ((yNode.get("data") as Y.Map<any>)?.get("customizations") !== undefined) {
+    data.customizations = (yNode.get("data") as Y.Map<any>)?.get(
+      "customizations",
+    );
+  }
   // Subworkflow specific
   if ((yNode.get("data") as Y.Map<any>)?.get("subworkflowId") !== undefined) {
     data.subworkflowId = (yNode.get("data") as Y.Map<any>)

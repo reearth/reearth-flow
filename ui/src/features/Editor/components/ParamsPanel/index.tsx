@@ -30,10 +30,10 @@ const ParamsPanel: React.FC<Props> = ({
   }, []);
 
   const handleSubmit = useCallback(
-    async (nodeId: string, data: any, type: "params" | "customization") => {
+    async (nodeId: string, data: any, type: "params" | "customizations") => {
       if (type === "params") {
         await Promise.resolve(onParamsSubmit?.(nodeId, data));
-      } else if (type === "customization") {
+      } else if (type === "customizations") {
         await Promise.resolve(onCustomizationSubmit?.(nodeId, data));
       }
       handleClose();

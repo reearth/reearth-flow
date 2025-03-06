@@ -42,7 +42,6 @@ export const noteNodeAction = {
   inputPorts: ["input"],
   outputPorts: ["output"],
   builtin: true,
-  parameter: null,
   customization: noteNodeCustomizationSchema,
 };
 
@@ -68,7 +67,7 @@ export const baseNoteNode: {
 
 const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
   // background color will always be a hex color, therefore needs to be converted to rgba
-  const backgroundColor = data.customization?.backgroundColor || "";
+  const backgroundColor = data.customizations?.backgroundColor || "";
   const rgbaColor = convertHextoRgba(backgroundColor, 0.5);
 
   return (
@@ -117,12 +116,12 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
               if (element)
                 element.style.setProperty(
                   "color",
-                  data.customization?.textColor || "",
+                  data.customizations?.textColor || "",
                   "important",
                 );
             }}>
             <Note />
-            <p>{data.customization?.customName ?? data.officialName}</p>
+            <p>{data.customizations?.customName ?? data.officialName}</p>
           </div>
           <div
             ref={(element) => {
@@ -136,7 +135,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
               }
             }}>
             <p className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none">
-              {data.customization?.description}
+              {data.customizations?.description}
             </p>
           </div>
         </div>

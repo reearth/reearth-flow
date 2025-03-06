@@ -15,6 +15,7 @@ export type GeneralNodeProps = NodeProps<Node> & {
 };
 
 const typeIconClasses = "w-[10px] h-[100%]";
+
 export const generalNodeSchema = (officialName: string): RJSFSchema => ({
   type: "object",
   properties: {
@@ -65,7 +66,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
           <div
             className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${status === "failed" ? "border-destructive" : selected ? selectedColor : borderColor}`}>
             <p className="self-center truncate text-xs dark:font-light">
-              {data.customization?.customName || customName || officialName}
+              {data.customizations?.customName || customName || officialName}
             </p>
             {status === "succeeded" ? (
               <div className="self-center">

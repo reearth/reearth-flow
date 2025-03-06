@@ -28,7 +28,7 @@ type Props = {
   onSubmit: (
     nodeId: string,
     data: any,
-    type: "params" | "customization",
+    type: "params" | "customizations",
   ) => Promise<void>;
 };
 
@@ -98,7 +98,7 @@ const ParamEditor: React.FC<Props> = ({
 
   const [updatedParams, setUpdatedParams] = useState(nodeMeta.params);
   const [updatedCustomization, setUpdatedCustomization] = useState(
-    nodeMeta.customization,
+    nodeMeta.customizations,
   );
 
   const handleParamChange = (data: any) => {
@@ -109,20 +109,30 @@ const ParamEditor: React.FC<Props> = ({
     setUpdatedCustomization(data);
   };
 
-  const [activeTab, setActiveTab] = useState("params");
+  const [activeTab, setActiveTab] = useState(
+    actionWithCustomization?.name === "batch" ||
+      actionWithCustomization?.name === "note"
+      ? "customization"
+      : "params",
+  );
 
   const handleSubmit = () => {
     if (activeTab === "params") {
       onSubmit(nodeId, updatedParams, "params");
     } else {
-      onSubmit(nodeId, updatedCustomization, "customization");
+      onSubmit(nodeId, updatedCustomization, "customizations");
     }
   };
 
   return (
     <div className="flex h-full flex-col gap-4">
       <Tabs
-        defaultValue="params"
+        defaultValue={
+          actionWithCustomization?.name === "batch" ||
+          actionWithCustomization?.name === "note"
+            ? "customization"
+            : "params"
+        }
         onValueChange={setActiveTab}
         value={activeTab}
         className="flex h-full flex-col gap-4">
@@ -139,9 +149,12 @@ const ParamEditor: React.FC<Props> = ({
           )}
         </div>
         <TabsList className="flex justify-between">
-          <TabsTrigger className="flex-1" value="params">
-            {t("Parameters")}
-          </TabsTrigger>
+          {actionWithCustomization?.name !== "batch" &&
+            actionWithCustomization?.name !== "note" && (
+              <TabsTrigger className="flex-1" value="params">
+                {t("Parameters")}
+              </TabsTrigger>
+            )}
           <TabsTrigger className="flex-1" value="customization">
             {t("Customization")}
           </TabsTrigger>
