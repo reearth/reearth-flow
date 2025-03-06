@@ -869,7 +869,7 @@ impl BroadcastGroup {
                     tracing::warn!("Failed to apply update {} during manual flush: {}", i, e);
                 } else {
                     has_updates = true;
-                    tracing::info!(
+                    tracing::debug!(
                         "Successfully applied update {} for document '{}'",
                         i,
                         doc_name
