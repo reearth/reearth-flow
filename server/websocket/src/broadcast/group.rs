@@ -83,10 +83,6 @@ impl BroadcastGroup {
                 let awareness_clone = self.awareness_ref.clone();
 
                 tokio::spawn(async move {
-                    tracing::info!(
-                        "New connection established, loading document '{}'",
-                        doc_name_clone
-                    );
                     Self::load_from_storage(&store_clone, &doc_name_clone, &awareness_clone).await;
                 });
             }
@@ -104,11 +100,6 @@ impl BroadcastGroup {
             let pending_updates = self.pending_updates.clone();
 
             tokio::spawn(async move {
-                tracing::info!(
-                    "Connection disconnected, flushing updates for document '{}'",
-                    doc_name_clone
-                );
-
                 let updates = {
                     let mut pending = pending_updates.lock().await;
                     if pending.is_empty() {
@@ -121,12 +112,6 @@ impl BroadcastGroup {
                             {
                                 Ok(redis_updates) => {
                                     if !redis_updates.is_empty() {
-                                        tracing::info!(
-                                            "Found {} pending updates in Redis for document '{}'",
-                                            redis_updates.len(),
-                                            doc_name_clone
-                                        );
-
                                         let doc = Doc::new();
                                         let mut txn = doc.transact_mut();
 
@@ -137,11 +122,6 @@ impl BroadcastGroup {
                                                     tracing::warn!("Failed to apply update {} during flush: {}", i, e);
                                                 } else {
                                                     has_updates = true;
-                                                    tracing::debug!(
-                                                        "Successfully applied update {} for document '{}'",
-                                                        i,
-                                                        doc_name_clone
-                                                    );
                                                 }
                                             } else {
                                                 tracing::warn!(
@@ -155,16 +135,7 @@ impl BroadcastGroup {
                                             let state_vector = StateVector::default();
                                             let merged_update =
                                                 txn.encode_state_as_update_v1(&state_vector);
-                                            tracing::info!(
-                                                "Created merged update of size {} bytes for document '{}'",
-                                                merged_update.len(),
-                                                doc_name_clone
-                                            );
 
-                                            tracing::info!(
-                                                "Storing merged update for document '{}'",
-                                                doc_name_clone
-                                            );
                                             Self::handle_update(
                                                 merged_update,
                                                 &doc_name_clone,
@@ -174,21 +145,12 @@ impl BroadcastGroup {
                                                 true,
                                             )
                                             .await;
-                                            tracing::info!(
-                                                "Stored merged updates for document '{}'",
-                                                doc_name_clone
-                                            );
                                         }
 
                                         if let Err(e) = redis_conn.del::<_, ()>(&redis_key).await {
                                             tracing::warn!(
                                                 "Failed to clear pending updates from Redis: {}",
                                                 e
-                                            );
-                                        } else {
-                                            tracing::info!(
-                                                "Cleared pending updates from Redis for document '{}'",
-                                                doc_name_clone
                                             );
                                         }
                                     }
@@ -216,11 +178,6 @@ impl BroadcastGroup {
                             tracing::warn!("Failed to apply update {} during flush: {}", i, e);
                         } else {
                             has_updates = true;
-                            tracing::debug!(
-                                "Successfully applied update {} for document '{}'",
-                                i,
-                                doc_name_clone
-                            );
                         }
                     } else {
                         tracing::warn!("Failed to decode update {} during flush", i);
@@ -230,13 +187,7 @@ impl BroadcastGroup {
                 if has_updates {
                     let state_vector = StateVector::default();
                     let merged_update = txn.encode_state_as_update_v1(&state_vector);
-                    tracing::info!(
-                        "Created merged update of size {} bytes for document '{}'",
-                        merged_update.len(),
-                        doc_name_clone
-                    );
 
-                    tracing::info!("Storing merged update for document '{}'", doc_name_clone);
                     Self::handle_update(
                         merged_update,
                         &doc_name_clone,
@@ -246,7 +197,6 @@ impl BroadcastGroup {
                         true,
                     )
                     .await;
-                    tracing::info!("Stored merged updates for document '{}'", doc_name_clone);
                 }
 
                 if let Some(redis_conn) = &redis {
@@ -254,11 +204,6 @@ impl BroadcastGroup {
                     let mut redis_conn = redis_conn.lock().await;
                     if let Err(e) = redis_conn.del::<_, ()>(&redis_key).await {
                         tracing::warn!("Failed to clear pending updates from Redis: {}", e);
-                    } else {
-                        tracing::info!(
-                            "Cleared pending updates from Redis for document '{}'",
-                            doc_name_clone
-                        );
                     }
                 }
             });
@@ -385,14 +330,11 @@ impl BroadcastGroup {
             .expect("doc_name required when storage enabled");
         let redis_ttl = config.redis_config.as_ref().map(|c| c.ttl as usize);
 
-        tracing::info!("Loading document '{}' directly from GCS storage", doc_name);
         Self::load_from_storage(&store, &doc_name, &group.awareness_ref).await;
 
         let redis = if let Some(redis_config) = config.redis_config {
             match Self::init_redis_connection(&redis_config.url).await {
                 Ok(conn) => {
-                    tracing::info!("Successfully initialized Redis connection for pending updates");
-
                     let redis_key = format!("pending_updates:{}", doc_name);
                     let conn_clone = conn.clone();
                     let awareness_clone = group.awareness_ref.clone();
@@ -405,11 +347,6 @@ impl BroadcastGroup {
                             .await
                         {
                             Ok(updates) => {
-                                tracing::info!(
-                                    "Loaded {} pending updates from Redis",
-                                    updates.len()
-                                );
-
                                 if !updates.is_empty() {
                                     let awareness = awareness_clone.write().await;
                                     let mut txn = awareness.doc().transact_mut();
@@ -420,10 +357,6 @@ impl BroadcastGroup {
                                                 tracing::warn!(
                                                     "Failed to apply update from Redis: {}",
                                                     e
-                                                );
-                                            } else {
-                                                tracing::debug!(
-                                                    "Successfully applied update from Redis"
                                                 );
                                             }
                                         } else {
@@ -445,7 +378,7 @@ impl BroadcastGroup {
                     let consumer_name = format!("instance-{}", rand::random::<u32>());
 
                     let mut redis_conn = conn.lock().await;
-                    let create_result: redis::RedisResult<String> = redis::cmd("XGROUP")
+                    let _: redis::RedisResult<String> = redis::cmd("XGROUP")
                         .arg("CREATE")
                         .arg(&stream_name)
                         .arg(REDIS_WORKER_GROUP)
@@ -453,18 +386,6 @@ impl BroadcastGroup {
                         .arg("MKSTREAM")
                         .query_async(&mut *redis_conn)
                         .await;
-
-                    match create_result {
-                        Ok(_) => {
-                            tracing::info!(
-                                "Created Redis stream and consumer group for document '{}'",
-                                doc_name
-                            );
-                        }
-                        Err(e) => {
-                            tracing::debug!("Redis group creation result: {}", e);
-                        }
-                    }
                     drop(redis_conn);
 
                     let awareness_for_sub = group.awareness_ref.clone();
@@ -473,11 +394,6 @@ impl BroadcastGroup {
                     let redis_url = redis_config.url.clone();
 
                     let redis_subscriber_task = tokio::spawn(async move {
-                        tracing::info!(
-                            "Starting Redis subscriber task for document '{}'",
-                            doc_name_for_sub
-                        );
-
                         match redis::Client::open(redis_url) {
                             Ok(client) => match client.get_async_pubsub().await {
                                 Ok(mut pubsub) => {
@@ -485,11 +401,6 @@ impl BroadcastGroup {
                                     match pubsub.subscribe(&channel).await {
                                         Ok(_) => {
                                             let mut stream = pubsub.on_message();
-
-                                            tracing::info!(
-                                                "Subscribed to Redis channel: {}",
-                                                channel
-                                            );
 
                                             while let Some(msg) = stream.next().await {
                                                 match msg.get_payload::<Vec<u8>>() {
@@ -509,7 +420,6 @@ impl BroadcastGroup {
                                                             } else {
                                                                 let _ =
                                                                     sender_for_sub.send(payload);
-                                                                tracing::debug!("Applied and broadcasted update from Redis");
                                                             }
                                                         }
                                                     }
@@ -591,7 +501,6 @@ impl BroadcastGroup {
         let mut txn = awareness_guard.doc().transact_mut();
         txn.apply_update(update)?;
 
-        tracing::debug!("Successfully loaded document from Redis cache");
         Ok(())
     }
 
@@ -609,7 +518,6 @@ impl BroadcastGroup {
             match tokio::time::timeout(timeout_duration, store.load_doc(doc_name, &mut txn)).await {
                 Ok(result) => match result {
                     Ok(_) => {
-                        tracing::debug!("Successfully loaded document '{}' from storage", doc_name);
                         break;
                     }
                     Err(e) => {
@@ -662,20 +570,9 @@ impl BroadcastGroup {
         redis_ttl: Option<usize>,
         write_to_gcs: bool,
     ) {
-        tracing::info!(
-            "handle_update called for document '{}' with update size {} bytes",
-            doc_name,
-            update.len()
-        );
-
         let store_future = if write_to_gcs {
-            tracing::info!("Pushing update to GCS for document '{}'", doc_name);
             Some(store.push_update(doc_name, &update))
         } else {
-            tracing::info!(
-                "Skipping GCS update for document '{}' (will be written on disconnect)",
-                doc_name
-            );
             None
         };
 
@@ -687,8 +584,6 @@ impl BroadcastGroup {
             let redis = redis.clone();
             let update = update.clone();
 
-            tracing::info!("Preparing to update Redis for document '{}'", doc_name);
-
             Some(async move {
                 let mut conn = redis.lock().await;
 
@@ -697,11 +592,6 @@ impl BroadcastGroup {
                     .await
                 {
                     tracing::error!("Failed to update Redis cache: {}", e);
-                } else {
-                    tracing::info!(
-                        "Successfully updated Redis cache for document '{}'",
-                        doc_name
-                    );
                 }
 
                 if let Err(e) = conn.lpush::<_, _, ()>(&redis_key, update.as_slice()).await {
@@ -710,7 +600,6 @@ impl BroadcastGroup {
                         e
                     );
                 } else {
-                    tracing::debug!("Successfully stored update to Redis pending_updates list");
                     let _ = conn
                         .expire::<_, ()>(&redis_key, ttl.try_into().unwrap())
                         .await;
@@ -718,8 +607,6 @@ impl BroadcastGroup {
 
                 if let Err(e) = conn.publish::<_, _, ()>(&channel, update.as_slice()).await {
                     tracing::error!("Failed to publish update to Redis channel: {}", e);
-                } else {
-                    tracing::debug!("Successfully published update to Redis channel");
                 }
 
                 let cmd_result: redis::RedisResult<String> = redis::cmd("XADD")
@@ -732,21 +619,14 @@ impl BroadcastGroup {
 
                 if let Err(e) = cmd_result {
                     tracing::error!("Failed to add update to Redis stream: {}", e);
-                } else {
-                    tracing::debug!("Successfully added update to Redis stream");
                 }
             })
         } else {
-            tracing::info!("Redis not configured for document '{}'", doc_name);
             None
         };
 
         match (store_future, redis_future) {
             (Some(store_future), Some(redis_future)) => {
-                tracing::info!(
-                    "Executing GCS and Redis operations concurrently for document '{}'",
-                    doc_name
-                );
                 let (store_result, _) = tokio::join!(store_future, redis_future);
                 if let Err(e) = store_result {
                     tracing::error!(
@@ -754,36 +634,21 @@ impl BroadcastGroup {
                         doc_name,
                         e
                     );
-                } else {
-                    tracing::info!(
-                        "Successfully stored update in GCS for document '{}': {:?}",
-                        doc_name,
-                        store_result
-                    );
                 }
             }
             (Some(store_future), None) => {
-                tracing::info!("Executing GCS operation only for document '{}'", doc_name);
                 if let Err(e) = store_future.await {
                     tracing::error!(
                         "Failed to store update in GCS for document '{}': {}",
                         doc_name,
                         e
                     );
-                } else {
-                    tracing::info!(
-                        "Successfully stored update in GCS for document '{}'",
-                        doc_name
-                    );
                 }
             }
             (None, Some(redis_future)) => {
-                tracing::info!("Executing Redis operation only for document '{}'", doc_name);
                 redis_future.await;
             }
-            (None, None) => {
-                tracing::info!("No operations to execute for document '{}'", doc_name);
-            }
+            (None, None) => {}
         }
     }
 
@@ -881,11 +746,6 @@ impl BroadcastGroup {
                     if let Ok(data) = res.map_err(|e| Error::Other(Box::new(e))) {
                         if let Ok(msg) = Message::decode_v1(&data) {
                             if let Message::Sync(SyncMessage::Update(update)) = &msg {
-                                tracing::debug!(
-                                    "Received update, sending to Redis, size: {} bytes",
-                                    update.len()
-                                );
-
                                 if let (Some(redis), Some(ttl), Some(doc_name)) =
                                     (&redis, redis_ttl, &doc_name)
                                 {
@@ -904,7 +764,6 @@ impl BroadcastGroup {
                                             .await
                                         {
                                             Ok(_) => {
-                                                tracing::debug!("Successfully stored update to Redis pending_updates list");
                                                 let _ = conn
                                                     .expire::<_, ()>(
                                                         &redis_key,
@@ -924,9 +783,7 @@ impl BroadcastGroup {
                                             .publish::<_, _, ()>(&channel, update.as_slice())
                                             .await
                                         {
-                                            Ok(_) => {
-                                                tracing::debug!("Successfully published update to Redis channel");
-                                            }
+                                            Ok(_) => {}
                                             Err(e) => {
                                                 tracing::error!(
                                                     "Failed to publish update to Redis channel: {}",
