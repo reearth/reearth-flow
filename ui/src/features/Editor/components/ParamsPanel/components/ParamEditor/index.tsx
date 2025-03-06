@@ -147,8 +147,9 @@ const ParamEditor: React.FC<Props> = ({
           {activeTab !== "details" && (
             <Button onClick={handleSubmit}>{t("Submit")}</Button>
           )}
+          {activeTab === "details" && <div className="h-[36px]" />}
         </div>
-        <TabsList className="flex justify-between">
+        <TabsList className="flex justify-between gap-2">
           {actionWithCustomization?.name !== "batch" &&
             actionWithCustomization?.name !== "note" && (
               <TabsTrigger className="flex-1" value="params">
@@ -163,7 +164,7 @@ const ParamEditor: React.FC<Props> = ({
           </TabsTrigger>
         </TabsList>
         <TabsContent value="params">
-          <div className="min-h-32 overflow-scroll rounded border bg-card px-2">
+          <div className="min-h-32 overflow-scroll rounded border bg-card px-2 pt-1">
             {!actionWithCustomization?.parameter && (
               <BasicBoiler
                 text={t("No Parameters Available")}
@@ -192,7 +193,7 @@ const ParamEditor: React.FC<Props> = ({
             {actionWithCustomization && (
               <div className="space-y-4">
                 <div>
-                  <h4 className="mb-3 text-base font-medium">
+                  <h4 className="border-b text-sm font-medium">
                     {t("Customization Options")}
                   </h4>
                   <SchemaForm
@@ -216,11 +217,11 @@ const ParamEditor: React.FC<Props> = ({
             )}
             {actionWithCustomization && (
               <div className="space-y-4">
-                <div className="rounded-md bg-muted/30 p-2">
-                  <h4 className="mb-2 text-base font-medium">
+                <div className="rounded-md ">
+                  <h4 className="border-b text-sm font-medium">
                     {t("Node Details")}
                   </h4>
-                  <div className="space-y-1">
+                  <div className="my-4 w-full">
                     <p className="flex items-center text-sm">
                       <span className="mr-2 font-medium">
                         {t("Action Name")}:
@@ -230,7 +231,7 @@ const ParamEditor: React.FC<Props> = ({
                       </span>
                     </p>
                     {actionWithCustomization?.description && (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm">
                         {actionWithCustomization.description}
                       </p>
                     )}

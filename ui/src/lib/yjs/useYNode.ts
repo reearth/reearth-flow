@@ -184,7 +184,8 @@ export default ({
         const prevNode = nodes[nodeIndex];
 
         if (!prevNode) return;
-
+        // if params.routingPort exists, it's parent is a subworkflow and
+        // we need to update pseudoInputs and pseudoOutputs on the parent node.
         if (dataField === "params" && updatedValue.routingPort) {
           const currentWorkflowId = currentYWorkflow
             .get("id")
