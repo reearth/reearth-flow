@@ -6,6 +6,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearthx/account/accountdomain/user"
+	"github.com/reearth/reearthx/account/accountusecase"
 	"github.com/reearth/reearthx/appx"
 	"golang.org/x/text/language"
 )
@@ -36,10 +37,6 @@ func AttachUser(ctx context.Context, u *user.User) context.Context {
 
 func AttachOperator(ctx context.Context, o *usecase.Operator) context.Context {
 	return context.WithValue(ctx, contextOperator, o)
-}
-
-func AttachAuthInfo(ctx context.Context, authInfo *appx.AuthInfo) context.Context {
-	return context.WithValue(ctx, ContextAuthInfo, *authInfo)
 }
 
 func AttachUsecases(ctx context.Context, u *interfaces.Container) context.Context {
@@ -77,6 +74,15 @@ func Lang(ctx context.Context, lang *language.Tag) string {
 func Operator(ctx context.Context) *usecase.Operator {
 	if v := ctx.Value(contextOperator); v != nil {
 		if v2, ok := v.(*usecase.Operator); ok {
+			return v2
+		}
+	}
+	return nil
+}
+
+func AcOperator(ctx context.Context) *accountusecase.Operator {
+	if v := ctx.Value(contextOperator); v != nil {
+		if v2, ok := v.(*accountusecase.Operator); ok {
 			return v2
 		}
 	}

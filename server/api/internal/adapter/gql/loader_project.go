@@ -26,7 +26,7 @@ func (c *ProjectLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmod
 		return nil, []error{err}
 	}
 
-	res, err := c.usecase.Fetch(ctx, ids2)
+	res, err := c.usecase.Fetch(ctx, ids2, getOperator(ctx))
 	if err != nil {
 		return nil, []error{err}
 	}
@@ -55,7 +55,7 @@ func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.I
 		paginationParam.Page.Page, paginationParam.Page.PageSize)
 
 	// Use the pagination param for the usecase call
-	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam)
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}

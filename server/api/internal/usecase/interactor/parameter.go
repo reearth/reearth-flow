@@ -3,8 +3,7 @@ package interactor
 import (
 	"context"
 
-	"github.com/reearth/reearth-flow/api/internal/rbac"
-	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
+	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -14,30 +13,21 @@ import (
 )
 
 type Parameter struct {
-	paramRepo         repo.Parameter
-	projectRepo       repo.Project
-	transaction       usecasex.Transaction
-	permissionChecker gateway.PermissionChecker
+	common
+	paramRepo   repo.Parameter
+	projectRepo repo.Project
+	transaction usecasex.Transaction
 }
 
-func NewParameter(r *repo.Container, permissionChecker gateway.PermissionChecker) interfaces.Parameter {
+func NewParameter(r *repo.Container) interfaces.Parameter {
 	return &Parameter{
-		paramRepo:         r.Parameter,
-		projectRepo:       r.Project,
-		transaction:       r.Transaction,
-		permissionChecker: permissionChecker,
+		paramRepo:   r.Parameter,
+		projectRepo: r.Project,
+		transaction: r.Transaction,
 	}
 }
 
-func (i *Parameter) checkPermission(ctx context.Context, action string) error {
-	return checkPermission(ctx, i.permissionChecker, rbac.ResourceParameter, action)
-}
-
-func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.DeclareParameterParam) (*parameter.Parameter, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return nil, err
-	}
-
+func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.DeclareParameterParam, operator *usecase.Operator) (*parameter.Parameter, error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -94,28 +84,16 @@ func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.Decla
 	return p, nil
 }
 
-func (i *Parameter) Fetch(ctx context.Context, ids id.ParameterIDList) (*parameter.ParameterList, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return nil, err
-	}
-
+func (i *Parameter) Fetch(ctx context.Context, ids id.ParameterIDList, operator *usecase.Operator) (*parameter.ParameterList, error) {
 	return i.paramRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Parameter) FetchByProject(ctx context.Context, pid id.ProjectID) (*parameter.ParameterList, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return nil, err
-	}
-
+func (i *Parameter) FetchByProject(ctx context.Context, pid id.ProjectID, operator *usecase.Operator) (*parameter.ParameterList, error) {
 	params, err := i.paramRepo.FindByProject(ctx, pid)
 	return params, err
 }
 
-func (i *Parameter) RemoveParameter(ctx context.Context, pid id.ParameterID) (id.ParameterID, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return pid, err
-	}
-
+func (i *Parameter) RemoveParameter(ctx context.Context, pid id.ParameterID, operator *usecase.Operator) (id.ParameterID, error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return pid, err
@@ -159,11 +137,7 @@ func (i *Parameter) RemoveParameter(ctx context.Context, pid id.ParameterID) (id
 	return pid, nil
 }
 
-func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.UpdateParameterOrderParam) (*parameter.ParameterList, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return nil, err
-	}
-
+func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.UpdateParameterOrderParam, operator *usecase.Operator) (*parameter.ParameterList, error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return nil, err
@@ -212,11 +186,7 @@ func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.U
 	return params, nil
 }
 
-func (i *Parameter) UpdateParameterValue(ctx context.Context, param interfaces.UpdateParameterValueParam) (*parameter.Parameter, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return nil, err
-	}
-
+func (i *Parameter) UpdateParameterValue(ctx context.Context, param interfaces.UpdateParameterValueParam, operator *usecase.Operator) (*parameter.Parameter, error) {
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return nil, err

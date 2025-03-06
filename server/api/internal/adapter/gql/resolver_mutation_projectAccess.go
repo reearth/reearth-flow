@@ -13,7 +13,7 @@ func (r *mutationResolver) ShareProject(ctx context.Context, input gqlmodel.Shar
 		return nil, err
 	}
 
-	sharingUrl, err := usecases(ctx).ProjectAccess.Share(ctx, pid)
+	sharingUrl, err := usecases(ctx).ProjectAccess.Share(ctx, pid, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}
@@ -27,7 +27,7 @@ func (r *mutationResolver) UnshareProject(ctx context.Context, input gqlmodel.Un
 		return nil, err
 	}
 
-	if err := usecases(ctx).ProjectAccess.Unshare(ctx, pid); err != nil {
+	if err := usecases(ctx).ProjectAccess.Unshare(ctx, pid, getOperator(ctx)); err != nil {
 		return nil, err
 	}
 

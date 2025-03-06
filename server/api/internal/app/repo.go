@@ -27,7 +27,6 @@ import (
 )
 
 const databaseName = "reearth-flow"
-const accountDatabaseName = "reearth-account"
 
 func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
 	interactor.InitWebsocket(
@@ -51,7 +50,7 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 	accountDatabase := conf.DB_Account
 	accountRepoCompat := false
 	if accountDatabase == "" {
-		accountDatabase = accountDatabaseName
+		accountDatabase = databaseName
 		accountRepoCompat = true
 	}
 
