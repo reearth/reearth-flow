@@ -63,7 +63,7 @@ impl BroadcastPool {
                             }
                             Err(e) => {
                                 if e.to_string().contains("not found") {
-                                    tracing::info!("Creating new document: {}", doc_id);
+                                    tracing::debug!("Creating new document: {}", doc_id);
                                 } else {
                                     tracing::error!("Failed to load document {}: {}", doc_id, e);
                                     return Err(anyhow!("Failed to load document: {}", e));
