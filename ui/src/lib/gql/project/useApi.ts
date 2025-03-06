@@ -122,9 +122,9 @@ export const useProject = () => {
           "Debug run has been successfully started for the project.",
         ),
       });
-      return { projectId: data.projectId, started: data.started, ...rest };
+      return { job: data.job, ...rest };
     } catch (_err) {
-      return { projectId: undefined, ...rest };
+      return { job: undefined, ...rest };
     }
   };
 

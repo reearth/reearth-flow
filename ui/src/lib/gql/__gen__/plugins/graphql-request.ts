@@ -213,12 +213,18 @@ export type Job = Node & {
   deployment?: Maybe<Deployment>;
   deploymentId: Scalars['ID']['output'];
   id: Scalars['ID']['output'];
+  logs?: Maybe<Array<Maybe<Log>>>;
   logsURL?: Maybe<Scalars['String']['output']>;
   outputURLs?: Maybe<Array<Scalars['String']['output']>>;
   startedAt: Scalars['DateTime']['output'];
   status: JobStatus;
   workspace?: Maybe<Workspace>;
   workspaceId: Scalars['ID']['output'];
+};
+
+
+export type JobLogsArgs = {
+  since: Scalars['DateTime']['input'];
 };
 
 export type JobConnection = {
@@ -239,6 +245,23 @@ export enum JobStatus {
   Failed = 'FAILED',
   Pending = 'PENDING',
   Running = 'RUNNING'
+}
+
+export type Log = {
+  __typename?: 'Log';
+  jobId: Scalars['ID']['output'];
+  logLevel: LogLevel;
+  message: Scalars['String']['output'];
+  nodeId?: Maybe<Scalars['ID']['output']>;
+  timestamp: Scalars['DateTime']['output'];
+};
+
+export enum LogLevel {
+  Debug = 'DEBUG',
+  Error = 'ERROR',
+  Info = 'INFO',
+  Trace = 'TRACE',
+  Warn = 'WARN'
 }
 
 export type Me = {
@@ -721,8 +744,7 @@ export type RunProjectInput = {
 
 export type RunProjectPayload = {
   __typename?: 'RunProjectPayload';
-  projectId: Scalars['ID']['output'];
-  started: Scalars['Boolean']['output'];
+  job: Job;
 };
 
 export type ShareProjectInput = {
@@ -756,10 +778,16 @@ export type SignupPayload = {
 export type Subscription = {
   __typename?: 'Subscription';
   jobStatus: JobStatus;
+  logs?: Maybe<Log>;
 };
 
 
 export type SubscriptionJobStatusArgs = {
+  jobId: Scalars['ID']['input'];
+};
+
+
+export type SubscriptionLogsArgs = {
   jobId: Scalars['ID']['input'];
 };
 
@@ -1016,7 +1044,7 @@ export type RunProjectMutationVariables = Exact<{
 }>;
 
 
-export type RunProjectMutation = { __typename?: 'Mutation', runProject?: { __typename?: 'RunProjectPayload', projectId: string, started: boolean } | null };
+export type RunProjectMutation = { __typename?: 'Mutation', runProject?: { __typename?: 'RunProjectPayload', job: { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } } | null };
 
 export type GetSharedProjectQueryVariables = Exact<{
   token: Scalars['String']['input'];
@@ -1358,11 +1386,12 @@ export const DeleteProjectDocument = gql`
 export const RunProjectDocument = gql`
     mutation RunProject($input: RunProjectInput!) {
   runProject(input: $input) {
-    projectId
-    started
+    job {
+      ...Job
+    }
   }
 }
-    `;
+    ${JobFragmentDoc}`;
 export const GetSharedProjectDocument = gql`
     query GetSharedProject($token: String!) {
   sharedProject(token: $token) {

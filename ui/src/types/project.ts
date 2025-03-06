@@ -1,5 +1,6 @@
 import { ApiResponse } from "./api";
 import { Deployment } from "./deployment";
+import { Job } from "./job";
 import { Workflow } from "./workflow";
 
 export type Project = {
@@ -45,8 +46,7 @@ export type DeleteProject = {
 } & ApiResponse;
 
 export type RunProject = {
-  projectId?: string;
-  started?: boolean;
+  job?: Job;
 } & ApiResponse;
 
 export type ShareProject = {

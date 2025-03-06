@@ -14,7 +14,7 @@ import {
   UpdateProjectInput,
   RunProjectInput,
 } from "../__gen__/graphql";
-import { toProject } from "../convert";
+import { toJob, toProject } from "../convert";
 
 export enum ProjectQueryKeys {
   GetWorkspaceProjects = "getWorkspaceProjects",
@@ -134,10 +134,10 @@ export const useQueries = () => {
           file: file.get("file"),
         },
       });
+      if (!data?.runProject?.job) return { workspaceId };
       return {
-        projectId: data?.runProject?.projectId,
+        job: toJob(data.runProject.job),
         workspaceId: workspaceId,
-        started: data?.runProject?.started,
       };
     },
     onSuccess: ({ workspaceId }) =>
