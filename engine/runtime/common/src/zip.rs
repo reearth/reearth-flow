@@ -3,14 +3,13 @@ use std::path::Path;
 
 use walkdir::WalkDir;
 
-pub fn write<T, P, Q>(writer: T, directory: P, prefix: Q) -> crate::Result<()>
+pub fn write<T, P>(writer: T, directory: P) -> crate::Result<()>
 where
     T: Write + std::io::Seek,
-    P: AsRef<Path>,
-    Q: AsRef<Path>,
+    P: AsRef<Path> + Clone,
 {
     let mut zip_writer = zip::ZipWriter::new(writer);
-    let walkdir = WalkDir::new(directory);
+    let walkdir = WalkDir::new(directory.clone());
 
     let options = zip::write::SimpleFileOptions::default()
         .compression_method(zip::CompressionMethod::Deflated);
@@ -18,9 +17,14 @@ where
     for entry in walkdir.into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
 
-        let relative_path = match path.strip_prefix(&prefix) {
+        let relative_path = match path.strip_prefix(&directory) {
             Ok(p) => p,
-            Err(_) => continue,
+            Err(e) => {
+                return Err(crate::Error::zip(format!(
+                    "Failed to strip prefix with err: {:?}",
+                    e
+                )))
+            }
         };
         let path_as_string = relative_path.to_string_lossy().replace('\\', "/");
 
@@ -58,11 +62,6 @@ mod tests {
         // Create a file in the subdirectory
         let subfile_path = subdir.join("subfile");
         std::fs::File::create(subfile_path).unwrap();
-        assert!(write(
-            std::fs::File::create("test.zip").unwrap(),
-            temp_dir.path(),
-            temp_dir.path(),
-        )
-        .is_ok());
+        assert!(write(std::fs::File::create("test.zip").unwrap(), temp_dir.path(),).is_ok());
     }
 }

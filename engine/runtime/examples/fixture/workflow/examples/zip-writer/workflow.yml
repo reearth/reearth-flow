@@ -1,0 +1,98 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
+name: "Example-conversion-table-workflow"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+graphs:
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                testAttribute01: "堺市中区",
+                year: 2025,
+              },
+              #{
+                testAttribute01: "堺市北区",
+                year: 2024,
+              },
+              #{
+                testAttribute01: "堺市西区",
+                year: 2025,
+              },
+              #{
+                testAttribute01: "堺市東区",
+                year: 2024,
+              },
+            ]
+
+      - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        name: FeatureFilterBydate
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+          - expr: |
+              env.get("__value").year == 2024
+            outputPort: year2024
+          - expr: |
+              env.get("__value").year == 2025
+            outputPort: year2025
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        name: FeatureWriter2024
+        type: action
+        action: FeatureWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("currentPath"), "year-2024.csv")
+
+      - id: 3ec90e43-968e-4bcd-863c-f7c80e37f118
+        name: FeatureWriter2025
+        type: action
+        action: FeatureWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("currentPath"), "year-2025.csv")
+
+      - id: 5aa001b2-94d4-41c0-8552-58adf04ef66a
+        name: ZipFileWriter
+        type: action
+        action: ZipFileWriter
+        with:
+          output: |
+            file::join_path(env.get("currentPath"), "result.zip")
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540d
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        fromPort: default
+        toPort: default
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        fromPort: year2024
+        toPort: default
+      - id: d6d821e2-2fb0-4ae3-8cee-6a51717ad6ba
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        to: 3ec90e43-968e-4bcd-863c-f7c80e37f118
+        fromPort: year2025
+        toPort: default
+      - id: c60f7369-5df5-4854-883e-fd3b2bd97744
+        from: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        to: 5aa001b2-94d4-41c0-8552-58adf04ef66a
+        fromPort: default
+        toPort: default
+      - id: 2e3a37c0-d7d6-4abf-8e4e-f0714357302f
+        from: 3ec90e43-968e-4bcd-863c-f7c80e37f118
+        to: 5aa001b2-94d4-41c0-8552-58adf04ef66a
+        fromPort: default
+        toPort: default

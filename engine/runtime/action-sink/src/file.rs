@@ -7,3 +7,4 @@ pub(super) mod mvt;
 pub(super) mod shapefile;
 pub(crate) mod writer;
 pub(super) mod xml;
+pub(super) mod zip;
