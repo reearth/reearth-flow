@@ -492,7 +492,7 @@ impl BroadcastGroup {
     async fn init_redis_connection(url: &str) -> Result<Arc<RedisPool>, redis::RedisError> {
         let manager = RedisConnectionManager::new(url)?;
         let pool = bb8::Pool::builder()
-            .max_size(100)
+            .max_size(1024)
             .min_idle(5)
             .connection_timeout(std::time::Duration::from_secs(5))
             .idle_timeout(Some(std::time::Duration::from_secs(500)))
