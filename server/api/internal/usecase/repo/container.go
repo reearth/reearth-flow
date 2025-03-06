@@ -19,10 +19,8 @@ type Container struct {
 	Job           Job
 	Lock          Lock
 	Parameter     Parameter
-	Permittable   accountrepo.Permittable // TODO: Delete this once the permission check migration is complete.
 	Project       Project
 	ProjectAccess ProjectAccess
-	Role          accountrepo.Role // TODO: Delete this once the permission check migration is complete.
 	Transaction   usecasex.Transaction
 	Trigger       Trigger
 	User          accountrepo.User
@@ -35,8 +33,6 @@ func (c *Container) AccountRepos() *accountrepo.Container {
 		Workspace:   c.Workspace,
 		User:        c.User,
 		Transaction: c.Transaction,
-		Role:        c.Role,        // TODO: Delete this once the permission check migration is complete.
-		Permittable: c.Permittable, // TODO: Delete this once the permission check migration is complete.
 	}
 }
 
