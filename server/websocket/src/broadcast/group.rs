@@ -1,6 +1,5 @@
-use crate::storage::kv::DocOps;
-//use crate::storage::sqlite::SqliteStore;
 use crate::storage::gcs::GcsStore;
+use crate::storage::kv::DocOps;
 use crate::AwarenessRef;
 use anyhow::anyhow;
 use anyhow::Result;
@@ -24,15 +23,12 @@ use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
-// Redis stream names and keys
 const REDIS_STREAM_PREFIX: &str = "yjs";
 const REDIS_WORKER_GROUP: &str = "yjs:worker";
 
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct RedisConfig {
-    /// Redis URL
     pub url: String,
-    /// Cache TTL in seconds
     pub ttl: u64,
 }
 
@@ -55,11 +51,8 @@ pub struct BroadcastGroup {
     doc_name: Option<String>,
     redis_ttl: Option<usize>,
     storage_rx: Option<tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>>,
-    // Buffer to store updates until disconnect
     pending_updates: Arc<Mutex<Vec<Vec<u8>>>>,
-    // Redis subscriber task for receiving updates from other instances
     redis_subscriber_task: Option<JoinHandle<()>>,
-    // Consumer name for Redis streams
     redis_consumer_name: Option<String>,
 }
 
@@ -259,11 +252,9 @@ impl BroadcastGroup {
                         }
                     });
 
-                    // Initialize Redis Stream group for multi-instance sync
                     let stream_name = Self::compute_redis_stream_name(&doc_name);
                     let consumer_name = format!("instance-{}", rand::random::<u32>());
 
-                    // Try to create the stream and consumer group
                     let mut redis_conn = conn.lock().await;
                     let create_result: redis::RedisResult<String> = redis::cmd("XGROUP")
                         .arg("CREATE")
@@ -282,89 +273,78 @@ impl BroadcastGroup {
                             );
                         }
                         Err(e) => {
-                            // Group may already exist, which is fine
                             tracing::debug!("Redis group creation result: {}", e);
                         }
                     }
-                    drop(redis_conn); // 释放锁，避免借用冲突
+                    drop(redis_conn);
 
-                    // Set up Redis subscriber task to receive updates from other instances
                     let awareness_for_sub = group.awareness_ref.clone();
                     let sender_for_sub = group.sender.clone();
                     let doc_name_for_sub = doc_name.clone();
                     let redis_url = redis_config.url.clone();
 
                     let redis_subscriber_task = tokio::spawn(async move {
-                        // 使用新的连接而不是借用现有连接
                         tracing::info!(
                             "Starting Redis subscriber task for document '{}'",
                             doc_name_for_sub
                         );
 
-                        // Create a separate connection for pub/sub
                         match redis::Client::open(redis_url) {
-                            Ok(client) => {
-                                // Use get_async_pubsub() instead of get_multiplexed_async_connection()
-                                match client.get_async_pubsub().await {
-                                    Ok(mut pubsub) => {
-                                        // Subscribe to the document's channel
-                                        let channel = format!("yjs:updates:{}", doc_name_for_sub);
-                                        match pubsub.subscribe(&channel).await {
-                                            Ok(_) => {
-                                                let mut stream = pubsub.on_message();
+                            Ok(client) => match client.get_async_pubsub().await {
+                                Ok(mut pubsub) => {
+                                    let channel = format!("yjs:updates:{}", doc_name_for_sub);
+                                    match pubsub.subscribe(&channel).await {
+                                        Ok(_) => {
+                                            let mut stream = pubsub.on_message();
 
-                                                tracing::info!(
-                                                    "Subscribed to Redis channel: {}",
-                                                    channel
-                                                );
+                                            tracing::info!(
+                                                "Subscribed to Redis channel: {}",
+                                                channel
+                                            );
 
-                                                // Listen for messages
-                                                while let Some(msg) = stream.next().await {
-                                                    match msg.get_payload::<Vec<u8>>() {
-                                                        Ok(payload) => {
-                                                            // Apply the update to our local document
-                                                            let awareness =
-                                                                awareness_for_sub.write().await;
-                                                            let mut txn =
-                                                                awareness.doc().transact_mut();
+                                            while let Some(msg) = stream.next().await {
+                                                match msg.get_payload::<Vec<u8>>() {
+                                                    Ok(payload) => {
+                                                        let awareness =
+                                                            awareness_for_sub.write().await;
+                                                        let mut txn =
+                                                            awareness.doc().transact_mut();
 
-                                                            if let Ok(decoded) =
-                                                                Update::decode_v1(&payload)
+                                                        if let Ok(decoded) =
+                                                            Update::decode_v1(&payload)
+                                                        {
+                                                            if let Err(e) =
+                                                                txn.apply_update(decoded)
                                                             {
-                                                                if let Err(e) =
-                                                                    txn.apply_update(decoded)
-                                                                {
-                                                                    tracing::warn!("Failed to apply update from Redis: {}", e);
-                                                                } else {
-                                                                    // Broadcast to local clients
-                                                                    let _ = sender_for_sub
-                                                                        .send(payload);
-                                                                    tracing::debug!("Applied and broadcasted update from Redis");
-                                                                }
+                                                                tracing::warn!("Failed to apply update from Redis: {}", e);
+                                                            } else {
+                                                                let _ =
+                                                                    sender_for_sub.send(payload);
+                                                                tracing::debug!("Applied and broadcasted update from Redis");
                                                             }
                                                         }
-                                                        Err(e) => {
-                                                            tracing::error!("Failed to get payload from Redis message: {}", e);
-                                                        }
+                                                    }
+                                                    Err(e) => {
+                                                        tracing::error!("Failed to get payload from Redis message: {}", e);
                                                     }
                                                 }
                                             }
-                                            Err(e) => {
-                                                tracing::error!(
-                                                    "Failed to subscribe to Redis channel: {}",
-                                                    e
-                                                );
-                                            }
+                                        }
+                                        Err(e) => {
+                                            tracing::error!(
+                                                "Failed to subscribe to Redis channel: {}",
+                                                e
+                                            );
                                         }
                                     }
-                                    Err(e) => {
-                                        tracing::error!(
-                                            "Failed to get async connection to Redis: {}",
-                                            e
-                                        );
-                                    }
                                 }
-                            }
+                                Err(e) => {
+                                    tracing::error!(
+                                        "Failed to get async connection to Redis: {}",
+                                        e
+                                    );
+                                }
+                            },
                             Err(e) => {
                                 tracing::error!("Failed to open Redis client: {}", e);
                             }
