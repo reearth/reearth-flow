@@ -144,7 +144,6 @@ impl BroadcastGroup {
                                                 &store_clone,
                                                 &redis,
                                                 redis_ttl,
-                                                true,
                                             )
                                             .await;
                                         }
@@ -196,7 +195,6 @@ impl BroadcastGroup {
                         &store_clone,
                         &redis,
                         redis_ttl,
-                        true,
                     )
                     .await;
                 }
@@ -580,13 +578,8 @@ impl BroadcastGroup {
         store: &Arc<GcsStore>,
         redis: &Option<Arc<RedisPool>>,
         redis_ttl: Option<usize>,
-        write_to_gcs: bool,
     ) {
-        let store_future = if write_to_gcs {
-            Some(store.push_update(doc_name, &update))
-        } else {
-            None
-        };
+        let store_future = Some(store.push_update(doc_name, &update));
 
         let redis_future = if let (Some(redis), Some(ttl)) = (redis, redis_ttl) {
             let cache_key = format!("doc:{}", doc_name);
@@ -984,7 +977,6 @@ impl BroadcastGroup {
             store,
             &self.redis_pool,
             self.redis_ttl,
-            true,
         )
         .await;
         tracing::debug!("Stored merged updates for document '{}'", doc_name);
