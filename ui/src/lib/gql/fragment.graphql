@@ -57,3 +57,11 @@ fragment Job on Job {
   #   ...Workspace
   # }
 }
+
+fragment Log on Log {
+  jobId
+  nodeId
+  timestamp
+  logLevel
+  message
+}

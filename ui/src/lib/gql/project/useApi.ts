@@ -123,7 +123,7 @@ export const useProject = () => {
         ),
         variant: "destructive",
       });
-      return { projectId: data.projectId, started: data.started, ...rest };
+      return { projectId: data.job?.id, started: data.job?.startedAt, ...rest };
     } catch (_err) {
       return { projectId: undefined, ...rest };
     }

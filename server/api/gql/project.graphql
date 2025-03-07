@@ -56,8 +56,7 @@ type DeleteProjectPayload {
 }
 
 type RunProjectPayload {
-  projectId: ID!
-  started: Boolean!
+  job: Job!
 }
 
 # Connection

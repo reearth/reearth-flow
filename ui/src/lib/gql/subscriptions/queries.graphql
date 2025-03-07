@@ -1,0 +1,9 @@
+subscription RealTimeLogs($jobId: ID!) {
+  logs(jobId: $jobId) {
+    jobId
+    nodeId
+    timestamp
+    logLevel
+    message
+  }
+}
