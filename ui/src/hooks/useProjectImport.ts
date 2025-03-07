@@ -66,10 +66,10 @@ export default () => {
 
         const yDoc = new Y.Doc();
         const { websocket } = config();
-        
+
         if (websocket && projectMeta) {
           const token = await getAccessToken();
-          
+
           const yWebSocketProvider = new WebsocketProvider(
             websocket,
             `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
