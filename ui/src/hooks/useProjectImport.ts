@@ -65,43 +65,46 @@ export default () => {
         if (!project) return console.error("Failed to create project");
 
         const yDoc = new Y.Doc();
-        Y.applyUpdate(yDoc, yDocBinary);
-
         const { websocket } = config();
+
         if (websocket && projectMeta) {
-          (async () => {
-            const token = await getAccessToken();
+          const token = await getAccessToken();
 
-            const yWebSocketProvider = new WebsocketProvider(
-              websocket,
-              `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
-              yDoc,
-              { params: { token } },
-            );
+          const yWebSocketProvider = new WebsocketProvider(
+            websocket,
+            `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
+            yDoc,
+            { params: { token } },
+          );
 
+          await new Promise<void>((resolve) => {
             yWebSocketProvider.once("sync", () => {
+              yDoc.transact(() => {
+                Y.applyUpdate(yDoc, yDocBinary);
+              });
+
               const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
               if (!yWorkflows.length) {
                 console.warn("Imported project has no workflows");
               }
 
               setIsProjectImporting(false);
+              resolve();
             });
-          })();
+          });
         }
       } catch (error) {
-        console.error("Error importing project:", error);
+        console.error("Failed to import project:", error);
         setIsProjectImporting(false);
       }
     },
-    [currentWorkspace, t, createProject, getAccessToken],
+    [createProject, currentWorkspace, getAccessToken, t],
   );
 
   return {
-    fileInputRef,
     isProjectImporting,
-    setIsProjectImporting,
     handleProjectImportClick,
     handleProjectFileUpload,
+    fileInputRef,
   };
 };
