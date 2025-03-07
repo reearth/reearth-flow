@@ -42,7 +42,6 @@ type LogProps = {
   columns: ColumnDef<Log, unknown>[];
   data: Log[];
   isFetching: boolean;
-  isCompleted: boolean;
   selectColumns?: boolean;
   showFiltering?: boolean;
 };
@@ -51,7 +50,6 @@ const LogsTable = ({
   columns,
   data,
   isFetching,
-  isCompleted,
   selectColumns = false,
   showFiltering = false,
 }: LogProps) => {
@@ -218,7 +216,7 @@ const LogsTable = ({
 
       <div className="border-b" />
       <div className="h-[calc(100%-20px)] w-full overflow-auto">
-        {isFetching || !isCompleted ? (
+        {isFetching ? (
           <LoadingSkeleton />
         ) : !hasValidLogs || !table.getRowModel().rows?.length ? (
           <BasicBoiler

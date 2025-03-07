@@ -56,7 +56,6 @@ export const useLogs = (jobId: string) => {
     isSubscribedRef.current = true;
     const processedLogIds = new Set<string>();
     let localLogs: Log[] = [];
-    let updateTimeout: NodeJS.Timeout | null = null;
 
     // Initialize local logs with any cached data
     const cachedData = queryClient.getQueryData<Log[]>([
@@ -71,20 +70,6 @@ export const useLogs = (jobId: string) => {
         processedLogIds.add(logId);
       });
     }
-
-    // Function to update query cache
-    const updateQueryCache = () => {
-      if (updateTimeout) clearTimeout(updateTimeout);
-
-      updateTimeout = setTimeout(() => {
-        // Update React Query cache
-        queryClient.setQueryData<Log[]>(
-          [LogSubscriptionKeys.GetLogs, jobId],
-          [...localLogs],
-        );
-        updateTimeout = null;
-      }, 50);
-    };
 
     // Subscribe to logs
     const unsubscribe = wsClient.subscribe<RealTimeLogsSubscription>(
@@ -119,7 +104,10 @@ export const useLogs = (jobId: string) => {
             });
 
             // Update React Query cache
-            updateQueryCache();
+            queryClient.setQueryData<Log[]>(
+              [LogSubscriptionKeys.GetLogs, jobId],
+              [...localLogs],
+            );
           }
         },
         error: (err) => {
@@ -134,7 +122,6 @@ export const useLogs = (jobId: string) => {
 
     // Cleanup
     return () => {
-      if (updateTimeout) clearTimeout(updateTimeout);
       unsubscribe();
       isSubscribedRef.current = false;
     };

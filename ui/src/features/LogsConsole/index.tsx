@@ -42,11 +42,7 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
 
   const debugJob = useGetJob(jobId).job;
 
-  const {
-    data: liveLogs,
-    isCompleted,
-    isFetching: isFetchingLiveLogs,
-  } = useLogs(jobId);
+  const { data: liveLogs, isFetching: isFetchingLiveLogs } = useLogs(jobId);
 
   const logs = useMemo(() => urlLogs || liveLogs || [], [liveLogs, urlLogs]);
 
@@ -101,15 +97,12 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
       getLogsFromUrl();
     }
   }, [debugJob?.logsURL, urlLogs, getLogsFromUrl]);
-  console.log("fetching", isFetchingLogsUrl, isFetchingLiveLogs);
-  console.log("isCompleted", isCompleted);
 
   return (
     <LogsTable
       columns={columns}
       data={logs}
       isFetching={isFetchingLiveLogs || isFetchingLogsUrl}
-      isCompleted={isCompleted}
       selectColumns
       showFiltering
     />
