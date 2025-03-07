@@ -30,6 +30,7 @@ import {
   Input,
   IconButton,
   FlowLogo,
+  LoadingSkeleton,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { Log, LogLevel } from "@flow/types";
@@ -40,6 +41,8 @@ import { Table, TableBody, TableCell, TableRow } from "../Table";
 type LogProps = {
   columns: ColumnDef<Log, unknown>[];
   data: Log[];
+  isFetching: boolean;
+  isCompleted: boolean;
   selectColumns?: boolean;
   showFiltering?: boolean;
 };
@@ -47,6 +50,8 @@ type LogProps = {
 const LogsTable = ({
   columns,
   data,
+  isFetching,
+  isCompleted,
   selectColumns = false,
   showFiltering = false,
 }: LogProps) => {
@@ -113,7 +118,7 @@ const LogsTable = ({
 
   return (
     <div className="flex size-full flex-col rounded">
-      <div className="flex w-full items-center justify-between px-2 pb-2">
+      <div className="flex w-full shrink-0 items-center justify-between px-2 pb-2">
         <div className="mr-4 flex-1">
           {showFiltering && (
             <Input
@@ -212,8 +217,10 @@ const LogsTable = ({
       </div>
 
       <div className="border-b" />
-      <div className="h-[calc(100vh-6rem)] w-full overflow-auto">
-        {!hasValidLogs || !table.getRowModel().rows?.length ? (
+      <div className="h-[calc(100%-20px)] w-full overflow-auto">
+        {isFetching || !isCompleted ? (
+          <LoadingSkeleton />
+        ) : !hasValidLogs || !table.getRowModel().rows?.length ? (
           <BasicBoiler
             className="h-full"
             textClassName="text-base"
