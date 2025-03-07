@@ -3,7 +3,7 @@ id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
 name: "surface-footprint-replacer-workflow"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
-  geojson: !include ./files/3d_rainbow_bridge.geojson.txt
+  geojson: !include ./files/3d_prism.geojson.txt
   outputPath:
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
@@ -19,16 +19,13 @@ graphs:
             env.get("geojson")
 
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
-        name: TwoDimensionForcer
+        name: SurfaceFootprintReplacer
         type: action
-        action: TwoDimensionForcer
-
-      - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d41
-        name: Dissolver
-        type: action
-        action: Dissolver
+        action: SurfaceFootprintReplacer
         with:
-          groupBy:
+          elevation: 50.0
+          shadowMode: DropShadow
+          lightDirection: [-1.0, 1.0, 1.0]
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906e
         name: GeoJsonWriter
@@ -46,16 +43,6 @@ graphs:
         toPort: default
       - id: c81ea200-9aa1-4522-9f72-10e8b9184cb9
         from: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
-        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d41
-        fromPort: default
-        toPort: default
-      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb9
-        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d41
         to: f5e66920-24c0-4c70-ae16-6be1ed3b906e
-        fromPort: area
+        fromPort: footprint
         toPort: default
-      # - id: c81ea200-9aa1-4522-9f72-10e8b9184cb9
-      #   from: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
-      #   to: f5e66920-24c0-4c70-ae16-6be1ed3b906e
-      #   fromPort: default
-      #   toPort: default
