@@ -171,7 +171,11 @@ export default ({
   );
 
   const handleYNodeDataUpdate = useCallback(
-    (nodeId: string, dataField: string, updatedValue: any) =>
+    (
+      nodeId: string,
+      dataField: "params" | "customization",
+      updatedValue: any,
+    ) =>
       undoTrackerActionWrapper(() => {
         const yNodes = currentYWorkflow?.get("nodes") as
           | YNodesArray

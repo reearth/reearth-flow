@@ -221,7 +221,7 @@ const ParamEditor: React.FC<Props> = ({
                   <h4 className="border-b text-sm font-medium">
                     {t("Node Details")}
                   </h4>
-                  <div className="my-4 w-full">
+                  <div className="my-4 flex w-full flex-col gap-4">
                     <p className="flex items-center text-sm">
                       <span className="mr-2 font-medium">
                         {t("Action Name")}:
@@ -230,11 +230,16 @@ const ParamEditor: React.FC<Props> = ({
                         {nodeMeta.officialName}
                       </span>
                     </p>
-                    {actionWithCustomization?.description && (
-                      <p className="text-sm">
-                        {actionWithCustomization.description}
-                      </p>
-                    )}
+                    <div className="flex flex-col gap-2">
+                      <span className="mr-2 text-sm font-medium">
+                        {t("Description")}:
+                      </span>
+                      {actionWithCustomization?.description && (
+                        <p className="text-sm">
+                          {actionWithCustomization.description}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
