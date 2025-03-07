@@ -63,7 +63,7 @@ impl BroadcastPool {
                             }
                             Err(e) => {
                                 if e.to_string().contains("not found") {
-                                    tracing::info!("Creating new document: {}", doc_id);
+                                    tracing::debug!("Creating new document: {}", doc_id);
                                 } else {
                                     tracing::error!("Failed to load document {}: {}", doc_id, e);
                                     return Err(anyhow!("Failed to load document: {}", e));
@@ -112,21 +112,9 @@ impl BroadcastPool {
             let remaining = group.decrement_connections();
 
             tracing::info!(
-                "Connection disconnected for document '{}', flushing updates",
+                "Connection disconnected for document '{}', updates will be flushed in decrement_connections",
                 doc_id
             );
-            if let Err(e) = group_clone.flush_updates().await {
-                tracing::error!(
-                    "Failed to flush updates for group '{}' on disconnect: {}",
-                    doc_id,
-                    e
-                );
-            } else {
-                tracing::info!(
-                    "Successfully flushed updates for group '{}' on disconnect",
-                    doc_id
-                );
-            }
 
             if remaining == 0 {
                 tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;

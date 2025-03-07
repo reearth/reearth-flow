@@ -13,9 +13,13 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ data }) => {
   const t = useT();
   const columns: ColumnDef<Log>[] = [
     {
-      accessorKey: "timeStamp",
+      accessorKey: "timestamp",
       header: t("Timestamp"),
       cell: ({ getValue }) => formatTimestamp(getValue<string>()),
+    },
+    {
+      accessorKey: "nodeId",
+      header: t("Node Id"),
     },
     {
       accessorKey: "status",
