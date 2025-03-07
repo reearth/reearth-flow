@@ -230,7 +230,7 @@ impl Processor for XmlValidator {
             }
             ValidationType::SyntaxAndNamespace => {
                 let feature = &ctx.feature;
-                let xml_content = self.get_xml_content(&ctx, feature).unwrap();
+                let xml_content = self.get_xml_content(&ctx, feature)?;
                 let document = match xml::parse(xml_content) {
                     Ok(doc) => doc,
                     Err(_) => {

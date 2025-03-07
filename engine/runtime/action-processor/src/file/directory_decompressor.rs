@@ -177,29 +177,6 @@ fn get_single_subfolder_or_self(parent_dir: &Uri) -> super::errors::Result<Uri> 
         .collect();
 
     if subfolders.len() == 1 && subfolders[0].is_dir() {
-        let descendants: Vec<PathBuf> = fs::read_dir(subfolders[0].clone())
-            .map_err(|e| {
-                super::errors::FileProcessorError::DirectoryDecompressor(format!("{:?}", e))
-            })?
-            .filter_map(|entry| {
-                let entry = entry.ok()?;
-                let path = entry.path();
-                Some(path)
-            })
-            .collect();
-        if descendants.len() == 1 && descendants[0].is_dir() {
-            return Uri::from_str(descendants[0].to_str().ok_or(
-                super::errors::FileProcessorError::DirectoryDecompressor(
-                    "Invalid path".to_string(),
-                ),
-            )?)
-            .map_err(|e| {
-                super::errors::FileProcessorError::DirectoryDecompressor(format!(
-                    "Failed to convert `descendants[0]` to URI: {}",
-                    e
-                ))
-            });
-        }
         Ok(Uri::from_str(subfolders[0].to_str().ok_or(
             super::errors::FileProcessorError::DirectoryDecompressor("Invalid path".to_string()),
         )?)

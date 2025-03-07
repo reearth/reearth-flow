@@ -25,6 +25,8 @@ pub(super) enum PlateauProcessorError {
     MissingAttributeDetectorFactory(String),
     #[error("MissingAttributeDetector error: {0}")]
     MissingAttributeDetector(String),
+    #[error("DomainOfDefinitionValidator error: {0}")]
+    DomainOfDefinitionValidator(String),
 }
 
 pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

@@ -60,8 +60,7 @@ pub fn copy_files(dest: &Path, files: &[Uri]) -> crate::Result<()> {
 pub fn move_files(dest: &Path, files: &[Uri]) -> crate::Result<()> {
     for file in files {
         let file_path = dest.join(file.file_name().ok_or(Error::dir("Invalid file path"))?);
-        fs::copy(file.path(), file_path.clone()).map_err(Error::dir)?;
-        fs::remove_file(file.path()).map_err(Error::dir)?;
+        fs::rename(file.path(), file_path.clone()).map_err(Error::dir)?;
     }
     Ok(())
 }

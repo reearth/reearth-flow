@@ -8,19 +8,8 @@ nodes:
     with:
       routingPort: default
 
-  - id: d72a788d-f9fa-4c4d-b7dd-dd131839accd
-    name: FeatureTransformer01
-    type: action
-    action: FeatureTransformer
-    with:
-      transformers:
-        - expr: |
-            env.get("__value") + #{
-              meshCode: str::extract_single_by_regex("^(.+?)_.+$", file::extract_filename(env.get("__value")["path"]))
-            }
-
   - id: 747d2fa3-2527-4324-b630-92fba84a548c
-    name: PLATEAU4.DomainOfDefinitionValidator01
+    name: PLATEAU4.DomainOfDefinitionValidator
     type: action
     action: PLATEAU4.DomainOfDefinitionValidator
 
@@ -56,56 +45,56 @@ nodes:
           outputPort: invalidLodXGeometry
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d0
-    name: summaryRouter
+    name: SummaryRouter
     type: action
     action: OutputRouter
     with:
       routingPort: summary
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d1
-    name: codeValidationRouter
+    name: CodeValidationRouter
     type: action
     action: OutputRouter
     with:
       routingPort: codeValidation
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
-    name: extentsValidationRouter
+    name: ExtentsValidationRouter
     type: action
     action: OutputRouter
     with:
       routingPort: extentsValidation
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d3
-    name: gmlIdNotWellFormedRouter
+    name: GmlIdNotWellFormedRouter
     type: action
     action: OutputRouter
     with:
       routingPort: gmlIdNotWellFormed
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d4
-    name: gmlIdNotUniqueRouter
+    name: GmlIdNotUniqueRouter
     type: action
     action: OutputRouter
     with:
       routingPort: gmlIdNotUnique
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d5
-    name: xlinkNoReferenceRouter
+    name: XlinkNoReferenceRouter
     type: action
     action: OutputRouter
     with:
       routingPort: xlinkNoReference
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d6
-    name: xLinkInvalidObjectTypeRouter
+    name: XLinkInvalidObjectTypeRouter
     type: action
     action: OutputRouter
     with:
       routingPort: xLinkInvalidObjectType
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d7
-    name: invalidLodXGeometryRouter
+    name: InvalidLodXGeometryRouter
     type: action
     action: OutputRouter
     with:
@@ -114,11 +103,6 @@ nodes:
 edges:
   - id: 7779cb5a-0dfc-4726-9c2f-6e32e196520d
     from: dfcdb977-e929-41b9-a3de-e368d158b5b9
-    to: d72a788d-f9fa-4c4d-b7dd-dd131839accd
-    fromPort: default
-    toPort: default
-  - id: afa36141-5b6a-4d2b-8a75-bf184f961378
-    from: d72a788d-f9fa-4c4d-b7dd-dd131839accd
     to: 747d2fa3-2527-4324-b630-92fba84a548c
     fromPort: default
     toPort: default

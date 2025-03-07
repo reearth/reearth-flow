@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 83307700-04b9-490c-b6a1-11b93e7f7a8a
+name: "PLATEAU4-quality-check-02-bldg-workflow"
+entryGraphId: 34bf873b-3364-46b0-8153-efeb9568bb3c
+with:
+  cityGmlPath:
+  codelists:
+  schemas:
+  objectLists:
+  outputPath:
+graphs:
+  - !include ../../../../graphs/plateau4/xml_validator.yml
+  - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
+  - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
+  - !include ../../../../graphs/plateau4/quality-check/01-02-common.yml
+  - id: 34bf873b-3364-46b0-8153-efeb9568bb3c
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                cityGmlPath: env.get("cityGmlPath"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                objectListPath: env.get("objectLists"),
+                codelists: env.get("codelists"),
+                schemas: env.get("schemas"),
+              },
+            ]
+
+      - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        name: PLATEAU4.CommonQualityCheck-01-01-common
+        type: subGraph
+        subGraphId: 5db64758-df36-486d-86bd-437b72fd9fc8
+
+      - id: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
+        name: ZipFileWriter
+        type: action
+        action: ZipFileWriter
+        with:
+          output: |
+            file::join_path(env.get("outputPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip")
+
+    edges:
+      - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        fromPort: default
+        toPort: default
+      - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
+        from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
+        fromPort: default
+        toPort: default
