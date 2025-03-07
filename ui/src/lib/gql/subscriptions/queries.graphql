@@ -1,3 +1,7 @@
+subscription OnJobStatusChange($jobId: ID!) {
+  jobStatus(jobId: $jobId)
+}
+
 subscription RealTimeLogs($jobId: ID!) {
   logs(jobId: $jobId) {
     jobId

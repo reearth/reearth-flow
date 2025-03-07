@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, LoadingSkeleton } from "@flow/components";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { LogsConsole } from "@flow/features/Editor/components/BottomPanel/components";
+import { useJobStatus } from "@flow/lib/gql/job";
 import { useLogs } from "@flow/lib/gql/realTimeLogs/useSubscriptions";
 import { useT } from "@flow/lib/i18n";
 import type { Job, Log } from "@flow/types";
@@ -28,6 +29,18 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
     [navigate, selectedJob?.workspaceId],
   );
 
+  const {
+    data: jobStatus,
+    isLoading,
+    error,
+  } = useJobStatus(selectedJob?.id ?? "");
+
+  const statusValue = isLoading
+    ? t("Loading...")
+    : error
+      ? t("Error")
+      : (jobStatus ?? "queued");
+
   const [urlLogs, setUrlLogs] = useState<Log[] | null>(null);
   const [liveLogs, setLiveLogs] = useState<Log[] | null | undefined>(undefined);
   const [isFetchingLogsUrl, setIsFetchingLogsUrl] = useState<boolean>(false);
@@ -48,7 +61,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
             {
               id: "status",
               name: t("Status"),
-              value: selectedJob.status,
+              value: statusValue,
             },
             {
               id: "startedAt",
@@ -72,7 +85,7 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
             },
           ]
         : undefined,
-    [t, selectedJob],
+    [t, statusValue, selectedJob],
   );
 
   const { data, isLoading: isFetchingLiveLogs } = useLogs(
