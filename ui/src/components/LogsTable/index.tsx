@@ -108,7 +108,7 @@ const LogsTable = ({
   }, [columnFilters]);
 
   const hasValidLogs = data.some(
-    (log) => log.timeStamp || log.status || log.message,
+    (log) => log.timestamp || log.status || log.message,
   );
 
   return (
