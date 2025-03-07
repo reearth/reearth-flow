@@ -86,6 +86,7 @@ export default () => {
               }
 
               setIsProjectImporting(false);
+              yWebSocketProvider?.destroy();
             });
           })();
         }

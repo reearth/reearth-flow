@@ -111,6 +111,7 @@ export default () => {
                   }
 
                   setIsWorkflowImporting(false);
+                  yWebSocketProvider?.destroy();
                 });
               })();
             }
