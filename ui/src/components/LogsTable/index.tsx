@@ -113,7 +113,7 @@ const LogsTable = ({
 
   return (
     <div className="flex size-full flex-col rounded">
-      <div className="flex w-full items-center justify-between px-1 pb-2">
+      <div className="flex w-full items-center justify-between px-2 pb-2">
         <div className="mr-4 flex-1">
           {showFiltering && (
             <Input
@@ -211,8 +211,8 @@ const LogsTable = ({
         </div>
       </div>
 
+      <div className="border-b" />
       <div className="h-[calc(100vh-6rem)] w-full overflow-auto">
-        <div className="border-b" />
         {!hasValidLogs || !table.getRowModel().rows?.length ? (
           <BasicBoiler
             className="h-full"

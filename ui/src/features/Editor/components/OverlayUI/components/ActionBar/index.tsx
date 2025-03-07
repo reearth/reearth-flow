@@ -21,7 +21,7 @@ import { useProjectExport } from "@flow/hooks";
 import { useJob } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { DebugRunState, useCurrentProject } from "@flow/stores";
+import { useCurrentProject } from "@flow/stores";
 
 import { DebugStopDialog, DeployDialog, ShareDialog } from "./components";
 
@@ -55,7 +55,7 @@ const ActionBar: React.FC<Props> = ({
   const { useGetJob } = useJob();
 
   const { value: debugRunState, updateValue: updateDebugRunState } =
-    useIndexedDB<DebugRunState>("debugRun");
+    useIndexedDB("debugRun");
 
   const debugJobId = useMemo(
     () =>

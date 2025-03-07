@@ -4,13 +4,7 @@ import { useCallback } from "react";
 import { useProject } from "@flow/lib/gql";
 import { useJob } from "@flow/lib/gql/job";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import {
-  DebugRunState,
-  JobState,
-  loadStateFromIndexedDB,
-  updateJobs,
-  useCurrentProject,
-} from "@flow/stores";
+import { JobState, useCurrentProject } from "@flow/stores";
 import type { Workflow } from "@flow/types";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 
@@ -22,7 +16,7 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
   const { runProject } = useProject();
   const { useJobCancel } = useJob();
 
-  const { value, updateValue } = useIndexedDB<DebugRunState>("debugRun");
+  const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
 
   const handleDebugRunStart = useCallback(async () => {
     if (!currentProject) return;
@@ -41,16 +35,17 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
     );
 
     if (data.job) {
-      let jobs: JobState[] = value?.jobs || [];
+      let jobs: JobState[] = debugRunState?.jobs || [];
 
       if (!data.job.id) {
         jobs =
-          value?.jobs.filter((job) => job.projectId !== currentProject.id) ||
-          [];
+          debugRunState?.jobs?.filter(
+            (job) => job.projectId !== currentProject.id,
+          ) || [];
       } else if (
-        value?.jobs.some((job) => job.projectId === currentProject.id)
+        debugRunState?.jobs?.some((job) => job.projectId === currentProject.id)
       ) {
-        jobs = value.jobs.map((job) => {
+        jobs = debugRunState.jobs.map((job) => {
           if (job.projectId === currentProject.id && data.job) {
             return { projectId: currentProject.id, jobId: data.job.id };
           }
@@ -66,14 +61,13 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
   }, [
     currentProject,
     rawWorkflows,
-    value?.jobs,
+    debugRunState?.jobs,
     fitView,
     updateValue,
     runProject,
   ]);
 
   const handleDebugRunStop = useCallback(async () => {
-    const debugRunState = await loadStateFromIndexedDB("debugRun");
     const debugJob = debugRunState?.jobs?.find(
       (job) => job.projectId === currentProject?.id,
     );
@@ -82,9 +76,12 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
     console.log("stop debug run", debugJob);
     const data = await useJobCancel(debugJob.jobId);
     if (data.isSuccess && currentProject?.id) {
-      await updateJobs({ projectId: currentProject.id });
+      const jobs: JobState[] =
+        debugRunState?.jobs?.filter((j) => j.projectId !== currentProject.id) ||
+        [];
+      updateValue({ jobs });
     }
-  }, [currentProject?.id, useJobCancel]);
+  }, [currentProject?.id, debugRunState?.jobs, updateValue, useJobCancel]);
 
   return {
     handleDebugRunStart,
