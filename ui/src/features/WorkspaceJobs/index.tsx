@@ -36,8 +36,8 @@ const JobsManager: React.FC = () => {
       header: t("ID"),
     },
     {
-      accessorKey: "deploymentId",
-      header: t("Deployment Id"),
+      accessorKey: "deploymentDescription",
+      header: t("Deployment Description"),
     },
     {
       accessorKey: "status",

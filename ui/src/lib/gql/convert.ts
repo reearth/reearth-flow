@@ -54,7 +54,8 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
 
 export const toJob = (job: JobFragment): Job => ({
   id: job.id,
-  deploymentId: job.deploymentId,
+  deploymentId: job.deployment?.id,
+  deploymentDescription: job.deployment?.description,
   workspaceId: job.workspaceId,
   status: toJobStatus(job.status),
   startedAt: job.startedAt,

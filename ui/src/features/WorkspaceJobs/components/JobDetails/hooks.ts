@@ -38,7 +38,12 @@ export default ({ jobId }: { jobId: string }) => {
             {
               id: "deploymentId",
               name: t("Deployment ID"),
-              value: job.deploymentId,
+              value: job.deploymentId || t("N/A"),
+            },
+            {
+              id: "deploymentDescription",
+              name: t("Deployment"),
+              value: job.deploymentDescription || t("N/A"),
             },
             {
               id: "status",
