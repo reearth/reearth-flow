@@ -27,6 +27,7 @@ export const yNodeConstructor = (node: Node): YNode => {
         node.data.outputs?.map((output) => toYjsText(output)),
       ),
       params: node.data.params,
+      customizations: node.data.customizations,
       // Subworkflow specific
       subworkflowId:
         node.type === "subworkflow"
@@ -50,8 +51,6 @@ export const yNodeConstructor = (node: Node): YNode => {
       ),
       // Batch & Note specific
       content: toYjsText(node.data.content),
-      backgroundColor: toYjsText(node.data.backgroundColor),
-      textColor: toYjsText(node.data.textColor),
     }),
     style: toYjsMap({
       width: node.style?.width,

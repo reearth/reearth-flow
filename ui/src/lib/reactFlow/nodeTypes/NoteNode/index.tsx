@@ -14,7 +14,7 @@ export const initialSize = { width: 300, height: 200 };
 const minSize = { width: 250, height: 150 };
 
 // TODO: Currently textarea data.content on node is not setting the value correctly. Temporary fix is to use description on RJSFS params @billcookie
-const noteNodeSchema: RJSFSchema = {
+const noteNodeCustomizationSchema: RJSFSchema = {
   type: "object",
   properties: {
     customName: { type: "string", title: "Name" },
@@ -42,7 +42,7 @@ export const noteNodeAction = {
   inputPorts: ["input"],
   outputPorts: ["output"],
   builtin: true,
-  parameter: noteNodeSchema,
+  customization: noteNodeCustomizationSchema,
 };
 
 export const baseNoteNode: {
@@ -67,7 +67,7 @@ export const baseNoteNode: {
 
 const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
   // background color will always be a hex color, therefore needs to be converted to rgba
-  const backgroundColor = data.params?.backgroundColor || "";
+  const backgroundColor = data.customizations?.backgroundColor || "";
   const rgbaColor = convertHextoRgba(backgroundColor, 0.5);
 
   return (
@@ -116,12 +116,12 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
               if (element)
                 element.style.setProperty(
                   "color",
-                  data.params?.textColor || "",
+                  data.customizations?.textColor || "",
                   "important",
                 );
             }}>
             <Note />
-            <p>{data.params?.customName ?? data.officialName}</p>
+            <p>{data.customizations?.customName ?? data.officialName}</p>
           </div>
           <div
             ref={(element) => {
@@ -135,7 +135,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
               }
             }}>
             <p className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none">
-              {data.params?.description}
+              {data.customizations?.description}
             </p>
           </div>
         </div>
