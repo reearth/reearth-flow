@@ -64,7 +64,7 @@ export default (project?: Project) => {
 
           const zipBlob = await zip.generateAsync({ type: "blob" });
           const date = new Date();
-          const timeStamp = [
+          const timestamp = [
             date.getFullYear(),
             String(date.getMonth() + 1).padStart(2, "0"),
             String(date.getDate()).padStart(2, "0"),
@@ -72,7 +72,7 @@ export default (project?: Project) => {
             String(date.getMinutes()).padStart(2, "0"),
             String(date.getSeconds()).padStart(2, "0"),
           ].join("");
-          const zipName = `${project.name}_${timeStamp}.flow.zip`;
+          const zipName = `${project.name}_${timestamp}.flow.zip`;
           saveAs(zipBlob, zipName);
           setIsExporting(false);
 

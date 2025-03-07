@@ -89,7 +89,7 @@ const LogsTable = ({
   };
 
   const handleTimeStampColumnVisibility = () => {
-    const column = table.getColumn("timeStamp");
+    const column = table.getColumn("timestamp");
 
     column?.toggleVisibility(!column.getIsVisible());
     return;
@@ -97,7 +97,7 @@ const LogsTable = ({
 
   const handleResetTable = () => {
     setColumnFilters([]);
-    table.getColumn("timeStamp")?.toggleVisibility(true);
+    table.getColumn("timestamp")?.toggleVisibility(true);
   };
 
   const getStatusValue = useMemo(() => {
@@ -129,41 +129,41 @@ const LogsTable = ({
             size="icon"
             variant={getStatusValue === "ERROR" ? "default" : "outline"}
             tooltipText={t("Error")}
-            onClick={() => handleStatusChange(LogLevel.ERROR)}
+            onClick={() => handleStatusChange(LogLevel.Error)}
             icon={<CrossCircledIcon />}
           />
           <IconButton
             size="icon"
             variant={getStatusValue === "WARN" ? "default" : "outline"}
             tooltipText={t("Warning")}
-            onClick={() => handleStatusChange(LogLevel.WARN)}
+            onClick={() => handleStatusChange(LogLevel.Warn)}
             icon={<ExclamationTriangleIcon />}
           />
           <IconButton
             size="icon"
             variant={getStatusValue === "DEBUG" ? "default" : "outline"}
             tooltipText={t("Debug")}
-            onClick={() => handleStatusChange(LogLevel.DEBUG)}
+            onClick={() => handleStatusChange(LogLevel.Debug)}
             icon={<Bug />}
           />
           <IconButton
             size="icon"
             variant={getStatusValue === "TRACE" ? "default" : "outline"}
             tooltipText={t("Trace")}
-            onClick={() => handleStatusChange(LogLevel.TRACE)}
+            onClick={() => handleStatusChange(LogLevel.Trace)}
             icon={<MagnifyingGlassIcon />}
           />
           <IconButton
             size="icon"
             variant={getStatusValue === "INFO" ? "default" : "outline"}
             tooltipText={t("Info")}
-            onClick={() => handleStatusChange(LogLevel.INFO)}
+            onClick={() => handleStatusChange(LogLevel.Info)}
             icon={<InfoCircledIcon />}
           />
           <IconButton
             size="icon"
             variant={
-              table.getColumn("timeStamp")?.getIsVisible()
+              table.getColumn("timestamp")?.getIsVisible()
                 ? "default"
                 : "outline"
             }
