@@ -225,6 +225,11 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operato
 		return nil, err
 	}
 
+	workflowURL, err := i.file.UploadWorkflow(ctx, p.Workflow)
+	if err != nil {
+		return nil, err
+	}
+
 	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload metadata: %v", err)
@@ -237,7 +242,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operato
 		return nil, err
 	}
 
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), p.Workflow.Path, j.MetadataURL(), nil, p.ProjectID, prj.Workspace())
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL.String(), j.MetadataURL(), nil, p.ProjectID, prj.Workspace())
 	if err != nil {
 		return nil, fmt.Errorf("failed to submit job: %v", err)
 	}
