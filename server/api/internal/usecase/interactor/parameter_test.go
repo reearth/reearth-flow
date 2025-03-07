@@ -5,23 +5,31 @@ import (
 	"testing"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
-	"github.com/reearth/reearth-flow/api/internal/usecase"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/project"
+	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmemory"
-	"github.com/reearth/reearthx/account/accountusecase"
+	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 	"github.com/stretchr/testify/assert"
 )
 
-func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Container, id.ProjectID, *usecase.Operator) {
+func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Container, id.ProjectID) {
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
 	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
 
 	// Create memory-based repositories for testing
 	paramRepo := memory.NewParameter()
@@ -44,19 +52,16 @@ func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Co
 	prj := project.New().ID(pid).Workspace(ws.ID()).Name("testproject").UpdatedAt(time.Now()).MustBuild()
 	_ = projectRepo.Save(ctx, prj)
 
-	// Operator with write access to the project's workspace
-	op := &usecase.Operator{
-		AcOperator: &accountusecase.Operator{
-			WritableWorkspaces: workspace.IDList{ws.ID()},
-		},
-	}
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+		return true, nil
+	})
 
-	i := NewParameter(r)
-	return i, ctx, r, pid, op
+	i := NewParameter(r, mockPermissionCheckerTrue)
+	return i, ctx, r, pid
 }
 
 func TestParameter_DeclareParameter(t *testing.T) {
-	i, ctx, _, pid, op := setupParameterInteractor()
+	i, ctx, _, pid := setupParameterInteractor()
 
 	// Declare a parameter
 	name := "param1"
@@ -70,7 +75,7 @@ func TestParameter_DeclareParameter(t *testing.T) {
 		Required:  req,
 		Value:     val,
 		Index:     nil, // let it auto-determine
-	}, op)
+	})
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
 	assert.Equal(t, name, p.Name())
@@ -81,7 +86,7 @@ func TestParameter_DeclareParameter(t *testing.T) {
 }
 
 func TestParameter_DeclareParameter_NonexistentProject(t *testing.T) {
-	i, ctx, _, _, op := setupParameterInteractor()
+	i, ctx, _, _ := setupParameterInteractor()
 
 	// Use a random project ID that doesn't exist
 	nonexistentPID := id.NewProjectID()
@@ -90,13 +95,13 @@ func TestParameter_DeclareParameter_NonexistentProject(t *testing.T) {
 		Name:      "param2",
 		Type:      parameter.TypeNumber,
 		Value:     123,
-	}, op)
+	})
 	assert.Nil(t, p)
 	assert.Same(t, rerror.ErrNotFound, err)
 }
 
 func TestParameter_Fetch(t *testing.T) {
-	i, ctx, _, pid, op := setupParameterInteractor()
+	i, ctx, _, pid := setupParameterInteractor()
 
 	// Create a few parameters
 	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
@@ -104,7 +109,7 @@ func TestParameter_Fetch(t *testing.T) {
 		Name:      "param1",
 		Type:      parameter.TypeText,
 		Value:     "val1",
-	}, op)
+	})
 	assert.NoError(t, err)
 
 	p2, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
@@ -112,17 +117,17 @@ func TestParameter_Fetch(t *testing.T) {
 		Name:      "param2",
 		Type:      parameter.TypeNumber,
 		Value:     42,
-	}, op)
+	})
 	assert.NoError(t, err)
 
-	params, err := i.Fetch(ctx, id.ParameterIDList{p1.ID(), p2.ID()}, op)
+	params, err := i.Fetch(ctx, id.ParameterIDList{p1.ID(), p2.ID()})
 	assert.NoError(t, err)
 	assert.NotNil(t, params)
 	assert.Len(t, *params, 2)
 }
 
 func TestParameter_FetchByProject(t *testing.T) {
-	i, ctx, _, pid, op := setupParameterInteractor()
+	i, ctx, _, pid := setupParameterInteractor()
 
 	// Create parameters under the project
 	_, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
@@ -130,7 +135,7 @@ func TestParameter_FetchByProject(t *testing.T) {
 		Name:      "param1",
 		Type:      parameter.TypeText,
 		Value:     "val1",
-	}, op)
+	})
 	assert.NoError(t, err)
 
 	_, err = i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
@@ -138,17 +143,17 @@ func TestParameter_FetchByProject(t *testing.T) {
 		Name:      "param2",
 		Type:      parameter.TypeNumber,
 		Value:     100,
-	}, op)
+	})
 	assert.NoError(t, err)
 
-	params, err := i.FetchByProject(ctx, pid, op)
+	params, err := i.FetchByProject(ctx, pid)
 	assert.NoError(t, err)
 	assert.NotNil(t, params)
 	assert.Len(t, *params, 2)
 }
 
 func TestParameter_RemoveParameter(t *testing.T) {
-	i, ctx, _, pid, op := setupParameterInteractor()
+	i, ctx, _, pid := setupParameterInteractor()
 
 	// Create parameters for removal test
 	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
@@ -156,7 +161,7 @@ func TestParameter_RemoveParameter(t *testing.T) {
 		Name:      "param1",
 		Type:      parameter.TypeText,
 		Value:     "val1",
-	}, op)
+	})
 	assert.NoError(t, err)
 
 	p2, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
@@ -164,16 +169,16 @@ func TestParameter_RemoveParameter(t *testing.T) {
 		Name:      "param2",
 		Type:      parameter.TypeText,
 		Value:     "val2",
-	}, op)
+	})
 	assert.NoError(t, err)
 
 	// Remove param1
-	removedID, err := i.RemoveParameter(ctx, p1.ID(), op)
+	removedID, err := i.RemoveParameter(ctx, p1.ID())
 	assert.NoError(t, err)
 	assert.Equal(t, p1.ID(), removedID)
 
 	// Check that only p2 remains, and its index has been updated if needed
-	params, err := i.FetchByProject(ctx, pid, op)
+	params, err := i.FetchByProject(ctx, pid)
 	assert.NoError(t, err)
 	assert.Len(t, *params, 1)
 	assert.Equal(t, p2.ID(), (*params)[0].ID())
@@ -181,7 +186,7 @@ func TestParameter_RemoveParameter(t *testing.T) {
 }
 
 func TestParameter_UpdateParameterOrder(t *testing.T) {
-	i, ctx, _, pid, op := setupParameterInteractor()
+	i, ctx, _, pid := setupParameterInteractor()
 
 	// Create parameters in some order: param1 (0), param2 (1), param3 (2)
 	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
@@ -189,7 +194,7 @@ func TestParameter_UpdateParameterOrder(t *testing.T) {
 		Name:      "param1",
 		Type:      parameter.TypeText,
 		Value:     "val1",
-	}, op)
+	})
 	assert.NoError(t, err)
 
 	p2, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
@@ -197,7 +202,7 @@ func TestParameter_UpdateParameterOrder(t *testing.T) {
 		Name:      "param2",
 		Type:      parameter.TypeText,
 		Value:     "val2",
-	}, op)
+	})
 	assert.NoError(t, err)
 
 	p3, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
@@ -205,7 +210,7 @@ func TestParameter_UpdateParameterOrder(t *testing.T) {
 		Name:      "param3",
 		Type:      parameter.TypeText,
 		Value:     "val3",
-	}, op)
+	})
 	assert.NoError(t, err)
 
 	// Move param3 to the front (index 0)
@@ -213,7 +218,7 @@ func TestParameter_UpdateParameterOrder(t *testing.T) {
 		ProjectID: pid,
 		ParamID:   p3.ID(),
 		NewIndex:  0,
-	}, op)
+	})
 	assert.NoError(t, err)
 	assert.NotNil(t, updatedParams)
 
@@ -230,14 +235,14 @@ func TestParameter_UpdateParameterOrder(t *testing.T) {
 }
 
 func TestParameter_UpdateParameterValue(t *testing.T) {
-	i, ctx, _, pid, op := setupParameterInteractor()
+	i, ctx, _, pid := setupParameterInteractor()
 
 	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
 		ProjectID: pid,
 		Name:      "param1",
 		Type:      parameter.TypeText,
 		Value:     "old value",
-	}, op)
+	})
 	assert.NoError(t, err)
 
 	// Update param1's value
@@ -245,21 +250,21 @@ func TestParameter_UpdateParameterValue(t *testing.T) {
 	updatedParam, err := i.UpdateParameterValue(ctx, interfaces.UpdateParameterValueParam{
 		ParamID: p1.ID(),
 		Value:   newVal,
-	}, op)
+	})
 	assert.NoError(t, err)
 	assert.NotNil(t, updatedParam)
 	assert.Equal(t, newVal, updatedParam.Value())
 }
 
 func TestParameter_UpdateParameterValue_NotFound(t *testing.T) {
-	i, ctx, _, _, op := setupParameterInteractor()
+	i, ctx, _, _ := setupParameterInteractor()
 
 	// Try updating a parameter that does not exist
 	nonexistentParamID := id.NewParameterID()
 	updatedParam, err := i.UpdateParameterValue(ctx, interfaces.UpdateParameterValueParam{
 		ParamID: nonexistentParamID,
 		Value:   "something",
-	}, op)
+	})
 	assert.Nil(t, updatedParam)
 	assert.Same(t, rerror.ErrNotFound, err)
 }
