@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { OnJobStatusChangeSubscription } from "../__gen__/graphql";
-import { useWsClient } from "../subscriptions";
+import { useWsClient } from "../provider/GraphQLSubscriptionProvider";
 
 import { JobQueryKeys } from "./useQueries";
 
