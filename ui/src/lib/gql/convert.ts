@@ -3,13 +3,11 @@ import type {
   ProjectFragment,
   JobFragment,
   JobStatus as GraphqlJobStatus,
-  LogLevel as GraphqlLogLevel,
   TriggerFragment,
   LogFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import {
   Log,
-  LogLevel,
   type Deployment,
   type Job,
   type JobStatus,
@@ -69,7 +67,7 @@ export const toLog = (log: LogFragment): Log => ({
   nodeId: log.nodeId,
   jobId: log.jobId,
   timestamp: log.timestamp,
-  status: toLogLevel(log.logLevel),
+  status: log.logLevel,
   message: log.message,
 });
 
@@ -86,21 +84,5 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
     case "PENDING":
     default:
       return "queued";
-  }
-};
-
-export const toLogLevel = (status: GraphqlLogLevel): LogLevel => {
-  switch (status) {
-    case "DEBUG":
-      return "debug";
-    case "ERROR":
-      return "error";
-    case "TRACE":
-      return "trace";
-    case "WARN":
-      return "warn";
-    case "INFO":
-    default:
-      return "info";
   }
 };

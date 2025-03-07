@@ -75,7 +75,11 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
     [t, selectedJob],
   );
 
-  const getAllLogs = useCallback(async () => {
+  const { data, isLoading: isFetchingLiveLogs } = useLogs(
+    selectedJob?.id ?? "",
+  );
+
+  const getLogsFromUrl = useCallback(async () => {
     if (
       !selectedJob ||
       !selectedJob.logsURL ||
@@ -101,10 +105,11 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
             }
           }
           return {
+            nodeId: parsedLog.action,
             jobId: selectedJob.id,
             message: parsedLog.msg,
             timestamp: parsedLog.ts,
-            status: parsedLog.level.toLowerCase(),
+            status: parsedLog.level,
           };
         },
         onError: (error, line, index) => {
@@ -124,18 +129,13 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
   }, [selectedJob, setIsFetchingLogsUrl]);
 
   useEffect(() => {
-    getAllLogs();
-  }, [getAllLogs]);
+    if (selectedJob?.logsURL) {
+      getLogsFromUrl();
+    }
 
-  const { data, isLoading: isFetchingLiveLogs } = useLogs(
-    selectedJob?.id ?? "",
-  );
-
-  useEffect(() => {
     if (!data) return;
     setLiveLogs(data);
-  }, [data]);
-  console.log("LIVE LOGS", liveLogs);
+  }, [getLogsFromUrl, data, selectedJob?.logsURL]);
 
   return (
     selectedJob && (

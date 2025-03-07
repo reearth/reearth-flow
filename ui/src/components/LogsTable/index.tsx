@@ -127,37 +127,37 @@ const LogsTable = ({
         <div className="flex gap-2">
           <IconButton
             size="icon"
-            variant={getStatusValue === "error" ? "default" : "outline"}
+            variant={getStatusValue === "ERROR" ? "default" : "outline"}
             tooltipText={t("Error")}
-            onClick={() => handleStatusChange("error")}
+            onClick={() => handleStatusChange(LogLevel.Error)}
             icon={<CrossCircledIcon />}
           />
           <IconButton
             size="icon"
-            variant={getStatusValue === "warn" ? "default" : "outline"}
+            variant={getStatusValue === "WARN" ? "default" : "outline"}
             tooltipText={t("Warning")}
-            onClick={() => handleStatusChange("error")}
+            onClick={() => handleStatusChange(LogLevel.Warn)}
             icon={<ExclamationTriangleIcon />}
           />
           <IconButton
             size="icon"
-            variant={getStatusValue === "debug" ? "default" : "outline"}
+            variant={getStatusValue === "DEBUG" ? "default" : "outline"}
             tooltipText={t("Debug")}
-            onClick={() => handleStatusChange("debug")}
+            onClick={() => handleStatusChange(LogLevel.Debug)}
             icon={<Bug />}
           />
           <IconButton
             size="icon"
-            variant={getStatusValue === "trace" ? "default" : "outline"}
+            variant={getStatusValue === "TRACE" ? "default" : "outline"}
             tooltipText={t("Trace")}
-            onClick={() => handleStatusChange("trace")}
+            onClick={() => handleStatusChange(LogLevel.Trace)}
             icon={<MagnifyingGlassIcon />}
           />
           <IconButton
             size="icon"
-            variant={getStatusValue === "info" ? "default" : "outline"}
+            variant={getStatusValue === "INFO" ? "default" : "outline"}
             tooltipText={t("Info")}
-            onClick={() => handleStatusChange("info")}
+            onClick={() => handleStatusChange(LogLevel.Info)}
             icon={<InfoCircledIcon />}
           />
           <IconButton
@@ -219,7 +219,7 @@ const LogsTable = ({
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
-                  className={`${row.original.status === "error" ? "text-destructive" : row.original.status === "warn" ? "text-warning" : ""}`}
+                  className={`${row.original.status === "ERROR" ? "text-destructive" : row.original.status === "WARN" ? "text-warning" : ""}`}
                   data-state={row.getIsSelected() && "selected"}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell className="cursor-pointer" key={cell.id}>

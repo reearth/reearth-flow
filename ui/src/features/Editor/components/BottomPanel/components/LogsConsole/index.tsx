@@ -20,6 +20,10 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ data }) => {
       cell: ({ getValue }) => formatTimestamp(getValue<string>()),
     },
     {
+      accessorKey: "nodeId",
+      header: t("Node Id"),
+    },
+    {
       accessorKey: "status",
       header: t("Status"),
     },
