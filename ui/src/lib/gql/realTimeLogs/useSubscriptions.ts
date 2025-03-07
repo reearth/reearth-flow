@@ -6,7 +6,7 @@ import { Log } from "@flow/types";
 import { LogFragment } from "../__gen__/graphql";
 import { RealTimeLogsSubscription } from "../__gen__/plugins/graphql-request";
 import { toLog } from "../convert";
-import { useWsClient } from "../subscriptions";
+import { useWsClient } from "../provider/GraphQLSubscriptionProvider";
 
 const LOG_SUBSCRIPTION = `
  subscription RealTimeLogs($jobId: ID!) {
@@ -56,7 +56,6 @@ export const useLogs = (jobId: string) => {
     isSubscribedRef.current = true;
     const processedLogIds = new Set<string>();
     let localLogs: Log[] = [];
-    let connectionActive = true;
     let updateTimeout: NodeJS.Timeout | null = null;
 
     // Initialize local logs with any cached data
@@ -72,14 +71,6 @@ export const useLogs = (jobId: string) => {
         processedLogIds.add(logId);
       });
     }
-
-    // Setup connection monitoring
-    const heartbeatInterval = setInterval(() => {
-      console.log(
-        "WebSocket connection check:",
-        connectionActive ? "active" : "inactive",
-      );
-    }, 10000);
 
     // Function to update query cache
     const updateQueryCache = () => {
@@ -103,8 +94,6 @@ export const useLogs = (jobId: string) => {
       },
       {
         next: (data) => {
-          connectionActive = true;
-
           if (data.data?.logs) {
             // Get log data and transform it
             const rawLog = data.data.logs as LogFragment;
@@ -135,20 +124,16 @@ export const useLogs = (jobId: string) => {
         },
         error: (err) => {
           console.error("Subscription error:", err);
-          connectionActive = false;
         },
         complete: () => {
           console.log("Subscription complete");
-          connectionActive = false;
           isSubscribedRef.current = false;
-          clearInterval(heartbeatInterval);
         },
       },
     );
 
     // Cleanup
     return () => {
-      clearInterval(heartbeatInterval);
       if (updateTimeout) clearTimeout(updateTimeout);
       unsubscribe();
       isSubscribedRef.current = false;
