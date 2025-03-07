@@ -135,10 +135,13 @@ const JobDetails: React.FC<Props> = ({ selectedJob, onJobCancel }) => {
           )}
         </div>
         <div className="w-full border-b" />
-        <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
+        <div className="mt-6 flex max-w-[1200px] flex-col">
           <DetailsBox collapsible title={t("Job Details")} content={details} />
         </div>
-        <div className="mt-6 min-h-0 max-w-[1200px] flex-1">
+        <div className="flex items-center">
+          <h2 className="text-lg">{t("Log")}</h2>
+        </div>
+        <div className="min-h-0 max-w-[1200px] flex-1">
           {isFetching ? (
             <LoadingSkeleton />
           ) : logs ? (

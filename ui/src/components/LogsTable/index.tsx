@@ -113,24 +113,18 @@ const LogsTable = ({
 
   return (
     <div className="flex size-full flex-col rounded">
-      <div className="flex h-16 w-full items-center justify-between p-2">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center justify-between p-2">
-            <h2 className="text-lg">{t("Log")}</h2>
-          </div>
-          <div className="flex items-center gap-4">
-            {showFiltering && (
-              <Input
-                placeholder={t("Search") + "..."}
-                value={globalFilter ?? ""}
-                onChange={(e) => setGlobalFilter(String(e.target.value))}
-                className="max-w-80"
-              />
-            )}
-          </div>
+      <div className="flex w-full items-center justify-between px-1 pb-2">
+        <div className="mr-4 flex-1">
+          {showFiltering && (
+            <Input
+              placeholder={t("Search") + "..."}
+              value={globalFilter ?? ""}
+              onChange={(e) => setGlobalFilter(String(e.target.value))}
+              className="w-3/5 min-w-80"
+            />
+          )}
         </div>
-
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <IconButton
             size="icon"
             variant={getStatusValue === "ERROR" ? "default" : "outline"}
