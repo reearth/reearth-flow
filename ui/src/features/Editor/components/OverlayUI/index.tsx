@@ -17,7 +17,7 @@ import {
   Infobar,
   NodePickerDialog,
   LayoutOptionsDialog,
-  Logs,
+  DebugLogs,
 } from "./components";
 
 type OverlayUIProps = {
@@ -111,7 +111,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           />
         </div>
         <div className="pointer-events-none absolute inset-y-2 left-2 flex items-end">
-          <Logs />
+          <DebugLogs />
         </div>
         <div className="absolute bottom-2 right-2">
           <CanvasActionBar />
