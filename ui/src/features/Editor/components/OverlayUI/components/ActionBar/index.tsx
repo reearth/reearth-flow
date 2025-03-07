@@ -6,8 +6,9 @@ import {
   RocketLaunch,
   ShareFat,
   Stop,
+  XCircle,
 } from "@phosphor-icons/react";
-import { memo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 
 import {
   DropdownMenu,
@@ -17,8 +18,10 @@ import {
   IconButton,
 } from "@flow/components";
 import { useProjectExport } from "@flow/hooks";
+import { useJob } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
-import { loadStateFromIndexedDB, useCurrentProject } from "@flow/stores";
+import { useIndexedDB } from "@flow/lib/indexedDB";
+import { DebugRunState, useCurrentProject } from "@flow/stores";
 
 import { DebugStopDialog, DeployDialog, ShareDialog } from "./components";
 
@@ -49,49 +52,35 @@ const ActionBar: React.FC<Props> = ({
 
   const { handleProjectExport } = useProjectExport(currentProject);
 
-  const [showDeployDialog, setShowDeployDialog] = useState(false);
-  const [showShareDialog, setShowShareDialog] = useState(false);
-  const [showDebugStopDialog, setShowDebugStopDialog] = useState(false);
+  const { useGetJob } = useJob();
 
-  const [debugWorkflowRunning, setDebugWorkflowRunning] = useState(false);
+  const { value: debugRunState, updateValue: updateDebugRunState } =
+    useIndexedDB<DebugRunState>("debugRun");
 
-  const handleShowDeployDialog = () => {
-    setShowShareDialog(false);
-    setShowDebugStopDialog(false);
-    setShowDeployDialog(true);
-  };
+  const debugJobId = useMemo(
+    () =>
+      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
+        ?.jobId ?? "",
+    [debugRunState, currentProject],
+  );
 
-  const handleShowShareDialog = () => {
-    setShowDeployDialog(false);
-    setShowDebugStopDialog(false);
-    setShowShareDialog(true);
-  };
+  const debugJob = useGetJob(debugJobId).job;
 
-  const handleShowDebugStopDialog = () => {
-    setShowShareDialog(false);
-    setShowDeployDialog(false);
-    setShowDebugStopDialog(true);
-  };
+  const [showDialog, setShowDialog] = useState<
+    "deploy" | "share" | "debugStop" | undefined
+  >(undefined);
 
-  const handleDebugRun = async (callback: () => Promise<void>) => {
-    await callback();
-    const debugRunState = await loadStateFromIndexedDB("debugRun");
-    const debugJob = debugRunState?.jobs?.find(
-      (job) => job.projectId === currentProject?.id,
+  const handleShowDeployDialog = () => setShowDialog("deploy");
+  const handleShowShareDialog = () => setShowDialog("share");
+  const handleShowDebugStopDialog = () => setShowDialog("debugStop");
+  const handleDialogClose = () => setShowDialog(undefined);
+
+  const handleDebugRunReset = async () => {
+    const jobState = debugRunState?.jobs?.filter(
+      (job) => job.projectId !== currentProject?.id,
     );
-    if (debugJob && !debugWorkflowRunning) {
-      setDebugWorkflowRunning(true);
-    } else if (!debugJob && debugWorkflowRunning) {
-      setDebugWorkflowRunning(false);
-    }
-  };
-
-  const handleDebugRunStart = async () => {
-    await handleDebugRun(onDebugRunStart);
-  };
-
-  const handleDebugRunStop = async () => {
-    await handleDebugRun(onDebugRunStop);
+    if (!jobState) return;
+    await updateDebugRunState({ jobs: jobState });
   };
 
   return (
@@ -103,17 +92,35 @@ const ActionBar: React.FC<Props> = ({
               className="rounded-l-[4px] rounded-r-none"
               tooltipText={t("Run project workflow")}
               tooltipOffset={tooltipOffset}
-              disabled={debugWorkflowRunning}
+              disabled={
+                debugJob &&
+                (debugJob.status === "running" || debugJob.status === "queued")
+              }
               icon={<Play weight="thin" />}
-              onClick={handleDebugRunStart}
+              onClick={onDebugRunStart}
             />
             <IconButton
               className="rounded-none"
               tooltipText={t("Stop project workflow")}
               tooltipOffset={tooltipOffset}
-              disabled={!debugWorkflowRunning}
+              disabled={
+                !debugJob ||
+                (debugJob &&
+                  !(
+                    debugJob.status === "running" ||
+                    debugJob.status === "queued"
+                  ))
+              }
               icon={<Stop weight="thin" />}
               onClick={handleShowDebugStopDialog}
+            />
+            <IconButton
+              className="rounded-none"
+              tooltipText={t("Clear debug run results")}
+              tooltipOffset={tooltipOffset}
+              disabled={!debugJobId}
+              icon={<XCircle weight="thin" />}
+              onClick={handleDebugRunReset}
             />
             <IconButton
               className="rounded-none"
@@ -155,23 +162,23 @@ const ActionBar: React.FC<Props> = ({
           </div>
         </div>
       </div>
-      {showDeployDialog && (
+      {showDialog === "deploy" && (
         <DeployDialog
           allowedToDeploy={allowedToDeploy}
-          setShowDialog={setShowDeployDialog}
+          onDialogClose={handleDialogClose}
           onWorkflowDeployment={onWorkflowDeployment}
         />
       )}
-      {showShareDialog && (
+      {showDialog === "share" && (
         <ShareDialog
-          setShowDialog={setShowShareDialog}
+          onDialogClose={handleDialogClose}
           onProjectShare={onProjectShare}
         />
       )}
-      {showDebugStopDialog && (
+      {showDialog === "debugStop" && (
         <DebugStopDialog
-          onDebugRunStop={handleDebugRunStop}
-          setShowDialog={setShowDebugStopDialog}
+          onDialogClose={handleDialogClose}
+          onDebugRunStop={onDebugRunStop}
         />
       )}
     </>

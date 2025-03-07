@@ -1,8 +1,12 @@
+import { useReactFlow } from "@xyflow/react";
 import { useCallback } from "react";
 
 import { useProject } from "@flow/lib/gql";
 import { useJob } from "@flow/lib/gql/job";
+import { useIndexedDB } from "@flow/lib/indexedDB";
 import {
+  DebugRunState,
+  JobState,
   loadStateFromIndexedDB,
   updateJobs,
   useCurrentProject,
@@ -13,11 +17,14 @@ import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineRe
 export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
   const [currentProject] = useCurrentProject();
 
+  const { fitView } = useReactFlow();
+
   const { runProject } = useProject();
   const { useJobCancel } = useJob();
 
+  const { value, updateValue } = useIndexedDB<DebugRunState>("debugRun");
+
   const handleDebugRunStart = useCallback(async () => {
-    console.log("start debug run");
     if (!currentProject) return;
 
     const engineReadyWorkflow = createEngineReadyWorkflow(
@@ -33,12 +40,37 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
       engineReadyWorkflow,
     );
 
-    console.log("job started: ", data.job);
     if (data.job) {
-      await updateJobs({ projectId: currentProject.id, jobId: data.job.id });
-      // TODO: open logs panel
+      let jobs: JobState[] = value?.jobs || [];
+
+      if (!data.job.id) {
+        jobs =
+          value?.jobs.filter((job) => job.projectId !== currentProject.id) ||
+          [];
+      } else if (
+        value?.jobs.some((job) => job.projectId === currentProject.id)
+      ) {
+        jobs = value.jobs.map((job) => {
+          if (job.projectId === currentProject.id && data.job) {
+            return { projectId: currentProject.id, jobId: data.job.id };
+          }
+          return job;
+        });
+      } else {
+        jobs.push({ projectId: currentProject.id, jobId: data.job.id });
+      }
+      await updateValue({ jobs });
+
+      fitView({ duration: 400, padding: 0.5 });
     }
-  }, [currentProject, rawWorkflows, runProject]);
+  }, [
+    currentProject,
+    rawWorkflows,
+    value?.jobs,
+    fitView,
+    updateValue,
+    runProject,
+  ]);
 
   const handleDebugRunStop = useCallback(async () => {
     const debugRunState = await loadStateFromIndexedDB("debugRun");

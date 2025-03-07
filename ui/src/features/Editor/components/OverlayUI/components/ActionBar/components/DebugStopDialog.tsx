@@ -11,22 +11,22 @@ import { useT } from "@flow/lib/i18n";
 
 type Props = {
   onDebugRunStop: () => Promise<void>;
-  setShowDialog: (show: boolean) => void;
+  onDialogClose: () => void;
 };
 
 const DebugStopDialog: React.FC<Props> = ({
   onDebugRunStop,
-  setShowDialog,
+  onDialogClose,
 }) => {
   const t = useT();
 
   const handleDebugRunStop = async () => {
     await onDebugRunStop();
-    setShowDialog(false);
+    onDialogClose();
   };
 
   return (
-    <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
+    <Dialog open={true} onOpenChange={onDialogClose}>
       <DialogContent size="xs">
         <DialogTitle>{t("Stop Workflow")}</DialogTitle>
         <DialogContentWrapper>
