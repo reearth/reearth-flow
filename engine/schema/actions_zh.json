@@ -1820,6 +1820,16 @@
               "output"
             ],
             "properties": {
+              "converter": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Expr"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "format": {
                 "type": "string",
                 "enum": [
@@ -3978,6 +3988,42 @@
       ],
       "categories": [
         "PLATEAU"
+      ]
+    },
+    {
+      "name": "ZipFileWriter",
+      "type": "sink",
+      "description": "Writes features to a zip file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ZipFileWriterParam",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "output": {
+            "description": "Output path",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
       ]
     }
   ]

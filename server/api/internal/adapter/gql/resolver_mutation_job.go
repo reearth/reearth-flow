@@ -13,7 +13,7 @@ func (r *mutationResolver) CancelJob(ctx context.Context, input gqlmodel.CancelJ
 		return nil, err
 	}
 
-	job, err := usecases(ctx).Job.Cancel(ctx, jid)
+	job, err := usecases(ctx).Job.Cancel(ctx, jid, getOperator(ctx))
 	if err != nil {
 		return nil, err
 	}

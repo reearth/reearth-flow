@@ -135,9 +135,8 @@ export const useQueries = () => {
         },
       });
       return {
-        projectId: data?.runProject?.projectId,
         workspaceId: workspaceId,
-        started: data?.runProject?.started,
+        job: data?.runProject?.job,
       };
     },
     onSuccess: ({ workspaceId }) =>
