@@ -9,7 +9,11 @@ import { ParamEditor } from "./components";
 
 type Props = {
   selected?: Node;
-  onDataSubmit?: (nodeId: string, dataField: string, updatedValue: any) => void;
+  onDataSubmit?: (
+    nodeId: string,
+    dataField: "params" | "customizations",
+    updatedValue: any,
+  ) => void;
 };
 
 const ParamsPanel: React.FC<Props> = ({ selected, onDataSubmit }) => {

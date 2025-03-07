@@ -173,7 +173,7 @@ export default ({
   const handleYNodeDataUpdate = useCallback(
     (
       nodeId: string,
-      dataField: "params" | "customization",
+      dataField: "params" | "customizations",
       updatedValue: any,
     ) =>
       undoTrackerActionWrapper(() => {
