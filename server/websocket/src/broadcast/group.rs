@@ -470,7 +470,7 @@ impl BroadcastGroup {
                                     let doc_name_clone = doc_name.to_string();
                                     tokio::spawn(async move {
                                         match redis
-                                            .add_to_stream(&doc_name_clone, update.as_slice())
+                                            .push_update(&doc_name_clone, update.as_slice())
                                             .await
                                         {
                                             Ok(_) => {}

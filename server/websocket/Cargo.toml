@@ -59,6 +59,7 @@ rand = "0.9.0"
 thrift = "0.17.0"
 md5 = "0.7.0"
 bb8-redis = "0.21.0"
+uuid = { version = "1.15.1", features = ["v4"] }
 
 [dev-dependencies]
 tokio-tungstenite = "0.26.1"
