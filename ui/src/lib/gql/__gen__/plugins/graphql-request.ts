@@ -981,6 +981,8 @@ export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: a
 
 export type JobFragment = { __typename?: 'Job', id: string, deploymentId: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
+export type LogFragment = { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string };
+
 export type GetJobsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
   pagination: PageBasedPagination;
@@ -1074,12 +1076,12 @@ export type UnshareProjectMutationVariables = Exact<{
 
 export type UnshareProjectMutation = { __typename?: 'Mutation', unshareProject?: { __typename?: 'UnshareProjectPayload', projectId: string } | null };
 
-export type OnJobStatusChangeSubscriptionVariables = Exact<{
+export type RealTimeLogsSubscriptionVariables = Exact<{
   jobId: Scalars['ID']['input'];
 }>;
 
 
-export type OnJobStatusChangeSubscription = { __typename?: 'Subscription', jobStatus: JobStatus };
+export type RealTimeLogsSubscription = { __typename?: 'Subscription', logs?: { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string } | null };
 
 export type CreateTriggerMutationVariables = Exact<{
   input: CreateTriggerInput;
@@ -1246,6 +1248,15 @@ export const JobFragmentDoc = gql`
   }
 }
     ${DeploymentFragmentDoc}`;
+export const LogFragmentDoc = gql`
+    fragment Log on Log {
+  jobId
+  nodeId
+  timestamp
+  logLevel
+  message
+}
+    `;
 export const WorkspaceFragmentDoc = gql`
     fragment Workspace on Workspace {
   id
@@ -1433,9 +1444,15 @@ export const UnshareProjectDocument = gql`
   }
 }
     `;
-export const OnJobStatusChangeDocument = gql`
-    subscription OnJobStatusChange($jobId: ID!) {
-  jobStatus(jobId: $jobId)
+export const RealTimeLogsDocument = gql`
+    subscription RealTimeLogs($jobId: ID!) {
+  logs(jobId: $jobId) {
+    jobId
+    nodeId
+    timestamp
+    logLevel
+    message
+  }
 }
     `;
 export const CreateTriggerDocument = gql`
@@ -1636,8 +1653,8 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     UnshareProject(variables: UnshareProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UnshareProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<UnshareProjectMutation>(UnshareProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UnshareProject', 'mutation', variables);
     },
-    OnJobStatusChange(variables: OnJobStatusChangeSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<OnJobStatusChangeSubscription> {
-      return withWrapper((wrappedRequestHeaders) => client.request<OnJobStatusChangeSubscription>(OnJobStatusChangeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'OnJobStatusChange', 'subscription', variables);
+    RealTimeLogs(variables: RealTimeLogsSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RealTimeLogsSubscription> {
+      return withWrapper((wrappedRequestHeaders) => client.request<RealTimeLogsSubscription>(RealTimeLogsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RealTimeLogs', 'subscription', variables);
     },
     CreateTrigger(variables: CreateTriggerMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateTriggerMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateTriggerMutation>(CreateTriggerDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateTrigger', 'mutation', variables);
