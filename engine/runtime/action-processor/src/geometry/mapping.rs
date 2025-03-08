@@ -15,6 +15,7 @@ use super::{
     line_on_line_overlayer::LineOnLineOverlayerFactory, offsetter::OffsetterFactory,
     orientation_extractor::OrientationExtractorFactory, planarity_filter::PlanarityFilterFactory,
     refiner::RefinerFactory, replacer::GeometryReplacerFactory, splitter::GeometrySplitterFactory,
+    surface_footprint_replacer::SurfaceFootprintReplacerFactory,
     three_dimension_box_replacer::ThreeDimensionBoxReplacerFactory,
     three_dimension_rotator::ThreeDimensionRotatorFactory,
     two_dimension_forcer::TwoDimensionForcerFactory, validator::GeometryValidatorFactory,
@@ -56,6 +57,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<DimensionFilterFactory>::default(),
         Box::<OffsetterFactory>::default(),
         Box::<ConvexHullAccumulatorFactory>::default(),
+        Box::<SurfaceFootprintReplacerFactory>::default(),
     ];
     factories
         .into_iter()
