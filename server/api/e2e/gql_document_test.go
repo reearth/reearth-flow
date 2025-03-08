@@ -20,6 +20,21 @@ import (
 var (
 	docUId = user.NewID()
 	docPId = id.NewProjectID()
+
+	rollbackResults = map[int]*ws.Document{
+		1: {
+			ID:        docPId.String(),
+			Updates:   []int{1},
+			Version:   1,
+			Timestamp: time.Now(),
+		},
+		2: {
+			ID:        docPId.String(),
+			Updates:   []int{1, 2, 3},
+			Version:   2,
+			Timestamp: time.Now(),
+		},
+	}
 )
 
 func documentTestInterceptor(next http.Handler) http.Handler {
@@ -48,21 +63,6 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 		},
 	}
 
-	rollbackResults := map[int]*ws.Document{
-		1: {
-			ID:        docPId.String(),
-			Updates:   []int{1},
-			Version:   1,
-			Timestamp: time.Now(),
-		},
-		2: {
-			ID:        docPId.String(),
-			Updates:   []int{1, 2, 3},
-			Version:   2,
-			Timestamp: time.Now(),
-		},
-	}
-
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if (r.URL.Path == "/api/graphql" || r.URL.Path == "api/graphql") && r.Method == "POST" {
 			var gqlRequest struct {
@@ -75,7 +75,10 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 				http.Error(w, "Failed to read request body", http.StatusBadRequest)
 				return
 			}
-			r.Body.Close()
+			if err := r.Body.Close(); err != nil {
+				http.Error(w, "Failed to close request body: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
 
 			r.Body = io.NopCloser(strings.NewReader(string(bodyBytes)))
 
@@ -103,7 +106,10 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(resp)
+				if err := json.NewEncoder(w).Encode(resp); err != nil {
+					http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
+					return
+				}
 				return
 
 			} else if isProjectHistoryQuery(gqlRequest.Query) {
@@ -129,7 +135,10 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(resp)
+				if err := json.NewEncoder(w).Encode(resp); err != nil {
+					http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
+					return
+				}
 				return
 
 			} else if isRollbackProjectMutation(gqlRequest.Query) {
@@ -157,7 +166,10 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 				}
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
-				json.NewEncoder(w).Encode(resp)
+				if err := json.NewEncoder(w).Encode(resp); err != nil {
+					http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
+					return
+				}
 				return
 			}
 		}
@@ -216,7 +228,10 @@ func TestDocumentOperations(t *testing.T) {
 	srv := httptest.NewServer(documentTestInterceptor(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		errMsg := fmt.Sprintf("Path not found: %s (Method: %s)", r.URL.Path, r.Method)
-		w.Write([]byte(errMsg))
+		_, err := w.Write([]byte(errMsg))
+		if err != nil {
+			t.Errorf("Failed to write response: %v", err)
+		}
 		t.Logf("Unhandled request: %s", errMsg)
 	})))
 	defer srv.Close()
@@ -416,7 +431,7 @@ func testRollbackProject(t *testing.T, e *httpexpect.Expect, projectId string, v
 	if rollback != nil {
 		assert.Equal(t, projectId, rollback.ID)
 		assert.Equal(t, version, rollback.Version)
-		assert.Equal(t, []int{1}, rollback.Updates)
-		assert.True(t, rollback.Timestamp.After(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC)))
+		assert.Equal(t, rollbackResults[version].Updates, rollback.Updates)
+		assert.NotZero(t, rollback.Timestamp)
 	}
 }
