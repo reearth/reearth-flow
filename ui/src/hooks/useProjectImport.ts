@@ -89,10 +89,10 @@ export default () => {
               }
 
               setIsProjectImporting(false);
-              yWebSocketProvider?.destroy();
               resolve();
             });
           });
+          yWebSocketProvider?.destroy();
         }
       } catch (error) {
         console.error("Failed to import project:", error);

@@ -79,41 +79,38 @@ export default () => {
             if (!project) return console.error("Failed to create project");
 
             const yDoc = new Y.Doc();
-            const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-            yWorkflows.insert(
-              0,
-              canvasReadyWorkflows.workflows.map((w) =>
-                yWorkflowConstructor(
-                  w.id,
-                  w.name ?? "undefined",
-                  w.nodes,
-                  w.edges,
-                ),
-              ),
-            );
 
             const { websocket } = config();
             if (websocket && project) {
-              (async () => {
-                const token = await getAccessToken();
+              const token = await getAccessToken();
 
-                const yWebSocketProvider = new WebsocketProvider(
-                  websocket,
-                  `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
-                  yDoc,
-                  { params: { token } },
-                );
+              const yWebSocketProvider = new WebsocketProvider(
+                websocket,
+                `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
+                yDoc,
+                { params: { token } },
+              );
 
+              await new Promise<void>((resolve) => {
                 yWebSocketProvider.once("sync", () => {
                   const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-                  if (!yWorkflows.length) {
-                    console.warn("Imported project has no workflows");
-                  }
+                  yWorkflows.insert(
+                    0,
+                    canvasReadyWorkflows.workflows.map((w) =>
+                      yWorkflowConstructor(
+                        w.id,
+                        w.name ?? "undefined",
+                        w.nodes,
+                        w.edges,
+                      ),
+                    ),
+                  );
 
                   setIsWorkflowImporting(false);
-                  yWebSocketProvider?.destroy();
+                  resolve();
                 });
-              })();
+              });
+              yWebSocketProvider.destroy();
             }
           }
         }
