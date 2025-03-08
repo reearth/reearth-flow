@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,20 +11,14 @@ import (
 	"time"
 
 	"github.com/gavv/httpexpect/v2"
-	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	"github.com/reearth/reearth-flow/api/pkg/project"
 	ws "github.com/reearth/reearth-flow/api/pkg/websocket"
-	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountdomain/user"
-	"github.com/reearth/reearthx/account/accountdomain/workspace"
-	"github.com/reearth/reearthx/util"
 	"github.com/stretchr/testify/assert"
 )
 
 var (
 	docUId = user.NewID()
-	docWId = accountdomain.NewWorkspaceID()
 	docPId = id.NewProjectID()
 )
 
@@ -217,43 +210,6 @@ func getProjectIDAndVersionFromVariables(vars map[string]any) (string, int, bool
 	}
 
 	return projectID, version, true
-}
-
-func documentSeeder(ctx context.Context, r *repo.Container) error {
-	defer util.MockNow(time.Date(2023, 1, 1, 0, 0, 0, 0, time.UTC))()
-
-	u := user.New().
-		ID(docUId).
-		Workspace(docWId).
-		Name("test user").
-		Email("test@example.com").
-		MustBuild()
-	if err := r.User.Save(ctx, u); err != nil {
-		return err
-	}
-
-	m := workspace.Member{
-		Role: workspace.RoleOwner,
-	}
-	w := workspace.New().ID(docWId).
-		Name("test workspace").
-		Personal(false).
-		Members(map[accountdomain.UserID]workspace.Member{u.ID(): m}).
-		MustBuild()
-	if err := r.Workspace.Save(ctx, w); err != nil {
-		return err
-	}
-
-	p := project.New().ID(docPId).
-		Name("test project").
-		Description("test project description").
-		Workspace(w.ID()).
-		MustBuild()
-	if err := r.Project.Save(ctx, p); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func TestDocumentOperations(t *testing.T) {
