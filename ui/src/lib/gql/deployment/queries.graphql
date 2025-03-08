@@ -41,3 +41,9 @@ query GetDeployments($workspaceId: ID!, $pagination: PageBasedPagination!) {
     }
   }
 }
+
+query GetDeploymentHead($input: GetHeadInput!) {
+  deploymentHead(input: $input) {
+    ...Deployment
+  }
+}

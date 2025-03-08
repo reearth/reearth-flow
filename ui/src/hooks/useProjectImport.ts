@@ -92,6 +92,7 @@ export default () => {
               resolve();
             });
           });
+          yWebSocketProvider?.destroy();
         }
       } catch (error) {
         console.error("Failed to import project:", error);

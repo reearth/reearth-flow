@@ -28,7 +28,7 @@ export const useJob = () => {
     };
   };
 
-  const useCancelJob = async (jobId: string): Promise<CancelJob> => {
+  const useJobCancel = async (jobId: string): Promise<CancelJob> => {
     const { mutateAsync, ...rest } = cancelJobMutation;
     try {
       const job: Job | undefined = await mutateAsync({
@@ -43,7 +43,7 @@ export const useJob = () => {
       toast({
         title: t("Job Could Not Be Cancelled"),
         description: t("There was an error when cancelling the job."),
-        variant: "warning",
+        variant: "destructive",
       });
       return { job: undefined, ...rest };
     }
@@ -52,6 +52,6 @@ export const useJob = () => {
   return {
     useGetJob,
     useGetJobs,
-    useCancelJob,
+    useJobCancel,
   };
 };

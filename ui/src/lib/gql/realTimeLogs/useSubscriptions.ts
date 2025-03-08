@@ -28,6 +28,7 @@ export const useLogs = (jobId: string) => {
   const wsClient = useWsClient();
   const queryClient = useQueryClient();
   const isSubscribedRef = useRef(false);
+  const unSubscribedRef = useRef<(() => void) | undefined>(undefined);
 
   const query = useQuery<Log[]>({
     queryKey: [LogSubscriptionKeys.GetLogs, jobId],
@@ -56,7 +57,6 @@ export const useLogs = (jobId: string) => {
     isSubscribedRef.current = true;
     const processedLogIds = new Set<string>();
     let localLogs: Log[] = [];
-    let updateTimeout: NodeJS.Timeout | null = null;
 
     // Initialize local logs with any cached data
     const cachedData = queryClient.getQueryData<Log[]>([
@@ -71,20 +71,6 @@ export const useLogs = (jobId: string) => {
         processedLogIds.add(logId);
       });
     }
-
-    // Function to update query cache
-    const updateQueryCache = () => {
-      if (updateTimeout) clearTimeout(updateTimeout);
-
-      updateTimeout = setTimeout(() => {
-        // Update React Query cache
-        queryClient.setQueryData<Log[]>(
-          [LogSubscriptionKeys.GetLogs, jobId],
-          [...localLogs],
-        );
-        updateTimeout = null;
-      }, 50);
-    };
 
     // Subscribe to logs
     const unsubscribe = wsClient.subscribe<RealTimeLogsSubscription>(
@@ -119,22 +105,26 @@ export const useLogs = (jobId: string) => {
             });
 
             // Update React Query cache
-            updateQueryCache();
+            queryClient.setQueryData<Log[]>(
+              [LogSubscriptionKeys.GetLogs, jobId],
+              [...localLogs],
+            );
           }
         },
         error: (err) => {
           console.error("Subscription error:", err);
         },
         complete: () => {
-          console.log("Subscription complete");
+          console.info("Subscription complete");
           isSubscribedRef.current = false;
         },
       },
     );
 
+    unSubscribedRef.current = unsubscribe;
+
     // Cleanup
     return () => {
-      if (updateTimeout) clearTimeout(updateTimeout);
       unsubscribe();
       isSubscribedRef.current = false;
     };
@@ -145,8 +135,14 @@ export const useLogs = (jobId: string) => {
     queryClient.setQueryData<Log[]>([LogSubscriptionKeys.GetLogs, jobId], []);
   }, [jobId, queryClient]);
 
+  const stopSubscription = useCallback(async () => {
+    unSubscribedRef.current?.();
+  }, []);
+
   return {
     ...query,
+    isSubscribedRef,
     clearLogs,
+    stopSubscription,
   };
 };
