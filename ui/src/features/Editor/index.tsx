@@ -5,7 +5,7 @@ import Canvas from "@flow/features/Canvas";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 
 import {
-  BottomPanel,
+  BottomBar,
   LeftPanel,
   OverlayUI,
   ParamsPanel,
@@ -123,7 +123,7 @@ export default function Editor({
                 onEdgeHover={handleEdgeHover}
               />
             </OverlayUI>
-            <BottomPanel
+            <BottomBar
               currentWorkflowId={currentWorkflowId}
               openWorkflows={openWorkflows}
               isOpen={openPanel === "bottom" && !locallyLockedNode}

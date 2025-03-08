@@ -23,7 +23,7 @@ type Props = {
   onWorkflowRename: (id: string, name: string) => void;
 };
 
-const BottomPanel: React.FC<Props> = ({
+const BottomBar: React.FC<Props> = ({
   currentWorkflowId,
   openWorkflows,
   isOpen,
@@ -112,4 +112,4 @@ const BottomPanel: React.FC<Props> = ({
   );
 };
 
-export default memo(BottomPanel);
+export default memo(BottomBar);

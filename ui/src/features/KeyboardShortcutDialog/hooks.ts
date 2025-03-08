@@ -48,10 +48,6 @@ export default () => {
       //   description: t("Create new subworkflow from selected nodes"),
       // },
       {
-        keyBinding: EditorKeyBindings["bottomPanelPreview"],
-        description: t("Toggle the Preview Panel"),
-      },
-      {
         keyBinding: EditorKeyBindings["leftPanelCanvasNavigator"],
         description: t("Toggle the Canvas Navigator Panel"),
       },

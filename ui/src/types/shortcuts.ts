@@ -42,7 +42,6 @@ type PossibleActions =
   | "readerDialog"
   | "transformerDialog"
   | "writerDialog"
-  | "bottomPanelPreview"
   | "leftPanelCanvasNavigator"
   | "leftPanelActionsList"
   | "leftPanelResources"
@@ -78,7 +77,6 @@ export const EditorKeyBindings: Partial<
   readerDialog: { key: "r" },
   transformerDialog: { key: "t" },
   writerDialog: { key: "w" },
-  bottomPanelPreview: { key: "p", commandKey: true },
   leftPanelCanvasNavigator: { key: "c", shiftKey: true },
   leftPanelActionsList: { key: "a", shiftKey: true },
   leftPanelResources: { key: "r", shiftKey: true },

@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from "react";
 
 import { Button } from "@flow/components";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
-// import { LogConsole } from "@flow/features/Editor/components/BottomPanel/components";
 import { useT } from "@flow/lib/i18n";
 import type { Deployment } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
