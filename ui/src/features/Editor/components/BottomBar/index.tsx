@@ -90,7 +90,7 @@ const BottomBar: React.FC<Props> = ({
           onWorkflowRename={onWorkflowRename}
         />
         <div className="flex items-center justify-center gap-2 self-center border-l bg-secondary px-2">
-          <p className="font-thin">{t("Status: ")}</p>
+          <p className="text-xs font-thin">{t("Status: ")}</p>
           <div
             className={`${
               debugJob?.status === "completed"
@@ -104,7 +104,7 @@ const BottomBar: React.FC<Props> = ({
                       : debugJob?.status === "queued"
                         ? "queued-node-status"
                         : "bg-primary"
-            } size-3 rounded-full`}
+            } size-2 rounded-full`}
           />
         </div>
       </div>
