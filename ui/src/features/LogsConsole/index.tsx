@@ -42,7 +42,11 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
 
   const debugJob = useGetJob(jobId).job;
 
-  const { data: liveLogs, isFetching: isFetchingLiveLogs } = useLogs(jobId);
+  const {
+    data: liveLogs,
+    isSubscribedRef: isSubscribed,
+    stopSubscription,
+  } = useLogs(jobId);
 
   const logs = useMemo(() => urlLogs || liveLogs || [], [liveLogs, urlLogs]);
 
@@ -83,7 +87,6 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
           console.log("Error:", error);
         },
       });
-      console.log("logsArray", logsArray);
       setUrlLogs(logsArray);
     } catch (error) {
       console.error("Error fetching logs:", error);
@@ -98,11 +101,17 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
     }
   }, [debugJob?.logsURL, urlLogs, getLogsFromUrl]);
 
+  useEffect(() => {
+    if (urlLogs) {
+      stopSubscription();
+    }
+  }, [urlLogs, stopSubscription]);
+
   return (
     <LogsTable
       columns={columns}
       data={logs}
-      isFetching={isFetchingLiveLogs || isFetchingLogsUrl}
+      isFetching={(!!isSubscribed && !logs.length) || isFetchingLogsUrl}
       selectColumns
       showFiltering
     />

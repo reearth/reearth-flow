@@ -38,7 +38,7 @@ export const GraphQLSubscriptionProvider = ({
       connectionParams: () => {
         return {
           headers: {
-            authorisation: accessToken ? `Bearer ${accessToken}` : "",
+            authorization: accessToken ? `Bearer ${accessToken}` : "",
           },
         };
       },
