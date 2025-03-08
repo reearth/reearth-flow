@@ -1,9 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from "@tanstack/react-router";
 
-import { DeploymentManager } from '@flow/features/WorkspaceDeployments'
+import { DeploymentManager } from "@flow/features/WorkspaceDeployments";
 
 export const Route = createFileRoute(
-  '/workspaces/$workspaceId/deployments_/$deploymentId',
+  "/workspaces/$workspaceId/deployments_/$deploymentId",
 )({
   component: () => <DeploymentManager />,
-})
+});
