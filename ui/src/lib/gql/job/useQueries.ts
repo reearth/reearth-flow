@@ -44,7 +44,7 @@ export const useQueries = () => {
             pageInfo: { totalCount, currentPage, totalPages },
           },
         } = data;
-        console.log("DATA", data);
+
         const jobs: Job[] = nodes.filter(isDefined).map((job) => toJob(job));
         return { jobs, totalCount, currentPage, totalPages };
       },
