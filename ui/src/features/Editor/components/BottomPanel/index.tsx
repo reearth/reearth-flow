@@ -2,6 +2,7 @@ import { CornersIn, CornersOut } from "@phosphor-icons/react";
 import { memo } from "react";
 
 import { IconButton } from "@flow/components";
+import { useT } from "@flow/lib/i18n";
 
 import { WorkflowTabs } from "..";
 
@@ -31,9 +32,11 @@ const BottomPanel: React.FC<Props> = ({
   onWorkflowChange,
   onWorkflowRename,
 }) => {
+  const t = useT();
   const {
     selectedId,
     windowSize,
+    debugJob,
     panelContentOptions,
     setWindowSize,
     handleSelection,
@@ -86,14 +89,23 @@ const BottomPanel: React.FC<Props> = ({
           onWorkflowChange={onWorkflowChange}
           onWorkflowRename={onWorkflowRename}
         />
-        <div className="flex h-full items-center gap-1">
-          {!isOpen && (
-            <BaseActionButtons
-              panelContentOptions={panelContentOptions}
-              selectedId={selectedId}
-              onSelection={handleSelection}
-            />
-          )}
+        <div className="flex items-center justify-center gap-2 self-center border-l bg-secondary px-2">
+          <p className="font-thin">{t("Status: ")}</p>
+          <div
+            className={`${
+              debugJob?.status === "completed"
+                ? "bg-success"
+                : debugJob?.status === "running"
+                  ? "active-node-status"
+                  : debugJob?.status === "cancelled"
+                    ? "bg-warning"
+                    : debugJob?.status === "failed"
+                      ? "bg-destructive"
+                      : debugJob?.status === "queued"
+                        ? "queued-node-status"
+                        : "bg-primary"
+            } size-3 rounded-full`}
+          />
         </div>
       </div>
     </div>

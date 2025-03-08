@@ -85,81 +85,78 @@ const ActionBar: React.FC<Props> = ({
 
   return (
     <>
-      <div className="rounded-md border bg-secondary">
-        <div className="flex rounded-md">
-          <div className="flex align-middle">
-            <IconButton
-              className="rounded-l-[4px] rounded-r-none"
-              tooltipText={t("Run project workflow")}
-              tooltipOffset={tooltipOffset}
-              disabled={
-                debugJob &&
-                (debugJob.status === "running" || debugJob.status === "queued")
-              }
-              icon={<Play weight="thin" />}
-              onClick={onDebugRunStart}
-            />
-            <IconButton
-              className="rounded-none"
-              tooltipText={t("Stop project workflow")}
-              tooltipOffset={tooltipOffset}
-              disabled={
-                !debugJob ||
-                (debugJob &&
-                  !(
-                    debugJob.status === "running" ||
-                    debugJob.status === "queued"
-                  ))
-              }
-              icon={<Stop weight="thin" />}
-              onClick={handleShowDebugStopDialog}
-            />
-            <IconButton
-              className="rounded-none"
-              tooltipText={t("Clear debug run results")}
-              tooltipOffset={tooltipOffset}
-              disabled={!debugJobId}
-              icon={<XCircle weight="thin" />}
-              onClick={handleDebugRunReset}
-            />
-            <IconButton
-              className="rounded-none"
-              tooltipText={t("Deploy project workflow")}
-              tooltipOffset={tooltipOffset}
-              icon={<RocketLaunch weight="thin" />}
-              onClick={handleShowDeployDialog}
-            />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  className="w-[25px] rounded-l-none rounded-r-[4px]"
-                  tooltipText={t("Additional actions")}
-                  tooltipOffset={tooltipOffset}
-                  icon={<DotsThreeVertical />}
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  className="flex justify-between gap-4"
-                  onClick={handleShowShareDialog}>
-                  <p>{t("Share Project")}</p>
-                  <ShareFat weight="light" />
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex justify-between gap-4"
-                  onClick={handleProjectExport}>
-                  <p>{t("Export Project")}</p>
-                  <Export weight="light" />
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex justify-between gap-4"
-                  onClick={() => onRightPanelOpen("version-history")}>
-                  <p>{t("Version History")}</p>
-                  <LetterCircleV weight="light" />
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+      <div className="flex rounded-md border bg-secondary">
+        <div className="flex align-middle">
+          <IconButton
+            className="rounded-l-[4px] rounded-r-none"
+            tooltipText={t("Run project workflow")}
+            tooltipOffset={tooltipOffset}
+            disabled={
+              debugJob &&
+              (debugJob.status === "running" || debugJob.status === "queued")
+            }
+            icon={<Play weight="thin" />}
+            onClick={onDebugRunStart}
+          />
+          <IconButton
+            className="rounded-none"
+            tooltipText={t("Stop project workflow")}
+            tooltipOffset={tooltipOffset}
+            disabled={
+              !debugJob ||
+              (debugJob &&
+                !(
+                  debugJob.status === "running" || debugJob.status === "queued"
+                ))
+            }
+            icon={<Stop weight="thin" />}
+            onClick={handleShowDebugStopDialog}
+          />
+          <IconButton
+            className="rounded-none"
+            tooltipText={t("Clear debug run results")}
+            tooltipOffset={tooltipOffset}
+            disabled={!debugJobId}
+            icon={<XCircle weight="thin" />}
+            onClick={handleDebugRunReset}
+          />
+          <IconButton
+            className="rounded-none"
+            tooltipText={t("Deploy project workflow")}
+            tooltipOffset={tooltipOffset}
+            icon={<RocketLaunch weight="thin" />}
+            onClick={handleShowDeployDialog}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                className="w-[25px] rounded-l-none rounded-r-[4px]"
+                tooltipText={t("Additional actions")}
+                tooltipOffset={tooltipOffset}
+                icon={<DotsThreeVertical />}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="flex justify-between gap-4"
+                onClick={handleShowShareDialog}>
+                <p>{t("Share Project")}</p>
+                <ShareFat weight="light" />
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex justify-between gap-4"
+                onClick={handleProjectExport}>
+                <p>{t("Export Project")}</p>
+                <Export weight="light" />
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex justify-between gap-4"
+                onClick={() => onRightPanelOpen("version-history")}>
+                <p>{t("Version History")}</p>
+                <LetterCircleV weight="light" />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       {showDialog === "deploy" && (
