@@ -25,6 +25,7 @@ export const useDeployment = () => {
     deleteDeploymentMutation,
     executeDeploymentMutation,
     useGetDeploymentsQuery,
+    useGetDeploymentHeadQuery,
   } = useQueries();
 
   const createDeployment = async (
@@ -162,6 +163,14 @@ export const useDeployment = () => {
     };
   };
 
+  const useGetDeploymentHead = (workspaceId?: string, projectId?: string) => {
+    const { data, ...rest } = useGetDeploymentHeadQuery(workspaceId, projectId);
+    return {
+      deployment: data?.deployment,
+      ...rest,
+    };
+  };
+
   const executeDeployment = async (
     input: ExecuteDeploymentInput,
   ): Promise<ExecuteDeployment> => {
@@ -189,6 +198,7 @@ export const useDeployment = () => {
     createDeployment,
     createDeploymentFromFile,
     useGetDeployments,
+    useGetDeploymentHead,
     useUpdateDeployment,
     useDeleteDeployment,
     executeDeployment,

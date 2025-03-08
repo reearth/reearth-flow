@@ -19,10 +19,10 @@ import { Route as WorkspacesWorkspaceIdImport } from './routes/workspaces.$works
 import { Route as WorkspacesWorkspaceIdTriggersImport } from './routes/workspaces.$workspaceId.triggers'
 import { Route as WorkspacesWorkspaceIdProjectsImport } from './routes/workspaces.$workspaceId.projects'
 import { Route as WorkspacesWorkspaceIdJobsImport } from './routes/workspaces.$workspaceId.jobs'
+import { Route as WorkspacesWorkspaceIdDeploymentsImport } from './routes/workspaces.$workspaceId.deployments'
 import { Route as WorkspacesWorkspaceIdTriggersTriggerIdImport } from './routes/workspaces.$workspaceId.triggers_.$triggerId'
 import { Route as WorkspacesWorkspaceIdSettingsTabImport } from './routes/workspaces.$workspaceId.settings.$tab'
 import { Route as WorkspacesWorkspaceIdJobsJobIdImport } from './routes/workspaces.$workspaceId.jobs_.$jobId'
-import { Route as WorkspacesWorkspaceIdDeploymentsTabImport } from './routes/workspaces.$workspaceId.deployments.$tab'
 
 // Create Virtual Routes
 
@@ -79,6 +79,13 @@ const WorkspacesWorkspaceIdJobsRoute = WorkspacesWorkspaceIdJobsImport.update({
   getParentRoute: () => WorkspacesWorkspaceIdRoute,
 } as any)
 
+const WorkspacesWorkspaceIdDeploymentsRoute =
+  WorkspacesWorkspaceIdDeploymentsImport.update({
+    id: '/deployments',
+    path: '/deployments',
+    getParentRoute: () => WorkspacesWorkspaceIdRoute,
+  } as any)
+
 const WorkspacesWorkspaceIdProjectsProjectIdLazyRoute =
   WorkspacesWorkspaceIdProjectsProjectIdLazyImport.update({
     id: '/$workspaceId_/projects_/$projectId',
@@ -108,13 +115,6 @@ const WorkspacesWorkspaceIdJobsJobIdRoute =
   WorkspacesWorkspaceIdJobsJobIdImport.update({
     id: '/jobs_/$jobId',
     path: '/jobs/$jobId',
-    getParentRoute: () => WorkspacesWorkspaceIdRoute,
-  } as any)
-
-const WorkspacesWorkspaceIdDeploymentsTabRoute =
-  WorkspacesWorkspaceIdDeploymentsTabImport.update({
-    id: '/deployments/$tab',
-    path: '/deployments/$tab',
     getParentRoute: () => WorkspacesWorkspaceIdRoute,
   } as any)
 
@@ -150,6 +150,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SharedSharedTokenLazyImport
       parentRoute: typeof rootRoute
     }
+    '/workspaces/$workspaceId/deployments': {
+      id: '/workspaces/$workspaceId/deployments'
+      path: '/deployments'
+      fullPath: '/workspaces/$workspaceId/deployments'
+      preLoaderRoute: typeof WorkspacesWorkspaceIdDeploymentsImport
+      parentRoute: typeof WorkspacesWorkspaceIdImport
+    }
     '/workspaces/$workspaceId/jobs': {
       id: '/workspaces/$workspaceId/jobs'
       path: '/jobs'
@@ -169,13 +176,6 @@ declare module '@tanstack/react-router' {
       path: '/triggers'
       fullPath: '/workspaces/$workspaceId/triggers'
       preLoaderRoute: typeof WorkspacesWorkspaceIdTriggersImport
-      parentRoute: typeof WorkspacesWorkspaceIdImport
-    }
-    '/workspaces/$workspaceId/deployments/$tab': {
-      id: '/workspaces/$workspaceId/deployments/$tab'
-      path: '/deployments/$tab'
-      fullPath: '/workspaces/$workspaceId/deployments/$tab'
-      preLoaderRoute: typeof WorkspacesWorkspaceIdDeploymentsTabImport
       parentRoute: typeof WorkspacesWorkspaceIdImport
     }
     '/workspaces/$workspaceId/jobs_/$jobId': {
@@ -212,21 +212,20 @@ declare module '@tanstack/react-router' {
 // Create and export the route tree
 
 interface WorkspacesWorkspaceIdRouteChildren {
+  WorkspacesWorkspaceIdDeploymentsRoute: typeof WorkspacesWorkspaceIdDeploymentsRoute
   WorkspacesWorkspaceIdJobsRoute: typeof WorkspacesWorkspaceIdJobsRoute
   WorkspacesWorkspaceIdProjectsRoute: typeof WorkspacesWorkspaceIdProjectsRoute
   WorkspacesWorkspaceIdTriggersRoute: typeof WorkspacesWorkspaceIdTriggersRoute
-  WorkspacesWorkspaceIdDeploymentsTabRoute: typeof WorkspacesWorkspaceIdDeploymentsTabRoute
   WorkspacesWorkspaceIdJobsJobIdRoute: typeof WorkspacesWorkspaceIdJobsJobIdRoute
   WorkspacesWorkspaceIdSettingsTabRoute: typeof WorkspacesWorkspaceIdSettingsTabRoute
   WorkspacesWorkspaceIdTriggersTriggerIdRoute: typeof WorkspacesWorkspaceIdTriggersTriggerIdRoute
 }
 
 const WorkspacesWorkspaceIdRouteChildren: WorkspacesWorkspaceIdRouteChildren = {
+  WorkspacesWorkspaceIdDeploymentsRoute: WorkspacesWorkspaceIdDeploymentsRoute,
   WorkspacesWorkspaceIdJobsRoute: WorkspacesWorkspaceIdJobsRoute,
   WorkspacesWorkspaceIdProjectsRoute: WorkspacesWorkspaceIdProjectsRoute,
   WorkspacesWorkspaceIdTriggersRoute: WorkspacesWorkspaceIdTriggersRoute,
-  WorkspacesWorkspaceIdDeploymentsTabRoute:
-    WorkspacesWorkspaceIdDeploymentsTabRoute,
   WorkspacesWorkspaceIdJobsJobIdRoute: WorkspacesWorkspaceIdJobsJobIdRoute,
   WorkspacesWorkspaceIdSettingsTabRoute: WorkspacesWorkspaceIdSettingsTabRoute,
   WorkspacesWorkspaceIdTriggersTriggerIdRoute:
@@ -258,10 +257,10 @@ export interface FileRoutesByFullPath {
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRouteWithChildren
   '/shared/$sharedToken': typeof SharedSharedTokenLazyRoute
+  '/workspaces/$workspaceId/deployments': typeof WorkspacesWorkspaceIdDeploymentsRoute
   '/workspaces/$workspaceId/jobs': typeof WorkspacesWorkspaceIdJobsRoute
   '/workspaces/$workspaceId/projects': typeof WorkspacesWorkspaceIdProjectsRoute
   '/workspaces/$workspaceId/triggers': typeof WorkspacesWorkspaceIdTriggersRoute
-  '/workspaces/$workspaceId/deployments/$tab': typeof WorkspacesWorkspaceIdDeploymentsTabRoute
   '/workspaces/$workspaceId/jobs/$jobId': typeof WorkspacesWorkspaceIdJobsJobIdRoute
   '/workspaces/$workspaceId/settings/$tab': typeof WorkspacesWorkspaceIdSettingsTabRoute
   '/workspaces/$workspaceId/triggers/$triggerId': typeof WorkspacesWorkspaceIdTriggersTriggerIdRoute
@@ -273,10 +272,10 @@ export interface FileRoutesByTo {
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRouteWithChildren
   '/shared/$sharedToken': typeof SharedSharedTokenLazyRoute
+  '/workspaces/$workspaceId/deployments': typeof WorkspacesWorkspaceIdDeploymentsRoute
   '/workspaces/$workspaceId/jobs': typeof WorkspacesWorkspaceIdJobsRoute
   '/workspaces/$workspaceId/projects': typeof WorkspacesWorkspaceIdProjectsRoute
   '/workspaces/$workspaceId/triggers': typeof WorkspacesWorkspaceIdTriggersRoute
-  '/workspaces/$workspaceId/deployments/$tab': typeof WorkspacesWorkspaceIdDeploymentsTabRoute
   '/workspaces/$workspaceId/jobs/$jobId': typeof WorkspacesWorkspaceIdJobsJobIdRoute
   '/workspaces/$workspaceId/settings/$tab': typeof WorkspacesWorkspaceIdSettingsTabRoute
   '/workspaces/$workspaceId/triggers/$triggerId': typeof WorkspacesWorkspaceIdTriggersTriggerIdRoute
@@ -289,10 +288,10 @@ export interface FileRoutesById {
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRouteWithChildren
   '/shared/$sharedToken': typeof SharedSharedTokenLazyRoute
+  '/workspaces/$workspaceId/deployments': typeof WorkspacesWorkspaceIdDeploymentsRoute
   '/workspaces/$workspaceId/jobs': typeof WorkspacesWorkspaceIdJobsRoute
   '/workspaces/$workspaceId/projects': typeof WorkspacesWorkspaceIdProjectsRoute
   '/workspaces/$workspaceId/triggers': typeof WorkspacesWorkspaceIdTriggersRoute
-  '/workspaces/$workspaceId/deployments/$tab': typeof WorkspacesWorkspaceIdDeploymentsTabRoute
   '/workspaces/$workspaceId/jobs_/$jobId': typeof WorkspacesWorkspaceIdJobsJobIdRoute
   '/workspaces/$workspaceId/settings/$tab': typeof WorkspacesWorkspaceIdSettingsTabRoute
   '/workspaces/$workspaceId/triggers_/$triggerId': typeof WorkspacesWorkspaceIdTriggersTriggerIdRoute
@@ -306,10 +305,10 @@ export interface FileRouteTypes {
     | '/workspaces'
     | '/workspaces/$workspaceId'
     | '/shared/$sharedToken'
+    | '/workspaces/$workspaceId/deployments'
     | '/workspaces/$workspaceId/jobs'
     | '/workspaces/$workspaceId/projects'
     | '/workspaces/$workspaceId/triggers'
-    | '/workspaces/$workspaceId/deployments/$tab'
     | '/workspaces/$workspaceId/jobs/$jobId'
     | '/workspaces/$workspaceId/settings/$tab'
     | '/workspaces/$workspaceId/triggers/$triggerId'
@@ -320,10 +319,10 @@ export interface FileRouteTypes {
     | '/workspaces'
     | '/workspaces/$workspaceId'
     | '/shared/$sharedToken'
+    | '/workspaces/$workspaceId/deployments'
     | '/workspaces/$workspaceId/jobs'
     | '/workspaces/$workspaceId/projects'
     | '/workspaces/$workspaceId/triggers'
-    | '/workspaces/$workspaceId/deployments/$tab'
     | '/workspaces/$workspaceId/jobs/$jobId'
     | '/workspaces/$workspaceId/settings/$tab'
     | '/workspaces/$workspaceId/triggers/$triggerId'
@@ -334,10 +333,10 @@ export interface FileRouteTypes {
     | '/workspaces'
     | '/workspaces/$workspaceId'
     | '/shared/$sharedToken'
+    | '/workspaces/$workspaceId/deployments'
     | '/workspaces/$workspaceId/jobs'
     | '/workspaces/$workspaceId/projects'
     | '/workspaces/$workspaceId/triggers'
-    | '/workspaces/$workspaceId/deployments/$tab'
     | '/workspaces/$workspaceId/jobs_/$jobId'
     | '/workspaces/$workspaceId/settings/$tab'
     | '/workspaces/$workspaceId/triggers_/$triggerId'
@@ -386,10 +385,10 @@ export const routeTree = rootRoute
       "filePath": "workspaces.$workspaceId.tsx",
       "parent": "/workspaces",
       "children": [
+        "/workspaces/$workspaceId/deployments",
         "/workspaces/$workspaceId/jobs",
         "/workspaces/$workspaceId/projects",
         "/workspaces/$workspaceId/triggers",
-        "/workspaces/$workspaceId/deployments/$tab",
         "/workspaces/$workspaceId/jobs_/$jobId",
         "/workspaces/$workspaceId/settings/$tab",
         "/workspaces/$workspaceId/triggers_/$triggerId"
@@ -397,6 +396,10 @@ export const routeTree = rootRoute
     },
     "/shared/$sharedToken": {
       "filePath": "shared.$sharedToken.lazy.tsx"
+    },
+    "/workspaces/$workspaceId/deployments": {
+      "filePath": "workspaces.$workspaceId.deployments.tsx",
+      "parent": "/workspaces/$workspaceId"
     },
     "/workspaces/$workspaceId/jobs": {
       "filePath": "workspaces.$workspaceId.jobs.tsx",
@@ -408,10 +411,6 @@ export const routeTree = rootRoute
     },
     "/workspaces/$workspaceId/triggers": {
       "filePath": "workspaces.$workspaceId.triggers.tsx",
-      "parent": "/workspaces/$workspaceId"
-    },
-    "/workspaces/$workspaceId/deployments/$tab": {
-      "filePath": "workspaces.$workspaceId.deployments.$tab.tsx",
       "parent": "/workspaces/$workspaceId"
     },
     "/workspaces/$workspaceId/jobs_/$jobId": {

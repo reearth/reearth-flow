@@ -973,6 +973,13 @@ export type GetDeploymentsQueryVariables = Exact<{
 
 export type GetDeploymentsQuery = { __typename?: 'Query', deployments: { __typename?: 'DeploymentConnection', totalCount: number, nodes: Array<{ __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
 
+export type GetDeploymentHeadQueryVariables = Exact<{
+  input: GetHeadInput;
+}>;
+
+
+export type GetDeploymentHeadQuery = { __typename?: 'Query', deploymentHead?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
+
 export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
 export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
@@ -1322,6 +1329,13 @@ export const GetDeploymentsDocument = gql`
   }
 }
     ${DeploymentFragmentDoc}`;
+export const GetDeploymentHeadDocument = gql`
+    query GetDeploymentHead($input: GetHeadInput!) {
+  deploymentHead(input: $input) {
+    ...Deployment
+  }
+}
+    ${DeploymentFragmentDoc}`;
 export const GetJobsDocument = gql`
     query GetJobs($workspaceId: ID!, $pagination: PageBasedPagination!) {
   jobs(workspaceId: $workspaceId, pagination: $pagination) {
@@ -1611,6 +1625,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     GetDeployments(variables: GetDeploymentsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetDeploymentsQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetDeploymentsQuery>(GetDeploymentsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetDeployments', 'query', variables);
+    },
+    GetDeploymentHead(variables: GetDeploymentHeadQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetDeploymentHeadQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetDeploymentHeadQuery>(GetDeploymentHeadDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetDeploymentHead', 'query', variables);
     },
     GetJobs(variables: GetJobsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetJobsQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetJobsQuery>(GetJobsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetJobs', 'query', variables);
