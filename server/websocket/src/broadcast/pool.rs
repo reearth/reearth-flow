@@ -4,6 +4,7 @@ use crate::storage::kv::DocOps;
 use crate::AwarenessRef;
 use anyhow::{anyhow, Result};
 use dashmap::DashMap;
+use redis::AsyncCommands;
 use std::sync::Arc;
 use yrs::sync::Awareness;
 use yrs::{Doc, Transact};
@@ -51,9 +52,38 @@ impl BroadcastPool {
             dashmap::mapref::entry::Entry::Vacant(entry) => {
                 let awareness: AwarenessRef = {
                     let doc = Doc::new();
+                    let mut updates_from_redis = Vec::new();
+
+                    if let Some(redis_config) = &self.redis_config {
+                        let redis_key = format!("pending_updates:{}", doc_id);
+                        if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
+                            if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
+                                match conn.lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1).await {
+                                    Ok(updates) => {
+                                        if !updates.is_empty() {
+                                            tracing::debug!(
+                                                "Found {} pending updates in Redis for document '{}'",
+                                                updates.len(),
+                                                doc_id
+                                            );
+                                            updates_from_redis = updates;
+                                        }
+                                    }
+                                    Err(e) => {
+                                        tracing::warn!(
+                                            "Failed to load pending updates from Redis for document '{}': {}",
+                                            doc_id,
+                                            e
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     {
                         let mut txn = doc.transact_mut();
+
                         match self.store.load_doc(doc_id, &mut txn).await {
                             Ok(_) => {
                                 tracing::debug!(
@@ -67,6 +97,18 @@ impl BroadcastPool {
                                 } else {
                                     tracing::error!("Failed to load document {}: {}", doc_id, e);
                                     return Err(anyhow!("Failed to load document: {}", e));
+                                }
+                            }
+                        }
+
+                        for update in updates_from_redis {
+                            if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(&update) {
+                                if let Err(e) = txn.apply_update(decoded) {
+                                    tracing::warn!(
+                                        "Failed to apply update from Redis for document '{}': {}",
+                                        doc_id,
+                                        e
+                                    );
                                 }
                             }
                         }
