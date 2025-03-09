@@ -384,15 +384,14 @@ impl BroadcastGroup {
                     let consumer_name = format!("instance-{}", rand::random::<u32>());
 
                     let mut redis_conn = conn.get().await.unwrap();
-                    let _: () = redis::cmd("XGROUP")
+                    let _result: redis::RedisResult<()> = redis::cmd("XGROUP")
                         .arg("CREATE")
                         .arg(&stream_name)
                         .arg(REDIS_WORKER_GROUP)
                         .arg("0")
                         .arg("MKSTREAM")
                         .query_async(&mut *redis_conn)
-                        .await
-                        .unwrap();
+                        .await;
                     drop(redis_conn);
 
                     let awareness_for_sub = group.awareness_ref.clone();
@@ -593,8 +592,14 @@ impl BroadcastGroup {
             let redis = redis.clone();
             let update = update.clone();
 
-            Some(async move {
-                let mut conn = redis.get().await.unwrap();
+            let redis_future = async move {
+                let mut conn = match redis.get().await {
+                    Ok(conn) => conn,
+                    Err(e) => {
+                        tracing::error!("Failed to get Redis connection: {}", e);
+                        return;
+                    }
+                };
 
                 let mut pipe = redis::pipe();
                 pipe.atomic()
@@ -613,11 +618,18 @@ impl BroadcastGroup {
                     .arg("message")
                     .arg(update.as_slice());
 
-                let _: () = pipe.query_async(&mut *conn).await.unwrap_or_else(|e| {
-                    tracing::error!("Failed to execute Redis pipeline: {}", e);
-                });
-                tracing::debug!("Successfully executed Redis pipeline for update");
-            })
+                let result: redis::RedisResult<()> = pipe.query_async(&mut *conn).await;
+                match result {
+                    Ok(_) => {
+                        tracing::debug!("Successfully executed Redis pipeline for update");
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to execute Redis pipeline: {}", e);
+                    }
+                }
+            };
+
+            Some(redis_future)
         } else {
             None
         };
@@ -746,20 +758,30 @@ impl BroadcastGroup {
                                     (&redis, redis_ttl, &doc_name)
                                 {
                                     let redis_key = format!("pending_updates:{}", doc_name);
-                                    let redis = redis.clone();
-                                    let update = update.clone();
                                     let channel = format!("yjs:updates:{}", doc_name);
                                     let stream_name =
                                         format!("{}:room:{}", REDIS_STREAM_PREFIX, doc_name);
 
-                                    tokio::spawn(async move {
-                                        let mut conn = redis.get().await.unwrap();
+                                    let redis_clone = redis.clone();
+                                    let update_clone = update.clone();
+
+                                    let handle = tokio::spawn(async move {
+                                        let mut conn = match redis_clone.get().await {
+                                            Ok(conn) => conn,
+                                            Err(e) => {
+                                                tracing::error!(
+                                                    "Failed to get Redis connection: {}",
+                                                    e
+                                                );
+                                                return;
+                                            }
+                                        };
 
                                         let mut pipe = redis::pipe();
                                         pipe.atomic()
                                             .cmd("LPUSH")
                                             .arg(&redis_key)
-                                            .arg(update.as_slice())
+                                            .arg(update_clone.as_slice())
                                             .cmd("EXPIRE")
                                             .arg(&redis_key)
                                             .arg(
@@ -770,25 +792,32 @@ impl BroadcastGroup {
                                             )
                                             .cmd("PUBLISH")
                                             .arg(&channel)
-                                            .arg(update.as_slice())
+                                            .arg(update_clone.as_slice())
                                             .cmd("XADD")
                                             .arg(&stream_name)
                                             .arg("*")
                                             .arg("message")
-                                            .arg(update.as_slice());
+                                            .arg(update_clone.as_slice());
 
-                                        let _: () = pipe
-                                            .query_async(&mut *conn)
-                                            .await
-                                            .unwrap_or_else(|e| {
+                                        let result: redis::RedisResult<()> =
+                                            pipe.query_async(&mut *conn).await;
+                                        match result {
+                                            Ok(_) => {
+                                                tracing::debug!("Successfully executed Redis pipeline for update");
+                                            }
+                                            Err(e) => {
                                                 tracing::error!(
                                                     "Failed to execute Redis pipeline: {}",
                                                     e
                                                 );
-                                            });
-                                        tracing::debug!(
-                                            "Successfully executed Redis pipeline for update"
-                                        );
+                                            }
+                                        }
+                                    });
+
+                                    tokio::spawn(async move {
+                                        if let Err(e) = handle.await {
+                                            tracing::error!("Redis pipeline task failed: {}", e);
+                                        }
                                     });
                                 }
                             }
