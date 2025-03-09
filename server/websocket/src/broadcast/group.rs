@@ -6,6 +6,7 @@ use anyhow::Result;
 use bb8_redis::{bb8, RedisConnectionManager};
 use futures_util::{SinkExt, StreamExt};
 use rand;
+use redis::AsyncCommands;
 use serde::Deserialize;
 use serde_json;
 use std::sync::atomic::AtomicBool;
@@ -101,6 +102,7 @@ impl BroadcastGroup {
             let pending_updates = self.pending_updates.clone();
 
             tokio::spawn(async move {
+                // 首先检查内存中是否有待处理的更新
                 let mut updates = Vec::new();
                 {
                     let mut pending = pending_updates.lock().await;
@@ -109,23 +111,26 @@ impl BroadcastGroup {
                     }
                 }
 
+                // 如果内存中没有更新，则从 Redis Stream 中读取
                 if updates.is_empty() && redis.is_some() {
                     let redis_pool = redis.as_ref().unwrap();
                     let stream_name = Self::compute_redis_stream_name(&doc_name_clone);
                     let mut redis_conn = redis_pool.get().await.unwrap();
 
+                    // 从 Redis Stream 中读取所有消息
                     let stream_data: Result<
                         Vec<(String, Vec<(String, Vec<u8>)>)>,
                         redis::RedisError,
                     > = redis::cmd("XRANGE")
                         .arg(&stream_name)
-                        .arg("-")
-                        .arg("+")
+                        .arg("-") // 从最早的消息开始
+                        .arg("+") // 到最新的消息
                         .query_async(&mut *redis_conn)
                         .await;
 
                     if let Ok(data) = stream_data {
                         if !data.is_empty() {
+                            // 提取所有更新数据
                             for (_, message_data) in &data {
                                 for (field, value) in message_data {
                                     if field == "data" {
@@ -134,6 +139,7 @@ impl BroadcastGroup {
                                 }
                             }
 
+                            // 使用 XTRIM 命令清理流，只保留最新的 0 条消息（即删除所有消息）
                             let trim_result: Result<usize, redis::RedisError> = redis::cmd("XTRIM")
                                 .arg(&stream_name)
                                 .arg("MAXLEN")
@@ -159,6 +165,7 @@ impl BroadcastGroup {
                     }
                 }
 
+                // 处理收集到的更新
                 if !updates.is_empty() {
                     let doc = Doc::new();
                     let mut txn = doc.transact_mut();
@@ -350,24 +357,25 @@ impl BroadcastGroup {
                                     let mut txn = awareness.doc().transact_mut();
                                     let mut updates = Vec::new();
 
-                                    for (_, message_data) in &data {
-                                        for (_, update_bytes) in message_data {
-                                            if let Ok(decoded) = Update::decode_v1(update_bytes) {
-                                                if let Err(e) = txn.apply_update(decoded) {
-                                                    tracing::warn!(
-                                                        "Failed to apply update from Redis stream: {}",
-                                                        e
-                                                    );
+                                    // 处理每个消息
+                                    for (message_id, message_data) in &data {
+                                        for (field, value) in message_data {
+                                            if field == "data" {
+                                                // 添加调试日志，显示数据的长度和前几个字节
+                                                let debug_prefix = if value.len() > 10 {
+                                                    format!("{:?}", &value[..10])
                                                 } else {
-                                                    updates.push(update_bytes.clone());
-                                                    tracing::debug!(
-                                                        "Applied update from Redis stream"
-                                                    );
-                                                }
-                                            } else {
-                                                tracing::warn!(
-                                                    "Failed to decode update from Redis stream"
+                                                    format!("{:?}", value)
+                                                };
+
+                                                tracing::debug!(
+                                                    "Flush: Attempting to decode update from Redis stream, message ID: {}, data length: {}, prefix: {}",
+                                                    message_id,
+                                                    value.len(),
+                                                    debug_prefix
                                                 );
+
+                                                updates.push(value.clone());
                                             }
                                         }
                                     }
@@ -393,7 +401,7 @@ impl BroadcastGroup {
                     let consumer_name = format!("instance-{}", rand::random::<u32>());
 
                     let mut redis_conn = conn.get().await.unwrap();
-                    let create_result: redis::RedisResult<String> = redis::cmd("XGROUP")
+                    let _: redis::RedisResult<String> = redis::cmd("XGROUP")
                         .arg("CREATE")
                         .arg(&stream_name)
                         .arg(REDIS_WORKER_GROUP)
@@ -401,22 +409,6 @@ impl BroadcastGroup {
                         .arg("MKSTREAM")
                         .query_async(&mut *redis_conn)
                         .await;
-
-                    match create_result {
-                        Ok(_) => {
-                            tracing::info!(
-                                "Created Redis stream and consumer group for '{}'",
-                                doc_name
-                            );
-                        }
-                        Err(e) => {
-                            if e.to_string().contains("BUSYGROUP") {
-                                tracing::debug!("Consumer group already exists for '{}'", doc_name);
-                            } else {
-                                tracing::warn!("Error creating consumer group: {}", e);
-                            }
-                        }
-                    }
                     drop(redis_conn);
 
                     let awareness_for_sub = group.awareness_ref.clone();
@@ -427,64 +419,101 @@ impl BroadcastGroup {
 
                     let redis_subscriber_task = tokio::spawn(async move {
                         match redis::Client::open(redis_url) {
-                            Ok(client) => match client.get_async_pubsub().await {
-                                Ok(mut pubsub) => {
-                                    let channel = format!("yjs:updates:{}", doc_name_for_sub);
-                                    match pubsub.subscribe(&channel).await {
-                                        Ok(_) => {
-                                            tracing::info!(
-                                                "Subscribed to Redis channel '{}'",
-                                                channel
-                                            );
-                                            let mut stream = pubsub.on_message();
+                            Ok(client) => match client.get_multiplexed_async_connection().await {
+                                Ok(mut conn) => {
+                                    let stream_name =
+                                        Self::compute_redis_stream_name(&doc_name_for_sub);
 
-                                            while let Some(msg) = stream.next().await {
-                                                match msg.get_payload::<Vec<u8>>() {
-                                                    Ok(payload) => {
-                                                        let awareness =
-                                                            awareness_for_sub.write().await;
-                                                        let mut txn =
-                                                            awareness.doc().transact_mut();
+                                    loop {
+                                        let stream_data: Result<
+                                            Vec<(String, Vec<(String, Vec<(String, Vec<u8>)>)>)>,
+                                            redis::RedisError,
+                                        > = redis::cmd("XREADGROUP")
+                                            .arg("GROUP")
+                                            .arg(REDIS_WORKER_GROUP)
+                                            .arg(&consumer_name_for_sub)
+                                            .arg("COUNT")
+                                            .arg(50)
+                                            .arg("BLOCK")
+                                            .arg(100)
+                                            .arg("STREAMS")
+                                            .arg(&stream_name)
+                                            .arg(">")
+                                            .query_async(&mut conn)
+                                            .await;
 
-                                                        if let Ok(decoded) =
-                                                            Update::decode_v1(&payload)
+                                        match stream_data {
+                                            Ok(data) => {
+                                                if !data.is_empty() {
+                                                    for (_, stream_messages) in &data {
+                                                        for (message_id, message_fields) in
+                                                            stream_messages
                                                         {
-                                                            if let Err(e) =
-                                                                txn.apply_update(decoded)
-                                                            {
-                                                                tracing::warn!("Failed to apply update from Redis: {}", e);
-                                                            } else {
-                                                                // 广播更新给所有连接的客户端
-                                                                match sender_for_sub.send(payload) {
-                                                                    Ok(_) => {
-                                                                        tracing::debug!("Successfully broadcasted update from Redis Pub/Sub");
-                                                                    }
-                                                                    Err(e) => {
-                                                                        tracing::warn!("Failed to broadcast update: {}", e);
+                                                            for (field, value) in message_fields {
+                                                                if field == "data" {
+                                                                    let awareness =
+                                                                        awareness_for_sub
+                                                                            .write()
+                                                                            .await;
+                                                                    let mut txn = awareness
+                                                                        .doc()
+                                                                        .transact_mut();
+
+                                                                    if let Ok(decoded) =
+                                                                        Update::decode_v1(value)
+                                                                    {
+                                                                        if let Err(e) = txn
+                                                                            .apply_update(decoded)
+                                                                        {
+                                                                            tracing::warn!("Failed to apply update from Redis stream: {}", e);
+                                                                        } else {
+                                                                            let _ = sender_for_sub
+                                                                                .send(
+                                                                                    value.clone(),
+                                                                                );
+                                                                            tracing::debug!("Applied and broadcasted update from Redis stream, message ID: {}", message_id);
+                                                                        }
+                                                                    } else {
+                                                                        tracing::warn!("Failed to decode update from Redis stream, message ID: {}", message_id);
                                                                     }
                                                                 }
                                                             }
-                                                        } else {
-                                                            tracing::warn!("Failed to decode update from Redis");
+
+                                                            let ack_result: Result<
+                                                                (),
+                                                                redis::RedisError,
+                                                            > = redis::cmd("XACK")
+                                                                .arg(&stream_name)
+                                                                .arg(REDIS_WORKER_GROUP)
+                                                                .arg(message_id)
+                                                                .query_async(&mut conn)
+                                                                .await;
+
+                                                            if let Err(e) = ack_result {
+                                                                tracing::warn!("Failed to acknowledge message {}: {}", message_id, e);
+                                                            }
                                                         }
-                                                    }
-                                                    Err(e) => {
-                                                        tracing::error!("Failed to get payload from Redis message: {}", e);
                                                     }
                                                 }
                                             }
-                                        }
-                                        Err(e) => {
-                                            tracing::error!(
-                                                "Failed to subscribe to Redis channel: {}",
-                                                e
-                                            );
+                                            Err(e) => {
+                                                if !e.to_string().contains("timeout") {
+                                                    tracing::error!(
+                                                        "Error reading from Redis stream: {}",
+                                                        e
+                                                    );
+                                                    tokio::time::sleep(
+                                                        tokio::time::Duration::from_secs(1),
+                                                    )
+                                                    .await;
+                                                }
+                                            }
                                         }
                                     }
                                 }
                                 Err(e) => {
                                     tracing::error!(
-                                        "Failed to get async pubsub connection to Redis: {}",
+                                        "Failed to get async connection to Redis: {}",
                                         e
                                     );
                                 }
@@ -594,50 +623,60 @@ impl BroadcastGroup {
 
         let redis_future = if let (Some(redis), Some(ttl)) = (redis, redis_ttl) {
             let stream_name = Self::compute_redis_stream_name(doc_name);
-            let channel = format!("yjs:updates:{}", doc_name);
             let redis = redis.clone();
             let update = update.clone();
 
             Some(async move {
                 let mut conn = redis.get().await.unwrap();
 
-                let mut pipe = redis::pipe();
+                // 添加调试日志，显示数据的长度和前几个字节
+                let debug_prefix = if update.len() > 10 {
+                    format!("{:?}", &update[..10])
+                } else {
+                    format!("{:?}", update)
+                };
 
-                pipe.cmd("XADD")
+                tracing::debug!(
+                    "Storing update in Redis stream '{}', data length: {}, prefix: {}",
+                    stream_name,
+                    update.len(),
+                    debug_prefix
+                );
+
+                // 验证数据是否可以被解码，这有助于确保我们存储的是有效的更新
+                if let Err(e) = Update::decode_v1(&update) {
+                    tracing::warn!(
+                        "Storing update that cannot be decoded: {}, data length: {}, prefix: {}",
+                        e,
+                        update.len(),
+                        debug_prefix
+                    );
+                }
+
+                let cmd_result: redis::RedisResult<String> = redis::cmd("XADD")
                     .arg(&stream_name)
                     .arg("*")
                     .arg("data")
                     .arg(update.as_slice())
                     .arg("ttl")
-                    .arg(ttl.to_string());
+                    .arg(ttl.to_string())
+                    .query_async(&mut *conn)
+                    .await;
 
-                pipe.cmd("PUBLISH").arg(&channel).arg(update.as_slice());
-
-                let results: redis::RedisResult<Vec<redis::Value>> =
-                    pipe.query_async(&mut *conn).await;
-
-                match results {
-                    Ok(values) => {
-                        if values.len() >= 2 {
-                            if let Ok(stream_id) = redis::from_redis_value::<String>(&values[0]) {
-                                tracing::debug!(
-                                    "Successfully added update to Redis stream '{}' with ID: {}",
-                                    stream_name,
-                                    stream_id
-                                );
-                            }
-
-                            if let Ok(receivers) = redis::from_redis_value::<usize>(&values[1]) {
-                                tracing::debug!(
-                                    "Successfully published update to Redis channel '{}', received by {} clients",
-                                    channel,
-                                    receivers
-                                );
-                            }
-                        }
+                match cmd_result {
+                    Ok(id) => {
+                        tracing::debug!(
+                            "Successfully added update to Redis stream '{}' with ID: {}",
+                            stream_name,
+                            id
+                        );
                     }
                     Err(e) => {
-                        tracing::error!("Failed to execute Redis pipeline: {}", e);
+                        tracing::error!(
+                            "Failed to add update to Redis stream '{}': {}",
+                            stream_name,
+                            e
+                        );
                     }
                 }
             })
@@ -775,6 +814,30 @@ impl BroadcastGroup {
                                     tokio::spawn(async move {
                                         let mut conn = redis.get().await.unwrap();
 
+                                        // 添加调试日志，显示数据的长度和前几个字节
+                                        let debug_prefix = if update.len() > 10 {
+                                            format!("{:?}", &update[..10])
+                                        } else {
+                                            format!("{:?}", update)
+                                        };
+
+                                        tracing::debug!(
+                                            "subscribe_with: Storing update in Redis stream '{}', data length: {}, prefix: {}",
+                                            stream_name,
+                                            update.len(),
+                                            debug_prefix
+                                        );
+
+                                        // 验证数据是否可以被解码
+                                        if let Err(e) = Update::decode_v1(&update) {
+                                            tracing::warn!(
+                                                "subscribe_with: Storing update that cannot be decoded: {}, data length: {}, prefix: {}",
+                                                e,
+                                                update.len(),
+                                                debug_prefix
+                                            );
+                                        }
+
                                         let cmd_result: redis::RedisResult<String> =
                                             redis::cmd("XADD")
                                                 .arg(&stream_name)
@@ -893,9 +956,23 @@ impl BroadcastGroup {
                             Ok(data) => {
                                 if !data.is_empty() {
                                     let mut redis_updates = Vec::new();
-                                    for (_, message_data) in &data {
+                                    for (message_id, message_data) in &data {
                                         for (field, value) in message_data {
                                             if field == "data" {
+                                                // 添加调试日志，显示数据的长度和前几个字节
+                                                let debug_prefix = if value.len() > 10 {
+                                                    format!("{:?}", &value[..10])
+                                                } else {
+                                                    format!("{:?}", value)
+                                                };
+
+                                                tracing::debug!(
+                                                    "Flush: Attempting to decode update from Redis stream, message ID: {}, data length: {}, prefix: {}",
+                                                    message_id,
+                                                    value.len(),
+                                                    debug_prefix
+                                                );
+
                                                 redis_updates.push(value.clone());
                                             }
                                         }
