@@ -11,8 +11,7 @@ import { memo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
-import { DataTable, Map } from "../../../BottomBar/components";
-
+import { DataTable, Map } from "./components";
 import useHooks from "./hooks";
 
 const DebugPreview: React.FC = () => {
@@ -74,7 +73,6 @@ const DebugPreview: React.FC = () => {
         <DataTable />
       </TabsContent>
       <TabsContent className="h-[calc(100%-35px)] px-1 pb-2" value="3d-viewer">
-        {/* <div className="h-[calc(100%-35px)] bg-background" /> */}
         <Map />
       </TabsContent>
     </Tabs>

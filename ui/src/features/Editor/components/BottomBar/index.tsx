@@ -12,8 +12,6 @@ type Props = {
     id: string;
     name: string;
   }[];
-  isOpen: boolean;
-  onOpen: (panel?: "left" | "right" | "bottom") => void;
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
   onWorkflowRename: (id: string, name: string) => void;
@@ -22,17 +20,12 @@ type Props = {
 const BottomBar: React.FC<Props> = ({
   currentWorkflowId,
   openWorkflows,
-  isOpen,
-  onOpen,
   onWorkflowClose,
   onWorkflowChange,
   onWorkflowRename,
 }) => {
   const t = useT();
-  const { debugJob } = useHooks({
-    isOpen,
-    onOpen,
-  });
+  const { debugJob } = useHooks();
 
   return (
     <div

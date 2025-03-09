@@ -126,8 +126,6 @@ export default function Editor({
             <BottomBar
               currentWorkflowId={currentWorkflowId}
               openWorkflows={openWorkflows}
-              isOpen={openPanel === "bottom" && !locallyLockedNode}
-              onOpen={handlePanelOpen}
               onWorkflowClose={handleWorkflowClose}
               onWorkflowChange={handleWorkflowChange}
               onWorkflowRename={handleWorkflowRename}

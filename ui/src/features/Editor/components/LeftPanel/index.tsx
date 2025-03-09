@@ -25,7 +25,7 @@ type Tab = "navigator" | "actions-list" | "resources";
 type Props = {
   nodes: Node[];
   isOpen: boolean;
-  onOpen: (panel?: "left" | "right" | "bottom") => void;
+  onOpen: (panel?: "left" | "right") => void;
   onNodesAdd: (node: Node[]) => void;
   isMainWorkflow: boolean;
   hasReader?: boolean;
