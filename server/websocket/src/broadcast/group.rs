@@ -384,14 +384,15 @@ impl BroadcastGroup {
                     let consumer_name = format!("instance-{}", rand::random::<u32>());
 
                     let mut redis_conn = conn.get().await.unwrap();
-                    let _: redis::RedisResult<String> = redis::cmd("XGROUP")
+                    let _: () = redis::cmd("XGROUP")
                         .arg("CREATE")
                         .arg(&stream_name)
                         .arg(REDIS_WORKER_GROUP)
                         .arg("0")
                         .arg("MKSTREAM")
                         .query_async(&mut *redis_conn)
-                        .await;
+                        .await
+                        .unwrap();
                     drop(redis_conn);
 
                     let awareness_for_sub = group.awareness_ref.clone();
@@ -586,7 +587,6 @@ impl BroadcastGroup {
         let store_future = Some(store.push_update(doc_name, &update));
 
         let redis_future = if let (Some(redis), Some(ttl)) = (redis, redis_ttl) {
-            let cache_key = format!("doc:{}", doc_name);
             let redis_key = format!("pending_updates:{}", doc_name);
             let channel = format!("yjs:updates:{}", doc_name);
             let stream_name = Self::compute_redis_stream_name(doc_name);
@@ -596,13 +596,8 @@ impl BroadcastGroup {
             Some(async move {
                 let mut conn = redis.get().await.unwrap();
 
-                let mut pipe: redis::Pipeline = redis::pipe();
+                let mut pipe = redis::pipe();
                 pipe.atomic()
-                    .cmd("SET")
-                    .arg(&cache_key)
-                    .arg(update.as_slice())
-                    .arg("EX")
-                    .arg(<usize as std::convert::TryInto<u64>>::try_into(ttl).unwrap())
                     .cmd("LPUSH")
                     .arg(&redis_key)
                     .arg(update.as_slice())
@@ -618,11 +613,10 @@ impl BroadcastGroup {
                     .arg("message")
                     .arg(update.as_slice());
 
-                let _: () = pipe.query_async(&mut *conn).await.unwrap();
-                tracing::debug!(
-                    "Successfully executed Redis pipeline for document '{}'",
-                    doc_name
-                );
+                let _: () = pipe.query_async(&mut *conn).await.unwrap_or_else(|e| {
+                    tracing::error!("Failed to execute Redis pipeline: {}", e);
+                });
+                tracing::debug!("Successfully executed Redis pipeline for update");
             })
         } else {
             None
@@ -761,59 +755,40 @@ impl BroadcastGroup {
                                     tokio::spawn(async move {
                                         let mut conn = redis.get().await.unwrap();
 
-                                        match conn
-                                            .lpush::<_, _, ()>(&redis_key, update.as_slice())
+                                        let mut pipe = redis::pipe();
+                                        pipe.atomic()
+                                            .cmd("LPUSH")
+                                            .arg(&redis_key)
+                                            .arg(update.as_slice())
+                                            .cmd("EXPIRE")
+                                            .arg(&redis_key)
+                                            .arg(
+                                                <usize as std::convert::TryInto<u64>>::try_into(
+                                                    ttl,
+                                                )
+                                                .unwrap(),
+                                            )
+                                            .cmd("PUBLISH")
+                                            .arg(&channel)
+                                            .arg(update.as_slice())
+                                            .cmd("XADD")
+                                            .arg(&stream_name)
+                                            .arg("*")
+                                            .arg("message")
+                                            .arg(update.as_slice());
+
+                                        let _: () = pipe
+                                            .query_async(&mut *conn)
                                             .await
-                                        {
-                                            Ok(_) => {
-                                                let _ = conn
-                                                    .expire::<_, ()>(
-                                                        &redis_key,
-                                                        ttl.try_into().unwrap(),
-                                                    )
-                                                    .await;
-                                            }
-                                            Err(e) => {
+                                            .unwrap_or_else(|e| {
                                                 tracing::error!(
-                                                    "Failed to store update to Redis: {}",
+                                                    "Failed to execute Redis pipeline: {}",
                                                     e
                                                 );
-                                            }
-                                        }
-
-                                        match conn
-                                            .publish::<_, _, ()>(&channel, update.as_slice())
-                                            .await
-                                        {
-                                            Ok(_) => {}
-                                            Err(e) => {
-                                                tracing::error!(
-                                                    "Failed to publish update to Redis channel: {}",
-                                                    e
-                                                );
-                                            }
-                                        }
-
-                                        let cmd_result: redis::RedisResult<String> =
-                                            redis::cmd("XADD")
-                                                .arg(&stream_name)
-                                                .arg("*")
-                                                .arg("message")
-                                                .arg(update.as_slice())
-                                                .query_async(&mut *conn)
-                                                .await;
-
-                                        match cmd_result {
-                                            Ok(id) => {
-                                                tracing::debug!("Successfully added update to Redis stream with ID: {}", id);
-                                            }
-                                            Err(e) => {
-                                                tracing::error!(
-                                                    "Failed to add update to Redis stream: {}",
-                                                    e
-                                                );
-                                            }
-                                        }
+                                            });
+                                        tracing::debug!(
+                                            "Successfully executed Redis pipeline for update"
+                                        );
                                     });
                                 }
                             }
