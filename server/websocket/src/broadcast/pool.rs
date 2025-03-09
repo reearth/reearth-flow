@@ -125,35 +125,4 @@ impl BroadcastPool {
             }
         }
     }
-
-    pub async fn flush_all_updates(&self) -> Result<(), anyhow::Error> {
-        tracing::info!("Flushing updates for all groups");
-        let mut errors = Vec::new();
-
-        for entry in self.groups.iter() {
-            let doc_id = entry.key().clone();
-            let group = entry.value().clone();
-
-            tracing::info!("Flushing updates for group '{}'", doc_id);
-            if let Err(e) = group.flush_updates().await {
-                tracing::error!("Failed to flush updates for group '{}': {}", doc_id, e);
-                errors.push((doc_id, e));
-            }
-        }
-
-        if errors.is_empty() {
-            tracing::info!("Successfully flushed updates for all groups");
-            Ok(())
-        } else {
-            let error_msg = errors
-                .iter()
-                .map(|(id, e)| format!("{}: {}", id, e))
-                .collect::<Vec<_>>()
-                .join(", ");
-            Err(anyhow!(
-                "Failed to flush updates for some groups: {}",
-                error_msg
-            ))
-        }
-    }
 }
