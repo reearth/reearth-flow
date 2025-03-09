@@ -424,48 +424,99 @@ impl BroadcastGroup {
                     let sender_for_sub = group.sender.clone();
                     let doc_name_for_sub = doc_name.clone();
                     let redis_url = redis_config.url.clone();
+                    let consumer_name_for_sub = consumer_name.clone();
 
                     let redis_subscriber_task = tokio::spawn(async move {
                         match redis::Client::open(redis_url) {
-                            Ok(client) => match client.get_async_pubsub().await {
-                                Ok(mut pubsub) => {
-                                    let channel = format!("yjs:updates:{}", doc_name_for_sub);
-                                    match pubsub.subscribe(&channel).await {
-                                        Ok(_) => {
-                                            let mut stream = pubsub.on_message();
+                            Ok(client) => match client.get_multiplexed_async_connection().await {
+                                Ok(mut conn) => {
+                                    let stream_name =
+                                        Self::compute_redis_stream_name(&doc_name_for_sub);
 
-                                            while let Some(msg) = stream.next().await {
-                                                match msg.get_payload::<Vec<u8>>() {
-                                                    Ok(payload) => {
-                                                        let awareness =
-                                                            awareness_for_sub.write().await;
-                                                        let mut txn =
-                                                            awareness.doc().transact_mut();
+                                    loop {
+                                        let stream_data: Result<
+                                            Vec<(String, Vec<(String, Vec<(String, Vec<u8>)>)>)>,
+                                            redis::RedisError,
+                                        > = redis::cmd("XREADGROUP")
+                                            .arg("GROUP")
+                                            .arg(REDIS_WORKER_GROUP)
+                                            .arg(&consumer_name_for_sub)
+                                            .arg("COUNT")
+                                            .arg(50)
+                                            .arg("BLOCK")
+                                            .arg(100)
+                                            .arg("STREAMS")
+                                            .arg(&stream_name)
+                                            .arg(">")
+                                            .query_async(&mut conn)
+                                            .await;
 
-                                                        if let Ok(decoded) =
-                                                            Update::decode_v1(&payload)
+                                        match stream_data {
+                                            Ok(data) => {
+                                                if !data.is_empty() {
+                                                    for (_, stream_messages) in &data {
+                                                        for (message_id, message_fields) in
+                                                            stream_messages
                                                         {
-                                                            if let Err(e) =
-                                                                txn.apply_update(decoded)
-                                                            {
-                                                                tracing::warn!("Failed to apply update from Redis: {}", e);
-                                                            } else {
-                                                                let _ =
-                                                                    sender_for_sub.send(payload);
+                                                            for (field, value) in message_fields {
+                                                                if field == "data" {
+                                                                    let awareness =
+                                                                        awareness_for_sub
+                                                                            .write()
+                                                                            .await;
+                                                                    let mut txn = awareness
+                                                                        .doc()
+                                                                        .transact_mut();
+
+                                                                    if let Ok(decoded) =
+                                                                        Update::decode_v1(value)
+                                                                    {
+                                                                        if let Err(e) = txn
+                                                                            .apply_update(decoded)
+                                                                        {
+                                                                            tracing::warn!("Failed to apply update from Redis stream: {}", e);
+                                                                        } else {
+                                                                            let _ = sender_for_sub
+                                                                                .send(
+                                                                                    value.clone(),
+                                                                                );
+                                                                            tracing::debug!("Applied and broadcasted update from Redis stream, message ID: {}", message_id);
+                                                                        }
+                                                                    } else {
+                                                                        tracing::warn!("Failed to decode update from Redis stream, message ID: {}", message_id);
+                                                                    }
+                                                                }
+                                                            }
+
+                                                            let ack_result: Result<
+                                                                (),
+                                                                redis::RedisError,
+                                                            > = redis::cmd("XACK")
+                                                                .arg(&stream_name)
+                                                                .arg(REDIS_WORKER_GROUP)
+                                                                .arg(message_id)
+                                                                .query_async(&mut conn)
+                                                                .await;
+
+                                                            if let Err(e) = ack_result {
+                                                                tracing::warn!("Failed to acknowledge message {}: {}", message_id, e);
                                                             }
                                                         }
                                                     }
-                                                    Err(e) => {
-                                                        tracing::error!("Failed to get payload from Redis message: {}", e);
-                                                    }
                                                 }
                                             }
-                                        }
-                                        Err(e) => {
-                                            tracing::error!(
-                                                "Failed to subscribe to Redis channel: {}",
-                                                e
-                                            );
+                                            Err(e) => {
+                                                if !e.to_string().contains("timeout") {
+                                                    tracing::error!(
+                                                        "Error reading from Redis stream: {}",
+                                                        e
+                                                    );
+                                                    tokio::time::sleep(
+                                                        tokio::time::Duration::from_secs(1),
+                                                    )
+                                                    .await;
+                                                }
+                                            }
                                         }
                                     }
                                 }
