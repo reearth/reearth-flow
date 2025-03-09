@@ -1,5 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, memo, useEffect, useRef, useState } from "react";
 
 import { Dialog, DialogContent, DialogTitle, Input } from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
@@ -125,4 +125,4 @@ const NodePickerDialog: React.FC<Props> = ({
   );
 };
 
-export default NodePickerDialog;
+export default memo(NodePickerDialog);

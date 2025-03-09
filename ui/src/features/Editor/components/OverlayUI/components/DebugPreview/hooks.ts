@@ -1,5 +1,6 @@
 import { MouseEvent, useMemo, useState } from "react";
 
+import { useJob } from "@flow/lib/gql/job";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
 
@@ -18,10 +19,11 @@ export default () => {
     [debugRunState, currentProject],
   );
 
+  const { useGetJob } = useJob();
+
+  const debugJob = useGetJob(debugJobId ?? "").job;
+
   const handleExpand = () => {
-    if (minimized) {
-      setMinimized(false);
-    }
     setExpanded((prev) => !prev);
   };
 
@@ -29,11 +31,19 @@ export default () => {
     e.stopPropagation();
     setMinimized((prev) => !prev);
   };
+
+  const handleTabChange = () => {
+    if (minimized) {
+      setMinimized(false);
+    }
+  };
+
   return {
-    debugJobId,
+    debugJob,
     expanded,
     minimized,
     handleExpand,
     handleMinimize,
+    handleTabChange,
   };
 };
