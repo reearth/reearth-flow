@@ -102,108 +102,93 @@ impl BroadcastGroup {
             let pending_updates = self.pending_updates.clone();
 
             tokio::spawn(async move {
-                let updates = {
+                let mut updates = Vec::new();
+                {
                     let mut pending = pending_updates.lock().await;
-                    if pending.is_empty() {
-                        if let Some(redis_pool) = &redis {
-                            let redis_key = format!("pending_updates:{}", doc_name_clone);
-                            let mut redis_conn = redis_pool.get().await.unwrap();
-                            match redis_conn
-                                .lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1)
-                                .await
-                            {
-                                Ok(redis_updates) => {
-                                    if !redis_updates.is_empty() {
-                                        let doc = Doc::new();
-                                        let mut txn = doc.transact_mut();
+                    if !pending.is_empty() {
+                        updates = std::mem::take(&mut *pending);
+                    }
+                }
 
-                                        let mut has_updates = false;
-                                        for (i, update) in redis_updates.iter().enumerate() {
-                                            if let Ok(decoded) = Update::decode_v1(update) {
-                                                if let Err(e) = txn.apply_update(decoded) {
-                                                    tracing::warn!("Failed to apply update {} during flush: {}", i, e);
-                                                } else {
-                                                    has_updates = true;
-                                                }
-                                            } else {
-                                                tracing::warn!(
-                                                    "Failed to decode update {} during flush",
-                                                    i
-                                                );
-                                            }
-                                        }
+                if updates.is_empty() && redis.is_some() {
+                    let redis_pool = redis.as_ref().unwrap();
+                    let stream_name = Self::compute_redis_stream_name(&doc_name_clone);
+                    let mut redis_conn = redis_pool.get().await.unwrap();
 
-                                        if has_updates {
-                                            let state_vector = StateVector::default();
-                                            let merged_update =
-                                                txn.encode_state_as_update_v1(&state_vector);
+                    let stream_data: Result<
+                        Vec<(String, Vec<(String, Vec<u8>)>)>,
+                        redis::RedisError,
+                    > = redis::cmd("XRANGE")
+                        .arg(&stream_name)
+                        .arg("-")
+                        .arg("+")
+                        .query_async(&mut *redis_conn)
+                        .await;
 
-                                            Self::handle_update(
-                                                merged_update,
-                                                &doc_name_clone,
-                                                &store_clone,
-                                                &redis,
-                                                redis_ttl,
-                                            )
-                                            .await;
-                                        }
-
-                                        if let Err(e) = redis_conn.del::<_, ()>(&redis_key).await {
-                                            tracing::warn!(
-                                                "Failed to clear pending updates from Redis: {}",
-                                                e
-                                            );
-                                        }
+                    if let Ok(data) = stream_data {
+                        if !data.is_empty() {
+                            for (_, message_data) in &data {
+                                for (field, value) in message_data {
+                                    if field == "data" {
+                                        updates.push(value.clone());
                                     }
                                 }
-                                Err(e) => {
-                                    tracing::warn!(
-                                        "Failed to load pending updates from Redis: {}",
-                                        e
+                            }
+
+                            let trim_result: Result<usize, redis::RedisError> = redis::cmd("XTRIM")
+                                .arg(&stream_name)
+                                .arg("MAXLEN")
+                                .arg("0")
+                                .query_async(&mut *redis_conn)
+                                .await;
+
+                            match trim_result {
+                                Ok(count) => {
+                                    tracing::info!(
+                                        "Trimmed {} messages from Redis stream for document '{}'",
+                                        count,
+                                        doc_name_clone
                                     );
+                                }
+                                Err(e) => {
+                                    tracing::warn!("Failed to trim Redis stream: {}", e);
                                 }
                             }
                         }
-                        return;
+                    } else if let Err(e) = stream_data {
+                        tracing::warn!("Failed to load updates from Redis stream: {}", e);
                     }
-                    std::mem::take(&mut *pending)
-                };
+                }
 
-                let doc = Doc::new();
-                let mut txn = doc.transact_mut();
+                if !updates.is_empty() {
+                    let doc = Doc::new();
+                    let mut txn = doc.transact_mut();
 
-                let mut has_updates = false;
-                for (i, update) in updates.iter().enumerate() {
-                    if let Ok(decoded) = Update::decode_v1(update) {
-                        if let Err(e) = txn.apply_update(decoded) {
-                            tracing::warn!("Failed to apply update {} during flush: {}", i, e);
+                    let mut has_updates = false;
+                    for (i, update) in updates.iter().enumerate() {
+                        if let Ok(decoded) = Update::decode_v1(update) {
+                            if let Err(e) = txn.apply_update(decoded) {
+                                tracing::warn!("Failed to apply update {} during flush: {}", i, e);
+                            } else {
+                                has_updates = true;
+                            }
                         } else {
-                            has_updates = true;
+                            tracing::warn!("Failed to decode update {} during flush", i);
                         }
-                    } else {
-                        tracing::warn!("Failed to decode update {} during flush", i);
                     }
-                }
 
-                if has_updates {
-                    let state_vector = StateVector::default();
-                    let merged_update = txn.encode_state_as_update_v1(&state_vector);
+                    if has_updates {
+                        let state_vector = StateVector::default();
+                        let merged_update = txn.encode_state_as_update_v1(&state_vector);
 
-                    Self::handle_update(
-                        merged_update,
-                        &doc_name_clone,
-                        &store_clone,
-                        &redis,
-                        redis_ttl,
-                    )
-                    .await;
-                }
-
-                if let Some(redis_pool) = &redis {
-                    let redis_key = format!("pending_updates:{}", doc_name_clone);
-                    let mut redis_conn = redis_pool.get().await.unwrap();
-                    if let Err(e) = redis_conn.del::<_, ()>(&redis_key).await {
-                        tracing::warn!("Failed to clear pending updates from Redis: {}", e);
+                        Self::handle_update(
+                            merged_update,
+                            &doc_name_clone,
+                            &store_clone,
+                            &redis,
+                            redis_ttl,
+                        )
+                        .await;
                     }
                 }
             });
