@@ -335,7 +335,7 @@ impl BroadcastGroup {
         let redis_pool = if let Some(redis_config) = config.redis_config {
             match Self::init_redis_connection(&redis_config.url).await {
                 Ok(conn) => {
-                    let redis_key = format!("pending_updates:{}", doc_name);
+                    let stream_name = Self::compute_redis_stream_name(&doc_name);
                     let conn_clone = conn.clone();
                     let awareness_clone = group.awareness_ref.clone();
                     let pending_clone = group.pending_updates.clone();
@@ -348,34 +348,60 @@ impl BroadcastGroup {
                                 return;
                             }
                         };
-                        match redis_conn
-                            .lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1)
-                            .await
-                        {
-                            Ok(updates) => {
-                                if !updates.is_empty() {
+
+                        let stream_data: Result<
+                            Vec<(String, Vec<(String, Vec<u8>)>)>,
+                            redis::RedisError,
+                        > = redis::cmd("XRANGE")
+                            .arg(&stream_name)
+                            .arg("-")
+                            .arg("+")
+                            .query_async(&mut *redis_conn)
+                            .await;
+
+                        match stream_data {
+                            Ok(data) => {
+                                if !data.is_empty() {
                                     let awareness = awareness_clone.write().await;
                                     let mut txn = awareness.doc().transact_mut();
+                                    let mut updates = Vec::new();
 
-                                    for update in &updates {
-                                        if let Ok(decoded) = Update::decode_v1(update) {
-                                            if let Err(e) = txn.apply_update(decoded) {
+                                    // 处理每个消息
+                                    for (_, message_data) in &data {
+                                        for (_, update_bytes) in message_data {
+                                            if let Ok(decoded) = Update::decode_v1(update_bytes) {
+                                                if let Err(e) = txn.apply_update(decoded) {
+                                                    tracing::warn!(
+                                                        "Failed to apply update from Redis stream: {}",
+                                                        e
+                                                    );
+                                                } else {
+                                                    updates.push(update_bytes.clone());
+                                                    tracing::debug!(
+                                                        "Applied update from Redis stream"
+                                                    );
+                                                }
+                                            } else {
                                                 tracing::warn!(
-                                                    "Failed to apply update from Redis: {}",
-                                                    e
+                                                    "Failed to decode update from Redis stream"
                                                 );
                                             }
-                                        } else {
-                                            tracing::warn!("Failed to decode update from Redis");
                                         }
                                     }
 
-                                    let mut pending = pending_clone.lock().await;
-                                    pending.extend(updates);
+                                    if !updates.is_empty() {
+                                        let mut pending = pending_clone.lock().await;
+                                        pending.extend(updates);
+                                        tracing::info!(
+                                            "Loaded {} updates from Redis stream for document '{}'",
+                                            pending.len(),
+                                            stream_name
+                                        );
+                                    }
                                 }
                             }
                             Err(e) => {
-                                tracing::warn!("Failed to load pending updates from Redis: {}", e);
+                                tracing::warn!("Failed to load updates from Redis stream: {}", e);
                             }
                         }
                     });
@@ -482,40 +508,8 @@ impl BroadcastGroup {
 
     async fn init_redis_connection(url: &str) -> Result<Arc<RedisPool>, redis::RedisError> {
         let manager = RedisConnectionManager::new(url)?;
-        let pool = bb8::Pool::builder()
-            .max_size(1024)
-            .min_idle(5)
-            .connection_timeout(std::time::Duration::from_secs(5))
-            .idle_timeout(Some(std::time::Duration::from_secs(500)))
-            .max_lifetime(Some(std::time::Duration::from_secs(7200)))
-            .build(manager)
-            .await
-            .map_err(|e| {
-                redis::RedisError::from(std::io::Error::new(std::io::ErrorKind::Other, e))
-            })?;
+        let pool = bb8::Pool::builder().build(manager).await?;
         Ok(Arc::new(pool))
-    }
-
-    #[allow(dead_code)]
-    async fn load_from_redis(
-        redis: &Arc<RedisPool>,
-        doc_name: &str,
-        awareness: &AwarenessRef,
-    ) -> Result<(), anyhow::Error> {
-        let mut conn = redis.get().await?;
-        let cache_key = format!("doc:{}", doc_name);
-
-        let cached_data: Vec<u8> = conn
-            .get(&cache_key)
-            .await
-            .map_err(|e| Error::Other(e.into()))?;
-        let update = Update::decode_v1(&cached_data)?;
-
-        let awareness_guard = awareness.write().await;
-        let mut txn = awareness_guard.doc().transact_mut();
-        txn.apply_update(update)?;
-
-        Ok(())
     }
 
     async fn load_from_storage(store: &Arc<GcsStore>, doc_name: &str, awareness: &AwarenessRef) {
@@ -586,9 +580,6 @@ impl BroadcastGroup {
         let store_future = Some(store.push_update(doc_name, &update));
 
         let redis_future = if let (Some(redis), Some(ttl)) = (redis, redis_ttl) {
-            let cache_key = format!("doc:{}", doc_name);
-            let redis_key = format!("pending_updates:{}", doc_name);
-            let channel = format!("yjs:updates:{}", doc_name);
             let stream_name = Self::compute_redis_stream_name(doc_name);
             let redis = redis.clone();
             let update = update.clone();
@@ -596,33 +587,32 @@ impl BroadcastGroup {
             Some(async move {
                 let mut conn = redis.get().await.unwrap();
 
-                let mut pipe: redis::Pipeline = redis::pipe();
-                pipe.atomic()
-                    .cmd("SET")
-                    .arg(&cache_key)
-                    .arg(update.as_slice())
-                    .arg("EX")
-                    .arg(<usize as std::convert::TryInto<u64>>::try_into(ttl).unwrap())
-                    .cmd("LPUSH")
-                    .arg(&redis_key)
-                    .arg(update.as_slice())
-                    .cmd("EXPIRE")
-                    .arg(&redis_key)
-                    .arg(<usize as std::convert::TryInto<u64>>::try_into(ttl).unwrap())
-                    .cmd("PUBLISH")
-                    .arg(&channel)
-                    .arg(update.as_slice())
-                    .cmd("XADD")
+                let cmd_result: redis::RedisResult<String> = redis::cmd("XADD")
                     .arg(&stream_name)
                     .arg("*")
-                    .arg("message")
-                    .arg(update.as_slice());
+                    .arg("data")
+                    .arg(update.as_slice())
+                    .arg("ttl")
+                    .arg(ttl.to_string())
+                    .query_async(&mut *conn)
+                    .await;
 
-                let _: () = pipe.query_async(&mut *conn).await.unwrap();
-                tracing::debug!(
-                    "Successfully executed Redis pipeline for document '{}'",
-                    doc_name
-                );
+                match cmd_result {
+                    Ok(id) => {
+                        tracing::debug!(
+                            "Successfully added update to Redis stream '{}' with ID: {}",
+                            stream_name,
+                            id
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to add update to Redis stream '{}': {}",
+                            stream_name,
+                            e
+                        );
+                    }
+                }
             })
         } else {
             None
@@ -751,65 +741,36 @@ impl BroadcastGroup {
                                 if let (Some(redis), Some(ttl), Some(doc_name)) =
                                     (&redis, redis_ttl, &doc_name)
                                 {
-                                    let redis_key = format!("pending_updates:{}", doc_name);
+                                    let stream_name = Self::compute_redis_stream_name(doc_name);
                                     let redis = redis.clone();
                                     let update = update.clone();
-                                    let channel = format!("yjs:updates:{}", doc_name);
-                                    let stream_name =
-                                        format!("{}:room:{}", REDIS_STREAM_PREFIX, doc_name);
 
                                     tokio::spawn(async move {
                                         let mut conn = redis.get().await.unwrap();
-
-                                        match conn
-                                            .lpush::<_, _, ()>(&redis_key, update.as_slice())
-                                            .await
-                                        {
-                                            Ok(_) => {
-                                                let _ = conn
-                                                    .expire::<_, ()>(
-                                                        &redis_key,
-                                                        ttl.try_into().unwrap(),
-                                                    )
-                                                    .await;
-                                            }
-                                            Err(e) => {
-                                                tracing::error!(
-                                                    "Failed to store update to Redis: {}",
-                                                    e
-                                                );
-                                            }
-                                        }
-
-                                        match conn
-                                            .publish::<_, _, ()>(&channel, update.as_slice())
-                                            .await
-                                        {
-                                            Ok(_) => {}
-                                            Err(e) => {
-                                                tracing::error!(
-                                                    "Failed to publish update to Redis channel: {}",
-                                                    e
-                                                );
-                                            }
-                                        }
 
                                         let cmd_result: redis::RedisResult<String> =
                                             redis::cmd("XADD")
                                                 .arg(&stream_name)
                                                 .arg("*")
-                                                .arg("message")
+                                                .arg("data")
                                                 .arg(update.as_slice())
+                                                .arg("ttl")
+                                                .arg(ttl.to_string())
                                                 .query_async(&mut *conn)
                                                 .await;
 
                                         match cmd_result {
                                             Ok(id) => {
-                                                tracing::debug!("Successfully added update to Redis stream with ID: {}", id);
+                                                tracing::debug!(
+                                                    "Successfully added update to Redis stream '{}' with ID: {}",
+                                                    stream_name,
+                                                    id
+                                                );
                                             }
                                             Err(e) => {
                                                 tracing::error!(
-                                                    "Failed to add update to Redis stream: {}",
+                                                    "Failed to add update to Redis stream '{}': {}",
+                                                    stream_name,
                                                     e
                                                 );
                                             }
@@ -888,26 +849,45 @@ impl BroadcastGroup {
                 let mut pending = self.pending_updates.lock().await;
                 if pending.is_empty() {
                     if let Some(redis) = &self.redis_pool {
-                        let redis_key = format!("pending_updates:{}", doc_name);
+                        let stream_name = Self::compute_redis_stream_name(doc_name);
                         let mut redis_conn = redis.get().await.unwrap();
-                        match redis_conn
-                            .lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1)
-                            .await
-                        {
-                            Ok(redis_updates) => {
-                                if !redis_updates.is_empty() {
-                                    tracing::info!(
-                                        "Found {} pending updates in Redis for document '{}'",
-                                        redis_updates.len(),
-                                        doc_name
-                                    );
-                                    return self
-                                        .flush_redis_updates(redis_updates, doc_name, store)
-                                        .await;
+
+                        let stream_data: Result<
+                            Vec<(String, Vec<(String, Vec<u8>)>)>,
+                            redis::RedisError,
+                        > = redis::cmd("XRANGE")
+                            .arg(&stream_name)
+                            .arg("-")
+                            .arg("+")
+                            .query_async(&mut *redis_conn)
+                            .await;
+
+                        match stream_data {
+                            Ok(data) => {
+                                if !data.is_empty() {
+                                    let mut redis_updates = Vec::new();
+                                    for (_, message_data) in &data {
+                                        for (field, value) in message_data {
+                                            if field == "data" {
+                                                redis_updates.push(value.clone());
+                                            }
+                                        }
+                                    }
+
+                                    if !redis_updates.is_empty() {
+                                        tracing::info!(
+                                            "Found {} pending updates in Redis stream for document '{}'",
+                                            redis_updates.len(),
+                                            doc_name
+                                        );
+                                        return self
+                                            .flush_redis_updates(redis_updates, doc_name, store)
+                                            .await;
+                                    }
                                 }
                             }
                             Err(e) => {
-                                tracing::warn!("Failed to load pending updates from Redis: {}", e);
+                                tracing::warn!("Failed to load updates from Redis stream: {}", e);
                             }
                         }
                     }
@@ -920,15 +900,27 @@ impl BroadcastGroup {
             let result = self.apply_and_store_updates(updates, doc_name, store).await;
 
             if let Some(redis) = &self.redis_pool {
-                let redis_key = format!("pending_updates:{}", doc_name);
+                let stream_name = Self::compute_redis_stream_name(doc_name);
                 let mut redis_conn = redis.get().await.unwrap();
-                if let Err(e) = redis_conn.del::<_, ()>(&redis_key).await {
-                    tracing::warn!("Failed to clear pending updates from Redis: {}", e);
-                } else {
-                    tracing::info!(
-                        "Cleared pending updates from Redis for document '{}'",
-                        doc_name
-                    );
+
+                let trim_result: Result<usize, redis::RedisError> = redis::cmd("XTRIM")
+                    .arg(&stream_name)
+                    .arg("MAXLEN")
+                    .arg("0")
+                    .query_async(&mut *redis_conn)
+                    .await;
+
+                match trim_result {
+                    Ok(count) => {
+                        tracing::info!(
+                            "Trimmed {} messages from Redis stream for document '{}'",
+                            count,
+                            doc_name
+                        );
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to trim Redis stream: {}", e);
+                    }
                 }
             }
 
@@ -997,15 +989,27 @@ impl BroadcastGroup {
         let result = self.apply_and_store_updates(updates, doc_name, store).await;
 
         if let Some(redis) = &self.redis_pool {
-            let redis_key = format!("pending_updates:{}", doc_name);
+            let stream_name = Self::compute_redis_stream_name(doc_name);
             let mut redis_conn = redis.get().await.map_err(|e| Error::Other(e.into()))?;
-            if let Err(e) = redis_conn.del::<_, ()>(&redis_key).await {
-                tracing::warn!("Failed to clear pending updates from Redis: {}", e);
-            } else {
-                tracing::info!(
-                    "Cleared pending updates from Redis for document '{}'",
-                    doc_name
-                );
+
+            let trim_result: Result<usize, redis::RedisError> = redis::cmd("XTRIM")
+                .arg(&stream_name)
+                .arg("MAXLEN")
+                .arg("0")
+                .query_async(&mut *redis_conn)
+                .await;
+
+            match trim_result {
+                Ok(count) => {
+                    tracing::info!(
+                        "Trimmed {} messages from Redis stream for document '{}'",
+                        count,
+                        doc_name
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to trim Redis stream: {}", e);
+                }
             }
         }
 
