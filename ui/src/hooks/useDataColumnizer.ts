@@ -105,10 +105,10 @@ export default ({
   }, [parsedData, type]);
 
   useEffect(() => {
-    if (parsedData && !data) {
+    if (parsedData) {
       handleDataLoaded();
     }
-  }, [data, parsedData, type, handleDataLoaded]);
+  }, [parsedData, handleDataLoaded]);
 
   return {
     tableData: data,

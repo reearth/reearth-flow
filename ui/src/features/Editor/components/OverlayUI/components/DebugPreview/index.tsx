@@ -45,15 +45,16 @@ const DebugPreview: React.FC = () => {
       <div className="relative flex items-center p-1">
         <div className="absolute left-1 top-1">
           <Select
-            value={outputURLs[0]}
+            defaultValue={outputURLs[0]}
             onValueChange={handleSelectedDataChange}>
-            <SelectTrigger className="h-[26px] max-w-[200px]">
+            <SelectTrigger className="h-[26px] max-w-[200px] border-none">
               <SelectValue placeholder={t("Select Data to Preview")} />
             </SelectTrigger>
             <SelectContent>
               {outputURLs.map((url) => (
                 <SelectItem key={url} value={url}>
                   {url.split("/").pop()}
+                  {t(" (Output data)")}
                 </SelectItem>
               ))}
             </SelectContent>

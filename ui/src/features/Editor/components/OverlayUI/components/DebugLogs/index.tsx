@@ -13,7 +13,7 @@ const DebugLogs: React.FC = () => {
 
   return debugJobId ? (
     <div
-      className={`pointer-events-auto w-[45vw] min-w-[700px] cursor-pointer rounded border bg-secondary transition-all ${minimized ? "h-[36px]" : expanded ? "h-[80vh]" : "h-[300px]"}`}>
+      className={`pointer-events-auto w-[45vw] min-w-[700px] cursor-pointer rounded border bg-secondary transition-all ${minimized ? "h-[36px]" : expanded ? "h-[80vh]" : "h-[350px]"}`}>
       <div className="flex items-center p-1" onClick={handleExpand}>
         <div className="flex flex-1 items-center justify-center gap-2">
           <Terminal />

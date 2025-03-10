@@ -1,18 +1,20 @@
-import { Color, Viewer as CesiumViewerType } from "cesium";
-import { useEffect, useRef, useState } from "react";
-import { CesiumComponentRef, GeoJsonDataSource, Viewer } from "resium";
+// import { Viewer as CesiumViewerType } from "cesium";
+import { SceneMode } from "cesium";
+import { useEffect, useState } from "react";
+import { Viewer, ViewerProps } from "resium";
 
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
-import { CesiumContents } from "./Contents";
+import GeoJsonData from "./GeoJson";
 
 const dummyCredit = document.createElement("div");
 
-const defaultCesiumProps = {
+const defaultCesiumProps: Partial<ViewerProps> = {
   // timeline: false,
-  // homeButton: false,
   // baseLayerPicker: false,
   // sceneModePicker: false,
+  sceneMode: SceneMode.COLUMBUS_VIEW,
+  homeButton: false,
   fullscreenButton: false,
   geocoder: false,
   animation: false,
@@ -26,7 +28,6 @@ type Props = {
 };
 
 const CesiumViewer: React.FC<Props> = ({ fileContent, fileType }) => {
-  const viewerRef = useRef<CesiumComponentRef<CesiumViewerType>>(null);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -35,27 +36,9 @@ const CesiumViewer: React.FC<Props> = ({ fileContent, fileType }) => {
   }, [isLoaded]);
 
   return (
-    <Viewer ref={viewerRef} full {...defaultCesiumProps}>
-      <CesiumContents isLoaded={isLoaded} />
-      {isLoaded && fileType === "geojson" && fileContent && (
-        <GeoJsonDataSource
-          data={fileContent}
-          onLoad={(geoJsonDataSource) => {
-            geoJsonDataSource.entities.values.forEach((entity) => {
-              // TODO: Add more styling options
-              if (entity.polygon) {
-                entity.polygon.material = Color.BLACK.withAlpha(0.5);
-                entity.polygon.outlineColor = Color.BLACK;
-              }
-            });
-
-            if (viewerRef.current) {
-              viewerRef.current.cesiumElement?.zoomTo(
-                geoJsonDataSource.entities,
-              );
-            }
-          }}
-        />
+    <Viewer full {...defaultCesiumProps}>
+      {isLoaded && fileType === "geojson" && (
+        <GeoJsonData geoJsonData={fileContent} />
       )}
     </Viewer>
   );

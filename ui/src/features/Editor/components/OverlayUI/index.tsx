@@ -114,7 +114,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         <div className="pointer-events-none absolute inset-y-2 left-2 flex items-end">
           <DebugLogs />
         </div>
-        <div className="pointer-events-none absolute bottom-2 right-2 flex flex-row-reverse items-end">
+        <div className="pointer-events-none absolute bottom-2 right-2 flex flex-row-reverse items-end gap-2">
           <CanvasActionBar />
           <DebugPreview />
         </div>

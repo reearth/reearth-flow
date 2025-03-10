@@ -33,7 +33,6 @@ export default () => {
   }, [outputURLs, selectedDataURL]);
 
   const handleSelectedDataChange = (url: string) => {
-    console.log("url", url);
     setSelectedDataURL(url);
   };
 
