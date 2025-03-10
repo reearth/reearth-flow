@@ -2,7 +2,6 @@ package interactor
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
@@ -87,12 +86,14 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 
 	authInfo := adapter.GetAuthInfo(ctx)
 	if authInfo == nil {
-		return fmt.Errorf("auth info not found")
+		log.Printf("WARNING: AuthInfo not found for resource=%s action=%s", resource, action)
+		return nil
 	}
 
 	user := adapter.User(ctx)
 	if user == nil {
-		return fmt.Errorf("user not found")
+		log.Printf("WARNING: User not found for resource=%s action=%s", resource, action)
+		return nil
 	}
 
 	// Once the operation check in the oss environment is completed, delete the log output and
