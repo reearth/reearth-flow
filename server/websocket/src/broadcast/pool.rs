@@ -72,14 +72,19 @@ impl BroadcastPool {
     ) -> Result<bool> {
         let mut should_initialize = true;
 
-        if let Ok(exists) = conn.exists::<_, bool>(lock_key).await {
-            should_initialize = !exists;
-        }
+        // First check if the key exists
+        let exists: bool = conn.exists(lock_key).await?;
+        tracing::info!("exists: {}", exists);
+        should_initialize = !exists;
+
+        tracing::info!("should_initialize: {}", should_initialize);
 
         if should_initialize {
-            let _: () = conn.set_ex(lock_key, "true", 86400).await?;
+            tracing::info!("setting lock");
+            let _: () = conn.set_ex(lock_key, "true", 300).await?;
             Ok(true)
         } else {
+            tracing::info!("lock already exists");
             Ok(false)
         }
     }
@@ -122,6 +127,7 @@ impl BroadcastPool {
                     if let Some(redis_config) = &self.redis_config {
                         let redis_key = format!("pending_updates:{}", doc_id);
                         let lock_key = format!("workflow_init_lock:{}", doc_id);
+                        let init_key = format!("workflow_initialized:{}", doc_id);
 
                         if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
                             if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
@@ -131,10 +137,14 @@ impl BroadcastPool {
                                 tracing::info!("lock_acquired: {}", lock_acquired);
 
                                 if lock_acquired {
-                                    needs_initialization = self
-                                        .handle_doc_initialization(&mut conn, &lock_key)
-                                        .await?;
+                                    // If we acquired the lock, we should initialize
+                                    needs_initialization = true;
                                     let _: () = conn.del(&lock_key).await?;
+                                } else {
+                                    // If we didn't acquire the lock, check if it exists
+                                    needs_initialization = !self
+                                        .handle_doc_initialization(&mut conn, &init_key)
+                                        .await?;
                                 }
 
                                 tracing::info!("redis_key: {}", redis_key);
@@ -173,8 +183,24 @@ impl BroadcastPool {
                                         "Successfully loaded existing document: {}",
                                         doc_id
                                     );
+                                    let init_map = txn.get_or_insert_map("workflow_initialized");
+                                    init_map.insert(&mut txn, "initialized", Any::Bool(true));
                                 } else {
                                     tracing::info!("Creating new document: {}", doc_id);
+                                    tracing::info!(
+                                        "needs_initialization: {}",
+                                        needs_initialization
+                                    );
+                                    if !needs_initialization {
+                                        println!("needs_initialization: {}", needs_initialization);
+                                        let init_map =
+                                            txn.get_or_insert_map("workflow_initialized");
+                                        init_map.insert(&mut txn, "initialized", Any::Bool(true));
+                                    } else {
+                                        let init_map =
+                                            txn.get_or_insert_map("workflow_initialized");
+                                        init_map.insert(&mut txn, "initialized", Any::Bool(false));
+                                    }
                                 }
                             }
                             Err(e) => {
@@ -182,18 +208,6 @@ impl BroadcastPool {
                                 return Err(anyhow!("Failed to load document: {}", e));
                             }
                         }
-
-                        // if needs_initialization {
-                        //     let init_map = txn.get_or_insert_map("workflow_initialized");
-                        //     let workflows = txn.get_or_insert_array("workflows");
-                        //     if workflows.len(&txn) == 0 {
-                        //         tracing::info!("Initializing document: {}", doc_id);
-                        //         init_map.insert(&mut txn, "initialized", Any::Bool(false));
-                        //     }
-                        // } else {
-                        //     let init_map = txn.get_or_insert_map("workflow_initialized");
-                        //     init_map.insert(&mut txn, "initialized", Any::Bool(true));
-                        // }
 
                         tracing::info!("applying updates");
 
