@@ -58,7 +58,7 @@ export default ({
 
         yWebSocketProvider.once("sync", () => {
           const initFlag = yDoc.getMap(INIT_FLAG_KEY);
-          
+
           yDoc.transact(() => {
             if (!initFlag.get("initialized") && yWorkflows.length === 0) {
               const yWorkflow = yWorkflowConstructor(
