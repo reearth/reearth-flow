@@ -55,22 +55,33 @@ export default ({
         );
 
         yWebSocketProvider.once("sync", () => {
-          if (yWorkflows.length === 0) {
-            yDoc.transact(() => {
-              const yWorkflow = yWorkflowConstructor(
-                DEFAULT_ENTRY_GRAPH_ID,
-                "Main Workflow",
-              );
-              yWorkflows.insert(0, [yWorkflow]);
-            });
+          const metaMap = yDoc.getMap<boolean>("__meta__");
+          
+          const mainWorkflowCreated = metaMap.get("mainWorkflowCreated");
+          
+          if (!mainWorkflowCreated && yWorkflows.length === 0) {
+            setTimeout(() => {
+              if (!metaMap.get("mainWorkflowCreated") && yWorkflows.length === 0) {
+                yDoc.transact(() => {
+                  metaMap.set("mainWorkflowCreated", true);
+                  
+                  const yWorkflow = yWorkflowConstructor(
+                    DEFAULT_ENTRY_GRAPH_ID,
+                    "Main Workflow",
+                  );
+                  yWorkflows.insert(0, [yWorkflow]);
+                  
+                  console.log("Created main workflow with client ID:", yDoc.clientID);
+                });
+              }
+            }, 500);
           }
-
-          setIsSynced(true); // Mark as synced
+          
+          setIsSynced(true);
         });
       })();
     }
 
-    // Initial state setup
     setState({
       yDoc,
       yWorkflows,
@@ -79,8 +90,8 @@ export default ({
     });
 
     return () => {
-      setIsSynced(false); // Mark as not synced
-      yWebSocketProvider?.destroy(); // Cleanup on unmount
+      setIsSynced(false);
+      yWebSocketProvider?.destroy();
     };
   }, [projectId, workflowId, isProtected, getAccessToken]);
 
@@ -91,16 +102,53 @@ export default ({
   useEffect(() => {
     if (yWorkflows) {
       const manager = new Y.UndoManager(yWorkflows, {
-        trackedOrigins: new Set([currentUserClientId]), // Only track local changes
-        captureTimeout: 200, // default is 500. 200ms is a good balance between performance and user experience
+        trackedOrigins: new Set([currentUserClientId]),
+        captureTimeout: 200,
       });
       setUndoManager(manager);
 
       return () => {
-        manager.destroy(); // Clean up UndoManager on component unmount
+        manager.destroy();
       };
     }
   }, [yWorkflows, currentUserClientId]);
+
+  useEffect(() => {
+    if (yDoc && yWorkflows && isSynced) {
+      const observer = () => {
+        const metaMap = yDoc.getMap<boolean>("__meta__");
+        
+        if (yWorkflows.length > 0 && !metaMap.get("mainWorkflowCreated")) {
+          yDoc.transact(() => {
+            metaMap.set("mainWorkflowCreated", true);
+          });
+        }
+        
+        if (metaMap.get("mainWorkflowCreated") && yWorkflows.length === 0) {
+          setTimeout(() => {
+            if (yWorkflows.length === 0) {
+              console.warn("Flag set but no workflows exist, creating main workflow");
+              yDoc.transact(() => {
+                const yWorkflow = yWorkflowConstructor(
+                  DEFAULT_ENTRY_GRAPH_ID,
+                  "Main Workflow",
+                );
+                yWorkflows.insert(0, [yWorkflow]);
+              });
+            }
+          }, 1000);
+        }
+      };
+      
+      yWorkflows.observe(observer);
+      
+      observer();
+      
+      return () => {
+        yWorkflows.unobserve(observer);
+      };
+    }
+  }, [yDoc, yWorkflows, isSynced]);
 
   return {
     state,
