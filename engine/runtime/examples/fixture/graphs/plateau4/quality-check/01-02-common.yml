@@ -8,6 +8,15 @@ nodes:
     with:
       routingPort: default
 
+  - id: c7315341-26b3-4405-9d02-039d721cd225
+    name: DirectoryDecompressor
+    type: action
+    action: DirectoryDecompressor
+    with:
+      archiveAttributes:
+        - codelists
+        - schemas
+
   - id: c790e59a-4283-452f-bc24-9cc966c3ec79
     name: PLATEAU4.ObjectListExtractor
     type: action
@@ -41,6 +50,8 @@ nodes:
     with:
       cityGmlPath: |
         env.get("__value")["path"]
+      codelistsPath: "codelists"
+      schemasPath: "schemas"
 
   - id: e86300b4-59a7-4714-ad89-3aa18ef201d8
     name: XMLFragmenter
@@ -83,7 +94,7 @@ nodes:
           feature["dataFileData"]
         }
       output: |
-        file::join_path(env.get("outputPath"), env.get("temporaryKey"), "summary_" + env.get("__value")["package"] + ".json")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_" + env.get("__value")["package"] + ".json")
 
   - id: a4b8150a-6241-46ac-849d-39be21d39d1b
     name: AttributeMapperRequired
@@ -114,7 +125,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "01-2_必須属性等_必須属性等の欠落_" + env.get("__value")["package"] + ".csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01-2_必須属性等_必須属性等の欠落_" + env.get("__value")["package"] + ".csv")
 
   - id: f70fe4c6-9dcf-4657-80fb-3edb59eae80d
     name: AttributeMapperTarget
@@ -136,7 +147,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "01-2_必須属性等_現われなかった属性等_" + env.get("__value")["package"] + ".csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01-2_必須属性等_現われなかった属性等_" + env.get("__value")["package"] + ".csv")
 
   - id: da1eaeee-4a50-4b6b-afee-3cfaf4887613
     name: OutputRouter
@@ -148,6 +159,11 @@ nodes:
 edges:
   - id: 668cbbf5-9da8-45db-baca-312d69d219c2
     from: 00f42e7e-080b-4927-933b-70fc8d8136b8
+    to: c7315341-26b3-4405-9d02-039d721cd225
+    fromPort: default
+    toPort: default
+  - id: ffa9e8ec-6adb-43a4-a7f1-8c429ff857bc
+    from: c7315341-26b3-4405-9d02-039d721cd225
     to: c790e59a-4283-452f-bc24-9cc966c3ec79
     fromPort: default
     toPort: default

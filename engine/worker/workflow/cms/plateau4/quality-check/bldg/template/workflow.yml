@@ -1,19 +1,18 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
-id: 83307700-04b9-490c-b6a1-11b93e7f7a8a
+id: a0388d9e-3373-4d00-92d1-a8b7c9d89f7a
 name: "PLATEAU4-quality-check-02-bldg-workflow"
-entryGraphId: 34bf873b-3364-46b0-8153-efeb9568bb3c
+entryGraphId: 12e53460-cbc2-4abd-b7bb-8138e4eef55a
 with:
   cityGmlPath:
   codelists:
   schemas:
   objectLists:
-  outputPath:
 graphs:
-  - !include ../../../../graphs/plateau4/xml_validator.yml
-  - !include ../../../../graphs/plateau4/domain_of_definition_validator.yml
-  - !include ../../../../graphs/plateau4/quality-check/01-01-common.yml
-  - !include ../../../../graphs/plateau4/quality-check/01-02-common.yml
-  - id: 34bf873b-3364-46b0-8153-efeb9568bb3c
+  - !include ../../../../../../../runtime/examples/fixture/graphs/plateau4/xml_validator.yml
+  - !include ../../../../../../../runtime/examples/fixture/graphs/plateau4/domain_of_definition_validator.yml
+  - !include ../../../../../../../runtime/examples/fixture/graphs/plateau4/quality-check/01-01-common.yml
+  - !include ../../../../../../../runtime/examples/fixture/graphs/plateau4/quality-check/01-02-common.yml
+  - id: 12e53460-cbc2-4abd-b7bb-8138e4eef55a
     name: entry_point
     nodes:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
@@ -49,7 +48,7 @@ graphs:
         action: ZipFileWriter
         with:
           output: |
-            file::join_path(env.get("outputPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip")
+            file::join_path(env.get("workerArtifactPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip")
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244

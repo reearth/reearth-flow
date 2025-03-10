@@ -424,7 +424,7 @@ fn process_feature(
         .unwrap_or_default();
 
     let city_gml_path = feature.attributes.get(&Attribute::new("path")).ok_or(
-        PlateauProcessorError::DomainOfDefinitionValidator("cityGmlPath key empty".to_string()),
+        PlateauProcessorError::DomainOfDefinitionValidator("path key empty".to_string()),
     )?;
 
     let city_gml_uri = Uri::from_str(&city_gml_path.to_string())
@@ -788,12 +788,9 @@ fn process_member_node(
                 e
             ))
         })?;
-    let city_gml_path = feature
-        .attributes
-        .get(&Attribute::new("cityGmlPath"))
-        .ok_or(PlateauProcessorError::DomainOfDefinitionValidator(
-            "cityGmlPath key empty".to_string(),
-        ))?;
+    let city_gml_path = feature.attributes.get(&Attribute::new("path")).ok_or(
+        PlateauProcessorError::DomainOfDefinitionValidator("path key empty".to_string()),
+    )?;
     let city_gml_uri = Uri::from_str(&city_gml_path.to_string())
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
     let base_dir = city_gml_uri
