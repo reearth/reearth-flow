@@ -5,6 +5,8 @@ import type {
   JobStatus as GraphqlJobStatus,
   TriggerFragment,
   LogFragment,
+  ProjectSnapshotFragment,
+  ProjectDocumentFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import {
   Log,

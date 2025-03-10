@@ -17,14 +17,16 @@ const VersionHistoryList: React.FC<Props> = ({ projectId }) => {
     history,
     isFetching,
     selectedProjectSnapshotVersion,
+    latestProjectSnapshotVersion,
     setSelectedProjectSnapshotVersion,
     openVersionChangeDialog,
     setOpenVersionChangeDialog,
     onRollbackProject,
   } = useHooks({ projectId: projectId ?? "" });
-  const currentVersion = history && history.length > 0 ? history[0] : null;
-  const previousVersions =
-    history && history.length > 1 ? history.slice(1) : [];
+
+  const previousVersions = history?.filter(
+    (version) => version.version !== latestProjectSnapshotVersion?.version,
+  );
 
   const handleVersionClick = (version: number) => {
     setSelectedProjectSnapshotVersion(version);
@@ -37,19 +39,19 @@ const VersionHistoryList: React.FC<Props> = ({ projectId }) => {
   return (
     <div className="flex h-full flex-col overflow-auto">
       <ScrollArea>
-        {currentVersion && (
+        {latestProjectSnapshotVersion && (
           <div className="flex items-center justify-between rounded bg-primary p-1 px-4">
             <div>
               <p className="text-sm font-light">{t("Current Version")}</p>
               <p className="flex-[2] text-xs font-thin">
-                {formatDate(currentVersion.timestamp)}
+                {formatDate(latestProjectSnapshotVersion.timestamp)}
               </p>
             </div>
             <p className="rounded border bg-logo/30 p-1 text-xs font-thin">
               <span className="font-light">
                 {" "}
                 {t("Version ")}
-                {currentVersion.version}
+                {latestProjectSnapshotVersion.version}
               </span>
             </p>
           </div>

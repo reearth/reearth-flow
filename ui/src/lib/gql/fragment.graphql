@@ -76,4 +76,5 @@ fragment Log on Log {
   nodeId
   timestamp
   logLevel
+  message
 }
