@@ -1,5 +1,4 @@
 import { Note } from "@phosphor-icons/react";
-import { RJSFSchema } from "@rjsf/utils";
 import { NodeProps, NodeResizer } from "@xyflow/react";
 import { memo } from "react";
 
@@ -12,38 +11,6 @@ export type NoteNodeProps = NodeProps<Node>;
 
 export const initialSize = { width: 300, height: 200 };
 const minSize = { width: 250, height: 150 };
-
-// TODO: Currently textarea data.content on node is not setting the value correctly. Temporary fix is to use description on RJSFS params @billcookie
-const noteNodeSchema: RJSFSchema = {
-  type: "object",
-  properties: {
-    customName: { type: "string", title: "Name" },
-    description: { type: "string", format: "textarea", title: "Description" },
-    textColor: {
-      type: "string",
-      format: "color",
-      default: "#fafafa",
-      title: "Text Color",
-    },
-    backgroundColor: {
-      type: "string",
-      format: "color",
-      default: "#212121",
-      title: "Background Color",
-    },
-  },
-};
-
-export const noteNodeAction = {
-  name: "note",
-  description: "Note node",
-  type: "note",
-  categories: ["note"],
-  inputPorts: ["input"],
-  outputPorts: ["output"],
-  builtin: true,
-  parameter: noteNodeSchema,
-};
 
 export const baseNoteNode: {
   type: NodeType;
@@ -67,7 +34,7 @@ export const baseNoteNode: {
 
 const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
   // background color will always be a hex color, therefore needs to be converted to rgba
-  const backgroundColor = data.params?.backgroundColor || "";
+  const backgroundColor = data.customizations?.backgroundColor || "";
   const rgbaColor = convertHextoRgba(backgroundColor, 0.5);
 
   return (
@@ -116,12 +83,12 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
               if (element)
                 element.style.setProperty(
                   "color",
-                  data.params?.textColor || "",
+                  data.customizations?.textColor || "",
                   "important",
                 );
             }}>
             <Note />
-            <p>{data.params?.customName ?? data.officialName}</p>
+            <p>{data.customizations?.customName ?? data.officialName}</p>
           </div>
           <div
             ref={(element) => {
@@ -135,7 +102,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
               }
             }}>
             <p className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none">
-              {data.params?.description}
+              {data.customizations?.content}
             </p>
           </div>
         </div>

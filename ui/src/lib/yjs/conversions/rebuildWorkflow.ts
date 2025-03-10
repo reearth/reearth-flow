@@ -42,6 +42,11 @@ export const reassembleNode = (yNode: YNode): Node => {
   if ((yNode.get("data") as Y.Map<any>)?.get("params") !== undefined) {
     data.params = (yNode.get("data") as Y.Map<any>)?.get("params");
   }
+  if ((yNode.get("data") as Y.Map<any>)?.get("customizations") !== undefined) {
+    data.customizations = (yNode.get("data") as Y.Map<any>)?.get(
+      "customizations",
+    );
+  }
   // Subworkflow specific
   if ((yNode.get("data") as Y.Map<any>)?.get("subworkflowId") !== undefined) {
     data.subworkflowId = (yNode.get("data") as Y.Map<any>)
@@ -69,16 +74,6 @@ export const reassembleNode = (yNode: YNode): Node => {
   // Batch & note specific
   if ((yNode.get("data") as Y.Map<any>)?.get("content") !== undefined) {
     data.content = (yNode.get("data") as Y.Map<any>)?.get("content").toString();
-  }
-  if ((yNode.get("data") as Y.Map<any>)?.get("backgroundColor") !== undefined) {
-    data.backgroundColor = (yNode.get("data") as Y.Map<any>)
-      ?.get("backgroundColor")
-      .toString();
-  }
-  if ((yNode.get("data") as Y.Map<any>)?.get("textColor") !== undefined) {
-    data.textColor = (yNode.get("data") as Y.Map<any>)
-      ?.get("textColor")
-      .toString();
   }
 
   const style = {

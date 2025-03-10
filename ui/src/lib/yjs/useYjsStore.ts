@@ -40,7 +40,7 @@ export default ({
     undoTrackerActionWrapper,
   });
 
-  const { handleYNodesAdd, handleYNodesChange, handleYNodeParamsUpdate } =
+  const { handleYNodesAdd, handleYNodesChange, handleYNodeDataUpdate } =
     useYNode({
       currentYWorkflow,
       rawWorkflows,
@@ -75,7 +75,7 @@ export default ({
     handleYWorkflowUpdate,
     handleYNodesAdd,
     handleYNodesChange,
-    handleYNodeParamsUpdate,
+    handleYNodeDataUpdate,
     handleYEdgesAdd,
     handleYEdgesChange,
     handleYWorkflowUndo,
