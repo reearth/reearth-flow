@@ -30,18 +30,18 @@ func (h *DocumentServiceHandler) GetLatest(ctx context.Context, request *proto.G
 		return nil, err
 	}
 
-	updates := make([]int32, len(doc.Updates))
-	for i, update := range doc.Updates {
+	updates := make([]int32, len(doc.Updates()))
+	for i, update := range doc.Updates() {
 		updates[i] = int32(update)
 	}
 
-	timestamp := doc.Timestamp.Format(time.RFC3339)
+	timestamp := doc.Timestamp().Format(time.RFC3339)
 
 	response := &proto.GetLatestResponse{
 		Document: &proto.Document{
-			ID:        doc.ID,
+			ID:        doc.ID().String(),
 			Updates:   updates,
-			Version:   int32(doc.Version),
+			Version:   int32(doc.Version()),
 			Timestamp: timestamp,
 		},
 	}
@@ -60,16 +60,16 @@ func (h *DocumentServiceHandler) GetHistory(ctx context.Context, request *proto.
 
 	historyItems := make([]*proto.History, len(history))
 	for i, item := range history {
-		updates := make([]int32, len(item.Updates))
-		for j, update := range item.Updates {
+		updates := make([]int32, len(item.Updates()))
+		for j, update := range item.Updates() {
 			updates[j] = int32(update)
 		}
 
-		timestamp := item.Timestamp.Format(time.RFC3339)
+		timestamp := item.Timestamp().Format(time.RFC3339)
 
 		historyItems[i] = &proto.History{
 			Updates:   updates,
-			Version:   int32(item.Version),
+			Version:   int32(item.Version()),
 			Timestamp: timestamp,
 		}
 	}
@@ -90,18 +90,18 @@ func (h *DocumentServiceHandler) Rollback(ctx context.Context, request *proto.Ro
 		return nil, err
 	}
 
-	updates := make([]int32, len(doc.Updates))
-	for i, update := range doc.Updates {
+	updates := make([]int32, len(doc.Updates()))
+	for i, update := range doc.Updates() {
 		updates[i] = int32(update)
 	}
 
-	timestamp := doc.Timestamp.Format(time.RFC3339)
+	timestamp := doc.Timestamp().Format(time.RFC3339)
 
 	response := &proto.RollbackResponse{
 		Document: &proto.Document{
-			ID:        doc.ID,
+			ID:        doc.ID().String(),
 			Updates:   updates,
-			Version:   int32(doc.Version),
+			Version:   int32(doc.Version()),
 			Timestamp: timestamp,
 		},
 	}

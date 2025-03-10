@@ -1,27 +1,41 @@
-# Latest Project Document
-type ProjectDocument implements Node {
+type Document implements Node {
   id: ID!
   timestamp: DateTime!
   updates: [Int!]!
   version: Int!
 }
 
-# Project Snapshot history vector
-type ProjectSnapshot {
+type DocumentSnapshot {
   timestamp: DateTime!
   updates: [Int!]!
   version: Int!
 }
 
-# Query
-
-extend type Query {
-  latestProjectSnapshot(projectId: ID!): ProjectDocument
-  projectHistory(projectId: ID!): [ProjectSnapshot!]!
+# Input Types
+input GetLatestDocumentInput {
+  projectId: ID!
 }
 
-# Mutation
+input GetDocumentHistoryInput {
+  projectId: ID!
+}
+
+input RollbackDocumentInput {
+  projectId: ID!
+  version: Int!
+}
+
+# Payload Types
+type DocumentPayload {
+  document: Document!
+}
+
+# Query and Mutation
+extend type Query {
+  latestDocument(input: GetLatestDocumentInput!): Document
+  documentHistory(input: GetDocumentHistoryInput!): [DocumentSnapshot!]!
+}
 
 extend type Mutation {
-  rollbackProject(projectId: ID!, version: Int!): ProjectDocument
+  rollbackDocument(input: RollbackDocumentInput!): DocumentPayload
 }

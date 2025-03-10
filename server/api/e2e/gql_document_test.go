@@ -12,7 +12,7 @@ import (
 
 	"github.com/gavv/httpexpect/v2"
 	"github.com/reearth/reearth-flow/api/pkg/id"
-	ws "github.com/reearth/reearth-flow/api/pkg/websocket"
+	doc "github.com/reearth/reearth-flow/api/pkg/document"
 	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,46 +21,64 @@ var (
 	docUId = user.NewID()
 	docPId = id.NewProjectID()
 
-	rollbackResults = map[int]*ws.Document{
-		1: {
-			ID:        docPId.String(),
-			Updates:   []int{1},
-			Version:   1,
-			Timestamp: time.Now(),
-		},
-		2: {
-			ID:        docPId.String(),
-			Updates:   []int{1, 2, 3},
-			Version:   2,
-			Timestamp: time.Now(),
-		},
+	rollbackResults = map[int]*doc.Document{
+		1: doc.NewDocument(
+			func() id.DocumentID {
+				docID, err := id.DocumentIDFrom(docPId.String())
+				if err != nil {
+					panic(err)
+				}
+				return docID
+			}(),
+			[]int{1},
+			1,
+			time.Now(),
+		),
+		2: doc.NewDocument(
+			func() id.DocumentID {
+				docID, err := id.DocumentIDFrom(docPId.String())
+				if err != nil {
+					panic(err)
+				}
+				return docID
+			}(),
+			[]int{1, 2, 3},
+			2,
+			time.Now(),
+		),
 	}
 )
 
 func documentTestInterceptor(next http.Handler) http.Handler {
-	doc := &ws.Document{
-		ID:        docPId.String(),
-		Updates:   []int{1, 2, 3, 4, 5},
-		Version:   3,
-		Timestamp: time.Date(2023, 2, 1, 10, 0, 0, 0, time.UTC),
-	}
+	document := doc.NewDocument(
+		func() id.DocumentID {
+			docID, err := id.DocumentIDFrom(docPId.String())
+			if err != nil {
+				panic(err)
+			}
+			return docID
+		}(),
+		[]int{1, 2, 3, 4, 5},
+		3,
+		time.Date(2023, 2, 1, 10, 0, 0, 0, time.UTC),
+	)
 
-	history := []*ws.History{
-		{
-			Updates:   []int{1},
-			Version:   1,
-			Timestamp: time.Date(2023, 1, 15, 9, 0, 0, 0, time.UTC),
-		},
-		{
-			Updates:   []int{1, 2, 3},
-			Version:   2,
-			Timestamp: time.Date(2023, 1, 20, 14, 0, 0, 0, time.UTC),
-		},
-		{
-			Updates:   []int{1, 2, 3, 4, 5},
-			Version:   3,
-			Timestamp: time.Date(2023, 2, 1, 10, 0, 0, 0, time.UTC),
-		},
+	history := []*doc.History{
+		doc.NewHistory(
+			[]int{1},
+			1,
+			time.Date(2023, 1, 15, 9, 0, 0, 0, time.UTC),
+		),
+		doc.NewHistory(
+			[]int{1, 2, 3},
+			2,
+			time.Date(2023, 1, 20, 14, 0, 0, 0, time.UTC),
+		),
+		doc.NewHistory(
+			[]int{1, 2, 3, 4, 5},
+			3,
+			time.Date(2023, 2, 1, 10, 0, 0, 0, time.UTC),
+		),
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -89,7 +107,7 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 
 			if isLatestProjectSnapshotQuery(gqlRequest.Query) {
 				projectID, ok := getProjectIDFromVariables(gqlRequest.Variables)
-				if !ok || projectID != docPId.String() {
+				if !ok || projectID != document.ID().String() {
 					http.Error(w, "Invalid project ID", http.StatusBadRequest)
 					return
 				}
@@ -97,10 +115,10 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 				resp := map[string]any{
 					"data": map[string]any{
 						"latestProjectSnapshot": map[string]any{
-							"id":        doc.ID,
-							"updates":   doc.Updates,
-							"version":   doc.Version,
-							"timestamp": doc.Timestamp,
+							"id":        document.ID().String(),
+							"updates":   document.Updates(),
+							"version":   document.Version(),
+							"timestamp": document.Timestamp(),
 						},
 					},
 				}
@@ -114,7 +132,7 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 
 			} else if isProjectHistoryQuery(gqlRequest.Query) {
 				projectID, ok := getProjectIDFromVariables(gqlRequest.Variables)
-				if !ok || projectID != docPId.String() {
+				if !ok || projectID != document.ID().String() {
 					http.Error(w, "Invalid project ID", http.StatusBadRequest)
 					return
 				}
@@ -122,9 +140,9 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 				historyResp := make([]map[string]any, len(history))
 				for i, h := range history {
 					historyResp[i] = map[string]any{
-						"updates":   h.Updates,
-						"version":   h.Version,
-						"timestamp": h.Timestamp,
+						"updates":   h.Updates(),
+						"version":   h.Version(),
+						"timestamp": h.Timestamp(),
 					}
 				}
 
@@ -143,7 +161,7 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 
 			} else if isRollbackProjectMutation(gqlRequest.Query) {
 				projectID, version, ok := getProjectIDAndVersionFromVariables(gqlRequest.Variables)
-				if !ok || projectID != docPId.String() {
+				if !ok || projectID != document.ID().String() {
 					http.Error(w, "Invalid project ID or version", http.StatusBadRequest)
 					return
 				}
@@ -157,10 +175,10 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 				resp := map[string]any{
 					"data": map[string]any{
 						"rollbackProject": map[string]any{
-							"id":        rollbackDoc.ID,
-							"updates":   rollbackDoc.Updates,
-							"version":   rollbackDoc.Version,
-							"timestamp": rollbackDoc.Timestamp,
+							"id":        rollbackDoc.ID().String(),
+							"updates":   rollbackDoc.Updates(),
+							"version":   rollbackDoc.Version(),
+							"timestamp": rollbackDoc.Timestamp(),
 						},
 					},
 				}
@@ -431,7 +449,7 @@ func testRollbackProject(t *testing.T, e *httpexpect.Expect, projectId string, v
 	if rollback != nil {
 		assert.Equal(t, projectId, rollback.ID)
 		assert.Equal(t, version, rollback.Version)
-		assert.Equal(t, rollbackResults[version].Updates, rollback.Updates)
+		assert.Equal(t, rollbackResults[version].Updates(), rollback.Updates)
 		assert.NotZero(t, rollback.Timestamp)
 	}
 }

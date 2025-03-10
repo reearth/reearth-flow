@@ -6,6 +6,7 @@ type (
 	Asset         struct{}
 	AuthRequest   struct{}
 	Deployment    struct{}
+	Document      struct{}
 	Edge          struct{}
 	Graph         struct{}
 	Node          struct{}
@@ -21,6 +22,7 @@ type (
 func (Asset) Type() string         { return "asset" }
 func (AuthRequest) Type() string   { return "authRequest" }
 func (Deployment) Type() string    { return "deployment" }
+func (Document) Type() string      { return "document" }
 func (Edge) Type() string          { return "edge" }
 func (Graph) Type() string         { return "graph" }
 func (Node) Type() string          { return "node" }
@@ -36,6 +38,7 @@ type (
 	AssetID         = idx.ID[Asset]
 	AuthRequestID   = idx.ID[AuthRequest]
 	DeploymentID    = idx.ID[Deployment]
+	DocumentID      = idx.ID[Document]
 	EdgeID          = idx.ID[Edge]
 	GraphID         = idx.ID[Graph]
 	NodeID          = idx.ID[Node]
@@ -52,6 +55,7 @@ var (
 	NewAssetID         = idx.New[Asset]
 	NewAuthRequestID   = idx.New[AuthRequest]
 	NewDeploymentID    = idx.New[Deployment]
+	NewDocumentID      = idx.New[Document]
 	NewEdgeID          = idx.New[Edge]
 	NewGraphID         = idx.New[Graph]
 	NewNodeID          = idx.New[Node]
@@ -68,6 +72,7 @@ var (
 	MustAssetID         = idx.Must[Asset]
 	MustAuthRequestID   = idx.Must[AuthRequest]
 	MustDeploymentID    = idx.Must[Deployment]
+	MustDocumentID      = idx.Must[Document]
 	MustParameterID     = idx.Must[Parameter]
 	MustProjectID       = idx.Must[Project]
 	MustProjectAccessID = idx.Must[ProjectAccess]
@@ -81,6 +86,7 @@ var (
 	AssetIDFrom         = idx.From[Asset]
 	AuthRequestIDFrom   = idx.From[AuthRequest]
 	DeploymentIDFrom    = idx.From[Deployment]
+	DocumentIDFrom      = idx.From[Document]
 	EdgeIDFrom          = idx.From[Edge]
 	GraphIDFrom         = idx.From[Graph]
 	NodeIDFrom          = idx.From[Node]
@@ -97,6 +103,7 @@ var (
 	AssetIDFromRef         = idx.FromRef[Asset]
 	AuthRequestIDFromRef   = idx.FromRef[AuthRequest]
 	DeploymentIDFromRef    = idx.FromRef[Deployment]
+	DocumentIDFromRef      = idx.FromRef[Document]
 	ParameterIDFromRef     = idx.FromRef[Parameter]
 	ProjectIDFromRef       = idx.FromRef[Project]
 	ProjectAccessIDFromRef = idx.FromRef[ProjectAccess]
@@ -110,6 +117,7 @@ type (
 	AssetIDList         = idx.List[Asset]
 	AuthRequestIDList   = idx.List[AuthRequest]
 	DeploymentIDList    = idx.List[Deployment]
+	DocumentIDList      = idx.List[Document]
 	ParameterIDList     = idx.List[Parameter]
 	ProjectIDList       = idx.List[Project]
 	ProjectAccessIDList = idx.List[ProjectAccess]
@@ -122,6 +130,7 @@ var (
 	AssetIDListFrom         = idx.ListFrom[Asset]
 	AuthRequestIDListFrom   = idx.ListFrom[AuthRequest]
 	DeploymentIDListFrom    = idx.ListFrom[Deployment]
+	DocumentIDListFrom      = idx.ListFrom[Document]
 	ParameterIDListFrom     = idx.ListFrom[Parameter]
 	ProjectIDListFrom       = idx.ListFrom[Project]
 	ProjectAccessIDListFrom = idx.ListFrom[ProjectAccess]
@@ -134,6 +143,7 @@ type (
 	AssetIDSet         = idx.Set[Asset]
 	AuthRequestIDSet   = idx.Set[AuthRequest]
 	DeploymentIDSet    = idx.Set[Deployment]
+	DocumentIDSet      = idx.Set[Document]
 	ParameterIDSet     = idx.Set[Parameter]
 	ProjectIDSet       = idx.Set[Project]
 	ProjectAccessIDSet = idx.Set[ProjectAccess]
@@ -146,6 +156,7 @@ var (
 	NewAssetIDSet         = idx.NewSet[Asset]
 	NewAuthRequestIDSet   = idx.NewSet[AuthRequest]
 	NewDeploymentIDSet    = idx.NewSet[Deployment]
+	NewDocumentIDSet      = idx.NewSet[Document]
 	NewParameterIDSet     = idx.NewSet[Parameter]
 	NewProjectIDSet       = idx.NewSet[Project]
 	NewProjectAccessIDSet = idx.NewSet[ProjectAccess]
