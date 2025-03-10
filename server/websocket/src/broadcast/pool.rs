@@ -48,45 +48,29 @@ impl BroadcastPool {
         self.store.clone()
     }
 
-    async fn acquire_redis_lock(
-        &self,
-        conn: &mut redis::aio::MultiplexedConnection,
-        lock_key: &str,
-    ) -> Result<bool> {
-        let set_options = redis::Script::new(
-            r#"return redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2], 'NX')"#,
-        );
-        let lock_result: Option<String> = set_options
-            .key(lock_key)
-            .arg("1")
-            .arg("30")
-            .invoke_async(conn)
-            .await?;
-        Ok(lock_result.is_some())
-    }
-
     async fn handle_doc_initialization(
         &self,
         conn: &mut redis::aio::MultiplexedConnection,
         lock_key: &str,
-    ) -> Result<bool> {
-        let mut should_initialize = true;
+    ) -> Result<(bool, Option<String>)> {
+        let acquired: bool = conn.set_nx(lock_key, "true").await?;
 
-        // First check if the key exists
-        let exists: bool = conn.exists(lock_key).await?;
-        tracing::info!("exists: {}", exists);
-        should_initialize = !exists;
-
-        tracing::info!("should_initialize: {}", should_initialize);
-
-        if should_initialize {
-            tracing::info!("setting lock");
-            let _: () = conn.set_ex(lock_key, "true", 300).await?;
-            Ok(true)
+        if acquired {
+            let _: () = conn.expire(lock_key, 300).await?;
+            Ok((true, Some(lock_key.to_string())))
         } else {
-            tracing::info!("lock already exists");
-            Ok(false)
+            Ok((false, None))
         }
+    }
+
+    async fn release_lock(
+        &self,
+        conn: &mut redis::aio::MultiplexedConnection,
+        lock_key: &str,
+    ) -> Result<()> {
+        let _: () = conn.del(lock_key).await?;
+        tracing::info!("Released lock for {}", lock_key);
+        Ok(())
     }
 
     pub async fn get_or_create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
@@ -126,26 +110,13 @@ impl BroadcastPool {
 
                     if let Some(redis_config) = &self.redis_config {
                         let redis_key = format!("pending_updates:{}", doc_id);
-                        let lock_key = format!("workflow_init_lock:{}", doc_id);
                         let init_key = format!("workflow_initialized:{}", doc_id);
 
                         if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
                             if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
-                                let lock_acquired =
-                                    self.acquire_redis_lock(&mut conn, &lock_key).await?;
-
-                                tracing::info!("lock_acquired: {}", lock_acquired);
-
-                                if lock_acquired {
-                                    // If we acquired the lock, we should initialize
-                                    needs_initialization = true;
-                                    let _: () = conn.del(&lock_key).await?;
-                                } else {
-                                    // If we didn't acquire the lock, check if it exists
-                                    needs_initialization = !self
-                                        .handle_doc_initialization(&mut conn, &init_key)
-                                        .await?;
-                                }
+                                let (acquired_lock, lock_key) =
+                                    self.handle_doc_initialization(&mut conn, &init_key).await?;
+                                needs_initialization = acquired_lock;
 
                                 tracing::info!("redis_key: {}", redis_key);
 
@@ -168,6 +139,16 @@ impl BroadcastPool {
                                         );
                                     }
                                 }
+
+                                if let Some(lock_key) = lock_key {
+                                    if let Err(e) = self.release_lock(&mut conn, &lock_key).await {
+                                        tracing::error!(
+                                            "Failed to release lock for document '{}': {}",
+                                            doc_id,
+                                            e
+                                        );
+                                    }
+                                }
                             }
                         }
                     }
@@ -185,22 +166,12 @@ impl BroadcastPool {
                                     );
                                     let init_map = txn.get_or_insert_map("workflow_initialized");
                                     init_map.insert(&mut txn, "initialized", Any::Bool(true));
+                                } else if !needs_initialization {
+                                    let init_map = txn.get_or_insert_map("workflow_initialized");
+                                    init_map.insert(&mut txn, "initialized", Any::Bool(true));
                                 } else {
-                                    tracing::info!("Creating new document: {}", doc_id);
-                                    tracing::info!(
-                                        "needs_initialization: {}",
-                                        needs_initialization
-                                    );
-                                    if !needs_initialization {
-                                        println!("needs_initialization: {}", needs_initialization);
-                                        let init_map =
-                                            txn.get_or_insert_map("workflow_initialized");
-                                        init_map.insert(&mut txn, "initialized", Any::Bool(true));
-                                    } else {
-                                        let init_map =
-                                            txn.get_or_insert_map("workflow_initialized");
-                                        init_map.insert(&mut txn, "initialized", Any::Bool(false));
-                                    }
+                                    let init_map = txn.get_or_insert_map("workflow_initialized");
+                                    init_map.insert(&mut txn, "initialized", Any::Bool(false));
                                 }
                             }
                             Err(e) => {
