@@ -4,7 +4,7 @@ import type { Action, NodeData } from "@flow/types";
 
 import { useT } from "../i18n";
 
-const useNodeSchemaGenerate = (
+export default (
   nodeType: string,
   nodeMeta: NodeData,
   action?: Action,
@@ -23,27 +23,27 @@ const useNodeSchemaGenerate = (
     },
   };
 
-  const noteNodeCustomizationSchema: RJSFSchema = {
+  const noteNodeSchema: RJSFSchema = {
     ...baseSchema,
     properties: {
       ...baseSchema.properties,
       content: { type: "string", format: "textarea", title: t("Content") },
-      textColor: {
-        type: "string",
-        format: "color",
-        default: "#fafafa",
-        title: t("Text Color"),
-      },
       backgroundColor: {
         type: "string",
         format: "color",
         default: "#212121",
         title: t("Background Color"),
       },
+      textColor: {
+        type: "string",
+        format: "color",
+        default: "#fafafa",
+        title: t("Text Color"),
+      },
     },
   };
 
-  const batchNodeCustomizationSchema: RJSFSchema = {
+  const batchNodeSchema: RJSFSchema = {
     ...baseSchema,
     properties: {
       ...baseSchema.properties,
@@ -64,22 +64,11 @@ const useNodeSchemaGenerate = (
 
   let schema: RJSFSchema;
   switch (nodeType) {
-    case "reader":
-    case "writer":
-    case "transformer":
-    case "subworkflow":
-      schema = {
-        ...baseSchema,
-        properties: {
-          ...baseSchema.properties,
-        },
-      };
-      break;
     case "batch":
-      schema = batchNodeCustomizationSchema;
+      schema = batchNodeSchema;
       break;
     case "note":
-      schema = noteNodeCustomizationSchema;
+      schema = noteNodeSchema;
       break;
     default:
       schema = baseSchema;
@@ -99,7 +88,7 @@ const useNodeSchemaGenerate = (
           inputPorts: ["input"],
           outputPorts: ["output"],
           builtin: true,
-          customization: schema,
+          customizations: schema,
         };
         break;
 
@@ -113,7 +102,7 @@ const useNodeSchemaGenerate = (
           inputPorts: ["input"],
           outputPorts: ["output"],
           builtin: true,
-          customization: schema,
+          customizations: schema,
         };
         break;
     }
@@ -121,5 +110,3 @@ const useNodeSchemaGenerate = (
 
   return { schema, action: resultAction };
 };
-
-export default useNodeSchemaGenerate;

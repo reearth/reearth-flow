@@ -16,7 +16,7 @@ import { patchAnyOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
-import useNodeSchemaGenerate from "@flow/lib/reactFlow/useNodeSchemaGenerateHook";
+import useNodeSchemaGenerate from "@flow/lib/reactFlow/useNodeSchemaGenerate";
 import type { NodeData } from "@flow/types";
 
 type Props = {
@@ -48,7 +48,7 @@ const ParamEditor: React.FC<Props> = ({
     nodeMeta,
     fetchedAction,
   );
-
+  // TODO: Refactor and incorporate this logic into useNodeSchemaGenerate
   const [actionWithCustomization, setActionWithCustomization] =
     useState(createdAction);
 
@@ -57,10 +57,10 @@ const ParamEditor: React.FC<Props> = ({
       firstRenderRef.current = false;
 
       // Only update if we need to add customization
-      if (!createdAction.customization) {
+      if (!createdAction.customizations) {
         setActionWithCustomization({
           ...createdAction,
-          customization: nodeSchema,
+          customizations: nodeSchema,
         });
       } else {
         setActionWithCustomization(createdAction);
@@ -166,7 +166,7 @@ const ParamEditor: React.FC<Props> = ({
         </TabsContent>
         <TabsContent value="customization">
           <div className="min-h-32 overflow-scroll rounded border bg-card px-2 pt-4">
-            {!actionWithCustomization?.customization && (
+            {!actionWithCustomization?.customizations && (
               <BasicBoiler
                 text={t("No Customization Available")}
                 className="size-4 pt-16 [&>div>p]:text-sm"
@@ -180,7 +180,7 @@ const ParamEditor: React.FC<Props> = ({
                     {t("Customization Options")}
                   </h4>
                   <SchemaForm
-                    schema={actionWithCustomization?.customization}
+                    schema={actionWithCustomization?.customizations}
                     defaultFormData={updatedCustomization}
                     onChange={handleCustomizationChange}
                   />
