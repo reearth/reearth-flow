@@ -339,6 +339,10 @@
   "Node Settings": "节点设置",
   "Preview Intermediate Data": "预览中间数据",
   "Delete Node": "删除节点",
+  "Custom Name": "",
+  "Content": "",
+  "Text Color": "",
+  "Background Color": "",
   "Subworkflow": "子工作流",
   "Reload": "重新加载"
 }

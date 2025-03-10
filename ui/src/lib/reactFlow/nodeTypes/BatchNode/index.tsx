@@ -1,5 +1,4 @@
 import { RectangleDashed } from "@phosphor-icons/react";
-import { RJSFSchema } from "@rjsf/utils";
 import { NodeProps, NodeResizer } from "@xyflow/react";
 import { memo } from "react";
 
@@ -12,36 +11,6 @@ import useHooks from "./hooks";
 export type BatchNodeProps = NodeProps<Node>;
 
 export const initialSize = { width: 300, height: 200 };
-
-const batchNodeCustomizationSchema: RJSFSchema = {
-  type: "object",
-  properties: {
-    customName: { type: "string", title: "Name" },
-    backgroundColor: {
-      type: "string",
-      format: "color",
-      default: "#323236",
-      title: "Background Color",
-    },
-    textColor: {
-      type: "string",
-      format: "color",
-      title: "Text Color",
-      default: "#fafafa",
-    },
-  },
-};
-
-export const batchNodeAction = {
-  name: "batch",
-  description: "Batch node",
-  type: "batch",
-  categories: ["batch"],
-  inputPorts: ["input"],
-  outputPorts: ["output"],
-  builtin: true,
-  customization: batchNodeCustomizationSchema,
-};
 
 export const baseBatchNode: {
   type: NodeType;

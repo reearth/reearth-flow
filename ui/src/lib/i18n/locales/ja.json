@@ -339,6 +339,10 @@
   "Node Settings": "ノード設定",
   "Preview Intermediate Data": "中間データをプレビュー",
   "Delete Node": "ノードを削除",
+  "Custom Name": "カスタム名",
+  "Content": "コンテンツ",
+  "Text Color": "テキストカラー",
+  "Background Color": "背景色",
   "Subworkflow": "サブワークフロー",
   "Reload": "リロード"
 }

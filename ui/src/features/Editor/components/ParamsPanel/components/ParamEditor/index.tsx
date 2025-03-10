@@ -16,8 +16,8 @@ import { patchAnyOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
-import { batchNodeAction, noteNodeAction } from "@flow/lib/reactFlow";
-import { generalNodeSchema } from "@flow/lib/reactFlow/nodeTypes/GeneralNode";
+// import { generalNodeSchema } from "@flow/lib/reactFlow/nodeTypes/GeneralNode";
+import useNodeSchemaGenerate from "@flow/lib/reactFlow/useNodeSchemaGenerateHook";
 import type { NodeData } from "@flow/types";
 
 type Props = {
@@ -35,7 +35,7 @@ type Props = {
 const ParamEditor: React.FC<Props> = ({
   nodeId,
   nodeMeta,
-  // nodeType,
+  nodeType,
   // nodeParameters = [{ id: "param1", name: "Param 1", value: "Value 1", type: "string"}],
   onSubmit,
 }) => {
@@ -43,6 +43,8 @@ const ParamEditor: React.FC<Props> = ({
   const { useGetActionById } = useAction(i18n.language);
   let { action } = useGetActionById(nodeMeta.officialName);
   const firstRenderRef = useRef(true);
+  // Used to generate the customization schema for the node with translations
+  const nodeSchema = useNodeSchemaGenerate(nodeType, nodeMeta.officialName);
 
   // For nodes such as note and batch that are not in the actions list and therefore have no params.
   if (!action) {
@@ -50,14 +52,28 @@ const ParamEditor: React.FC<Props> = ({
       case "batch":
         action = {
           ...nodeMeta,
-          ...batchNodeAction,
+          name: "batch",
+          description: "Batch node",
+          type: "batch",
+          categories: ["batch"],
+          inputPorts: ["input"],
+          outputPorts: ["output"],
+          builtin: true,
+          customization: nodeSchema,
         };
         break;
 
       case "note":
         action = {
           ...nodeMeta,
-          ...noteNodeAction,
+          name: "note",
+          description: "Note node",
+          type: "note",
+          categories: ["note"],
+          inputPorts: ["input"],
+          outputPorts: ["output"],
+          builtin: true,
+          customization: nodeSchema,
         };
         break;
 
@@ -77,13 +93,13 @@ const ParamEditor: React.FC<Props> = ({
       if (!action.customization) {
         setActionWithCustomization({
           ...action,
-          customization: generalNodeSchema(nodeMeta.officialName),
+          customization: nodeSchema,
         });
       } else {
         setActionWithCustomization(action);
       }
     }
-  }, [action, nodeMeta]);
+  }, [action, nodeMeta, nodeSchema]);
 
   // This is a patch for the `anyOf` type in JSON Schema.
   const patchedSchemaParams = useMemo<RJSFSchema | undefined>(

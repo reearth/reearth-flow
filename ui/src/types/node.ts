@@ -25,7 +25,7 @@ export type NodeData = {
     customName?: string;
     backgroundColor?: string;
     textColor?: string;
-    description?: string;
+    content?: string;
   };
   // subworkflow nodes
   subworkflowId?: string;

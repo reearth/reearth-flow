@@ -339,6 +339,10 @@
   "Node Settings": "Configuración del nodo",
   "Preview Intermediate Data": "Vista previa de datos intermedios",
   "Delete Node": "Eliminar nodo",
+  "Custom Name": "",
+  "Content": "",
+  "Text Color": "",
+  "Background Color": "",
   "Subworkflow": "Subflujo de trabajo",
   "Reload": "Recargar"
 }

@@ -1,5 +1,4 @@
 import { Note } from "@phosphor-icons/react";
-import { RJSFSchema } from "@rjsf/utils";
 import { NodeProps, NodeResizer } from "@xyflow/react";
 import { memo } from "react";
 
@@ -12,38 +11,6 @@ export type NoteNodeProps = NodeProps<Node>;
 
 export const initialSize = { width: 300, height: 200 };
 const minSize = { width: 250, height: 150 };
-
-// TODO: Currently textarea data.content on node is not setting the value correctly. Temporary fix is to use description on RJSFS params @billcookie
-const noteNodeCustomizationSchema: RJSFSchema = {
-  type: "object",
-  properties: {
-    customName: { type: "string", title: "Name" },
-    description: { type: "string", format: "textarea", title: "Description" },
-    textColor: {
-      type: "string",
-      format: "color",
-      default: "#fafafa",
-      title: "Text Color",
-    },
-    backgroundColor: {
-      type: "string",
-      format: "color",
-      default: "#212121",
-      title: "Background Color",
-    },
-  },
-};
-
-export const noteNodeAction = {
-  name: "note",
-  description: "Note node",
-  type: "note",
-  categories: ["note"],
-  inputPorts: ["input"],
-  outputPorts: ["output"],
-  builtin: true,
-  customization: noteNodeCustomizationSchema,
-};
 
 export const baseNoteNode: {
   type: NodeType;
@@ -135,7 +102,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
               }
             }}>
             <p className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none">
-              {data.customizations?.description}
+              {data.customizations?.content}
             </p>
           </div>
         </div>

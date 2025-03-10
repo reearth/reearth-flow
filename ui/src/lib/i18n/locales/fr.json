@@ -339,6 +339,10 @@
   "Node Settings": "Paramètres du nœud",
   "Preview Intermediate Data": "Aperçu des données intermédiaires",
   "Delete Node": "Supprimer le nœud",
+  "Custom Name": "",
+  "Content": "",
+  "Text Color": "",
+  "Background Color": "",
   "Subworkflow": "",
   "Reload": "Recharger"
 }
