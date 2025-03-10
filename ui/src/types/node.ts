@@ -19,7 +19,7 @@ export type PseudoPort = {
 
 export type NodeData = {
   officialName: string;
-  customName?: string;
+  customName?: string; // TODO: remove customName from data when subworkflow's renaming is re-implemented
   inputs?: string[];
   outputs?: string[];
   params?: NodeParams;

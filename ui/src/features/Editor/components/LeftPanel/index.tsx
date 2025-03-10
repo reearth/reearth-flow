@@ -286,7 +286,7 @@ const createTreeDataItem = (
               .map((n) => ({
                 id: n.id,
                 name:
-                  n.data.params?.customName ||
+                  n.data.customizations?.customName ||
                   n.data.officialName ||
                   "untitled",
                 icon,
