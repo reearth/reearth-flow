@@ -3197,6 +3197,21 @@ Extracts Codelist
 ### Category
 * PLATEAU
 
+## PLATEAU4.DomainOfDefinitionValidator
+### Type
+* processor
+### Description
+Validates domain of definition of CityGML features
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* PLATEAU
+
 ## PLATEAU4.MaxLodExtractor
 ### Type
 * processor

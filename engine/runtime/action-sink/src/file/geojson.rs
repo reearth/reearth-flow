@@ -102,11 +102,15 @@ impl Sink for GeoJsonWriter {
         let feature = &ctx.feature;
 
         let key = if let Some(group_by) = &self.params.group_by {
-            let key = group_by
-                .iter()
-                .map(|k| feature.get(&k).cloned().unwrap_or(AttributeValue::Null))
-                .collect::<Vec<_>>();
-            AttributeValue::Array(key)
+            if group_by.is_empty() {
+                AttributeValue::Null
+            } else {
+                let key = group_by
+                    .iter()
+                    .map(|k| feature.get(&k).cloned().unwrap_or(AttributeValue::Null))
+                    .collect::<Vec<_>>();
+                AttributeValue::Array(key)
+            }
         } else {
             AttributeValue::Null
         };
