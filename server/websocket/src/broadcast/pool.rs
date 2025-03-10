@@ -7,6 +7,7 @@ use dashmap::DashMap;
 use redis::AsyncCommands;
 use std::sync::Arc;
 use yrs::sync::Awareness;
+use yrs::{updates::decoder::Decode, Update};
 use yrs::{Any, Array, Doc, Map, ReadTxn, Transact, WriteTxn};
 
 #[derive(Clone, Debug)]
@@ -54,166 +55,118 @@ impl BroadcastPool {
 
         let _guard = self.doc_creation_lock.lock().await;
 
-        let entry = self.groups.entry(doc_id.to_string());
+        if let Some(group) = self.groups.get(doc_id) {
+            return Ok(group.clone());
+        }
 
-        match entry {
-            dashmap::mapref::entry::Entry::Occupied(entry) => Ok(entry.get().clone()),
-            dashmap::mapref::entry::Entry::Vacant(entry) => {
-                let awareness: AwarenessRef = {
-                    let doc = Doc::new();
-                    let mut updates_from_redis = Vec::new();
+        let doc = Doc::new();
+        let mut redis_conn = None;
+        let mut pending_updates = Vec::new();
 
-                    if let Some(redis_config) = &self.redis_config {
-                        let redis_key = format!("pending_updates:{}", doc_id);
-                        let lock_key = format!("workflow_init_lock:{}", doc_id);
+        if let Some(redis_config) = &self.redis_config {
+            let pending_updates_key = format!("pending_updates:{}", doc_id);
+            let init_key = format!("doc_initialized:{}", doc_id);
 
-                        if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
-                            if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
-                                let lock_result: bool = conn.set_nx(&lock_key, "1").await?;
-                                if lock_result {
-                                    let _: () = conn.expire(&lock_key, 60).await?;
+            if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
+                if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
+                    redis_conn = Some(conn.clone());
 
-                                    let mut txn = doc.transact_mut();
-                                    match self.store.load_doc(doc_id, &mut txn).await {
-                                        Ok(exists) => {
-                                            if exists {
-                                                tracing::debug!(
-                                                    "Successfully loaded existing document: {}",
-                                                    doc_id
-                                                );
-                                            } else {
-                                                tracing::debug!(
-                                                    "Document {} does not exist, initializing",
-                                                    doc_id
-                                                );
+                    let init_lock: bool = conn.set_nx(&init_key, "1").await?;
+                    if init_lock {
+                        let _: () = conn.expire(&init_key, 60).await?;
 
-                                                let _: () = conn.del(&lock_key).await?;
-                                                tracing::debug!("Released Redis lock before delay to allow updates from other clients");
-
-                                                tokio::time::sleep(
-                                                    tokio::time::Duration::from_millis(500),
-                                                )
-                                                .await;
-
-                                                let final_lock: bool =
-                                                    conn.set_nx(&lock_key, "1").await?;
-                                                if final_lock {
-                                                    let _: () = conn.expire(&lock_key, 60).await?;
-
-                                                    let mut txn = doc.transact_mut();
-                                                    if let Ok(exists) =
-                                                        self.store.load_doc(doc_id, &mut txn).await
-                                                    {
-                                                        if exists {
-                                                            tracing::debug!(
-                                                                "Document {} was created by another instance during delay, using existing document",
-                                                                doc_id
-                                                            );
-                                                            let _: () = conn.del(&lock_key).await?;
-                                                        } else {
-                                                            tracing::debug!(
-                                                                "Still need to initialize document {} after delay",
-                                                                doc_id
-                                                            );
-                                                            let _: () = conn.del(&lock_key).await?;
-                                                        }
-                                                    } else {
-                                                        let _: () = conn.del(&lock_key).await?;
-                                                    }
-                                                } else {
-                                                    tracing::debug!(
-                                                        "Could not reacquire lock for document {}, another instance is handling it",
-                                                        doc_id
-                                                    );
-                                                    let mut txn = doc.transact_mut();
-                                                    let _ =
-                                                        self.store.load_doc(doc_id, &mut txn).await;
-                                                }
-                                            }
-                                        }
-                                        Err(e) => {
-                                            tracing::error!(
-                                                "Failed to load document {}: {}",
-                                                doc_id,
-                                                e
-                                            );
-
-                                            return Err(anyhow!("Failed to load document: {}", e));
-                                        }
-                                    }
-                                }
-
-                                match conn.lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1).await {
-                                    Ok(updates) => {
-                                        if !updates.is_empty() {
-                                            tracing::debug!(
-                                                "Found {} pending updates in Redis for document '{}'",
-                                                updates.len(),
-                                                doc_id
-                                            );
-                                            updates_from_redis = updates;
-                                        }
-                                    }
-                                    Err(e) => {
-                                        tracing::warn!(
-                                            "Failed to load pending updates from Redis for document '{}': {}",
-                                            doc_id,
-                                            e
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    {
                         let mut txn = doc.transact_mut();
-
                         match self.store.load_doc(doc_id, &mut txn).await {
-                            Ok(_) => {
+                            Ok(true) => {
+                                tracing::debug!("Document {} already exists", doc_id);
+                            }
+                            Ok(false) | Err(_) => {
                                 tracing::debug!(
-                                    "Successfully loaded existing document: {}",
+                                    "Document {} will be initialized by client",
                                     doc_id
                                 );
                             }
-                            Err(e) => {
-                                if e.to_string().contains("not found") {
-                                    tracing::debug!("Creating new document: {}", doc_id);
-                                } else {
-                                    tracing::error!("Failed to load document {}: {}", doc_id, e);
-                                    return Err(anyhow!("Failed to load document: {}", e));
+                        }
+
+                        let _: () = conn.del(&init_key).await?;
+                    } else {
+                        let mut txn = doc.transact_mut();
+                        let _ = self.store.load_doc(doc_id, &mut txn).await;
+                        tracing::debug!("Could not acquire init lock for {}, another server may be initializing", doc_id);
+                    }
+
+                    match conn
+                        .lrange::<_, Vec<Vec<u8>>>(&pending_updates_key, 0, -1)
+                        .await
+                    {
+                        Ok(updates) => {
+                            if !updates.is_empty() {
+                                let mut txn = doc.transact_mut();
+                                for update in &updates {
+                                    if let Ok(decoded) = Update::decode_v1(update) {
+                                        let _ = txn.apply_update(decoded);
+                                    }
                                 }
+                                pending_updates = updates;
                             }
                         }
-                        for update in updates_from_redis {
-                            if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(&update) {
+                        Err(e) => {
+                            tracing::warn!("Failed to load pending updates from Redis: {}", e);
+                        }
+                    }
+                }
+            }
+        } else {
+            let mut txn = doc.transact_mut();
+            let _ = self.store.load_doc(doc_id, &mut txn).await;
+        }
+
+        let awareness = Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)));
+
+        let buffer_capacity = self.buffer_capacity;
+        let group = if let Some(redis_config) = &self.redis_config {
+            match BroadcastGroup::with_storage(
+                awareness.clone(),
+                buffer_capacity,
+                self.store.clone(),
+                BroadcastConfig {
+                    storage_enabled: true,
+                    doc_name: Some(doc_id.to_string()),
+                    redis_config: Some(redis_config.clone()),
+                },
+            )
+            .await
+            {
+                Ok(mut group) => {
+                    if !pending_updates.is_empty() {
+                        let awareness_ref = group.awareness();
+                        let awareness = awareness_ref.write().await;
+                        let mut txn = awareness.doc().transact_mut();
+                        for update in &pending_updates {
+                            if let Ok(decoded) = Update::decode_v1(update) {
                                 if let Err(e) = txn.apply_update(decoded) {
-                                    tracing::warn!("Failed to apply update from Redis: {}", e);
+                                    tracing::warn!("Failed to apply update: {}", e);
                                 }
                             }
                         }
                     }
-
-                    Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
-                };
-
-                let group = Arc::new(
-                    BroadcastGroup::with_storage(
-                        awareness,
-                        self.buffer_capacity,
-                        self.store.clone(),
-                        BroadcastConfig {
-                            storage_enabled: true,
-                            doc_name: Some(doc_id.to_string()),
-                            redis_config: self.redis_config.clone(),
-                        },
-                    )
-                    .await?,
-                );
-
-                Ok(entry.insert(group.clone()).clone())
+                    group
+                }
+                Err(e) => return Err(e),
             }
-        }
+        } else {
+            match BroadcastGroup::new(awareness.clone(), buffer_capacity).await {
+                Ok(group) => group,
+                Err(e) => return Err(e),
+            }
+        };
+
+        let group = Arc::new(group);
+        let result = self
+            .groups
+            .entry(doc_id.to_string())
+            .or_insert(group.clone());
+        Ok(result.clone())
     }
 
     pub async fn cleanup_empty_groups(&self) {
