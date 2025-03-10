@@ -1,11 +1,14 @@
 import { RJSFSchema } from "@rjsf/utils";
 
+import type { Action, NodeData } from "@flow/types";
+
 import { useT } from "../i18n";
 
 const useNodeSchemaGenerate = (
   nodeType: string,
-  officialName: string,
-): RJSFSchema => {
+  nodeMeta: NodeData,
+  action?: Action,
+): { schema: RJSFSchema; action?: Action } => {
   const t = useT();
 
   const baseSchema: RJSFSchema = {
@@ -15,7 +18,7 @@ const useNodeSchemaGenerate = (
         type: "string",
         title: t("Custom Name"),
         format: "text",
-        default: officialName,
+        default: nodeMeta.officialName,
       },
     },
   };
@@ -59,21 +62,64 @@ const useNodeSchemaGenerate = (
     },
   };
 
+  let schema: RJSFSchema;
   switch (nodeType) {
+    case "reader":
+    case "writer":
+    case "transformer":
     case "subworkflow":
-      return {
+      schema = {
         ...baseSchema,
         properties: {
           ...baseSchema.properties,
         },
       };
+      break;
     case "batch":
-      return batchNodeCustomizationSchema;
+      schema = batchNodeCustomizationSchema;
+      break;
     case "note":
-      return noteNodeCustomizationSchema;
+      schema = noteNodeCustomizationSchema;
+      break;
     default:
-      return baseSchema;
+      schema = baseSchema;
   }
+
+  let resultAction = action;
+  // For nodes such as note and batch that are not in the actions list and therefore have no params.
+  if (!resultAction) {
+    switch (nodeMeta.officialName) {
+      case "batch":
+        resultAction = {
+          ...nodeMeta,
+          name: "batch",
+          description: "Batch node",
+          type: "batch",
+          categories: ["batch"],
+          inputPorts: ["input"],
+          outputPorts: ["output"],
+          builtin: true,
+          customization: schema,
+        };
+        break;
+
+      case "note":
+        resultAction = {
+          ...nodeMeta,
+          name: "note",
+          description: "Note node",
+          type: "note",
+          categories: ["note"],
+          inputPorts: ["input"],
+          outputPorts: ["output"],
+          builtin: true,
+          customization: schema,
+        };
+        break;
+    }
+  }
+
+  return { schema, action: resultAction };
 };
 
 export default useNodeSchemaGenerate;

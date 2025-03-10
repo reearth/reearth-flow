@@ -40,65 +40,33 @@ const ParamEditor: React.FC<Props> = ({
 }) => {
   const t = useT();
   const { useGetActionById } = useAction(i18n.language);
-  let { action } = useGetActionById(nodeMeta.officialName);
+  const { action: fetchedAction } = useGetActionById(nodeMeta.officialName);
   const firstRenderRef = useRef(true);
   // Used to generate the customization schema for the node with translations
-  const nodeSchema = useNodeSchemaGenerate(nodeType, nodeMeta.officialName);
-
-  // For nodes such as note and batch that are not in the actions list and therefore have no params.
-  if (!action) {
-    switch (nodeMeta.officialName) {
-      case "batch":
-        action = {
-          ...nodeMeta,
-          name: "batch",
-          description: "Batch node",
-          type: "batch",
-          categories: ["batch"],
-          inputPorts: ["input"],
-          outputPorts: ["output"],
-          builtin: true,
-          customization: nodeSchema,
-        };
-        break;
-
-      case "note":
-        action = {
-          ...nodeMeta,
-          name: "note",
-          description: "Note node",
-          type: "note",
-          categories: ["note"],
-          inputPorts: ["input"],
-          outputPorts: ["output"],
-          builtin: true,
-          customization: nodeSchema,
-        };
-        break;
-
-      default:
-        action = undefined;
-    }
-  }
+  const { schema: nodeSchema, action: createdAction } = useNodeSchemaGenerate(
+    nodeType,
+    nodeMeta,
+    fetchedAction,
+  );
 
   const [actionWithCustomization, setActionWithCustomization] =
-    useState(action);
+    useState(createdAction);
 
   useEffect(() => {
-    if (firstRenderRef.current && action) {
+    if (firstRenderRef.current && createdAction) {
       firstRenderRef.current = false;
 
       // Only update if we need to add customization
-      if (!action.customization) {
+      if (!createdAction.customization) {
         setActionWithCustomization({
-          ...action,
+          ...createdAction,
           customization: nodeSchema,
         });
       } else {
-        setActionWithCustomization(action);
+        setActionWithCustomization(createdAction);
       }
     }
-  }, [action, nodeMeta, nodeSchema]);
+  }, [createdAction, nodeMeta, nodeSchema]);
 
   // This is a patch for the `anyOf` type in JSON Schema.
   const patchedSchemaParams = useMemo<RJSFSchema | undefined>(
