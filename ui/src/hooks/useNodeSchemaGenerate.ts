@@ -1,8 +1,7 @@
 import { RJSFSchema } from "@rjsf/utils";
 
+import { useT } from "@flow/lib/i18n";
 import type { Action, NodeData } from "@flow/types";
-
-import { useT } from "../i18n";
 
 export default (
   nodeType: string,

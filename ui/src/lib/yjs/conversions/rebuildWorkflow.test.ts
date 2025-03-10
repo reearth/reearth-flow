@@ -32,6 +32,12 @@ describe("rebuildWorkflow", () => {
             param4: null,
             param5: { key: "value" },
           },
+          customizations: {
+            customName: "Custom Name",
+            content: "Content",
+            backgroundColor: "#000000",
+            textColor: "#FFFFFF",
+          },
           pseudoInputs: [
             { nodeId: "node-2", portName: "port1" },
             { nodeId: "node-3", portName: "port2" },
@@ -40,7 +46,6 @@ describe("rebuildWorkflow", () => {
             { nodeId: "node-4", portName: "port3" },
             { nodeId: "node-5", portName: "port4" },
           ],
-          content: "Content",
         },
       },
     ];

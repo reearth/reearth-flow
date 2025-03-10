@@ -71,10 +71,6 @@ export const reassembleNode = (yNode: YNode): Node => {
         portName: input.get("portName").toString(),
       }));
   }
-  // Batch & note specific
-  if ((yNode.get("data") as Y.Map<any>)?.get("content") !== undefined) {
-    data.content = (yNode.get("data") as Y.Map<any>)?.get("content").toString();
-  }
 
   const style = {
     width: (yNode.get("style") as Y.Map<any>)?.get("width").toString(),

@@ -44,9 +44,9 @@ describe("useYNode", () => {
           inputs: ["input1"],
           outputs: ["output1"],
           params: {},
+          customizations: {},
           pseudoInputs: [],
           pseudoOutputs: [],
-          content: "content",
         },
         style: { width: 0, height: 0 },
       },
@@ -67,7 +67,7 @@ describe("useYNode", () => {
         inputs: node.data.inputs,
         outputs: node.data.outputs,
         params: node.data.params,
-        content: node.data.content,
+        customizations: node.data.customizations,
       },
     }));
 

@@ -13,10 +13,10 @@ import {
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { patchAnyOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
+import { useNodeSchemaGenerate } from "@flow/hooks";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
-import useNodeSchemaGenerate from "@flow/lib/reactFlow/useNodeSchemaGenerate";
 import type { NodeData } from "@flow/types";
 
 type Props = {

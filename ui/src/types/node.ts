@@ -1,15 +1,16 @@
 import type {
-  NodeProps,
   Node as ReactFlowNode,
   NodeChange as ReactFlowNodeChange,
 } from "@xyflow/react";
-import { ComponentType } from "react";
 
-type NodeParam = Record<string, any>;
+type NodeParams = Record<string, any>;
 // TODO: Add generic for NodeCustomization for better type checking and separation of concerns
-// type NodeCustomization<T> = {
-//   customName?: string;
-// } & T
+type NodeCustomizations = {
+  customName?: string;
+  content?: string;
+  backgroundColor?: string;
+  textColor?: string;
+};
 
 export type PseudoPort = {
   nodeId: string;
@@ -21,22 +22,13 @@ export type NodeData = {
   customName?: string;
   inputs?: string[];
   outputs?: string[];
-  params?: NodeParam;
-  customizations?: {
-    customName?: string;
-    backgroundColor?: string;
-    textColor?: string;
-    content?: string;
-  };
+  params?: NodeParams;
+  customizations?: NodeCustomizations;
   // subworkflow nodes
   subworkflowId?: string;
   pseudoInputs?: PseudoPort[];
   pseudoOutputs?: PseudoPort[];
-  // batch & note nodes
-  content?: string;
 };
-
-export type NodePosition = { x: number; y: number };
 
 export const actionNodeTypes = ["reader", "writer", "transformer"] as const;
 
@@ -58,16 +50,5 @@ export const nodeTypes = [
 export type NodeType = (typeof nodeTypes)[number];
 
 export type Node = Omit<ReactFlowNode<NodeData>, "type"> & { type: NodeType };
-
-export type NodeTypes = Record<
-  NodeType,
-  ComponentType<
-    NodeProps & {
-      coolName: string;
-      data: NodeData;
-      type: NodeType;
-    }
-  >
->;
 
 export type NodeChange = ReactFlowNodeChange<Node>;

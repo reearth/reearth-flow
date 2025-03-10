@@ -49,8 +49,6 @@ export const yNodeConstructor = (node: Node): YNode => {
           return yPseudoOutput;
         }),
       ),
-      // Batch & Note specific
-      content: toYjsText(node.data.content),
     }),
     style: toYjsMap({
       width: node.style?.width,

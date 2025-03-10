@@ -57,7 +57,6 @@ describe("yWorkflowConstructor", () => {
             { nodeId: "node-4", portName: "port3" },
             { nodeId: "node-5", portName: "port4" },
           ],
-          content: "Content",
         },
       },
     ];
