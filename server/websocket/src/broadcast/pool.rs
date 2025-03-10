@@ -8,7 +8,7 @@ use redis::AsyncCommands;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use yrs::sync::Awareness;
-use yrs::{Any, Array, Doc, Map, ReadTxn, Transact, WriteTxn};
+use yrs::{Any, Doc, Map, ReadTxn, Transact, WriteTxn};
 
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
