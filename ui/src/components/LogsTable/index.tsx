@@ -29,15 +29,19 @@ import {
   Button,
   Input,
   IconButton,
+  FlowLogo,
+  LoadingSkeleton,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { Log, LogLevel } from "@flow/types";
 
+import BasicBoiler from "../BasicBoiler";
 import { Table, TableBody, TableCell, TableRow } from "../Table";
 
 type LogProps = {
   columns: ColumnDef<Log, unknown>[];
   data: Log[];
+  isFetching: boolean;
   selectColumns?: boolean;
   showFiltering?: boolean;
 };
@@ -45,6 +49,7 @@ type LogProps = {
 const LogsTable = ({
   columns,
   data,
+  isFetching,
   selectColumns = false,
   showFiltering = false,
 }: LogProps) => {
@@ -89,7 +94,7 @@ const LogsTable = ({
   };
 
   const handleTimeStampColumnVisibility = () => {
-    const column = table.getColumn("timeStamp");
+    const column = table.getColumn("timestamp");
 
     column?.toggleVisibility(!column.getIsVisible());
     return;
@@ -97,7 +102,7 @@ const LogsTable = ({
 
   const handleResetTable = () => {
     setColumnFilters([]);
-    table.getColumn("timeStamp")?.toggleVisibility(true);
+    table.getColumn("timestamp")?.toggleVisibility(true);
   };
 
   const getStatusValue = useMemo(() => {
@@ -105,65 +110,63 @@ const LogsTable = ({
     return value?.value;
   }, [columnFilters]);
 
+  const hasValidLogs = data.some(
+    (log) => log.timestamp || log.status || log.message,
+  );
+
   return (
     <div className="flex size-full flex-col rounded">
-      <div className="flex h-16 w-full items-center justify-between p-2">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center justify-between p-2">
-            <h2 className="text-lg">{t("Log")}</h2>
-          </div>
-          <div className="flex items-center gap-4">
-            {showFiltering && (
-              <Input
-                placeholder={t("Search") + "..."}
-                value={globalFilter ?? ""}
-                onChange={(e) => setGlobalFilter(String(e.target.value))}
-                className="max-w-80"
-              />
-            )}
-          </div>
+      <div className="flex w-full shrink-0 items-center justify-between px-2 pb-2">
+        <div className="mr-4 flex-1">
+          {showFiltering && (
+            <Input
+              placeholder={t("Search") + "..."}
+              value={globalFilter ?? ""}
+              onChange={(e) => setGlobalFilter(String(e.target.value))}
+              className="w-3/5 min-w-80"
+            />
+          )}
         </div>
-
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <IconButton
             size="icon"
             variant={getStatusValue === "ERROR" ? "default" : "outline"}
             tooltipText={t("Error")}
-            onClick={() => handleStatusChange(LogLevel.ERROR)}
+            onClick={() => handleStatusChange(LogLevel.Error)}
             icon={<CrossCircledIcon />}
           />
           <IconButton
             size="icon"
             variant={getStatusValue === "WARN" ? "default" : "outline"}
             tooltipText={t("Warning")}
-            onClick={() => handleStatusChange(LogLevel.WARN)}
+            onClick={() => handleStatusChange(LogLevel.Warn)}
             icon={<ExclamationTriangleIcon />}
           />
           <IconButton
             size="icon"
             variant={getStatusValue === "DEBUG" ? "default" : "outline"}
             tooltipText={t("Debug")}
-            onClick={() => handleStatusChange(LogLevel.DEBUG)}
+            onClick={() => handleStatusChange(LogLevel.Debug)}
             icon={<Bug />}
           />
           <IconButton
             size="icon"
             variant={getStatusValue === "TRACE" ? "default" : "outline"}
             tooltipText={t("Trace")}
-            onClick={() => handleStatusChange(LogLevel.TRACE)}
+            onClick={() => handleStatusChange(LogLevel.Trace)}
             icon={<MagnifyingGlassIcon />}
           />
           <IconButton
             size="icon"
             variant={getStatusValue === "INFO" ? "default" : "outline"}
             tooltipText={t("Info")}
-            onClick={() => handleStatusChange(LogLevel.INFO)}
+            onClick={() => handleStatusChange(LogLevel.Info)}
             icon={<InfoCircledIcon />}
           />
           <IconButton
             size="icon"
             variant={
-              table.getColumn("timeStamp")?.getIsVisible()
+              table.getColumn("timestamp")?.getIsVisible()
                 ? "default"
                 : "outline"
             }
@@ -211,12 +214,21 @@ const LogsTable = ({
         </div>
       </div>
 
-      <div className="h-[calc(100vh-6rem)] w-full overflow-auto">
-        <div className="border-b" />
-        <Table>
-          <TableBody>
-            {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
+      <div className="border-b" />
+      <div className="h-[calc(100%-20px)] w-full overflow-auto">
+        {isFetching ? (
+          <LoadingSkeleton />
+        ) : !hasValidLogs || !table.getRowModel().rows?.length ? (
+          <BasicBoiler
+            className="h-full"
+            textClassName="text-base"
+            text={t("No Logs Available")}
+            icon={<FlowLogo className="size-16 text-accent" />}
+          />
+        ) : (
+          <Table>
+            <TableBody>
+              {table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
                   className={`${row.original.status === "ERROR" ? "text-destructive" : row.original.status === "WARN" ? "text-warning" : ""}`}
@@ -230,18 +242,10 @@ const LogsTable = ({
                     </TableCell>
                   ))}
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="h-24 text-center">
-                  {t("No Results")}
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableBody>
+          </Table>
+        )}
       </div>
     </div>
   );

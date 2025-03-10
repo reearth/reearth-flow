@@ -29,11 +29,11 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 	config ContainerConfig,
 ) interfaces.Container {
 	job := NewJob(r, g)
-
 	return interfaces.Container{
 		Asset:         NewAsset(r, g),
 		Job:           job,
 		Deployment:    NewDeployment(r, g, job),
+		Log:           NewLogInteractor(g.LogRedis),
 		Parameter:     NewParameter(r),
 		Project:       NewProject(r, g, job),
 		ProjectAccess: NewProjectAccess(r, g, config),

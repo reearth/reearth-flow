@@ -32,7 +32,7 @@ async fn main() {
         }
     };
 
-    // if let Err(e) = ensure_bucket(&store.client, &config.gcs.bucket_name).await {
+    // if let Err(e) = websocket::ensure_bucket(&store.client, &config.gcs.bucket_name).await {
     //     error!("Failed to ensure bucket exists: {}", e);
     //     std::process::exit(1);
     // }

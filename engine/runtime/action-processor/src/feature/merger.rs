@@ -24,7 +24,7 @@ static MERGED_PORT: Lazy<Port> = Lazy::new(|| Port::new("merged"));
 static UNMERGED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unmerged"));
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureMergerFactory;
+pub(super) struct FeatureMergerFactory;
 
 impl ProcessorFactory for FeatureMergerFactory {
     fn name(&self) -> &str {

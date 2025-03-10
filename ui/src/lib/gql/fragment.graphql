@@ -43,7 +43,6 @@ fragment Trigger on Trigger {
 
 fragment Job on Job {
   id
-  deploymentId
   workspaceId
   status
   startedAt
@@ -51,7 +50,8 @@ fragment Job on Job {
   logsURL
   outputURLs
   deployment {
-    ...Deployment
+    id
+    description
   }
   # workspace{
   #   ...Workspace
@@ -69,4 +69,11 @@ fragment ProjectSnapshot on ProjectSnapshot {
   timestamp
   updates
   version
+}
+
+fragment Log on Log {
+  jobId
+  nodeId
+  timestamp
+  logLevel
 }

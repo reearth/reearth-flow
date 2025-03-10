@@ -11,7 +11,7 @@ RUN apt-get update && \
 WORKDIR /usr/src/app
 COPY . .
 
-RUN cargo build --release 
+RUN cargo build --release --no-default-features 
 
 FROM gcr.io/distroless/cc-debian12
 

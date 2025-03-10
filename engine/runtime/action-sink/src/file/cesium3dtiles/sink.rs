@@ -3,7 +3,7 @@ use std::{
     io::{BufWriter, Cursor},
     str::FromStr,
     sync::Arc,
-    vec,
+    time, vec,
 };
 
 use reearth_flow_common::uri::Uri;
@@ -230,6 +230,7 @@ impl Cesium3DTilesWriter {
             {
                 let ctx = ctx.clone();
                 s.spawn(move || {
+                    let now = time::Instant::now();
                     let result = super::pipeline::geometry_slicing_stage(
                         &features,
                         tile_id_conv,
@@ -247,11 +248,21 @@ impl Cesium3DTilesWriter {
                             name: "geometry_slicing_stage".to_string(),
                         });
                     }
+                    ctx.event_hub.info_log(
+                        None,
+                        format!(
+                            "Finish geometry_slicing_stage. feature length = {}, elapsed = {:?}, output = {}",
+                            features.len(),
+                            now.elapsed(),
+                            output
+                        ),
+                    );
                 });
             }
             {
                 let ctx = ctx.clone();
                 s.spawn(move || {
+                    let now = time::Instant::now();
                     let result =
                         super::pipeline::feature_sorting_stage(receiver_sliced, sender_sorted);
                     if let Err(e) = &result {
@@ -263,6 +274,14 @@ impl Cesium3DTilesWriter {
                             name: "feature_sorting_stage".to_string(),
                         });
                     }
+                    ctx.event_hub.info_log(
+                        None,
+                        format!(
+                            "Finish feature_sorting_stage. elapsed = {:?}, output = {}",
+                            now.elapsed(),
+                            output
+                        ),
+                    );
                 });
             }
             {
@@ -273,6 +292,7 @@ impl Cesium3DTilesWriter {
                         .build()
                         .unwrap();
                     pool.install(|| {
+                        let now = time::Instant::now();
                         let result = super::pipeline::tile_writing_stage(
                             ctx.clone(),
                             output.clone(),
@@ -291,15 +311,23 @@ impl Cesium3DTilesWriter {
                                 name: "tile_writing_stage".to_string(),
                             });
                         }
+                        ctx.event_hub.info_log(
+                            None,
+                            format!(
+                                "Finish tile_writing_stage. elapsed = {:?}, output = {}",
+                                now.elapsed(),
+                                output
+                            ),
+                        );
 
                         if let Some(compress_output) = compress_output {
                             if let Ok(storage) = ctx.storage_resolver.resolve(compress_output) {
+                                let now = time::Instant::now();
                                 let buffer = Vec::new();
                                 let mut cursor = Cursor::new(buffer);
                                 let writer = BufWriter::new(&mut cursor);
                                 let zip_result = reearth_flow_common::zip::write(
                                     writer,
-                                    output.path().as_path(),
                                     output.path().as_path(),
                                 )
                                 .map_err(|e| {
@@ -351,6 +379,14 @@ impl Cesium3DTilesWriter {
                                         );
                                     }
                                 }
+                                ctx.event_hub.info_log(
+                                    None,
+                                    format!(
+                                        "Finish write zip file. elapsed = {:?}, output = {}",
+                                        now.elapsed(),
+                                        output
+                                    ),
+                                );
                             }
                         }
                     });

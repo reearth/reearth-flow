@@ -4,10 +4,10 @@ import type {
   JobFragment,
   JobStatus as GraphqlJobStatus,
   TriggerFragment,
-  ProjectSnapshotFragment,
-  ProjectDocumentFragment,
+  LogFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import {
+  Log,
   type Deployment,
   type Job,
   type JobStatus,
@@ -56,13 +56,22 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
 
 export const toJob = (job: JobFragment): Job => ({
   id: job.id,
-  deploymentId: job.deploymentId,
+  deploymentId: job.deployment?.id,
+  deploymentDescription: job.deployment?.description,
   workspaceId: job.workspaceId,
   status: toJobStatus(job.status),
   startedAt: job.startedAt,
   completedAt: job.completedAt,
   logsURL: job.logsURL ?? undefined,
   outputURLs: job.outputURLs ?? undefined,
+});
+
+export const toLog = (log: LogFragment): Log => ({
+  nodeId: log.nodeId,
+  jobId: log.jobId,
+  timestamp: log.timestamp,
+  status: log.logLevel,
+  message: log.message,
 });
 
 export const toProjectSnapShot = (

@@ -71,6 +71,15 @@ pub trait KVStore: Send + Sync {
     /// entry with that `key` already existed.
     async fn upsert(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error>;
 
+    /// Batch insert or update multiple key-value pairs.
+    async fn batch_upsert(&self, entries: &[(&[u8], &[u8])]) -> Result<(), Self::Error> {
+        // Default implementation processes entries one by one
+        for (key, value) in entries {
+            self.upsert(key, value).await?;
+        }
+        Ok(())
+    }
+
     /// Return a value stored under the given `key` if it exists.
     async fn remove(&self, key: &[u8]) -> Result<(), Self::Error>;
 

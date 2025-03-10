@@ -5,18 +5,22 @@ import * as Y from "yjs";
 import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 
+import { useAuth } from "../auth";
+
 import { yWorkflowConstructor } from "./conversions";
 import type { YWorkflow } from "./types";
 
 export default ({
   workflowId,
   projectId,
-  accessToken,
+  isProtected,
 }: {
   workflowId?: string;
   projectId?: string;
-  accessToken?: string;
+  isProtected?: boolean;
 }) => {
+  const { getAccessToken } = useAuth();
+
   const [undoManager, setUndoManager] = useState<Y.UndoManager | null>(null);
 
   const [state, setState] = useState<{
@@ -34,34 +38,36 @@ export default ({
     let yWebSocketProvider: WebsocketProvider | null = null;
 
     if (workflowId && websocket && projectId) {
-      let params: Record<string, string> | undefined;
-      if (accessToken) {
-        params = {
-          token: accessToken,
-        };
-      }
-      yWebSocketProvider = new WebsocketProvider(
-        websocket,
-        `${projectId}:${workflowId}`,
-        yDoc,
-        {
-          params,
-        },
-      );
-
-      yWebSocketProvider.once("sync", () => {
-        if (yWorkflows.length === 0) {
-          yDoc.transact(() => {
-            const yWorkflow = yWorkflowConstructor(
-              DEFAULT_ENTRY_GRAPH_ID,
-              "Main Workflow",
-            );
-            yWorkflows.insert(0, [yWorkflow]);
-          });
+      (async () => {
+        const params: Record<string, string> = {};
+        if (isProtected) {
+          const token = await getAccessToken();
+          params.token = token;
         }
 
-        setIsSynced(true); // Mark as synced
-      });
+        yWebSocketProvider = new WebsocketProvider(
+          websocket,
+          `${projectId}:${workflowId}`,
+          yDoc,
+          {
+            params,
+          },
+        );
+
+        yWebSocketProvider.once("sync", () => {
+          if (yWorkflows.length === 0) {
+            yDoc.transact(() => {
+              const yWorkflow = yWorkflowConstructor(
+                DEFAULT_ENTRY_GRAPH_ID,
+                "Main Workflow",
+              );
+              yWorkflows.insert(0, [yWorkflow]);
+            });
+          }
+
+          setIsSynced(true); // Mark as synced
+        });
+      })();
     }
 
     // Initial state setup
@@ -76,7 +82,7 @@ export default ({
       setIsSynced(false); // Mark as not synced
       yWebSocketProvider?.destroy(); // Cleanup on unmount
     };
-  }, [projectId, workflowId, accessToken]);
+  }, [projectId, workflowId, isProtected, getAccessToken]);
 
   const { yDoc, yWorkflows, undoTrackerActionWrapper } = state || {};
 

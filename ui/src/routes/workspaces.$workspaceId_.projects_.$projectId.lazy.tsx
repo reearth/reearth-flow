@@ -69,7 +69,7 @@ const EditorComponent = () => {
   });
 
   const { state, isSynced, undoManager } = useYjsSetup({
-    accessToken,
+    isProtected: true,
     projectId,
     workflowId: DEFAULT_ENTRY_GRAPH_ID,
   });

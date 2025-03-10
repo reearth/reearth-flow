@@ -5,6 +5,7 @@ import * as Y from "yjs";
 
 import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
+import { useAuth } from "@flow/lib/auth";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { YWorkflow } from "@flow/lib/yjs/types";
@@ -12,7 +13,9 @@ import { useCurrentWorkspace } from "@flow/stores";
 import { ProjectToImport } from "@flow/types";
 
 export default () => {
+  const { getAccessToken } = useAuth();
   const t = useT();
+
   const [currentWorkspace] = useCurrentWorkspace();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,38 +65,47 @@ export default () => {
         if (!project) return console.error("Failed to create project");
 
         const yDoc = new Y.Doc();
-        Y.applyUpdate(yDoc, yDocBinary);
-
         const { websocket } = config();
+
         if (websocket && projectMeta) {
+          const token = await getAccessToken();
+
           const yWebSocketProvider = new WebsocketProvider(
             websocket,
             `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
             yDoc,
+            { params: { token } },
           );
 
-          yWebSocketProvider.once("sync", () => {
-            const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-            if (!yWorkflows.length) {
-              console.warn("Imported project has no workflows");
-            }
+          await new Promise<void>((resolve) => {
+            yWebSocketProvider.once("sync", () => {
+              yDoc.transact(() => {
+                Y.applyUpdate(yDoc, yDocBinary);
+              });
 
-            setIsProjectImporting(false);
+              const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+              if (!yWorkflows.length) {
+                console.warn("Imported project has no workflows");
+              }
+
+              setIsProjectImporting(false);
+              resolve();
+            });
           });
+          yWebSocketProvider?.destroy();
         }
       } catch (error) {
-        console.error("Error importing project:", error);
+        console.error("Failed to import project:", error);
         setIsProjectImporting(false);
       }
     },
-    [currentWorkspace, t, createProject],
+    [createProject, currentWorkspace, getAccessToken, t],
   );
 
   return {
-    fileInputRef,
     isProjectImporting,
-    setIsProjectImporting,
     handleProjectImportClick,
     handleProjectFileUpload,
+    fileInputRef,
   };
 };

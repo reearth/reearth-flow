@@ -21,8 +21,6 @@ use time::OffsetDateTime;
 use tracing::debug;
 use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 
-const PROJECTS_PREFIX: &str = "projects/";
-
 /// Type wrapper around GCS Client struct. Used to extend GCS with [DocOps]
 /// methods used for convenience when working with Yrs documents.
 pub struct GcsStore {
@@ -94,7 +92,7 @@ impl GcsStore {
             .chain(&[SUB_UPDATE])
             .copied()
             .collect::<Vec<_>>();
-        let prefix_str = format!("{}{}", PROJECTS_PREFIX, hex::encode(&prefix_bytes));
+        let prefix_str = hex::encode(&prefix_bytes);
 
         // List objects with the specified prefix
         let request = ListObjectsRequest {
@@ -126,17 +124,9 @@ impl GcsStore {
             {
                 if let Ok(update) = Update::decode_v1(&data) {
                     // Extract clock from object name
-                    if let Ok(key_bytes) = hex::decode(&obj.name[PROJECTS_PREFIX.len()..]) {
+                    if let Ok(key_bytes) = hex::decode(&obj.name) {
                         if key_bytes.len() >= 12 {
-                            let clock_bytes_result: Result<[u8; 4], _> =
-                                key_bytes[7..11].try_into();
-                            let clock_bytes = match clock_bytes_result {
-                                Ok(b) => b,
-                                Err(e) => {
-                                    tracing::error!("Invalid clock bytes in key: {}", e);
-                                    continue;
-                                }
-                            };
+                            let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
                             let clock = u32::from_be_bytes(clock_bytes);
 
                             // Get timestamp from object metadata or use current time
@@ -175,7 +165,7 @@ impl GcsStore {
             .chain(&[SUB_UPDATE])
             .copied()
             .collect::<Vec<_>>();
-        let prefix_str = format!("{}{}", PROJECTS_PREFIX, hex::encode(&prefix_bytes));
+        let prefix_str = hex::encode(&prefix_bytes);
 
         // List objects with the specified prefix
         let request = ListObjectsRequest {
@@ -198,21 +188,14 @@ impl GcsStore {
         // Download and apply updates up to target_clock
         for obj in objects {
             // Extract clock from object name
-            let key_bytes = hex::decode(&obj.name[PROJECTS_PREFIX.len()..])
+            let key_bytes = hex::decode(&obj.name)
                 .map_err(|e| anyhow::anyhow!("Failed to decode hex: {}", e))?;
 
             if key_bytes.len() < 12 {
                 continue;
             }
 
-            let clock_bytes_result: Result<[u8; 4], _> = key_bytes[7..11].try_into();
-            let clock_bytes = match clock_bytes_result {
-                Ok(b) => b,
-                Err(e) => {
-                    tracing::error!("Invalid clock bytes in key: {}", e);
-                    continue;
-                }
-            };
+            let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
             let clock = u32::from_be_bytes(clock_bytes);
 
             if clock > target_clock {
@@ -253,10 +236,9 @@ impl KVStore for GcsStore {
 
     async fn get(&self, key: &[u8]) -> Result<Option<Self::Return>, Self::Error> {
         let key_hex = hex::encode(key);
-        let object_path = format!("{}{}", PROJECTS_PREFIX, key_hex);
         let request = GetObjectRequest {
             bucket: self.bucket.clone(),
-            object: object_path,
+            object: key_hex,
             ..Default::default()
         };
 
@@ -280,14 +262,10 @@ impl KVStore for GcsStore {
 
     async fn upsert(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error> {
         let key_hex = hex::encode(key);
-        let object_path = format!("{}{}", PROJECTS_PREFIX, key_hex);
-        debug!(
-            "Writing to GCS storage - key: {:?}, hex: {}",
-            key, object_path
-        );
+        debug!("Writing to GCS storage - key: {:?}, hex: {}", key, key_hex);
         debug!("Value length: {} bytes", value.len());
 
-        let upload_type = UploadType::Simple(Media::new(object_path.clone()));
+        let upload_type = UploadType::Simple(Media::new(key_hex.clone()));
         self.client
             .upload_object(
                 &UploadObjectRequest {
@@ -303,10 +281,9 @@ impl KVStore for GcsStore {
 
     async fn remove(&self, key: &[u8]) -> Result<(), Self::Error> {
         let key_hex = hex::encode(key);
-        let object_path = format!("{}{}", PROJECTS_PREFIX, key_hex);
         let request = DeleteObjectRequest {
             bucket: self.bucket.clone(),
-            object: object_path,
+            object: key_hex,
             ..Default::default()
         };
 
@@ -319,7 +296,6 @@ impl KVStore for GcsStore {
     async fn remove_range(&self, from: &[u8], to: &[u8]) -> Result<(), Self::Error> {
         let request = ListObjectsRequest {
             bucket: self.bucket.clone(),
-            prefix: Some(PROJECTS_PREFIX.to_string()),
             ..Default::default()
         };
 
@@ -336,12 +312,7 @@ impl KVStore for GcsStore {
         let delete_futures = objects
             .into_iter()
             .filter(|obj| {
-                let name_without_prefix = obj
-                    .name
-                    .strip_prefix(PROJECTS_PREFIX)
-                    .unwrap_or(&obj.name)
-                    .to_string();
-                name_without_prefix >= from_hex && name_without_prefix <= to_hex
+                obj.name.as_str() >= from_hex.as_str() && obj.name.as_str() <= to_hex.as_str()
             })
             .map(|obj| {
                 let bucket = self.bucket.clone();
@@ -357,13 +328,13 @@ impl KVStore for GcsStore {
             });
 
         let _results = join_all(delete_futures).await;
+
         Ok(())
     }
 
     async fn iter_range(&self, from: &[u8], to: &[u8]) -> Result<Self::Cursor, Self::Error> {
         let request = ListObjectsRequest {
             bucket: self.bucket.clone(),
-            prefix: Some(PROJECTS_PREFIX.to_string()),
             ..Default::default()
         };
 
@@ -377,12 +348,7 @@ impl KVStore for GcsStore {
             .into_iter()
             .filter(|obj| {
                 debug!("Checking object: {:?}", obj.name.as_str());
-                let name_without_prefix = obj
-                    .name
-                    .strip_prefix(PROJECTS_PREFIX)
-                    .unwrap_or(&obj.name)
-                    .to_string();
-                name_without_prefix >= from_hex && name_without_prefix <= to_hex
+                obj.name.as_str() >= from_hex.as_str() && obj.name.as_str() <= to_hex.as_str()
             })
             .collect();
 
@@ -422,7 +388,6 @@ impl KVStore for GcsStore {
         let key_hex = hex::encode(key);
         let request = ListObjectsRequest {
             bucket: self.bucket.clone(),
-            prefix: Some(PROJECTS_PREFIX.to_string()),
             ..Default::default()
         };
 
@@ -435,14 +400,7 @@ impl KVStore for GcsStore {
             .items
             .unwrap_or_default()
             .into_iter()
-            .filter(|obj| {
-                let name_without_prefix = obj
-                    .name
-                    .strip_prefix(PROJECTS_PREFIX)
-                    .unwrap_or(&obj.name)
-                    .to_string();
-                name_without_prefix < key_hex
-            })
+            .filter(|obj| obj.name.as_str() < key_hex.as_str())
             .collect();
 
         objects.sort_by(|a, b| a.name.cmp(&b.name));
@@ -460,7 +418,7 @@ impl KVStore for GcsStore {
                 .await?;
 
             Ok(Some(GcsEntry {
-                key: hex::decode(&obj.name[PROJECTS_PREFIX.len()..]).unwrap_or_default(),
+                key: hex::decode(&obj.name).unwrap_or_default(),
                 value,
             }))
         } else {
@@ -487,7 +445,7 @@ impl Iterator for GcsRange {
         self.current += 1;
 
         Some(GcsEntry {
-            key: hex::decode(&obj.name[PROJECTS_PREFIX.len()..]).unwrap_or_default(),
+            key: obj.name.clone().into_bytes(),
             value,
         })
     }

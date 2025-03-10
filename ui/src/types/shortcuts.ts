@@ -4,7 +4,6 @@ export type GeneralKeys =
   | "r" // reader dialog
   | "t" // transformer dialog
   | "w" // writer dialog
-  | "l" // bottom panel logs
   | "p" // bottom panel preview
   | "c"; // left panel canvas navigator
 
@@ -13,7 +12,6 @@ export type EditorKeys =
   | "r" // reader dialog
   | "t" // transformer dialog
   | "w" // writer dialog
-  | "l" // bottom panel logs
   | "p" // bottom panel preview
   | "a" // SHIFT + a = left panel actions list
   | "r" // SHIFT + r = left panel resources
@@ -44,8 +42,6 @@ type PossibleActions =
   | "readerDialog"
   | "transformerDialog"
   | "writerDialog"
-  | "bottomPanelLogs"
-  | "bottomPanelPreview"
   | "leftPanelCanvasNavigator"
   | "leftPanelActionsList"
   | "leftPanelResources"
@@ -81,8 +77,6 @@ export const EditorKeyBindings: Partial<
   readerDialog: { key: "r" },
   transformerDialog: { key: "t" },
   writerDialog: { key: "w" },
-  bottomPanelLogs: { key: "l", commandKey: true },
-  bottomPanelPreview: { key: "p", commandKey: true },
   leftPanelCanvasNavigator: { key: "c", shiftKey: true },
   leftPanelActionsList: { key: "a", shiftKey: true },
   leftPanelResources: { key: "r", shiftKey: true },

@@ -4,6 +4,7 @@ use crate::storage::kv::DocOps;
 use crate::AwarenessRef;
 use anyhow::{anyhow, Result};
 use dashmap::DashMap;
+use redis::AsyncCommands;
 use std::sync::Arc;
 use yrs::sync::Awareness;
 use yrs::{Doc, Transact};
@@ -51,9 +52,38 @@ impl BroadcastPool {
             dashmap::mapref::entry::Entry::Vacant(entry) => {
                 let awareness: AwarenessRef = {
                     let doc = Doc::new();
+                    let mut updates_from_redis = Vec::new();
+
+                    if let Some(redis_config) = &self.redis_config {
+                        let redis_key = format!("pending_updates:{}", doc_id);
+                        if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
+                            if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
+                                match conn.lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1).await {
+                                    Ok(updates) => {
+                                        if !updates.is_empty() {
+                                            tracing::debug!(
+                                                "Found {} pending updates in Redis for document '{}'",
+                                                updates.len(),
+                                                doc_id
+                                            );
+                                            updates_from_redis = updates;
+                                        }
+                                    }
+                                    Err(e) => {
+                                        tracing::warn!(
+                                            "Failed to load pending updates from Redis for document '{}': {}",
+                                            doc_id,
+                                            e
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     {
                         let mut txn = doc.transact_mut();
+
                         match self.store.load_doc(doc_id, &mut txn).await {
                             Ok(_) => {
                                 tracing::debug!(
@@ -63,10 +93,22 @@ impl BroadcastPool {
                             }
                             Err(e) => {
                                 if e.to_string().contains("not found") {
-                                    tracing::info!("Creating new document: {}", doc_id);
+                                    tracing::debug!("Creating new document: {}", doc_id);
                                 } else {
                                     tracing::error!("Failed to load document {}: {}", doc_id, e);
                                     return Err(anyhow!("Failed to load document: {}", e));
+                                }
+                            }
+                        }
+
+                        for update in updates_from_redis {
+                            if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(&update) {
+                                if let Err(e) = txn.apply_update(decoded) {
+                                    tracing::warn!(
+                                        "Failed to apply update from Redis for document '{}': {}",
+                                        doc_id,
+                                        e
+                                    );
                                 }
                             }
                         }
@@ -75,7 +117,6 @@ impl BroadcastPool {
                     Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
                 };
 
-                // Create new broadcast group
                 let group = Arc::new(
                     BroadcastGroup::with_storage(
                         awareness,
@@ -96,9 +137,6 @@ impl BroadcastPool {
     }
 
     pub async fn cleanup_empty_groups(&self) {
-        // Only remove groups that still have zero connections when we check
-        // This prevents race conditions where a new connection was added
-        // between marking for cleanup and actual cleanup
         self.groups.retain(|_, group| {
             let count = group.connection_count();
             if count == 0 {
@@ -112,15 +150,20 @@ impl BroadcastPool {
 
     pub async fn remove_connection(&self, doc_id: &str) {
         if let Some(group) = self.groups.get(doc_id) {
+            let group_clone = group.clone();
             let remaining = group.decrement_connections();
+
+            tracing::info!(
+                "Connection disconnected for document '{}', updates will be flushed in decrement_connections",
+                doc_id
+            );
+
             if remaining == 0 {
-                // Add a small delay before cleanup to reduce likelihood of race conditions
-                // with new connections being established
-                let pool = self.clone();
-                tokio::spawn(async move {
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                    pool.cleanup_empty_groups().await;
-                });
+                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                if group_clone.connection_count() == 0 {
+                    tracing::info!("Removing empty group for document '{}'", doc_id);
+                    self.groups.remove(doc_id);
+                }
             }
         }
     }

@@ -57,7 +57,7 @@ impl AtomicCounterMap {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureCounterFactory;
+pub(super) struct FeatureCounterFactory;
 
 impl ProcessorFactory for FeatureCounterFactory {
     fn name(&self) -> &str {
@@ -120,16 +120,19 @@ impl ProcessorFactory for FeatureCounterFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct FeatureCounter {
+struct FeatureCounter {
     counter: AtomicCounterMap,
     params: FeatureCounterParam,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct FeatureCounterParam {
+struct FeatureCounterParam {
+    /// # Start count
     count_start: i64,
+    /// # Attributes to group by
     group_by: Option<Vec<Attribute>>,
+    /// # Attribute to output the count
     output_attribute: String,
 }
 

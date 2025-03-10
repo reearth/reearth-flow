@@ -19,7 +19,7 @@ import { useAction } from "@flow/lib/fetch";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
-import type { Action, ActionsSegregated, Node } from "@flow/types";
+import type { Action, ActionsSegregated, Node, NodeType } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
@@ -92,7 +92,7 @@ const ActionsList: React.FC<Props> = ({
       const randomY = getRandomNumberInRange(50, 200);
       const newNode: Node = {
         id: generateUUID(),
-        type: action.type,
+        type: action.type as NodeType,
         position: screenToFlowPosition({
           x: window.innerWidth / 2 + randomX,
           y: window.innerHeight / 2 - randomY,
@@ -101,7 +101,6 @@ const ActionsList: React.FC<Props> = ({
           officialName: action.name,
           inputs: [...action.inputPorts],
           outputs: [...action.outputPorts],
-          status: "idle",
         },
       };
       onNodesAdd([newNode]);

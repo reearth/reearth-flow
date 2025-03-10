@@ -1,0 +1,1247 @@
+{
+  "id": "a0388d9e-3373-4d00-92d1-a8b7c9d89f7a",
+  "name": "PLATEAU4-quality-check-02-bldg-workflow",
+  "entryGraphId": "12e53460-cbc2-4abd-b7bb-8138e4eef55a",
+  "with": {
+    "cityGmlPath": null,
+    "codelists": null,
+    "schemas": null,
+    "objectLists": null
+  },
+  "graphs": [
+    {
+      "id": "2c753ffc-cc90-4f4a-b5ee-f5d7853dbac6",
+      "name": "PLATEAU4.XMLValidator",
+      "nodes": [
+        {
+          "id": "1c0e21d1-cc12-48bd-b761-d5e943f5006f",
+          "name": "InputRouter",
+          "type": "action",
+          "action": "InputRouter",
+          "with": {
+            "routingPort": "default"
+          }
+        },
+        {
+          "id": "6da2ce36-9a86-44ac-8f9f-b427bdb50097",
+          "name": "XMLValidatorSyntaxAndNamespace",
+          "type": "action",
+          "action": "XMLValidator",
+          "with": {
+            "attribute": "path",
+            "inputType": "file",
+            "validationType": "syntaxAndNamespace"
+          }
+        },
+        {
+          "id": "b51e43bd-1d67-4e9e-9b42-2e91aef79f6f",
+          "name": "XMLValidatorSyntaxAndSchema",
+          "type": "action",
+          "action": "XMLValidator",
+          "with": {
+            "attribute": "path",
+            "inputType": "file",
+            "validationType": "syntaxAndSchema"
+          }
+        },
+        {
+          "id": "14225ce7-1d9f-44bc-8b41-3aa06d4275cd",
+          "name": "AttributeManagerCreateValid",
+          "type": "action",
+          "action": "AttributeManager",
+          "with": {
+            "operations": [
+              {
+                "attribute": "status",
+                "method": "create",
+                "value": "\"VALID\"\n"
+              }
+            ]
+          }
+        },
+        {
+          "id": "9293ff92-7cde-422d-a157-011d54b23cf0",
+          "name": "AttributeManagerCreateNotWellFormed",
+          "type": "action",
+          "action": "AttributeManager",
+          "with": {
+            "operations": [
+              {
+                "attribute": "status",
+                "method": "create",
+                "value": "\"NOT_WELL_FORMED\"\n"
+              }
+            ]
+          }
+        },
+        {
+          "id": "6c235d0b-26fb-47dd-a3df-709fa961855c",
+          "name": "AttributeManagerCreateInvalid",
+          "type": "action",
+          "action": "AttributeManager",
+          "with": {
+            "operations": [
+              {
+                "attribute": "status",
+                "method": "create",
+                "value": "\"INVALID\"\n"
+              }
+            ]
+          }
+        },
+        {
+          "id": "8d18c9ee-8473-4294-9a83-07dc00c14dc5",
+          "name": "SummaryRouter",
+          "type": "action",
+          "action": "OutputRouter",
+          "with": {
+            "routingPort": "summary"
+          }
+        },
+        {
+          "id": "abd4320c-aa7c-445a-af78-4c4f1f9a35c7",
+          "name": "InvalidRouter",
+          "type": "action",
+          "action": "OutputRouter",
+          "with": {
+            "routingPort": "invalid"
+          }
+        },
+        {
+          "id": "3c0724c6-263e-43b9-8532-e46c7584323a",
+          "name": "NotWellFormedRouter",
+          "type": "action",
+          "action": "OutputRouter",
+          "with": {
+            "routingPort": "not_well_formed"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "f9ede89b-a599-4b07-bbc2-e2c1399ae91f",
+          "from": "1c0e21d1-cc12-48bd-b761-d5e943f5006f",
+          "to": "6da2ce36-9a86-44ac-8f9f-b427bdb50097",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "433e7166-48de-4479-9039-63acdab6d3fa",
+          "from": "6da2ce36-9a86-44ac-8f9f-b427bdb50097",
+          "to": "b51e43bd-1d67-4e9e-9b42-2e91aef79f6f",
+          "fromPort": "success",
+          "toPort": "default"
+        },
+        {
+          "id": "3e8f6cb7-882b-4b81-9f70-eec8374221d5",
+          "from": "6da2ce36-9a86-44ac-8f9f-b427bdb50097",
+          "to": "9293ff92-7cde-422d-a157-011d54b23cf0",
+          "fromPort": "failed",
+          "toPort": "default"
+        },
+        {
+          "id": "2903c5d8-28d9-49b2-bccc-f6a43e4822c3",
+          "from": "6da2ce36-9a86-44ac-8f9f-b427bdb50097",
+          "to": "3c0724c6-263e-43b9-8532-e46c7584323a",
+          "fromPort": "failed",
+          "toPort": "default"
+        },
+        {
+          "id": "7a133f42-08d8-4e9c-8f88-d8ee9f2d3c1d",
+          "from": "b51e43bd-1d67-4e9e-9b42-2e91aef79f6f",
+          "to": "14225ce7-1d9f-44bc-8b41-3aa06d4275cd",
+          "fromPort": "success",
+          "toPort": "default"
+        },
+        {
+          "id": "aeba356e-a59a-4b4d-8c63-50da73b7664c",
+          "from": "b51e43bd-1d67-4e9e-9b42-2e91aef79f6f",
+          "to": "6c235d0b-26fb-47dd-a3df-709fa961855c",
+          "fromPort": "failed",
+          "toPort": "default"
+        },
+        {
+          "id": "300b2fa9-d5e2-4145-9703-49189b4fe849",
+          "from": "b51e43bd-1d67-4e9e-9b42-2e91aef79f6f",
+          "to": "abd4320c-aa7c-445a-af78-4c4f1f9a35c7",
+          "fromPort": "failed",
+          "toPort": "default"
+        },
+        {
+          "id": "8ba8930c-52b3-4074-b7f8-199b74405cbe",
+          "from": "14225ce7-1d9f-44bc-8b41-3aa06d4275cd",
+          "to": "8d18c9ee-8473-4294-9a83-07dc00c14dc5",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "aa9aec13-bfdf-4cd8-95e1-a5535ea9bc19",
+          "from": "9293ff92-7cde-422d-a157-011d54b23cf0",
+          "to": "8d18c9ee-8473-4294-9a83-07dc00c14dc5",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "0c8a07cf-cf92-432c-8e62-fc3ae96a1f3a",
+          "from": "6c235d0b-26fb-47dd-a3df-709fa961855c",
+          "to": "8d18c9ee-8473-4294-9a83-07dc00c14dc5",
+          "fromPort": "default",
+          "toPort": "default"
+        }
+      ]
+    },
+    {
+      "id": "b7396083-17d0-47dd-be86-83caf6c5ac63",
+      "name": "PLATEAU4.DomainOfDefinitionValidator",
+      "nodes": [
+        {
+          "id": "dfcdb977-e929-41b9-a3de-e368d158b5b9",
+          "name": "InputRouter",
+          "type": "action",
+          "action": "InputRouter",
+          "with": {
+            "routingPort": "default"
+          }
+        },
+        {
+          "id": "747d2fa3-2527-4324-b630-92fba84a548c",
+          "name": "PLATEAU4.DomainOfDefinitionValidator",
+          "type": "action",
+          "action": "PLATEAU4.DomainOfDefinitionValidator"
+        },
+        {
+          "id": "6f53b8d5-c238-471f-95c5-4987f1c315f2",
+          "name": "FeatureFilterByFlag",
+          "type": "action",
+          "action": "FeatureFilter",
+          "with": {
+            "conditions": [
+              {
+                "expr": "env.get(\"__value\").flag == \"Summary\"\n",
+                "outputPort": "summary"
+              },
+              {
+                "expr": "env.get(\"__value\").flag == \"CodeValidation\"\n",
+                "outputPort": "codeValidation"
+              },
+              {
+                "expr": "env.get(\"__value\").flag == \"ExtentsValidation\"\n",
+                "outputPort": "extentsValidation"
+              },
+              {
+                "expr": "env.get(\"__value\").flag == \"GMLID_NotWellFormed\"\n",
+                "outputPort": "gmlIdNotWellFormed"
+              },
+              {
+                "expr": "env.get(\"__value\").flag == \"GMLID_NotUnique\"\n",
+                "outputPort": "gmlIdNotUnique"
+              },
+              {
+                "expr": "env.get(\"__value\").flag == \"XLink_NoReference\"\n",
+                "outputPort": "xlinkNoReference"
+              },
+              {
+                "expr": "env.get(\"__value\").flag == \"XLink_InvalidObjectType\"\n",
+                "outputPort": "xLinkInvalidObjectType"
+              },
+              {
+                "expr": "env.get(\"__value\").flag == \"InvalidLodXGeometry\"\n",
+                "outputPort": "invalidLodXGeometry"
+              }
+            ]
+          }
+        },
+        {
+          "id": "0cf15acc-f7d1-4fbd-a502-97f766cff6d0",
+          "name": "SummaryRouter",
+          "type": "action",
+          "action": "OutputRouter",
+          "with": {
+            "routingPort": "summary"
+          }
+        },
+        {
+          "id": "0cf15acc-f7d1-4fbd-a502-97f766cff6d1",
+          "name": "CodeValidationRouter",
+          "type": "action",
+          "action": "OutputRouter",
+          "with": {
+            "routingPort": "codeValidation"
+          }
+        },
+        {
+          "id": "0cf15acc-f7d1-4fbd-a502-97f766cff6d2",
+          "name": "ExtentsValidationRouter",
+          "type": "action",
+          "action": "OutputRouter",
+          "with": {
+            "routingPort": "extentsValidation"
+          }
+        },
+        {
+          "id": "0cf15acc-f7d1-4fbd-a502-97f766cff6d3",
+          "name": "GmlIdNotWellFormedRouter",
+          "type": "action",
+          "action": "OutputRouter",
+          "with": {
+            "routingPort": "gmlIdNotWellFormed"
+          }
+        },
+        {
+          "id": "0cf15acc-f7d1-4fbd-a502-97f766cff6d4",
+          "name": "GmlIdNotUniqueRouter",
+          "type": "action",
+          "action": "OutputRouter",
+          "with": {
+            "routingPort": "gmlIdNotUnique"
+          }
+        },
+        {
+          "id": "0cf15acc-f7d1-4fbd-a502-97f766cff6d5",
+          "name": "XlinkNoReferenceRouter",
+          "type": "action",
+          "action": "OutputRouter",
+          "with": {
+            "routingPort": "xlinkNoReference"
+          }
+        },
+        {
+          "id": "0cf15acc-f7d1-4fbd-a502-97f766cff6d6",
+          "name": "XLinkInvalidObjectTypeRouter",
+          "type": "action",
+          "action": "OutputRouter",
+          "with": {
+            "routingPort": "xLinkInvalidObjectType"
+          }
+        },
+        {
+          "id": "0cf15acc-f7d1-4fbd-a502-97f766cff6d7",
+          "name": "InvalidLodXGeometryRouter",
+          "type": "action",
+          "action": "OutputRouter",
+          "with": {
+            "routingPort": "invalidLodXGeometry"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "7779cb5a-0dfc-4726-9c2f-6e32e196520d",
+          "from": "dfcdb977-e929-41b9-a3de-e368d158b5b9",
+          "to": "747d2fa3-2527-4324-b630-92fba84a548c",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "d661eff9-2ee3-4735-ab36-ac2c662464fd",
+          "from": "747d2fa3-2527-4324-b630-92fba84a548c",
+          "to": "6f53b8d5-c238-471f-95c5-4987f1c315f2",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "41141e61-6815-4556-b247-05c4e5de8bb0",
+          "from": "6f53b8d5-c238-471f-95c5-4987f1c315f2",
+          "to": "0cf15acc-f7d1-4fbd-a502-97f766cff6d0",
+          "fromPort": "summary",
+          "toPort": "default"
+        },
+        {
+          "id": "41141e61-6815-4556-b247-05c4e5de8bb1",
+          "from": "6f53b8d5-c238-471f-95c5-4987f1c315f2",
+          "to": "0cf15acc-f7d1-4fbd-a502-97f766cff6d1",
+          "fromPort": "codeValidation",
+          "toPort": "default"
+        },
+        {
+          "id": "41141e61-6815-4556-b247-05c4e5de8bb2",
+          "from": "6f53b8d5-c238-471f-95c5-4987f1c315f2",
+          "to": "0cf15acc-f7d1-4fbd-a502-97f766cff6d2",
+          "fromPort": "extentsValidation",
+          "toPort": "default"
+        },
+        {
+          "id": "41141e61-6815-4556-b247-05c4e5de8bb3",
+          "from": "6f53b8d5-c238-471f-95c5-4987f1c315f2",
+          "to": "0cf15acc-f7d1-4fbd-a502-97f766cff6d3",
+          "fromPort": "gmlIdNotWellFormed",
+          "toPort": "default"
+        },
+        {
+          "id": "41141e61-6815-4556-b247-05c4e5de8bb4",
+          "from": "6f53b8d5-c238-471f-95c5-4987f1c315f2",
+          "to": "0cf15acc-f7d1-4fbd-a502-97f766cff6d4",
+          "fromPort": "gmlIdNotUnique",
+          "toPort": "default"
+        },
+        {
+          "id": "41141e61-6815-4556-b247-05c4e5de8bb5",
+          "from": "6f53b8d5-c238-471f-95c5-4987f1c315f2",
+          "to": "0cf15acc-f7d1-4fbd-a502-97f766cff6d5",
+          "fromPort": "xlinkNoReference",
+          "toPort": "default"
+        },
+        {
+          "id": "41141e61-6815-4556-b247-05c4e5de8bb6",
+          "from": "6f53b8d5-c238-471f-95c5-4987f1c315f2",
+          "to": "0cf15acc-f7d1-4fbd-a502-97f766cff6d6",
+          "fromPort": "xLinkInvalidObjectType",
+          "toPort": "default"
+        },
+        {
+          "id": "41141e61-6815-4556-b247-05c4e5de8bb7",
+          "from": "6f53b8d5-c238-471f-95c5-4987f1c315f2",
+          "to": "0cf15acc-f7d1-4fbd-a502-97f766cff6d7",
+          "fromPort": "invalidLodXGeometry",
+          "toPort": "default"
+        }
+      ]
+    },
+    {
+      "id": "5db64758-df36-486d-86bd-437b72fd9fc8",
+      "name": "PLATEAU4.CommonQualityCheck-01-01-common",
+      "nodes": [
+        {
+          "id": "3a85e550-49e8-4b67-bc92-908430ef6eee",
+          "name": "InputRouter",
+          "type": "action",
+          "action": "InputRouter",
+          "with": {
+            "routingPort": "default"
+          }
+        },
+        {
+          "id": "c7315341-26b3-4405-9d02-039d721cd225",
+          "name": "DirectoryDecompressor",
+          "type": "action",
+          "action": "DirectoryDecompressor",
+          "with": {
+            "archiveAttributes": [
+              "codelists",
+              "schemas"
+            ]
+          }
+        },
+        {
+          "id": "2aaa4ac9-2e79-479f-aa50-6543f461a76e",
+          "name": "FeatureFilePathExtractor",
+          "type": "action",
+          "action": "FeatureFilePathExtractor",
+          "with": {
+            "destPrefix": "udx",
+            "sourceDataset": "env.get(\"__value\")[\"cityGmlPath\"]\n",
+            "extractArchive": true
+          }
+        },
+        {
+          "id": "0daf7972-4d58-4ccd-a576-f3dfc418f749",
+          "name": "FeatureFilterByGml",
+          "type": "action",
+          "action": "FeatureFilter",
+          "with": {
+            "conditions": [
+              {
+                "expr": "env.get(\"__value\").extension == \"gml\"\n",
+                "outputPort": "default"
+              }
+            ]
+          }
+        },
+        {
+          "id": "151fbadf-1b40-4264-a003-f6f11f6af2d6",
+          "name": "FeatureCounterIndex",
+          "type": "action",
+          "action": "FeatureCounter",
+          "with": {
+            "countStart": 1,
+            "outputAttribute": "index"
+          }
+        },
+        {
+          "id": "8939cb8a-9748-4955-9fa6-0bc79b1d4e0e",
+          "name": "FilePropertyExtractor",
+          "type": "action",
+          "action": "FilePropertyExtractor",
+          "with": {
+            "filePathAttribute": "path"
+          }
+        },
+        {
+          "id": "7e833060-f8c4-458b-a8cc-8c817527f25b",
+          "name": "PLATEAU4.UDXFolderExtractor",
+          "type": "action",
+          "action": "PLATEAU4.UDXFolderExtractor",
+          "with": {
+            "cityGmlPath": "env.get(\"__value\")[\"path\"]\n",
+            "codelistsPath": "codelists",
+            "schemasPath": "schemas"
+          }
+        },
+        {
+          "id": "e56c4680-859a-4ad3-bf4c-07040b3a5ff4",
+          "name": "PLATEAU4.XMLValidator",
+          "type": "subGraph",
+          "subGraphId": "2c753ffc-cc90-4f4a-b5ee-f5d7853dbac6"
+        },
+        {
+          "id": "aa7828b4-54f5-41c7-9ab7-15653010200c",
+          "name": "AttributeManagerL01AndL02Errors",
+          "type": "action",
+          "action": "AttributeManager",
+          "with": {
+            "operations": [
+              {
+                "attribute": "L01Errors",
+                "method": "create",
+                "value": "if env.get(\"__value\").status == \"NOT_WELL_FORMED\" {\n  env.get(\"__value\").xmlError.len\n} else {\n  0\n}\n"
+              },
+              {
+                "attribute": "L02Errors",
+                "method": "create",
+                "value": "if env.get(\"__value\").status == \"INVALID\" {\n  env.get(\"__value\").xmlError.len\n} else {\n  0\n}\n"
+              }
+            ]
+          }
+        },
+        {
+          "id": "7339fa49-1b0a-4208-8472-2ab97fe907cf",
+          "name": "FeatureFilterByValidStatus",
+          "type": "action",
+          "action": "FeatureFilter",
+          "with": {
+            "conditions": [
+              {
+                "expr": "env.get(\"__value\").status == \"VALID\"\n",
+                "outputPort": "default"
+              }
+            ]
+          }
+        },
+        {
+          "id": "05c85d95-c45c-406c-95b5-4a8a154f704f",
+          "name": "PLATEAU4.DomainOfDefinitionValidator",
+          "type": "subGraph",
+          "subGraphId": "b7396083-17d0-47dd-be86-83caf6c5ac63"
+        },
+        {
+          "id": "2936b715-609c-498f-8803-486c889dea31",
+          "name": "FeatureMerger01",
+          "type": "action",
+          "action": "FeatureMerger",
+          "with": {
+            "requestorAttributeValue": "env.get(\"__value\").index.to_string()\n",
+            "supplierAttributeValue": "env.get(\"__value\").index.to_string()\n"
+          }
+        },
+        {
+          "id": "d71b0796-97a2-4e65-92df-635fc3b0a92f",
+          "name": "FeatureMerger02",
+          "type": "action",
+          "action": "FeatureMerger",
+          "with": {
+            "requestorAttributeValue": "env.get(\"__value\").index.to_string()\n",
+            "supplierAttributeValue": "env.get(\"__value\").index.to_string()\n"
+          }
+        },
+        {
+          "id": "f19638b9-679a-4dd9-9a39-3cf2a82c6ff5",
+          "name": "AttributeMapper",
+          "type": "action",
+          "action": "AttributeMapper",
+          "with": {
+            "mappers": [
+              {
+                "attribute": "Index",
+                "expr": "env.get(\"__value\").index\n"
+              },
+              {
+                "attribute": "Folder",
+                "expr": "env.get(\"__value\").udxDirs\n"
+              },
+              {
+                "attribute": "Filename",
+                "expr": "file::extract_filename(env.get(\"__value\").cityGmlPath)\n"
+              },
+              {
+                "attribute": "サイズ[KB]",
+                "expr": "round(env.get(\"__value\").fileSize / 1024)\n"
+              },
+              {
+                "attribute": "1GB以下",
+                "expr": "if env.get(\"__value\").fileSize / 1024 / 1024 / 1024 <= 1 {\n  \"OK\"\n} else {\n  \"Over\"\n}\n"
+              },
+              {
+                "attribute": "XML検証結果",
+                "expr": "env.get(\"__value\").status\n"
+              },
+              {
+                "attribute": "L01エラー",
+                "expr": "env.get(\"__value\").L01Errors ?? 0\n"
+              },
+              {
+                "attribute": "L02エラー",
+                "expr": "env.get(\"__value\").L02Errors ?? 0\n"
+              },
+              {
+                "attribute": "L03エラー",
+                "expr": "env.get(\"__value\").invalidFeatureTypesNum ?? 0\n"
+              },
+              {
+                "attribute": "L03エラー詳細",
+                "expr": "env.get(\"__value\").invalidFeatureTypesDetail\n"
+              },
+              {
+                "attribute": "L04エラー",
+                "expr": "env.get(\"__value\").inCorrectCodeValue ?? 0\n"
+              },
+              {
+                "attribute": "不正なcodeSpace数",
+                "expr": "env.get(\"__value\").inCorrectCodeSpace ?? 0\n"
+              },
+              {
+                "attribute": "L05CRS識別子",
+                "expr": "if env.get(\"__value\").isCorrectSrsName {\n  \"Ok\"\n} else {\n  \"Wrong\"\n}\n"
+              },
+              {
+                "attribute": "不正なCRS識別子",
+                "expr": "if env.get(\"__value\").isCorrectSrsName {\n  \"\"\n} else {\n  env.get(\"__value\").srsName\n}\n"
+              },
+              {
+                "attribute": "L06エラー",
+                "expr": "env.get(\"__value\").inCorrectExtents ?? 0\n"
+              },
+              {
+                "attribute": "T03エラー",
+                "expr": "env.get(\"__value\").xlinkInvalidObjectType ?? 0\n"
+              },
+              {
+                "attribute": "xlink参照先なし",
+                "expr": "env.get(\"__value\").xlinkHasNoReference ?? 0\n"
+              },
+              {
+                "attribute": "gml:id重複",
+                "expr": "env.get(\"__value\").gmlIdNotUnique ?? 0\n"
+              },
+              {
+                "attribute": "gml:id書式不正",
+                "expr": "env.get(\"__value\").gmlIdNotWellformed ?? 0\n"
+              },
+              {
+                "attribute": "L-frn-01エラー",
+                "expr": "env.get(\"__value\").invalidLodXGeometry ?? 0\n"
+              },
+              {
+                "attribute": "補足",
+                "expr": "env.get(\"__value\").miscellaneous ?? \"\"\n"
+              }
+            ]
+          }
+        },
+        {
+          "id": "0e9fd0ce-4607-44be-8cdd-b4b2cc2ae04b",
+          "name": "FeatureWriterCsv",
+          "type": "action",
+          "action": "FeatureWriter",
+          "with": {
+            "format": "csv",
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01_共通.csv\")\n"
+          }
+        },
+        {
+          "id": "9e34709d-b8d1-4080-8ebf-bebe4641e681",
+          "name": "StatisticsCalculator",
+          "type": "action",
+          "action": "StatisticsCalculator",
+          "with": {
+            "calculations": [
+              {
+                "newAttribute": "L01エラー",
+                "expr": "env.get(\"__value\")[\"L01エラー\"] ?? 0\n"
+              },
+              {
+                "newAttribute": "L02エラー",
+                "expr": "env.get(\"__value\")[\"L02エラー\"] ?? 0\n"
+              },
+              {
+                "newAttribute": "L04エラー",
+                "expr": "env.get(\"__value\")[\"L04エラー\"] ?? 0\n"
+              },
+              {
+                "newAttribute": "不正なcodeSpace数",
+                "expr": "env.get(\"__value\")[\"不正なcodeSpace数\"] ?? 0\n"
+              },
+              {
+                "newAttribute": "L06エラー",
+                "expr": "env.get(\"__value\")[\"L06エラー\"] ?? 0\n"
+              },
+              {
+                "newAttribute": "T03エラー",
+                "expr": "env.get(\"__value\")[\"T03エラー\"] ?? 0\n"
+              },
+              {
+                "newAttribute": "xlink参照先なし",
+                "expr": "env.get(\"__value\")[\"xlink参照先なし\"] ?? 0\n"
+              },
+              {
+                "newAttribute": "gml:id重複",
+                "expr": "env.get(\"__value\")[\"gml:id重複\"] ?? 0\n"
+              },
+              {
+                "newAttribute": "gml:id書式不正",
+                "expr": "env.get(\"__value\")[\"gml:id書式不正\"] ?? 0\n"
+              },
+              {
+                "newAttribute": "L-frn-01エラー",
+                "expr": "env.get(\"__value\")[\"L-frn-01エラー\"] ?? 0\n"
+              }
+            ]
+          }
+        },
+        {
+          "id": "50de9474-378b-4878-b85d-516cf8a55547",
+          "name": "FeatureWriterJson",
+          "type": "action",
+          "action": "FeatureWriter",
+          "with": {
+            "format": "json",
+            "converter": "if env.get(\"__features\").is_empty() {\n  []\n} else {\n  let result = [];\n  let feature = env.get(\"__features\")[0];\n  for key in feature.keys() {\n    result.push(#{\n      name: key,\n      count: feature[key],\n    });\n  }\n  result\n}\n",
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"summary_common.json\")\n"
+          }
+        },
+        {
+          "id": "f9359716-5c5a-43e5-b197-d1df171d5684",
+          "name": "OutputRouter",
+          "type": "action",
+          "action": "OutputRouter",
+          "with": {
+            "routingPort": "default"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "7c5a60ec-66cb-4ee0-9793-88c1f57b495c",
+          "from": "3a85e550-49e8-4b67-bc92-908430ef6eee",
+          "to": "c7315341-26b3-4405-9d02-039d721cd225",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "b729c108-a200-4b6f-aa60-7c0c10866343",
+          "from": "c7315341-26b3-4405-9d02-039d721cd225",
+          "to": "2aaa4ac9-2e79-479f-aa50-6543f461a76e",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "c064cf52-705f-443a-b2de-6795266c540d",
+          "from": "2aaa4ac9-2e79-479f-aa50-6543f461a76e",
+          "to": "0daf7972-4d58-4ccd-a576-f3dfc418f749",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "f23b1f56-c5d8-4311-9239-6dd205b538ab",
+          "from": "0daf7972-4d58-4ccd-a576-f3dfc418f749",
+          "to": "151fbadf-1b40-4264-a003-f6f11f6af2d6",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "7436b0a3-a658-49f6-a576-5b45abb2bd25",
+          "from": "151fbadf-1b40-4264-a003-f6f11f6af2d6",
+          "to": "7e833060-f8c4-458b-a8cc-8c817527f25b",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "3e3497c2-7810-456f-8334-89649f561771",
+          "from": "7e833060-f8c4-458b-a8cc-8c817527f25b",
+          "to": "e56c4680-859a-4ad3-bf4c-07040b3a5ff4",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "9f855529-bc8b-46e3-a679-0b2c13d06092",
+          "from": "e56c4680-859a-4ad3-bf4c-07040b3a5ff4",
+          "to": "7339fa49-1b0a-4208-8472-2ab97fe907cf",
+          "fromPort": "summary",
+          "toPort": "default"
+        },
+        {
+          "id": "833a0183-1795-491e-95d7-033d7512b070",
+          "from": "7339fa49-1b0a-4208-8472-2ab97fe907cf",
+          "to": "05c85d95-c45c-406c-95b5-4a8a154f704f",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "d44adfb3-082e-4e31-8e27-ac3a4f36303c",
+          "from": "e56c4680-859a-4ad3-bf4c-07040b3a5ff4",
+          "to": "aa7828b4-54f5-41c7-9ab7-15653010200c",
+          "fromPort": "summary",
+          "toPort": "default"
+        },
+        {
+          "id": "55f394c4-4f62-4feb-a86e-219c4c1fa52e",
+          "from": "05c85d95-c45c-406c-95b5-4a8a154f704f",
+          "to": "2936b715-609c-498f-8803-486c889dea31",
+          "fromPort": "summary",
+          "toPort": "requestor"
+        },
+        {
+          "id": "79d3353a-244e-4bb7-b44b-c1d3957d8e04",
+          "from": "aa7828b4-54f5-41c7-9ab7-15653010200c",
+          "to": "2936b715-609c-498f-8803-486c889dea31",
+          "fromPort": "default",
+          "toPort": "supplier"
+        },
+        {
+          "id": "7e83522e-5dd2-46cc-881e-e08a99935050",
+          "from": "2936b715-609c-498f-8803-486c889dea31",
+          "to": "d71b0796-97a2-4e65-92df-635fc3b0a92f",
+          "fromPort": "merged",
+          "toPort": "supplier"
+        },
+        {
+          "id": "c1834039-8ea9-4b13-8921-84642e1ceda3",
+          "from": "151fbadf-1b40-4264-a003-f6f11f6af2d6",
+          "to": "8939cb8a-9748-4955-9fa6-0bc79b1d4e0e",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "037c34a3-f09c-4079-b6ef-84a73c4366ef",
+          "from": "8939cb8a-9748-4955-9fa6-0bc79b1d4e0e",
+          "to": "d71b0796-97a2-4e65-92df-635fc3b0a92f",
+          "fromPort": "default",
+          "toPort": "requestor"
+        },
+        {
+          "id": "5279e383-1527-4c79-8384-5a0560afd54f",
+          "from": "d71b0796-97a2-4e65-92df-635fc3b0a92f",
+          "to": "f19638b9-679a-4dd9-9a39-3cf2a82c6ff5",
+          "fromPort": "merged",
+          "toPort": "default"
+        },
+        {
+          "id": "ccd43557-e876-4d10-8a22-3dd2b061b574",
+          "from": "f19638b9-679a-4dd9-9a39-3cf2a82c6ff5",
+          "to": "0e9fd0ce-4607-44be-8cdd-b4b2cc2ae04b",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "c10aebe0-0f84-44f4-862e-97bd08290729",
+          "from": "f19638b9-679a-4dd9-9a39-3cf2a82c6ff5",
+          "to": "9e34709d-b8d1-4080-8ebf-bebe4641e681",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "2716f9db-ebde-4777-b9ee-8550578840af",
+          "from": "9e34709d-b8d1-4080-8ebf-bebe4641e681",
+          "to": "50de9474-378b-4878-b85d-516cf8a55547",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "c5474365-52af-407c-9d3d-a254c8e121d1",
+          "from": "0e9fd0ce-4607-44be-8cdd-b4b2cc2ae04b",
+          "to": "f9359716-5c5a-43e5-b197-d1df171d5684",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "80b23cb2-e43f-4447-a1ce-2d5af5844b04",
+          "from": "50de9474-378b-4878-b85d-516cf8a55547",
+          "to": "f9359716-5c5a-43e5-b197-d1df171d5684",
+          "fromPort": "default",
+          "toPort": "default"
+        }
+      ]
+    },
+    {
+      "id": "b7a4c316-112e-4473-bd25-4c158db4e561",
+      "name": "PLATEAU4-qualityCheck-01-02-common",
+      "nodes": [
+        {
+          "id": "00f42e7e-080b-4927-933b-70fc8d8136b8",
+          "name": "InputRouter",
+          "type": "action",
+          "action": "InputRouter",
+          "with": {
+            "routingPort": "default"
+          }
+        },
+        {
+          "id": "c7315341-26b3-4405-9d02-039d721cd225",
+          "name": "DirectoryDecompressor",
+          "type": "action",
+          "action": "DirectoryDecompressor",
+          "with": {
+            "archiveAttributes": [
+              "codelists",
+              "schemas"
+            ]
+          }
+        },
+        {
+          "id": "c790e59a-4283-452f-bc24-9cc966c3ec79",
+          "name": "PLATEAU4.ObjectListExtractor",
+          "type": "action",
+          "action": "PLATEAU4.ObjectListExtractor",
+          "with": {
+            "objectListPathAttribute": "objectListPath"
+          }
+        },
+        {
+          "id": "c760d4d3-7b61-4451-878e-58783cfcbf30",
+          "name": "FeatureFilePathExtractor",
+          "type": "action",
+          "action": "FeatureFilePathExtractor",
+          "with": {
+            "sourceDataset": "env.get(\"__value\")[\"cityGmlPath\"]\n",
+            "extractArchive": true
+          }
+        },
+        {
+          "id": "5389e28d-e2fa-420d-97b9-a8e09c74afc4",
+          "name": "FeatureFilterByGml",
+          "type": "action",
+          "action": "FeatureFilter",
+          "with": {
+            "conditions": [
+              {
+                "expr": "env.get(\"__value\").extension == \"gml\"\n",
+                "outputPort": "default"
+              }
+            ]
+          }
+        },
+        {
+          "id": "740ac9e5-6eeb-439b-9860-23a125919a2e",
+          "name": "PLATEAU4.UDXFolderExtractor",
+          "type": "action",
+          "action": "PLATEAU4.UDXFolderExtractor",
+          "with": {
+            "cityGmlPath": "env.get(\"__value\")[\"path\"]\n",
+            "codelistsPath": "codelists",
+            "schemasPath": "schemas"
+          }
+        },
+        {
+          "id": "e86300b4-59a7-4714-ad89-3aa18ef201d8",
+          "name": "XMLFragmenter",
+          "type": "action",
+          "action": "XMLFragmenter",
+          "with": {
+            "source": "url",
+            "elementsToMatch": "env.get(\"__value\").featureTypes[env.get(\"__value\")[\"package\"]]\n",
+            "elementsToExclude": "[]\n",
+            "attribute": "path"
+          }
+        },
+        {
+          "id": "5490fef1-320b-4789-9f5b-5401a9b99e41",
+          "name": "FeatureCounter",
+          "type": "action",
+          "action": "FeatureCounter",
+          "with": {
+            "countStart": 0,
+            "outputAttribute": "featureIndex"
+          }
+        },
+        {
+          "id": "7dd338ed-f9e4-408d-bcdf-39e4141126ba",
+          "name": "PLATEAU4.MissingAttributeDetector",
+          "type": "action",
+          "action": "PLATEAU4.MissingAttributeDetector",
+          "with": {
+            "packageAttribute": "package"
+          }
+        },
+        {
+          "id": "4f62f8b0-b326-4aef-a779-a5324fab66fa",
+          "name": "FeatureWriterBySummary",
+          "type": "action",
+          "action": "FeatureWriter",
+          "with": {
+            "format": "json",
+            "converter": "if env.get(\"__features\").is_empty() {\n  {}\n} else {\n  let feature = env.get(\"__features\")[0];\n  feature[\"dataFileData\"]\n}\n",
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"summary_\" + env.get(\"__value\")[\"package\"] + \".json\")\n"
+          }
+        },
+        {
+          "id": "a4b8150a-6241-46ac-849d-39be21d39d1b",
+          "name": "AttributeMapperRequired",
+          "type": "action",
+          "action": "AttributeMapper",
+          "with": {
+            "mappers": [
+              {
+                "attribute": "package",
+                "valueAttribute": "package"
+              },
+              {
+                "attribute": "dirs",
+                "valueAttribute": "udxDirs"
+              },
+              {
+                "attribute": "filename",
+                "expr": "file::extract_filename(env.get(\"__value\")[\"path\"])\n"
+              },
+              {
+                "attribute": "gml_id",
+                "valueAttribute": "gmlId"
+              },
+              {
+                "attribute": "severity",
+                "valueAttribute": "severity"
+              },
+              {
+                "attribute": "feature_type",
+                "valueAttribute": "featureType"
+              },
+              {
+                "attribute": "name",
+                "valueAttribute": "name"
+              }
+            ]
+          }
+        },
+        {
+          "id": "23f7da40-5f92-4c14-a4fe-7a160361be6b",
+          "name": "FeatureWriterByRequired",
+          "type": "action",
+          "action": "FeatureWriter",
+          "with": {
+            "format": "csv",
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01-2_必須属性等_必須属性等の欠落_\" + env.get(\"__value\")[\"package\"] + \".csv\")\n"
+          }
+        },
+        {
+          "id": "f70fe4c6-9dcf-4657-80fb-3edb59eae80d",
+          "name": "AttributeMapperTarget",
+          "type": "action",
+          "action": "AttributeMapper",
+          "with": {
+            "mappers": [
+              {
+                "attribute": "package",
+                "valueAttribute": "package"
+              },
+              {
+                "attribute": "feature_type",
+                "valueAttribute": "featureType"
+              },
+              {
+                "attribute": "name",
+                "valueAttribute": "missing"
+              }
+            ]
+          }
+        },
+        {
+          "id": "c528f544-4a0f-43dd-9fd8-725d546963b8",
+          "name": "FeatureWriterByTarget",
+          "type": "action",
+          "action": "FeatureWriter",
+          "with": {
+            "format": "csv",
+            "output": "file::join_path(env.get(\"workerArtifactPath\") ?? env.get(\"outputPath\"), \"01-2_必須属性等_現われなかった属性等_\" + env.get(\"__value\")[\"package\"] + \".csv\")\n"
+          }
+        },
+        {
+          "id": "da1eaeee-4a50-4b6b-afee-3cfaf4887613",
+          "name": "OutputRouter",
+          "type": "action",
+          "action": "OutputRouter",
+          "with": {
+            "routingPort": "default"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "668cbbf5-9da8-45db-baca-312d69d219c2",
+          "from": "00f42e7e-080b-4927-933b-70fc8d8136b8",
+          "to": "c7315341-26b3-4405-9d02-039d721cd225",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "ffa9e8ec-6adb-43a4-a7f1-8c429ff857bc",
+          "from": "c7315341-26b3-4405-9d02-039d721cd225",
+          "to": "c790e59a-4283-452f-bc24-9cc966c3ec79",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "3d1af617-8c19-4e5d-b883-9ca48b8eb401",
+          "from": "c790e59a-4283-452f-bc24-9cc966c3ec79",
+          "to": "c760d4d3-7b61-4451-878e-58783cfcbf30",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "6ee8bf2a-6c2f-4b5a-95cf-dae0e8b94b07",
+          "from": "c760d4d3-7b61-4451-878e-58783cfcbf30",
+          "to": "5389e28d-e2fa-420d-97b9-a8e09c74afc4",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "1d5c1fba-afb0-4a3d-8b10-1ce9b4e8eb39",
+          "from": "5389e28d-e2fa-420d-97b9-a8e09c74afc4",
+          "to": "740ac9e5-6eeb-439b-9860-23a125919a2e",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "ccf9fadf-96a9-43ce-9a7f-aa091aafff25",
+          "from": "740ac9e5-6eeb-439b-9860-23a125919a2e",
+          "to": "e86300b4-59a7-4714-ad89-3aa18ef201d8",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "a25010ac-f987-49a1-840e-6d5c4b6996a9",
+          "from": "e86300b4-59a7-4714-ad89-3aa18ef201d8",
+          "to": "5490fef1-320b-4789-9f5b-5401a9b99e41",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "675c9d96-440e-4290-bbe3-40858a59c475",
+          "from": "5490fef1-320b-4789-9f5b-5401a9b99e41",
+          "to": "7dd338ed-f9e4-408d-bcdf-39e4141126ba",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "a51c6e24-6a5b-4366-8870-4c599510a13c",
+          "from": "7dd338ed-f9e4-408d-bcdf-39e4141126ba",
+          "to": "4f62f8b0-b326-4aef-a779-a5324fab66fa",
+          "fromPort": "summary",
+          "toPort": "default"
+        },
+        {
+          "id": "df07f114-9979-4897-a6e3-9221d4a40bd9",
+          "from": "7dd338ed-f9e4-408d-bcdf-39e4141126ba",
+          "to": "a4b8150a-6241-46ac-849d-39be21d39d1b",
+          "fromPort": "required",
+          "toPort": "default"
+        },
+        {
+          "id": "a71f3516-1f84-4388-a5e2-411ee78770e6",
+          "from": "a4b8150a-6241-46ac-849d-39be21d39d1b",
+          "to": "23f7da40-5f92-4c14-a4fe-7a160361be6b",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "103c8125-840b-4366-a128-b178fdf4e58d",
+          "from": "7dd338ed-f9e4-408d-bcdf-39e4141126ba",
+          "to": "f70fe4c6-9dcf-4657-80fb-3edb59eae80d",
+          "fromPort": "target",
+          "toPort": "default"
+        },
+        {
+          "id": "9d77955e-7f4e-427b-8900-d5211bc49305",
+          "from": "f70fe4c6-9dcf-4657-80fb-3edb59eae80d",
+          "to": "c528f544-4a0f-43dd-9fd8-725d546963b8",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "db81d339-3df8-44ab-ad88-78c6a7b2a34a",
+          "from": "4f62f8b0-b326-4aef-a779-a5324fab66fa",
+          "to": "da1eaeee-4a50-4b6b-afee-3cfaf4887613",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "7e6faf78-b8c8-4bac-8888-e150710ddb4f",
+          "from": "23f7da40-5f92-4c14-a4fe-7a160361be6b",
+          "to": "da1eaeee-4a50-4b6b-afee-3cfaf4887613",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "2a92e502-aa6d-49b7-91ee-15d2d69547de",
+          "from": "c528f544-4a0f-43dd-9fd8-725d546963b8",
+          "to": "da1eaeee-4a50-4b6b-afee-3cfaf4887613",
+          "fromPort": "default",
+          "toPort": "default"
+        }
+      ]
+    },
+    {
+      "id": "12e53460-cbc2-4abd-b7bb-8138e4eef55a",
+      "name": "entry_point",
+      "nodes": [
+        {
+          "id": "90f40a3e-61d3-48e2-a328-e7226c2ad1ae",
+          "name": "FeatureCreator",
+          "type": "action",
+          "action": "FeatureCreator",
+          "with": {
+            "creator": "[\n  #{\n    cityGmlPath: env.get(\"cityGmlPath\"),\n    cityCode: env.get(\"cityCode\") ?? file::extract_filename(env.get(\"cityGmlPath\"))[0..5],\n    baseCityCode: env.get(\"cityCode\") ?? file::extract_filename(env.get(\"cityGmlPath\"))[0..5],\n    objectListPath: env.get(\"objectLists\"),\n    codelists: env.get(\"codelists\"),\n    schemas: env.get(\"schemas\"),\n  },\n]\n"
+          }
+        },
+        {
+          "id": "d376f32b-7ce8-4721-8b9e-bfa39d71b860",
+          "name": "PLATEAU4.CommonQualityCheck-01-01-common",
+          "type": "subGraph",
+          "subGraphId": "5db64758-df36-486d-86bd-437b72fd9fc8"
+        },
+        {
+          "id": "9309842a-a3a7-4d1b-9216-ef523a6b4789",
+          "name": "PLATEAU4.CommonQualityCheck-01-02-common",
+          "type": "subGraph",
+          "subGraphId": "b7a4c316-112e-4473-bd25-4c158db4e561"
+        },
+        {
+          "id": "65074ffc-9113-4fbf-8957-9ba1de4c56ab",
+          "name": "ZipFileWriter",
+          "type": "action",
+          "action": "ZipFileWriter",
+          "with": {
+            "output": "file::join_path(env.get(\"workerArtifactPath\"), file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_qc_result.zip\")\n"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "5ebf24ab-1d98-49d5-8f58-eb7c18d27244",
+          "from": "90f40a3e-61d3-48e2-a328-e7226c2ad1ae",
+          "to": "d376f32b-7ce8-4721-8b9e-bfa39d71b860",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "f47c77ad-c465-48cf-bdf5-36e385ffbd41",
+          "from": "90f40a3e-61d3-48e2-a328-e7226c2ad1ae",
+          "to": "9309842a-a3a7-4d1b-9216-ef523a6b4789",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "7b81f501-3f07-4cec-bf9b-9cefcebdf47d",
+          "from": "d376f32b-7ce8-4721-8b9e-bfa39d71b860",
+          "to": "65074ffc-9113-4fbf-8957-9ba1de4c56ab",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "f69a4e59-b7b8-4fab-97cd-112b4d1e4a53",
+          "from": "9309842a-a3a7-4d1b-9216-ef523a6b4789",
+          "to": "65074ffc-9113-4fbf-8957-9ba1de4c56ab",
+          "fromPort": "default",
+          "toPort": "default"
+        }
+      ]
+    }
+  ]
+}

@@ -1,4 +1,8 @@
-use std::{fs, path::PathBuf, str::FromStr};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 use directories::ProjectDirs;
 
@@ -43,4 +47,20 @@ pub fn setup_job_directory(key: &str, sub_dir: &str, job_id: uuid::Uuid) -> crat
             e
         ))
     })
+}
+
+pub fn copy_files(dest: &Path, files: &[Uri]) -> crate::Result<()> {
+    for file in files {
+        let file_path = dest.join(file.file_name().ok_or(Error::dir("Invalid file path"))?);
+        fs::copy(file.path(), file_path).map_err(Error::dir)?;
+    }
+    Ok(())
+}
+
+pub fn move_files(dest: &Path, files: &[Uri]) -> crate::Result<()> {
+    for file in files {
+        let file_path = dest.join(file.file_name().ok_or(Error::dir("Invalid file path"))?);
+        fs::rename(file.path(), file_path.clone()).map_err(Error::dir)?;
+    }
+    Ok(())
 }

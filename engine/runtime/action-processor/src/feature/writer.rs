@@ -19,7 +19,7 @@ use serde_json::Value;
 use super::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureWriterFactory;
+pub(super) struct FeatureWriterFactory;
 
 impl ProcessorFactory for FeatureWriterFactory {
     fn name(&self) -> &str {
@@ -105,7 +105,10 @@ impl ProcessorFactory for FeatureWriterFactory {
                 };
                 Ok(Box::new(process))
             }
-            FeatureWriterParam::Json { common_param } => {
+            FeatureWriterParam::Json {
+                common_param,
+                param,
+            } => {
                 let common_param = CompiledCommonWriterParam {
                     output: expr_engine
                         .compile(common_param.output.as_ref())
@@ -113,9 +116,19 @@ impl ProcessorFactory for FeatureWriterFactory {
                             FeatureProcessorError::FeatureWriterFactory(format!("{:?}", e))
                         })?,
                 };
+                let converter = if let Some(expr) = param.converter {
+                    Some(expr_engine.compile(expr.as_ref()).map_err(|e| {
+                        FeatureProcessorError::FeatureWriterFactory(format!("{:?}", e))
+                    })?)
+                } else {
+                    None
+                };
                 let process = FeatureWriter {
                     global_params: with,
-                    params: CompiledFeatureWriterParam::Json { common_param },
+                    params: CompiledFeatureWriterParam::Json {
+                        common_param,
+                        param: json::CompiledJsonWriterParam { converter },
+                    },
                     buffer: HashMap::new(),
                 };
                 Ok(Box::new(process))
@@ -125,7 +138,7 @@ impl ProcessorFactory for FeatureWriterFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct FeatureWriter {
+struct FeatureWriter {
     global_params: Option<HashMap<String, serde_json::Value>>,
     params: CompiledFeatureWriterParam,
     pub(super) buffer: HashMap<Uri, Vec<Feature>>,
@@ -133,13 +146,14 @@ pub struct FeatureWriter {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct CommonWriterParam {
+struct CommonWriterParam {
+    /// # Output path
     pub(super) output: Expr,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(tag = "format")]
-pub enum FeatureWriterParam {
+enum FeatureWriterParam {
     #[serde(rename = "csv")]
     Csv {
         #[serde(flatten)]
@@ -154,6 +168,8 @@ pub enum FeatureWriterParam {
     Json {
         #[serde(flatten)]
         common_param: CommonWriterParam,
+        #[serde(flatten)]
+        param: json::JsonWriterParam,
     },
 }
 
@@ -167,6 +183,7 @@ enum CompiledFeatureWriterParam {
     },
     Json {
         common_param: CompiledCommonWriterParam,
+        param: json::CompiledJsonWriterParam,
     },
 }
 
@@ -180,7 +197,7 @@ impl CompiledFeatureWriterParam {
         match self {
             CompiledFeatureWriterParam::Csv { common_param } => &common_param.output,
             CompiledFeatureWriterParam::Tsv { common_param } => &common_param.output,
-            CompiledFeatureWriterParam::Json { common_param } => &common_param.output,
+            CompiledFeatureWriterParam::Json { common_param, .. } => &common_param.output,
         }
     }
 }
@@ -223,8 +240,17 @@ impl Processor for FeatureWriter {
                 CompiledFeatureWriterParam::Tsv { .. } => {
                     csv::write_csv(output, Delimiter::Tab, &ctx.storage_resolver, features)?;
                 }
-                CompiledFeatureWriterParam::Json { .. } => {
-                    json::write_json(output, &ctx.storage_resolver, features)?;
+                CompiledFeatureWriterParam::Json {
+                    common_param: _,
+                    ref param,
+                } => {
+                    json::write_json(
+                        output,
+                        &param.converter,
+                        &ctx.storage_resolver,
+                        &ctx.expr_engine,
+                        features,
+                    )?;
                 }
             }
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(

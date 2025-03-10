@@ -1,0 +1,239 @@
+id: b7a4c316-112e-4473-bd25-4c158db4e561
+name: PLATEAU4-qualityCheck-01-02-common
+nodes:
+  - id: 00f42e7e-080b-4927-933b-70fc8d8136b8
+    name: InputRouter
+    type: action
+    action: InputRouter
+    with:
+      routingPort: default
+
+  - id: c7315341-26b3-4405-9d02-039d721cd225
+    name: DirectoryDecompressor
+    type: action
+    action: DirectoryDecompressor
+    with:
+      archiveAttributes:
+        - codelists
+        - schemas
+
+  - id: c790e59a-4283-452f-bc24-9cc966c3ec79
+    name: PLATEAU4.ObjectListExtractor
+    type: action
+    action: PLATEAU4.ObjectListExtractor
+    with:
+      objectListPathAttribute: "objectListPath"
+
+  - id: c760d4d3-7b61-4451-878e-58783cfcbf30
+    name: FeatureFilePathExtractor
+    type: action
+    action: FeatureFilePathExtractor
+    with:
+      sourceDataset: |
+        env.get("__value")["cityGmlPath"]
+      extractArchive: true
+
+  - id: 5389e28d-e2fa-420d-97b9-a8e09c74afc4
+    name: FeatureFilterByGml
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            env.get("__value").extension == "gml"
+          outputPort: default
+
+  - id: 740ac9e5-6eeb-439b-9860-23a125919a2e
+    name: PLATEAU4.UDXFolderExtractor
+    type: action
+    action: PLATEAU4.UDXFolderExtractor
+    with:
+      cityGmlPath: |
+        env.get("__value")["path"]
+      codelistsPath: "codelists"
+      schemasPath: "schemas"
+
+  - id: e86300b4-59a7-4714-ad89-3aa18ef201d8
+    name: XMLFragmenter
+    type: action
+    action: XMLFragmenter
+    with:
+      source: url
+      elementsToMatch: |
+        env.get("__value").featureTypes[env.get("__value")["package"]]
+      elementsToExclude: |
+        []
+      attribute: path
+
+  - id: 5490fef1-320b-4789-9f5b-5401a9b99e41
+    name: FeatureCounter
+    type: action
+    action: FeatureCounter
+    with:
+      countStart: 0
+      outputAttribute: featureIndex
+
+  - id: 7dd338ed-f9e4-408d-bcdf-39e4141126ba
+    name: PLATEAU4.MissingAttributeDetector
+    type: action
+    action: PLATEAU4.MissingAttributeDetector
+    with:
+      packageAttribute: "package"
+
+  - id: 4f62f8b0-b326-4aef-a779-a5324fab66fa
+    name: FeatureWriterBySummary
+    type: action
+    action: FeatureWriter
+    with:
+      format: json
+      converter: |
+        if env.get("__features").is_empty() {
+          {}
+        } else {
+          let feature = env.get("__features")[0];
+          feature["dataFileData"]
+        }
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_" + env.get("__value")["package"] + ".json")
+
+  - id: a4b8150a-6241-46ac-849d-39be21d39d1b
+    name: AttributeMapperRequired
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: package
+          valueAttribute: package
+        - attribute: dirs
+          valueAttribute: udxDirs
+        - attribute: filename
+          expr: |
+            file::extract_filename(env.get("__value")["path"])
+        - attribute: gml_id
+          valueAttribute: gmlId
+        - attribute: severity
+          valueAttribute: severity
+        - attribute: feature_type
+          valueAttribute: featureType
+        - attribute: name
+          valueAttribute: name
+
+  - id: 23f7da40-5f92-4c14-a4fe-7a160361be6b
+    name: FeatureWriterByRequired
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01-2_必須属性等_必須属性等の欠落_" + env.get("__value")["package"] + ".csv")
+
+  - id: f70fe4c6-9dcf-4657-80fb-3edb59eae80d
+    name: AttributeMapperTarget
+    type: action
+    action: AttributeMapper
+    with:
+      mappers:
+        - attribute: package
+          valueAttribute: package
+        - attribute: feature_type
+          valueAttribute: featureType
+        - attribute: name
+          valueAttribute: missing
+
+  - id: c528f544-4a0f-43dd-9fd8-725d546963b8
+    name: FeatureWriterByTarget
+    type: action
+    action: FeatureWriter
+    with:
+      format: csv
+      output: |
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01-2_必須属性等_現われなかった属性等_" + env.get("__value")["package"] + ".csv")
+
+  - id: da1eaeee-4a50-4b6b-afee-3cfaf4887613
+    name: OutputRouter
+    type: action
+    action: OutputRouter
+    with:
+      routingPort: default
+
+edges:
+  - id: 668cbbf5-9da8-45db-baca-312d69d219c2
+    from: 00f42e7e-080b-4927-933b-70fc8d8136b8
+    to: c7315341-26b3-4405-9d02-039d721cd225
+    fromPort: default
+    toPort: default
+  - id: ffa9e8ec-6adb-43a4-a7f1-8c429ff857bc
+    from: c7315341-26b3-4405-9d02-039d721cd225
+    to: c790e59a-4283-452f-bc24-9cc966c3ec79
+    fromPort: default
+    toPort: default
+  - id: 3d1af617-8c19-4e5d-b883-9ca48b8eb401
+    from: c790e59a-4283-452f-bc24-9cc966c3ec79
+    to: c760d4d3-7b61-4451-878e-58783cfcbf30
+    fromPort: default
+    toPort: default
+  - id: 6ee8bf2a-6c2f-4b5a-95cf-dae0e8b94b07
+    from: c760d4d3-7b61-4451-878e-58783cfcbf30
+    to: 5389e28d-e2fa-420d-97b9-a8e09c74afc4
+    fromPort: default
+    toPort: default
+  - id: 1d5c1fba-afb0-4a3d-8b10-1ce9b4e8eb39
+    from: 5389e28d-e2fa-420d-97b9-a8e09c74afc4
+    to: 740ac9e5-6eeb-439b-9860-23a125919a2e
+    fromPort: default
+    toPort: default
+  - id: ccf9fadf-96a9-43ce-9a7f-aa091aafff25
+    from: 740ac9e5-6eeb-439b-9860-23a125919a2e
+    to: e86300b4-59a7-4714-ad89-3aa18ef201d8
+    fromPort: default
+    toPort: default
+  - id: a25010ac-f987-49a1-840e-6d5c4b6996a9
+    from: e86300b4-59a7-4714-ad89-3aa18ef201d8
+    to: 5490fef1-320b-4789-9f5b-5401a9b99e41
+    fromPort: default
+    toPort: default
+  - id: 675c9d96-440e-4290-bbe3-40858a59c475
+    from: 5490fef1-320b-4789-9f5b-5401a9b99e41
+    to: 7dd338ed-f9e4-408d-bcdf-39e4141126ba
+    fromPort: default
+    toPort: default
+  - id: a51c6e24-6a5b-4366-8870-4c599510a13c
+    from: 7dd338ed-f9e4-408d-bcdf-39e4141126ba
+    to: 4f62f8b0-b326-4aef-a779-a5324fab66fa
+    fromPort: summary
+    toPort: default
+  - id: df07f114-9979-4897-a6e3-9221d4a40bd9
+    from: 7dd338ed-f9e4-408d-bcdf-39e4141126ba
+    to: a4b8150a-6241-46ac-849d-39be21d39d1b
+    fromPort: required
+    toPort: default
+  - id: a71f3516-1f84-4388-a5e2-411ee78770e6
+    from: a4b8150a-6241-46ac-849d-39be21d39d1b
+    to: 23f7da40-5f92-4c14-a4fe-7a160361be6b
+    fromPort: default
+    toPort: default
+  - id: 103c8125-840b-4366-a128-b178fdf4e58d
+    from: 7dd338ed-f9e4-408d-bcdf-39e4141126ba
+    to: f70fe4c6-9dcf-4657-80fb-3edb59eae80d
+    fromPort: target
+    toPort: default
+  - id: 9d77955e-7f4e-427b-8900-d5211bc49305
+    from: f70fe4c6-9dcf-4657-80fb-3edb59eae80d
+    to: c528f544-4a0f-43dd-9fd8-725d546963b8
+    fromPort: default
+    toPort: default
+  - id: db81d339-3df8-44ab-ad88-78c6a7b2a34a
+    from: 4f62f8b0-b326-4aef-a779-a5324fab66fa
+    to: da1eaeee-4a50-4b6b-afee-3cfaf4887613
+    fromPort: default
+    toPort: default
+  - id: 7e6faf78-b8c8-4bac-8888-e150710ddb4f
+    from: 23f7da40-5f92-4c14-a4fe-7a160361be6b
+    to: da1eaeee-4a50-4b6b-afee-3cfaf4887613
+    fromPort: default
+    toPort: default
+  - id: 2a92e502-aa6d-49b7-91ee-15d2d69547de
+    from: c528f544-4a0f-43dd-9fd8-725d546963b8
+    to: da1eaeee-4a50-4b6b-afee-3cfaf4887613
+    fromPort: default
+    toPort: default

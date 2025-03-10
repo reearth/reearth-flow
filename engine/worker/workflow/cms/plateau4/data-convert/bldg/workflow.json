@@ -188,7 +188,7 @@
           "type": "action",
           "action": "FeatureCreator",
           "with": {
-            "creator": "[\n  #{\n    cityGmlPath: env.get(\"cityGmlPath\"),\n    cityCode: env.get(\"cityCode\") ?? file::extract_filename(env.get(\"cityGmlPath\"))[0..5],\n    codelists: env.get(\"codelists\"),\n    schemas: env.get(\"schemas\"),\n  },\n]\n"
+            "creator": "[\n  #{\n    cityGmlPath: env.get(\"cityGmlPath\"),\n    cityCode: env.get(\"cityCode\") ?? file::extract_filename(env.get(\"cityGmlPath\"))[0..5],\n    baseCityCode: env.get(\"cityCode\") ?? file::extract_filename(env.get(\"cityGmlPath\"))[0..5],\n    codelists: env.get(\"codelists\"),\n    schemas: env.get(\"schemas\"),\n  },\n]\n"
           }
         },
         {
@@ -205,6 +205,48 @@
           "with": {
             "format": "citygml",
             "dataset": "env.get(\"__value\")[\"path\"]\n"
+          }
+        },
+        {
+          "id": "33e32a91-5ade-4265-8665-b061f552839c",
+          "name": "AttributeManagerForCityCodeAndCityName",
+          "type": "action",
+          "action": "AttributeManager",
+          "with": {
+            "operations": [
+              {
+                "attribute": "cityCode",
+                "method": "convert",
+                "value": "let attributes = env.get(\"__value\").cityGmlAttributes;\nlet buildingIdAttributes = attributes[\"uro:BuildingIDAttribute\"] ?? {};\nbuildingIdAttributes[\"uro:city_code\"] ?? env.get(\"__value\").cityCode\n"
+              },
+              {
+                "attribute": "cityName",
+                "method": "convert",
+                "value": "let attributes = env.get(\"__value\").cityGmlAttributes;\nlet buildingIdAttributes = attributes[\"uro:BuildingIDAttribute\"] ?? {};\nbuildingIdAttributes[\"uro:city\"] ?? env.get(\"__value\").cityName\n"
+              }
+            ]
+          }
+        },
+        {
+          "id": "ae9c558d-ce05-4b40-ae04-a4477d96db5a",
+          "name": "AttributeConversionTable",
+          "type": "action",
+          "action": "AttributeConversionTable",
+          "with": {
+            "format": "csv",
+            "inline": "city_code,city_name_jp,city_name_en,ward_code,ward_name_jp,ward_name_en\n01100,札幌市,sapporo-shi,01101,中央区,chuo-ku\n01100,札幌市,sapporo-shi,01102,北区,kita-ku\n01100,札幌市,sapporo-shi,01103,東区,higashi-ku\n01100,札幌市,sapporo-shi,01104,白石区,shiroishi-ku\n01100,札幌市,sapporo-shi,01105,豊平区,toyohira-ku\n01100,札幌市,sapporo-shi,01106,南区,minami-ku\n01100,札幌市,sapporo-shi,01107,西区,nishi-ku\n01100,札幌市,sapporo-shi,01108,厚別区,atsubetsu-ku\n01100,札幌市,sapporo-shi,01109,手稲区,teine-ku\n01100,札幌市,sapporo-shi,01110,清田区,kiyota-ku\n04100,仙台市,sendai-shi,04101,青葉区,aoba-ku\n04100,仙台市,sendai-shi,04102,宮城野区,miyagino-ku\n04100,仙台市,sendai-shi,04103,若林区,wakabayashi-ku\n04100,仙台市,sendai-shi,04104,太白区,taihaku-ku\n04100,仙台市,sendai-shi,04105,泉区,izumi-ku\n11100,さいたま市,saitama-shi,11101,西区,nishi-ku\n11100,さいたま市,saitama-shi,11102,北区,kita-ku\n11100,さいたま市,saitama-shi,11103,大宮区,omiya-ku\n11100,さいたま市,saitama-shi,11104,見沼区,minuma-ku\n11100,さいたま市,saitama-shi,11105,中央区,chuo-ku\n11100,さいたま市,saitama-shi,11106,桜区,sakura-ku\n11100,さいたま市,saitama-shi,11107,浦和区,urawa-ku\n11100,さいたま市,saitama-shi,11108,南区,minami-ku\n11100,さいたま市,saitama-shi,11109,緑区,midori-ku\n11100,さいたま市,saitama-shi,11110,岩槻区,iwatsuki-ku\n12100,千葉市,chiba-shi,12101,中央区,chuo-ku\n12100,千葉市,chiba-shi,12102,花見川区,hanamigawa-ku\n12100,千葉市,chiba-shi,12103,稲毛区,inage-ku\n12100,千葉市,chiba-shi,12104,若葉区,wakaba-ku\n12100,千葉市,chiba-shi,12105,緑区,midori-ku\n12100,千葉市,chiba-shi,12106,美浜区,mihama-ku\n13100,東京特別区部,ku-area,13101,千代田区,chiyoda-ku\n13100,東京特別区部,ku-area,13102,中央区,chuo-ku\n13100,東京特別区部,ku-area,13103,港区,minato-ku\n13100,東京特別区部,ku-area,13104,新宿区,shinjuku-ku\n13100,東京特別区部,ku-area,13105,文京区,bunkyo-ku\n13100,東京特別区部,ku-area,13106,台東区,taito-ku\n13100,東京特別区部,ku-area,13107,墨田区,sumida-ku\n13100,東京特別区部,ku-area,13108,江東区,koto-ku\n13100,東京特別区部,ku-area,13109,品川区,shinagawa-ku\n13100,東京特別区部,ku-area,13110,目黒区,meguro-ku\n13100,東京特別区部,ku-area,13111,大田区,ota-ku\n13100,東京特別区部,ku-area,13112,世田谷区,setagaya-ku\n13100,東京特別区部,ku-area,13113,渋谷区,shibuya-ku\n13100,東京特別区部,ku-area,13114,中野区,nakano-ku\n13100,東京特別区部,ku-area,13115,杉並区,suginami-ku\n13100,東京特別区部,ku-area,13116,豊島区,toshima-ku\n13100,東京特別区部,ku-area,13117,北区,kita-ku\n13100,東京特別区部,ku-area,13118,荒川区,arakawa-ku\n13100,東京特別区部,ku-area,13119,板橋区,itabashi-ku\n13100,東京特別区部,ku-area,13120,練馬区,nerima-ku\n13100,東京特別区部,ku-area,13121,足立区,adachi-ku\n13100,東京特別区部,ku-area,13122,葛飾区,katsushika-ku\n13100,東京特別区部,ku-area,13123,江戸川区,edogawa-ku\n14100,横浜市,yokohama-shi,14101,鶴見区,tsurumi-ku\n14100,横浜市,yokohama-shi,14102,神奈川区,kanagawa-ku\n14100,横浜市,yokohama-shi,14103,西区,nishi-ku\n14100,横浜市,yokohama-shi,14104,中区,naka-ku\n14100,横浜市,yokohama-shi,14105,南区,minami-ku\n14100,横浜市,yokohama-shi,14106,保土ケ谷区,hodogaya-ku\n14100,横浜市,yokohama-shi,14107,磯子区,isogo-ku\n14100,横浜市,yokohama-shi,14108,金沢区,kanazawa-ku\n14100,横浜市,yokohama-shi,14109,港北区,kohoku-ku\n14100,横浜市,yokohama-shi,14110,戸塚区,totsuka-ku\n14100,横浜市,yokohama-shi,14111,港南区,konan-ku\n14100,横浜市,yokohama-shi,14112,旭区,asahi-ku\n14100,横浜市,yokohama-shi,14113,緑区,midori-ku\n14100,横浜市,yokohama-shi,14114,瀬谷区,seya-ku\n14100,横浜市,yokohama-shi,14115,栄区,sakae-ku\n14100,横浜市,yokohama-shi,14116,泉区,izumi-ku\n14100,横浜市,yokohama-shi,14117,青葉区,aoba-ku\n14100,横浜市,yokohama-shi,14118,都筑区,tsuzuki-ku\n14130,川崎市,kawasaki-shi,14131,川崎区,kawasaki-ku\n14130,川崎市,kawasaki-shi,14132,幸区,saiwai-ku\n14130,川崎市,kawasaki-shi,14133,中原区,nakahara-ku\n14130,川崎市,kawasaki-shi,14134,高津区,takatsu-ku\n14130,川崎市,kawasaki-shi,14135,多摩区,tama-ku\n14130,川崎市,kawasaki-shi,14136,宮前区,miyamae-ku\n14130,川崎市,kawasaki-shi,14137,麻生区,asao-ku\n14150,相模原市,sagamihara-shi,14151,緑区,midori-ku\n14150,相模原市,sagamihara-shi,14152,中央区,chuo-ku\n14150,相模原市,sagamihara-shi,14153,南区,minami-ku\n15100,新潟市,niigata-shi,15101,北区,kita-ku\n15100,新潟市,niigata-shi,15102,東区,higashi-ku\n15100,新潟市,niigata-shi,15103,中央区,chuo-ku\n15100,新潟市,niigata-shi,15104,江南区,konan-ku\n15100,新潟市,niigata-shi,15105,秋葉区,akiha-ku\n15100,新潟市,niigata-shi,15106,南区,minami-ku\n15100,新潟市,niigata-shi,15107,西区,nishi-ku\n15100,新潟市,niigata-shi,15108,西蒲区,nishikan-ku\n22100,静岡市,shizuoka-shi,22101,葵区,aoi-ku\n22100,静岡市,shizuoka-shi,22102,駿河区,suruga-ku\n22100,静岡市,shizuoka-shi,22103,清水区,shimizu-ku\n22130,浜松市,hamamatsu-shi,22131,中区,naka-ku\n22130,浜松市,hamamatsu-shi,22132,東区,higashi-ku\n22130,浜松市,hamamatsu-shi,22133,西区,nishi-ku\n22130,浜松市,hamamatsu-shi,22134,南区,minami-ku\n22130,浜松市,hamamatsu-shi,22135,北区,kita-ku\n22130,浜松市,hamamatsu-shi,22136,浜北区,hamakita-ku\n22130,浜松市,hamamatsu-shi,22137,天竜区,tenryu-ku\n22130,浜松市,hamamatsu-shi,22138,中央区,chuo-ku\n22130,浜松市,hamamatsu-shi,22139,浜名区,hamana-ku\n22130,浜松市,hamamatsu-shi,22140,天竜区,tenryu-ku\n23100,名古屋市,nagoya-shi,23101,千種区,chikusa-ku\n23100,名古屋市,nagoya-shi,23102,東区,higashi-ku\n23100,名古屋市,nagoya-shi,23103,北区,kita-ku\n23100,名古屋市,nagoya-shi,23104,西区,nishi-ku\n23100,名古屋市,nagoya-shi,23105,中村区,nakamura-ku\n23100,名古屋市,nagoya-shi,23106,中区,naka-ku\n23100,名古屋市,nagoya-shi,23107,昭和区,showa-ku\n23100,名古屋市,nagoya-shi,23108,瑞穂区,mizuho-ku\n23100,名古屋市,nagoya-shi,23109,熱田区,atsuta-ku\n23100,名古屋市,nagoya-shi,23110,中川区,nakagawa-ku\n23100,名古屋市,nagoya-shi,23111,港区,minato-ku\n23100,名古屋市,nagoya-shi,23112,南区,minami-ku\n23100,名古屋市,nagoya-shi,23113,守山区,moriyama-ku\n23100,名古屋市,nagoya-shi,23114,緑区,midori-ku\n23100,名古屋市,nagoya-shi,23115,名東区,meito-ku\n23100,名古屋市,nagoya-shi,23116,天白区,tempaku-ku\n26100,京都市,kyoto-shi,26101,北区,kita-ku\n26100,京都市,kyoto-shi,26102,上京区,kamigyo-ku\n26100,京都市,kyoto-shi,26103,左京区,sakyo-ku\n26100,京都市,kyoto-shi,26104,中京区,nakagyo-ku\n26100,京都市,kyoto-shi,26105,東山区,higashiyama-ku\n26100,京都市,kyoto-shi,26106,下京区,shimogyo-ku\n26100,京都市,kyoto-shi,26107,南区,minami-ku\n26100,京都市,kyoto-shi,26108,右京区,ukyo-ku\n26100,京都市,kyoto-shi,26109,伏見区,fushimi-ku\n26100,京都市,kyoto-shi,26110,山科区,yamashina-ku\n26100,京都市,kyoto-shi,26111,西京区,nishikyo-ku\n27100,大阪市,osaka-shi,27102,都島区,miyakojima-ku\n27100,大阪市,osaka-shi,27103,福島区,fukushima-ku\n27100,大阪市,osaka-shi,27104,此花区,konohana-ku\n27100,大阪市,osaka-shi,27106,西区,nishi-ku\n27100,大阪市,osaka-shi,27107,港区,minato-ku\n27100,大阪市,osaka-shi,27108,大正区,taisho-ku\n27100,大阪市,osaka-shi,27109,天王寺区,tennoji-ku\n27100,大阪市,osaka-shi,27111,浪速区,naniwa-ku\n27100,大阪市,osaka-shi,27113,西淀川区,nishiyodogawa-ku\n27100,大阪市,osaka-shi,27114,東淀川区,higashiyodogawa-ku\n27100,大阪市,osaka-shi,27115,東成区,higashinari-ku\n27100,大阪市,osaka-shi,27116,生野区,ikuno-ku\n27100,大阪市,osaka-shi,27117,旭区,asahi-ku\n27100,大阪市,osaka-shi,27118,城東区,joto-ku\n27100,大阪市,osaka-shi,27119,阿倍野区,abeno-ku\n27100,大阪市,osaka-shi,27120,住吉区,sumiyoshi-ku\n27100,大阪市,osaka-shi,27121,東住吉区,higashisumiyoshi-ku\n27100,大阪市,osaka-shi,27122,西成区,nishinari-ku\n27100,大阪市,osaka-shi,27123,淀川区,yodogawa-ku\n27100,大阪市,osaka-shi,27124,鶴見区,tsurumi-ku\n27100,大阪市,osaka-shi,27125,住之江区,suminoe-ku\n27100,大阪市,osaka-shi,27126,平野区,hirano-ku\n27100,大阪市,osaka-shi,27127,北区,kita-ku\n27100,大阪市,osaka-shi,27128,中央区,chuo-ku\n27140,堺市,sakai-shi,27141,堺区,sakai-ku\n27140,堺市,sakai-shi,27142,中区,naka-ku\n27140,堺市,sakai-shi,27143,東区,higashi-ku\n27140,堺市,sakai-shi,27144,西区,nishi-ku\n27140,堺市,sakai-shi,27145,南区,minami-ku\n27140,堺市,sakai-shi,27146,北区,kita-ku\n27140,堺市,sakai-shi,27147,美原区,mihara-ku\n28100,神戸市,kobe-shi,28101,東灘区,higashinada-ku\n28100,神戸市,kobe-shi,28102,灘区,nada-ku\n28100,神戸市,kobe-shi,28105,兵庫区,hyogo-ku\n28100,神戸市,kobe-shi,28106,長田区,nagata-ku\n28100,神戸市,kobe-shi,28107,須磨区,suma-ku\n28100,神戸市,kobe-shi,28108,垂水区,tarumi-ku\n28100,神戸市,kobe-shi,28109,北区,kita-ku\n28100,神戸市,kobe-shi,28110,中央区,chuo-ku\n28100,神戸市,kobe-shi,28111,西区,nishi-ku\n33100,岡山市,okayama-shi,33101,北区,kita-ku\n33100,岡山市,okayama-shi,33102,中区,naka-ku\n33100,岡山市,okayama-shi,33103,東区,higashi-ku\n33100,岡山市,okayama-shi,33104,南区,minami-ku\n34100,広島市,hiroshima-shi,34101,中区,naka-ku\n34100,広島市,hiroshima-shi,34102,東区,higashi-ku\n34100,広島市,hiroshima-shi,34103,南区,minami-ku\n34100,広島市,hiroshima-shi,34104,西区,nishi-ku\n34100,広島市,hiroshima-shi,34105,安佐南区,asaminami-ku\n34100,広島市,hiroshima-shi,34106,安佐北区,asakita-ku\n34100,広島市,hiroshima-shi,34107,安芸区,aki-ku\n34100,広島市,hiroshima-shi,34108,佐伯区,saeki-ku\n40100,北九州市,kitakyushu-shi,40101,門司区,moji-ku\n40100,北九州市,kitakyushu-shi,40103,若松区,wakamatsu-ku\n40100,北九州市,kitakyushu-shi,40105,戸畑区,tobata-ku\n40100,北九州市,kitakyushu-shi,40106,小倉北区,kokurakita-ku\n40100,北九州市,kitakyushu-shi,40107,小倉南区,kokuraminami-ku\n40100,北九州市,kitakyushu-shi,40108,八幡東区,yahatahigashi-ku\n40100,北九州市,kitakyushu-shi,40109,八幡西区,yahatanishi-ku\n40130,福岡市,fukuoka-shi,40131,東区,higashi-ku\n40130,福岡市,fukuoka-shi,40132,博多区,hakata-ku\n40130,福岡市,fukuoka-shi,40133,中央区,chuo-ku\n40130,福岡市,fukuoka-shi,40134,南区,minami-ku\n40130,福岡市,fukuoka-shi,40135,西区,nishi-ku\n40130,福岡市,fukuoka-shi,40136,城南区,jonan-ku\n40130,福岡市,fukuoka-shi,40137,早良区,sawara-ku\n43100,熊本市,kumamoto-shi,43101,中央区,chuo-ku\n43100,熊本市,kumamoto-shi,43102,東区,higashi-ku\n43100,熊本市,kumamoto-shi,43103,西区,nishi-ku\n43100,熊本市,kumamoto-shi,43104,南区,minami-ku\n43100,熊本市,kumamoto-shi,43105,北区,kita-ku\n",
+            "rules": [
+              {
+                "featureFroms": [
+                  "cityCode"
+                ],
+                "featureTo": "cityNameEn",
+                "conversionTableKeys": [
+                  "ward_code"
+                ],
+                "conversionTableTo": "ward_name_en"
+              }
+            ]
           }
         },
         {
@@ -419,8 +461,8 @@
             "minZoom": 15,
             "maxZoom": 18,
             "attachTexture": false,
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod1\")\n",
-            "compressOutput": "file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod1.zip\")\n"
+            "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod1\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod1_\" + env.get(\"__value\").city_code)\n}\n",
+            "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod1.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod1.zip\")\n}\n"
           }
         },
         {
@@ -432,8 +474,8 @@
             "minZoom": 15,
             "maxZoom": 18,
             "attachTexture": true,
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod2\")\n",
-            "compressOutput": "file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod2.zip\")\n"
+            "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod2\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod2_\" + env.get(\"__value\").city_code)\n}\n",
+            "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod2.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod2.zip\")\n}\n"
           }
         },
         {
@@ -445,8 +487,8 @@
             "minZoom": 15,
             "maxZoom": 18,
             "attachTexture": false,
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod2_no_texture\")\n",
-            "compressOutput": "file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod2_no_texture.zip\")\n"
+            "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod2_no_texture\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod2_no_texture_\" + env.get(\"__value\").city_code)\n}\n",
+            "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod2_no_texture.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod2_no_texture.zip\")\n}\n"
           }
         },
         {
@@ -458,8 +500,8 @@
             "minZoom": 15,
             "maxZoom": 18,
             "attachTexture": true,
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod3\")\n",
-            "compressOutput": "file::join_path(env.get(\"workerArtifactPath\"), file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod3.zip\")\n"
+            "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod3\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod3_\" + env.get(\"__value\").city_code)\n}\n",
+            "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod3.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod3.zip\")\n}\n"
           }
         },
         {
@@ -471,8 +513,8 @@
             "minZoom": 15,
             "maxZoom": 18,
             "attachTexture": false,
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod3_no_texture\")\n",
-            "compressOutput": "file::join_path(env.get(\"workerArtifactPath\"), file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod3_no_texture.zip\")\n"
+            "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod3_no_texture\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod3_no_texture_\" + env.get(\"__value\").city_code)\n}\n",
+            "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod3_no_texture.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod3_no_texture.zip\")\n}\n"
           }
         },
         {
@@ -484,8 +526,8 @@
             "minZoom": 15,
             "maxZoom": 18,
             "attachTexture": true,
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod4\")\n",
-            "compressOutput": "file::join_path(env.get(\"workerArtifactPath\"), file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod4.zip\")\n"
+            "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod4\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod4_\" + env.get(\"__value\").city_code)\n}\n",
+            "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod4.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod4.zip\")\n}\n"
           }
         },
         {
@@ -497,8 +539,8 @@
             "minZoom": 15,
             "maxZoom": 18,
             "attachTexture": false,
-            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod4_no_texture\")\n",
-            "compressOutput": "file::join_path(env.get(\"workerArtifactPath\"), file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod4_no_texture.zip\")\n"
+            "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod4_no_texture\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod4_no_texture_\" + env.get(\"__value\").city_code)\n}\n",
+            "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod4_no_texture.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod4_no_texture.zip\")\n}\n"
           }
         }
       ],
@@ -520,6 +562,20 @@
         {
           "id": "cf845867-6ffc-4b83-9fd5-e376a22470e2",
           "from": "ded2e272-e05c-4918-86b3-aa9f763da6e6",
+          "to": "33e32a91-5ade-4265-8665-b061f552839c",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "29479f80-4753-400b-9e05-32c69a9a5037",
+          "from": "33e32a91-5ade-4265-8665-b061f552839c",
+          "to": "ae9c558d-ce05-4b40-ae04-a4477d96db5a",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "f79ef31d-45f5-4aa5-ade2-620ab74bb35a",
+          "from": "ae9c558d-ce05-4b40-ae04-a4477d96db5a",
           "to": "4ffbb8a3-371e-4938-aa73-c142f11bb04b",
           "fromPort": "default",
           "toPort": "default"

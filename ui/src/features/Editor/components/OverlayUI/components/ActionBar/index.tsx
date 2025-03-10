@@ -1,13 +1,14 @@
 import {
   DotsThreeVertical,
-  DownloadSimple,
+  Export,
   LetterCircleV,
   Play,
   RocketLaunch,
   ShareFat,
   Stop,
+  XCircle,
 } from "@phosphor-icons/react";
-import { memo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 
 import {
   DropdownMenu,
@@ -17,10 +18,12 @@ import {
   IconButton,
 } from "@flow/components";
 import { useProjectExport } from "@flow/hooks";
+import { useJob } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
+import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
 
-import { DeployDialog, ShareDialog } from "./components";
+import { DebugStopDialog, DeployDialog, ShareDialog } from "./components";
 
 const tooltipOffset = 6;
 
@@ -31,6 +34,8 @@ type Props = {
     deploymentId?: string,
   ) => Promise<void>;
   onProjectShare: (share: boolean) => void;
+  onDebugRunStart: () => Promise<void>;
+  onDebugRunStop: () => Promise<void>;
   onRightPanelOpen: (content?: "version-history") => void;
 };
 
@@ -38,101 +43,139 @@ const ActionBar: React.FC<Props> = ({
   allowedToDeploy,
   onWorkflowDeployment,
   onProjectShare,
+  onDebugRunStart,
+  onDebugRunStop,
   onRightPanelOpen,
 }) => {
   const t = useT();
-
-  const [showDeployDialog, setShowDeployDialog] = useState(false);
-  const [showShareDialog, setShowShareDialog] = useState(false);
-
-  const handleShowDeployDialog = () => {
-    setShowShareDialog(false);
-    setShowDeployDialog(true);
-  };
-
-  const handleShowShareDialog = () => {
-    setShowDeployDialog(false);
-    setShowShareDialog(true);
-  };
-
   const [currentProject] = useCurrentProject();
 
   const { handleProjectExport } = useProjectExport(currentProject);
 
+  const { useGetJob } = useJob();
+
+  const { value: debugRunState, updateValue: updateDebugRunState } =
+    useIndexedDB("debugRun");
+
+  const debugJobId = useMemo(
+    () =>
+      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
+        ?.jobId ?? "",
+    [debugRunState, currentProject],
+  );
+
+  const debugJob = useGetJob(debugJobId).job;
+
+  const [showDialog, setShowDialog] = useState<
+    "deploy" | "share" | "debugStop" | undefined
+  >(undefined);
+
+  const handleShowDeployDialog = () => setShowDialog("deploy");
+  const handleShowShareDialog = () => setShowDialog("share");
+  const handleShowDebugStopDialog = () => setShowDialog("debugStop");
+  const handleDialogClose = () => setShowDialog(undefined);
+
+  const handleDebugRunReset = async () => {
+    const jobState = debugRunState?.jobs?.filter(
+      (job) => job.projectId !== currentProject?.id,
+    );
+    if (!jobState) return;
+    await updateDebugRunState({ jobs: jobState });
+  };
+
   return (
     <>
-      <div className="rounded-md border bg-secondary">
-        <div className="flex rounded-md">
-          <div className="flex align-middle">
-            <IconButton
-              className="rounded-l-[4px] rounded-r-none"
-              tooltipText={t("Run project workflow")}
-              tooltipOffset={tooltipOffset}
-              icon={<Play weight="thin" />}
-            />
-            <IconButton
-              className="rounded-none"
-              tooltipText={t("Stop project workflow")}
-              tooltipOffset={tooltipOffset}
-              icon={<Stop weight="thin" />}
-            />
-            <IconButton
-              className="rounded-none"
-              tooltipText={t("Deploy project workflow")}
-              tooltipOffset={tooltipOffset}
-              icon={<RocketLaunch weight="thin" />}
-              onClick={handleShowDeployDialog}
-            />
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <IconButton
-                  className="w-[25px] rounded-l-none rounded-r-[4px]"
-                  tooltipText={t("Additional actions")}
-                  tooltipOffset={tooltipOffset}
-                  icon={<DotsThreeVertical />}
-                />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  className="flex gap-2"
-                  onClick={handleShowShareDialog}>
-                  <ShareFat weight="light" />
-                  <p className="text-sm font-extralight">
-                    {t("Share Project")}
-                  </p>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex gap-2"
-                  onClick={handleProjectExport}>
-                  <DownloadSimple weight="light" />
-                  <p className="text-sm font-extralight">
-                    {t("Export Project")}
-                  </p>
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="flex gap-2"
-                  onClick={() => onRightPanelOpen("version-history")}>
-                  <LetterCircleV weight="light" />
-                  <p className="text-sm font-extralight">
-                    {t("Version History")}
-                  </p>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+      <div className="flex rounded-md border bg-secondary">
+        <div className="flex align-middle">
+          <IconButton
+            className="rounded-l-[4px] rounded-r-none"
+            tooltipText={t("Run project workflow")}
+            tooltipOffset={tooltipOffset}
+            disabled={
+              debugJob &&
+              (debugJob.status === "running" || debugJob.status === "queued")
+            }
+            icon={<Play weight="thin" />}
+            onClick={onDebugRunStart}
+          />
+          <IconButton
+            className="rounded-none"
+            tooltipText={t("Stop project workflow")}
+            tooltipOffset={tooltipOffset}
+            disabled={
+              !debugJob ||
+              (debugJob &&
+                !(
+                  debugJob.status === "running" || debugJob.status === "queued"
+                ))
+            }
+            icon={<Stop weight="thin" />}
+            onClick={handleShowDebugStopDialog}
+          />
+          <IconButton
+            className="rounded-none"
+            tooltipText={t("Clear debug run results")}
+            tooltipOffset={tooltipOffset}
+            disabled={!debugJobId}
+            icon={<XCircle weight="thin" />}
+            onClick={handleDebugRunReset}
+          />
+          <IconButton
+            className="rounded-none"
+            tooltipText={t("Deploy project workflow")}
+            tooltipOffset={tooltipOffset}
+            icon={<RocketLaunch weight="thin" />}
+            onClick={handleShowDeployDialog}
+          />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <IconButton
+                className="w-[25px] rounded-l-none rounded-r-[4px]"
+                tooltipText={t("Additional actions")}
+                tooltipOffset={tooltipOffset}
+                icon={<DotsThreeVertical />}
+              />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="flex justify-between gap-4"
+                onClick={handleShowShareDialog}>
+                <p>{t("Share Project")}</p>
+                <ShareFat weight="light" />
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex justify-between gap-4"
+                onClick={handleProjectExport}>
+                <p>{t("Export Project")}</p>
+                <Export weight="light" />
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex justify-between gap-4"
+                onClick={() => onRightPanelOpen("version-history")}>
+                <p>{t("Version History")}</p>
+                <LetterCircleV weight="light" />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-      {showDeployDialog && (
+      {showDialog === "deploy" && (
         <DeployDialog
           allowedToDeploy={allowedToDeploy}
-          setShowDialog={setShowDeployDialog}
+          onDialogClose={handleDialogClose}
           onWorkflowDeployment={onWorkflowDeployment}
         />
       )}
-      {showShareDialog && (
+      {showDialog === "share" && (
         <ShareDialog
-          setShowDialog={setShowShareDialog}
+          onDialogClose={handleDialogClose}
           onProjectShare={onProjectShare}
+        />
+      )}
+      {showDialog === "debugStop" && (
+        <DebugStopDialog
+          onDialogClose={handleDialogClose}
+          onDebugRunStop={onDebugRunStop}
         />
       )}
     </>

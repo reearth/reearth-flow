@@ -21,11 +21,11 @@ use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
 
-pub static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
-pub static REMNANTS_PORT: Lazy<Port> = Lazy::new(|| Port::new("remnants"));
+static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
+static REMNANTS_PORT: Lazy<Port> = Lazy::new(|| Port::new("remnants"));
 
 #[derive(Debug, Clone, Default)]
-pub struct AreaOnAreaOverlayerFactory;
+pub(super) struct AreaOnAreaOverlayerFactory;
 
 impl ProcessorFactory for AreaOnAreaOverlayerFactory {
     fn name(&self) -> &str {
@@ -93,12 +93,13 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct AreaOnAreaOverlayerParam {
+struct AreaOnAreaOverlayerParam {
+    /// # Group by
     group_by: Option<Vec<Attribute>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct AreaOnAreaOverlayer {
+struct AreaOnAreaOverlayer {
     group_by: Option<Vec<Attribute>>,
     buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
@@ -230,12 +231,13 @@ impl AreaOnAreaOverlayer {
 
         let overlay_graph = OverlayGraph::bulk_load(&polygons_incoming);
 
+        // all (devided) polygons to output
         let midpolygons = (0..polygons_incoming.len())
             .into_par_iter()
             .map(|i| {
                 let mut polygon_target = polygons_incoming[i].clone();
 
-                // cut off the target polygon by above overlayed polygons
+                // cut off the target polygon by upper polygons
                 for j in overlay_graph.overlayed_iter(i).copied() {
                     if i < j {
                         polygon_target = polygon_target.difference(&polygons_incoming[j]);
@@ -247,7 +249,7 @@ impl AreaOnAreaOverlayer {
                     parents: vec![i],
                 }];
 
-                // divide the target polygon by below overlayed polygons
+                // divide the target polygon by lower polygons
                 for j in overlay_graph.overlayed_iter(i).copied() {
                     if i > j {
                         let mut new_queue = Vec::new();
