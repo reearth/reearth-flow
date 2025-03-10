@@ -8,7 +8,7 @@ export default (
   nodeType: string,
   nodeMeta: NodeData,
   action?: Action,
-): { schema: RJSFSchema; action?: Action } => {
+): { action?: Action } => {
   const t = useT();
 
   const baseSchema: RJSFSchema = {
@@ -75,6 +75,15 @@ export default (
   }
 
   let resultAction = action;
+
+  // For Nodes that are in the actions list and have params.
+  if (resultAction) {
+    resultAction = {
+      ...resultAction,
+      customizations: schema,
+    };
+  }
+
   // For nodes such as note and batch that are not in the actions list and therefore have no params.
   if (!resultAction) {
     switch (nodeMeta.officialName) {
@@ -108,5 +117,5 @@ export default (
     }
   }
 
-  return { schema, action: resultAction };
+  return { action: resultAction };
 };

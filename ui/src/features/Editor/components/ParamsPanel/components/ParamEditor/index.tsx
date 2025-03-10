@@ -1,6 +1,6 @@
 import { RJSFSchema } from "@rjsf/utils";
 import { JSONSchema7Definition } from "json-schema";
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useMemo, useState } from "react";
 
 import {
   SchemaForm,
@@ -41,42 +41,21 @@ const ParamEditor: React.FC<Props> = ({
   const t = useT();
   const { useGetActionById } = useAction(i18n.language);
   const { action: fetchedAction } = useGetActionById(nodeMeta.officialName);
-  const firstRenderRef = useRef(true);
+
   // Used to generate the customization schema for the node with translations
-  const { schema: nodeSchema, action: createdAction } = useNodeSchemaGenerate(
+  const { action: createdAction } = useNodeSchemaGenerate(
     nodeType,
     nodeMeta,
     fetchedAction,
   );
-  // TODO: Refactor and incorporate this logic into useNodeSchemaGenerate
-  const [actionWithCustomization, setActionWithCustomization] =
-    useState(createdAction);
-
-  useEffect(() => {
-    if (firstRenderRef.current && createdAction) {
-      firstRenderRef.current = false;
-
-      // Only update if we need to add customization
-      if (!createdAction.customizations) {
-        setActionWithCustomization({
-          ...createdAction,
-          customizations: nodeSchema,
-        });
-      } else {
-        setActionWithCustomization(createdAction);
-      }
-    }
-  }, [createdAction, nodeMeta, nodeSchema]);
 
   // This is a patch for the `anyOf` type in JSON Schema.
   const patchedSchemaParams = useMemo<RJSFSchema | undefined>(
     () =>
-      actionWithCustomization?.parameter
-        ? patchAnyOfType(
-            actionWithCustomization.parameter as JSONSchema7Definition,
-          )
+      createdAction?.parameter
+        ? patchAnyOfType(createdAction.parameter as JSONSchema7Definition)
         : undefined,
-    [actionWithCustomization?.parameter],
+    [createdAction?.parameter],
   );
 
   const [updatedParams, setUpdatedParams] = useState(nodeMeta.params);
@@ -93,8 +72,7 @@ const ParamEditor: React.FC<Props> = ({
   };
 
   const [activeTab, setActiveTab] = useState(
-    actionWithCustomization?.name === "batch" ||
-      actionWithCustomization?.name === "note"
+    createdAction?.name === "batch" || createdAction?.name === "note"
       ? "customization"
       : "params",
   );
@@ -111,8 +89,7 @@ const ParamEditor: React.FC<Props> = ({
     <div className="flex h-full flex-col gap-4">
       <Tabs
         defaultValue={
-          actionWithCustomization?.name === "batch" ||
-          actionWithCustomization?.name === "note"
+          createdAction?.name === "batch" || createdAction?.name === "note"
             ? "customization"
             : "params"
         }
@@ -133,8 +110,8 @@ const ParamEditor: React.FC<Props> = ({
           {activeTab === "details" && <div className="h-[36px]" />}
         </div>
         <TabsList className="flex justify-between gap-2">
-          {actionWithCustomization?.name !== "batch" &&
-            actionWithCustomization?.name !== "note" && (
+          {createdAction?.name !== "batch" &&
+            createdAction?.name !== "note" && (
               <TabsTrigger className="flex-1" value="params">
                 {t("Parameters")}
               </TabsTrigger>
@@ -148,14 +125,14 @@ const ParamEditor: React.FC<Props> = ({
         </TabsList>
         <TabsContent value="params">
           <div className="min-h-32 overflow-scroll rounded border bg-card px-2 pt-1">
-            {!actionWithCustomization?.parameter && (
+            {!createdAction?.parameter && (
               <BasicBoiler
                 text={t("No Parameters Available")}
                 className="size-4 pt-16 [&>div>p]:text-sm"
                 icon={<FlowLogo className="size-12 text-accent" />}
               />
             )}
-            {actionWithCustomization && (
+            {createdAction && (
               <SchemaForm
                 schema={patchedSchemaParams}
                 defaultFormData={updatedParams}
@@ -166,21 +143,21 @@ const ParamEditor: React.FC<Props> = ({
         </TabsContent>
         <TabsContent value="customization">
           <div className="min-h-32 overflow-scroll rounded border bg-card px-2 pt-4">
-            {!actionWithCustomization?.customizations && (
+            {!createdAction?.customizations && (
               <BasicBoiler
                 text={t("No Customization Available")}
                 className="size-4 pt-16 [&>div>p]:text-sm"
                 icon={<FlowLogo className="size-12 text-accent" />}
               />
             )}
-            {actionWithCustomization && (
+            {createdAction && (
               <div className="space-y-4">
                 <div>
                   <h4 className="border-b text-sm font-medium">
                     {t("Customization Options")}
                   </h4>
                   <SchemaForm
-                    schema={actionWithCustomization?.customizations}
+                    schema={createdAction?.customizations}
                     defaultFormData={updatedCustomization}
                     onChange={handleCustomizationChange}
                   />
@@ -191,14 +168,14 @@ const ParamEditor: React.FC<Props> = ({
         </TabsContent>
         <TabsContent value="details">
           <div className="min-h-32 overflow-scroll rounded border bg-card px-2 pt-4">
-            {!actionWithCustomization && (
+            {!createdAction && (
               <BasicBoiler
                 text={t("No Details Available")}
                 className="size-4 pt-16 [&>div>p]:text-sm"
                 icon={<FlowLogo className="size-12 text-accent" />}
               />
             )}
-            {actionWithCustomization && (
+            {createdAction && (
               <div className="space-y-4">
                 <div className="rounded-md ">
                   <h4 className="border-b text-sm font-medium">
@@ -217,10 +194,8 @@ const ParamEditor: React.FC<Props> = ({
                       <span className="mr-2 text-sm font-medium">
                         {t("Description")}:
                       </span>
-                      {actionWithCustomization?.description && (
-                        <p className="text-sm">
-                          {actionWithCustomization.description}
-                        </p>
+                      {createdAction?.description && (
+                        <p className="text-sm">{createdAction.description}</p>
                       )}
                     </div>
                   </div>
