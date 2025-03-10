@@ -6,9 +6,8 @@ use anyhow::{anyhow, Result};
 use dashmap::DashMap;
 use redis::AsyncCommands;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use yrs::sync::Awareness;
-use yrs::{Any, Doc, Map, ReadTxn, Transact, WriteTxn};
+use yrs::{Doc, Transact};
 
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
@@ -16,7 +15,6 @@ pub struct BroadcastPool {
     redis_config: Option<RedisConfig>,
     groups: DashMap<String, Arc<BroadcastGroup>>,
     buffer_capacity: usize,
-    doc_locks: Arc<DashMap<String, Arc<Mutex<()>>>>,
 }
 
 impl BroadcastPool {
@@ -26,7 +24,6 @@ impl BroadcastPool {
             redis_config,
             groups: DashMap::new(),
             buffer_capacity: 1024,
-            doc_locks: Arc::new(DashMap::new()),
         }
     }
 
@@ -40,7 +37,6 @@ impl BroadcastPool {
             redis_config,
             groups: DashMap::new(),
             buffer_capacity,
-            doc_locks: Arc::new(DashMap::new()),
         }
     }
 
@@ -48,97 +44,38 @@ impl BroadcastPool {
         self.store.clone()
     }
 
-    async fn handle_doc_initialization(
-        &self,
-        conn: &mut redis::aio::MultiplexedConnection,
-        lock_key: &str,
-    ) -> Result<(bool, Option<String>)> {
-        let acquired: bool = conn.set_nx(lock_key, "true").await?;
-
-        if acquired {
-            let _: () = conn.expire(lock_key, 300).await?;
-            Ok((true, Some(lock_key.to_string())))
-        } else {
-            Ok((false, None))
-        }
-    }
-
-    async fn release_lock(
-        &self,
-        conn: &mut redis::aio::MultiplexedConnection,
-        lock_key: &str,
-    ) -> Result<()> {
-        let _: () = conn.del(lock_key).await?;
-        tracing::info!("Released lock for {}", lock_key);
-        Ok(())
+    pub fn get_redis_config(&self) -> Option<RedisConfig> {
+        self.redis_config.clone()
     }
 
     pub async fn get_or_create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
-        let doc_lock = self
-            .doc_locks
-            .entry(doc_id.to_string())
-            .or_insert_with(|| Arc::new(Mutex::new(())))
-            .clone();
-
-        let _guard = doc_lock.lock().await;
-
         let entry = self.groups.entry(doc_id.to_string());
 
         match entry {
-            dashmap::mapref::entry::Entry::Occupied(entry) => {
-                let group = entry.get().clone();
-                {
-                    let awareness = group.awareness().read().await;
-                    let doc = awareness.doc();
-                    let txn = doc.transact();
-
-                    let init_map = txn.get_map("workflow_initialized");
-                    if init_map.is_none() {
-                        let mut txn = doc.transact_mut();
-                        let init_map = txn.get_or_insert_map("workflow_initialized");
-                        init_map.insert(&mut txn, "initialized", Any::Bool(true));
-                    }
-                }
-                Ok(group)
-            }
-
+            dashmap::mapref::entry::Entry::Occupied(entry) => Ok(entry.get().clone()),
             dashmap::mapref::entry::Entry::Vacant(entry) => {
                 let awareness: AwarenessRef = {
                     let doc = Doc::new();
                     let mut updates_from_redis = Vec::new();
-                    let mut needs_initialization = false;
 
                     if let Some(redis_config) = &self.redis_config {
                         let redis_key = format!("pending_updates:{}", doc_id);
-                        let init_key = format!("workflow_initialized:{}", doc_id);
-
                         if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
                             if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
-                                let (acquired_lock, lock_key) =
-                                    self.handle_doc_initialization(&mut conn, &init_key).await?;
-                                needs_initialization = acquired_lock;
-
-                                tracing::info!("redis_key: {}", redis_key);
-
                                 match conn.lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1).await {
                                     Ok(updates) => {
                                         if !updates.is_empty() {
+                                            tracing::debug!(
+                                                "Found {} pending updates in Redis for document '{}'",
+                                                updates.len(),
+                                                doc_id
+                                            );
                                             updates_from_redis = updates;
                                         }
                                     }
                                     Err(e) => {
                                         tracing::warn!(
                                             "Failed to load pending updates from Redis for document '{}': {}",
-                                            doc_id,
-                                            e
-                                        );
-                                    }
-                                }
-
-                                if let Some(lock_key) = lock_key {
-                                    if let Err(e) = self.release_lock(&mut conn, &lock_key).await {
-                                        tracing::error!(
-                                            "Failed to release lock for document '{}': {}",
                                             doc_id,
                                             e
                                         );
@@ -152,34 +89,30 @@ impl BroadcastPool {
                         let mut txn = doc.transact_mut();
 
                         match self.store.load_doc(doc_id, &mut txn).await {
-                            Ok(loaded) => {
-                                if loaded {
-                                    tracing::info!(
-                                        "Successfully loaded existing document: {}",
-                                        doc_id
-                                    );
-                                    let init_map = txn.get_or_insert_map("workflow_initialized");
-                                    init_map.insert(&mut txn, "initialized", Any::Bool(true));
-                                } else if !needs_initialization {
-                                    let init_map = txn.get_or_insert_map("workflow_initialized");
-                                    init_map.insert(&mut txn, "initialized", Any::Bool(true));
-                                } else {
-                                    tokio::time::sleep(tokio::time::Duration::from_millis(100))
-                                        .await;
-                                    let init_map = txn.get_or_insert_map("workflow_initialized");
-                                    init_map.insert(&mut txn, "initialized", Any::Bool(false));
-                                }
+                            Ok(_) => {
+                                tracing::debug!(
+                                    "Successfully loaded existing document: {}",
+                                    doc_id
+                                );
                             }
                             Err(e) => {
-                                tracing::error!("Failed to load document {}: {}", doc_id, e);
-                                return Err(anyhow!("Failed to load document: {}", e));
+                                if e.to_string().contains("not found") {
+                                    tracing::debug!("Creating new document: {}", doc_id);
+                                } else {
+                                    tracing::error!("Failed to load document {}: {}", doc_id, e);
+                                    return Err(anyhow!("Failed to load document: {}", e));
+                                }
                             }
                         }
 
                         for update in updates_from_redis {
                             if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(&update) {
                                 if let Err(e) = txn.apply_update(decoded) {
-                                    tracing::warn!("Failed to apply update from Redis: {}", e);
+                                    tracing::warn!(
+                                        "Failed to apply update from Redis for document '{}': {}",
+                                        doc_id,
+                                        e
+                                    );
                                 }
                             }
                         }
@@ -202,8 +135,6 @@ impl BroadcastPool {
                     .await?,
                 );
 
-                tracing::info!("inserting group");
-
                 Ok(entry.insert(group.clone()).clone())
             }
         }
@@ -225,6 +156,11 @@ impl BroadcastPool {
         if let Some(group) = self.groups.get(doc_id) {
             let group_clone = group.clone();
             let remaining = group.decrement_connections();
+
+            tracing::info!(
+                "Connection disconnected for document '{}', updates will be flushed in decrement_connections",
+                doc_id
+            );
 
             if remaining == 0 {
                 tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;

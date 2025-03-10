@@ -11,6 +11,7 @@ use axum::extract::Query;
 
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{Stream, StreamExt};
+use redis::AsyncCommands;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -169,9 +170,149 @@ pub async fn ws_handler(
         }
     }
 
+    let mut redis_conn_for_lock = None;
+    let lock_key = format!("lock:workflow:{}", doc_id);
+    let mut lock_acquired = false;
+
+    if let Some(redis_config) = state.pool.get_redis_config() {
+        let redis_key = format!("doc_id:{}", doc_id);
+
+        if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
+            if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
+                match conn.set_nx::<_, _, bool>(&lock_key, "1").await {
+                    Ok(true) => {
+                        lock_acquired = true;
+                        tracing::debug!("Acquired lock for workflow '{}' creation", doc_id);
+
+                        if let Err(e) = conn.expire::<_, bool>(&lock_key, 300).await {
+                            tracing::warn!(
+                                "Failed to set expiration on lock for workflow '{}': {}",
+                                doc_id,
+                                e
+                            );
+                        }
+
+                        if let Err(e) = conn
+                            .set_ex::<_, _, ()>(&redis_key, "1", redis_config.ttl)
+                            .await
+                        {
+                            tracing::warn!("Failed to store doc_id in Redis: {}", e);
+                        }
+
+                        redis_conn_for_lock = Some(conn);
+                    }
+                    Ok(false) => {
+                        let mut retries = 0;
+                        const MAX_LOCK_RETRIES: usize = 30;
+                        const LOCK_RETRY_DELAY_MS: u64 = 500;
+
+                        tracing::info!(
+                            "Waiting for lock on workflow '{}' to be released...",
+                            doc_id
+                        );
+
+                        while retries < MAX_LOCK_RETRIES {
+                            match conn.exists::<_, bool>(&lock_key).await {
+                                Ok(false) => {
+                                    match conn.set_nx::<_, _, bool>(&lock_key, "1").await {
+                                        Ok(true) => {
+                                            lock_acquired = true;
+                                            tracing::debug!(
+                                                "Acquired lock for workflow '{}' after waiting",
+                                                doc_id
+                                            );
+
+                                            if let Err(e) =
+                                                conn.expire::<_, bool>(&lock_key, 300).await
+                                            {
+                                                tracing::warn!("Failed to set expiration on lock for workflow '{}': {}", doc_id, e);
+                                            }
+
+                                            if let Err(e) = conn
+                                                .set_ex::<_, _, ()>(
+                                                    &redis_key,
+                                                    "1",
+                                                    redis_config.ttl,
+                                                )
+                                                .await
+                                            {
+                                                tracing::warn!(
+                                                    "Failed to store doc_id in Redis: {}",
+                                                    e
+                                                );
+                                            }
+
+                                            redis_conn_for_lock = Some(conn);
+                                            break;
+                                        }
+                                        Ok(false) => {
+                                            tracing::debug!("Lock for workflow '{}' still held by another process, retrying...", doc_id);
+                                        }
+                                        Err(e) => {
+                                            tracing::warn!(
+                                                "Failed to acquire lock for workflow '{}': {}",
+                                                doc_id,
+                                                e
+                                            );
+                                            break;
+                                        }
+                                    }
+                                }
+                                Ok(true) => {
+                                    tracing::debug!(
+                                        "Waiting for lock on workflow '{}' to be released...",
+                                        doc_id
+                                    );
+                                }
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "Failed to check lock status for workflow '{}': {}",
+                                        doc_id,
+                                        e
+                                    );
+                                    break;
+                                }
+                            }
+
+                            tokio::time::sleep(tokio::time::Duration::from_millis(
+                                LOCK_RETRY_DELAY_MS,
+                            ))
+                            .await;
+                            retries += 1;
+                        }
+
+                        if retries == MAX_LOCK_RETRIES {
+                            tracing::warn!(
+                                "Timed out waiting for lock on workflow '{}', proceeding anyway",
+                                doc_id
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to acquire lock for workflow '{}': {}", doc_id, e);
+                    }
+                }
+            } else {
+                tracing::warn!("Failed to get Redis connection");
+            }
+        } else {
+            tracing::warn!("Failed to open Redis client");
+        }
+    }
+
     let bcast = match state.pool.get_or_create_group(&doc_id).await {
         Ok(group) => group,
         Err(e) => {
+            if lock_acquired {
+                if let Some(mut conn) = redis_conn_for_lock {
+                    if let Err(e) = conn.del::<_, ()>(&lock_key).await {
+                        tracing::warn!("Failed to release lock for workflow '{}': {}", doc_id, e);
+                    } else {
+                        tracing::debug!("Released lock for workflow '{}' after failure", doc_id);
+                    }
+                }
+            }
+
             tracing::error!("Failed to get or create group for {}: {}", doc_id, e);
             return Response::builder()
                 .status(500)
@@ -180,8 +321,38 @@ pub async fn ws_handler(
         }
     };
 
+    let lock_key_clone = lock_key.clone();
+    let redis_conn_clone = redis_conn_for_lock;
+    let doc_id_clone = doc_id.clone();
+    let lock_acquired_clone = lock_acquired;
+
     ws.on_upgrade(move |socket| {
-        handle_socket(socket, bcast, doc_id, state.pool.clone(), user_token)
+        let release_lock_future = async move {
+            if lock_acquired_clone {
+                if let Some(mut conn) = redis_conn_clone {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+                    if let Err(e) = conn.del::<_, ()>(&lock_key_clone).await {
+                        tracing::warn!(
+                            "Failed to release lock for workflow '{}': {}",
+                            doc_id_clone,
+                            e
+                        );
+                    } else {
+                        tracing::debug!(
+                            "Released lock for workflow '{}' after connection established",
+                            doc_id_clone
+                        );
+                    }
+                }
+            }
+        };
+
+        async move {
+            release_lock_future.await;
+
+            handle_socket(socket, bcast, doc_id, state.pool.clone(), user_token).await;
+        }
     })
 }
 
