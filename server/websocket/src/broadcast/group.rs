@@ -807,10 +807,6 @@ impl Drop for BroadcastGroup {
             .shutdown_complete
             .load(std::sync::atomic::Ordering::SeqCst)
         {
-            tracing::warn!(
-                "BroadcastGroup dropped without calling shutdown() first. Pending updates may be lost."
-            );
-
             if let (Some(_store), Some(doc_name)) = (&self.storage, &self.doc_name) {
                 tracing::warn!(
                     "Document '{}' may have pending updates that weren't flushed",

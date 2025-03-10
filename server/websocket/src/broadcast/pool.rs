@@ -123,11 +123,6 @@ impl BroadcastPool {
                                 match conn.lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1).await {
                                     Ok(updates) => {
                                         if !updates.is_empty() {
-                                            tracing::debug!(
-                                                "Found {} pending updates in Redis for document '{}'",
-                                                updates.len(),
-                                                doc_id
-                                            );
                                             updates_from_redis = updates;
                                         }
                                     }
@@ -169,6 +164,8 @@ impl BroadcastPool {
                                     let init_map = txn.get_or_insert_map("workflow_initialized");
                                     init_map.insert(&mut txn, "initialized", Any::Bool(true));
                                 } else {
+                                    tokio::time::sleep(tokio::time::Duration::from_millis(100))
+                                        .await;
                                     let init_map = txn.get_or_insert_map("workflow_initialized");
                                     init_map.insert(&mut txn, "initialized", Any::Bool(false));
                                 }
