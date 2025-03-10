@@ -67,49 +67,21 @@ impl BroadcastPool {
 
     async fn handle_doc_initialization(
         &self,
-        doc: &Doc,
         conn: &mut redis::aio::MultiplexedConnection,
         lock_key: &str,
-        doc_id: &str,
-    ) -> Result<()> {
-        let mut txn = doc.transact_mut();
-        match self.store.load_doc(doc_id, &mut txn).await {
-            Ok(_) => {
-                tracing::debug!("Successfully loaded existing document: {}", doc_id);
-            }
-            Err(e) => {
-                if e.to_string().contains("not found") {
-                    tracing::debug!("Creating new document: {}", doc_id);
+    ) -> Result<bool> {
+        let mut should_initialize = true;
 
-                    let mut should_initialize = true;
-
-                    if let Ok(exists) = conn.exists::<_, bool>(lock_key).await {
-                        should_initialize = !exists;
-                    }
-
-                    if should_initialize {
-                        let mut txn = doc.transact_mut();
-                        let init_map = txn.get_or_insert_map("workflow_initialized");
-                        if txn
-                            .get_array("workflows")
-                            .is_none_or(|arr| arr.get(&txn, 0).is_none())
-                        {
-                            init_map.insert(&mut txn, "initialized", Any::Bool(false));
-                        }
-                        let _: () = conn.set_ex(lock_key, "true", 86400).await?;
-                    } else {
-                        let mut txn = doc.transact_mut();
-                        let init_map = txn.get_or_insert_map("workflow_initialized");
-                        init_map.insert(&mut txn, "initialized", Any::Bool(true));
-                    }
-                } else {
-                    tracing::error!("Failed to load document {}: {}", doc_id, e);
-                    let _: () = conn.del(lock_key).await?;
-                    return Err(anyhow!("Failed to load document: {}", e));
-                }
-            }
+        if let Ok(exists) = conn.exists::<_, bool>(lock_key).await {
+            should_initialize = !exists;
         }
-        Ok(())
+
+        if should_initialize {
+            let _: () = conn.set_ex(lock_key, "true", 86400).await?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     pub async fn get_or_create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
@@ -145,6 +117,7 @@ impl BroadcastPool {
                 let awareness: AwarenessRef = {
                     let doc = Doc::new();
                     let mut updates_from_redis = Vec::new();
+                    let mut needs_initialization = false;
 
                     if let Some(redis_config) = &self.redis_config {
                         let redis_key = format!("pending_updates:{}", doc_id);
@@ -155,13 +128,16 @@ impl BroadcastPool {
                                 let lock_acquired =
                                     self.acquire_redis_lock(&mut conn, &lock_key).await?;
 
+                                tracing::info!("lock_acquired: {}", lock_acquired);
+
                                 if lock_acquired {
-                                    self.handle_doc_initialization(
-                                        &doc, &mut conn, &lock_key, doc_id,
-                                    )
-                                    .await?;
+                                    needs_initialization = self
+                                        .handle_doc_initialization(&mut conn, &lock_key)
+                                        .await?;
                                     let _: () = conn.del(&lock_key).await?;
                                 }
+
+                                tracing::info!("redis_key: {}", redis_key);
 
                                 match conn.lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1).await {
                                     Ok(updates) => {
@@ -187,7 +163,39 @@ impl BroadcastPool {
                     }
 
                     {
+                        tracing::info!("loading doc");
                         let mut txn = doc.transact_mut();
+
+                        match self.store.load_doc(doc_id, &mut txn).await {
+                            Ok(loaded) => {
+                                if loaded {
+                                    tracing::info!(
+                                        "Successfully loaded existing document: {}",
+                                        doc_id
+                                    );
+                                } else {
+                                    tracing::info!("Creating new document: {}", doc_id);
+                                }
+                            }
+                            Err(e) => {
+                                tracing::error!("Failed to load document {}: {}", doc_id, e);
+                                return Err(anyhow!("Failed to load document: {}", e));
+                            }
+                        }
+
+                        // if needs_initialization {
+                        //     let init_map = txn.get_or_insert_map("workflow_initialized");
+                        //     let workflows = txn.get_or_insert_array("workflows");
+                        //     if workflows.len(&txn) == 0 {
+                        //         tracing::info!("Initializing document: {}", doc_id);
+                        //         init_map.insert(&mut txn, "initialized", Any::Bool(false));
+                        //     }
+                        // } else {
+                        //     let init_map = txn.get_or_insert_map("workflow_initialized");
+                        //     init_map.insert(&mut txn, "initialized", Any::Bool(true));
+                        // }
+
+                        tracing::info!("applying updates");
 
                         for update in updates_from_redis {
                             if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(&update) {
@@ -197,6 +205,8 @@ impl BroadcastPool {
                             }
                         }
                     }
+
+                    tracing::info!("creating awareness");
 
                     Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
                 };
@@ -214,6 +224,8 @@ impl BroadcastPool {
                     )
                     .await?,
                 );
+
+                tracing::info!("inserting group");
 
                 Ok(entry.insert(group.clone()).clone())
             }
