@@ -254,11 +254,10 @@ export default ({
     // },
   ]);
 
-  // console.log("rawWorkflows", rawWorkflows);
-
   return {
     currentWorkflowId,
     openWorkflows,
+    currentProject,
     nodes,
     edges,
     lockedNodeIds,

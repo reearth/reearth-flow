@@ -28,6 +28,7 @@ export default function Editor({
   const {
     currentWorkflowId,
     openWorkflows,
+    currentProject,
     nodes,
     edges,
     // lockedNodeIds,
@@ -136,6 +137,7 @@ export default function Editor({
           <RightPanel
             contentType={rightPanelContent}
             onClose={() => handleRightPanelOpen(undefined)}
+            projectId={currentProject?.id}
           />
           <ParamsPanel
             selected={locallyLockedNode}

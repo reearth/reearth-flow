@@ -3,20 +3,17 @@ import { memo } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { mockVersionHistory } from "@flow/mock_data/versionHistoryData";
 
 import { VersionHistoryList } from "./components";
 
 type Props = {
   contentType?: "version-history";
   onClose: () => void;
+  projectId?: string;
 };
 
-const RightPanel: React.FC<Props> = ({ contentType, onClose }) => {
+const RightPanel: React.FC<Props> = ({ contentType, onClose, projectId }) => {
   const t = useT();
-  // TODO: Hook up gql, correct types and remove mock data
-  const versionHistory = [...mockVersionHistory];
-
   return (
     <div
       id="right-panel"
@@ -38,7 +35,7 @@ const RightPanel: React.FC<Props> = ({ contentType, onClose }) => {
         </div>
       </div>
       {contentType === "version-history" && (
-        <VersionHistoryList versionHistory={versionHistory} />
+        <VersionHistoryList projectId={projectId} />
       )}
     </div>
   );

@@ -2,26 +2,29 @@ import ConfirmationDialog from "@flow/features/ConfirmationDialog";
 import { useT } from "@flow/lib/i18n";
 
 type Props = {
-  selectedVersion: string;
+  selectedProjectSnapshotVersion: number;
   onDialogClose: () => void;
+  onRollbackProject: () => void;
 };
 
 const VersionHistoryChangeDialog: React.FC<Props> = ({
-  selectedVersion,
+  selectedProjectSnapshotVersion,
   onDialogClose,
+  onRollbackProject,
 }) => {
   const t = useT();
+  console.log("selectedProjectSnapshotVersion", selectedProjectSnapshotVersion);
   return (
     <ConfirmationDialog
       title={t("Are you sure you want to revert to this version?")}
       description={t(
         "By clicking continue you will be reverting to version {{version}}.",
-        { version: selectedVersion },
+        { version: selectedProjectSnapshotVersion },
       )}
-      isOpen={!!selectedVersion}
-      confirmDisabled={!selectedVersion}
+      isOpen={!!selectedProjectSnapshotVersion}
+      confirmDisabled={!selectedProjectSnapshotVersion}
       onClose={() => onDialogClose()}
-      onConfirm={() => onDialogClose()}
+      onConfirm={() => onRollbackProject()}
     />
   );
 };
