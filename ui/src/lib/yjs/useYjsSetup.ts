@@ -60,12 +60,10 @@ export default ({
           const initFlag = yDoc.getMap(INIT_FLAG_KEY);
 
           yDoc.transact(() => {
-            console.log("initFlag", initFlag);
-            console.log("yWorkflows", { length: yWorkflows.length });
-            console.log(
-              "initFlag.get('initialized')",
-              initFlag.get("initialized"),
-            );
+            // console.log(
+            //   "initFlag.get('initialized')",
+            //   initFlag.get("initialized"),
+            // );
             if (!initFlag.get("initialized") && yWorkflows.length === 0) {
               const yWorkflow = yWorkflowConstructor(
                 DEFAULT_ENTRY_GRAPH_ID,
