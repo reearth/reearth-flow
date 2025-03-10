@@ -12,9 +12,6 @@ const DataTable: React.FC<Props> = ({ fileContent, fileType }) => {
     parsedData: fileContent,
     type: fileType,
   });
-  console.log("fileContent", fileContent);
-  console.log("data", tableData);
-  console.log("columns", tableColumns);
   return (
     <div className="box-border flex h-full flex-1">
       <div className="m-2 mb-1 box-border flex-1 overflow-scroll">

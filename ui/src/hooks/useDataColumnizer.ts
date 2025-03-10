@@ -1,6 +1,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useEffect, useState } from "react";
 
+import { Polygon, PolygonCoordinateRing } from "@flow/types/gisTypes/geoJSON";
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
 export default ({
@@ -57,17 +58,28 @@ export default ({
 
         // Transform features for table display
         const tableData = features.map((feature: any, index: number) => ({
-          id: feature.id || index,
+          id: JSON.stringify(feature.id || index),
           ...Object.fromEntries(
-            Array.from(allGeometry).map((geometry) => [
-              `geometry${geometry}`,
-              feature.geometry?.[geometry] || null,
-            ]),
+            Array.from(allGeometry).map((geometry) => {
+              if (
+                geometry === "coordinates" &&
+                feature.geometry.type === "Polygon"
+              ) {
+                return [
+                  `geometry${geometry}`,
+                  simplifyPolygonCoordinates(feature.geometry),
+                ];
+              }
+              return [
+                `geometry${geometry}`,
+                JSON.stringify(feature.geometry?.[geometry] || null),
+              ];
+            }),
           ),
           ...Object.fromEntries(
             Array.from(allProps).map((prop) => [
               `properties${prop}`,
-              feature.properties?.[prop] || null,
+              JSON.stringify(feature.properties?.[prop] || null),
             ]),
           ),
         }));
@@ -103,3 +115,58 @@ export default ({
     tableColumns: columns,
   };
 };
+
+// simplifyPolygonCoordinates: Simplify GeoJSON Polygon coordinates for display. Output looks like this:
+// [
+//   [
+//     [
+//       [100, 0],
+//       "...",
+//       [100, 0]
+//     ],
+//     [
+//       [100, 0],
+//       "...",
+//       [100, 0]
+//     ]
+//   ],
+//   "...",
+//   [
+//     [
+//       [100, 0],
+//       "...",
+//       [100, 0]
+//     ],
+//     [
+//       [100, 0],
+//       "...",
+//       [100, 0]
+//     ]
+//   ]
+// ]
+function simplifyPolygonCoordinates(polygon: Polygon) {
+  if (
+    !polygon ||
+    polygon.type !== "Polygon" ||
+    !Array.isArray(polygon.coordinates)
+  ) {
+    throw new Error("Invalid GeoJSON Polygon");
+  }
+
+  const rings = polygon.coordinates;
+  if (rings.length <= 4) {
+    return rings.map((ring) => simplifyRing(ring));
+  }
+
+  const firstTwo = rings.slice(0, 2).map((ring) => simplifyRing(ring));
+  const lastTwo = rings.slice(-2).map((ring) => simplifyRing(ring));
+
+  return [...firstTwo, "...", ...lastTwo];
+}
+
+function simplifyRing(ring: PolygonCoordinateRing) {
+  if (ring.length <= 4) {
+    return ring; // Keep as is if 4 or fewer points
+  }
+  return JSON.stringify([ring[0], "...", ring[ring.length - 1]]);
+}
