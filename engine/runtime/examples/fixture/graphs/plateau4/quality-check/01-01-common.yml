@@ -214,7 +214,7 @@ nodes:
     with:
       format: csv
       output: |
-        file::join_path(env.get("outputPath"), "01_共通.csv")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "01_共通.csv")
 
   - id: 9e34709d-b8d1-4080-8ebf-bebe4641e681
     name: StatisticsCalculator
@@ -283,7 +283,7 @@ nodes:
           result
         }
       output: |
-        file::join_path(env.get("outputPath"), "summary_common.json")
+        file::join_path(env.get("workerArtifactPath") ?? env.get("outputPath"), "summary_common.json")
 
   - id: f9359716-5c5a-43e5-b197-d1df171d5684
     name: OutputRouter
