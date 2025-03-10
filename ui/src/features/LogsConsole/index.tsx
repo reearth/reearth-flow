@@ -97,7 +97,9 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
 
   useEffect(() => {
     if (debugJob?.logsURL && !urlLogs) {
-      getLogsFromUrl();
+      (async () => {
+        await getLogsFromUrl();
+      })();
     }
   }, [debugJob?.logsURL, urlLogs, getLogsFromUrl]);
 

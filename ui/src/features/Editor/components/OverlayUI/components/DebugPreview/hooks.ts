@@ -1,5 +1,6 @@
-import { MouseEvent, useMemo, useState } from "react";
+import { MouseEvent, useEffect, useMemo, useState } from "react";
 
+import useFetchAndReadData from "@flow/hooks/useFetchAndReadData";
 import { useJob } from "@flow/lib/gql/job";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
@@ -21,7 +22,24 @@ export default () => {
 
   const { useGetJob } = useJob();
 
-  const debugJob = useGetJob(debugJobId ?? "").job;
+  const outputURLs = useGetJob(debugJobId ?? "").job?.outputURLs;
+
+  const [selectedDataURL, setSelectedDataURL] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (outputURLs?.length && !selectedDataURL) {
+      setSelectedDataURL(outputURLs[0]);
+    }
+  }, [outputURLs, selectedDataURL]);
+
+  const handleSelectedDataChange = (url: string) => {
+    console.log("url", url);
+    setSelectedDataURL(url);
+  };
+
+  const { fileContent, fileType } = useFetchAndReadData({
+    dataUrl: selectedDataURL ?? "",
+  });
 
   const handleExpand = () => {
     setExpanded((prev) => !prev);
@@ -39,11 +57,14 @@ export default () => {
   };
 
   return {
-    debugJob,
+    outputURLs,
     expanded,
     minimized,
+    fileContent,
+    fileType,
     handleExpand,
     handleMinimize,
     handleTabChange,
+    handleSelectedDataChange,
   };
 };

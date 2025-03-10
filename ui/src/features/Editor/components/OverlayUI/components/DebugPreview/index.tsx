@@ -8,7 +8,17 @@ import {
 } from "@phosphor-icons/react";
 import { memo } from "react";
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@flow/components";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
 import { DataTable, Map } from "./components";
@@ -17,19 +27,38 @@ import useHooks from "./hooks";
 const DebugPreview: React.FC = () => {
   const t = useT();
   const {
-    debugJob,
+    outputURLs,
     expanded,
     minimized,
+    fileContent,
+    fileType,
     handleExpand,
     handleMinimize,
     handleTabChange,
+    handleSelectedDataChange,
   } = useHooks();
 
-  return debugJob ? (
+  return outputURLs ? (
     <Tabs
       className={`pointer-events-auto w-[45vw] min-w-[700px] rounded border bg-secondary transition-all ${minimized ? "h-[36px]" : expanded ? "h-[85vh] w-[90vw]" : "h-[500px]"}`}
       defaultValue="data-viewer">
       <div className="relative flex items-center p-1">
+        <div className="absolute left-1 top-1">
+          <Select
+            value={outputURLs[0]}
+            onValueChange={handleSelectedDataChange}>
+            <SelectTrigger className="h-[26px] max-w-[200px]">
+              <SelectValue placeholder={t("Select Data to Preview")} />
+            </SelectTrigger>
+            <SelectContent>
+              {outputURLs.map((url) => (
+                <SelectItem key={url} value={url}>
+                  {url.split("/").pop()}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex w-full items-center justify-center gap-1">
           <TabsList className="gap-2">
             <TabsTrigger
@@ -70,10 +99,10 @@ const DebugPreview: React.FC = () => {
       <TabsContent
         className="h-[calc(100%-35px)] overflow-scroll"
         value="data-viewer">
-        <DataTable />
+        <DataTable fileContent={fileContent} fileType={fileType} />
       </TabsContent>
       <TabsContent className="h-[calc(100%-35px)] px-1 pb-2" value="3d-viewer">
-        <Map />
+        <Map fileContent={fileContent} fileType={fileType} />
       </TabsContent>
     </Tabs>
   ) : null;
