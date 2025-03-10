@@ -137,22 +137,6 @@ impl BroadcastPool {
                     {
                         let mut txn = doc.transact_mut();
 
-                        match self.store.load_doc(doc_id, &mut txn).await {
-                            Ok(_) => {
-                                tracing::debug!(
-                                    "Successfully loaded existing document: {}",
-                                    doc_id
-                                );
-                            }
-                            Err(e) => {
-                                if e.to_string().contains("not found") {
-                                    tracing::debug!("Creating new document: {}", doc_id);
-                                } else {
-                                    tracing::error!("Failed to load document {}: {}", doc_id, e);
-                                    return Err(anyhow!("Failed to load document: {}", e));
-                                }
-                            }
-                        }
                         for update in updates_from_redis {
                             if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(&update) {
                                 if let Err(e) = txn.apply_update(decoded) {
