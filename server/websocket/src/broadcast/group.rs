@@ -125,13 +125,7 @@ impl BroadcastGroup {
                     if pending.is_empty() {
                         if let Some(redis_pool) = &redis {
                             let redis_key = format!("pending_updates:{}", doc_name_clone);
-                            let mut redis_conn = match redis_pool.get().await {
-                                Ok(conn) => conn,
-                                Err(e) => {
-                                    tracing::error!("Failed to get Redis connection: {}", e);
-                                    return;
-                                }
-                            };
+                            let mut redis_conn = redis_pool.get().await.unwrap();
                             match redis_conn
                                 .lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1)
                                 .await
@@ -216,13 +210,7 @@ impl BroadcastGroup {
 
                 if let Some(redis_pool) = &redis {
                     let redis_key = format!("pending_updates:{}", doc_name_clone);
-                    let mut redis_conn = match redis_pool.get().await {
-                        Ok(conn) => conn,
-                        Err(e) => {
-                            tracing::error!("Failed to get Redis connection: {}", e);
-                            return;
-                        }
-                    };
+                    let mut redis_conn = redis_pool.get().await.unwrap();
                     if let Err(e) = redis_conn.del::<_, ()>(&redis_key).await {
                         tracing::warn!("Failed to clear pending updates from Redis: {}", e);
                     }
@@ -807,6 +795,10 @@ impl Drop for BroadcastGroup {
             .shutdown_complete
             .load(std::sync::atomic::Ordering::SeqCst)
         {
+            tracing::warn!(
+                "BroadcastGroup dropped without calling shutdown() first. Pending updates may be lost."
+            );
+
             if let (Some(_store), Some(doc_name)) = (&self.storage, &self.doc_name) {
                 tracing::warn!(
                     "Document '{}' may have pending updates that weren't flushed",
