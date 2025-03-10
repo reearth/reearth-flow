@@ -21,12 +21,12 @@ import { useCurrentProject } from "@flow/stores";
 
 type Props = {
   onProjectShare: (share: boolean) => void;
-  setShowDialog: (show: boolean) => void;
+  onDialogClose: () => void;
 };
 
 type SharingState = "sharing" | "notSharing";
 
-const ShareDialog: React.FC<Props> = ({ onProjectShare, setShowDialog }) => {
+const ShareDialog: React.FC<Props> = ({ onProjectShare, onDialogClose }) => {
   const t = useT();
   const [currentProject] = useCurrentProject();
 
@@ -53,11 +53,11 @@ const ShareDialog: React.FC<Props> = ({ onProjectShare, setShowDialog }) => {
 
   const handleProjectShare = useCallback(() => {
     onProjectShare(isSharing === "sharing");
-    setShowDialog(false);
-  }, [isSharing, onProjectShare, setShowDialog]);
+    onDialogClose();
+  }, [isSharing, onProjectShare, onDialogClose]);
 
   return (
-    <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
+    <Dialog open={true} onOpenChange={onDialogClose}>
       <DialogContent size="sm">
         <DialogTitle>{t("Share Project")}</DialogTitle>
         <DialogContentWrapper>

@@ -1,13 +1,11 @@
-import { Globe, Terminal } from "@phosphor-icons/react";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useShortcuts } from "@flow/hooks";
-import { useT } from "@flow/lib/i18n";
+import { useJob } from "@flow/lib/gql/job";
+import { useIndexedDB } from "@flow/lib/indexedDB";
+import { useCurrentProject } from "@flow/stores";
 
-import { PanelContent } from "./components";
 import { ContentID } from "./components/Contents";
-
-type WindowSize = "min" | "max";
 
 export default ({
   isOpen,
@@ -16,8 +14,19 @@ export default ({
   isOpen: boolean;
   onOpen: (panel?: "left" | "right" | "bottom") => void;
 }) => {
-  const t = useT();
-  const [windowSize, setWindowSize] = useState<WindowSize>("min");
+  const [currentProject] = useCurrentProject();
+  const { useGetJob } = useJob();
+
+  const { value: debugRunState } = useIndexedDB("debugRun");
+
+  const debugJobId = useMemo(
+    () =>
+      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
+        ?.jobId ?? "",
+    [debugRunState, currentProject],
+  );
+
+  const debugJob = useGetJob(debugJobId).job;
 
   const handlePanelToggle = useCallback(
     (open: boolean) => onOpen(open ? "bottom" : undefined),
@@ -27,19 +36,6 @@ export default ({
   const [selectedId, setSelectedId] = useState<ContentID | undefined>(
     undefined,
   );
-
-  const panelContentOptions: PanelContent[] = [
-    {
-      id: "output-log",
-      button: <Terminal className="size-[20px]" weight="thin" />,
-      title: t("Log"),
-    },
-    {
-      id: "visual-preview",
-      button: <Globe className="size-[20px]" weight="thin" />,
-      title: t("Preview"),
-    },
-  ];
 
   const handleSelection = useCallback(
     (id: ContentID) => {
@@ -57,12 +53,6 @@ export default ({
 
   useShortcuts([
     {
-      keyBinding: { key: "l", commandKey: true },
-      callback: () => {
-        handleSelection("output-log");
-      },
-    },
-    {
       keyBinding: { key: "p", commandKey: true },
       callback: () => {
         handleSelection("visual-preview");
@@ -71,10 +61,6 @@ export default ({
   ]);
 
   return {
-    selectedId,
-    windowSize,
-    panelContentOptions,
-    setWindowSize,
-    handleSelection,
+    debugJob,
   };
 };

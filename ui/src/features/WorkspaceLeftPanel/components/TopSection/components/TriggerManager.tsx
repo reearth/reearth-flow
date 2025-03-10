@@ -15,7 +15,7 @@ const TriggerManager: React.FC<Props> = ({ selected }) => {
 
   const handleNavigation = () => {
     if (selected) return;
-    navigate({ to: `/workspaces/${currentWorkspace?.id}/triggers/all` });
+    navigate({ to: `/workspaces/${currentWorkspace?.id}/triggers` });
   };
 
   return (

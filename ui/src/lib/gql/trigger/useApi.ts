@@ -52,7 +52,7 @@ export const useTrigger = () => {
       toast({
         title: t("Trigger Could Not Be Created"),
         description: t("There was an error when creating the trigger."),
-        variant: "warning",
+        variant: "destructive",
       });
       return { trigger: undefined, ...rest };
     }
@@ -83,7 +83,7 @@ export const useTrigger = () => {
       toast({
         title: t("Trigger Could Not Be Updated"),
         description: t("There was an error when updating the trigger."),
-        variant: "warning",
+        variant: "destructive",
       });
       return { trigger: undefined, ...rest };
     }
@@ -101,14 +101,13 @@ export const useTrigger = () => {
         description: t(
           "Trigger has been successfully deleted from your workspace.",
         ),
-        variant: "destructive",
       });
       return { success: data.success, ...rest };
     } catch (_err) {
       toast({
         title: t("Trigger Could Not Be Deleted"),
         description: t("There was an error when deleting the trigger."),
-        variant: "warning",
+        variant: "destructive",
       });
       return { success: false, ...rest };
     }

@@ -11,7 +11,7 @@ import { useT } from "@flow/lib/i18n";
 import type { Job } from "@flow/types";
 import { formatTimestamp } from "@flow/utils/timestamp";
 
-import { JobRunDialog, JobDetails } from "./components";
+import { JobRunDialog } from "./components";
 import useHooks from "./hooks";
 
 const JobsManager: React.FC = () => {
@@ -19,17 +19,15 @@ const JobsManager: React.FC = () => {
   const {
     // ref,
     jobs,
-    selectedJob,
     openJobRunDialog,
-    setOpenJobRunDialog,
-    handleJobSelect,
     isFetching,
     currentPage,
-    setCurrentPage,
     totalPages,
     currentOrder,
+    setOpenJobRunDialog,
+    handleJobSelect,
+    setCurrentPage,
     setCurrentOrder,
-    handleCancelJob,
   } = useHooks();
 
   const columns: ColumnDef<Job>[] = [
@@ -38,8 +36,8 @@ const JobsManager: React.FC = () => {
       header: t("ID"),
     },
     {
-      accessorKey: "deploymentId",
-      header: t("Deployment Id"),
+      accessorKey: "deploymentDescription",
+      header: t("Deployment Description"),
     },
     {
       accessorKey: "status",
@@ -58,11 +56,7 @@ const JobsManager: React.FC = () => {
   ];
   const resultsPerPage = JOBS_FETCH_RATE;
 
-  return selectedJob ? (
-    <div className="flex flex-1">
-      <JobDetails selectedJob={selectedJob} onJobCancel={handleCancelJob} />
-    </div>
-  ) : (
+  return (
     <div className="flex h-full flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pb-2 pt-4">
         <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">

@@ -17,6 +17,7 @@ import {
   Infobar,
   NodePickerDialog,
   LayoutOptionsDialog,
+  DebugLogs,
 } from "./components";
 
 type OverlayUIProps = {
@@ -40,6 +41,8 @@ type OverlayUIProps = {
   onRightPanelOpen: (content?: "version-history") => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
+  onDebugRunStart: () => Promise<void>;
+  onDebugRunStop: () => Promise<void>;
   onLayoutChange: (
     algorithm: Algorithm,
     direction: Direction,
@@ -63,6 +66,8 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onRightPanelOpen,
   onWorkflowUndo,
   onWorkflowRedo,
+  onDebugRunStart,
+  onDebugRunStop,
   onLayoutChange,
   children: canvas,
 }) => {
@@ -100,8 +105,13 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             allowedToDeploy={allowedToDeploy}
             onProjectShare={onProjectShare}
             onWorkflowDeployment={onWorkflowDeployment}
+            onDebugRunStart={onDebugRunStart}
+            onDebugRunStop={onDebugRunStop}
             onRightPanelOpen={onRightPanelOpen}
           />
+        </div>
+        <div className="pointer-events-none absolute inset-y-2 left-2 flex items-end">
+          <DebugLogs />
         </div>
         <div className="absolute bottom-2 right-2">
           <CanvasActionBar />
