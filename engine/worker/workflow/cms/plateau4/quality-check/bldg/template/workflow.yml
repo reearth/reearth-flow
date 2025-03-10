@@ -1,0 +1,73 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: a0388d9e-3373-4d00-92d1-a8b7c9d89f7a
+name: "PLATEAU4-quality-check-02-bldg-workflow"
+entryGraphId: 12e53460-cbc2-4abd-b7bb-8138e4eef55a
+with:
+  cityGmlPath:
+  codelists:
+  schemas:
+  objectLists:
+graphs:
+  - !include ../../../../../../../runtime/examples/fixture/graphs/plateau4/xml_validator.yml
+  - !include ../../../../../../../runtime/examples/fixture/graphs/plateau4/domain_of_definition_validator.yml
+  - !include ../../../../../../../runtime/examples/fixture/graphs/plateau4/quality-check/01-01-common.yml
+  - !include ../../../../../../../runtime/examples/fixture/graphs/plateau4/quality-check/01-02-common.yml
+  - id: 12e53460-cbc2-4abd-b7bb-8138e4eef55a
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                cityGmlPath: env.get("cityGmlPath"),
+                cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                objectListPath: env.get("objectLists"),
+                codelists: env.get("codelists"),
+                schemas: env.get("schemas"),
+              },
+            ]
+
+      - id: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        name: PLATEAU4.CommonQualityCheck-01-01-common
+        type: subGraph
+        subGraphId: 5db64758-df36-486d-86bd-437b72fd9fc8
+
+      - id: 9309842a-a3a7-4d1b-9216-ef523a6b4789
+        name: PLATEAU4.CommonQualityCheck-01-02-common
+        type: subGraph
+        subGraphId: b7a4c316-112e-4473-bd25-4c158db4e561
+
+      - id: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
+        name: ZipFileWriter
+        type: action
+        action: ZipFileWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_qc_result.zip")
+
+    edges:
+      - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        fromPort: default
+        toPort: default
+      - id: f47c77ad-c465-48cf-bdf5-36e385ffbd41
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: 9309842a-a3a7-4d1b-9216-ef523a6b4789
+        fromPort: default
+        toPort: default
+      - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
+        from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
+        to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
+        fromPort: default
+        toPort: default
+      - id: f69a4e59-b7b8-4fab-97cd-112b4d1e4a53
+        from: 9309842a-a3a7-4d1b-9216-ef523a6b4789
+        to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
+        fromPort: default
+        toPort: default

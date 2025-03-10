@@ -19,7 +19,7 @@ func TestProjectsPagination(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser)
+	}, true, baseSeederUser, true)
 
 	// Create multiple projects for testing
 	projectIDs := make([]string, 5)
@@ -262,7 +262,7 @@ func TestJobsPagination(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser)
+	}, true, baseSeederUser, true)
 
 	deploymentQuery := `mutation($input: CreateDeploymentInput!) {
 		createDeployment(input: $input) {
@@ -663,7 +663,7 @@ func TestTriggersPagination(t *testing.T) {
 		AuthSrv: config.AuthSrvConfig{
 			Disabled: true,
 		},
-	}, true, baseSeederUser)
+	}, true, baseSeederUser, true)
 
 	// Create a test deployment first
 	deploymentId := createTestDeployment(t, e)

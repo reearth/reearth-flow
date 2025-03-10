@@ -251,18 +251,10 @@ impl DocumentServiceSyncHandler for DocumentHandler {
                 .unwrap();
 
             rt.block_on(async move {
-                let doc = Doc::new();
-                let mut txn = doc.transact_mut();
+                let doc = storage.rollback_to(&doc_id_clone, version as u32).await?;
 
-                let loaded = storage.load_doc(&doc_id_clone, &mut txn).await?;
-                if !loaded {
-                    return Err(anyhow::anyhow!("Document not found: {}", doc_id_clone));
-                }
-
-                drop(txn);
                 let read_txn = doc.transact();
                 let state = read_txn.encode_diff_v1(&StateVector::default());
-                drop(read_txn);
 
                 Ok::<_, anyhow::Error>(Document {
                     id: doc_id_clone,
