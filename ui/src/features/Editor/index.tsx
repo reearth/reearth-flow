@@ -74,8 +74,6 @@ export default function Editor({
     [handleNodesChange, handleNodeDoubleClick],
   );
 
-  console.log("nodes", nodes);
-
   return (
     <div className="flex h-screen flex-col">
       <div className="relative flex flex-1">
