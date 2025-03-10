@@ -60,11 +60,18 @@ impl BroadcastPool {
 
                         if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
                             if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
-                                let lock_result: bool = conn.set_nx(&lock_key, "1").await?;
+                                let set_options = redis::Script::new(
+                                    r#"return redis.call('SET', KEYS[1], ARGV[1], 'EX', ARGV[2], 'NX')"#,
+                                );
+                                let lock_result: Option<String> = set_options
+                                    .key(&lock_key)
+                                    .arg("1")
+                                    .arg("30")
+                                    .invoke_async(&mut conn)
+                                    .await?;
+                                let lock_acquired = lock_result.is_some();
 
-                                if lock_result {
-                                    let _: () = conn.expire(&lock_key, 30).await?;
-
+                                if lock_acquired {
                                     let mut txn = doc.transact_mut();
                                     match self.store.load_doc(doc_id, &mut txn).await {
                                         Ok(_) => {
