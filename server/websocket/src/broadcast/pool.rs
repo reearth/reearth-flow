@@ -7,7 +7,7 @@ use dashmap::DashMap;
 use redis::AsyncCommands;
 use std::sync::Arc;
 use yrs::sync::Awareness;
-use yrs::{Any, Doc, Map, ReadTxn, Transact, WriteTxn};
+use yrs::{Any, Array, Doc, Map, ReadTxn, Transact, WriteTxn};
 
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
@@ -63,7 +63,7 @@ impl BroadcastPool {
                                 let lock_result: bool = conn.set_nx(&lock_key, "1").await?;
 
                                 if lock_result {
-                                    conn.expire(&lock_key, 30).await?;
+                                    let _: () = conn.expire(&lock_key, 30).await?;
 
                                     let mut txn = doc.transact_mut();
                                     match self.store.load_doc(doc_id, &mut txn).await {
@@ -83,11 +83,15 @@ impl BroadcastPool {
                                                     let mut txn = doc.transact_mut();
                                                     let init_map = txn
                                                         .get_or_insert_map("workflow_initialized");
-                                                    init_map.insert(
-                                                        &mut txn,
-                                                        "initialized",
-                                                        Any::Bool(true),
-                                                    );
+                                                    if txn.get_array("workflows").is_none_or(
+                                                        |arr| arr.get(&txn, 0).is_none(),
+                                                    ) {
+                                                        init_map.insert(
+                                                            &mut txn,
+                                                            "initialized",
+                                                            Any::Bool(true),
+                                                        );
+                                                    }
                                                 }
                                             } else {
                                                 tracing::error!(
