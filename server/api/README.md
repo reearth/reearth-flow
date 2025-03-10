@@ -96,3 +96,28 @@ wscat -c ws://localhost:8080/api/graphql
 < {"payload":{"data":{"logs":{"jobId":"2f0307f1-e41f-4952-9b95-37ecb711a5ca","nodeId":null,"timestamp":"2025-02-28T15:11:28.282845Z","logLevel":"INFO","message":"\"FileWriter\" sink start..."}}},"id":"1","type":"data"}
 < {"type":"ka"}
 ```
+
+## Authorization System
+
+Re:Earth Flow uses Role-Based Access Control (RBAC) to manage permissions. The system is built using Cerbos for policy enforcement.
+
+### Authorization Configuration
+All authorization-related definitions are managed in `api/internal/rbac/definitions.go`. This file contains:
+
+- Resource definitions (e.g., project, workflow)
+- Action definitions (e.g., read, edit)
+- Role definitions (owner, maintainer, writer, reader)
+- Permission mappings between resources, actions, and roles
+
+To add or modify permissions:
+1. Open `api/internal/rbac/definitions.go`
+2. Add/modify resources in the `ResourceXXX` constants
+3. Add/modify actions in the `ActionXXX` constants
+4. Add/modify roles in the `roleXXX` constants
+5. Update the permission mappings in the `DefineResources` function
+
+### Deployment
+The permission definitions are automatically synchronized with the Cerbos server's storage bucket when changes are merged into the main branch via CI. This ensures that the latest permission settings are always available for authorization checks.
+
+### Implementation in Use Cases
+Permission checks should be implemented in use case interactors.

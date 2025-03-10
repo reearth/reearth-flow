@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -18,44 +18,57 @@ import (
 )
 
 type Project struct {
-	common
-	assetRepo     repo.Asset
-	workflowRepo  repo.Workflow
-	projectRepo   repo.Project
-	jobRepo       repo.Job
-	userRepo      accountrepo.User
-	workspaceRepo accountrepo.Workspace
-	transaction   usecasex.Transaction
-	file          gateway.File
-	batch         gateway.Batch
-	job           interfaces.Job
+	assetRepo         repo.Asset
+	workflowRepo      repo.Workflow
+	projectRepo       repo.Project
+	jobRepo           repo.Job
+	userRepo          accountrepo.User
+	workspaceRepo     accountrepo.Workspace
+	transaction       usecasex.Transaction
+	file              gateway.File
+	batch             gateway.Batch
+	job               interfaces.Job
+	permissionChecker gateway.PermissionChecker
 }
 
-func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job) interfaces.Project {
+func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker) interfaces.Project {
 	return &Project{
-		assetRepo:     r.Asset,
-		workflowRepo:  r.Workflow,
-		projectRepo:   r.Project,
-		jobRepo:       r.Job,
-		userRepo:      r.User,
-		workspaceRepo: r.Workspace,
-		transaction:   r.Transaction,
-		file:          gr.File,
-		batch:         gr.Batch,
-		job:           jobUsecase,
+		assetRepo:         r.Asset,
+		workflowRepo:      r.Workflow,
+		projectRepo:       r.Project,
+		jobRepo:           r.Job,
+		userRepo:          r.User,
+		workspaceRepo:     r.Workspace,
+		transaction:       r.Transaction,
+		file:              gr.File,
+		batch:             gr.Batch,
+		job:               jobUsecase,
+		permissionChecker: permissionChecker,
 	}
 }
 
-func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID, _ *usecase.Operator) ([]*project.Project, error) {
+func (i *Project) checkPermission(ctx context.Context, action string) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceProject, action)
+}
+
+func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID) ([]*project.Project, error) {
+	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
+		return nil, err
+	}
+
 	return i.projectRepo.FindByIDs(ctx, ids)
 }
 
-func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam, _ *usecase.Operator) ([]*project.Project, *interfaces.PageBasedInfo, error) {
+func (i *Project) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, pagination *interfaces.PaginationParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
+	if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
+		return nil, nil, err
+	}
+
 	return i.projectRepo.FindByWorkspace(ctx, id, pagination)
 }
 
-func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
-	if err := i.CanWriteWorkspace(p.WorkspaceID, operator); err != nil {
+func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (_ *project.Project, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
 		return nil, err
 	}
 
@@ -103,7 +116,11 @@ func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam, o
 	return proj, nil
 }
 
-func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam, operator *usecase.Operator) (_ *project.Project, err error) {
+func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (_ *project.Project, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
+		return nil, err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -118,9 +135,6 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam, o
 
 	prj, err := i.projectRepo.FindByID(ctx, p.ID)
 	if err != nil {
-		return nil, err
-	}
-	if err := i.CanWriteWorkspace(prj.Workspace(), operator); err != nil {
 		return nil, err
 	}
 
@@ -156,7 +170,11 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam, o
 	return prj, nil
 }
 
-func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *usecase.Operator) (err error) {
+func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error) {
+	if err := i.checkPermission(ctx, rbac.ActionDelete); err != nil {
+		return err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -173,15 +191,12 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *
 	if err != nil {
 		return err
 	}
-	if err := i.CanWriteWorkspace(prj.Workspace(), operator); err != nil {
-		return err
-	}
 
 	deleter := ProjectDeleter{
 		File:    i.file,
 		Project: i.projectRepo,
 	}
-	if err := deleter.Delete(ctx, prj, true, operator); err != nil {
+	if err := deleter.Delete(ctx, prj, true); err != nil {
 		return err
 	}
 
@@ -189,7 +204,11 @@ func (i *Project) Delete(ctx context.Context, projectID id.ProjectID, operator *
 	return nil
 }
 
-func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operator *usecase.Operator) (_ *job.Job, err error) {
+func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job.Job, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionEdit); err != nil {
+		return nil, err
+	}
+
 	if p.Workflow == nil {
 		return nil, nil
 	}
@@ -255,8 +274,8 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam, operato
 	tx.Commit()
 
 	if i.job != nil {
-		if err := i.job.StartMonitoring(ctx, j, nil, operator); err != nil {
-			return nil, fmt.Errorf("failed to start job monitoring: %v", err)
+		if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
+			return j, fmt.Errorf("failed to start job monitoring: %v", err)
 		}
 	}
 
