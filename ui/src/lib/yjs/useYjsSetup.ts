@@ -58,15 +58,22 @@ export default ({
 
         yWebSocketProvider.once("sync", () => {
           const initFlag = yDoc.getMap(INIT_FLAG_KEY);
-
+          
+          const awareness = yWebSocketProvider?.awareness;
+          const clientID = yDoc.clientID;
+          
           yDoc.transact(() => {
             if (!initFlag.get("initialized") && yWorkflows.length === 0) {
-              const yWorkflow = yWorkflowConstructor(
-                DEFAULT_ENTRY_GRAPH_ID,
-                "Main Workflow",
-              );
-              yWorkflows.insert(0, [yWorkflow]);
-              initFlag.set("initialized", true);
+              const clients = awareness?.getStates() || new Map();
+              const clientIDs = Array.from(clients.keys());
+              if (clientIDs.length === 0 || Math.min(...clientIDs) === clientID) {
+                const yWorkflow = yWorkflowConstructor(
+                  DEFAULT_ENTRY_GRAPH_ID,
+                  "Main Workflow",
+                );
+                yWorkflows.insert(0, [yWorkflow]);
+                initFlag.set("initialized", true);
+              }
             }
           });
           setIsSynced(true);
