@@ -6,6 +6,7 @@ use anyhow::{anyhow, Result};
 use dashmap::DashMap;
 use redis::AsyncCommands;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use yrs::sync::Awareness;
 use yrs::{Any, Array, Doc, Map, ReadTxn, Transact, WriteTxn};
 
@@ -15,6 +16,7 @@ pub struct BroadcastPool {
     redis_config: Option<RedisConfig>,
     groups: DashMap<String, Arc<BroadcastGroup>>,
     buffer_capacity: usize,
+    doc_locks: Arc<DashMap<String, Arc<Mutex<()>>>>,
 }
 
 impl BroadcastPool {
@@ -24,6 +26,7 @@ impl BroadcastPool {
             redis_config,
             groups: DashMap::new(),
             buffer_capacity: 1024,
+            doc_locks: Arc::new(DashMap::new()),
         }
     }
 
@@ -37,6 +40,7 @@ impl BroadcastPool {
             redis_config,
             groups: DashMap::new(),
             buffer_capacity,
+            doc_locks: Arc::new(DashMap::new()),
         }
     }
 
@@ -45,6 +49,14 @@ impl BroadcastPool {
     }
 
     pub async fn get_or_create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
+        let doc_lock = self
+            .doc_locks
+            .entry(doc_id.to_string())
+            .or_insert_with(|| Arc::new(Mutex::new(())))
+            .clone();
+
+        let _guard = doc_lock.lock().await;
+
         let entry = self.groups.entry(doc_id.to_string());
 
         match entry {
