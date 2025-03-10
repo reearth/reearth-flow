@@ -10,8 +10,6 @@ import { useAuth } from "../auth";
 import { yWorkflowConstructor } from "./conversions";
 import type { YWorkflow } from "./types";
 
-const INIT_FLAG_KEY = "workflow_initialized";
-
 export default ({
   workflowId,
   projectId,
@@ -57,23 +55,17 @@ export default ({
         );
 
         yWebSocketProvider.once("sync", () => {
-          const initFlag = yDoc.getMap(INIT_FLAG_KEY);
-
-          yDoc.transact(() => {
-            // console.log(
-            //   "initFlag.get('initialized')",
-            //   initFlag.get("initialized"),
-            // );
-            if (!initFlag.get("initialized") && yWorkflows.length === 0) {
+          if (yWorkflows.length === 0) {
+            yDoc.transact(() => {
               const yWorkflow = yWorkflowConstructor(
                 DEFAULT_ENTRY_GRAPH_ID,
                 "Main Workflow",
               );
               yWorkflows.insert(0, [yWorkflow]);
-              initFlag.set("initialized", true);
-            }
-          });
-          setIsSynced(true);
+            });
+          }
+
+          setIsSynced(true); // Mark as synced
         });
       })();
     }
