@@ -6,6 +6,7 @@ import type {
 import { ComponentType } from "react";
 
 type NodeParam = Record<string, any>;
+// TODO: Add generic for NodeCustomization for better type checking and separation of concerns
 // type NodeCustomization<T> = {
 //   customName?: string;
 // } & T

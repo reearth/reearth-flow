@@ -1,13 +1,13 @@
 import { RJSFSchema } from "@rjsf/utils";
-import { useTranslation } from "react-i18next"; // Assuming you're using react-i18next
+
+import { useT } from "../i18n";
 
 const useNodeSchemaGenerate = (
   nodeType: string,
   officialName: string,
 ): RJSFSchema => {
-  const { t } = useTranslation();
+  const t = useT();
 
-  // General Node Schema
   const baseSchema: RJSFSchema = {
     type: "object",
     properties: {
@@ -21,9 +21,9 @@ const useNodeSchemaGenerate = (
   };
 
   const noteNodeCustomizationSchema: RJSFSchema = {
-    type: "object",
+    ...baseSchema,
     properties: {
-      customName: { type: "string", title: t("Custom Name") },
+      ...baseSchema.properties,
       content: { type: "string", format: "textarea", title: t("Content") },
       textColor: {
         type: "string",
@@ -41,9 +41,9 @@ const useNodeSchemaGenerate = (
   };
 
   const batchNodeCustomizationSchema: RJSFSchema = {
-    type: "object",
+    ...baseSchema,
     properties: {
-      customName: { type: "string", title: t("Custom Name") },
+      ...baseSchema.properties,
       backgroundColor: {
         type: "string",
         format: "color",
@@ -60,27 +60,6 @@ const useNodeSchemaGenerate = (
   };
 
   switch (nodeType) {
-    case "reader":
-      return {
-        ...baseSchema,
-        properties: {
-          ...baseSchema.properties,
-        },
-      };
-    case "writer":
-      return {
-        ...baseSchema,
-        properties: {
-          ...baseSchema.properties,
-        },
-      };
-    case "transformer":
-      return {
-        ...baseSchema,
-        properties: {
-          ...baseSchema.properties,
-        },
-      };
     case "subworkflow":
       return {
         ...baseSchema,
@@ -89,19 +68,9 @@ const useNodeSchemaGenerate = (
         },
       };
     case "batch":
-      return {
-        ...batchNodeCustomizationSchema,
-        properties: {
-          ...batchNodeCustomizationSchema.properties,
-        },
-      };
+      return batchNodeCustomizationSchema;
     case "note":
-      return {
-        ...noteNodeCustomizationSchema,
-        properties: {
-          ...noteNodeCustomizationSchema.properties,
-        },
-      };
+      return noteNodeCustomizationSchema;
     default:
       return baseSchema;
   }

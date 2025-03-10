@@ -16,7 +16,6 @@ import { patchAnyOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
 import i18n from "@flow/lib/i18n/i18n";
-// import { generalNodeSchema } from "@flow/lib/reactFlow/nodeTypes/GeneralNode";
 import useNodeSchemaGenerate from "@flow/lib/reactFlow/useNodeSchemaGenerateHook";
 import type { NodeData } from "@flow/types";
 
