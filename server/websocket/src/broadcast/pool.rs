@@ -86,6 +86,49 @@ impl BroadcastPool {
                                                     "Document {} does not exist, initializing",
                                                     doc_id
                                                 );
+
+                                                let _: () = conn.del(&lock_key).await?;
+                                                tracing::debug!("Released Redis lock before delay to allow updates from other clients");
+
+                                                tokio::time::sleep(
+                                                    tokio::time::Duration::from_millis(500),
+                                                )
+                                                .await;
+
+                                                let final_lock: bool =
+                                                    conn.set_nx(&lock_key, "1").await?;
+                                                if final_lock {
+                                                    let _: () = conn.expire(&lock_key, 60).await?;
+
+                                                    let mut txn = doc.transact_mut();
+                                                    if let Ok(exists) =
+                                                        self.store.load_doc(doc_id, &mut txn).await
+                                                    {
+                                                        if exists {
+                                                            tracing::debug!(
+                                                                "Document {} was created by another instance during delay, using existing document",
+                                                                doc_id
+                                                            );
+                                                            let _: () = conn.del(&lock_key).await?;
+                                                        } else {
+                                                            tracing::debug!(
+                                                                "Still need to initialize document {} after delay",
+                                                                doc_id
+                                                            );
+                                                            let _: () = conn.del(&lock_key).await?;
+                                                        }
+                                                    } else {
+                                                        let _: () = conn.del(&lock_key).await?;
+                                                    }
+                                                } else {
+                                                    tracing::debug!(
+                                                        "Could not reacquire lock for document {}, another instance is handling it",
+                                                        doc_id
+                                                    );
+                                                    let mut txn = doc.transact_mut();
+                                                    let _ =
+                                                        self.store.load_doc(doc_id, &mut txn).await;
+                                                }
                                             }
                                         }
                                         Err(e) => {
@@ -95,12 +138,9 @@ impl BroadcastPool {
                                                 e
                                             );
 
-                                            let _: () = conn.del(&lock_key).await?;
                                             return Err(anyhow!("Failed to load document: {}", e));
                                         }
                                     }
-
-                                    let _: () = conn.del(&lock_key).await?;
                                 }
 
                                 match conn.lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1).await {
