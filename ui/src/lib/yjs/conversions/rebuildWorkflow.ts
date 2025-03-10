@@ -24,6 +24,7 @@ export const reassembleNode = (yNode: YNode): Node => {
       ?.get("officialName")
       .toString(),
   };
+  // TODO: remove data.customName when subworkflow's renaming is re-implemented
   if ((yNode.get("data") as Y.Map<any>)?.get("customName") !== undefined) {
     data.customName = (yNode.get("data") as Y.Map<any>)
       ?.get("customName")
