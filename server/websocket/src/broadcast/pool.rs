@@ -154,7 +154,6 @@ impl BroadcastPool {
                     }
 
                     {
-                        tracing::info!("loading doc");
                         let mut txn = doc.transact_mut();
 
                         match self.store.load_doc(doc_id, &mut txn).await {
@@ -180,8 +179,6 @@ impl BroadcastPool {
                             }
                         }
 
-                        tracing::info!("applying updates");
-
                         for update in updates_from_redis {
                             if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(&update) {
                                 if let Err(e) = txn.apply_update(decoded) {
@@ -190,8 +187,6 @@ impl BroadcastPool {
                             }
                         }
                     }
-
-                    tracing::info!("creating awareness");
 
                     Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
                 };
