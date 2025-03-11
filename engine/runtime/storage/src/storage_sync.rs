@@ -19,10 +19,12 @@ impl Storage {
                 path: format!("{:?}", location).into(),
             },
         })?;
-        self.inner
+        let _ = self
+            .inner
             .blocking()
             .write(p, bytes)
-            .map_err(|err| format_object_store_error(err, p))
+            .map_err(|err| format_object_store_error(err, p))?;
+        Ok(())
     }
 
     pub fn create_dir_sync(&self, location: &Path) -> Result<()> {
@@ -145,7 +147,7 @@ impl Storage {
         Ok(ObjectMeta {
             location: object_store::path::Path::parse(p)?,
             last_modified: meta.last_modified().unwrap_or_default(),
-            size: meta.content_length() as usize,
+            size: meta.content_length() as u64,
             e_tag: None,
             version: None,
         })
