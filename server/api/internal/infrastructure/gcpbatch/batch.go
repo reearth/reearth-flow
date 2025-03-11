@@ -134,7 +134,6 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		},
 		Environment: &batchpb.Environment{
 			Variables: map[string]string{
-				"FLOW_RUNTIME_FEATURE_WRITER_DISABLE":       "false",
 				"FLOW_WORKER_ENABLE_JSON_LOG":               "true",
 				"FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC": b.config.PubSubEdgePassThroughEventTopic,
 				"FLOW_WORKER_LOG_STREAM_TOPIC":              b.config.PubSubLogStreamTopic,
