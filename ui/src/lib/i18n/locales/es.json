@@ -116,6 +116,7 @@
   "Action Name": "Nombre de la acción",
   "Current Version": "Versión actual",
   "Version ": "Versión ",
+  "No Versions Available": "",
   "Are you sure you want to revert to this version?": "¿Estás seguro de que deseas revertir a esta versión?",
   "By clicking continue you will be reverting to version {{version}}.": "Al hacer clic en continuar, volverás a la versión {{version}}.",
   "Unable to rename workflow": "No se puede renombrar el flujo de trabajo",
