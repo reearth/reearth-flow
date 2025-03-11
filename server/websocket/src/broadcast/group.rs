@@ -269,28 +269,104 @@ impl BroadcastGroup {
                     let doc_name_for_sub = doc_name.clone();
                     let redis_url = redis_config.url.clone();
 
-                    let mut redis_pubsub = RedisPubSub::new(
-                        redis_url,
-                        awareness_for_sub,
-                        sender_for_sub,
-                        doc_name_for_sub,
-                    );
-                    redis_pubsub.start();
-
-                    let redis_pubsub = std::sync::Arc::new(tokio::sync::Mutex::new(redis_pubsub));
-                    let redis_pubsub_clone = redis_pubsub.clone();
-
                     let redis_subscriber_task = tokio::spawn(async move {
-                        let redis_pubsub = redis_pubsub_clone;
-
                         loop {
-                            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+                            tracing::info!(
+                                "Connecting to Redis PubSub for document: {}",
+                                doc_name_for_sub
+                            );
+                            match redis::Client::open(redis_url.clone()) {
+                                Ok(client) => match client.get_async_pubsub().await {
+                                    Ok(mut pubsub) => {
+                                        let channel = format!("yjs:updates:{}", doc_name_for_sub);
+                                        match pubsub.subscribe(&channel).await {
+                                            Ok(_) => {
+                                                tracing::info!(
+                                                    "Successfully subscribed to Redis channel: {}",
+                                                    channel
+                                                );
+                                                let mut stream = pubsub.on_message();
 
-                            let mut lock = redis_pubsub.lock().await;
-                            if lock.is_stopped() {
-                                tracing::warn!("Redis PubSub stopped, restarting...");
-                                lock.start();
+                                                while let Some(msg) = stream.next().await {
+                                                    match msg.get_payload::<Vec<u8>>() {
+                                                        Ok(payload) => {
+                                                            let payload_clone = payload.clone();
+                                                            tracing::info!("Received update from Redis for doc {}", doc_name_for_sub);
+
+                                                            match Update::decode_v1(&payload) {
+                                                                Ok(decoded_update) => {
+                                                                    let mut update_applied = false;
+                                                                    {
+                                                                        let awareness =
+                                                                            awareness_for_sub
+                                                                                .write()
+                                                                                .await;
+                                                                        let mut txn = awareness
+                                                                            .doc()
+                                                                            .transact_mut();
+
+                                                                        if let Err(e) = txn
+                                                                            .apply_update(
+                                                                                decoded_update,
+                                                                            )
+                                                                        {
+                                                                            tracing::warn!("Failed to apply update from Redis: {}", e);
+                                                                        } else {
+                                                                            update_applied = true;
+                                                                        }
+                                                                    }
+
+                                                                    if let Err(e) = sender_for_sub
+                                                                        .send(payload_clone)
+                                                                    {
+                                                                        if update_applied {
+                                                                            tracing::warn!("Update applied but failed to broadcast: {}", e);
+                                                                        } else {
+                                                                            tracing::warn!("Failed to broadcast Redis update: {}", e);
+                                                                        }
+                                                                    } else if update_applied {
+                                                                        tracing::debug!("Successfully applied and broadcast Redis update");
+                                                                    } else {
+                                                                        tracing::debug!("Failed to apply but broadcast Redis update anyway");
+                                                                    }
+                                                                }
+                                                                Err(_) => {
+                                                                    tracing::warn!("Failed to decode update from Redis");
+                                                                    let _ = sender_for_sub
+                                                                        .send(payload_clone);
+                                                                }
+                                                            }
+                                                        }
+                                                        Err(e) => {
+                                                            tracing::error!("Failed to get payload from Redis message: {}", e);
+                                                        }
+                                                    }
+                                                }
+                                                tracing::warn!(
+                                                    "Redis message stream ended, reconnecting..."
+                                                );
+                                            }
+                                            Err(e) => {
+                                                tracing::error!(
+                                                    "Failed to subscribe to Redis channel: {}",
+                                                    e
+                                                );
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        tracing::error!(
+                                            "Failed to get async connection to Redis: {}",
+                                            e
+                                        );
+                                    }
+                                },
+                                Err(e) => {
+                                    tracing::error!("Failed to open Redis client: {}", e);
+                                }
                             }
+                            tracing::warn!("Redis connection lost, reconnecting in 5 seconds...");
+                            tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                         }
                     });
 
