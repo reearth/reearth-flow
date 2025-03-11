@@ -116,6 +116,43 @@ const BaseInputTemplate = <
       </div>
     );
   }
+
+  if (schema.format === "text") {
+    const defaultValue = schema.default || "";
+    return (
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Input
+            id={id}
+            name={id}
+            placeholder={placeholder}
+            autoFocus={autofocus}
+            required={required}
+            disabled={disabled || readonly}
+            {...otherProps}
+            value={value || value === 0 ? value : ""}
+            onChange={(e) =>
+              onChangeOverride ||
+              onChange(
+                e.target.value === "" ? options.emptyValue : e.target.value,
+              )
+            }
+          />
+          {value !== defaultValue && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onChange(defaultValue)}
+              className="h-9 px-2">
+              {t("Reset Value")}
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <>
       <TextArea

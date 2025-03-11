@@ -76,8 +76,10 @@ describe("convertNodes", () => {
       measured: DEFAULT_NODE_SIZE,
       data: {
         officialName: "test-action",
-        customName: "Test Node",
         params: undefined,
+        customizations: {
+          customName: "Test Node",
+        },
         inputs: mockAction.inputPorts,
         outputs: mockAction.outputPorts,
       },
@@ -108,8 +110,10 @@ describe("convertNodes", () => {
       measured: DEFAULT_NODE_SIZE,
       data: {
         officialName: "Subworkflow",
-        customName: "Sub Workflow",
         params: undefined,
+        customizations: {
+          customName: "Sub Workflow",
+        },
         subworkflowId: "workflow1",
         pseudoInputs: mockPseudoPorts.pseudoInputs,
         pseudoOutputs: mockPseudoPorts.pseudoOutputs,
