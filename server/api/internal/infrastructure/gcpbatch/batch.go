@@ -123,8 +123,9 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 	}
 
 	computeResource := &batchpb.ComputeResource{
-		CpuMilli:  int64(b.config.ComputeCpuMilli),
-		MemoryMib: int64(b.config.ComputeMemoryMib),
+		BootDiskMib: int64(b.config.BootDiskSizeGB * 1024),
+		CpuMilli:    int64(b.config.ComputeCpuMilli),
+		MemoryMib:   int64(b.config.ComputeMemoryMib),
 	}
 
 	taskSpec := &batchpb.TaskSpec{
