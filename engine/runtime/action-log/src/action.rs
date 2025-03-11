@@ -13,7 +13,7 @@ use crate::json::Json;
 static ACTION_LOG_DISABLE: Lazy<bool> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_ACTION_LOG_DISABLE")
         .ok()
-        .and_then(|v| v.parse().ok())
+        .map(|s| s.to_lowercase() == "true")
         .unwrap_or(false)
 });
 
