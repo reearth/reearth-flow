@@ -108,7 +108,7 @@ impl BroadcastPool {
 
             if !lock_acquired {
                 let mut retry_count = 0;
-                const MAX_RETRIES: u32 = 15;
+                const MAX_RETRIES: u32 = 50;
                 const RETRY_INTERVAL_MS: u64 = 200;
                 let mut found_main_workflow = false;
 
