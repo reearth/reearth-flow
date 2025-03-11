@@ -6,7 +6,6 @@ use crate::AwarenessRef;
 use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
 use rand;
-use serde::Deserialize;
 use serde_json;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -23,7 +22,6 @@ use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
-#[derive(Debug, Clone, Default, Deserialize)]
 pub struct UserInfo {
     pub id: Option<String>,
     pub name: Option<String>,
@@ -87,56 +85,15 @@ impl BroadcastGroup {
     }
 
     pub fn decrement_connections(&self) -> usize {
-        let prev_count = self.connections.fetch_sub(1, Ordering::SeqCst);
+        let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
         let current_count = prev_count - 1;
 
         if current_count == 0 {
             if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
                 let redis_store = redis_store.clone();
                 let doc_name = doc_name.clone();
-                let store = self.storage.clone();
-                let pending_updates = self.pending_updates.clone();
 
                 tokio::spawn(async move {
-                    let updates = {
-                        let mut pending = pending_updates.lock().await;
-                        std::mem::take(&mut *pending)
-                    };
-
-                    if updates.is_empty() {
-                        if let Some(store) = &store {
-                            if let Ok(Some(_)) = store.flush_doc(&doc_name).await {
-                                tracing::debug!("Flushed document {} to storage", doc_name);
-                            }
-                        }
-                        return;
-                    };
-
-                    let doc = Doc::new();
-                    let mut txn = doc.transact_mut();
-
-                    let mut has_updates = false;
-                    for (i, update) in updates.iter().enumerate() {
-                        if let Ok(decoded) = Update::decode_v1(update) {
-                            if let Err(e) = txn.apply_update(decoded) {
-                                tracing::warn!("Failed to apply update {} during flush: {}", i, e);
-                            } else {
-                                has_updates = true;
-                            }
-                        } else {
-                            tracing::warn!("Failed to decode update {} during flush", i);
-                        }
-                    }
-
-                    if has_updates {
-                        let state_vector = StateVector::default();
-                        let merged_update = txn.encode_state_as_update_v1(&state_vector);
-
-                        if let Some(store) = &store {
-                            Self::handle_gcs_update(merged_update, &doc_name, store).await;
-                        }
-                    }
-
                     if let Err(e) = redis_store.clear_pending_updates(&doc_name).await {
                         tracing::warn!("Failed to clear pending updates from Redis: {}", e);
                     }
@@ -308,30 +265,32 @@ impl BroadcastGroup {
                     let consumer_name = format!("instance-{}", rand::random::<u32>());
 
                     let awareness_for_sub = group.awareness_ref.clone();
-                    let sender_for_broadcast = group.sender.clone();
+                    let sender_for_sub = group.sender.clone();
                     let doc_name_for_sub = doc_name.clone();
                     let redis_url = redis_config.url.clone();
 
-                    let (tx, mut rx) = tokio::sync::mpsc::channel(1024);
-
-                    let sender_clone = sender_for_broadcast.clone();
-                    tokio::spawn(async move {
-                        while let Some(msg) = rx.recv().await {
-                            let _ = sender_clone.send(msg);
-                        }
-                    });
-
-                    let mut redis_pubsub =
-                        RedisPubSub::new(redis_url, awareness_for_sub, tx, doc_name_for_sub);
+                    let mut redis_pubsub = RedisPubSub::new(
+                        redis_url,
+                        awareness_for_sub,
+                        sender_for_sub,
+                        doc_name_for_sub,
+                    );
                     redis_pubsub.start();
 
                     let redis_pubsub = std::sync::Arc::new(tokio::sync::Mutex::new(redis_pubsub));
                     let redis_pubsub_clone = redis_pubsub.clone();
 
                     let redis_subscriber_task = tokio::spawn(async move {
-                        let _redis_pubsub = redis_pubsub_clone;
+                        let redis_pubsub = redis_pubsub_clone;
+
                         loop {
-                            tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                            tokio::time::sleep(std::time::Duration::from_secs(30)).await;
+
+                            let mut lock = redis_pubsub.lock().await;
+                            if lock.is_stopped() {
+                                tracing::warn!("Redis PubSub stopped, restarting...");
+                                lock.start();
+                            }
                         }
                     });
 
@@ -461,7 +420,6 @@ impl BroadcastGroup {
                 Ok(())
             })
         };
-
         let stream_task = {
             let awareness = self.awareness().clone();
             let redis = self.redis_store.clone();

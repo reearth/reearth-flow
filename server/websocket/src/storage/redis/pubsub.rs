@@ -1,12 +1,12 @@
 use futures_util::StreamExt;
 use tokio::task::JoinHandle;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, info, warn};
 use yrs::updates::decoder::Decode;
 use yrs::Transact;
 use yrs::Update;
 
 use crate::AwarenessRef;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::broadcast::Sender;
 
 pub struct RedisPubSub {
     redis_url: String,
@@ -39,35 +39,57 @@ impl RedisPubSub {
         let doc_id = self.doc_id.clone();
 
         let task = tokio::spawn(async move {
+            let mut reconnect_delay = 1;
+            const MAX_RECONNECT_DELAY: u64 = 30;
+
             loop {
+                info!("Connecting to Redis PubSub for document: {}", doc_id);
+
                 match redis::Client::open(redis_url.clone()) {
                     Ok(client) => match client.get_async_pubsub().await {
                         Ok(mut pubsub) => {
                             let channel = format!("yjs:updates:{}", doc_id);
                             match pubsub.subscribe(&channel).await {
                                 Ok(_) => {
+                                    info!("Successfully subscribed to Redis channel: {}", channel);
+                                    reconnect_delay = 1;
+
                                     let mut stream = pubsub.on_message();
 
                                     while let Some(msg) = stream.next().await {
                                         match msg.get_payload::<Vec<u8>>() {
                                             Ok(payload) => {
-                                                let awareness = awareness.write().await;
-                                                let mut txn = awareness.doc().transact_mut();
+                                                info!(
+                                                    "Received update from Redis for doc {}",
+                                                    doc_id
+                                                );
+                                                let payload_clone = payload.clone();
+                                                {
+                                                    let awareness = awareness.write().await;
+                                                    let mut txn = awareness.doc().transact_mut();
 
-                                                if let Ok(decoded) = Update::decode_v1(&payload) {
-                                                    if let Err(e) = txn.apply_update(decoded) {
-                                                        warn!(
-                                                            "Failed to apply update from Redis: {}",
-                                                            e
-                                                        );
+                                                    if let Ok(decoded) = Update::decode_v1(&payload)
+                                                    {
+                                                        if let Err(e) = txn.apply_update(decoded) {
+                                                            warn!(
+                                                                "Failed to apply update from Redis: {}",
+                                                                e
+                                                            );
+                                                        } else {
+                                                            debug!("Successfully applied Redis update to document");
+                                                        }
                                                     } else {
-                                                        // Drop the transaction before sending the message
-                                                        drop(txn);
-                                                        drop(awareness);
-                                                        let _ = sender.send(payload).await;
+                                                        warn!("Failed to decode update from Redis");
                                                     }
+                                                }
+
+                                                if let Err(e) = sender.send(payload_clone) {
+                                                    warn!(
+                                                        "Failed to broadcast Redis update: {}",
+                                                        e
+                                                    );
                                                 } else {
-                                                    warn!("Failed to decode update from Redis");
+                                                    debug!("Successfully broadcast Redis update");
                                                 }
                                             }
                                             Err(e) => {
@@ -92,7 +114,14 @@ impl RedisPubSub {
                         error!("Failed to open Redis client: {}", e);
                     }
                 }
-                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+
+                let delay = std::cmp::min(reconnect_delay, MAX_RECONNECT_DELAY);
+                warn!(
+                    "Redis PubSub connection lost, reconnecting in {} seconds...",
+                    delay
+                );
+                tokio::time::sleep(tokio::time::Duration::from_secs(delay)).await;
+                reconnect_delay = std::cmp::min(reconnect_delay * 2, MAX_RECONNECT_DELAY);
             }
         });
 
@@ -107,6 +136,10 @@ impl RedisPubSub {
                 self.doc_id
             );
         }
+    }
+
+    pub fn is_stopped(&self) -> bool {
+        self.task.is_none() || self.task.as_ref().unwrap().is_finished()
     }
 }
 
