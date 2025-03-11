@@ -193,7 +193,6 @@ async fn handle_socket(
     user_token: Option<String>,
 ) {
     bcast.increment_connections();
-    tracing::info!("New connection established for document '{}'", doc_id);
 
     let (sender, receiver) = socket.split();
 
@@ -208,17 +207,9 @@ async fn handle_socket(
     if let Err(e) = conn.await {
         tracing::error!("WebSocket connection error: {}", e);
     }
-
-    tracing::info!("Connection closed for document '{}'", doc_id);
     pool.remove_connection(&doc_id).await;
 }
 
 fn normalize_doc_id(doc_id: &str) -> String {
-    let base_id = doc_id.strip_suffix(":main").unwrap_or(doc_id).to_string();
-
-    if doc_id != &base_id {
-        tracing::debug!("Normalized document ID from '{}' to '{}'", doc_id, base_id);
-    }
-
-    base_id
+    doc_id.strip_suffix(":main").unwrap_or(doc_id).to_string()
 }
