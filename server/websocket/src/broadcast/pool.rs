@@ -6,6 +6,7 @@ use anyhow::{anyhow, Result};
 use dashmap::DashMap;
 use redis::AsyncCommands;
 use std::sync::Arc;
+use uuid;
 use yrs::sync::Awareness;
 use yrs::{Doc, Transact};
 
@@ -48,11 +49,80 @@ impl BroadcastPool {
     }
 
     pub async fn get_or_create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
-        let _lock = self.groups_mutex.lock().await;
-
         if let Some(group) = self.groups.get(doc_id) {
             return Ok(group.clone());
         }
+
+        let mut lock_acquired = false;
+        let lock_value = uuid::Uuid::new_v4().to_string();
+        let lock_key = format!("lock:doc:{}", doc_id);
+        let mut retry_count = 0;
+        const MAX_RETRIES: usize = 5;
+
+        if let Some(redis_config) = &self.redis_config {
+            while retry_count < MAX_RETRIES && !lock_acquired {
+                if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
+                    if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
+                        match redis::cmd("SET")
+                            .arg(&lock_key)
+                            .arg(&lock_value)
+                            .arg("NX")
+                            .arg("EX")
+                            .arg(10)
+                            .query_async::<Option<String>>(&mut conn)
+                            .await
+                        {
+                            Ok(Some(_)) => {
+                                lock_acquired = true;
+                                tracing::debug!("Acquired Redis lock for document '{}'", doc_id);
+                                break;
+                            }
+                            _ => {
+                                let backoff = 100 * (1 << retry_count); // 指数退避
+                                tracing::debug!(
+                                    "Failed to acquire Redis lock for document '{}', retrying in {}ms (attempt {}/{})",
+                                    doc_id, backoff, retry_count + 1, MAX_RETRIES
+                                );
+                                tokio::time::sleep(tokio::time::Duration::from_millis(backoff))
+                                    .await;
+
+                                if let Some(group) = self.groups.get(doc_id) {
+                                    return Ok(group.clone());
+                                }
+
+                                retry_count += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let _local_lock = self.groups_mutex.lock().await;
+
+        if let Some(group) = self.groups.get(doc_id) {
+            if lock_acquired {
+                self.release_redis_lock(&lock_key, &lock_value).await;
+            }
+            return Ok(group.clone());
+        }
+
+        let _doc_exists = if let Some(redis_config) = &self.redis_config {
+            let doc_exists_key = format!("doc:exists:{}", doc_id);
+            if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
+                if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
+                    conn.exists::<_, bool>(&doc_exists_key)
+                        .await
+                        .unwrap_or(false)
+                } else {
+                    false
+                }
+            } else {
+                false
+            }
+        } else {
+            false
+        };
 
         let awareness: AwarenessRef = {
             let doc = Doc::new();
@@ -95,8 +165,25 @@ impl BroadcastPool {
                     Err(e) => {
                         if e.to_string().contains("not found") {
                             tracing::debug!("Creating new document: {}", doc_id);
+
+                            if let Some(redis_config) = &self.redis_config {
+                                let doc_exists_key = format!("doc:exists:{}", doc_id);
+                                if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
+                                    if let Ok(mut conn) =
+                                        manager.get_multiplexed_async_connection().await
+                                    {
+                                        let _: Result<(), _> =
+                                            conn.set::<_, _, ()>(&doc_exists_key, "1").await;
+                                    }
+                                }
+                            }
                         } else {
                             tracing::error!("Failed to load document {}: {}", doc_id, e);
+
+                            if lock_acquired {
+                                self.release_redis_lock(&lock_key, &lock_value).await;
+                            }
+
                             return Err(anyhow!("Failed to load document: {}", e));
                         }
                     }
@@ -133,7 +220,48 @@ impl BroadcastPool {
         );
 
         self.groups.insert(doc_id.to_string(), group.clone());
+
+        if lock_acquired {
+            self.release_redis_lock(&lock_key, &lock_value).await;
+        }
+
         Ok(group)
+    }
+
+    async fn release_redis_lock(&self, lock_key: &str, lock_value: &str) {
+        if let Some(redis_config) = &self.redis_config {
+            if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
+                if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
+                    let script = redis::Script::new(
+                        r"
+                        if redis.call('get', KEYS[1]) == ARGV[1] then
+                            return redis.call('del', KEYS[1])
+                        else
+                            return 0
+                        end
+                    ",
+                    );
+
+                    match script
+                        .key(lock_key)
+                        .arg(lock_value)
+                        .invoke_async::<()>(&mut conn)
+                        .await
+                    {
+                        Ok(_) => {
+                            tracing::debug!("Released Redis lock for key '{}'", lock_key);
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "Failed to release Redis lock for key '{}': {}",
+                                lock_key,
+                                e
+                            );
+                        }
+                    }
+                }
+            }
+        }
     }
 
     pub async fn cleanup_empty_groups(&self) {
