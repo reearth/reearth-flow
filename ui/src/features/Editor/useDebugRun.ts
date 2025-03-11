@@ -73,7 +73,6 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
     );
     if (!debugJob) return;
 
-    console.log("stop debug run", debugJob);
     const data = await useJobCancel(debugJob.jobId);
     if (data.isSuccess && currentProject?.id) {
       const jobs: JobState[] =

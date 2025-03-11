@@ -8,6 +8,8 @@ import {
   type NodeType,
 } from "@flow/types";
 
+import { useT } from "../i18n";
+
 import { buildNewCanvasNode } from "./buildNewCanvasNode";
 
 type Props = {
@@ -19,6 +21,7 @@ type Props = {
 // This is used for drag and drop functionality in to the canvas
 // This is not used for node dnd within the canvas. That is done internally by react-flow
 export default ({ onWorkflowAdd, onNodesAdd, onNodePickerOpen }: Props) => {
+  const t = useT();
   const { screenToFlowPosition } = useReactFlow();
 
   const handleNodeDragOver = useCallback((event: DragEvent<HTMLDivElement>) => {
@@ -52,13 +55,20 @@ export default ({ onWorkflowAdd, onNodesAdd, onNodePickerOpen }: Props) => {
         return;
       }
 
-      const newNode = await buildNewCanvasNode({ position, type });
+      const officialName =
+        type === "batch" ? t("Batch") : type === "note" ? t("Note") : type;
+
+      const newNode = await buildNewCanvasNode({
+        position,
+        type,
+        officialName,
+      });
 
       if (!newNode) return;
 
       onNodesAdd?.([newNode]);
     },
-    [screenToFlowPosition, onWorkflowAdd, onNodesAdd, onNodePickerOpen],
+    [screenToFlowPosition, t, onWorkflowAdd, onNodesAdd, onNodePickerOpen],
   );
 
   return { handleNodeDragOver, handleNodeDrop };
