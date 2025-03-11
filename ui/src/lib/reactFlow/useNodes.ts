@@ -12,6 +12,7 @@ import {
 import { MouseEvent, useCallback } from "react";
 
 import type { ActionNodeType, Edge, Node } from "@flow/types";
+import { generateUUID } from "@flow/utils";
 
 import useBatch from "./useBatch";
 import useDnd from "./useDnd";
@@ -192,7 +193,7 @@ export default ({
             {
               type: "add" as const,
               item: {
-                id: `${e.source}->${droppedNode.id}`,
+                id: generateUUID(),
                 source: e.source,
                 target: droppedNode.id,
                 sourceHandle: e.sourceHandle ?? null,
@@ -204,7 +205,7 @@ export default ({
             {
               type: "add" as const,
               item: {
-                id: `${droppedNode.id}->${e.target}`,
+                id: generateUUID(),
                 source: droppedNode.id,
                 target: e.target,
                 sourceHandle:
