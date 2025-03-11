@@ -1,7 +1,7 @@
 [package]
 description = "Re:Earth Flow GIS Quality Checker"
 name = "plateau-gis-quality-checker"
-version = "0.0.33"
+version = "0.0.34"
 
 authors.workspace = true
 edition.workspace = true
@@ -28,9 +28,9 @@ reearth-flow-telemetry.workspace = true
 reearth-flow-types.workspace = true
 
 directories.workspace = true
-log = "0.4.22"
+log = "0.4.25"
 once_cell.workspace = true
-rust-embed = "8.5.0"
+rust-embed = "8.6.0"
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 tauri = { version = "1.6.8", features = ["dialog-all", "fs-read-dir", "shell-open"] }
