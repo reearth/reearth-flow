@@ -39,55 +39,60 @@ impl RedisPubSub {
         let doc_id = self.doc_id.clone();
 
         let task = tokio::spawn(async move {
-            match redis::Client::open(redis_url.clone()) {
-                Ok(client) => match client.get_async_pubsub().await {
-                    Ok(mut pubsub) => {
-                        let channel = format!("yjs:updates:{}", doc_id);
-                        match pubsub.subscribe(&channel).await {
-                            Ok(_) => {
-                                debug!("Subscribed to Redis channel: {}", channel);
-                                let mut stream = pubsub.on_message();
+            loop {
+                match redis::Client::open(redis_url.clone()) {
+                    Ok(client) => match client.get_async_pubsub().await {
+                        Ok(mut pubsub) => {
+                            let channel = format!("yjs:updates:{}", doc_id);
+                            match pubsub.subscribe(&channel).await {
+                                Ok(_) => {
+                                    let mut stream = pubsub.on_message();
 
-                                while let Some(msg) = stream.next().await {
-                                    match msg.get_payload::<Vec<u8>>() {
-                                        Ok(payload) => {
-                                            let awareness = awareness.write().await;
-                                            let mut txn = awareness.doc().transact_mut();
+                                    while let Some(msg) = stream.next().await {
+                                        match msg.get_payload::<Vec<u8>>() {
+                                            Ok(payload) => {
+                                                let awareness = awareness.write().await;
+                                                let mut txn = awareness.doc().transact_mut();
 
-                                            if let Ok(decoded) = Update::decode_v1(&payload) {
-                                                if let Err(e) = txn.apply_update(decoded) {
-                                                    warn!(
-                                                        "Failed to apply update from Redis: {}",
-                                                        e
-                                                    );
+                                                if let Ok(decoded) = Update::decode_v1(&payload) {
+                                                    if let Err(e) = txn.apply_update(decoded) {
+                                                        warn!(
+                                                            "Failed to apply update from Redis: {}",
+                                                            e
+                                                        );
+                                                    } else {
+                                                        // Drop the transaction before sending the message
+                                                        drop(txn);
+                                                        drop(awareness);
+                                                        let _ = sender.send(payload).await;
+                                                    }
                                                 } else {
-                                                    let _ = sender.send(payload).await;
+                                                    warn!("Failed to decode update from Redis");
                                                 }
-                                            } else {
-                                                warn!("Failed to decode update from Redis");
                                             }
-                                        }
-                                        Err(e) => {
-                                            error!(
-                                                "Failed to get payload from Redis message: {}",
-                                                e
-                                            );
+                                            Err(e) => {
+                                                error!(
+                                                    "Failed to get payload from Redis message: {}",
+                                                    e
+                                                );
+                                            }
                                         }
                                     }
                                 }
-                            }
-                            Err(e) => {
-                                error!("Failed to subscribe to Redis channel: {}", e);
+                                Err(e) => {
+                                    error!("Failed to subscribe to Redis channel: {}", e);
+                                }
                             }
                         }
-                    }
+                        Err(e) => {
+                            error!("Failed to get async connection to Redis: {}", e);
+                        }
+                    },
                     Err(e) => {
-                        error!("Failed to get async connection to Redis: {}", e);
+                        error!("Failed to open Redis client: {}", e);
                     }
-                },
-                Err(e) => {
-                    error!("Failed to open Redis client: {}", e);
                 }
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
             }
         });
 

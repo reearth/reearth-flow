@@ -503,16 +503,53 @@ impl BroadcastGroup {
                                             let doc_name_str = doc_name.clone();
 
                                             if let Some(redis_store) = &redis_clone {
-                                                let _ = redis_store
-                                                    .add_update(&doc_name_str, &encoded_response)
-                                                    .await;
+                                                if let Some(pool) = redis_store.get_pool() {
+                                                    let redis_key =
+                                                        format!("pending_updates:{}", doc_name_str);
+                                                    let channel =
+                                                        format!("yjs:updates:{}", doc_name_str);
+                                                    let update_clone = encoded_response.clone();
+                                                    let ttl = redis_store
+                                                        .get_config()
+                                                        .map(|c| c.ttl)
+                                                        .unwrap_or(3600);
 
-                                                let _ = redis_store
-                                                    .publish_update(
-                                                        &doc_name_str,
-                                                        &encoded_response,
-                                                    )
-                                                    .await;
+                                                    tokio::spawn(async move {
+                                                        if let Ok(mut conn) = pool.get().await {
+                                                            let mut pipe = redis::pipe();
+                                                            pipe.atomic()
+                                                                .cmd("RPUSH")
+                                                                .arg(&redis_key)
+                                                                .arg(&update_clone)
+                                                                .cmd("EXPIRE")
+                                                                .arg(&redis_key)
+                                                                .arg(ttl)
+                                                                .cmd("PUBLISH")
+                                                                .arg(&channel)
+                                                                .arg(&update_clone);
+
+                                                            let result: redis::RedisResult<()> =
+                                                                pipe.query_async(&mut *conn).await;
+                                                            if let Err(e) = result {
+                                                                tracing::error!("Failed to execute Redis pipeline: {}", e);
+                                                            }
+                                                        }
+                                                    });
+                                                } else {
+                                                    let _ = redis_store
+                                                        .add_update(
+                                                            &doc_name_str,
+                                                            &encoded_response,
+                                                        )
+                                                        .await;
+
+                                                    let _ = redis_store
+                                                        .publish_update(
+                                                            &doc_name_str,
+                                                            &encoded_response,
+                                                        )
+                                                        .await;
+                                                }
                                             }
 
                                             if let Some(storage) = &storage_clone {
