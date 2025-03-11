@@ -105,11 +105,11 @@ impl BroadcastPool {
                 .await?;
 
             if !lock_acquired {
-                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
 
-                if let Some(group) = self.groups.get(doc_id) {
-                    return Ok(group.clone());
-                }
+                // if let Some(group) = self.groups.get(doc_id) {
+                //     return Ok(group.clone());
+                // }
             }
         }
 
@@ -128,7 +128,7 @@ impl BroadcastPool {
             } else {
                 let created = redis_store.set_nx(&doc_exists_key, "creating").await?;
                 if created {
-                    redis_store.expire(&doc_exists_key, 5).await?;
+                    redis_store.expire(&doc_exists_key, 3).await?;
                 } else {
                     tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
