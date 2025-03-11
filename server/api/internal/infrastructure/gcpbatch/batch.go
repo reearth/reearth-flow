@@ -123,8 +123,9 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 	}
 
 	computeResource := &batchpb.ComputeResource{
-		CpuMilli:  int64(b.config.ComputeCpuMilli),
-		MemoryMib: int64(b.config.ComputeMemoryMib),
+		BootDiskMib: int64(b.config.BootDiskSizeGB * 1024),
+		CpuMilli:    int64(b.config.ComputeCpuMilli),
+		MemoryMib:   int64(b.config.ComputeMemoryMib),
 	}
 
 	taskSpec := &batchpb.TaskSpec{
@@ -134,7 +135,6 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		},
 		Environment: &batchpb.Environment{
 			Variables: map[string]string{
-				"FLOW_RUNTIME_FEATURE_WRITER_DISABLE":       "true",
 				"FLOW_WORKER_ENABLE_JSON_LOG":               "true",
 				"FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC": b.config.PubSubEdgePassThroughEventTopic,
 				"FLOW_WORKER_LOG_STREAM_TOPIC":              b.config.PubSubLogStreamTopic,

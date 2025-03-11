@@ -1,7 +1,7 @@
 import { useReactFlow } from "@xyflow/react";
 import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useY } from "react-yjs";
-import { Array as YArray } from "yjs";
+import { Doc, Array as YArray } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useProjectExport } from "@flow/hooks";
@@ -15,14 +15,16 @@ import useNodeLocker from "../Editor/useNodeLocker";
 import useUIState from "../Editor/useUIState";
 
 export default ({
-  yWorkflows,
+  yDoc,
   project,
   undoTrackerActionWrapper,
 }: {
-  yWorkflows: YArray<YWorkflow>;
+  yDoc: Doc;
   project?: Project;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
+  const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+
   const { fitView } = useReactFlow();
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
@@ -89,16 +91,16 @@ export default ({
   });
 
   const handleNodeDoubleClick = useCallback(
-    (_e: MouseEvent | undefined, node: Node) => {
-      if (node.type === "subworkflow" && node.data.subworkflowId) {
-        handleWorkflowOpen(node.data.subworkflowId);
+    (_e: MouseEvent | undefined, nodeId: string, subworkflowId?: string) => {
+      if (subworkflowId) {
+        handleWorkflowOpen(subworkflowId);
       } else {
         fitView({
-          nodes: [{ id: node.id }],
+          nodes: [{ id: nodeId }],
           duration: 500,
           padding: 2,
         });
-        handleNodeLocking(node.id);
+        handleNodeLocking(nodeId);
       }
     },
     [handleWorkflowOpen, fitView, handleNodeLocking],

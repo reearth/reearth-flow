@@ -5,8 +5,6 @@ export { default as useDnd } from "./useDnd";
 
 export { default as CustomConnectionLine } from "./CustomConnectionLine";
 export { connectionLineStyle } from "./CustomConnectionLine";
-export { batchNodeAction } from "./nodeTypes/BatchNode";
-export { noteNodeAction } from "./nodeTypes/NoteNode";
 export * from "./nodeTypes";
 export * from "./edgeTypes";
 export * from "./buildNewCanvasNode";

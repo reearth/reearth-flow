@@ -59,7 +59,7 @@ export default ({ id, data }: { id: string; data: NodeData }) => {
   // No need to memoize as we want to update because bounds will change on resize
   const bounds = getChildNodesBoundary();
   // background color will always be a hex color, therefore needs to be converted to rgba
-  const backgroundColor = data.params?.backgroundColor || "";
+  const backgroundColor = data.customizations?.backgroundColor || "";
   const rgbaColor = convertHextoRgba(backgroundColor, 0.5);
 
   return {

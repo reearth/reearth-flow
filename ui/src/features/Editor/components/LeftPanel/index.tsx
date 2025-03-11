@@ -25,14 +25,15 @@ type Tab = "navigator" | "actions-list" | "resources";
 type Props = {
   nodes: Node[];
   isOpen: boolean;
-  onOpen: (panel?: "left" | "right" | "bottom") => void;
-  onNodesAdd: (node: Node[]) => void;
   isMainWorkflow: boolean;
   hasReader?: boolean;
+  onOpen: (panel?: "left" | "right" | "bottom") => void;
+  onNodesAdd: (node: Node[]) => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onNodeDoubleClick: (
     e: React.MouseEvent<Element> | undefined,
-    node: Node,
+    nodeId: string,
+    subworkflowId?: string,
   ) => void;
   selected?: Node;
 };
@@ -40,10 +41,10 @@ type Props = {
 const LeftPanel: React.FC<Props> = ({
   nodes,
   isOpen,
-  onOpen,
-  onNodesAdd,
   isMainWorkflow,
   hasReader,
+  onOpen,
+  onNodesAdd,
   onNodesChange,
   onNodeDoubleClick,
 }) => {
@@ -70,7 +71,7 @@ const LeftPanel: React.FC<Props> = ({
       }));
 
       onNodesChange(nodeChanges);
-      onNodeDoubleClick(undefined, node);
+      onNodeDoubleClick(undefined, node.id, node.data.subworkflowId);
     },
     [nodes, onNodesChange, onNodeDoubleClick],
   );
@@ -241,7 +242,10 @@ const createTreeDataItem = (
         ?.filter((n) => n.type === type)
         .map((n) => ({
           id: n.id,
-          name: n.data.customName || n.data.officialName || "untitled",
+          name:
+            n.data.customizations?.customName ||
+            n.data.officialName ||
+            "untitled",
           icon,
           type: n.type,
         })) ?? []
@@ -259,7 +263,10 @@ const createTreeDataItem = (
               ?.filter((n) => n.type === type)
               .map((n) => ({
                 id: n.id,
-                name: n.data.customName || n.data.officialName || "untitled",
+                name:
+                  n.data.customizations?.customName ||
+                  n.data.officialName ||
+                  "untitled",
                 icon,
                 type: n.type,
               })),
@@ -280,7 +287,7 @@ const createTreeDataItem = (
               .map((n) => ({
                 id: n.id,
                 name:
-                  n.data.params?.customName ||
+                  n.data.customizations?.customName ||
                   n.data.officialName ||
                   "untitled",
                 icon,
@@ -290,7 +297,9 @@ const createTreeDataItem = (
                   .map((d) => ({
                     id: d.id,
                     name:
-                      d.data.customName || d.data.officialName || "untitled",
+                      d.data.customizations?.customName ||
+                      d.data.officialName ||
+                      "untitled",
                     icon: getNodeIcon(d.type),
                   })),
               })),
