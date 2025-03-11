@@ -26,8 +26,7 @@ import {
   TooltipTrigger,
 } from "@flow/components";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
-import { useProjectExport } from "@flow/hooks";
-import useProjectDuplication from "@flow/hooks/useProjectDuplication";
+import { useProjectDuplication, useProjectExport } from "@flow/hooks";
 import { useDocument } from "@flow/lib/gql/document";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";

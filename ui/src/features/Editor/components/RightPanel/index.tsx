@@ -1,5 +1,6 @@
 import { X } from "@phosphor-icons/react";
 import { memo } from "react";
+import { Doc } from "yjs";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -10,9 +11,15 @@ type Props = {
   contentType?: "version-history";
   onClose: () => void;
   projectId?: string;
+  yDoc: Doc | undefined;
 };
 
-const RightPanel: React.FC<Props> = ({ contentType, onClose, projectId }) => {
+const RightPanel: React.FC<Props> = ({
+  contentType,
+  onClose,
+  projectId,
+  yDoc,
+}) => {
   const t = useT();
   return (
     <div
@@ -35,7 +42,7 @@ const RightPanel: React.FC<Props> = ({ contentType, onClose, projectId }) => {
         </div>
       </div>
       {contentType === "version-history" && (
-        <VersionHistoryList projectId={projectId} />
+        <VersionHistoryList projectId={projectId} yDoc={yDoc} />
       )}
     </div>
   );

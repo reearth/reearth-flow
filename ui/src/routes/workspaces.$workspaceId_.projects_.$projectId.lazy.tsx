@@ -68,7 +68,7 @@ const EditorComponent = () => {
     strict: false,
   });
 
-  const { state, isSynced, undoManager } = useYjsSetup({
+  const { state, isSynced, undoManager, yDoc } = useYjsSetup({
     isProtected: true,
     projectId,
     workflowId: DEFAULT_ENTRY_GRAPH_ID,
@@ -81,6 +81,7 @@ const EditorComponent = () => {
       yWorkflows={state.yWorkflows}
       undoManager={undoManager}
       undoTrackerActionWrapper={state.undoTrackerActionWrapper}
+      yDoc={yDoc}
     />
   );
 };

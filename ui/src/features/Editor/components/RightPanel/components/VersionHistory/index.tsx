@@ -1,3 +1,5 @@
+import { Doc } from "yjs";
+
 import { FlowLogo, LoadingSkeleton, ScrollArea } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
@@ -9,9 +11,10 @@ import { VersionHistoryChangeDialog } from "./VersionHistoryChangeDialog";
 
 type Props = {
   projectId?: string;
+  yDoc: Doc | undefined;
 };
 
-const VersionHistoryList: React.FC<Props> = ({ projectId }) => {
+const VersionHistoryList: React.FC<Props> = ({ projectId, yDoc }) => {
   const t = useT();
   const {
     history,
@@ -22,7 +25,7 @@ const VersionHistoryList: React.FC<Props> = ({ projectId }) => {
     openVersionChangeDialog,
     setOpenVersionChangeDialog,
     onRollbackProject,
-  } = useHooks({ projectId: projectId ?? "" });
+  } = useHooks({ projectId: projectId ?? "", yDoc });
 
   const previousVersions = history?.filter(
     (version) => version.version !== latestProjectSnapshotVersion?.version,
