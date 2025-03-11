@@ -181,7 +181,7 @@ impl BroadcastPool {
 
             return Ok(group.clone());
         }
-
+        tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
         let awareness: AwarenessRef = {
             let doc = Doc::new();
             let mut updates_from_redis = Vec::new();
