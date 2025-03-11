@@ -138,6 +138,20 @@ impl RedisStore {
         Ok(())
     }
 
+    pub async fn publish_update(&self, doc_id: &str, update: &[u8]) -> Result<(), anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let channel = format!("yjs:updates:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let _: () = redis::cmd("PUBLISH")
+                    .arg(&channel)
+                    .arg(update)
+                    .query_async(&mut *conn)
+                    .await?;
+            }
+        }
+        Ok(())
+    }
+
     pub async fn acquire_lock(
         &self,
         lock_key: &str,

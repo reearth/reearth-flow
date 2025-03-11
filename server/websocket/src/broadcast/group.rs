@@ -323,7 +323,6 @@ impl BroadcastGroup {
                     let mut redis_pubsub =
                         RedisPubSub::new(redis_url, awareness_for_sub, tx, doc_name_for_sub);
 
-                    // Set up a task to forward messages from mpsc to broadcast
                     let sender_clone = sender_for_sub.clone();
                     tokio::spawn(async move {
                         while let Some(msg) = rx.recv().await {
@@ -506,6 +505,13 @@ impl BroadcastGroup {
                                             if let Some(redis_store) = &redis_clone {
                                                 let _ = redis_store
                                                     .add_update(&doc_name_str, &encoded_response)
+                                                    .await;
+
+                                                let _ = redis_store
+                                                    .publish_update(
+                                                        &doc_name_str,
+                                                        &encoded_response,
+                                                    )
                                                     .await;
                                             }
 

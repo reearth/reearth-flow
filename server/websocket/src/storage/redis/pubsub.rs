@@ -39,7 +39,7 @@ impl RedisPubSub {
         let doc_id = self.doc_id.clone();
 
         let task = tokio::spawn(async move {
-            match redis::Client::open(redis_url) {
+            match redis::Client::open(redis_url.clone()) {
                 Ok(client) => match client.get_async_pubsub().await {
                     Ok(mut pubsub) => {
                         let channel = format!("yjs:updates:{}", doc_id);
