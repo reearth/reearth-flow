@@ -1,6 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRef, useEffect, useCallback } from "react";
 
 import { OnJobStatusChangeSubscription } from "../__gen__/graphql";
+import { toJobStatus } from "../convert";
 import { useWsClient } from "../provider/GraphQLSubscriptionProvider";
 
 import { JobQueryKeys } from "./useQueries";
@@ -12,58 +14,112 @@ const JOB_STATUS_SUBSCRIPTION = `
 `;
 
 export const useJobStatus = (jobId: string) => {
-  const queryClient = useQueryClient();
   const wsClient = useWsClient();
+  const queryClient = useQueryClient();
+  const isSubscribedRef = useRef(false);
+  const unSubscribedRef = useRef<(() => void) | undefined>(undefined);
+  const lastStatusRef = useRef<any>(null);
 
-  return useQuery({
+  const query = useQuery({
     queryKey: [JobQueryKeys.GetJobStatus, jobId],
-    queryFn: () =>
-      new Promise<OnJobStatusChangeSubscription["jobStatus"]>(
-        (resolve, reject) => {
-          let active = true;
-
-          const unsubscribe = wsClient.subscribe<OnJobStatusChangeSubscription>(
-            {
-              query: JOB_STATUS_SUBSCRIPTION,
-              variables: { jobId },
-            },
-            {
-              next: (data) => {
-                console.log("next", data);
-                if (data.data) {
-                  // Update the cache with new data
-                  queryClient.setQueryData(["jobStatus", jobId], data.data);
-
-                  // Only resolve the initial promise if we haven't already
-                  if (active) {
-                    active = false;
-                    resolve(data.data.jobStatus);
-                  }
-                }
-              },
-              error: (error) => {
-                if (active) {
-                  reject(error);
-                }
-              },
-              complete: () => {
-                console.log("complete");
-                // Handle completion
-              },
-            },
-          );
-
-          console.log("subscribe", active);
-
-          return () => {
-            active = false;
-            unsubscribe();
-          };
-        },
-      ),
-    refetchInterval: false,
-    retry: 3,
+    queryFn: async () => {
+      const cachedData = queryClient.getQueryData([
+        JobQueryKeys.GetJobStatus,
+        jobId,
+      ]);
+      if (cachedData) {
+        lastStatusRef.current = cachedData;
+        return cachedData;
+      }
+      return null;
+    },
+    // Important: initial query should run only once
     staleTime: Infinity,
-    gcTime: Infinity, // Keep the cache since we're updating it via subscription
+    gcTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   });
+
+  useEffect(() => {
+    if (!jobId || isSubscribedRef.current) return;
+
+    console.log(`Setting up job status subscription for job: ${jobId}`);
+    isSubscribedRef.current = true;
+
+    // Initialize with any cached data
+    const cachedData = queryClient.getQueryData([
+      JobQueryKeys.GetJobStatus,
+      jobId,
+    ]);
+    if (cachedData) {
+      lastStatusRef.current = cachedData;
+    }
+
+    // Subscribe to job status
+    const unsubscribe = wsClient.subscribe<OnJobStatusChangeSubscription>(
+      {
+        query: JOB_STATUS_SUBSCRIPTION,
+        variables: { jobId },
+      },
+      {
+        next: (data) => {
+          if (data.data?.jobStatus) {
+            const newStatus = data.data.jobStatus;
+
+            const currentStatus = JSON.stringify(lastStatusRef.current);
+            const incomingStatus = JSON.stringify(newStatus);
+
+            if (currentStatus !== incomingStatus) {
+              console.log(`Job status changed for ${jobId}:`, {
+                previous: lastStatusRef.current,
+                new: newStatus,
+              });
+
+              lastStatusRef.current = newStatus;
+
+              // Update React Query cache
+              queryClient.setQueryData(
+                [JobQueryKeys.GetJobStatus, jobId],
+                toJobStatus(newStatus),
+              );
+            } else {
+              console.log(
+                `Received same status ${newStatus}, no update needed`,
+              );
+            }
+          }
+        },
+        error: (err) => {
+          console.error(`Status subscription error ${jobId}:`, err);
+          isSubscribedRef.current = false;
+        },
+        complete: () => {
+          console.info("Status Subscription complete");
+          isSubscribedRef.current = false;
+        },
+      },
+    );
+
+    unSubscribedRef.current = unsubscribe;
+
+    // Cleanup
+    return () => {
+      unsubscribe();
+      isSubscribedRef.current = false;
+    };
+  }, [jobId, wsClient, queryClient]);
+
+  const stopSubscription = useCallback(async () => {
+    if (unSubscribedRef.current) {
+      unSubscribedRef.current();
+      isSubscribedRef.current = false;
+    }
+  }, []);
+
+  return {
+    ...query,
+    isSubscribedRef,
+    stopSubscription,
+  };
 };

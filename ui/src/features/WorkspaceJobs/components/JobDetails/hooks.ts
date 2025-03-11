@@ -2,7 +2,7 @@ import { useRouter } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 
 import { DetailsBoxContent } from "@flow/features/common";
-import { useJob } from "@flow/lib/gql/job";
+import { useJob, useJobStatus } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
 import { formatTimestamp } from "@flow/utils";
 
@@ -11,6 +11,16 @@ export default ({ jobId }: { jobId: string }) => {
   const { navigate } = useRouter();
 
   const { useGetJob, useJobCancel } = useJob();
+
+  const { data: jobStatus, isLoading, error } = useJobStatus(jobId ?? "");
+
+  const statusValue = isLoading
+    ? t("Loading...")
+    : error
+      ? t("Error")
+      : (jobStatus ?? "queued");
+
+  console.log("realTimeJobStatus", statusValue);
 
   const { job } = useGetJob(jobId);
 
@@ -48,7 +58,7 @@ export default ({ jobId }: { jobId: string }) => {
             {
               id: "status",
               name: t("Status"),
-              value: job.status,
+              value: statusValue.toString() || job.status,
             },
             {
               id: "startedAt",
@@ -72,11 +82,12 @@ export default ({ jobId }: { jobId: string }) => {
             },
           ]
         : undefined,
-    [t, job],
+    [t, job, statusValue],
   );
   return {
     job,
     details,
+    statusValue,
     handleCancelJob,
     handleBack,
   };
