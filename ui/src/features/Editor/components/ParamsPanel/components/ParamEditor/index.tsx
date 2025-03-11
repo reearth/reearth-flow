@@ -72,9 +72,7 @@ const ParamEditor: React.FC<Props> = ({
   };
 
   const [activeTab, setActiveTab] = useState(
-    createdAction?.name === "batch" || createdAction?.name === "note"
-      ? "customization"
-      : "params",
+    !createdAction?.parameter ? "customizations" : "params",
   );
 
   const handleSubmit = () => {
@@ -88,11 +86,6 @@ const ParamEditor: React.FC<Props> = ({
   return (
     <div className="flex h-full flex-col gap-4">
       <Tabs
-        defaultValue={
-          createdAction?.name === "batch" || createdAction?.name === "note"
-            ? "customization"
-            : "params"
-        }
         onValueChange={setActiveTab}
         value={activeTab}
         className="flex h-full flex-col gap-4">
@@ -100,8 +93,8 @@ const ParamEditor: React.FC<Props> = ({
           <p className="text-lg dark:font-thin">
             {activeTab === "params"
               ? t("Parameters")
-              : activeTab === "customization"
-                ? t("Customization")
+              : activeTab === "customizations"
+                ? t("Customizations")
                 : t("Details")}
           </p>
           {activeTab !== "details" && (
@@ -110,14 +103,13 @@ const ParamEditor: React.FC<Props> = ({
           {activeTab === "details" && <div className="h-[36px]" />}
         </div>
         <TabsList className="flex justify-between gap-2">
-          {createdAction?.name !== "batch" &&
-            createdAction?.name !== "note" && (
-              <TabsTrigger className="flex-1" value="params">
-                {t("Parameters")}
-              </TabsTrigger>
-            )}
-          <TabsTrigger className="flex-1" value="customization">
-            {t("Customization")}
+          {createdAction?.parameter && (
+            <TabsTrigger className="flex-1" value="params">
+              {t("Parameters")}
+            </TabsTrigger>
+          )}
+          <TabsTrigger className="flex-1" value="customizations">
+            {t("Customizations")}
           </TabsTrigger>
           <TabsTrigger className="flex-1" value="details">
             {t("Details")}
@@ -141,11 +133,11 @@ const ParamEditor: React.FC<Props> = ({
             )}
           </div>
         </TabsContent>
-        <TabsContent value="customization">
+        <TabsContent value="customizations">
           <div className="min-h-32 overflow-scroll rounded border bg-card px-2 pt-4">
             {!createdAction?.customizations && (
               <BasicBoiler
-                text={t("No Customization Available")}
+                text={t("No Customizations Available")}
                 className="size-4 pt-16 [&>div>p]:text-sm"
                 icon={<FlowLogo className="size-12 text-accent" />}
               />

@@ -2,35 +2,14 @@ import { Note } from "@phosphor-icons/react";
 import { NodeProps, NodeResizer } from "@xyflow/react";
 import { memo } from "react";
 
-import { Node, NodeType } from "@flow/types";
+import { Node } from "@flow/types";
 
 import NodeContextMenu from "../NodeContextMenu";
 import { convertHextoRgba } from "../utils";
 
 export type NoteNodeProps = NodeProps<Node>;
 
-export const initialSize = { width: 300, height: 200 };
 const minSize = { width: 250, height: 150 };
-
-export const baseNoteNode: {
-  type: NodeType;
-  content: string;
-  measured: { width: number; height: number };
-  style: { width: string; height: string; minWidth: string; minHeight: string };
-} = {
-  type: "note",
-  content: "New Note",
-  measured: {
-    width: initialSize.width,
-    height: initialSize.height,
-  },
-  style: {
-    width: `${initialSize.width}px`,
-    height: `${initialSize.height}px`,
-    minWidth: `${minSize.width}px`,
-    minHeight: `${minSize.height}px`,
-  },
-};
 
 const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
   // background color will always be a hex color, therefore needs to be converted to rgba

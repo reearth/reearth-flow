@@ -10,7 +10,7 @@ export default (
 ): { action?: Action } => {
   const t = useT();
 
-  const baseSchema: RJSFSchema = {
+  const baseCustomizationSchema: RJSFSchema = {
     type: "object",
     properties: {
       customName: {
@@ -22,10 +22,10 @@ export default (
     },
   };
 
-  const noteNodeSchema: RJSFSchema = {
-    ...baseSchema,
+  const noteCustomizationSchema: RJSFSchema = {
+    ...baseCustomizationSchema,
     properties: {
-      ...baseSchema.properties,
+      ...baseCustomizationSchema.properties,
       content: { type: "string", format: "textarea", title: t("Content") },
       backgroundColor: {
         type: "string",
@@ -42,10 +42,10 @@ export default (
     },
   };
 
-  const batchNodeSchema: RJSFSchema = {
-    ...baseSchema,
+  const batchCustomizationSchema: RJSFSchema = {
+    ...baseCustomizationSchema,
     properties: {
-      ...baseSchema.properties,
+      ...baseCustomizationSchema.properties,
       backgroundColor: {
         type: "string",
         format: "color",
@@ -61,60 +61,49 @@ export default (
     },
   };
 
-  let schema: RJSFSchema;
-  switch (nodeType) {
-    case "batch":
-      schema = batchNodeSchema;
-      break;
-    case "note":
-      schema = noteNodeSchema;
-      break;
-    default:
-      schema = baseSchema;
-  }
-
   let resultAction = action;
 
   // For Nodes that are in the actions list and have params.
   if (resultAction) {
-    resultAction = {
-      ...resultAction,
-      customizations: schema,
-    };
+    resultAction.customizations = baseCustomizationSchema;
   }
 
   // For nodes such as note and batch that are not in the actions list and therefore have no params.
   if (!resultAction) {
-    switch (nodeMeta.officialName) {
+    switch (nodeType) {
       case "batch":
         resultAction = {
           ...nodeMeta,
-          name: "batch",
-          description: "Batch node",
+          name: t("Batch Node"),
+          description: t(
+            "Batch nodes are for grouping multiple nodes together.",
+          ),
           type: "batch",
-          categories: ["batch"],
+          customizations: batchCustomizationSchema,
           inputPorts: ["input"],
           outputPorts: ["output"],
+          categories: ["organization"],
           builtin: true,
-          customizations: schema,
         };
         break;
 
       case "note":
         resultAction = {
           ...nodeMeta,
-          name: "note",
-          description: "Note node",
+          name: t("Note node"),
+          description: t("Note nodes are for adding notes to the canvas."),
           type: "note",
-          categories: ["note"],
+          customizations: noteCustomizationSchema,
           inputPorts: ["input"],
           outputPorts: ["output"],
+          categories: ["organization"],
           builtin: true,
-          customizations: schema,
         };
         break;
     }
   }
+
+  console.log("result action", resultAction);
 
   return { action: resultAction };
 };

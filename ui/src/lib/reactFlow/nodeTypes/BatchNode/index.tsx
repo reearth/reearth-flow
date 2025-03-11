@@ -2,25 +2,13 @@ import { RectangleDashed } from "@phosphor-icons/react";
 import { NodeProps, NodeResizer } from "@xyflow/react";
 import { memo } from "react";
 
-import { Node, NodeType } from "@flow/types";
+import { Node } from "@flow/types";
 
 import NodeContextMenu from "../NodeContextMenu";
 
 import useHooks from "./hooks";
 
 export type BatchNodeProps = NodeProps<Node>;
-
-export const initialSize = { width: 300, height: 200 };
-
-export const baseBatchNode: {
-  type: NodeType;
-  style: { width: string; height: string };
-  zIndex: number;
-} = {
-  type: "batch",
-  style: { width: initialSize.width + "px", height: initialSize.height + "px" },
-  zIndex: -1001,
-};
 
 const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, type, id }) => {
   const { bounds, rgbaColor, handleOnEndResize } = useHooks({ id, data });
