@@ -3,7 +3,6 @@ use crate::storage::kv::DocOps;
 use crate::storage::redis::pubsub::RedisPubSub;
 use crate::storage::redis::{RedisConfig, RedisStore};
 use crate::AwarenessRef;
-use anyhow::anyhow;
 use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
 use rand;
@@ -163,26 +162,24 @@ impl BroadcastGroup {
         let pending_updates_clone = pending_updates.clone();
 
         let doc_sub = {
-            lock.doc_mut()
-                .observe_update_v1(move |_txn, u| {
-                    let mut encoder = EncoderV1::new();
-                    encoder.write_var(MSG_SYNC);
-                    encoder.write_var(MSG_SYNC_UPDATE);
-                    encoder.write_buf(&u.update);
-                    let msg = encoder.to_vec();
-                    if let Err(_e) = sink.send(msg) {
-                        tracing::warn!("broadcast channel closed");
-                    }
+            lock.doc_mut().observe_update_v1(move |_txn, u| {
+                let mut encoder = EncoderV1::new();
+                encoder.write_var(MSG_SYNC);
+                encoder.write_var(MSG_SYNC_UPDATE);
+                encoder.write_buf(&u.update);
+                let msg = encoder.to_vec();
+                if let Err(_e) = sink.send(msg) {
+                    tracing::warn!("broadcast channel closed");
+                }
 
-                    let update_clone = u.update.clone();
-                    let updates_arc = pending_updates_clone.clone();
+                let update_clone = u.update.clone();
+                let updates_arc = pending_updates_clone.clone();
 
-                    tokio::spawn(async move {
-                        let mut updates = updates_arc.lock().await;
-                        updates.push(update_clone.clone());
-                    });
-                })
-                .map_err(|e| anyhow!("Failed to observe document updates: {}", e))?
+                tokio::spawn(async move {
+                    let mut updates = updates_arc.lock().await;
+                    updates.push(update_clone.clone());
+                });
+            })?
         };
 
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
@@ -371,57 +368,8 @@ impl BroadcastGroup {
         let awareness = awareness.write().await;
         let mut txn = awareness.doc().transact_mut();
 
-        let mut attempts = 0;
-        let max_attempts = 3;
-        let timeout_duration = std::time::Duration::from_secs(5);
-
-        loop {
-            attempts += 1;
-
-            match tokio::time::timeout(timeout_duration, store.load_doc(doc_name, &mut txn)).await {
-                Ok(result) => match result {
-                    Ok(_) => {
-                        break;
-                    }
-                    Err(e) => {
-                        if attempts >= max_attempts {
-                            tracing::error!(
-                                "Failed to load document '{}' from storage after {} attempts: {}",
-                                doc_name,
-                                max_attempts,
-                                e
-                            );
-                            break;
-                        } else {
-                            tracing::warn!(
-                                "Failed to load document '{}' from storage (attempt {}/{}): {}. Retrying...", 
-                                doc_name,
-                                attempts,
-                                max_attempts,
-                                e
-                            );
-                            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                        }
-                    }
-                },
-                Err(_) => {
-                    if attempts >= max_attempts {
-                        tracing::error!(
-                            "Timed out loading document '{}' from storage after {} attempts",
-                            doc_name,
-                            max_attempts
-                        );
-                        break;
-                    } else {
-                        tracing::warn!(
-                            "Timed out loading document '{}' from storage (attempt {}/{}). Retrying...", 
-                            doc_name,
-                            attempts,
-                            max_attempts
-                        );
-                    }
-                }
-            }
+        if let Err(e) = store.load_doc(doc_name, &mut txn).await {
+            tracing::error!("Failed to load document '{}' from storage: {}", doc_name, e);
         }
     }
 
@@ -620,7 +568,7 @@ impl BroadcastGroup {
 
                             if let Err(e) = handle.await {
                                 if e.is_cancelled() {
-                                    // Handle cancellation
+                                    // todo: handle cancellation
                                 }
                             }
                         }
@@ -701,10 +649,6 @@ impl Drop for BroadcastGroup {
             .shutdown_complete
             .load(std::sync::atomic::Ordering::SeqCst)
         {
-            tracing::warn!(
-                "BroadcastGroup dropped without calling shutdown() first. Pending updates may be lost."
-            );
-
             if let (Some(_store), Some(doc_name)) = (&self.storage, &self.doc_name) {
                 tracing::warn!(
                     "Document '{}' may have pending updates that weren't flushed",

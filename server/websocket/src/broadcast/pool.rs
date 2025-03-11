@@ -65,15 +65,34 @@ impl BroadcastPool {
         let _local_lock = self.groups_mutex.lock().await;
 
         if let Some(group) = self.groups.get(doc_id) {
-            let mut has_pending_updates = false;
+            let mut retry_count = 0;
+            const MAX_RETRIES: u32 = 3;
 
-            if let Some(redis_store) = &self.redis_store {
-                has_pending_updates = redis_store.has_pending_updates(doc_id).await?;
+            while retry_count < MAX_RETRIES {
+                if let Some(redis_store) = &self.redis_store {
+                    let updates_from_redis = redis_store.get_pending_updates(doc_id).await?;
+                    if !updates_from_redis.is_empty() {
+                        let awareness_ref = group.awareness();
+                        let awareness = awareness_ref.write().await;
+                        let doc = awareness.doc();
+                        let mut txn = doc.transact_mut();
+
+                        for update in &updates_from_redis {
+                            if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(update) {
+                                let _ = txn.apply_update(decoded);
+                            }
+                        }
+                        break;
+                    }
+                }
+
+                retry_count += 1;
+                if retry_count < MAX_RETRIES {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                }
             }
 
-            if has_pending_updates {
-                return Ok(group.clone());
-            }
+            return Ok(group.clone());
         }
 
         let doc_lock_key = format!("lock:doc:{}", doc_id);
@@ -82,11 +101,11 @@ impl BroadcastPool {
 
         if let Some(redis_store) = &self.redis_store {
             lock_acquired = redis_store
-                .acquire_lock(&doc_lock_key, &lock_value, 10)
+                .acquire_lock(&doc_lock_key, &lock_value, 3)
                 .await?;
 
             if !lock_acquired {
-                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
                 if let Some(group) = self.groups.get(doc_id) {
                     return Ok(group.clone());
@@ -95,13 +114,10 @@ impl BroadcastPool {
         }
 
         let doc_exists_key = format!("doc:exists:{}", doc_id);
-        let mut doc_already_exists = false;
 
         if let Some(redis_store) = &self.redis_store {
-            doc_already_exists = redis_store.exists(&doc_exists_key).await?;
-
-            if doc_already_exists {
-                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+            if redis_store.exists(&doc_exists_key).await? {
+                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
                 if let Some(group) = self.groups.get(doc_id) {
                     if lock_acquired {
@@ -112,10 +128,9 @@ impl BroadcastPool {
             } else {
                 let created = redis_store.set_nx(&doc_exists_key, "creating").await?;
                 if created {
-                    redis_store.expire(&doc_exists_key, 30).await?;
+                    redis_store.expire(&doc_exists_key, 5).await?;
                 } else {
-                    doc_already_exists = true;
-                    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
                     if let Some(group) = self.groups.get(doc_id) {
                         if lock_acquired {
@@ -127,13 +142,10 @@ impl BroadcastPool {
             }
         }
 
-        if let Some(group) = self.groups.get(doc_id) {
-            if lock_acquired {
-                if let Some(redis_store) = &self.redis_store {
-                    redis_store.release_lock(&doc_lock_key, &lock_value).await?;
-                }
+        if self.groups.get(doc_id).is_some() && lock_acquired {
+            if let Some(redis_store) = &self.redis_store {
+                redis_store.release_lock(&doc_lock_key, &lock_value).await?;
             }
-            return Ok(group.clone());
         }
 
         let awareness: AwarenessRef = {
@@ -148,25 +160,25 @@ impl BroadcastPool {
                 let mut txn = doc.transact_mut();
 
                 match self.store.load_doc(doc_id, &mut txn).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        if e.to_string().contains("not found") {
+                    Ok(exists) => {
+                        if !exists {
                             if let Some(redis_store) = &self.redis_store {
                                 redis_store.set(&doc_exists_key, "created").await?;
                             }
-                        } else {
-                            if let Some(redis_store) = &self.redis_store {
-                                redis_store.del(&doc_exists_key).await?;
-                            }
-
-                            if lock_acquired {
-                                if let Some(redis_store) = &self.redis_store {
-                                    redis_store.release_lock(&doc_lock_key, &lock_value).await?;
-                                }
-                            }
-
-                            return Err(anyhow!("Failed to load document: {}", e));
                         }
+                    }
+                    Err(e) => {
+                        if let Some(redis_store) = &self.redis_store {
+                            redis_store.del(&doc_exists_key).await?;
+                        }
+
+                        if lock_acquired {
+                            if let Some(redis_store) = &self.redis_store {
+                                redis_store.release_lock(&doc_lock_key, &lock_value).await?;
+                            }
+                        }
+
+                        return Err(anyhow!("Failed to load document: {}", e));
                     }
                 }
 

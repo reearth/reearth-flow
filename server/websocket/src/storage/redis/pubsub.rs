@@ -61,7 +61,7 @@ impl RedisPubSub {
                                                         e
                                                     );
                                                 } else {
-                                                    let _ = sender.send(payload);
+                                                    let _ = sender.send(payload).await;
                                                 }
                                             } else {
                                                 warn!("Failed to decode update from Redis");

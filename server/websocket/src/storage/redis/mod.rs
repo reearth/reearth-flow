@@ -64,15 +64,14 @@ impl RedisStore {
             const MAX_RETRIES: usize = 5;
 
             while retry_count < MAX_RETRIES {
-                match pool.get().await {
-                    Ok(mut conn) => match conn.llen::<_, i64>(&redis_key).await {
+                if let Ok(mut conn) = pool.get().await {
+                    match conn.llen::<_, i64>(&redis_key).await {
                         Ok(len) if len > 0 => {
                             return Ok(true);
                         }
                         Ok(_) => {}
                         Err(_) => {}
-                    },
-                    Err(_) => {}
+                    }
                 }
 
                 retry_count += 1;
@@ -93,17 +92,13 @@ impl RedisStore {
             const MAX_RETRIES: usize = 5;
 
             while retry_count < MAX_RETRIES {
-                match pool.get().await {
-                    Ok(mut conn) => match conn.lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1).await {
-                        Ok(result) => {
-                            if !result.is_empty() {
-                                updates = result;
-                                break;
-                            }
+                if let Ok(mut conn) = pool.get().await {
+                    if let Ok(result) = conn.lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1).await {
+                        if !result.is_empty() {
+                            updates = result;
+                            break;
                         }
-                        Err(_) => {}
-                    },
-                    Err(_) => {}
+                    }
                 }
 
                 retry_count += 1;
