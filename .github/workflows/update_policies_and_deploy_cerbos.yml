@@ -12,11 +12,13 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
+
       - name: set up
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: false
+
       - name: Generate policies
         run: |
           set -e
@@ -25,12 +27,15 @@ jobs:
             exit 1
           fi
         working-directory: server/api
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
+
       - name: Sync policies with Cloud Storage
         run: |
           set -euo pipefail
@@ -89,6 +94,22 @@ jobs:
           # List all files in the bucket after sync
           echo "Sync completed. All files in bucket:"
           gsutil ls "${GCS_BUCKET_PATH}/" || true
+        working-directory: server/api
+
+      - name: Archive policies
+        run: |
+          set -e
+          tar -czf policies.tar.gz -C policies .
+        working-directory: server/api
+
+      - name: Upload policies archive to Artifact Registry
+        run: |
+          gcloud artifacts files upload policies.tar.gz \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --repository=cerbos-policies \
+            --location=us-central1 \
+            --package=flow \
+            --version=latest
         working-directory: server/api
 
   deploy-cerbos:
