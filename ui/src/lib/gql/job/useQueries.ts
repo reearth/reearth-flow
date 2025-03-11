@@ -35,7 +35,7 @@ export const useQueries = () => {
             page: paginationOptions?.page ?? 1,
             pageSize: JOBS_FETCH_RATE,
             orderDir: paginationOptions?.orderDir ?? OrderDirection.Desc,
-            orderBy: "completedAt",
+            orderBy: paginationOptions?.orderBy ?? "startedAt",
           },
         });
         if (!data) return;
@@ -45,6 +45,7 @@ export const useQueries = () => {
             pageInfo: { totalCount, currentPage, totalPages },
           },
         } = data;
+
         const jobs: Job[] = nodes.filter(isDefined).map((job) => toJob(job));
         return { jobs, totalCount, currentPage, totalPages };
       },

@@ -1,6 +1,6 @@
 import { Eye, GearFine, Graph, Trash } from "@phosphor-icons/react";
 import { useReactFlow } from "@xyflow/react";
-import { useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo } from "react";
 
 import {
   ContextMenu,
@@ -85,4 +85,4 @@ const NodeContextMenu: React.FC<Props> = ({
   );
 };
 
-export default NodeContextMenu;
+export default memo(NodeContextMenu);

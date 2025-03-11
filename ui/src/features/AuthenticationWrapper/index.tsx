@@ -12,7 +12,7 @@ const AuthenticationWrapper: React.FC<Props> = ({ children }) => {
   return isAuthenticated && children ? children : null;
 };
 
-const withAuthorisation = (): ((
+const withAuthorization = (): ((
   component: React.FC<Props>,
 ) => React.FC<Props>) => {
   return withAuthenticationRequired as unknown as (
@@ -20,4 +20,4 @@ const withAuthorisation = (): ((
   ) => React.FC<Props>;
 };
 
-export default withAuthorisation()(AuthenticationWrapper);
+export default withAuthorization()(AuthenticationWrapper);

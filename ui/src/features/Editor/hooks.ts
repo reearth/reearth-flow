@@ -21,6 +21,7 @@ import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
+import useDebugRun from "./useDebugRun";
 import useDeployment from "./useDeployment";
 import useNodeLocker from "./useNodeLocker";
 import useUIState from "./useUIState";
@@ -212,6 +213,10 @@ export default ({
     [fitView, handleYLayoutChange],
   );
 
+  const { handleDebugRunStart, handleDebugRunStop } = useDebugRun({
+    rawWorkflows,
+  });
+
   useShortcuts([
     {
       keyBinding: { key: "r", commandKey: false },
@@ -249,7 +254,7 @@ export default ({
     // },
   ]);
 
-  console.log("rawWorkflows", rawWorkflows);
+  // console.log("rawWorkflows", rawWorkflows);
 
   return {
     currentWorkflowId,
@@ -288,5 +293,7 @@ export default ({
     handleEdgesAdd: handleYEdgesAdd,
     handleEdgesChange: handleYEdgesChange,
     handleEdgeHover,
+    handleDebugRunStart,
+    handleDebugRunStop,
   };
 };

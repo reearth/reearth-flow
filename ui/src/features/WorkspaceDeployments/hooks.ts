@@ -1,5 +1,5 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useDeployment } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
@@ -10,7 +10,6 @@ import { lastOfUrl as getDeploymentId } from "@flow/utils";
 import { RouteOption } from "../WorkspaceLeftPanel";
 
 export default () => {
-  const ref = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   const [openDeploymentAddDialog, setOpenDeploymentAddDialog] = useState(false);
@@ -73,7 +72,7 @@ export default () => {
       await useDeleteDeployment(d.id, currentWorkspace.id);
       setDeploymentToBeDeleted(undefined);
       navigate({
-        to: `/workspaces/${currentWorkspace.id}/deployments/all`,
+        to: `/workspaces/${currentWorkspace.id}/deployments`,
       });
     },
     [
@@ -87,7 +86,7 @@ export default () => {
 
   const handleDeploymentRun = useCallback(
     async (deployment?: Deployment) => {
-      const d = deployment || selectedDeployment;
+      const d = deployment;
       if (!d || !currentWorkspace) return;
       const jobData = await executeDeployment({
         deploymentId: d.id,
@@ -98,27 +97,26 @@ export default () => {
         });
       }
     },
-    [selectedDeployment, currentWorkspace, navigate, executeDeployment],
+    [currentWorkspace, navigate, executeDeployment],
   );
 
   return {
-    ref,
     deployments,
     selectedDeployment,
     deploymentToBeDeleted,
     openDeploymentAddDialog,
     deploymentToBeEdited,
+    isFetching,
+    currentPage,
+    totalPages,
+    currentOrder,
     setDeploymentToBeEdited,
     setOpenDeploymentAddDialog,
     setDeploymentToBeDeleted,
     handleDeploymentSelect,
     handleDeploymentDelete,
     handleDeploymentRun,
-    isFetching,
-    currentPage,
     setCurrentPage,
-    totalPages,
-    currentOrder,
     setCurrentOrder,
   };
 };
