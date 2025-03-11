@@ -53,37 +53,124 @@ impl BroadcastPool {
             return Ok(group.clone());
         }
 
+        let global_lock_key = "global:doc:creation:lock";
+        let global_lock_value = uuid::Uuid::new_v4().to_string();
+        let mut global_lock_acquired = false;
+
+        if let Some(redis_config) = &self.redis_config {
+            if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
+                if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
+                    match redis::cmd("SET")
+                        .arg(global_lock_key)
+                        .arg(&global_lock_value)
+                        .arg("NX")
+                        .arg("EX")
+                        .arg(5)
+                        .query_async::<Option<String>>(&mut conn)
+                        .await
+                    {
+                        Ok(Some(_)) => {
+                            global_lock_acquired = true;
+                            tracing::debug!("Acquired global Redis lock for document creation");
+                        }
+                        _ => {
+                            tracing::debug!("Failed to acquire global Redis lock, waiting...");
+                            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+                            if let Some(group) = self.groups.get(doc_id) {
+                                tracing::debug!(
+                                    "Document '{}' found in local cache after waiting",
+                                    doc_id
+                                );
+                                return Ok(group.clone());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         let doc_exists_key = format!("doc:exists:{}", doc_id);
         let mut doc_already_exists = false;
 
         if let Some(redis_config) = &self.redis_config {
             if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
                 if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
-                    match redis::cmd("SETNX")
+                    match redis::cmd("EXISTS")
                         .arg(&doc_exists_key)
-                        .arg("creating")
                         .query_async(&mut conn)
                         .await
                     {
-                        Ok(true) => {
-                            tracing::debug!("Marked document '{}' as creating in Redis", doc_id);
-                            let _: Result<(), _> = redis::cmd("EXPIRE")
-                                .arg(&doc_exists_key)
-                                .arg(30)
-                                .query_async(&mut conn)
-                                .await;
-                        }
-                        Ok(false) => {
-                            doc_already_exists = true;
-                            tracing::debug!(
-                                "Document '{}' already exists or is being created",
-                                doc_id
-                            );
+                        Ok(exists) => {
+                            if exists {
+                                doc_already_exists = true;
+                                tracing::debug!("Document '{}' already exists in Redis", doc_id);
 
-                            tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                                if let Some(group) = self.groups.get(doc_id) {
+                                    if global_lock_acquired {
+                                        self.release_redis_lock(
+                                            global_lock_key,
+                                            &global_lock_value,
+                                        )
+                                        .await;
+                                    }
+                                    tracing::debug!(
+                                        "Document '{}' found in local cache after waiting",
+                                        doc_id
+                                    );
+                                    return Ok(group.clone());
+                                }
+                            } else {
+                                match redis::cmd("SETNX")
+                                    .arg(&doc_exists_key)
+                                    .arg("creating")
+                                    .query_async(&mut conn)
+                                    .await
+                                {
+                                    Ok(true) => {
+                                        tracing::debug!(
+                                            "Marked document '{}' as creating in Redis",
+                                            doc_id
+                                        );
+                                        let _: Result<(), _> = redis::cmd("EXPIRE")
+                                            .arg(&doc_exists_key)
+                                            .arg(30) // 30秒过期时间
+                                            .query_async(&mut conn)
+                                            .await;
+                                    }
+                                    Ok(false) => {
+                                        doc_already_exists = true;
+                                        tracing::debug!(
+                                            "Document '{}' is being created by another server",
+                                            doc_id
+                                        );
 
-                            if let Some(group) = self.groups.get(doc_id) {
-                                return Ok(group.clone());
+                                        tokio::time::sleep(tokio::time::Duration::from_millis(500))
+                                            .await;
+
+                                        if let Some(group) = self.groups.get(doc_id) {
+                                            if global_lock_acquired {
+                                                self.release_redis_lock(
+                                                    global_lock_key,
+                                                    &global_lock_value,
+                                                )
+                                                .await;
+                                            }
+                                            tracing::debug!(
+                                                "Document '{}' found in local cache after waiting",
+                                                doc_id
+                                            );
+                                            return Ok(group.clone());
+                                        }
+                                    }
+                                    Err(e) => {
+                                        tracing::warn!(
+                                            "Failed to mark document as creating in Redis: {}",
+                                            e
+                                        );
+                                    }
+                                }
                             }
                         }
                         Err(e) => {
@@ -94,94 +181,29 @@ impl BroadcastPool {
             }
         }
 
-        let mut lock_acquired = false;
-        let lock_value = uuid::Uuid::new_v4().to_string();
-        let lock_key = format!("lock:doc:{}", doc_id);
-
-        if !doc_already_exists {
-            let mut retry_count = 0;
-            const MAX_RETRIES: usize = 5;
-
-            if let Some(redis_config) = &self.redis_config {
-                while retry_count < MAX_RETRIES && !lock_acquired {
-                    if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
-                        if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
-                            match redis::cmd("SET")
-                                .arg(&lock_key)
-                                .arg(&lock_value)
-                                .arg("NX")
-                                .arg("EX")
-                                .arg(10)
-                                .query_async::<Option<String>>(&mut conn)
-                                .await
-                            {
-                                Ok(Some(_)) => {
-                                    lock_acquired = true;
-                                    tracing::debug!(
-                                        "Acquired Redis lock for document '{}'",
-                                        doc_id
-                                    );
-                                    break;
-                                }
-                                _ => {
-                                    let backoff = 100 * (1 << retry_count);
-                                    tracing::debug!(
-                                        "Failed to acquire Redis lock for document '{}', retrying in {}ms (attempt {}/{})",
-                                        doc_id, backoff, retry_count + 1, MAX_RETRIES
-                                    );
-                                    tokio::time::sleep(tokio::time::Duration::from_millis(backoff))
-                                        .await;
-
-                                    if let Some(group) = self.groups.get(doc_id) {
-                                        if let Some(redis_config) = &self.redis_config {
-                                            if let Ok(manager) =
-                                                redis::Client::open(redis_config.url.clone())
-                                            {
-                                                if let Ok(mut conn) =
-                                                    manager.get_multiplexed_async_connection().await
-                                                {
-                                                    let _: Result<(), _> = redis::cmd("SET")
-                                                        .arg(&doc_exists_key)
-                                                        .arg("created")
-                                                        .query_async(&mut conn)
-                                                        .await;
-                                                }
-                                            }
-                                        }
-                                        return Ok(group.clone());
-                                    }
-
-                                    retry_count += 1;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
         let _local_lock = self.groups_mutex.lock().await;
 
         if let Some(group) = self.groups.get(doc_id) {
-            if lock_acquired {
-                self.release_redis_lock(&lock_key, &lock_value).await;
+            if global_lock_acquired {
+                self.release_redis_lock(global_lock_key, &global_lock_value)
+                    .await;
             }
-
-            if let Some(redis_config) = &self.redis_config {
-                if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
-                    if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
-                        let _: Result<(), _> = redis::cmd("SET")
-                            .arg(&doc_exists_key)
-                            .arg("created")
-                            .query_async(&mut conn)
-                            .await;
-                    }
-                }
-            }
-
+            tracing::debug!(
+                "Document '{}' found in local cache after acquiring local lock",
+                doc_id
+            );
             return Ok(group.clone());
         }
-        tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+
+        if doc_already_exists {
+            tracing::debug!(
+                "Attempting to load existing document '{}' from storage",
+                doc_id
+            );
+        } else {
+            tracing::debug!("Creating new document '{}'", doc_id);
+        }
+
         let awareness: AwarenessRef = {
             let doc = Doc::new();
             let mut updates_from_redis = Vec::new();
@@ -240,10 +262,6 @@ impl BroadcastPool {
                         } else {
                             tracing::error!("Failed to load document {}: {}", doc_id, e);
 
-                            if lock_acquired {
-                                self.release_redis_lock(&lock_key, &lock_value).await;
-                            }
-
                             if let Some(redis_config) = &self.redis_config {
                                 if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
                                     if let Ok(mut conn) =
@@ -255,6 +273,11 @@ impl BroadcastPool {
                                             .await;
                                     }
                                 }
+                            }
+
+                            if global_lock_acquired {
+                                self.release_redis_lock(global_lock_key, &global_lock_value)
+                                    .await;
                             }
 
                             return Err(anyhow!("Failed to load document: {}", e));
@@ -293,9 +316,14 @@ impl BroadcastPool {
         );
 
         self.groups.insert(doc_id.to_string(), group.clone());
+        tracing::info!(
+            "Successfully created and cached document group for '{}'",
+            doc_id
+        );
 
-        if lock_acquired {
-            self.release_redis_lock(&lock_key, &lock_value).await;
+        if global_lock_acquired {
+            self.release_redis_lock(global_lock_key, &global_lock_value)
+                .await;
         }
 
         Ok(group)
