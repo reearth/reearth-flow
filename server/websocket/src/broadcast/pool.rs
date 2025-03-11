@@ -8,8 +8,10 @@ use dashmap::DashMap;
 use std::sync::Arc;
 use uuid;
 use yrs::sync::Awareness;
+use yrs::Array;
 use yrs::{Doc, Transact};
 
+use yrs::ReadTxn;
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
     store: Arc<GcsStore>,
@@ -106,30 +108,49 @@ impl BroadcastPool {
 
             if !lock_acquired {
                 let mut retry_count = 0;
-                const MAX_RETRIES: u32 = 10;
+                const MAX_RETRIES: u32 = 15;
                 const RETRY_INTERVAL_MS: u64 = 200;
+                let mut found_main_workflow = false;
 
-                while retry_count < MAX_RETRIES {
+                while retry_count < MAX_RETRIES && !found_main_workflow {
                     let updates_from_redis = redis_store.get_pending_updates(doc_id).await?;
 
                     if !updates_from_redis.is_empty() {
-                        break;
+                        let temp_doc = Doc::new();
+                        {
+                            let mut txn = temp_doc.transact_mut();
+
+                            for update in &updates_from_redis {
+                                if let Ok(decoded) =
+                                    yrs::updates::decoder::Decode::decode_v1(update)
+                                {
+                                    let _ = txn.apply_update(decoded);
+                                }
+                            }
+                        }
+
+                        let txn = temp_doc.transact();
+                        if let Some(workflows) = txn.get_array("workflows") {
+                            if workflows.len(&txn) > 0 {
+                                found_main_workflow = true;
+                                tracing::info!(
+                                    "Found workflows in updates for document {}",
+                                    doc_id
+                                );
+                            }
+                        }
                     }
 
-                    if redis_store
-                        .exists(&format!("doc:exists:{}", doc_id))
-                        .await?
-                    {
-                        break;
+                    if !found_main_workflow {
+                        tokio::time::sleep(tokio::time::Duration::from_millis(RETRY_INTERVAL_MS))
+                            .await;
+                        retry_count += 1;
                     }
-
-                    tokio::time::sleep(tokio::time::Duration::from_millis(RETRY_INTERVAL_MS)).await;
-                    retry_count += 1;
                 }
 
                 if retry_count >= MAX_RETRIES {
                     tracing::warn!(
-                        "Reached maximum retries waiting for document updates for {}",
+                        "Reached maximum retries waiting for Main Workflow in document {}",
                         doc_id
                     );
                 }
