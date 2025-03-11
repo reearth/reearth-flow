@@ -72,6 +72,52 @@ impl BroadcastPool {
                         Ok(Some(_)) => {
                             global_lock_acquired = true;
                             tracing::debug!("Acquired global Redis lock for document creation");
+
+                            let redis_key = format!("pending_updates:{}", doc_id);
+                            let mut has_pending_updates = false;
+
+                            for attempt in 1..=5 {
+                                if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
+                                    if let Ok(mut conn) =
+                                        manager.get_multiplexed_async_connection().await
+                                    {
+                                        match conn.llen::<_, i64>(&redis_key).await {
+                                            Ok(len) if len > 0 => {
+                                                has_pending_updates = true;
+                                                tracing::debug!(
+                                                    "Found {} pending updates for document '{}' after {} attempt(s)",
+                                                    len, doc_id, attempt
+                                                );
+                                                break;
+                                            }
+                                            Ok(_) => {
+                                                tracing::debug!(
+                                                    "No pending updates found for document '{}', attempt {}/5",
+                                                    doc_id, attempt
+                                                );
+                                            }
+                                            Err(e) => {
+                                                tracing::warn!(
+                                                    "Failed to check pending updates for document '{}': {}",
+                                                    doc_id, e
+                                                );
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if !has_pending_updates && attempt < 5 {
+                                    tokio::time::sleep(tokio::time::Duration::from_millis(100))
+                                        .await;
+                                }
+                            }
+
+                            if !has_pending_updates {
+                                tracing::debug!(
+                                    "No pending updates found for document '{}' after 5 attempts",
+                                    doc_id
+                                );
+                            }
                         }
                         _ => {
                             tracing::debug!("Failed to acquire global Redis lock, waiting...");
@@ -210,28 +256,58 @@ impl BroadcastPool {
 
             if let Some(redis_config) = &self.redis_config {
                 let redis_key = format!("pending_updates:{}", doc_id);
-                if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
-                    if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
-                        match conn.lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1).await {
-                            Ok(updates) => {
-                                if !updates.is_empty() {
-                                    tracing::debug!(
-                                        "Found {} pending updates in Redis for document '{}'",
-                                        updates.len(),
-                                        doc_id
-                                    );
-                                    updates_from_redis = updates;
+                let mut retry_count = 0;
+                const MAX_RETRIES: usize = 5;
+
+                while retry_count < MAX_RETRIES {
+                    if let Ok(manager) = redis::Client::open(redis_config.url.clone()) {
+                        if let Ok(mut conn) = manager.get_multiplexed_async_connection().await {
+                            match conn.lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1).await {
+                                Ok(updates) => {
+                                    if !updates.is_empty() {
+                                        tracing::debug!(
+                                            "Found {} pending updates in Redis for document '{}' (attempt {}/{})",
+                                            updates.len(),
+                                            doc_id,
+                                            retry_count + 1,
+                                            MAX_RETRIES
+                                        );
+                                        updates_from_redis = updates;
+                                        break;
+                                    } else {
+                                        tracing::debug!(
+                                            "No pending updates found for document '{}' (attempt {}/{})",
+                                            doc_id,
+                                            retry_count + 1,
+                                            MAX_RETRIES
+                                        );
+                                    }
                                 }
-                            }
-                            Err(e) => {
-                                tracing::warn!(
-                                    "Failed to load pending updates from Redis for document '{}': {}",
-                                    doc_id,
-                                    e
-                                );
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "Failed to load pending updates from Redis for document '{}': {} (attempt {}/{})",
+                                        doc_id,
+                                        e,
+                                        retry_count + 1,
+                                        MAX_RETRIES
+                                    );
+                                }
                             }
                         }
                     }
+
+                    retry_count += 1;
+                    if retry_count < MAX_RETRIES {
+                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    }
+                }
+
+                if updates_from_redis.is_empty() {
+                    tracing::debug!(
+                        "No pending updates found for document '{}' after {} attempts",
+                        doc_id,
+                        MAX_RETRIES
+                    );
                 }
             }
 
@@ -285,13 +361,36 @@ impl BroadcastPool {
                     }
                 }
 
-                for update in updates_from_redis {
-                    if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(&update) {
-                        if let Err(e) = txn.apply_update(decoded) {
+                if !updates_from_redis.is_empty() {
+                    tracing::debug!(
+                        "Applying {} pending updates to document '{}'",
+                        updates_from_redis.len(),
+                        doc_id
+                    );
+                    for (i, update) in updates_from_redis.iter().enumerate() {
+                        if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(update) {
+                            if let Err(e) = txn.apply_update(decoded) {
+                                tracing::warn!(
+                                    "Failed to apply update {}/{} from Redis for document '{}': {}",
+                                    i + 1,
+                                    updates_from_redis.len(),
+                                    doc_id,
+                                    e
+                                );
+                            } else {
+                                tracing::debug!(
+                                    "Successfully applied update {}/{} to document '{}'",
+                                    i + 1,
+                                    updates_from_redis.len(),
+                                    doc_id
+                                );
+                            }
+                        } else {
                             tracing::warn!(
-                                "Failed to apply update from Redis for document '{}': {}",
-                                doc_id,
-                                e
+                                "Failed to decode update {}/{} for document '{}'",
+                                i + 1,
+                                updates_from_redis.len(),
+                                doc_id
                             );
                         }
                     }
