@@ -263,21 +263,14 @@ impl BroadcastGroup {
             .expect("doc_name required when storage enabled");
         let redis_ttl = config.redis_config.as_ref().map(|c| c.ttl as usize);
 
-        group.doc_name = Some(doc_name.clone());
-
-        Self::load_from_storage(
-            &store,
-            group.doc_name.as_ref().unwrap(),
-            &group.awareness_ref,
-        )
-        .await;
+        Self::load_from_storage(&store, &doc_name, &group.awareness_ref).await;
 
         let redis_store = if let Some(redis_config) = config.redis_config {
             let mut store = RedisStore::new(Some(redis_config.clone()));
             match store.init().await {
                 Ok(()) => {
                     let store = Arc::new(store);
-                    let doc_name_str = group.doc_name.as_ref().unwrap().clone();
+                    let doc_name_str = doc_name.clone();
                     let store_clone = store.clone();
                     let awareness_clone = group.awareness_ref.clone();
                     let pending_clone = group.pending_updates.clone();
@@ -314,34 +307,36 @@ impl BroadcastGroup {
 
                     let consumer_name = format!("instance-{}", rand::random::<u32>());
 
-                    let doc_name_for_sub = group.doc_name.as_ref().unwrap().clone();
                     let awareness_for_sub = group.awareness_ref.clone();
-                    let (tx, mut rx) = tokio::sync::mpsc::channel(1024);
-                    let sender_for_sub = group.sender.clone();
+                    let sender_for_broadcast = group.sender.clone();
+                    let doc_name_for_sub = doc_name.clone();
                     let redis_url = redis_config.url.clone();
 
-                    let mut redis_pubsub =
-                        RedisPubSub::new(redis_url, awareness_for_sub, tx, doc_name_for_sub);
+                    let (tx, mut rx) = tokio::sync::mpsc::channel(1024);
 
-                    let sender_clone = sender_for_sub.clone();
+                    let sender_clone = sender_for_broadcast.clone();
                     tokio::spawn(async move {
                         while let Some(msg) = rx.recv().await {
                             let _ = sender_clone.send(msg);
                         }
                     });
 
+                    let mut redis_pubsub =
+                        RedisPubSub::new(redis_url, awareness_for_sub, tx, doc_name_for_sub);
                     redis_pubsub.start();
-                    group.redis_consumer_name = Some(consumer_name);
 
                     let redis_pubsub = std::sync::Arc::new(tokio::sync::Mutex::new(redis_pubsub));
                     let redis_pubsub_clone = redis_pubsub.clone();
 
-                    group.redis_subscriber_task = Some(tokio::spawn(async move {
+                    let redis_subscriber_task = tokio::spawn(async move {
                         let _redis_pubsub = redis_pubsub_clone;
                         loop {
                             tokio::time::sleep(std::time::Duration::from_secs(60)).await;
                         }
-                    }));
+                    });
+
+                    group.redis_subscriber_task = Some(redis_subscriber_task);
+                    group.redis_consumer_name = Some(consumer_name);
 
                     Some(store)
                 }
@@ -356,6 +351,7 @@ impl BroadcastGroup {
 
         group.storage = Some(store);
         group.redis_store = redis_store;
+        group.doc_name = Some(doc_name.clone());
         group.redis_ttl = redis_ttl;
 
         group.storage_rx = None;
