@@ -27,6 +27,8 @@ import {
 } from "@flow/components";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useProjectExport } from "@flow/hooks";
+import useProjectDuplication from "@flow/hooks/useProjectDuplication";
+import { useDocument } from "@flow/lib/gql/document";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
 import { openLinkInNewTab } from "@flow/utils";
@@ -76,8 +78,11 @@ const ProjectCard: React.FC<Props> = ({
     e.stopPropagation();
     openLinkInNewTab(sharedUrl);
   };
-
+  const { useGetLatestProjectSnapshot } = useDocument();
+  const { projectDocument } = useGetLatestProjectSnapshot(project?.id ?? "");
   const { isExporting, handleProjectExport } = useProjectExport(project);
+
+  const { isDuplicating, handleProjectDuplication } = useProjectDuplication();
 
   return (
     <Card
@@ -86,6 +91,11 @@ const ProjectCard: React.FC<Props> = ({
       onClick={() => onProjectSelect(project)}>
       <CardContent className="relative flex h-[120px] items-center justify-center p-0">
         {isExporting && (
+          <p className="loading-pulse absolute left-2 top-2 font-thin">
+            {t("Duplicating...")}
+          </p>
+        )}
+        {isDuplicating && (
           <p className="loading-pulse absolute left-2 top-2 font-thin">
             {t("Exporting...")}
           </p>
@@ -137,11 +147,9 @@ const ProjectCard: React.FC<Props> = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="justify-between gap-2"
-                disabled
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // handleProjectDuplication();
-                }}>
+                onClick={() =>
+                  handleProjectDuplication(project, projectDocument)
+                }>
                 {t("Duplicate Project")}
                 <Copy weight="light" />
               </DropdownMenuItem>
