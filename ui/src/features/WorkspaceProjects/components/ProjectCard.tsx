@@ -26,7 +26,8 @@ import {
   TooltipTrigger,
 } from "@flow/components";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
-import { useProjectExport } from "@flow/hooks";
+import { useProjectDuplicate, useProjectExport } from "@flow/hooks";
+import { useDocument } from "@flow/lib/gql/document";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
 import { openLinkInNewTab } from "@flow/utils";
@@ -52,7 +53,12 @@ const ProjectCard: React.FC<Props> = ({
   const { id, name, description, updatedAt, sharedToken } = project;
 
   const [persistOverlay, setPersistOverlay] = useState(false);
-
+  const { useGetLatestProjectSnapshot } = useDocument();
+  const { projectDocument } = useGetLatestProjectSnapshot(project?.id ?? "");
+  const { isDuplicating, handleProjectDuplication } = useProjectDuplicate(
+    project,
+    projectDocument,
+  );
   // TODO: isShared and sharedURL are temp values.
   const BASE_URL = window.location.origin;
 
@@ -88,6 +94,11 @@ const ProjectCard: React.FC<Props> = ({
         {isExporting && (
           <p className="loading-pulse absolute left-2 top-2 font-thin">
             {t("Exporting...")}
+          </p>
+        )}
+        {isDuplicating && (
+          <p className="loading-pulse absolute left-2 top-2 font-thin">
+            {t("Duplicating...")}
           </p>
         )}
         <FlowLogo
@@ -137,11 +148,7 @@ const ProjectCard: React.FC<Props> = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="justify-between gap-2"
-                disabled
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // handleProjectDuplication();
-                }}>
+                onClick={handleProjectDuplication}>
                 {t("Duplicate Project")}
                 <Copy weight="light" />
               </DropdownMenuItem>
