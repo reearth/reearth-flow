@@ -103,7 +103,5 @@ export default (
     }
   }
 
-  console.log("result action", resultAction);
-
   return { action: resultAction };
 };

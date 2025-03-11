@@ -72,7 +72,7 @@ const ParamEditor: React.FC<Props> = ({
   };
 
   const [activeTab, setActiveTab] = useState(
-    !createdAction?.parameter ? "customizations" : "params",
+    createdAction && !createdAction.parameter ? "customizations" : "params",
   );
 
   const handleSubmit = () => {

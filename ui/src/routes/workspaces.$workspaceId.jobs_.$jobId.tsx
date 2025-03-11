@@ -8,7 +8,6 @@ export const Route = createFileRoute("/workspaces/$workspaceId/jobs_/$jobId")({
 
 function RouteComponent() {
   const { jobId } = useParams({ strict: false });
-  console.log("jobId", jobId);
 
   return jobId ? (
     <div className="flex flex-1">
