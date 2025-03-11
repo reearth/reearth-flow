@@ -1,6 +1,7 @@
 export * from "./action";
 export * from "./api";
 export * from "./deployment";
+export * from "./document";
 export * from "./edge";
 export * from "./job";
 export * from "./layout";

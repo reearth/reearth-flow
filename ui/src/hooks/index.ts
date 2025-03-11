@@ -2,6 +2,7 @@ export { default as useDoubleClick } from "./useDoubleClick";
 export { default as useFullscreen } from "./useFullscreen";
 export { default as useNodeSchemaGenerate } from "./useNodeSchemaGenerate";
 export { default as useShortcuts } from "./useShortcuts";
+export { default as useProjectDuplication } from "./useProjectDuplication";
 export { default as useProjectExport } from "./useProjectExport";
 export { default as useProjectImport } from "./useProjectImport";
 export { default as useProjectPagination } from "./useProjectPagination";
