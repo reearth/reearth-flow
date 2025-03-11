@@ -105,11 +105,34 @@ impl BroadcastPool {
                 .await?;
 
             if !lock_acquired {
-                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                let mut retry_count = 0;
+                const MAX_RETRIES: u32 = 10;
+                const RETRY_INTERVAL_MS: u64 = 200;
 
-                // if let Some(group) = self.groups.get(doc_id) {
-                //     return Ok(group.clone());
-                // }
+                while retry_count < MAX_RETRIES {
+                    let updates_from_redis = redis_store.get_pending_updates(doc_id).await?;
+
+                    if !updates_from_redis.is_empty() {
+                        break;
+                    }
+
+                    if redis_store
+                        .exists(&format!("doc:exists:{}", doc_id))
+                        .await?
+                    {
+                        break;
+                    }
+
+                    tokio::time::sleep(tokio::time::Duration::from_millis(RETRY_INTERVAL_MS)).await;
+                    retry_count += 1;
+                }
+
+                if retry_count >= MAX_RETRIES {
+                    tracing::warn!(
+                        "Reached maximum retries waiting for document updates for {}",
+                        doc_id
+                    );
+                }
             }
         }
 
