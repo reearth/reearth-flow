@@ -37,7 +37,11 @@ type Props = {
   onWorkflowAdd?: (position?: XYPosition) => void;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
-  onNodeDoubleClick?: (e: MouseEvent, node: Node) => void;
+  onNodeDoubleClick?: (
+    e: MouseEvent | undefined,
+    nodeId: string,
+    subworkflowId?: string,
+  ) => void;
   onNodeHover?: (e: MouseEvent, node?: Node) => void;
   onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
   onEdgesAdd?: (newEdges: Edge[]) => void;
@@ -65,6 +69,7 @@ const Canvas: React.FC<Props> = ({
     handleNodeDragStop,
     handleNodeDragOver,
     handleNodeDrop,
+    handleNodeDoubleClick,
     handleEdgesChange,
     handleConnect,
     handleReconnect,
@@ -74,6 +79,7 @@ const Canvas: React.FC<Props> = ({
     onWorkflowAdd,
     onNodesAdd,
     onNodesChange,
+    onNodeDoubleClick,
     onEdgesAdd,
     onEdgesChange,
     onNodePickerOpen,
@@ -123,7 +129,7 @@ const Canvas: React.FC<Props> = ({
       isValidConnection={isValidConnection}
       onNodesChange={handleNodesChange}
       onEdgesChange={handleEdgesChange}
-      onNodeDoubleClick={onNodeDoubleClick}
+      onNodeDoubleClick={handleNodeDoubleClick}
       onNodeDragStop={handleNodeDragStop}
       onNodesDelete={handleNodesDelete}
       onNodeMouseEnter={onNodeHover}

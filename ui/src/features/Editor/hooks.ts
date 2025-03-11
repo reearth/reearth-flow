@@ -8,13 +8,14 @@ import {
   useState,
 } from "react";
 import { useY } from "react-yjs";
-import { Array as YArray, UndoManager as YUndoManager } from "yjs";
+import { Doc, Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useShortcuts } from "@flow/hooks";
 import { useSharedProject } from "@flow/lib/gql";
 import { checkForReader } from "@flow/lib/reactFlow";
 import { useYjsStore } from "@flow/lib/yjs";
+import { yWorkflowConstructor } from "@flow/lib/yjs/conversions";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
@@ -27,14 +28,28 @@ import useNodeLocker from "./useNodeLocker";
 import useUIState from "./useUIState";
 
 export default ({
-  yWorkflows,
+  yDoc,
   undoManager,
   undoTrackerActionWrapper,
 }: {
-  yWorkflows: YArray<YWorkflow>;
+  yDoc: Doc;
   undoManager: YUndoManager | null;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
+  const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+
+  useEffect(() => {
+    if (yWorkflows.length === 0) {
+      yDoc.transact(() => {
+        const yWorkflow = yWorkflowConstructor(
+          DEFAULT_ENTRY_GRAPH_ID,
+          "Main Workflow",
+        );
+        yWorkflows.insert(0, [yWorkflow]);
+      });
+    }
+  }, [yWorkflows, yDoc]);
+
   const { fitView } = useReactFlow();
 
   const [currentWorkflowId, setCurrentWorkflowId] = useState<string>(
@@ -129,25 +144,32 @@ export default ({
 
   // Passed to editor context so needs to be a ref
   const handleNodeDoubleClickRef =
-    useRef<(e: MouseEvent | undefined, node: Node) => void>(undefined);
+    useRef<
+      (
+        e: MouseEvent | undefined,
+        nodeId: string,
+        subworkflowId?: string,
+      ) => void
+    >(undefined);
   handleNodeDoubleClickRef.current = (
     _e: MouseEvent | undefined,
-    node: Node,
+    nodeId: string,
+    subworkflowId?: string,
   ) => {
-    if (node.type === "subworkflow" && node.data.subworkflowId) {
-      handleWorkflowOpen(node.data.subworkflowId);
+    if (subworkflowId) {
+      handleWorkflowOpen(subworkflowId);
     } else {
       fitView({
-        nodes: [{ id: node.id }],
+        nodes: [{ id: nodeId }],
         duration: 500,
         padding: 2,
       });
-      handleNodeLocking(node.id);
+      handleNodeLocking(nodeId);
     }
   };
   const handleNodeDoubleClick = useCallback(
-    (e: MouseEvent | undefined, node: Node) =>
-      handleNodeDoubleClickRef.current?.(e, node),
+    (e: MouseEvent | undefined, nodeId: string, subworkflowId?: string) =>
+      handleNodeDoubleClickRef.current?.(e, nodeId, subworkflowId),
     [],
   );
 

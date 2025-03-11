@@ -23,6 +23,11 @@ type Props = {
   onWorkflowAdd?: (position?: XYPosition) => void;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
+  onNodeDoubleClick?: (
+    e: MouseEvent | undefined,
+    nodeId: string,
+    subworkflowId?: string,
+  ) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
 };
@@ -33,6 +38,7 @@ export default ({
   onWorkflowAdd,
   onNodesAdd,
   onNodesChange,
+  onNodeDoubleClick,
   onEdgesChange,
   onNodePickerOpen,
 }: Props) => {
@@ -255,11 +261,19 @@ export default ({
     [handleNodeDropOnEdge, handleDropInBatch],
   );
 
+  const handleNodeDoubleClick = useCallback(
+    (e: MouseEvent | undefined, node: Node) => {
+      onNodeDoubleClick?.(e, node.id, node.data.subworkflowId);
+    },
+    [onNodeDoubleClick],
+  );
+
   return {
     handleNodesChange,
     handleNodesDelete,
     handleNodeDragOver,
     handleNodeDragStop,
     handleNodeDrop,
+    handleNodeDoubleClick,
   };
 };

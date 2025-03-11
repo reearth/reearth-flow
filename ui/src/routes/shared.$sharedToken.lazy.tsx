@@ -53,19 +53,19 @@ const EditorComponent = () => {
 
   const { sharedProject } = useGetSharedProject(sharedToken);
 
-  const { state, isSynced } = useYjsSetup({
+  const { yDoc, isSynced, undoTrackerActionWrapper } = useYjsSetup({
     projectId: sharedProject?.id,
     workflowId: DEFAULT_ENTRY_GRAPH_ID,
   });
 
-  return !state || !isSynced ? (
+  return !yDoc || !isSynced || !undoTrackerActionWrapper ? (
     <LoadingSplashscreen />
   ) : (
     <div className="h-screen">
       <SharedCanvas
-        yWorkflows={state.yWorkflows}
+        yDoc={yDoc}
         project={sharedProject}
-        undoTrackerActionWrapper={state.undoTrackerActionWrapper}
+        undoTrackerActionWrapper={undoTrackerActionWrapper}
       />
     </div>
   );
