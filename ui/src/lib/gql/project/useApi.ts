@@ -138,7 +138,7 @@ export const useProject = () => {
       });
       return { job: data.job, ...rest };
     } catch (err) {
-      console.log("error", err);
+      console.error("error", err);
       toast({
         title: t("Debug Run Could Not Be Started"),
         description: t(

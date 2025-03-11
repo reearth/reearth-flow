@@ -53,7 +53,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
           <div
             className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${status === "failed" ? "border-destructive" : selected ? selectedColor : borderColor}`}>
             <p className="self-center truncate text-xs dark:font-light">
-              {customName || officialName}
+              {data.customizations?.customName || customName || officialName}
             </p>
             {status === "succeeded" ? (
               <div className="self-center">

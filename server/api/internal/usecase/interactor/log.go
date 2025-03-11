@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/reearth/reearth-flow/api/internal/usecase"
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -16,21 +16,31 @@ import (
 )
 
 type LogInteractor struct {
-	logsGatewayRedis gateway.Log
-	subscriptions    *subscription.LogManager
-	watchers         map[string]context.CancelFunc
-	mu               sync.Mutex
+	logsGatewayRedis  gateway.Log
+	subscriptions     *subscription.LogManager
+	watchers          map[string]context.CancelFunc
+	mu                sync.Mutex
+	permissionChecker gateway.PermissionChecker
 }
 
-func NewLogInteractor(lgRedis gateway.Log) interfaces.Log {
+func NewLogInteractor(lgRedis gateway.Log, permissionChecker gateway.PermissionChecker) interfaces.Log {
 	return &LogInteractor{
-		logsGatewayRedis: lgRedis,
-		subscriptions:    subscription.NewLogManager(),
-		watchers:         make(map[string]context.CancelFunc),
+		logsGatewayRedis:  lgRedis,
+		subscriptions:     subscription.NewLogManager(),
+		watchers:          make(map[string]context.CancelFunc),
+		permissionChecker: permissionChecker,
 	}
 }
 
-func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.JobID, operator *usecase.Operator) ([]*log.Log, error) {
+func (li *LogInteractor) checkPermission(ctx context.Context, action string) error {
+	return checkPermission(ctx, li.permissionChecker, rbac.ResourceLog, action)
+}
+
+func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.JobID) ([]*log.Log, error) {
+	if err := li.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	until := time.Now().UTC()
@@ -46,7 +56,11 @@ func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.
 
 }
 
-func (li *LogInteractor) Subscribe(ctx context.Context, jobID id.JobID, operator *usecase.Operator) (chan *log.Log, error) {
+func (li *LogInteractor) Subscribe(ctx context.Context, jobID id.JobID) (chan *log.Log, error) {
+	if err := li.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	if li.logsGatewayRedis == nil {
 		return nil, fmt.Errorf("logsGatewayRedis is nil")
 	}
@@ -82,6 +96,10 @@ func (li *LogInteractor) startWatchingLogsIfNeeded(jobID id.JobID, since time.Ti
 }
 
 func (li *LogInteractor) runLogMonitoringLoop(ctx context.Context, jobID id.JobID, since time.Time) {
+	if err := li.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return
+	}
+
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
