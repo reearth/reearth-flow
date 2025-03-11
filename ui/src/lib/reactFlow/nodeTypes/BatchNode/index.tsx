@@ -1,57 +1,14 @@
 import { RectangleDashed } from "@phosphor-icons/react";
-import { RJSFSchema } from "@rjsf/utils";
 import { NodeProps, NodeResizer } from "@xyflow/react";
 import { memo } from "react";
 
-import { Node, NodeType } from "@flow/types";
+import { Node } from "@flow/types";
 
 import NodeContextMenu from "../NodeContextMenu";
 
 import useHooks from "./hooks";
 
 export type BatchNodeProps = NodeProps<Node>;
-
-export const initialSize = { width: 300, height: 200 };
-
-const batchNodeSchema: RJSFSchema = {
-  type: "object",
-  properties: {
-    customName: { type: "string", title: "Name" },
-    backgroundColor: {
-      type: "string",
-      format: "color",
-      default: "#323236",
-      title: "Background Color",
-    },
-    textColor: {
-      type: "string",
-      format: "color",
-      title: "Text Color",
-      default: "#fafafa",
-    },
-  },
-};
-
-export const batchNodeAction = {
-  name: "batch",
-  description: "Batch node",
-  type: "batch",
-  categories: ["batch"],
-  inputPorts: ["input"],
-  outputPorts: ["output"],
-  builtin: true,
-  parameter: batchNodeSchema,
-};
-
-export const baseBatchNode: {
-  type: NodeType;
-  style: { width: string; height: string };
-  zIndex: number;
-} = {
-  type: "batch",
-  style: { width: initialSize.width + "px", height: initialSize.height + "px" },
-  zIndex: -1001,
-};
 
 const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, type, id }) => {
   const { bounds, rgbaColor, handleOnEndResize } = useHooks({ id, data });
@@ -98,12 +55,12 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, type, id }) => {
               if (element)
                 element.style.setProperty(
                   "color",
-                  data.params?.textColor || "",
+                  data.customizations?.textColor || "",
                   "important",
                 );
             }}>
             <RectangleDashed />
-            <p>{data.params?.customName || data.officialName}</p>
+            <p>{data.customizations?.customName || data.officialName}</p>
           </div>
         </div>
       </NodeContextMenu>

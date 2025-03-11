@@ -241,7 +241,10 @@ const createTreeDataItem = (
         ?.filter((n) => n.type === type)
         .map((n) => ({
           id: n.id,
-          name: n.data.customName || n.data.officialName || "untitled",
+          name:
+            n.data.customizations?.customName ||
+            n.data.officialName ||
+            "untitled",
           icon,
           type: n.type,
         })) ?? []
@@ -259,7 +262,10 @@ const createTreeDataItem = (
               ?.filter((n) => n.type === type)
               .map((n) => ({
                 id: n.id,
-                name: n.data.customName || n.data.officialName || "untitled",
+                name:
+                  n.data.customizations?.customName ||
+                  n.data.officialName ||
+                  "untitled",
                 icon,
                 type: n.type,
               })),
@@ -280,7 +286,7 @@ const createTreeDataItem = (
               .map((n) => ({
                 id: n.id,
                 name:
-                  n.data.params?.customName ||
+                  n.data.customizations?.customName ||
                   n.data.officialName ||
                   "untitled",
                 icon,
@@ -290,7 +296,9 @@ const createTreeDataItem = (
                   .map((d) => ({
                     id: d.id,
                     name:
-                      d.data.customName || d.data.officialName || "untitled",
+                      d.data.customizations?.customName ||
+                      d.data.officialName ||
+                      "untitled",
                     icon: getNodeIcon(d.type),
                   })),
               })),
