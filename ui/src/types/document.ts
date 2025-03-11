@@ -1,3 +1,5 @@
+import { ApiResponse } from "./api";
+
 export type ProjectSnapshot = {
   timestamp: string;
   version: number;
@@ -10,3 +12,7 @@ export type ProjectDocument = {
   version: number;
   updates: number[];
 };
+
+export type RollbackProject = {
+  projectDocument?: ProjectDocument;
+} & ApiResponse;

@@ -8,7 +8,7 @@ import { isDefined } from "@flow/utils";
 import { toProjectDocument, toProjectSnapShot } from "../convert";
 import { useGraphQLContext } from "../provider";
 
-export enum ProjectQueryKeys {
+export enum DocumentQueryKeys {
   GetLatestProjectSnapshot = "getLatestProjectSnapshot",
   GetProjectHistory = "getProjectHistory",
 }
@@ -19,7 +19,7 @@ export const useQueries = () => {
 
   const useLatestProjectSnapshotQuery = (projectId: string) =>
     useQuery({
-      queryKey: [ProjectQueryKeys.GetLatestProjectSnapshot, projectId],
+      queryKey: [DocumentQueryKeys.GetLatestProjectSnapshot, projectId],
       queryFn: async () => {
         const data = await graphQLContext?.GetLatestProjectSnapshot({
           projectId,
@@ -32,7 +32,7 @@ export const useQueries = () => {
 
   const useProjectHistoryQuery = (projectId: string) =>
     useQuery({
-      queryKey: [ProjectQueryKeys.GetProjectHistory, projectId],
+      queryKey: [DocumentQueryKeys.GetProjectHistory, projectId],
       queryFn: async () => {
         const data = await graphQLContext?.GetProjectHistory({
           projectId,
@@ -73,12 +73,12 @@ export const useQueries = () => {
       if (projectDocument) {
         queryClient.invalidateQueries({
           queryKey: [
-            ProjectQueryKeys.GetLatestProjectSnapshot,
+            DocumentQueryKeys.GetLatestProjectSnapshot,
             projectDocument.id,
           ],
         });
         queryClient.invalidateQueries({
-          queryKey: [ProjectQueryKeys.GetProjectHistory, projectDocument.id],
+          queryKey: [DocumentQueryKeys.GetProjectHistory, projectDocument.id],
         });
       }
     },

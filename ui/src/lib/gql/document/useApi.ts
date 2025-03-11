@@ -1,5 +1,6 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
+import { RollbackProject } from "@flow/types";
 
 import { useQueries } from "./useQueries";
 
@@ -32,10 +33,10 @@ export const useDocument = () => {
   const useRollbackProject = async (
     projectId: string,
     version: number,
-  ): Promise<{ projectDocument?: any }> => {
+  ): Promise<RollbackProject> => {
     const { mutateAsync, ...rest } = rollbackProjectMutation;
     try {
-      const projectDocument: any | undefined = await mutateAsync({
+      const projectDocument = await mutateAsync({
         projectId,
         version,
       });

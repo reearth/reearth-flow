@@ -21,7 +21,12 @@ export default ({ projectId }: { projectId: string }) => {
 
   const handleRollbackProject = useCallback(async () => {
     if (selectedProjectSnapshotVersion === null) return;
-    await useRollbackProject(projectId, selectedProjectSnapshotVersion);
+    const rollbackData = await useRollbackProject(
+      projectId,
+      selectedProjectSnapshotVersion,
+    );
+
+    console.log("rollbackData", rollbackData);
     setOpenVersionChangeDialog(false);
   }, [selectedProjectSnapshotVersion, useRollbackProject, projectId]);
 
