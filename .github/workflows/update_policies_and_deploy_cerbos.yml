@@ -104,11 +104,6 @@ jobs:
 
       - name: Upload policies archive to Artifact Registry
         run: |
-          # echo "Fetching current IAM bindings..."
-          # gcloud artifacts repositories get-iam-policy cerbos-policies \
-          #   --project=${{ secrets.GCP_PROJECT_ID }} \
-          #   --location=us-central1
-
           set -euxo pipefail
 
           echo "Current working directory: $(pwd)"
@@ -132,8 +127,7 @@ jobs:
             --location=us-central1 \
             --package=flow \
             --version=current \
-            --source=policies.tar.gz \
-            --verbosity=debug
+            --source=policies.tar.gz
         working-directory: server/api
 
   deploy-cerbos:
