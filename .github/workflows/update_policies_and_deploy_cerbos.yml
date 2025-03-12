@@ -104,12 +104,13 @@ jobs:
 
       - name: Upload policies archive to Artifact Registry
         run: |
-          gcloud artifacts files upload policies.tar.gz \
+          gcloud artifacts generic upload \
             --project=${{ secrets.GCP_PROJECT_ID }} \
             --repository=cerbos-policies \
             --location=us-central1 \
             --package=flow \
-            --version=latest
+            --version=latest \
+            --source=policies.tar.gz
         working-directory: server/api
 
   deploy-cerbos:
