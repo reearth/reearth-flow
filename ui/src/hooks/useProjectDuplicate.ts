@@ -16,12 +16,12 @@ export default (project: Project, projectDocument?: ProjectDocument) => {
   const [isDuplicating, setIsDuplicating] = useState<boolean>(false);
   const [currentWorkspace] = useCurrentWorkspace();
   const { createProject } = useProject();
-  const { websocket } = config();
 
   const handleProjectDuplication = useCallback(async () => {
     if (!project || !currentWorkspace) {
       return;
     }
+    const { websocket } = config();
 
     try {
       setIsDuplicating(true);
@@ -75,7 +75,6 @@ export default (project: Project, projectDocument?: ProjectDocument) => {
     t,
     getAccessToken,
     createProject,
-    websocket,
     project,
     projectDocument,
   ]);
