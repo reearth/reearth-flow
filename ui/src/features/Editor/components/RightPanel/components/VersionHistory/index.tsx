@@ -55,7 +55,7 @@ const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
               <span className="font-light">
                 {" "}
                 {t("Version ")}
-                {project?.version}
+                {latestProjectSnapshotVersion.version}
               </span>
             </p>
           </div>

@@ -40,7 +40,6 @@ export const useQueries = () => {
 
         if (!data) return;
         const { projectHistory } = data;
-        console.log("projectHistory", projectHistory);
         const history: ProjectSnapshot[] = projectHistory
           .filter(isDefined)
           .map((projectSnapshot) => toProjectSnapShot(projectSnapshot));
