@@ -12,7 +12,7 @@ type Props = {
   contentType?: "version-history";
   onClose: () => void;
   project?: Project;
-  yDoc: Doc | undefined;
+  yDoc: Doc | null;
 };
 
 const RightPanel: React.FC<Props> = ({

@@ -18,7 +18,7 @@ type Props = {
   yWorkflows: YArray<YWorkflow>;
   undoManager: YUndoManager | null;
   undoTrackerActionWrapper: (callback: () => void) => void;
-  yDoc: Doc | undefined;
+  yDoc: Doc | null;
 };
 
 export default function Editor({

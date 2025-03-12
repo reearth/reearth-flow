@@ -12,7 +12,7 @@ import { VersionHistoryChangeDialog } from "./VersionHistoryChangeDialog";
 
 type Props = {
   project?: Project;
-  yDoc: Doc | undefined;
+  yDoc: Doc | null;
 };
 
 const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {

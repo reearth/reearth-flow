@@ -107,6 +107,6 @@ export default ({
     isSynced,
     undoManager,
     undoTrackerActionWrapper,
-    yDoc,
+    yDocState,
   };
 };

@@ -9,7 +9,7 @@ export default ({
   yDoc,
 }: {
   projectId: string;
-  yDoc: Doc | undefined;
+  yDoc: Doc | null;
 }) => {
   const {
     useGetProjectHistory,
