@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import { Doc, UndoManager as YUndoManager } from "yjs";
+import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import Canvas from "@flow/features/Canvas";
+import { YWorkflow } from "@flow/lib/yjs/types";
 
 import {
   BottomBar,
@@ -14,13 +15,13 @@ import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
 
 type Props = {
-  yDoc: Doc;
+  yWorkflows: YArray<YWorkflow>;
   undoManager: YUndoManager | null;
   undoTrackerActionWrapper: (callback: () => void) => void;
 };
 
 export default function Editor({
-  yDoc,
+  yWorkflows,
   undoManager,
   undoTrackerActionWrapper,
 }: Props) {
@@ -63,7 +64,7 @@ export default function Editor({
     handleDebugRunStart,
     handleDebugRunStop,
     handleLayoutChange,
-  } = useHooks({ yDoc, undoManager, undoTrackerActionWrapper });
+  } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
 
   const editorContext = useMemo(
     (): EditorContextType => ({
