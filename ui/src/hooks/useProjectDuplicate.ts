@@ -23,9 +23,8 @@ export default (project: Project, projectDocument?: ProjectDocument) => {
       return;
     }
 
-    setIsDuplicating(true);
-
     try {
+      setIsDuplicating(true);
       const { project: newProject } = await createProject({
         workspaceId: currentWorkspace.id,
         name: project.name + t("(duplicate)"),
@@ -59,16 +58,16 @@ export default (project: Project, projectDocument?: ProjectDocument) => {
             yDoc.transact(() => {
               Y.applyUpdate(yDoc, convertedUpdates);
             });
-
+            setIsDuplicating(false);
             resolve();
           });
         });
         yWebSocketProvider?.destroy();
-      } else {
-        setIsDuplicating(false);
       }
     } catch (error) {
       console.error("Project duplication failed:", error);
+      setIsDuplicating(false);
+    } finally {
       setIsDuplicating(false);
     }
   }, [
