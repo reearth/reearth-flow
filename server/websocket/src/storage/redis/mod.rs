@@ -29,8 +29,13 @@ impl RedisStore {
         if let Some(config) = &self.config {
             let pool = Self::init_redis_connection(&config.url).await?;
             self.pool = Some(pool);
+            Ok(())
+        } else {
+            Err(redis::RedisError::from(std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                "Redis configuration is missing",
+            )))
         }
-        Ok(())
     }
 
     pub fn get_pool(&self) -> Option<Arc<RedisPool>> {

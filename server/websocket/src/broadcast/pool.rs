@@ -108,8 +108,8 @@ impl BroadcastPool {
 
             if !lock_acquired {
                 let mut retry_count = 0;
-                const MAX_RETRIES: u32 = 50;
-                const RETRY_INTERVAL_MS: u64 = 200;
+                const MAX_RETRIES: u32 = 10;
+                const RETRY_INTERVAL_MS: u64 = 100;
                 let mut found_main_workflow = false;
 
                 while retry_count < MAX_RETRIES && !found_main_workflow {
@@ -133,10 +133,6 @@ impl BroadcastPool {
                         if let Some(workflows) = txn.get_array("workflows") {
                             if workflows.len(&txn) > 0 {
                                 found_main_workflow = true;
-                                tracing::info!(
-                                    "Found workflows in updates for document {}",
-                                    doc_id
-                                );
                             }
                         }
                     }
@@ -146,13 +142,6 @@ impl BroadcastPool {
                             .await;
                         retry_count += 1;
                     }
-                }
-
-                if retry_count >= MAX_RETRIES {
-                    tracing::warn!(
-                        "Reached maximum retries waiting for Main Workflow in document {}",
-                        doc_id
-                    );
                 }
             }
         }
@@ -174,7 +163,7 @@ impl BroadcastPool {
                 if created {
                     redis_store.expire(&doc_exists_key, 3).await?;
                 } else {
-                    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+                    tokio::time::sleep(tokio::time::Duration::from_millis(128)).await;
 
                     if let Some(group) = self.groups.get(doc_id) {
                         if lock_acquired {

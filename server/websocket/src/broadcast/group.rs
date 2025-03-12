@@ -133,11 +133,6 @@ impl BroadcastGroup {
                                                 } else {
                                                     has_updates = true;
                                                 }
-                                            } else {
-                                                tracing::warn!(
-                                                    "Failed to decode update {} during flush",
-                                                    i
-                                                );
                                             }
                                         }
 
