@@ -5,6 +5,7 @@ use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
 use anyhow::{anyhow, Result};
 use dashmap::DashMap;
+use dashmap::DashSet;
 use std::sync::Arc;
 use uuid;
 use yrs::sync::Awareness;
@@ -16,7 +17,7 @@ pub struct BroadcastPool {
     redis_store: Option<Arc<RedisStore>>,
     groups: DashMap<String, Arc<BroadcastGroup>>,
     buffer_capacity: usize,
-    groups_mutex: Arc<tokio::sync::Mutex<()>>,
+    docs_in_creation: DashSet<String>,
 }
 
 impl BroadcastPool {
@@ -26,7 +27,7 @@ impl BroadcastPool {
             redis_store,
             groups: DashMap::new(),
             buffer_capacity: 1024,
-            groups_mutex: Arc::new(tokio::sync::Mutex::new(())),
+            docs_in_creation: DashSet::new(),
         }
     }
 
@@ -40,7 +41,7 @@ impl BroadcastPool {
             redis_store,
             groups: DashMap::new(),
             buffer_capacity,
-            groups_mutex: Arc::new(tokio::sync::Mutex::new(())),
+            docs_in_creation: DashSet::new(),
         }
     }
 
@@ -50,6 +51,9 @@ impl BroadcastPool {
 
     pub async fn get_or_create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         if let Some(group) = self.groups.get(doc_id) {
+            let group_clone = group.clone();
+            drop(group);
+
             if let Some(redis_store) = &self.redis_store {
                 if redis_store
                     .has_pending_updates(doc_id)
@@ -58,13 +62,59 @@ impl BroadcastPool {
                 {
                     if let Ok(updates) = redis_store.get_pending_updates(doc_id).await {
                         if !updates.is_empty() {
-                            let _ = self.apply_updates_to_doc(&group, updates).await;
+                            let _ = self.apply_updates_to_doc(&group_clone, updates).await;
                         }
                     }
                 }
             }
-            return Ok(group.clone());
+
+            return Ok(group_clone);
         }
+
+        let mut creation_locked = self.docs_in_creation.insert(doc_id.to_string());
+
+        if !creation_locked {
+            for delay_ms in [1, 2, 5, 10, 20] {
+                tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+
+                if let Some(group) = self.groups.get(doc_id) {
+                    let group_clone = group.clone();
+                    drop(group);
+                    return Ok(group_clone);
+                }
+
+                if self.docs_in_creation.insert(doc_id.to_string()) {
+                    creation_locked = true;
+                    break;
+                }
+            }
+
+            if !creation_locked {
+                if let Some(group) = self.groups.get(doc_id) {
+                    return Ok(group.clone());
+                }
+                return Err(anyhow!(
+                    "Failed to acquire creation lock for document: {}",
+                    doc_id
+                ));
+            }
+        }
+
+        struct CreationGuard<'a> {
+            pool: &'a BroadcastPool,
+            doc_id: String,
+        }
+
+        impl<'a> Drop for CreationGuard<'a> {
+            fn drop(&mut self) {
+                self.pool.docs_in_creation.remove(&self.doc_id);
+            }
+        }
+
+        let _creation_guard = CreationGuard {
+            pool: self,
+            doc_id: doc_id.to_string(),
+        };
 
         let doc_lock_key = format!("lock:doc:{}", doc_id);
         let lock_value = uuid::Uuid::new_v4().to_string();
@@ -76,14 +126,13 @@ impl BroadcastPool {
                 .await?;
         }
 
-        let _local_lock = self.groups_mutex.lock().await;
-
         if let Some(group) = self.groups.get(doc_id) {
             if lock_acquired {
                 if let Some(redis_store) = &self.redis_store {
                     let _ = redis_store.release_lock(&doc_lock_key, &lock_value).await;
                 }
             }
+
             return Ok(group.clone());
         }
 
@@ -99,6 +148,7 @@ impl BroadcastPool {
                 let doc = Doc::new();
                 if !updates_from_redis.is_empty() {
                     let mut txn = doc.transact_mut();
+                    let _ = self.store.load_doc(doc_id, &mut txn).await;
                     for update in &updates_from_redis {
                         if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(update) {
                             let _ = txn.apply_update(decoded);
