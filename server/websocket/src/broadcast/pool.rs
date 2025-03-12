@@ -105,7 +105,7 @@ impl BroadcastPool {
             doc_id: String,
         }
 
-        impl<'a> Drop for CreationGuard<'a> {
+        impl Drop for CreationGuard<'_> {
             fn drop(&mut self) {
                 self.pool.docs_in_creation.remove(&self.doc_id);
             }
