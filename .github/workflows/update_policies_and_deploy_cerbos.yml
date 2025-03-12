@@ -118,6 +118,13 @@ jobs:
           echo "Checking tarball exists..."
           test -f policies.tar.gz && echo "✔ policies.tar.gz exists"
 
+          gcloud artifacts versions delete current \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --repository=cerbos-policies \
+            --location=us-central1 \
+            --package=flow \
+            --quiet
+
           echo "Running gcloud upload with debug output..."
           gcloud artifacts generic upload \
             --project=${{ secrets.GCP_PROJECT_ID }} \
