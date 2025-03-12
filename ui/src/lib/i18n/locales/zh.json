@@ -180,6 +180,7 @@
   "Delete Deployment": "删除部署",
   "Deployments": "部署",
   "New Deployment": "新部署",
+  "Loading...": "",
   "Deployment ID": "部署ID",
   "Deployment": "",
   "Started At": "开始时间",

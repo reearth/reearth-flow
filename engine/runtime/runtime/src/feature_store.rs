@@ -14,7 +14,7 @@ use crate::node::{EdgeId, Port};
 static FEATURE_WRITER_DISABLE: Lazy<bool> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_FEATURE_WRITER_DISABLE")
         .ok()
-        .and_then(|v| v.parse().ok())
+        .map(|s| s.to_lowercase() == "true")
         .unwrap_or(false)
 });
 

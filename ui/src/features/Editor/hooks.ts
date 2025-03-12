@@ -129,25 +129,32 @@ export default ({
 
   // Passed to editor context so needs to be a ref
   const handleNodeDoubleClickRef =
-    useRef<(e: MouseEvent | undefined, node: Node) => void>(undefined);
+    useRef<
+      (
+        e: MouseEvent | undefined,
+        nodeId: string,
+        subworkflowId?: string,
+      ) => void
+    >(undefined);
   handleNodeDoubleClickRef.current = (
     _e: MouseEvent | undefined,
-    node: Node,
+    nodeId: string,
+    subworkflowId?: string,
   ) => {
-    if (node.type === "subworkflow" && node.data.subworkflowId) {
-      handleWorkflowOpen(node.data.subworkflowId);
+    if (subworkflowId) {
+      handleWorkflowOpen(subworkflowId);
     } else {
       fitView({
-        nodes: [{ id: node.id }],
+        nodes: [{ id: nodeId }],
         duration: 500,
         padding: 2,
       });
-      handleNodeLocking(node.id);
+      handleNodeLocking(nodeId);
     }
   };
   const handleNodeDoubleClick = useCallback(
-    (e: MouseEvent | undefined, node: Node) =>
-      handleNodeDoubleClickRef.current?.(e, node),
+    (e: MouseEvent | undefined, nodeId: string, subworkflowId?: string) =>
+      handleNodeDoubleClickRef.current?.(e, nodeId, subworkflowId),
     [],
   );
 

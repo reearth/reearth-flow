@@ -68,20 +68,26 @@ const EditorComponent = () => {
     strict: false,
   });
 
-  const { state, isSynced, undoManager, yDoc } = useYjsSetup({
+  const {
+    yWorkflows,
+    isSynced,
+    undoManager,
+    undoTrackerActionWrapper,
+    yDocState,
+  } = useYjsSetup({
     isProtected: true,
     projectId,
     workflowId: DEFAULT_ENTRY_GRAPH_ID,
   });
 
-  return !state || !isSynced ? (
+  return !yWorkflows || !isSynced || !undoTrackerActionWrapper ? (
     <LoadingSplashscreen />
   ) : (
     <Editor
-      yWorkflows={state.yWorkflows}
+      yWorkflows={yWorkflows}
       undoManager={undoManager}
-      undoTrackerActionWrapper={state.undoTrackerActionWrapper}
-      yDoc={yDoc}
+      yDoc={yDocState}
+      undoTrackerActionWrapper={undoTrackerActionWrapper}
     />
   );
 };
