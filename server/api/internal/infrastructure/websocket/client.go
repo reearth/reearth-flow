@@ -107,7 +107,7 @@ func (d *WebsocketRepo) GetLatest(ctx context.Context, docID string) (*document.
 		return nil, err
 	}
 
-	log.Debugfc(ctx, "document: successfully retrieved latest document with ID=%s version=%d", 
+	log.Debugfc(ctx, "document: successfully retrieved latest document with ID=%s version=%d",
 		doc.ID(), doc.Version())
 	return doc, nil
 }
@@ -149,7 +149,7 @@ func (d *WebsocketRepo) GetHistory(ctx context.Context, docID string) ([]*docume
 		history[i] = document.NewHistory(updates, int(version.Version), timestamp)
 	}
 
-	log.Debugfc(ctx, "document: successfully retrieved %d history entries for docID=%s", 
+	log.Debugfc(ctx, "document: successfully retrieved %d history entries for docID=%s",
 		len(history), docID)
 	return history, nil
 }

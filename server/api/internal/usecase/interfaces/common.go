@@ -24,7 +24,7 @@ var (
 type Container struct {
 	Asset         Asset
 	Deployment    Deployment
-	Document	  Document
+	Document      Document
 	Job           Job
 	Log           Log
 	Parameter     Parameter

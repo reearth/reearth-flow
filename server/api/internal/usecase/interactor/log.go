@@ -53,7 +53,6 @@ func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.
 		return nil, fmt.Errorf("failed to get logs from Redis: %w", err)
 	}
 	return logs, nil
-
 }
 
 func (li *LogInteractor) Subscribe(ctx context.Context, jobID id.JobID) (chan *log.Log, error) {
