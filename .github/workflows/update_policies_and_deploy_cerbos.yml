@@ -109,7 +109,7 @@ jobs:
             --repository=cerbos-policies \
             --location=us-central1 \
             --package=flow \
-            --version=latest \
+            --version=current \
             --source=policies.tar.gz
         working-directory: server/api
 
