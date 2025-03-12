@@ -1,6 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useEffect, useCallback } from "react";
 
+import { JobStatus } from "@flow/types";
+
 import { OnJobStatusChangeSubscription } from "../__gen__/graphql";
 import { toJobStatus } from "../convert";
 import { useWsClient } from "../provider/GraphQLSubscriptionProvider";
@@ -20,20 +22,15 @@ export const useJobStatus = (jobId: string) => {
   const queryClient = useQueryClient();
   const isSubscribedRef = useRef(false);
   const unSubscribedRef = useRef<(() => void) | undefined>(undefined);
-  const lastStatusRef = useRef<any>(null);
 
   const query = useQuery({
     queryKey: [JobSubscriptionKeys.GetJobStatus, jobId],
     queryFn: async () => {
-      const cachedData = queryClient.getQueryData([
+      const cachedData = queryClient.getQueryData<JobStatus>([
         JobSubscriptionKeys.GetJobStatus,
         jobId,
       ]);
-      if (cachedData) {
-        lastStatusRef.current = cachedData;
-        return cachedData;
-      }
-      return null;
+      return cachedData || {};
     },
     // Important: initial query should run only once
     staleTime: Infinity,
@@ -48,15 +45,6 @@ export const useJobStatus = (jobId: string) => {
 
     isSubscribedRef.current = true;
 
-    // Initialize with any cached data
-    const cachedData = queryClient.getQueryData([
-      JobSubscriptionKeys.GetJobStatus,
-      jobId,
-    ]);
-    if (cachedData) {
-      lastStatusRef.current = cachedData;
-    }
-
     // Subscribe to job status
     const unsubscribe = wsClient.subscribe<OnJobStatusChangeSubscription>(
       {
@@ -67,23 +55,11 @@ export const useJobStatus = (jobId: string) => {
         next: (data) => {
           if (data.data?.jobStatus) {
             const newStatus = data.data.jobStatus;
-
-            const currentStatus = JSON.stringify(lastStatusRef.current);
-            const incomingStatus = JSON.stringify(newStatus);
-
-            if (currentStatus !== incomingStatus) {
-              lastStatusRef.current = newStatus;
-
-              // Update React Query cache
-              queryClient.setQueryData(
-                [JobSubscriptionKeys.GetJobStatus, jobId],
-                toJobStatus(newStatus),
-              );
-            } else {
-              console.log(
-                `Received same status ${newStatus}, no update needed`,
-              );
-            }
+            // Update React Query cache
+            queryClient.setQueryData(
+              [JobSubscriptionKeys.GetJobStatus, jobId],
+              toJobStatus(newStatus),
+            );
           }
         },
         error: (err) => {
