@@ -15,7 +15,6 @@ use yrs::ReadTxn;
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
     store: Arc<GcsStore>,
-    redis_config: Option<RedisConfig>,
     redis_store: Option<Arc<RedisStore>>,
     groups: DashMap<String, Arc<BroadcastGroup>>,
     buffer_capacity: usize,
@@ -23,15 +22,9 @@ pub struct BroadcastPool {
 }
 
 impl BroadcastPool {
-    pub fn new(store: Arc<GcsStore>, redis_config: Option<RedisConfig>) -> Self {
-        let redis_store = redis_config.as_ref().map(|config| {
-            let store = RedisStore::new(Some(config.clone()));
-            Arc::new(store)
-        });
-
+    pub fn new(store: Arc<GcsStore>, redis_store: Option<Arc<RedisStore>>) -> Self {
         Self {
             store,
-            redis_config,
             redis_store,
             groups: DashMap::new(),
             buffer_capacity: 1024,
@@ -41,17 +34,11 @@ impl BroadcastPool {
 
     pub fn with_buffer_capacity(
         store: Arc<GcsStore>,
-        redis_config: Option<RedisConfig>,
+        redis_store: Option<Arc<RedisStore>>,
         buffer_capacity: usize,
     ) -> Self {
-        let redis_store = redis_config.as_ref().map(|config| {
-            let store = RedisStore::new(Some(config.clone()));
-            Arc::new(store)
-        });
-
         Self {
             store,
-            redis_config,
             redis_store,
             groups: DashMap::new(),
             buffer_capacity,
@@ -230,10 +217,10 @@ impl BroadcastPool {
                 awareness,
                 self.buffer_capacity,
                 self.store.clone(),
+                self.redis_store.clone(),
                 BroadcastConfig {
                     storage_enabled: true,
                     doc_name: Some(doc_id.to_string()),
-                    redis_config: self.redis_config.clone(),
                 },
             )
             .await?,

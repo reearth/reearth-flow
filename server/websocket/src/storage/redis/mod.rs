@@ -284,4 +284,36 @@ impl RedisStore {
         }
         Ok(())
     }
+
+    pub async fn add_publish_update(
+        &self,
+        doc_id: &str,
+        update: &[u8],
+        ttl_seconds: u64,
+    ) -> Result<(), anyhow::Error> {
+        if self.pool.is_none() {
+            return Ok(());
+        }
+        let pool = self.pool.as_ref().unwrap();
+
+        let redis_key = format!("pending_updates:{}", doc_id);
+        let channel = format!("yjs:updates:{}", doc_id);
+
+        let mut conn = pool.get().await?;
+
+        let mut pipe = redis::pipe();
+        pipe.atomic()
+            .cmd("LPUSH")
+            .arg(&redis_key)
+            .arg(update)
+            .cmd("EXPIRE")
+            .arg(&redis_key)
+            .arg(ttl_seconds as i64)
+            .cmd("PUBLISH")
+            .arg(&channel)
+            .arg(update);
+
+        let _: () = pipe.query_async(&mut *conn).await?;
+        Ok(())
+    }
 }

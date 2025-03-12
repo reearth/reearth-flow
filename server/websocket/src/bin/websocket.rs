@@ -2,7 +2,8 @@ use std::sync::Arc;
 
 use tracing::error;
 use websocket::{
-    conf::Config, pool::BroadcastPool, server::start_server, storage::gcs::GcsStore, AppState,
+    conf::Config, pool::BroadcastPool, server::start_server, storage::gcs::GcsStore,
+    storage::redis::RedisStore, AppState,
 };
 
 #[cfg(feature = "auth")]
@@ -40,7 +41,21 @@ async fn main() {
     let store = Arc::new(store);
     tracing::info!("GCS store initialized");
 
-    let pool = Arc::new(BroadcastPool::new(store, Some(config.redis)));
+    let redis_store = {
+        let mut redis_store = RedisStore::new(Some(config.redis.clone()));
+        match redis_store.init().await {
+            Ok(_) => {
+                tracing::info!("Redis store initialized");
+                Some(Arc::new(redis_store))
+            }
+            Err(e) => {
+                error!("Failed to initialize Redis store: {}", e);
+                None
+            }
+        }
+    };
+
+    let pool = Arc::new(BroadcastPool::new(store, redis_store));
     tracing::info!("Broadcast pool initialized");
 
     let state = Arc::new({
