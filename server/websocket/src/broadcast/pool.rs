@@ -5,13 +5,12 @@ use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
 use anyhow::{anyhow, Result};
 use dashmap::DashMap;
+use rand;
 use std::sync::Arc;
 use uuid;
 use yrs::sync::Awareness;
-use yrs::Array;
 use yrs::{Doc, Transact};
 
-use yrs::ReadTxn;
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
     store: Arc<GcsStore>,
@@ -57,6 +56,7 @@ impl BroadcastPool {
     ) -> Result<()> {
         let mut retry_count: u32 = 0;
         const MAX_RETRIES: u32 = 3;
+        const BASE_RETRY_INTERVAL_MS: u64 = 10;
 
         while retry_count < MAX_RETRIES {
             if let Some(redis_store) = &self.redis_store {
@@ -78,7 +78,9 @@ impl BroadcastPool {
 
             retry_count += 1;
             if retry_count < MAX_RETRIES {
-                tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+                let backoff = BASE_RETRY_INTERVAL_MS * (1u64 << retry_count.min(4));
+                let jitter = (backoff as f64 * rand::random::<f64>() * 0.3) as u64;
+                tokio::time::sleep(tokio::time::Duration::from_millis(backoff + jitter)).await;
             }
         }
 
@@ -114,37 +116,22 @@ impl BroadcastPool {
             if !lock_acquired {
                 let mut retry_count = 0;
                 const MAX_RETRIES: u32 = 10;
-                const RETRY_INTERVAL_MS: u64 = 10;
+                const BASE_RETRY_INTERVAL_MS: u64 = 5;
                 let mut found_main_workflow = false;
 
                 while retry_count < MAX_RETRIES && !found_main_workflow {
                     let updates_from_redis = redis_store.get_pending_updates(doc_id).await?;
 
                     if !updates_from_redis.is_empty() {
-                        let temp_doc = Doc::new();
-                        {
-                            let mut txn = temp_doc.transact_mut();
-
-                            for update in &updates_from_redis {
-                                if let Ok(decoded) =
-                                    yrs::updates::decoder::Decode::decode_v1(update)
-                                {
-                                    let _ = txn.apply_update(decoded);
-                                }
-                            }
-                        }
-
-                        let txn = temp_doc.transact();
-                        if let Some(workflows) = txn.get_array("workflows") {
-                            if workflows.len(&txn) > 0 {
-                                found_main_workflow = true;
-                            }
-                        }
+                        found_main_workflow = true;
                     }
 
                     if !found_main_workflow {
-                        tokio::time::sleep(tokio::time::Duration::from_millis(RETRY_INTERVAL_MS))
-                            .await;
+                        let backoff = BASE_RETRY_INTERVAL_MS * (1u64 << retry_count.min(6));
+                        let jitter = (backoff as f64 * rand::random::<f64>() * 0.5) as u64;
+                        let wait_time = backoff + jitter;
+
+                        tokio::time::sleep(tokio::time::Duration::from_millis(wait_time)).await;
                         retry_count += 1;
                     }
                 }
@@ -175,10 +162,10 @@ impl BroadcastPool {
                     return Ok(group.clone());
                 }
             } else {
-                let created = redis_store.set_nx(&doc_exists_key, "creating").await?;
-                if created {
-                    redis_store.expire(&doc_exists_key, 2).await?;
-                } else {
+                let created = redis_store
+                    .set_nx_with_expiry(&doc_exists_key, "creating", 1)
+                    .await?;
+                if !created {
                     let _local_lock = self.groups_mutex.lock().await;
 
                     if let Some(group) = self.groups.get(doc_id) {
@@ -214,7 +201,9 @@ impl BroadcastPool {
                     Ok(exists) => {
                         if !exists {
                             if let Some(redis_store) = &self.redis_store {
-                                redis_store.set(&doc_exists_key, "created").await?;
+                                redis_store
+                                    .set_with_expiry(&doc_exists_key, "created", 1)
+                                    .await?;
                             }
                         }
                     }
@@ -281,7 +270,9 @@ impl BroadcastPool {
             let remaining = group.decrement_connections();
 
             if remaining == 0 {
-                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                const CLEANUP_DELAY_MS: u64 = 250;
+                tokio::time::sleep(tokio::time::Duration::from_millis(CLEANUP_DELAY_MS)).await;
+
                 if group_clone.connection_count() == 0 {
                     self.groups.remove(doc_id);
                 }
