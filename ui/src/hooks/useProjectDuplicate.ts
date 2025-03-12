@@ -63,6 +63,7 @@ export default (project: Project, projectDocument?: ProjectDocument) => {
             resolve();
           });
         });
+        yWebSocketProvider?.destroy();
       } else {
         setIsDuplicating(false);
       }
