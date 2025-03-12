@@ -1,7 +1,7 @@
 use crate::broadcast::group::{BroadcastConfig, BroadcastGroup};
 use crate::storage::gcs::GcsStore;
 use crate::storage::kv::DocOps;
-use crate::storage::redis::{RedisConfig, RedisStore};
+use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
 use anyhow::{anyhow, Result};
 use dashmap::DashMap;
