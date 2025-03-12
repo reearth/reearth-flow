@@ -3,9 +3,11 @@ import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import { config } from "@flow/config";
+import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 
 import { useAuth } from "../auth";
 
+import { yWorkflowConstructor } from "./conversions";
 import type { YWorkflow } from "./types";
 
 export default ({
@@ -21,10 +23,7 @@ export default ({
 
   const [undoManager, setUndoManager] = useState<Y.UndoManager | null>(null);
 
-  const [state, setState] = useState<{
-    yDoc: Y.Doc;
-    undoTrackerActionWrapper: (callback: () => void) => void;
-  } | null>(null);
+  const [yDocState, setYDocState] = useState<Y.Doc | null>(null);
   const [isSynced, setIsSynced] = useState(false);
 
   useEffect(() => {
@@ -50,17 +49,31 @@ export default ({
         );
 
         yWebSocketProvider.once("sync", () => {
+          const metadata = yDoc.getMap("metadata");
+          if (!metadata.get("initialized")) {
+            // Within a transaction, set the flag and perform initialization.
+            yDoc.transact(() => {
+              const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+              // This check is only necessary to avoid duplicate workflows on older projects.
+              if (yWorkflows.length > 0) return;
+              // Only one client should set this flag.
+              if (!metadata.get("initialized")) {
+                const yWorkflow = yWorkflowConstructor(
+                  DEFAULT_ENTRY_GRAPH_ID,
+                  "Main Workflow",
+                );
+                yWorkflows.insert(0, [yWorkflow]);
+                metadata.set("initialized", true);
+              }
+            });
+          }
           setIsSynced(true); // Mark as synced
         });
       })();
     }
 
     // Initial state setup
-    setState({
-      yDoc,
-      undoTrackerActionWrapper: (callback: () => void) =>
-        yDoc.transact(callback, yDoc.clientID),
-    });
+    setYDocState(yDoc);
 
     return () => {
       setIsSynced(false); // Mark as not synced
@@ -68,11 +81,14 @@ export default ({
     };
   }, [projectId, workflowId, isProtected, getAccessToken]);
 
-  const { yDoc, undoTrackerActionWrapper } = state || {};
+  const currentUserClientId = yDocState?.clientID;
+
+  const yWorkflows = yDocState?.getArray<YWorkflow>("workflows");
+
+  const undoTrackerActionWrapper = (callback: () => void) =>
+    yDocState?.transact(callback, yDocState.clientID);
 
   useEffect(() => {
-    const yWorkflows = yDoc?.getArray<YWorkflow>("workflows");
-    const currentUserClientId = yDoc?.clientID;
     if (yWorkflows) {
       const manager = new Y.UndoManager(yWorkflows, {
         trackedOrigins: new Set([currentUserClientId]), // Only track local changes
@@ -84,10 +100,10 @@ export default ({
         manager.destroy(); // Clean up UndoManager on component unmount
       };
     }
-  }, [yDoc]);
+  }, [yWorkflows, currentUserClientId]);
 
   return {
-    yDoc,
+    yWorkflows,
     isSynced,
     undoManager,
     undoTrackerActionWrapper,

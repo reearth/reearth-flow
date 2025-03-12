@@ -1,7 +1,7 @@
 import { useReactFlow } from "@xyflow/react";
 import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useY } from "react-yjs";
-import { Doc, Array as YArray } from "yjs";
+import { Array as YArray } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useProjectExport } from "@flow/hooks";
@@ -15,16 +15,14 @@ import useNodeLocker from "../Editor/useNodeLocker";
 import useUIState from "../Editor/useUIState";
 
 export default ({
-  yDoc,
+  yWorkflows,
   project,
   undoTrackerActionWrapper,
 }: {
-  yDoc: Doc;
+  yWorkflows: YArray<YWorkflow>;
   project?: Project;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
-  const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-
   const { fitView } = useReactFlow();
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);

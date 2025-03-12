@@ -1109,6 +1109,13 @@ export type UnshareProjectMutationVariables = Exact<{
 
 export type UnshareProjectMutation = { __typename?: 'Mutation', unshareProject?: { __typename?: 'UnshareProjectPayload', projectId: string } | null };
 
+export type OnJobStatusChangeSubscriptionVariables = Exact<{
+  jobId: Scalars['ID']['input'];
+}>;
+
+
+export type OnJobStatusChangeSubscription = { __typename?: 'Subscription', jobStatus: JobStatus };
+
 export type RealTimeLogsSubscriptionVariables = Exact<{
   jobId: Scalars['ID']['input'];
 }>;
@@ -1526,6 +1533,11 @@ export const UnshareProjectDocument = gql`
   }
 }
     `;
+export const OnJobStatusChangeDocument = gql`
+    subscription OnJobStatusChange($jobId: ID!) {
+  jobStatus(jobId: $jobId)
+}
+    `;
 export const RealTimeLogsDocument = gql`
     subscription RealTimeLogs($jobId: ID!) {
   logs(jobId: $jobId) {
@@ -1746,6 +1758,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     UnshareProject(variables: UnshareProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UnshareProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<UnshareProjectMutation>(UnshareProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UnshareProject', 'mutation', variables);
+    },
+    OnJobStatusChange(variables: OnJobStatusChangeSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<OnJobStatusChangeSubscription> {
+      return withWrapper((wrappedRequestHeaders) => client.request<OnJobStatusChangeSubscription>(OnJobStatusChangeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'OnJobStatusChange', 'subscription', variables);
     },
     RealTimeLogs(variables: RealTimeLogsSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RealTimeLogsSubscription> {
       return withWrapper((wrappedRequestHeaders) => client.request<RealTimeLogsSubscription>(RealTimeLogsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RealTimeLogs', 'subscription', variables);
