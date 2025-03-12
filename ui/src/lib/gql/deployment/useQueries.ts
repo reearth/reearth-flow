@@ -181,6 +181,8 @@ export const useQueries = () => {
         return { deployments, totalCount, currentPage, totalPages };
       },
       enabled: !!workspaceId,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
     });
 
   const useGetDeploymentHeadQuery = (

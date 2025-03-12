@@ -78,6 +78,8 @@ export const useQueries = () => {
         };
       },
       enabled: !!workspaceId,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
     });
   };
 
@@ -87,6 +89,8 @@ export const useQueries = () => {
       queryFn: () =>
         graphQLContext?.GetProjectById({ projectId: projectId ?? "" }),
       enabled: !!projectId,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
       select: (data) =>
         data?.node?.__typename === "Project" ? toProject(data.node) : undefined,
     });
