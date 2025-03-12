@@ -104,10 +104,10 @@ jobs:
 
       - name: Upload policies archive to Artifact Registry
         run: |
-          echo "Fetching current IAM bindings..."
-          gcloud artifacts repositories get-iam-policy cerbos-policies \
-            --project=${{ secrets.GCP_PROJECT_ID }} \
-            --location=us-central1
+          # echo "Fetching current IAM bindings..."
+          # gcloud artifacts repositories get-iam-policy cerbos-policies \
+          #   --project=${{ secrets.GCP_PROJECT_ID }} \
+          #   --location=us-central1
 
           set -euxo pipefail
 
