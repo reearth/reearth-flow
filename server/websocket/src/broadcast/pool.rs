@@ -91,10 +91,6 @@ impl BroadcastPool {
                 if let Some(group) = self.groups.get(doc_id) {
                     return Ok(group.clone());
                 }
-                return Err(anyhow!(
-                    "Failed to acquire creation lock for document: {}",
-                    doc_id
-                ));
             }
         }
 
