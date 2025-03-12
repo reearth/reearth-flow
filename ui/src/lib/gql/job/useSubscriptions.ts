@@ -5,13 +5,15 @@ import { OnJobStatusChangeSubscription } from "../__gen__/graphql";
 import { toJobStatus } from "../convert";
 import { useWsClient } from "../provider/GraphQLSubscriptionProvider";
 
-import { JobQueryKeys } from "./useQueries";
-
 const JOB_STATUS_SUBSCRIPTION = `
  subscription OnJobStatusChange($jobId: ID!) {
    jobStatus(jobId: $jobId)
  }
 `;
+
+export enum JobSubscriptionKeys {
+  GetJobStatus = "getJobStatus",
+}
 
 export const useJobStatus = (jobId: string) => {
   const wsClient = useWsClient();
@@ -21,10 +23,10 @@ export const useJobStatus = (jobId: string) => {
   const lastStatusRef = useRef<any>(null);
 
   const query = useQuery({
-    queryKey: [JobQueryKeys.GetJobStatus, jobId],
+    queryKey: [JobSubscriptionKeys.GetJobStatus, jobId],
     queryFn: async () => {
       const cachedData = queryClient.getQueryData([
-        JobQueryKeys.GetJobStatus,
+        JobSubscriptionKeys.GetJobStatus,
         jobId,
       ]);
       if (cachedData) {
@@ -44,12 +46,11 @@ export const useJobStatus = (jobId: string) => {
   useEffect(() => {
     if (!jobId || isSubscribedRef.current) return;
 
-    console.log(`Setting up job status subscription for job: ${jobId}`);
     isSubscribedRef.current = true;
 
     // Initialize with any cached data
     const cachedData = queryClient.getQueryData([
-      JobQueryKeys.GetJobStatus,
+      JobSubscriptionKeys.GetJobStatus,
       jobId,
     ]);
     if (cachedData) {
@@ -71,16 +72,11 @@ export const useJobStatus = (jobId: string) => {
             const incomingStatus = JSON.stringify(newStatus);
 
             if (currentStatus !== incomingStatus) {
-              console.log(`Job status changed for ${jobId}:`, {
-                previous: lastStatusRef.current,
-                new: newStatus,
-              });
-
               lastStatusRef.current = newStatus;
 
               // Update React Query cache
               queryClient.setQueryData(
-                [JobQueryKeys.GetJobStatus, jobId],
+                [JobSubscriptionKeys.GetJobStatus, jobId],
                 toJobStatus(newStatus),
               );
             } else {
@@ -92,7 +88,6 @@ export const useJobStatus = (jobId: string) => {
         },
         error: (err) => {
           console.error(`Status subscription error ${jobId}:`, err);
-          isSubscribedRef.current = false;
         },
         complete: () => {
           console.info("Status Subscription complete");
