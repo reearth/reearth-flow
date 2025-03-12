@@ -55,14 +55,12 @@ impl BroadcastPool {
             drop(group);
 
             if let Some(redis_store) = &self.redis_store {
-                if redis_store
-                    .has_pending_updates(doc_id)
-                    .await
-                    .unwrap_or(false)
-                {
-                    if let Ok(updates) = redis_store.get_pending_updates(doc_id).await {
-                        if !updates.is_empty() {
-                            let _ = self.apply_updates_to_doc(&group_clone, updates).await;
+                if let Ok(has_updates) = redis_store.has_pending_updates(doc_id).await {
+                    if has_updates {
+                        if let Ok(updates) = redis_store.get_pending_updates(doc_id).await {
+                            if !updates.is_empty() {
+                                let _ = self.apply_updates_to_doc(&group_clone, updates).await;
+                            }
                         }
                     }
                 }
