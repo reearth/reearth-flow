@@ -5,7 +5,6 @@ use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
 use anyhow::{anyhow, Result};
 use dashmap::DashMap;
-use rand;
 use std::sync::Arc;
 use uuid;
 use yrs::sync::Awareness;
@@ -49,48 +48,21 @@ impl BroadcastPool {
         self.store.clone()
     }
 
-    async fn apply_pending_updates_from_redis(
-        &self,
-        group: &Arc<BroadcastGroup>,
-        doc_id: &str,
-    ) -> Result<()> {
-        let mut retry_count: u32 = 0;
-        const MAX_RETRIES: u32 = 3;
-        const BASE_RETRY_INTERVAL_MS: u64 = 10;
-
-        while retry_count < MAX_RETRIES {
-            if let Some(redis_store) = &self.redis_store {
-                let updates_from_redis = redis_store.get_pending_updates(doc_id).await?;
-                if !updates_from_redis.is_empty() {
-                    let awareness_ref = group.awareness();
-                    let awareness = awareness_ref.write().await;
-                    let doc = awareness.doc();
-                    let mut txn = doc.transact_mut();
-
-                    for update in &updates_from_redis {
-                        if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(update) {
-                            let _ = txn.apply_update(decoded);
-                        }
-                    }
-                    return Ok(());
-                }
-            }
-
-            retry_count += 1;
-            if retry_count < MAX_RETRIES {
-                let backoff = BASE_RETRY_INTERVAL_MS * (1u64 << retry_count.min(4));
-                let jitter = (backoff as f64 * rand::random::<f64>() * 0.3) as u64;
-                tokio::time::sleep(tokio::time::Duration::from_millis(backoff + jitter)).await;
-            }
-        }
-
-        Ok(())
-    }
-
     pub async fn get_or_create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         if let Some(group) = self.groups.get(doc_id) {
-            self.apply_pending_updates_from_redis(&group.clone(), doc_id)
-                .await?;
+            if let Some(redis_store) = &self.redis_store {
+                if redis_store
+                    .has_pending_updates(doc_id)
+                    .await
+                    .unwrap_or(false)
+                {
+                    if let Ok(updates) = redis_store.get_pending_updates(doc_id).await {
+                        if !updates.is_empty() {
+                            let _ = self.apply_updates_to_doc(&group, updates).await;
+                        }
+                    }
+                }
+            }
             return Ok(group.clone());
         }
 
@@ -98,91 +70,64 @@ impl BroadcastPool {
         let lock_value = uuid::Uuid::new_v4().to_string();
         let mut lock_acquired = false;
 
-        {
-            let _local_lock = self.groups_mutex.lock().await;
-
-            if let Some(group) = self.groups.get(doc_id) {
-                self.apply_pending_updates_from_redis(&group.clone(), doc_id)
-                    .await?;
-                return Ok(group.clone());
-            }
-        }
-
         if let Some(redis_store) = &self.redis_store {
             lock_acquired = redis_store
-                .acquire_lock(&doc_lock_key, &lock_value, 3)
+                .acquire_lock(&doc_lock_key, &lock_value, 1)
                 .await?;
-
-            if !lock_acquired {
-                let mut retry_count = 0;
-                const MAX_RETRIES: u32 = 10;
-                const BASE_RETRY_INTERVAL_MS: u64 = 5;
-                let mut found_main_workflow = false;
-
-                while retry_count < MAX_RETRIES && !found_main_workflow {
-                    let updates_from_redis = redis_store.get_pending_updates(doc_id).await?;
-
-                    if !updates_from_redis.is_empty() {
-                        found_main_workflow = true;
-                    }
-
-                    if !found_main_workflow {
-                        let backoff = BASE_RETRY_INTERVAL_MS * (1u64 << retry_count.min(6));
-                        let jitter = (backoff as f64 * rand::random::<f64>() * 0.5) as u64;
-                        let wait_time = backoff + jitter;
-
-                        tokio::time::sleep(tokio::time::Duration::from_millis(wait_time)).await;
-                        retry_count += 1;
-                    }
-                }
-
-                let _local_lock = self.groups_mutex.lock().await;
-
-                if let Some(group) = self.groups.get(doc_id) {
-                    self.apply_pending_updates_from_redis(&group.clone(), doc_id)
-                        .await?;
-                    return Ok(group.clone());
-                }
-            }
         }
 
-        let doc_exists_key = format!("doc:exists:{}", doc_id);
+        let _local_lock = self.groups_mutex.lock().await;
+
+        if let Some(group) = self.groups.get(doc_id) {
+            if lock_acquired {
+                if let Some(redis_store) = &self.redis_store {
+                    let _ = redis_store.release_lock(&doc_lock_key, &lock_value).await;
+                }
+            }
+            return Ok(group.clone());
+        }
+
+        let group: Arc<BroadcastGroup>;
 
         if let Some(redis_store) = &self.redis_store {
-            let exists_in_redis = { redis_store.exists(&doc_exists_key).await? };
+            let doc_exists_key = format!("doc:exists:{}", doc_id);
+            let exists_in_redis = redis_store.exists(&doc_exists_key).await?;
 
             if exists_in_redis {
-                let _local_lock = self.groups_mutex.lock().await;
-                if let Some(group) = self.groups.get(doc_id) {
-                    self.apply_pending_updates_from_redis(&group.clone(), doc_id)
-                        .await?;
-                    if lock_acquired {
-                        redis_store.release_lock(&doc_lock_key, &lock_value).await?;
-                    }
-                    return Ok(group.clone());
-                }
-            } else {
-                let created = redis_store
-                    .set_nx_with_expiry(&doc_exists_key, "creating", 1)
-                    .await?;
-                if !created {
-                    let _local_lock = self.groups_mutex.lock().await;
+                let updates_from_redis = redis_store.get_pending_updates(doc_id).await?;
 
-                    if let Some(group) = self.groups.get(doc_id) {
-                        self.apply_pending_updates_from_redis(&group.clone(), doc_id)
-                            .await?;
-                        if lock_acquired {
-                            redis_store.release_lock(&doc_lock_key, &lock_value).await?;
+                let doc = Doc::new();
+                if !updates_from_redis.is_empty() {
+                    let mut txn = doc.transact_mut();
+                    for update in &updates_from_redis {
+                        if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(update) {
+                            let _ = txn.apply_update(decoded);
                         }
-                        return Ok(group.clone());
                     }
                 }
-            }
-        }
 
-        if self.groups.get(doc_id).is_some() && lock_acquired {
-            if let Some(redis_store) = &self.redis_store {
-                redis_store.release_lock(&doc_lock_key, &lock_value).await?;
+                let awareness = Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)));
+                group = Arc::new(
+                    BroadcastGroup::with_storage(
+                        awareness,
+                        self.buffer_capacity,
+                        self.store.clone(),
+                        self.redis_store.clone(),
+                        BroadcastConfig {
+                            storage_enabled: true,
+                            doc_name: Some(doc_id.to_string()),
+                        },
+                    )
+                    .await?,
+                );
+
+                self.groups.insert(doc_id.to_string(), group.clone());
+
+                if lock_acquired {
+                    let _ = redis_store.release_lock(&doc_lock_key, &lock_value).await;
+                }
+
+                return Ok(group);
             }
         }
 
@@ -190,38 +135,26 @@ impl BroadcastPool {
             let doc = Doc::new();
             let mut updates_from_redis = Vec::new();
 
+            {
+                let mut txn = doc.transact_mut();
+                let load_result = self.store.load_doc(doc_id, &mut txn).await;
+
+                if let Err(e) = load_result {
+                    if lock_acquired {
+                        if let Some(redis_store) = &self.redis_store {
+                            redis_store.release_lock(&doc_lock_key, &lock_value).await?;
+                        }
+                    }
+                    return Err(anyhow!("Failed to load document: {}", e));
+                }
+            }
+
             if let Some(redis_store) = &self.redis_store {
                 updates_from_redis = redis_store.get_pending_updates(doc_id).await?;
             }
 
-            {
+            if !updates_from_redis.is_empty() {
                 let mut txn = doc.transact_mut();
-
-                match self.store.load_doc(doc_id, &mut txn).await {
-                    Ok(exists) => {
-                        if !exists {
-                            if let Some(redis_store) = &self.redis_store {
-                                redis_store
-                                    .set_with_expiry(&doc_exists_key, "created", 1)
-                                    .await?;
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        if let Some(redis_store) = &self.redis_store {
-                            redis_store.del(&doc_exists_key).await?;
-                        }
-
-                        if lock_acquired {
-                            if let Some(redis_store) = &self.redis_store {
-                                redis_store.release_lock(&doc_lock_key, &lock_value).await?;
-                            }
-                        }
-
-                        return Err(anyhow!("Failed to load document: {}", e));
-                    }
-                }
-
                 for update in &updates_from_redis {
                     if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(update) {
                         let _ = txn.apply_update(decoded);
@@ -232,7 +165,7 @@ impl BroadcastPool {
             Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
         };
 
-        let group = Arc::new(
+        group = Arc::new(
             BroadcastGroup::with_storage(
                 awareness,
                 self.buffer_capacity,
@@ -248,13 +181,39 @@ impl BroadcastPool {
 
         self.groups.insert(doc_id.to_string(), group.clone());
 
-        if lock_acquired {
-            if let Some(redis_store) = &self.redis_store {
-                redis_store.release_lock(&doc_lock_key, &lock_value).await?;
+        if let Some(redis_store) = &self.redis_store {
+            let doc_exists_key = format!("doc:exists:{}", doc_id);
+            let _ = redis_store.set(&doc_exists_key, "created").await;
+
+            if lock_acquired {
+                let _ = redis_store.release_lock(&doc_lock_key, &lock_value).await;
             }
         }
 
         Ok(group)
+    }
+
+    async fn apply_updates_to_doc(
+        &self,
+        group: &Arc<BroadcastGroup>,
+        updates: Vec<Vec<u8>>,
+    ) -> Result<()> {
+        if updates.is_empty() {
+            return Ok(());
+        }
+
+        let awareness = group.awareness();
+        let awareness_lock = awareness.read().await;
+        let doc = awareness_lock.doc();
+        let mut txn = doc.transact_mut();
+
+        for update in &updates {
+            if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(update) {
+                let _ = txn.apply_update(decoded);
+            }
+        }
+
+        Ok(())
     }
 
     pub async fn cleanup_empty_groups(&self) {
@@ -270,9 +229,7 @@ impl BroadcastPool {
             let remaining = group.decrement_connections();
 
             if remaining == 0 {
-                const CLEANUP_DELAY_MS: u64 = 250;
-                tokio::time::sleep(tokio::time::Duration::from_millis(CLEANUP_DELAY_MS)).await;
-
+                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                 if group_clone.connection_count() == 0 {
                     self.groups.remove(doc_id);
                 }
