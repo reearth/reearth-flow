@@ -3,6 +3,7 @@ import { Doc } from "yjs";
 import { FlowLogo, LoadingSkeleton, ScrollArea } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { useT } from "@flow/lib/i18n";
+import type { Project } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
 import useHooks from "./hooks";
@@ -10,11 +11,11 @@ import { Version } from "./Version";
 import { VersionHistoryChangeDialog } from "./VersionHistoryChangeDialog";
 
 type Props = {
-  projectId?: string;
+  project?: Project;
   yDoc: Doc | undefined;
 };
 
-const VersionHistoryList: React.FC<Props> = ({ projectId, yDoc }) => {
+const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
   const t = useT();
   const {
     history,
@@ -25,7 +26,7 @@ const VersionHistoryList: React.FC<Props> = ({ projectId, yDoc }) => {
     openVersionChangeDialog,
     setOpenVersionChangeDialog,
     onRollbackProject,
-  } = useHooks({ projectId: projectId ?? "", yDoc });
+  } = useHooks({ projectId: project?.id ?? "", yDoc });
 
   const previousVersions = history?.filter(
     (version) => version.version !== latestProjectSnapshotVersion?.version,
@@ -54,7 +55,7 @@ const VersionHistoryList: React.FC<Props> = ({ projectId, yDoc }) => {
               <span className="font-light">
                 {" "}
                 {t("Version ")}
-                {latestProjectSnapshotVersion.version}
+                {project?.version}
               </span>
             </p>
           </div>

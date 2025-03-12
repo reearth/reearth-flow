@@ -139,7 +139,7 @@ export default function Editor({
           <RightPanel
             contentType={rightPanelContent}
             onClose={() => handleRightPanelOpen(undefined)}
-            projectId={currentProject?.id}
+            project={currentProject}
             yDoc={yDoc}
           />
           <ParamsPanel

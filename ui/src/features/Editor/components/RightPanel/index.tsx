@@ -4,20 +4,21 @@ import { Doc } from "yjs";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import type { Project } from "@flow/types";
 
 import { VersionHistoryList } from "./components";
 
 type Props = {
   contentType?: "version-history";
   onClose: () => void;
-  projectId?: string;
+  project?: Project;
   yDoc: Doc | undefined;
 };
 
 const RightPanel: React.FC<Props> = ({
   contentType,
   onClose,
-  projectId,
+  project,
   yDoc,
 }) => {
   const t = useT();
@@ -42,7 +43,7 @@ const RightPanel: React.FC<Props> = ({
         </div>
       </div>
       {contentType === "version-history" && (
-        <VersionHistoryList projectId={projectId} yDoc={yDoc} />
+        <VersionHistoryList project={project} yDoc={yDoc} />
       )}
     </div>
   );

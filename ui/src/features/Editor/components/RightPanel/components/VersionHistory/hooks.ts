@@ -1,11 +1,7 @@
 import { useCallback, useState } from "react";
-import { WebsocketProvider } from "y-websocket";
 import { Doc } from "yjs";
 import * as Y from "yjs";
 
-import { config } from "@flow/config";
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useAuth } from "@flow/lib/auth";
 import { useDocument } from "@flow/lib/gql/document/useApi";
 
 export default ({
@@ -15,8 +11,6 @@ export default ({
   projectId: string;
   yDoc: Doc | undefined;
 }) => {
-  const { getAccessToken } = useAuth();
-  const { websocket } = config();
   const {
     useGetProjectHistory,
     useGetLatestProjectSnapshot,
@@ -34,47 +28,68 @@ export default ({
 
   const handleRollbackProject = useCallback(async () => {
     if (selectedProjectSnapshotVersion === null) return;
-    const rollbackData = await useRollbackProject(
-      projectId,
-      selectedProjectSnapshotVersion,
-    );
-    const updates = rollbackData.projectDocument?.updates;
 
     try {
+      console.log(
+        "Starting rollback to version:",
+        selectedProjectSnapshotVersion,
+      );
+
+      const rollbackData = await useRollbackProject(
+        projectId,
+        selectedProjectSnapshotVersion,
+      );
+      const updates = rollbackData.projectDocument?.updates;
+
       if (!updates || !updates.length) {
+        console.error("No updates found for rollback version.");
         return;
       }
-      const convertedUpdates = new Uint8Array(updates);
-      if (websocket && yDoc) {
-        const token = await getAccessToken();
-        const yWebSocketProvider = new WebsocketProvider(
-          websocket,
-          `${projectId}:${DEFAULT_ENTRY_GRAPH_ID}`,
-          yDoc,
-          { params: { token } },
-        );
-        await new Promise<void>((resolve) => {
-          yWebSocketProvider.once("sync", () => {
-            yDoc.transact(() => {
-              Y.applyUpdate(yDoc, convertedUpdates);
-            });
-            resolve();
-          });
-        });
+
+      console.log(
+        "Retrieved rollback snapshot with",
+        updates.length,
+        "updates.",
+      );
+
+      if (!yDoc) {
+        console.error("No existing Y.Doc found.");
+        return;
       }
+
+      yDoc.transact(() => {
+        const emptyState = Y.encodeStateAsUpdate(new Y.Doc());
+        Y.applyUpdate(yDoc, emptyState);
+      });
+
+      console.log("⚠️ Y.Doc cleared. Applying rollback updates...");
+
+      const convertedUpdates = new Uint8Array(updates);
+
+      console.log("Rollback updates applied successfully.");
+
+      const yWorkflows = yDoc.getArray("workflows");
+
+      if (!yWorkflows.length) {
+        console.warn("⚠️ No workflows found after rollback.");
+      } else {
+        console.log(
+          "Workflows successfully restored after rollback:",
+          yWorkflows.toJSON(),
+        );
+      }
+
+      yDoc.transact(() => {
+        Y.applyUpdate(yDoc, convertedUpdates);
+      });
+
+      console.log("Rollback completed successfully.");
     } catch (error) {
-      console.error("Project RollBack:", error);
+      console.error("Project Rollback Failed:", error);
     }
 
     setOpenVersionChangeDialog(false);
-  }, [
-    selectedProjectSnapshotVersion,
-    useRollbackProject,
-    projectId,
-    getAccessToken,
-    websocket,
-    yDoc,
-  ]);
+  }, [selectedProjectSnapshotVersion, useRollbackProject, projectId, yDoc]);
 
   const latestProjectSnapshotVersion = projectDocument;
   return {
