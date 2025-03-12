@@ -31,7 +31,9 @@ fn main() -> Result<()> {
     let command = CliCommand::parse_cli_args(matches)?;
     env::set_var(
         "RAYON_NUM_THREADS",
-        std::cmp::min(num_cpus::get() * 2, 64).to_string().as_str(),
+        std::cmp::min((num_cpus::get() as f64 * 1.2_f64).floor() as u64, 64)
+            .to_string()
+            .as_str(),
     );
     let tracer_provider = opentelemetry_sdk::trace::SdkTracerProvider::builder().build();
     opentelemetry::global::set_tracer_provider(tracer_provider.clone());
