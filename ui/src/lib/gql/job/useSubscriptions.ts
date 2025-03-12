@@ -30,7 +30,7 @@ export const useJobStatus = (jobId: string) => {
         JobSubscriptionKeys.GetJobStatus,
         jobId,
       ]);
-      return cachedData || {};
+      return cachedData || undefined;
     },
     // Important: initial query should run only once
     staleTime: Infinity,
