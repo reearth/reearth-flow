@@ -104,12 +104,30 @@ jobs:
 
       - name: Upload policies archive to Artifact Registry
         run: |
-          gcloud artifacts files upload policies.tar.gz \
+          set -euxo pipefail
+
+          echo "Current working directory: $(pwd)"
+          echo "Files in current dir:"
+          ls -l
+
+          echo "Checking tarball exists..."
+          test -f policies.tar.gz && echo "✔ policies.tar.gz exists"
+
+          gcloud artifacts versions delete current \
             --project=${{ secrets.GCP_PROJECT_ID }} \
             --repository=cerbos-policies \
             --location=us-central1 \
             --package=flow \
-            --version=latest
+            --quiet
+
+          echo "Running gcloud upload with debug output..."
+          gcloud artifacts generic upload \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --repository=cerbos-policies \
+            --location=us-central1 \
+            --package=flow \
+            --version=current \
+            --source=policies.tar.gz
         working-directory: server/api
 
   deploy-cerbos:
