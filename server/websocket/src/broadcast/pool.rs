@@ -165,11 +165,10 @@ impl BroadcastPool {
             let exists_in_redis = { redis_store.exists(&doc_exists_key).await? };
 
             if exists_in_redis {
-                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
-
                 let _local_lock = self.groups_mutex.lock().await;
-
                 if let Some(group) = self.groups.get(doc_id) {
+                    self.apply_pending_updates_from_redis(&group.clone(), doc_id)
+                        .await?;
                     if lock_acquired {
                         redis_store.release_lock(&doc_lock_key, &lock_value).await?;
                     }
@@ -180,11 +179,11 @@ impl BroadcastPool {
                 if created {
                     redis_store.expire(&doc_exists_key, 2).await?;
                 } else {
-                    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-
                     let _local_lock = self.groups_mutex.lock().await;
 
                     if let Some(group) = self.groups.get(doc_id) {
+                        self.apply_pending_updates_from_redis(&group.clone(), doc_id)
+                            .await?;
                         if lock_acquired {
                             redis_store.release_lock(&doc_lock_key, &lock_value).await?;
                         }
