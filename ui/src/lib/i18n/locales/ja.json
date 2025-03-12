@@ -116,7 +116,6 @@
   "Action Name": "アクション名",
   "Current Version": "現在のバージョン",
   "Version ": "バージョン ",
-  "No Versions Available": "利用可能なバージョンはありません",
   "Are you sure you want to revert to this version?": "このバージョンに戻しますか？",
   "By clicking continue you will be reverting to version {{version}}.": "続行をクリックすると、バージョン{{version}}に戻ります。",
   "Unable to rename workflow": "ワークフローの名前を変更できません",

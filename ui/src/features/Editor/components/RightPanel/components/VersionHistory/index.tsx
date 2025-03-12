@@ -1,7 +1,6 @@
 import { Doc } from "yjs";
 
-import { FlowLogo, LoadingSkeleton, ScrollArea } from "@flow/components";
-import BasicBoiler from "@flow/components/BasicBoiler";
+import { LoadingSkeleton, ScrollArea } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { Project } from "@flow/types";
 import { formatDate } from "@flow/utils";
@@ -75,12 +74,7 @@ const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
             ))}
             <div className="pb-8" />
           </div>
-        ) : (
-          <BasicBoiler
-            text={t("No Versions Available")}
-            icon={<FlowLogo className="size-16 text-accent" />}
-          />
-        )}
+        ) : null}
       </ScrollArea>
       {openVersionChangeDialog && selectedProjectSnapshotVersion && (
         <VersionHistoryChangeDialog

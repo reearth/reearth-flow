@@ -116,7 +116,6 @@
   "Action Name": "",
   "Current Version": "",
   "Version ": "",
-  "No Versions Available": "",
   "Are you sure you want to revert to this version?": "",
   "By clicking continue you will be reverting to version {{version}}.": "",
   "Unable to rename workflow": "Unable to rename workflow",

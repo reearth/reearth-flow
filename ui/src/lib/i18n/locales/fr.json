@@ -116,7 +116,6 @@
   "Action Name": "",
   "Current Version": "",
   "Version ": "Version ",
-  "No Versions Available": "",
   "Are you sure you want to revert to this version?": "",
   "By clicking continue you will be reverting to version {{version}}.": "",
   "Unable to rename workflow": "Impossible de renommer le flux de travail",

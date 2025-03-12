@@ -116,7 +116,6 @@
   "Action Name": "操作名称",
   "Current Version": "当前版本",
   "Version ": "版本 ",
-  "No Versions Available": "",
   "Are you sure you want to revert to this version?": "您确定要恢复到此版本吗？",
   "By clicking continue you will be reverting to version {{version}}.": "点击继续，您将恢复到版本{{version}}。",
   "Unable to rename workflow": "无法重命名工作流",

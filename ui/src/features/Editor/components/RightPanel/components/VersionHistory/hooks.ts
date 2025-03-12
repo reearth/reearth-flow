@@ -30,57 +30,51 @@ export default ({
     if (selectedProjectSnapshotVersion === null) return;
 
     try {
-      console.log(
-        "Starting rollback to version:",
-        selectedProjectSnapshotVersion,
-      );
-
       const rollbackData = await useRollbackProject(
         projectId,
         selectedProjectSnapshotVersion,
       );
       const updates = rollbackData.projectDocument?.updates;
 
-      if (!updates || !updates.length) {
-        console.error("No updates found for rollback version.");
+      if (!updates || !updates.length || !yDoc) {
         return;
       }
-
-      console.log(
-        "Retrieved rollback snapshot with",
-        updates.length,
-        "updates.",
-      );
-
-      if (!yDoc) {
-        console.error("No existing Y.Doc found.");
-        return;
-      }
-
-      yDoc.transact(() => {
-        const emptyState = Y.encodeStateAsUpdate(new Y.Doc());
-        Y.applyUpdate(yDoc, emptyState);
-      });
-
-      console.log("⚠️ Y.Doc cleared. Applying rollback updates...");
 
       const convertedUpdates = new Uint8Array(updates);
 
-      console.log("Rollback updates applied successfully.");
+      console.log("Update contents...");
 
-      const yWorkflows = yDoc.getArray("workflows");
-
-      if (!yWorkflows.length) {
-        console.warn("⚠️ No workflows found after rollback.");
+      // Load temp doc to check if workflows are present
+      const tempYDoc = new Y.Doc();
+      Y.applyUpdate(tempYDoc, convertedUpdates);
+      // for testing but could use temp doc to convert etc
+      const tempWorkflows = tempYDoc.getArray("workflows");
+      if (!tempWorkflows.length) {
+        console.warn("⚠️ No workflows found inside the rollback update.");
       } else {
         console.log(
-          "Workflows successfully restored after rollback:",
-          yWorkflows.toJSON(),
+          "Workflows inside rollback update:",
+          tempWorkflows.toJSON(),
         );
       }
 
       yDoc.transact(() => {
-        Y.applyUpdate(yDoc, convertedUpdates);
+        const yWorkflows = yDoc.getArray("workflows");
+
+        if (yWorkflows.length) {
+          console.log("Deleting existing workflows");
+          yWorkflows.delete(0, yWorkflows.length);
+        }
+
+        // Fails here possibly due to a null value
+        // Insert rollback workflows
+        console.log("Inserting rollback workflows");
+        yWorkflows.insert(0, tempWorkflows.toArray());
+
+        console.log(
+          "Workflows inside yDoc after rollback:",
+          yWorkflows.toJSON(),
+        );
       });
 
       console.log("Rollback completed successfully.");
