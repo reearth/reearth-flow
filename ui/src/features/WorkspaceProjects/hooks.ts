@@ -12,6 +12,7 @@ export default () => {
   const [workspace] = useCurrentWorkspace();
 
   const [currentProject, setCurrentProject] = useCurrentProject();
+  const [isDuplicatingState, setIsDuplicatingState] = useState<boolean>(false);
 
   const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
   const { deleteProject, updateProject } = useProject();
@@ -88,12 +89,14 @@ export default () => {
     currentPage,
     totalPages,
     isFetching,
+    isDuplicatingState,
     currentOrder,
     orderDirections,
     setOpenProjectAddDialog,
     setEditProject,
     setProjectToBeDeleted,
     setCurrentPage,
+    setIsDuplicatingState,
     handleProjectSelect,
     handleDeleteProject,
     handleUpdateValue,

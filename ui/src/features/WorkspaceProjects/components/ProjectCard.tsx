@@ -39,6 +39,8 @@ type Props = {
   setEditProject: (project: Project | undefined) => void;
   setProjectToBeDeleted: (project: string | undefined) => void;
   onProjectSelect: (p: Project) => void;
+  onDuplicationStart: () => void;
+  onDuplicationEnd: () => void;
 };
 
 const ProjectCard: React.FC<Props> = ({
@@ -47,6 +49,8 @@ const ProjectCard: React.FC<Props> = ({
   setEditProject,
   setProjectToBeDeleted,
   onProjectSelect,
+  onDuplicationStart,
+  onDuplicationEnd,
 }) => {
   const t = useT();
   const { toast } = useToast();
@@ -60,6 +64,15 @@ const ProjectCard: React.FC<Props> = ({
     projectDocument,
   );
   // TODO: isShared and sharedURL are temp values.
+
+  const handleProjectDuplicate = async () => {
+    onDuplicationStart();
+    try {
+      await handleProjectDuplication();
+    } finally {
+      onDuplicationEnd();
+    }
+  };
   const BASE_URL = window.location.origin;
 
   const sharedUrl = sharedToken
@@ -148,7 +161,7 @@ const ProjectCard: React.FC<Props> = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="justify-between gap-2"
-                onClick={handleProjectDuplication}>
+                onClick={handleProjectDuplicate}>
                 {t("Duplicate Project")}
                 <Copy weight="light" />
               </DropdownMenuItem>

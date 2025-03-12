@@ -54,6 +54,7 @@ export default (project: Project, projectDocument?: ProjectDocument) => {
           yDoc,
           { params: { token } },
         );
+
         await new Promise<void>((resolve) => {
           yWebSocketProvider.once("sync", () => {
             yDoc.transact(() => {
