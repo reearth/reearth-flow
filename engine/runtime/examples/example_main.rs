@@ -87,7 +87,9 @@ impl reearth_flow_runtime::event::EventHandler for EventHandler {
 pub(crate) fn execute(workflow: &str) {
     env::set_var(
         "RAYON_NUM_THREADS",
-        std::cmp::min(num_cpus::get() * 2, 64).to_string().as_str(),
+        std::cmp::min((num_cpus::get() as f64 * 1.2_f64).floor() as u64, 64)
+            .to_string()
+            .as_str(),
     );
     setup_logging_and_tracing();
     let job_id = uuid::Uuid::new_v4();

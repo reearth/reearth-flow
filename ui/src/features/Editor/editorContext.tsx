@@ -6,11 +6,15 @@ import {
   useContext,
 } from "react";
 
-import { Node, NodeChange } from "@flow/types";
+import { NodeChange } from "@flow/types";
 
 export type EditorContextType = {
   onNodesChange?: (changes: NodeChange[]) => void;
-  onSecondaryNodeAction?: (_e: MouseEvent | undefined, node: Node) => void;
+  onSecondaryNodeAction?: (
+    _e: MouseEvent | undefined,
+    nodeId: string,
+    subworkflowId?: string,
+  ) => void;
 };
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);

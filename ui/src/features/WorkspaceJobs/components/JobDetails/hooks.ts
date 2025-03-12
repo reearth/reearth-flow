@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 
 import { DetailsBoxContent } from "@flow/features/common";
 import { useJob } from "@flow/lib/gql/job";
+import { useJobStatus } from "@flow/lib/gql/job/useSubscriptions";
 import { useT } from "@flow/lib/i18n";
 import { formatTimestamp } from "@flow/utils";
 
@@ -11,6 +12,14 @@ export default ({ jobId }: { jobId: string }) => {
   const { navigate } = useRouter();
 
   const { useGetJob, useJobCancel } = useJob();
+
+  const { data: jobStatus, isLoading, error } = useJobStatus(jobId);
+
+  const statusValue = isLoading
+    ? t("Loading...")
+    : error
+      ? t("Error")
+      : jobStatus;
 
   const { job } = useGetJob(jobId);
 
@@ -48,7 +57,7 @@ export default ({ jobId }: { jobId: string }) => {
             {
               id: "status",
               name: t("Status"),
-              value: job.status,
+              value: statusValue || job.status,
             },
             {
               id: "startedAt",
@@ -72,11 +81,12 @@ export default ({ jobId }: { jobId: string }) => {
             },
           ]
         : undefined,
-    [t, job],
+    [t, job, statusValue],
   );
   return {
     job,
     details,
+    statusValue,
     handleCancelJob,
     handleBack,
   };
