@@ -54,18 +54,20 @@ export default (project: Project, projectDocument?: ProjectDocument) => {
           yDoc,
           { params: { token } },
         );
+        try {
+          await new Promise<void>((resolve) => {
+            yWebSocketProvider.once("sync", () => {
+              yDoc.transact(() => {
+                Y.applyUpdate(yDoc, convertedUpdates);
+              });
 
-        await new Promise<void>((resolve) => {
-          yWebSocketProvider.once("sync", () => {
-            yDoc.transact(() => {
-              Y.applyUpdate(yDoc, convertedUpdates);
+              setIsDuplicating(false);
+              resolve();
             });
-
-            setIsDuplicating(false);
-            resolve();
           });
-        });
-        yWebSocketProvider?.destroy();
+        } finally {
+          yWebSocketProvider?.destroy();
+        }
       }
     } catch (error) {
       console.error("Project duplication failed:", error);
