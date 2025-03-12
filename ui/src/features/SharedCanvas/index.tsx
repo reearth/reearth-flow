@@ -1,8 +1,9 @@
-import { Doc } from "yjs";
+import { Array as YArray } from "yjs";
 
 import { Button } from "@flow/components";
 import Canvas from "@flow/features/Canvas";
 import { useT } from "@flow/lib/i18n";
+import { YWorkflow } from "@flow/lib/yjs/types";
 import { Project } from "@flow/types";
 
 import { ParamsPanel, WorkflowTabs } from "../Editor/components";
@@ -10,13 +11,13 @@ import { ParamsPanel, WorkflowTabs } from "../Editor/components";
 import useHooks from "./hooks";
 
 type Props = {
-  yDoc: Doc;
+  yWorkflows: YArray<YWorkflow>;
   project?: Project;
   undoTrackerActionWrapper: (callback: () => void) => void;
 };
 
 const SharedCanvas: React.FC<Props> = ({
-  yDoc,
+  yWorkflows,
   project,
   undoTrackerActionWrapper,
 }) => {
@@ -37,7 +38,7 @@ const SharedCanvas: React.FC<Props> = ({
     handleNodesChange,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
-  } = useHooks({ yDoc, project, undoTrackerActionWrapper });
+  } = useHooks({ yWorkflows, project, undoTrackerActionWrapper });
   return (
     <div className="relative flex size-full flex-col">
       <Canvas
