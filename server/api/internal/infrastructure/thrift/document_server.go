@@ -12,10 +12,10 @@ import (
 )
 
 type DocumentServiceHandler struct {
-	client *websocket.Client
+	client websocket.WebsocketClient
 }
 
-func NewDocumentServiceHandler(client *websocket.Client) *DocumentServiceHandler {
+func NewDocumentServiceHandler(client websocket.WebsocketClient) *DocumentServiceHandler {
 	return &DocumentServiceHandler{
 		client: client,
 	}
@@ -116,7 +116,7 @@ type DocumentServer struct {
 	transportFactory thrift.TTransportFactory
 }
 
-func NewDocumentServer(client *websocket.Client) *DocumentServer {
+func NewDocumentServer(client websocket.WebsocketClient) *DocumentServer {
 	handler := NewDocumentServiceHandler(client)
 	processor := proto.NewDocumentServiceProcessor(handler)
 
