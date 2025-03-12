@@ -25,25 +25,26 @@ type Tab = "navigator" | "actions-list" | "resources";
 type Props = {
   nodes: Node[];
   isOpen: boolean;
-  onOpen: (panel?: "left" | "right") => void;
-  onNodesAdd: (node: Node[]) => void;
   isMainWorkflow: boolean;
   hasReader?: boolean;
+  selected?: Node;
+  onOpen: (panel?: "left" | "right") => void;
+  onNodesAdd: (node: Node[]) => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onNodeDoubleClick: (
     e: React.MouseEvent<Element> | undefined,
-    node: Node,
+    nodeId: string,
+    subworkflowId?: string,
   ) => void;
-  selected?: Node;
 };
 
 const LeftPanel: React.FC<Props> = ({
   nodes,
   isOpen,
-  onOpen,
-  onNodesAdd,
   isMainWorkflow,
   hasReader,
+  onOpen,
+  onNodesAdd,
   onNodesChange,
   onNodeDoubleClick,
 }) => {
@@ -70,7 +71,7 @@ const LeftPanel: React.FC<Props> = ({
       }));
 
       onNodesChange(nodeChanges);
-      onNodeDoubleClick(undefined, node);
+      onNodeDoubleClick(undefined, node.id, node.data.subworkflowId);
     },
     [nodes, onNodesChange, onNodeDoubleClick],
   );

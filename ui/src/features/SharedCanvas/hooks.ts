@@ -89,16 +89,16 @@ export default ({
   });
 
   const handleNodeDoubleClick = useCallback(
-    (_e: MouseEvent | undefined, node: Node) => {
-      if (node.type === "subworkflow" && node.data.subworkflowId) {
-        handleWorkflowOpen(node.data.subworkflowId);
+    (_e: MouseEvent | undefined, nodeId: string, subworkflowId?: string) => {
+      if (subworkflowId) {
+        handleWorkflowOpen(subworkflowId);
       } else {
         fitView({
-          nodes: [{ id: node.id }],
+          nodes: [{ id: nodeId }],
           duration: 500,
           padding: 2,
         });
-        handleNodeLocking(node.id);
+        handleNodeLocking(nodeId);
       }
     },
     [handleWorkflowOpen, fitView, handleNodeLocking],
