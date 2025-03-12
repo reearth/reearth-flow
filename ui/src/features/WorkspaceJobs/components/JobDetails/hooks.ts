@@ -19,7 +19,7 @@ export default ({ jobId }: { jobId: string }) => {
     ? t("Loading...")
     : error
       ? t("Error")
-      : jobStatus || job.status;
+      : jobStatus;
 
   const { job } = useGetJob(jobId);
 
@@ -57,7 +57,7 @@ export default ({ jobId }: { jobId: string }) => {
             {
               id: "status",
               name: t("Status"),
-              value: statusValue,
+              value: statusValue || job.status,
             },
             {
               id: "startedAt",
