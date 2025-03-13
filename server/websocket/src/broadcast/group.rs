@@ -69,15 +69,53 @@ impl BroadcastGroup {
     pub fn increment_connections(&self) {
         let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
 
-        if prev_count > 0 {
+        if prev_count == 0 {
             if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
                 let store_clone = store.clone();
                 let doc_name_clone = doc_name.clone();
                 let awareness_clone = self.awareness_ref.clone();
+                let redis_store = self.redis_store.clone();
 
                 tokio::spawn(async move {
-                    Self::load_from_storage(&store_clone, &doc_name_clone, &awareness_clone).await;
+                    let awareness = awareness_clone.write().await;
+                    let doc = awareness.doc();
+                    let mut txn = doc.transact_mut();
+
+                    if let Some(redis_store) = &redis_store {
+                        if let Ok(updates) = redis_store.get_pending_updates(&doc_name_clone).await
+                        {
+                            if !updates.is_empty() {
+                                for update in &updates {
+                                    if let Ok(decoded) =
+                                        yrs::updates::decoder::Decode::decode_v1(update)
+                                    {
+                                        let _ = txn.apply_update(decoded);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    let state_vector = StateVector::default();
+                    let update = txn.encode_state_as_update_v1(&state_vector);
+
+                    if let Err(e) = store_clone.push_update(&doc_name_clone, &update).await {
+                        tracing::error!("Failed to save initial state to GCS: {}", e);
+                    }
                 });
+            }
+        } else {
+            {
+                if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
+                    let store_clone = store.clone();
+                    let doc_name_clone = doc_name.clone();
+                    let awareness_clone = self.awareness_ref.clone();
+
+                    tokio::spawn(async move {
+                        Self::load_from_storage(&store_clone, &doc_name_clone, &awareness_clone)
+                            .await;
+                    });
+                }
             }
         }
     }

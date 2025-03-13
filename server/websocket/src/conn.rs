@@ -38,6 +38,7 @@ where
         let sink = Arc::new(Mutex::new(sink));
         let broadcast_sub =
             Some(broadcast_group.subscribe_with_user(sink, stream, user_token.clone()));
+        broadcast_group.increment_connections();
 
         Connection {
             broadcast_sub,
