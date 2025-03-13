@@ -38,7 +38,6 @@ const ProjectsManager: React.FC = () => {
   const {
     projects,
     ref,
-    currentProject,
     projectToBeDeleted,
     editProject,
     showError,
@@ -47,14 +46,14 @@ const ProjectsManager: React.FC = () => {
     currentPage,
     totalPages,
     isFetching,
-    isDuplicatingState,
+    isDuplicating,
     currentOrder,
     orderDirections,
     setOpenProjectAddDialog,
     setEditProject,
     setProjectToBeDeleted,
     setCurrentPage,
-    setIsDuplicatingState,
+    handleProjectDuplication,
     handleProjectSelect,
     handleDeleteProject,
     handleUpdateValue,
@@ -77,13 +76,6 @@ const ProjectsManager: React.FC = () => {
     handleWorkflowImportClick,
     handleWorkflowFileUpload,
   } = useWorkflowImport();
-  const handleDuplicationStart = () => {
-    setIsDuplicatingState(true);
-  };
-
-  const handleDuplicationEnd = () => {
-    setIsDuplicatingState(false);
-  };
   return (
     <div className="flex h-full flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pb-2 pt-4">
@@ -142,7 +134,7 @@ const ProjectsManager: React.FC = () => {
             </SelectContent>
           </Select>
         )}
-        {isFetching || isProjectImporting || isDuplicatingState ? (
+        {isFetching || isProjectImporting || isDuplicating ? (
           <LoadingSkeleton />
         ) : projects && projects.length > 0 ? (
           <div
@@ -152,12 +144,11 @@ const ProjectsManager: React.FC = () => {
               <ProjectCard
                 key={p.id}
                 project={p}
-                currentProject={currentProject}
+                isDuplicating={isDuplicating}
                 setEditProject={setEditProject}
                 setProjectToBeDeleted={setProjectToBeDeleted}
                 onProjectSelect={handleProjectSelect}
-                onDuplicationStart={handleDuplicationStart}
-                onDuplicationEnd={handleDuplicationEnd}
+                onProjectDuplication={handleProjectDuplication}
               />
             ))}
           </div>
