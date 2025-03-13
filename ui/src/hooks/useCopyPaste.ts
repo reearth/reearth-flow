@@ -13,6 +13,13 @@ export const useCopyPaste = () => {
     [updateGeneralState],
   );
 
+  const cut = useCallback(
+    async (data: GeneralState["clipboard"]) => {
+      await updateGeneralState({ clipboard: data });
+    },
+    [updateGeneralState],
+  );
+
   const paste = useCallback(
     async (): Promise<GeneralState["clipboard"] | null> =>
       generalState?.clipboard || null,
@@ -21,6 +28,7 @@ export const useCopyPaste = () => {
 
   return {
     copy,
+    cut,
     paste,
   };
 };

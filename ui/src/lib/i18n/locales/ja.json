@@ -137,6 +137,7 @@
   "Toggle the Actions List Panel": "アクションリストパネルを切り替え",
   "Canvas Shortcuts": "キャンバスショートカット",
   "Copy the Selected Nodes": "選択したノードをコピー",
+  "Cut the Selected Nodes": "選択したノードをカット",
   "Paste the Copied Nodes": "コピーしたノードを貼り付け",
   "Undo the Last Action": "最後のアクションを元に戻す",
   "Redo the Last Action": "最後のアクションをやり直す",

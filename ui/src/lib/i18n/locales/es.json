@@ -137,6 +137,7 @@
   "Toggle the Actions List Panel": "Alternar el panel de lista de acciones",
   "Canvas Shortcuts": "Atajos del lienzo",
   "Copy the Selected Nodes": "Copiar los nodos seleccionados",
+  "Cut the Selected Nodes": "",
   "Paste the Copied Nodes": "Pegar los nodos copiados",
   "Undo the Last Action": "Deshacer la última acción",
   "Redo the Last Action": "Rehacer la última acción",

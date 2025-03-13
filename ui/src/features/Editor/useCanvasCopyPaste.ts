@@ -1,4 +1,4 @@
-import { addEdge } from "@xyflow/react";
+import { addEdge, EdgeChange } from "@xyflow/react";
 import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
@@ -13,6 +13,7 @@ export default ({
   handleNodesAdd,
   handleNodesChange,
   handleEdgesAdd,
+  handleEdgesChange,
 }: {
   nodes: Node[];
   edges: Edge[];
@@ -25,26 +26,54 @@ export default ({
   handleNodesAdd: (newNodes: Node[]) => void;
   handleNodesChange: (changes: NodeChange[]) => void;
   handleEdgesAdd: (newEdges: Edge[]) => void;
+  handleEdgesChange: (changes: EdgeChange[]) => void;
 }) => {
-  const { copy, paste } = useCopyPaste();
+  const { copy, cut, paste } = useCopyPaste();
 
   const handleCopy = useCallback(async () => {
     const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
       nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
       edges: edges.filter((e) => e.selected),
     };
+
+    const selectedNodes = nodes.filter((n) => selected.nodeIds.includes(n.id));
+    if (selectedNodes.some((n) => n.type === "reader")) return;
+
     if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
     await copy(selected);
   }, [nodes, edges, copy]);
 
+  const handleCut = useCallback(async () => {
+    const selected:
+      | { nodeIds: string[]; edges: Edge[]; nodes: Node[] }
+      | undefined = {
+      nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
+      edges: edges.filter((e) => e.selected),
+      nodes: nodes.filter((n) => n.selected),
+    };
+    if (selected.nodes.some((n) => n.type === "reader")) return;
+    if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
+
+    await cut(selected);
+
+    handleNodesChange(selected.nodeIds.map((id) => ({ id, type: "remove" })));
+    handleEdgesChange(
+      selected.edges.map((e) => ({ id: e.id, type: "remove" })),
+    );
+  }, [nodes, edges, cut, handleNodesChange, handleEdgesChange]);
+
   const handlePaste = useCallback(async () => {
-    const { nodeIds: pnid, edges: pastedEdges } = (await paste()) || {
+    const {
+      nodeIds: pnid,
+      edges: pastedEdges,
+      nodes: cutNodes,
+    } = (await paste()) || {
       nodeIds: [],
       edges: [],
     };
 
-    const pastedNodes = nodes.filter((n) => pnid.includes(n.id));
-    console.log(pastedNodes);
+    const copiedNodes = nodes.filter((n) => pnid.includes(n.id));
+    const pastedNodes = cutNodes ? cutNodes : copiedNodes;
 
     const newEdgeCreation = (
       pe: Edge[],
@@ -152,6 +181,11 @@ export default ({
       edges: newEdges,
     });
 
+    cut({
+      nodeIds: newNodes.map((n) => n.id),
+      edges: newEdges,
+    });
+
     // deselect all previously selected nodes
     const nodeChanges: NodeChange[] = nodes.map((n) => ({
       id: n.id,
@@ -168,6 +202,7 @@ export default ({
     nodes,
     rawWorkflows,
     copy,
+    cut,
     paste,
     handleWorkflowUpdate,
     handleNodesAdd,
@@ -177,6 +212,7 @@ export default ({
 
   return {
     handleCopy,
+    handleCut,
     handlePaste,
   };
 };
