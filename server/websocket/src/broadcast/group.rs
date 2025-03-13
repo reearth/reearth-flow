@@ -77,6 +77,7 @@ impl BroadcastGroup {
                 let redis_store = self.redis_store.clone();
 
                 tokio::spawn(async move {
+                    Self::load_from_storage(&store_clone, &doc_name_clone, &awareness_clone).await;
                     let awareness = awareness_clone.write().await;
                     let doc = awareness.doc();
                     let mut txn = doc.transact_mut();
@@ -492,7 +493,7 @@ impl BroadcastGroup {
     }
 
     pub fn subscribe_with_user<Sink, Stream, E>(
-        &self,
+        self: Arc<Self>,
         sink: Arc<Mutex<Sink>>,
         stream: Stream,
         user_token: Option<String>,
@@ -526,15 +527,23 @@ impl BroadcastGroup {
         }
 
         let subscription = self.subscribe_with(sink.clone(), stream, DefaultProtocol);
+        let (tx, rx) = tokio::sync::oneshot::channel();
 
         let awareness = self.awareness().clone();
         let sink_clone = sink.clone();
+        let self_clone = self.clone();
 
         tokio::spawn(async move {
             Self::send_initial_sync(awareness, sink_clone).await;
+            self_clone.increment_connections();
+            let _ = tx.send(());
         });
 
-        subscription
+        Subscription {
+            sink_task: subscription.sink_task,
+            stream_task: subscription.stream_task,
+            sync_complete: Some(rx),
+        }
     }
 
     pub fn subscribe_with<Sink, Stream, E, P>(
@@ -629,6 +638,7 @@ impl BroadcastGroup {
         Subscription {
             sink_task,
             stream_task,
+            sync_complete: None,
         }
     }
 
@@ -764,10 +774,15 @@ impl Drop for BroadcastGroup {
 pub struct Subscription {
     sink_task: JoinHandle<Result<(), Error>>,
     stream_task: JoinHandle<Result<(), Error>>,
+    sync_complete: Option<tokio::sync::oneshot::Receiver<()>>,
 }
 
 impl Subscription {
-    pub async fn completed(self) -> Result<(), Error> {
+    pub async fn completed(mut self) -> Result<(), Error> {
+        if let Some(sync_complete) = self.sync_complete.take() {
+            let _ = sync_complete.await;
+        }
+
         let res = select! {
             r1 = self.sink_task => r1,
             r2 = self.stream_task => r2,
