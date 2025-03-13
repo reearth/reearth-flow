@@ -56,9 +56,7 @@ impl RedisStore {
             .max_lifetime(Some(Duration::from_secs(7200)))
             .build(manager)
             .await
-            .map_err(|e| {
-                redis::RedisError::from(std::io::Error::new(std::io::ErrorKind::Other, e))
-            })?;
+            .map_err(|e| redis::RedisError::from(std::io::Error::other(e)))?;
         Ok(Arc::new(pool))
     }
 
@@ -258,6 +256,29 @@ impl RedisStore {
                     .query_async(&mut *conn)
                     .await?;
                 return Ok(result);
+            }
+        }
+        Ok(false)
+    }
+
+    pub async fn set_nx_with_expiry(
+        &self,
+        key: &str,
+        value: &str,
+        ttl_seconds: u64,
+    ) -> Result<bool, anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            if let Ok(mut conn) = pool.get().await {
+                let result: Option<String> = redis::cmd("SET")
+                    .arg(key)
+                    .arg(value)
+                    .arg("NX")
+                    .arg("EX")
+                    .arg(ttl_seconds)
+                    .query_async(&mut *conn)
+                    .await?;
+
+                return Ok(result.is_some());
             }
         }
         Ok(false)

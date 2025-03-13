@@ -79,7 +79,6 @@ jobs:
       id-token: write
     env:
       IMAGE_NAME: reearth/reearth-flow-websocket
-      IMAGE_GCP: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-websocket
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -99,8 +98,8 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          service_account: ${{ secrets.GCP_SA_EMAIL }}
-          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Log in to DockerHub
         uses: docker/login-action@v3
@@ -154,8 +153,8 @@ jobs:
         if: ${{ inputs.name == 'nightly' }}
         run: |
           docker pull $IMAGE_NAME:${{ inputs.name }}
-          docker tag $IMAGE_NAME:${{ inputs.name }} $IMAGE_GCP:${{ inputs.name }}
-          docker push $IMAGE_GCP:${{ inputs.name }}
+          docker tag $IMAGE_NAME:${{ inputs.name }} ${{ secrets.WEBSOCKET_IMAGE_GC }}:${{ inputs.name }}
+          docker push ${{ secrets.WEBSOCKET_IMAGE_GC }}:${{ inputs.name }}
 
   deploy-to-cloud-run:
     name: Deploy to Cloud Run (Nightly)
@@ -166,23 +165,21 @@ jobs:
       contents: read
       id-token: write
     env:
-      IMAGE: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-websocket:nightly
-      GCP_REGION: us-central1
       CLOUD_RUN_SERVICE: reearth-flow-websocket
     steps:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          service_account: ${{ secrets.GCP_SA_EMAIL }}
-          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy $CLOUD_RUN_SERVICE \
-            --image $IMAGE \
-            --region $GCP_REGION \
+          gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
+            --image ${{ secrets.WEBSOCKET_IMAGE_GC }}:nightly \
+            --region ${{ secrets.GC_REGION }} \
             --platform managed \
             --quiet
