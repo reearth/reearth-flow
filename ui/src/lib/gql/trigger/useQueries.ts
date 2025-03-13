@@ -130,7 +130,7 @@ export const useQueries = () => {
             page: paginationOptions?.page ?? 1,
             pageSize: TRIGGERS_FETCH_RATE,
             orderDir: paginationOptions?.orderDir ?? OrderDirection.Desc,
-            orderBy: paginationOptions?.orderBy ?? "createdAt",
+            orderBy: paginationOptions?.orderBy ?? "updatedAt",
           },
         });
         if (!data) return;

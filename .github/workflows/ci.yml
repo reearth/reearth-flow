@@ -231,7 +231,7 @@ jobs:
         name: ${{ needs.ci-collect-info.outputs.name }}
         sha: ${{ github.sha }}
       secrets: inherit
-  update-policies:
+  update-policies-and-deploy-cerbos:
     needs:
       - ci
       - ci-policies

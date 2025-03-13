@@ -12,7 +12,6 @@ mod utils;
 use std::env;
 
 use colored::{Color, Colorize};
-use opentelemetry::global::shutdown_tracer_provider;
 
 use crate::cli::{build_cli, CliCommand};
 use crate::errors::Result;
@@ -32,8 +31,12 @@ fn main() -> Result<()> {
     let command = CliCommand::parse_cli_args(matches)?;
     env::set_var(
         "RAYON_NUM_THREADS",
-        std::cmp::min(num_cpus::get() * 2, 64).to_string().as_str(),
+        std::cmp::min((num_cpus::get() as f64 * 1.2_f64).floor() as u64, 64)
+            .to_string()
+            .as_str(),
     );
+    let tracer_provider = opentelemetry_sdk::trace::SdkTracerProvider::builder().build();
+    opentelemetry::global::set_tracer_provider(tracer_provider.clone());
     logger::setup_logging_and_tracing()?;
     let return_code: i32 = if let Err(err) = command.execute() {
         eprintln!("{} Command failed: {:?}\n", "✘".color(RED_COLOR), err);
@@ -41,7 +44,7 @@ fn main() -> Result<()> {
     } else {
         0
     };
-    shutdown_tracer_provider();
+    let _ = tracer_provider.shutdown();
     std::process::exit(return_code)
 }
 

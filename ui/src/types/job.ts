@@ -19,7 +19,8 @@ export type JobStatus =
 
 export type Job = {
   id: string;
-  deploymentId: string;
+  deploymentId?: string;
+  deploymentDescription?: string;
   workspaceId: string;
   status: JobStatus;
   startedAt: string;

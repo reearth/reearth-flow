@@ -4,6 +4,7 @@ import {
   NodeChange,
   XYPosition,
 } from "@xyflow/react";
+import { MouseEvent } from "react";
 
 import { useEdges, useNodes } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
@@ -14,6 +15,11 @@ type Props = {
   onWorkflowAdd?: (position?: XYPosition) => void;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
+  onNodeDoubleClick?: (
+    e: MouseEvent | undefined,
+    nodeId: string,
+    subworkflowId?: string,
+  ) => void;
   onEdgesAdd?: (newEdges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
@@ -42,6 +48,7 @@ export default ({
   onWorkflowAdd,
   onNodesAdd,
   onNodesChange,
+  onNodeDoubleClick,
   onEdgesAdd,
   onEdgesChange,
   onNodePickerOpen,
@@ -52,12 +59,14 @@ export default ({
     handleNodeDragOver,
     handleNodeDragStop,
     handleNodeDrop,
+    handleNodeDoubleClick,
   } = useNodes({
     nodes,
     edges,
     onWorkflowAdd,
     onNodesAdd,
     onNodesChange,
+    onNodeDoubleClick,
     onEdgesChange,
     onNodePickerOpen,
   });
@@ -74,6 +83,7 @@ export default ({
     handleNodeDragStop,
     handleNodeDragOver,
     handleNodeDrop,
+    handleNodeDoubleClick,
     handleEdgesChange,
     handleConnect,
     handleReconnect,

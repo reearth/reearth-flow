@@ -2,10 +2,10 @@ import { useMemo } from "react";
 import { Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import Canvas from "@flow/features/Canvas";
-import type { YWorkflow } from "@flow/lib/yjs/types";
+import { YWorkflow } from "@flow/lib/yjs/types";
 
 import {
-  BottomPanel,
+  BottomBar,
   LeftPanel,
   OverlayUI,
   ParamsPanel,
@@ -50,7 +50,7 @@ export default function Editor({
     handleWorkflowChange,
     handleNodesAdd,
     handleNodesChange,
-    handleNodeParamsUpdate,
+    handleNodeDataUpdate,
     handleNodeHover,
     handleNodeDoubleClick,
     handleNodePickerOpen,
@@ -61,6 +61,8 @@ export default function Editor({
     handleWorkflowRedo,
     handleWorkflowUndo,
     handleWorkflowRename,
+    handleDebugRunStart,
+    handleDebugRunStop,
     handleLayoutChange,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
 
@@ -103,6 +105,8 @@ export default function Editor({
               onRightPanelOpen={handleRightPanelOpen}
               onWorkflowUndo={handleWorkflowUndo}
               onWorkflowRedo={handleWorkflowRedo}
+              onDebugRunStart={handleDebugRunStart}
+              onDebugRunStop={handleDebugRunStop}
               onLayoutChange={handleLayoutChange}>
               <Canvas
                 nodes={nodes}
@@ -119,7 +123,7 @@ export default function Editor({
                 onEdgeHover={handleEdgeHover}
               />
             </OverlayUI>
-            <BottomPanel
+            <BottomBar
               currentWorkflowId={currentWorkflowId}
               openWorkflows={openWorkflows}
               isOpen={openPanel === "bottom" && !locallyLockedNode}
@@ -135,7 +139,7 @@ export default function Editor({
           />
           <ParamsPanel
             selected={locallyLockedNode}
-            onParamsSubmit={handleNodeParamsUpdate}
+            onDataSubmit={handleNodeDataUpdate}
           />
         </EditorProvider>
       </div>

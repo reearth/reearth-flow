@@ -1,13 +1,13 @@
 use crate::storage::gcs::GcsStore;
 use crate::storage::kv::DocOps;
+use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
 use anyhow::anyhow;
 use anyhow::Result;
-use bb8_redis::{bb8, RedisConnectionManager};
 use futures_util::{SinkExt, StreamExt};
 use rand;
 use redis::AsyncCommands;
-use serde::Deserialize;
+
 use serde_json;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -24,23 +24,11 @@ use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
-const REDIS_STREAM_PREFIX: &str = "yjs";
-const REDIS_WORKER_GROUP: &str = "yjs:worker";
-
-#[derive(Debug, Clone, Default, Deserialize)]
-pub struct RedisConfig {
-    pub url: String,
-    pub ttl: u64,
-}
-
 #[derive(Debug, Clone)]
 pub struct BroadcastConfig {
     pub storage_enabled: bool,
     pub doc_name: Option<String>,
-    pub redis_config: Option<RedisConfig>,
 }
-
-type RedisPool = bb8::Pool<RedisConnectionManager>;
 
 pub struct BroadcastGroup {
     connections: Arc<AtomicUsize>,
@@ -50,7 +38,7 @@ pub struct BroadcastGroup {
     doc_sub: Option<yrs::Subscription>,
     awareness_sub: Option<yrs::Subscription>,
     storage: Option<Arc<GcsStore>>,
-    redis_pool: Option<Arc<RedisPool>>,
+    redis_store: Option<Arc<RedisStore>>,
     doc_name: Option<String>,
     redis_ttl: Option<usize>,
     storage_rx: Option<tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>>,
@@ -93,76 +81,80 @@ impl BroadcastGroup {
 
     pub fn decrement_connections(&self) -> usize {
         let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
+        let current_count = prev_count - 1;
+
+        if current_count == 0 && self.doc_name.is_some() {
+            let doc_name = self.doc_name.as_ref().unwrap().clone();
+
+            if let Some(redis_store) = &self.redis_store {
+                let redis_store = redis_store.clone();
+
+                tokio::spawn(async move {
+                    if let Err(e) = redis_store.clear_pending_updates(&doc_name).await {
+                        tracing::warn!("Failed to clear Redis updates (count=0): {}", e);
+                    }
+                });
+            }
+        }
 
         if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
             let store_clone = store.clone();
             let doc_name_clone = doc_name.clone();
-            let redis = self.redis_pool.clone();
-            let redis_ttl = self.redis_ttl;
+            let redis_store = self.redis_store.clone();
             let pending_updates = self.pending_updates.clone();
 
             tokio::spawn(async move {
                 let updates = {
                     let mut pending = pending_updates.lock().await;
                     if pending.is_empty() {
-                        if let Some(redis_pool) = &redis {
-                            let redis_key = format!("pending_updates:{}", doc_name_clone);
-                            let mut redis_conn = redis_pool.get().await.unwrap();
-                            match redis_conn
-                                .lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1)
-                                .await
-                            {
-                                Ok(redis_updates) => {
-                                    if !redis_updates.is_empty() {
-                                        let doc = Doc::new();
-                                        let mut txn = doc.transact_mut();
+                        if let Some(redis_store) = &redis_store {
+                            match redis_store.get_pending_updates(&doc_name_clone).await {
+                                Ok(updates) if !updates.is_empty() => {
+                                    let doc = Doc::new();
+                                    let mut txn = doc.transact_mut();
 
-                                        let mut has_updates = false;
-                                        for (i, update) in redis_updates.iter().enumerate() {
-                                            if let Ok(decoded) = Update::decode_v1(update) {
-                                                if let Err(e) = txn.apply_update(decoded) {
-                                                    tracing::warn!("Failed to apply update {} during flush: {}", i, e);
-                                                } else {
-                                                    has_updates = true;
-                                                }
-                                            } else {
-                                                tracing::warn!(
-                                                    "Failed to decode update {} during flush",
-                                                    i
-                                                );
+                                    let mut has_updates = false;
+                                    for update in updates.iter() {
+                                        if let Ok(decoded) = Update::decode_v1(update) {
+                                            if txn.apply_update(decoded).is_ok() {
+                                                has_updates = true;
                                             }
                                         }
-
-                                        if has_updates {
-                                            let state_vector = StateVector::default();
-                                            let merged_update =
-                                                txn.encode_state_as_update_v1(&state_vector);
-
-                                            Self::handle_update(
-                                                merged_update,
-                                                &doc_name_clone,
-                                                &store_clone,
-                                                &redis,
-                                                redis_ttl,
-                                            )
-                                            .await;
-                                        }
-
-                                        if let Err(e) = redis_conn.del::<_, ()>(&redis_key).await {
-                                            tracing::warn!(
-                                                "Failed to clear pending updates from Redis: {}",
-                                                e
-                                            );
-                                        }
                                     }
+
+                                    if has_updates {
+                                        let state_vector = StateVector::default();
+                                        let merged_update =
+                                            txn.encode_state_as_update_v1(&state_vector);
+
+                                        Self::handle_gcs_update(
+                                            merged_update,
+                                            &doc_name_clone,
+                                            &store_clone,
+                                        )
+                                        .await;
+                                    }
+
+                                    if let Err(e) =
+                                        redis_store.clear_pending_updates(&doc_name_clone).await
+                                    {
+                                        tracing::warn!(
+                                            "Failed to clear pending updates from Redis: {}",
+                                            e
+                                        );
+                                    }
+
+                                    return;
                                 }
+                                Ok(_) => return,
                                 Err(e) => {
                                     tracing::warn!(
                                         "Failed to load pending updates from Redis: {}",
                                         e
                                     );
+                                    return;
                                 }
-                            }
+                            };
                         }
                         return;
                     }
@@ -173,15 +165,11 @@ impl BroadcastGroup {
                 let mut txn = doc.transact_mut();
 
                 let mut has_updates = false;
-                for (i, update) in updates.iter().enumerate() {
+                for update in updates.iter() {
                     if let Ok(decoded) = Update::decode_v1(update) {
-                        if let Err(e) = txn.apply_update(decoded) {
-                            tracing::warn!("Failed to apply update {} during flush: {}", i, e);
-                        } else {
+                        if txn.apply_update(decoded).is_ok() {
                             has_updates = true;
                         }
-                    } else {
-                        tracing::warn!("Failed to decode update {} during flush", i);
                     }
                 }
 
@@ -189,20 +177,11 @@ impl BroadcastGroup {
                     let state_vector = StateVector::default();
                     let merged_update = txn.encode_state_as_update_v1(&state_vector);
 
-                    Self::handle_update(
-                        merged_update,
-                        &doc_name_clone,
-                        &store_clone,
-                        &redis,
-                        redis_ttl,
-                    )
-                    .await;
+                    Self::handle_gcs_update(merged_update, &doc_name_clone, &store_clone).await;
                 }
 
-                if let Some(redis_pool) = &redis {
-                    let redis_key = format!("pending_updates:{}", doc_name_clone);
-                    let mut redis_conn = redis_pool.get().await.unwrap();
-                    if let Err(e) = redis_conn.del::<_, ()>(&redis_key).await {
+                if let Some(redis_store) = &redis_store {
+                    if let Err(e) = redis_store.clear_pending_updates(&doc_name_clone).await {
                         tracing::warn!("Failed to clear pending updates from Redis: {}", e);
                     }
                 }
@@ -276,14 +255,9 @@ impl BroadcastGroup {
             while let Some(changed_clients) = rx.recv().await {
                 if let Some(awareness) = awareness_c.upgrade() {
                     let awareness = awareness.read().await;
-                    match awareness.update_with_clients(changed_clients) {
-                        Ok(update) => {
-                            if sink.send(Message::Awareness(update).encode_v1()).is_err() {
-                                tracing::warn!("couldn't broadcast awareness update");
-                            }
-                        }
-                        Err(e) => {
-                            tracing::warn!("error while computing awareness update: {}", e)
+                    if let Ok(update) = awareness.update_with_clients(changed_clients) {
+                        if sink.send(Message::Awareness(update).encode_v1()).is_err() {
+                            tracing::warn!("couldn't broadcast awareness update");
                         }
                     }
                 } else {
@@ -300,7 +274,7 @@ impl BroadcastGroup {
             doc_sub: Some(doc_sub),
             awareness_sub: Some(awareness_sub),
             storage: None,
-            redis_pool: None,
+            redis_store: None,
             doc_name: None,
             redis_ttl: None,
             storage_rx: Some(storage_rx),
@@ -317,6 +291,7 @@ impl BroadcastGroup {
         awareness: AwarenessRef,
         buffer_capacity: usize,
         store: Arc<GcsStore>,
+        redis_store: Option<Arc<RedisStore>>,
         config: BroadcastConfig,
     ) -> Result<Self> {
         if !config.storage_enabled {
@@ -325,153 +300,105 @@ impl BroadcastGroup {
 
         let mut group = Self::new(awareness, buffer_capacity).await?;
 
-        let doc_name = config
-            .doc_name
-            .expect("doc_name required when storage enabled");
-        let redis_ttl = config.redis_config.as_ref().map(|c| c.ttl as usize);
+        let doc_name = config.doc_name.unwrap_or_default();
+
+        let redis_ttl = redis_store
+            .as_ref()
+            .and_then(|rs| rs.get_config())
+            .map(|c| c.ttl as usize);
 
         Self::load_from_storage(&store, &doc_name, &group.awareness_ref).await;
 
-        let redis_pool = if let Some(redis_config) = config.redis_config {
-            match Self::init_redis_connection(&redis_config.url).await {
-                Ok(conn) => {
-                    let redis_key = format!("pending_updates:{}", doc_name);
-                    let conn_clone = conn.clone();
-                    let awareness_clone = group.awareness_ref.clone();
-                    let pending_clone = group.pending_updates.clone();
+        if let Some(redis_store) = redis_store {
+            group.redis_store = Some(redis_store.clone());
 
-                    tokio::spawn(async move {
-                        let mut redis_conn = match conn_clone.get().await {
-                            Ok(conn) => conn,
-                            Err(e) => {
-                                tracing::error!("Failed to get Redis connection: {}", e);
-                                return;
+            if let Some(pool) = redis_store.get_pool() {
+                let redis_key = format!("pending_updates:{}", doc_name);
+                let awareness_clone = group.awareness_ref.clone();
+                let pending_clone = group.pending_updates.clone();
+
+                tokio::spawn(async move {
+                    let mut redis_conn = match pool.get().await {
+                        Ok(conn) => conn,
+                        Err(e) => {
+                            tracing::error!("Failed to get Redis connection: {}", e);
+                            return;
+                        }
+                    };
+                    if let Ok(updates) = redis_conn
+                        .lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1)
+                        .await
+                    {
+                        if !updates.is_empty() {
+                            let awareness = awareness_clone.write().await;
+                            let mut txn = awareness.doc().transact_mut();
+
+                            for update in &updates {
+                                if let Ok(decoded) = Update::decode_v1(update) {
+                                    if let Err(e) = txn.apply_update(decoded) {
+                                        tracing::warn!("Failed to apply update from Redis: {}", e);
+                                    }
+                                }
                             }
-                        };
-                        match redis_conn
-                            .lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1)
-                            .await
-                        {
-                            Ok(updates) => {
-                                if !updates.is_empty() {
-                                    let awareness = awareness_clone.write().await;
-                                    let mut txn = awareness.doc().transact_mut();
 
-                                    for update in &updates {
-                                        if let Ok(decoded) = Update::decode_v1(update) {
+                            let mut pending = pending_clone.lock().await;
+                            pending.extend(updates);
+                        }
+                    }
+                });
+
+                let redis_url = redis_store
+                    .get_config()
+                    .map(|config| config.url.clone())
+                    .expect("Redis store should have config");
+
+                let consumer_name = format!("instance-{}", rand::random::<u32>());
+                let awareness_for_sub = group.awareness_ref.clone();
+                let sender_for_sub = group.sender.clone();
+                let doc_name_for_sub = doc_name.clone();
+
+                let redis_subscriber_task = tokio::spawn(async move {
+                    if let Ok(client) = redis::Client::open(redis_url) {
+                        if let Ok(mut pubsub) = client.get_async_pubsub().await {
+                            let channel = format!("yjs:updates:{}", doc_name_for_sub);
+                            if (pubsub.subscribe(&channel).await).is_ok() {
+                                let mut stream = pubsub.on_message();
+                                while let Some(msg) = stream.next().await {
+                                    if let Ok(payload) = msg.get_payload::<Vec<u8>>() {
+                                        let awareness = awareness_for_sub.write().await;
+                                        let mut txn = awareness.doc().transact_mut();
+
+                                        if let Ok(decoded) = Update::decode_v1(&payload) {
                                             if let Err(e) = txn.apply_update(decoded) {
                                                 tracing::warn!(
                                                     "Failed to apply update from Redis: {}",
                                                     e
                                                 );
-                                            }
-                                        } else {
-                                            tracing::warn!("Failed to decode update from Redis");
-                                        }
-                                    }
-
-                                    let mut pending = pending_clone.lock().await;
-                                    pending.extend(updates);
-                                }
-                            }
-                            Err(e) => {
-                                tracing::warn!("Failed to load pending updates from Redis: {}", e);
-                            }
-                        }
-                    });
-
-                    let stream_name = Self::compute_redis_stream_name(&doc_name);
-                    let consumer_name = format!("instance-{}", rand::random::<u32>());
-
-                    let mut redis_conn = conn.get().await.unwrap();
-                    let _: redis::RedisResult<String> = redis::cmd("XGROUP")
-                        .arg("CREATE")
-                        .arg(&stream_name)
-                        .arg(REDIS_WORKER_GROUP)
-                        .arg("0")
-                        .arg("MKSTREAM")
-                        .query_async(&mut *redis_conn)
-                        .await;
-                    drop(redis_conn);
-
-                    let awareness_for_sub = group.awareness_ref.clone();
-                    let sender_for_sub = group.sender.clone();
-                    let doc_name_for_sub = doc_name.clone();
-                    let redis_url = redis_config.url.clone();
-
-                    let redis_subscriber_task = tokio::spawn(async move {
-                        match redis::Client::open(redis_url) {
-                            Ok(client) => match client.get_async_pubsub().await {
-                                Ok(mut pubsub) => {
-                                    let channel = format!("yjs:updates:{}", doc_name_for_sub);
-                                    match pubsub.subscribe(&channel).await {
-                                        Ok(_) => {
-                                            let mut stream = pubsub.on_message();
-
-                                            while let Some(msg) = stream.next().await {
-                                                match msg.get_payload::<Vec<u8>>() {
-                                                    Ok(payload) => {
-                                                        let awareness =
-                                                            awareness_for_sub.write().await;
-                                                        let mut txn =
-                                                            awareness.doc().transact_mut();
-
-                                                        if let Ok(decoded) =
-                                                            Update::decode_v1(&payload)
-                                                        {
-                                                            if let Err(e) =
-                                                                txn.apply_update(decoded)
-                                                            {
-                                                                tracing::warn!("Failed to apply update from Redis: {}", e);
-                                                            } else {
-                                                                let _ =
-                                                                    sender_for_sub.send(payload);
-                                                            }
-                                                        }
-                                                    }
-                                                    Err(e) => {
-                                                        tracing::error!("Failed to get payload from Redis message: {}", e);
-                                                    }
-                                                }
+                                            } else {
+                                                let _ = sender_for_sub.send(payload);
                                             }
                                         }
-                                        Err(e) => {
-                                            tracing::error!(
-                                                "Failed to subscribe to Redis channel: {}",
-                                                e
-                                            );
-                                        }
+                                    } else {
+                                        tracing::error!("Failed to get payload from Redis message");
                                     }
                                 }
-                                Err(e) => {
-                                    tracing::error!(
-                                        "Failed to get async connection to Redis: {}",
-                                        e
-                                    );
-                                }
-                            },
-                            Err(e) => {
-                                tracing::error!("Failed to open Redis client: {}", e);
+                            } else {
+                                tracing::error!("Failed to subscribe to Redis channel");
                             }
+                        } else {
+                            tracing::error!("Failed to get async connection to Redis");
                         }
-                    });
+                    } else {
+                        tracing::error!("Failed to open Redis client");
+                    }
+                });
 
-                    group.redis_subscriber_task = Some(redis_subscriber_task);
-                    group.redis_consumer_name = Some(consumer_name);
-
-                    Some(conn.clone())
-                }
-                Err(e) => {
-                    tracing::error!("Failed to initialize Redis connection: {}", e);
-                    None
-                }
+                group.redis_subscriber_task = Some(redis_subscriber_task);
+                group.redis_consumer_name = Some(consumer_name);
             }
-        } else {
-            None
-        };
+        }
 
         group.storage = Some(store);
-        group.redis_pool = redis_pool;
         group.doc_name = Some(doc_name.clone());
         group.redis_ttl = redis_ttl;
 
@@ -480,177 +407,26 @@ impl BroadcastGroup {
         Ok(group)
     }
 
-    async fn init_redis_connection(url: &str) -> Result<Arc<RedisPool>, redis::RedisError> {
-        let manager = RedisConnectionManager::new(url)?;
-        let pool = bb8::Pool::builder()
-            .max_size(1024)
-            .min_idle(5)
-            .connection_timeout(std::time::Duration::from_secs(5))
-            .idle_timeout(Some(std::time::Duration::from_secs(500)))
-            .max_lifetime(Some(std::time::Duration::from_secs(7200)))
-            .build(manager)
-            .await
-            .map_err(|e| {
-                redis::RedisError::from(std::io::Error::new(std::io::ErrorKind::Other, e))
-            })?;
-        Ok(Arc::new(pool))
-    }
-
-    #[allow(dead_code)]
-    async fn load_from_redis(
-        redis: &Arc<RedisPool>,
-        doc_name: &str,
-        awareness: &AwarenessRef,
-    ) -> Result<(), anyhow::Error> {
-        let mut conn = redis.get().await?;
-        let cache_key = format!("doc:{}", doc_name);
-
-        let cached_data: Vec<u8> = conn
-            .get(&cache_key)
-            .await
-            .map_err(|e| Error::Other(e.into()))?;
-        let update = Update::decode_v1(&cached_data)?;
-
-        let awareness_guard = awareness.write().await;
-        let mut txn = awareness_guard.doc().transact_mut();
-        txn.apply_update(update)?;
-
-        Ok(())
-    }
-
     async fn load_from_storage(store: &Arc<GcsStore>, doc_name: &str, awareness: &AwarenessRef) {
         let awareness = awareness.write().await;
         let mut txn = awareness.doc().transact_mut();
 
-        let mut attempts = 0;
-        let max_attempts = 3;
         let timeout_duration = std::time::Duration::from_secs(5);
 
-        loop {
-            attempts += 1;
-
-            match tokio::time::timeout(timeout_duration, store.load_doc(doc_name, &mut txn)).await {
-                Ok(result) => match result {
-                    Ok(_) => {
-                        break;
-                    }
-                    Err(e) => {
-                        if attempts >= max_attempts {
-                            tracing::error!(
-                                "Failed to load document '{}' from storage after {} attempts: {}",
-                                doc_name,
-                                max_attempts,
-                                e
-                            );
-                            break;
-                        } else {
-                            tracing::warn!(
-                                "Failed to load document '{}' from storage (attempt {}/{}): {}. Retrying...", 
-                                doc_name,
-                                attempts,
-                                max_attempts,
-                                e
-                            );
-                            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                        }
-                    }
-                },
-                Err(_) => {
-                    if attempts >= max_attempts {
-                        tracing::error!(
-                            "Timed out loading document '{}' from storage after {} attempts",
-                            doc_name,
-                            max_attempts
-                        );
-                        break;
-                    } else {
-                        tracing::warn!(
-                            "Timed out loading document '{}' from storage (attempt {}/{}). Retrying...", 
-                            doc_name,
-                            attempts,
-                            max_attempts
-                        );
-                    }
-                }
-            }
+        if let Err(e) =
+            tokio::time::timeout(timeout_duration, store.load_doc(doc_name, &mut txn)).await
+        {
+            tracing::error!(
+                "Timeout loading document '{}' from storage: {}",
+                doc_name,
+                e
+            );
         }
     }
 
-    async fn handle_update(
-        update: Vec<u8>,
-        doc_name: &str,
-        store: &Arc<GcsStore>,
-        redis: &Option<Arc<RedisPool>>,
-        redis_ttl: Option<usize>,
-    ) {
-        let store_future = Some(store.push_update(doc_name, &update));
-
-        let redis_future = if let (Some(redis), Some(ttl)) = (redis, redis_ttl) {
-            let cache_key = format!("doc:{}", doc_name);
-            let redis_key = format!("pending_updates:{}", doc_name);
-            let channel = format!("yjs:updates:{}", doc_name);
-            let stream_name = Self::compute_redis_stream_name(doc_name);
-            let redis = redis.clone();
-            let update = update.clone();
-
-            Some(async move {
-                let mut conn = redis.get().await.unwrap();
-
-                let mut pipe: redis::Pipeline = redis::pipe();
-                pipe.atomic()
-                    .cmd("SET")
-                    .arg(&cache_key)
-                    .arg(update.as_slice())
-                    .arg("EX")
-                    .arg(<usize as std::convert::TryInto<u64>>::try_into(ttl).unwrap())
-                    .cmd("LPUSH")
-                    .arg(&redis_key)
-                    .arg(update.as_slice())
-                    .cmd("EXPIRE")
-                    .arg(&redis_key)
-                    .arg(<usize as std::convert::TryInto<u64>>::try_into(ttl).unwrap())
-                    .cmd("PUBLISH")
-                    .arg(&channel)
-                    .arg(update.as_slice())
-                    .cmd("XADD")
-                    .arg(&stream_name)
-                    .arg("*")
-                    .arg("message")
-                    .arg(update.as_slice());
-
-                let _: () = pipe.query_async(&mut *conn).await.unwrap();
-                tracing::debug!(
-                    "Successfully executed Redis pipeline for document '{}'",
-                    doc_name
-                );
-            })
-        } else {
-            None
-        };
-        match (store_future, redis_future) {
-            (Some(store_future), Some(redis_future)) => {
-                let (store_result, _) = tokio::join!(store_future, redis_future);
-                if let Err(e) = store_result {
-                    tracing::error!(
-                        "Failed to store update in GCS for document '{}': {}",
-                        doc_name,
-                        e
-                    );
-                }
-            }
-            (Some(store_future), None) => {
-                if let Err(e) = store_future.await {
-                    tracing::error!(
-                        "Failed to store update in GCS for document '{}': {}",
-                        doc_name,
-                        e
-                    );
-                }
-            }
-            (None, Some(redis_future)) => {
-                redis_future.await;
-            }
-            (None, None) => {}
+    async fn handle_gcs_update(update: Vec<u8>, doc_name: &str, store: &Arc<GcsStore>) {
+        if let Err(e) = store.push_update(doc_name, &update).await {
+            tracing::error!("Failed to store update for document '{}': {}", doc_name, e);
         }
     }
 
@@ -737,94 +513,59 @@ impl BroadcastGroup {
                 Ok(())
             })
         };
+
         let stream_task = {
             let awareness = self.awareness().clone();
-            let redis = self.redis_pool.clone();
+            let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
             let redis_ttl = self.redis_ttl;
 
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
-                    if let Ok(data) = res.map_err(|e| Error::Other(Box::new(e))) {
-                        if let Ok(msg) = Message::decode_v1(&data) {
-                            if let Message::Sync(SyncMessage::Update(update)) = &msg {
-                                if let (Some(redis), Some(ttl), Some(doc_name)) =
-                                    (&redis, redis_ttl, &doc_name)
+                    let data = match res.map_err(|e| Error::Other(Box::new(e))) {
+                        Ok(data) => data,
+                        Err(e) => {
+                            tracing::warn!("Error receiving message: {}", e);
+                            continue;
+                        }
+                    };
+
+                    let msg = match Message::decode_v1(&data) {
+                        Ok(msg) => msg,
+                        Err(e) => {
+                            tracing::warn!("Failed to decode message: {}", e);
+                            continue;
+                        }
+                    };
+
+                    if let Message::Sync(SyncMessage::Update(update)) = &msg {
+                        if let (Some(redis_store), Some(doc_name), Some(ttl)) =
+                            (redis_store.as_ref(), doc_name.as_ref(), redis_ttl)
+                        {
+                            let rs = redis_store.clone();
+                            let dn = doc_name.clone();
+                            let update_clone = update.clone();
+                            let ttl_clone = ttl as u64;
+
+                            tokio::spawn(async move {
+                                if let Err(e) =
+                                    rs.add_publish_update(&dn, &update_clone, ttl_clone).await
                                 {
-                                    let redis_key = format!("pending_updates:{}", doc_name);
-                                    let redis = redis.clone();
-                                    let update = update.clone();
-                                    let channel = format!("yjs:updates:{}", doc_name);
-                                    let stream_name =
-                                        format!("{}:room:{}", REDIS_STREAM_PREFIX, doc_name);
-
-                                    tokio::spawn(async move {
-                                        let mut conn = redis.get().await.unwrap();
-
-                                        match conn
-                                            .lpush::<_, _, ()>(&redis_key, update.as_slice())
-                                            .await
-                                        {
-                                            Ok(_) => {
-                                                let _ = conn
-                                                    .expire::<_, ()>(
-                                                        &redis_key,
-                                                        ttl.try_into().unwrap(),
-                                                    )
-                                                    .await;
-                                            }
-                                            Err(e) => {
-                                                tracing::error!(
-                                                    "Failed to store update to Redis: {}",
-                                                    e
-                                                );
-                                            }
-                                        }
-
-                                        match conn
-                                            .publish::<_, _, ()>(&channel, update.as_slice())
-                                            .await
-                                        {
-                                            Ok(_) => {}
-                                            Err(e) => {
-                                                tracing::error!(
-                                                    "Failed to publish update to Redis channel: {}",
-                                                    e
-                                                );
-                                            }
-                                        }
-
-                                        let cmd_result: redis::RedisResult<String> =
-                                            redis::cmd("XADD")
-                                                .arg(&stream_name)
-                                                .arg("*")
-                                                .arg("message")
-                                                .arg(update.as_slice())
-                                                .query_async(&mut *conn)
-                                                .await;
-
-                                        match cmd_result {
-                                            Ok(id) => {
-                                                tracing::debug!("Successfully added update to Redis stream with ID: {}", id);
-                                            }
-                                            Err(e) => {
-                                                tracing::error!(
-                                                    "Failed to add update to Redis stream: {}",
-                                                    e
-                                                );
-                                            }
-                                        }
-                                    });
+                                    tracing::error!("Redis update failed: {}", e);
                                 }
-                            }
+                            });
+                        }
+                    }
 
-                            if let Ok(Some(reply)) =
-                                Self::handle_msg(&protocol, &awareness, msg).await
-                            {
-                                let mut sink = sink.lock().await;
-                                let _ = sink.send(reply.encode_v1()).await;
+                    match Self::handle_msg(&protocol, &awareness, msg).await {
+                        Ok(Some(reply)) => {
+                            let mut sink_lock = sink.lock().await;
+                            if let Err(e) = sink_lock.send(reply.encode_v1()).await {
+                                tracing::warn!("Failed to send reply: {}", e);
                             }
                         }
+                        Err(e) => tracing::warn!("Error handling message: {}", e),
+                        _ => {}
                     }
                 }
                 Ok(())
@@ -877,180 +618,6 @@ impl BroadcastGroup {
             }
         }
     }
-
-    pub async fn flush_updates(&self) -> Result<(), Error> {
-        if self.connection_count() > 0 {
-            return Ok(());
-        }
-
-        if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
-            let updates = {
-                let mut pending = self.pending_updates.lock().await;
-                if pending.is_empty() {
-                    if let Some(redis) = &self.redis_pool {
-                        let redis_key = format!("pending_updates:{}", doc_name);
-                        let mut redis_conn = redis.get().await.unwrap();
-                        match redis_conn
-                            .lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1)
-                            .await
-                        {
-                            Ok(redis_updates) => {
-                                if !redis_updates.is_empty() {
-                                    tracing::info!(
-                                        "Found {} pending updates in Redis for document '{}'",
-                                        redis_updates.len(),
-                                        doc_name
-                                    );
-                                    return self
-                                        .flush_redis_updates(redis_updates, doc_name, store)
-                                        .await;
-                                }
-                            }
-                            Err(e) => {
-                                tracing::warn!("Failed to load pending updates from Redis: {}", e);
-                            }
-                        }
-                    }
-
-                    return Ok(());
-                }
-                std::mem::take(&mut *pending)
-            };
-
-            let result = self.apply_and_store_updates(updates, doc_name, store).await;
-
-            if let Some(redis) = &self.redis_pool {
-                let redis_key = format!("pending_updates:{}", doc_name);
-                let mut redis_conn = redis.get().await.unwrap();
-                if let Err(e) = redis_conn.del::<_, ()>(&redis_key).await {
-                    tracing::warn!("Failed to clear pending updates from Redis: {}", e);
-                } else {
-                    tracing::info!(
-                        "Cleared pending updates from Redis for document '{}'",
-                        doc_name
-                    );
-                }
-            }
-
-            result
-        } else {
-            tracing::info!("No storage or doc_name available, not storing updates");
-            Ok(())
-        }
-    }
-
-    async fn apply_and_store_updates(
-        &self,
-        updates: Vec<Vec<u8>>,
-        doc_name: &str,
-        store: &Arc<GcsStore>,
-    ) -> Result<(), Error> {
-        let doc = Doc::new();
-        let mut txn = doc.transact_mut();
-
-        let mut has_updates = false;
-        for (i, update) in updates.iter().enumerate() {
-            if let Ok(decoded) = Update::decode_v1(update) {
-                if let Err(e) = txn.apply_update(decoded) {
-                    tracing::warn!("Failed to apply update {} during manual flush: {}", i, e);
-                } else {
-                    has_updates = true;
-                    tracing::debug!(
-                        "Successfully applied update {} for document '{}'",
-                        i,
-                        doc_name
-                    );
-                }
-            } else {
-                tracing::warn!("Failed to decode update {} during manual flush", i);
-            }
-        }
-
-        if !has_updates {
-            tracing::info!("No valid updates to store for document '{}'", doc_name);
-            return Ok(());
-        }
-
-        let state_vector = StateVector::default();
-        let merged_update = txn.encode_state_as_update_v1(&state_vector);
-
-        tracing::debug!("Storing merged update for document '{}'", doc_name);
-        Self::handle_update(
-            merged_update,
-            doc_name,
-            store,
-            &self.redis_pool,
-            self.redis_ttl,
-        )
-        .await;
-        tracing::debug!("Stored merged updates for document '{}'", doc_name);
-
-        Ok(())
-    }
-
-    async fn flush_redis_updates(
-        &self,
-        updates: Vec<Vec<u8>>,
-        doc_name: &str,
-        store: &Arc<GcsStore>,
-    ) -> Result<(), Error> {
-        let result = self.apply_and_store_updates(updates, doc_name, store).await;
-
-        if let Some(redis) = &self.redis_pool {
-            let redis_key = format!("pending_updates:{}", doc_name);
-            let mut redis_conn = redis.get().await.map_err(|e| Error::Other(e.into()))?;
-            if let Err(e) = redis_conn.del::<_, ()>(&redis_key).await {
-                tracing::warn!("Failed to clear pending updates from Redis: {}", e);
-            } else {
-                tracing::info!(
-                    "Cleared pending updates from Redis for document '{}'",
-                    doc_name
-                );
-            }
-        }
-
-        result
-    }
-
-    fn compute_redis_stream_name(doc_name: &str) -> String {
-        format!("{}:room:{}", REDIS_STREAM_PREFIX, doc_name)
-    }
-
-    pub async fn shutdown(&self) -> Result<(), Error> {
-        if self
-            .shutdown_complete
-            .swap(true, std::sync::atomic::Ordering::SeqCst)
-        {
-            tracing::info!("BroadcastGroup already shut down");
-            return Ok(());
-        }
-
-        tracing::info!("BroadcastGroup::shutdown called");
-
-        if let Some(sub) = &self.doc_sub {
-            drop(sub.clone());
-        }
-
-        if let Some(sub) = &self.awareness_sub {
-            drop(sub.clone());
-        }
-
-        if let Some(task) = &self.redis_subscriber_task {
-            task.abort();
-            tracing::info!("Aborted Redis subscriber task");
-        }
-
-        self.awareness_updater.abort();
-
-        if self.connection_count() == 0 {
-            self.flush_updates().await?;
-        } else {
-            tracing::info!("Not flushing updates during shutdown as connections are still active");
-        }
-
-        tracing::info!("BroadcastGroup shutdown complete");
-        Ok(())
-    }
 }
 
 impl Drop for BroadcastGroup {
@@ -1073,10 +640,6 @@ impl Drop for BroadcastGroup {
             .shutdown_complete
             .load(std::sync::atomic::Ordering::SeqCst)
         {
-            tracing::warn!(
-                "BroadcastGroup dropped without calling shutdown() first. Pending updates may be lost."
-            );
-
             if let (Some(_store), Some(doc_name)) = (&self.storage, &self.doc_name) {
                 tracing::warn!(
                     "Document '{}' may have pending updates that weren't flushed",

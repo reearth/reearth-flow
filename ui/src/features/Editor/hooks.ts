@@ -21,6 +21,7 @@ import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
+import useDebugRun from "./useDebugRun";
 import useDeployment from "./useDeployment";
 import useNodeLocker from "./useNodeLocker";
 import useUIState from "./useUIState";
@@ -58,7 +59,7 @@ export default ({
     handleYWorkflowUpdate,
     handleYNodesAdd,
     handleYNodesChange,
-    handleYNodeParamsUpdate,
+    handleYNodeDataUpdate,
     handleYEdgesAdd,
     handleYEdgesChange,
     handleYWorkflowUndo,
@@ -128,25 +129,32 @@ export default ({
 
   // Passed to editor context so needs to be a ref
   const handleNodeDoubleClickRef =
-    useRef<(e: MouseEvent | undefined, node: Node) => void>(undefined);
+    useRef<
+      (
+        e: MouseEvent | undefined,
+        nodeId: string,
+        subworkflowId?: string,
+      ) => void
+    >(undefined);
   handleNodeDoubleClickRef.current = (
     _e: MouseEvent | undefined,
-    node: Node,
+    nodeId: string,
+    subworkflowId?: string,
   ) => {
-    if (node.type === "subworkflow" && node.data.subworkflowId) {
-      handleWorkflowOpen(node.data.subworkflowId);
+    if (subworkflowId) {
+      handleWorkflowOpen(subworkflowId);
     } else {
       fitView({
-        nodes: [{ id: node.id }],
+        nodes: [{ id: nodeId }],
         duration: 500,
         padding: 2,
       });
-      handleNodeLocking(node.id);
+      handleNodeLocking(nodeId);
     }
   };
   const handleNodeDoubleClick = useCallback(
-    (e: MouseEvent | undefined, node: Node) =>
-      handleNodeDoubleClickRef.current?.(e, node),
+    (e: MouseEvent | undefined, nodeId: string, subworkflowId?: string) =>
+      handleNodeDoubleClickRef.current?.(e, nodeId, subworkflowId),
     [],
   );
 
@@ -212,6 +220,10 @@ export default ({
     [fitView, handleYLayoutChange],
   );
 
+  const { handleDebugRunStart, handleDebugRunStop } = useDebugRun({
+    rawWorkflows,
+  });
+
   useShortcuts([
     {
       keyBinding: { key: "r", commandKey: false },
@@ -249,8 +261,6 @@ export default ({
     // },
   ]);
 
-  console.log("rawWorkflows", rawWorkflows);
-
   return {
     currentWorkflowId,
     openWorkflows,
@@ -281,12 +291,14 @@ export default ({
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
     handleNodeHover,
-    handleNodeParamsUpdate: handleYNodeParamsUpdate,
+    handleNodeDataUpdate: handleYNodeDataUpdate,
     handleNodeDoubleClick,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgesAdd: handleYEdgesAdd,
     handleEdgesChange: handleYEdgesChange,
     handleEdgeHover,
+    handleDebugRunStart,
+    handleDebugRunStop,
   };
 };

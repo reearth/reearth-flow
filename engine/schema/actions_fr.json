@@ -818,7 +818,8 @@
       },
       "builtin": true,
       "inputPorts": [
-        "default"
+        "default",
+        "schema"
       ],
       "outputPorts": [],
       "categories": [
@@ -3227,6 +3228,23 @@
       ],
       "outputPorts": [
         "default"
+      ],
+      "categories": [
+        "PLATEAU"
+      ]
+    },
+    {
+      "name": "PLATEAU4.DomainOfDefinitionValidator",
+      "type": "processor",
+      "description": "Validates domain of definition of CityGML features",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
       ],
       "categories": [
         "PLATEAU"

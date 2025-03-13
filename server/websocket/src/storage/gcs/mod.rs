@@ -108,7 +108,6 @@ impl GcsStore {
             .items
             .unwrap_or_default();
 
-        // Download and decode updates
         let mut updates = Vec::new();
         for obj in objects {
             let request = GetObjectRequest {
@@ -145,7 +144,6 @@ impl GcsStore {
             }
         }
 
-        // Sort updates by clock
         updates.sort_unstable_by_key(|info| info.clock);
 
         Ok(updates)
@@ -158,7 +156,6 @@ impl GcsStore {
             None => anyhow::bail!("Document not found"),
         };
 
-        // Create prefix that matches all updates for this OID
         let prefix_bytes = [V1, KEYSPACE_DOC]
             .iter()
             .chain(&oid.to_be_bytes())

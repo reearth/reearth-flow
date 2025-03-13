@@ -15,7 +15,7 @@ const DeploymentManager: React.FC<Props> = ({ selected }) => {
 
   const handleNavigation = () => {
     if (selected) return;
-    navigate({ to: `/workspaces/${currentWorkspace?.id}/deployments/all` });
+    navigate({ to: `/workspaces/${currentWorkspace?.id}/deployments` });
   };
 
   return (

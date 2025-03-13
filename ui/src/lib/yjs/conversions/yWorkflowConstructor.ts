@@ -21,12 +21,13 @@ export const yNodeConstructor = (node: Node): YNode => {
     // Reference src/types/node.ts for the NodeData type
     data: toYjsMap({
       officialName: toYjsText(node.data.officialName),
-      customName: toYjsText(node.data.customName),
+      customName: toYjsText(node.data.customName), // TODO: remove data.customName when subworkflow's renaming is re-implemented
       inputs: toYjsArray(node.data.inputs?.map((input) => toYjsText(input))),
       outputs: toYjsArray(
         node.data.outputs?.map((output) => toYjsText(output)),
       ),
       params: node.data.params,
+      customizations: node.data.customizations,
       // Subworkflow specific
       subworkflowId:
         node.type === "subworkflow"
@@ -48,10 +49,6 @@ export const yNodeConstructor = (node: Node): YNode => {
           return yPseudoOutput;
         }),
       ),
-      // Batch & Note specific
-      content: toYjsText(node.data.content),
-      backgroundColor: toYjsText(node.data.backgroundColor),
-      textColor: toYjsText(node.data.textColor),
     }),
     style: toYjsMap({
       width: node.style?.width,

@@ -18,7 +18,7 @@ const JobManager: React.FC<Props> = ({ selected }) => {
       <div
         className={`-mx-2 flex flex-1 cursor-pointer items-center gap-2 rounded px-2 py-1 ${selected && "bg-accent"} hover:bg-accent`}
         onClick={() =>
-          navigate({ to: `/workspaces/${currentWorkspace?.id}/jobs/all` })
+          navigate({ to: `/workspaces/${currentWorkspace?.id}/jobs` })
         }>
         <SneakerMove weight="light" />
         <p className="text-sm dark:font-extralight">{t("Jobs")}</p>

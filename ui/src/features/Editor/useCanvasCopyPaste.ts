@@ -26,26 +26,25 @@ export default ({
   handleNodesChange: (changes: NodeChange[]) => void;
   handleEdgesAdd: (newEdges: Edge[]) => void;
 }) => {
-  const { copy, paste } = useCopyPaste<
-    { nodeIds: string[]; edges: Edge[] } | undefined
-  >();
+  const { copy, paste } = useCopyPaste();
 
-  const handleCopy = useCallback(() => {
+  const handleCopy = useCallback(async () => {
     const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
       nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
       edges: edges.filter((e) => e.selected),
     };
     if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
-    copy(selected);
+    await copy(selected);
   }, [nodes, edges, copy]);
 
-  const handlePaste = useCallback(() => {
-    const { nodeIds: pnid, edges: pastedEdges } = paste() || {
+  const handlePaste = useCallback(async () => {
+    const { nodeIds: pnid, edges: pastedEdges } = (await paste()) || {
       nodeIds: [],
       edges: [],
     };
 
     const pastedNodes = nodes.filter((n) => pnid.includes(n.id));
+    console.log(pastedNodes);
 
     const newEdgeCreation = (
       pe: Edge[],

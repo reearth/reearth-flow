@@ -818,6 +818,7 @@ Writes features to a file
 ```
 ### Input Ports
 * default
+* schema
 ### Output Ports
 ### Category
 * File
@@ -3194,6 +3195,21 @@ Extracts Codelist
 * default
 ### Output Ports
 * default
+### Category
+* PLATEAU
+
+## PLATEAU4.DomainOfDefinitionValidator
+### Type
+* processor
+### Description
+Validates domain of definition of CityGML features
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
 ### Category
 * PLATEAU
 

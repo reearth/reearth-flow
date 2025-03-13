@@ -25,23 +25,22 @@ import useHooks from "./hooks";
 const DeploymentManager: React.FC = () => {
   const t = useT();
   const {
-    // ref,
     deployments,
     selectedDeployment,
     deploymentToBeDeleted,
     openDeploymentAddDialog,
     deploymentToBeEdited,
+    isFetching,
+    currentPage,
+    totalPages,
+    currentOrder,
     setDeploymentToBeEdited,
     setOpenDeploymentAddDialog,
     setDeploymentToBeDeleted,
     handleDeploymentSelect,
     handleDeploymentDelete,
     handleDeploymentRun,
-    isFetching,
-    currentPage,
     setCurrentPage,
-    totalPages,
-    currentOrder,
     setCurrentOrder,
   } = useHooks();
   const resultsPerPage = DEPLOYMENT_FETCH_RATE;

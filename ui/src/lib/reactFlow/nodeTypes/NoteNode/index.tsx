@@ -1,73 +1,40 @@
-import { Note } from "@phosphor-icons/react";
-import { RJSFSchema } from "@rjsf/utils";
+import { Eye, GearFine, Graph, Note, Trash } from "@phosphor-icons/react";
 import { NodeProps, NodeResizer } from "@xyflow/react";
-import { memo } from "react";
+import { memo, useCallback } from "react";
 
-import { Node, NodeType } from "@flow/types";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuTrigger,
+} from "@flow/components";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
+import { useT } from "@flow/lib/i18n";
+import { isActionNodeType, Node } from "@flow/types";
 
-import NodeContextMenu from "../NodeContextMenu";
 import { convertHextoRgba } from "../utils";
 
 export type NoteNodeProps = NodeProps<Node>;
 
-export const initialSize = { width: 300, height: 200 };
 const minSize = { width: 250, height: 150 };
 
-// TODO: Currently textarea data.content on node is not setting the value correctly. Temporary fix is to use description on RJSFS params @billcookie
-const noteNodeSchema: RJSFSchema = {
-  type: "object",
-  properties: {
-    customName: { type: "string", title: "Name" },
-    description: { type: "string", format: "textarea", title: "Description" },
-    textColor: {
-      type: "string",
-      format: "color",
-      default: "#fafafa",
-      title: "Text Color",
-    },
-    backgroundColor: {
-      type: "string",
-      format: "color",
-      default: "#212121",
-      title: "Background Color",
-    },
-  },
-};
+const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
+  const t = useT();
 
-export const noteNodeAction = {
-  name: "note",
-  description: "Note node",
-  type: "note",
-  categories: ["note"],
-  inputPorts: ["input"],
-  outputPorts: ["output"],
-  builtin: true,
-  parameter: noteNodeSchema,
-};
+  const { onNodesChange, onSecondaryNodeAction } = useEditorContext();
 
-export const baseNoteNode: {
-  type: NodeType;
-  content: string;
-  measured: { width: number; height: number };
-  style: { width: string; height: string; minWidth: string; minHeight: string };
-} = {
-  type: "note",
-  content: "New Note",
-  measured: {
-    width: initialSize.width,
-    height: initialSize.height,
-  },
-  style: {
-    width: `${initialSize.width}px`,
-    height: `${initialSize.height}px`,
-    minWidth: `${minSize.width}px`,
-    minHeight: `${minSize.height}px`,
-  },
-};
+  const handleNodeDelete = useCallback(() => {
+    onNodesChange?.([{ id, type: "remove" }]);
+  }, [id, onNodesChange]);
 
-const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
+  const handleSecondaryNodeAction = useCallback(() => {
+    if (!id) return;
+    onSecondaryNodeAction?.(undefined, id, data.subworkflowId);
+  }, [id, data.subworkflowId, onSecondaryNodeAction]);
+
   // background color will always be a hex color, therefore needs to be converted to rgba
-  const backgroundColor = data.params?.backgroundColor || "";
+  const backgroundColor = data.customizations?.backgroundColor || "";
   const rgbaColor = convertHextoRgba(backgroundColor, 0.5);
 
   return (
@@ -94,52 +61,91 @@ const NoteNode: React.FC<NoteNodeProps> = ({ data, ...props }) => {
           // }}
         />
       )}
-      <NodeContextMenu nodeId={props.id} nodeType={props.type}>
-        <div
-          className="z-0 h-full rounded-sm bg-secondary/50 p-2"
-          ref={(element) => {
-            if (element) {
-              element.style.setProperty(
-                "background-color",
-                rgbaColor,
-                "important",
-              );
-            }
-          }}
-          style={{
-            minWidth: minSize.width,
-            minHeight: minSize.height,
-          }}>
+      <ContextMenu>
+        <ContextMenuTrigger>
           <div
-            className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t bg-accent/50 px-2 py-1 ${props.selected ? "border-border" : "border-transparent"}`}
-            ref={(element) => {
-              if (element)
-                element.style.setProperty(
-                  "color",
-                  data.params?.textColor || "",
-                  "important",
-                );
-            }}>
-            <Note />
-            <p>{data.params?.customName ?? data.officialName}</p>
-          </div>
-          <div
+            className="z-0 h-full rounded-sm bg-secondary/50 p-2"
             ref={(element) => {
               if (element) {
+                element.style.setProperty(
+                  "background-color",
+                  rgbaColor,
+                  "important",
+                );
+              }
+            }}
+            style={{
+              minWidth: minSize.width,
+              minHeight: minSize.height,
+            }}>
+            <div
+              className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t bg-accent/50 px-2 py-1 ${props.selected ? "border-border" : "border-transparent"}`}
+              ref={(element) => {
                 if (element)
                   element.style.setProperty(
                     "color",
-                    data.params?.textColor || "",
+                    data.customizations?.textColor || "",
                     "important",
                   );
-              }
-            }}>
-            <p className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none">
-              {data.params?.description}
-            </p>
+              }}>
+              <Note />
+              <p>{data.customizations?.customName ?? data.officialName}</p>
+            </div>
+            <div
+              ref={(element) => {
+                if (element) {
+                  if (element)
+                    element.style.setProperty(
+                      "color",
+                      data.params?.textColor || "",
+                      "important",
+                    );
+                }
+              }}>
+              <p className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none">
+                {data.customizations?.content}
+              </p>
+            </div>
           </div>
-        </div>
-      </NodeContextMenu>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          {type === "subworkflow" ? (
+            <ContextMenuItem
+              className="justify-between gap-4 text-xs"
+              onClick={handleSecondaryNodeAction}>
+              {t("Open Subworkflow Canvas")}
+              <Graph weight="light" />
+            </ContextMenuItem>
+          ) : (
+            <ContextMenuItem
+              className="justify-between gap-4 text-xs"
+              onClick={handleSecondaryNodeAction}>
+              {t("Node Settings")}
+              <GearFine weight="light" />
+            </ContextMenuItem>
+          )}
+          {isActionNodeType(type) && (
+            <ContextMenuItem className="justify-between gap-4 text-xs" disabled>
+              {t("Preview Intermediate Data")}
+              <Eye weight="light" />
+            </ContextMenuItem>
+          )}
+
+          {/* <ContextMenuItem
+      className="justify-between gap-4 text-xs"
+      disabled={!selected}>
+      {t("Subworkflow from Selection")}
+      <Graph weight="light" />
+    </ContextMenuItem> */}
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            className="justify-between gap-4 text-xs text-destructive"
+            onClick={handleNodeDelete}>
+            {t("Delete Node")}
+            <Trash weight="light" />
+          </ContextMenuItem>
+        </ContextMenuContent>
+      </ContextMenu>
     </>
   );
 };

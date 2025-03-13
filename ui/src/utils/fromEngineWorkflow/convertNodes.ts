@@ -42,8 +42,10 @@ export const convertNodes = async (
         measured: DEFAULT_NODE_SIZE,
         data: {
           officialName: isSubworkflow ? "Subworkflow" : en.action || en.name,
-          customName: en.name,
           params: en.with,
+          customizations: {
+            customName: en.name,
+          },
         },
       };
 
