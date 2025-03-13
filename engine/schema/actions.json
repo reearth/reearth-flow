@@ -818,7 +818,8 @@
       },
       "builtin": true,
       "inputPorts": [
-        "default"
+        "default",
+        "schema"
       ],
       "outputPorts": [],
       "categories": [
