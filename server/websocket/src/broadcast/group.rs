@@ -101,11 +101,6 @@ impl BroadcastGroup {
 
                     if let Err(e) = store_clone.push_update(&doc_name_clone, &update).await {
                         tracing::error!("Failed to save initial state to GCS: {}", e);
-                    } else {
-                        tracing::info!(
-                            "Successfully saved initial state to GCS for doc: {}",
-                            doc_name_clone
-                        );
                     }
                 });
             }
