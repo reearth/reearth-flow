@@ -76,7 +76,6 @@ func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDef
 				roleMaintainer,
 			}),
 			generator.NewActionDefinition(ActionCreate, []string{
-				roleMaintainer,
 				roleOwner,
 			}),
 			generator.NewActionDefinition(ActionEdit, []string{
