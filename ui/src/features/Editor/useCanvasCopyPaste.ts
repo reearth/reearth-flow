@@ -34,6 +34,7 @@ export default ({
     (selectedNodeIds: string[]) => {
       const allRelatedNodes: Node[] = [];
       const processedIds = new Set<string>();
+      let subworkflowData = {};
 
       const processNode = (nodeId: string) => {
         if (processedIds.has(nodeId)) return;
@@ -47,13 +48,26 @@ export default ({
           const children = nodes.filter((n) => n.parentId === node.id);
           children.forEach((child) => processNode(child.id));
         }
+
+        if (node.type === "subworkflow" && node.data.subworkflowId) {
+          const subworkflow = rawWorkflows.find(
+            (w) => w.id === node.data.subworkflowId,
+          );
+          if (subworkflow) {
+            subworkflowData = {
+              subworkFlowId: node.data.subworkflowId,
+              nodes: subworkflow.nodes,
+              edges: subworkflow.edges,
+            };
+          }
+        }
       };
       selectedNodeIds.forEach((nodeId) => {
         processNode(nodeId);
       });
-      return allRelatedNodes;
+      return { allRelatedNodes, subworkflowData };
     },
-    [nodes],
+    [nodes, rawWorkflows],
   );
 
   const handleCopy = useCallback(async () => {
@@ -80,7 +94,9 @@ export default ({
 
     if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
 
-    const allNodes = getRelatedNodes(selected.nodeIds);
+    const { allRelatedNodes: allNodes, subworkflowData } = getRelatedNodes(
+      selected.nodeIds,
+    );
     const allNodeIds = allNodes.map((n) => n.id);
 
     const allEdges = edges.filter(
@@ -92,6 +108,7 @@ export default ({
       nodeIds: selected.nodeIds,
       edges: allEdges,
       nodes: allNodes,
+      subworkflowData,
     });
 
     handleNodesChange(allNodeIds.map((id) => ({ id, type: "remove" })));
@@ -111,6 +128,7 @@ export default ({
       nodeIds: pnid,
       edges: pastedEdges,
       nodes: pastedCutNodes,
+      subworkflowData: pastedCutSubworkflowData,
     } = (await paste()) || {
       nodeIds: [],
       edges: [],
@@ -169,8 +187,31 @@ export default ({
 
         if (newNode.type === "batch") {
           parentIdMapArray.push({ prevId: n.id, newId: newNode.id });
-        } else if (newNode.type === "subworkflow") {
+        }
+        // For Cut
+        if (newNode.type === "subworkflow" && pastedCutSubworkflowData) {
           const subworkflowId = generateUUID();
+          const newSubworkflowNodes = newNodeCreation(
+            pastedCutSubworkflowData.nodes as Node[],
+          );
+          const newSubworkflowEdges = newEdgeCreation(
+            pastedCutSubworkflowData.edges as Edge[],
+            pastedCutSubworkflowData.nodes as Node[],
+            newSubworkflowNodes,
+          );
+
+          newNode.data.subworkflowId = subworkflowId;
+
+          handleWorkflowUpdate(
+            subworkflowId,
+            newSubworkflowNodes,
+            newSubworkflowEdges,
+          );
+        }
+        // For Copy
+        else if (newNode.type === "subworkflow") {
+          const subworkflowId = generateUUID();
+
           const subworkflowNodes = (rawWorkflows.find(
             (w) => w.id === n.data.subworkflowId,
           )?.nodes ?? []) as Node[];
