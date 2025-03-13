@@ -12,6 +12,7 @@ use super::{
     elevation_extractor::ElevationExtractorFactory, extractor::GeometryExtractorFactory,
     extruder::ExtruderFactory, filter::GeometryFilterFactory, hole_counter::HoleCounterFactory,
     hole_extractor::HoleExtractorFactory, horizontal_reprojector::HorizontalReprojectorFactory,
+    jp_standard_grid_accumulator::JPStandardGridAccumulatorFactory,
     line_on_line_overlayer::LineOnLineOverlayerFactory, offsetter::OffsetterFactory,
     orientation_extractor::OrientationExtractorFactory, planarity_filter::PlanarityFilterFactory,
     refiner::RefinerFactory, replacer::GeometryReplacerFactory, splitter::GeometrySplitterFactory,
@@ -56,6 +57,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<DimensionFilterFactory>::default(),
         Box::<OffsetterFactory>::default(),
         Box::<ConvexHullAccumulatorFactory>::default(),
+        Box::<JPStandardGridAccumulatorFactory>::default(),
     ];
     factories
         .into_iter()

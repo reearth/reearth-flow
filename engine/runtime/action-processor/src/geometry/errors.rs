@@ -103,6 +103,10 @@ pub(super) enum GeometryProcessorError {
     OffsetterFactory(String),
     #[error("Offsetter error: {0}")]
     Offsetter(String),
+    #[error("JPStandardGridAccumulator Factory error: {0}")]
+    JPStandardGridAccumulatorFactory(String),
+    #[error("JPStandardGridAccumulator error: {0}")]
+    JPStandardGridAccumulator(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;
