@@ -67,65 +67,7 @@ unsafe impl Sync for BroadcastGroup {}
 
 impl BroadcastGroup {
     pub async fn increment_connections(&self) -> Result<()> {
-        let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
-
-        if prev_count == 0 {
-            if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
-                let store_clone = store.clone();
-                let doc_name_clone = doc_name.clone();
-                let awareness_clone = self.awareness_ref.clone();
-                let redis_store = self.redis_store.clone();
-                if let Some(redis_store) = &self.redis_store {
-                    let lock_key = format!("init_lock:{}", doc_name);
-                    let lock_value = uuid::Uuid::new_v4().to_string();
-                    let lock_acquired = redis_store.acquire_lock(&lock_key, &lock_value, 5).await?;
-                    if !lock_acquired {
-                        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                    }
-                }
-                tokio::spawn(async move {
-                    Self::load_from_storage(&store_clone, &doc_name_clone, &awareness_clone).await;
-                    let awareness = awareness_clone.write().await;
-                    let doc = awareness.doc();
-                    let mut txn = doc.transact_mut();
-
-                    if let Some(redis_store) = &redis_store {
-                        if let Ok(updates) = redis_store.get_pending_updates(&doc_name_clone).await
-                        {
-                            if !updates.is_empty() {
-                                for update in &updates {
-                                    if let Ok(decoded) =
-                                        yrs::updates::decoder::Decode::decode_v1(update)
-                                    {
-                                        let _ = txn.apply_update(decoded);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    let state_vector = StateVector::default();
-                    let update = txn.encode_state_as_update_v1(&state_vector);
-
-                    if let Err(e) = store_clone.push_update(&doc_name_clone, &update).await {
-                        tracing::error!("Failed to save initial state to GCS: {}", e);
-                    }
-                });
-            }
-        } else {
-            {
-                if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
-                    let store_clone = store.clone();
-                    let doc_name_clone = doc_name.clone();
-                    let awareness_clone = self.awareness_ref.clone();
-
-                    tokio::spawn(async move {
-                        Self::load_from_storage(&store_clone, &doc_name_clone, &awareness_clone)
-                            .await;
-                    });
-                }
-            }
-        }
+        let _ = self.connections.fetch_add(1, Ordering::Relaxed);
         Ok(())
     }
 
@@ -589,6 +531,7 @@ impl BroadcastGroup {
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
             let redis_ttl = self.redis_ttl;
+            let gcs_store = self.storage.clone();
 
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
@@ -608,42 +551,17 @@ impl BroadcastGroup {
                         }
                     };
 
-                    if let Message::Sync(msg) = &msg {
-                        {
-                            let awareness_lock = awareness.read().await;
-                            let doc = awareness_lock.doc();
-                            let mut txn = doc.transact_mut();
-                            if let Some(workflows) = txn.get_array("workflows") {
-                                let len = workflows.len(&txn);
-                                if len > 1 {
-                                    tracing::warn!("Found {} workflows, cleaning up extras", len);
-                                    workflows.remove_range(&mut txn, 1, len - 1);
-                                }
-                            }
-                        }
-
-                        if let (Some(redis_store), Some(doc_name), Some(ttl)) =
-                            (redis_store.as_ref(), doc_name.as_ref(), redis_ttl)
-                        {
-                            let rs = redis_store.clone();
-                            let dn = doc_name.clone();
-                            let update_clone = match msg {
-                                SyncMessage::Update(update) => update.clone(),
-                                _ => Vec::new(),
-                            };
-                            let ttl_clone = ttl as u64;
-
-                            tokio::spawn(async move {
-                                if let Err(e) =
-                                    rs.add_publish_update(&dn, &update_clone, ttl_clone).await
-                                {
-                                    tracing::error!("Redis update failed: {}", e);
-                                }
-                            });
-                        }
-                    }
-
-                    match Self::handle_msg(&protocol, &awareness, msg).await {
+                    match Self::handle_msg(
+                        &protocol,
+                        &awareness,
+                        msg,
+                        redis_store.as_ref(),
+                        doc_name.as_ref(),
+                        redis_ttl,
+                        gcs_store.as_ref(),
+                    )
+                    .await
+                    {
                         Ok(Some(reply)) => {
                             let mut sink_lock = sink.lock().await;
                             if let Err(e) = sink_lock.send(reply.encode_v1()).await {
@@ -669,24 +587,105 @@ impl BroadcastGroup {
         protocol: &P,
         awareness: &AwarenessRef,
         msg: Message,
+        redis_store: Option<&Arc<RedisStore>>,
+        doc_name: Option<&String>,
+        redis_ttl: Option<usize>,
+        gcs_store: Option<&Arc<GcsStore>>,
     ) -> Result<Option<Message>, Error> {
         match msg {
-            Message::Sync(msg) => match msg {
-                SyncMessage::SyncStep1(state_vector) => {
-                    let awareness = awareness.read().await;
-                    protocol.handle_sync_step1(&awareness, state_vector)
+            Message::Sync(msg) => {
+                if let (Some(redis_store), Some(doc_name), Some(ttl)) =
+                    (redis_store, doc_name, redis_ttl)
+                {
+                    let rs = redis_store.clone();
+                    let dn = doc_name.clone();
+                    let update_bytes = match &msg {
+                        SyncMessage::Update(update) => update.clone(),
+                        SyncMessage::SyncStep2(update) => update.clone(),
+                        _ => Vec::new(),
+                    };
+
+                    if !update_bytes.is_empty() {
+                        let ttl_clone = ttl as u64;
+                        tokio::spawn(async move {
+                            if let Err(e) =
+                                rs.add_publish_update(&dn, &update_bytes, ttl_clone).await
+                            {
+                                tracing::error!("Redis update failed: {}", e);
+                            }
+                        });
+                    }
                 }
-                SyncMessage::SyncStep2(update) => {
-                    let awareness = awareness.write().await;
-                    let update = Update::decode_v1(&update)?;
-                    protocol.handle_sync_step2(&awareness, update)
+
+                match msg {
+                    SyncMessage::SyncStep1(state_vector) => {
+                        let awareness = awareness.read().await;
+                        protocol.handle_sync_step1(&awareness, state_vector)
+                    }
+                    SyncMessage::SyncStep2(update) => {
+                        let awareness = awareness.write().await;
+                        let decoded_update = Update::decode_v1(&update)?;
+
+                        {
+                            let doc = awareness.doc();
+                            let mut txn = doc.transact_mut();
+                            if let Some(workflows) = txn.get_array("workflows") {
+                                let len = workflows.len(&txn);
+                                match len {
+                                    0 => (),
+                                    1 => {
+                                        if let (Some(store), Some(doc_name)) = (gcs_store, doc_name)
+                                        {
+                                            let state_vector = StateVector::default();
+                                            let full_update =
+                                                txn.encode_state_as_update_v1(&state_vector);
+                                            let store_clone = store.clone();
+                                            let doc_name_clone = doc_name.clone();
+
+                                            if let Some(redis_store) = redis_store {
+                                                let rs = redis_store.clone();
+                                                let dn = doc_name.clone();
+                                                tokio::spawn(async move {
+                                                    if let Err(e) =
+                                                        rs.clear_pending_updates(&dn).await
+                                                    {
+                                                        tracing::warn!(
+                                                            "Failed to clear Redis updates: {}",
+                                                            e
+                                                        );
+                                                    }
+                                                });
+                                            }
+
+                                            tokio::spawn(async move {
+                                                if let Err(e) = store_clone
+                                                    .push_update(&doc_name_clone, &full_update)
+                                                    .await
+                                                {
+                                                    tracing::error!("Failed to save initial workflow to GCS: {}", e);
+                                                } else {
+                                                    tracing::info!("Successfully saved initial workflow to GCS");
+                                                }
+                                            });
+                                        }
+                                    }
+                                    n => {
+                                        tracing::warn!("Found {} workflows, cleaning up extras", n);
+                                        workflows.remove_range(&mut txn, 1, n - 1);
+                                    }
+                                }
+                            }
+                        }
+
+                        protocol.handle_sync_step2(&awareness, decoded_update)
+                    }
+                    SyncMessage::Update(update) => {
+                        let awareness = awareness.write().await;
+                        let update = Update::decode_v1(&update)?;
+                        protocol.handle_sync_step2(&awareness, update)
+                    }
                 }
-                SyncMessage::Update(update) => {
-                    let awareness = awareness.write().await;
-                    let update = Update::decode_v1(&update)?;
-                    protocol.handle_sync_step2(&awareness, update)
-                }
-            },
+            }
             Message::Auth(deny_reason) => {
                 let awareness = awareness.read().await;
                 protocol.handle_auth(&awareness, deny_reason)
