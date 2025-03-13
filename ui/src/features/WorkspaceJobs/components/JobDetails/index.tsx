@@ -14,7 +14,7 @@ type Props = {
 const JobDetails: React.FC<Props> = ({ jobId }) => {
   const t = useT();
 
-  const { job, details, statusValue, handleBack, handleCancelJob } = useHooks({
+  const { job, details, jobStatus, handleBack, handleCancelJob } = useHooks({
     jobId,
   });
 
@@ -25,7 +25,7 @@ const JobDetails: React.FC<Props> = ({ jobId }) => {
           <Button size="icon" variant="ghost" onClick={handleBack}>
             <CaretLeft />
           </Button>
-          {(statusValue === "queued" || statusValue === "running") && (
+          {(jobStatus === "queued" || jobStatus === "running") && (
             <Button variant="destructive" size="sm" onClick={handleCancelJob}>
               <XCircle />
               {t("Cancel Job")}

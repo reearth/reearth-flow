@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { LoadingSplashscreen } from "@flow/components";
 import Editor from "@flow/features/Editor";
+import useSubscriptions from "@flow/features/Editor/useSubscriptions";
 import {
   ProjectIdWrapper,
   WorkspaceIdWrapper,
@@ -67,6 +68,8 @@ const EditorComponent = () => {
   const { projectId }: { projectId: string } = useParams({
     strict: false,
   });
+
+  useSubscriptions(accessToken);
 
   const { yWorkflows, isSynced, undoManager, undoTrackerActionWrapper } =
     useYjsSetup({

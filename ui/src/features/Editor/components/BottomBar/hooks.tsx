@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useJobStatus } from "@flow/lib/gql/job";
+import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
 
@@ -16,7 +16,10 @@ export default () => {
     [debugRunState, currentProject],
   );
 
-  const { data: jobStatus } = useJobStatus(debugJobId);
+  const { data: jobStatus } = useSubscription(
+    "GetSubscribedJobStatus",
+    debugJobId,
+  );
 
   return {
     jobStatus,
