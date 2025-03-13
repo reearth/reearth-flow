@@ -116,31 +116,18 @@ impl BroadcastPool {
 
         if let Some(redis_store) = &self.redis_store {
             lock_acquired = redis_store
-                .acquire_lock(&doc_lock_key, &lock_value, 1)
+                .acquire_lock(&doc_lock_key, &lock_value, 3)
                 .await?;
-        }
-
-        if let Some(group) = self.groups.get(doc_id) {
-            if lock_acquired {
-                if let Some(redis_store) = &self.redis_store {
-                    let _ = redis_store.release_lock(&doc_lock_key, &lock_value).await;
-                }
-            }
-
-            return Ok(group.clone());
         }
 
         let group: Arc<BroadcastGroup>;
 
         if let Some(redis_store) = &self.redis_store {
-            let doc_exists_key = format!("doc:exists:{}", doc_id);
-            let exists_in_redis = redis_store.exists(&doc_exists_key).await?;
+            let updates_from_redis = redis_store.get_pending_updates(doc_id).await?;
 
-            if exists_in_redis {
-                let updates_from_redis = redis_store.get_pending_updates(doc_id).await?;
-
+            if !updates_from_redis.is_empty() {
                 let doc = Doc::new();
-                if !updates_from_redis.is_empty() {
+                {
                     let mut txn = doc.transact_mut();
                     let _ = self.store.load_doc(doc_id, &mut txn).await;
                     for update in &updates_from_redis {
@@ -184,11 +171,6 @@ impl BroadcastPool {
                 let load_result = self.store.load_doc(doc_id, &mut txn).await;
 
                 if let Err(e) = load_result {
-                    if lock_acquired {
-                        if let Some(redis_store) = &self.redis_store {
-                            redis_store.release_lock(&doc_lock_key, &lock_value).await?;
-                        }
-                    }
                     return Err(anyhow!("Failed to load document: {}", e));
                 }
             }
@@ -228,15 +210,6 @@ impl BroadcastPool {
         }
 
         self.groups.insert(doc_id.to_string(), group.clone());
-
-        if let Some(redis_store) = &self.redis_store {
-            let doc_exists_key = format!("doc:exists:{}", doc_id);
-            let _ = redis_store.set(&doc_exists_key, "created").await;
-
-            if lock_acquired {
-                let _ = redis_store.release_lock(&doc_lock_key, &lock_value).await;
-            }
-        }
 
         Ok(group)
     }

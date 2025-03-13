@@ -69,15 +69,42 @@ impl BroadcastGroup {
     pub fn increment_connections(&self) {
         let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
 
-        if prev_count > 0 {
+        if prev_count == 0 {
             if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
                 let store_clone = store.clone();
                 let doc_name_clone = doc_name.clone();
                 let awareness_clone = self.awareness_ref.clone();
 
                 tokio::spawn(async move {
-                    Self::load_from_storage(&store_clone, &doc_name_clone, &awareness_clone).await;
+                    let awareness = awareness_clone.write().await;
+                    let doc = awareness.doc();
+                    let txn = doc.transact_mut();
+
+                    let state_vector = StateVector::default();
+                    let update = txn.encode_state_as_update_v1(&state_vector);
+
+                    if let Err(e) = store_clone.push_update(&doc_name_clone, &update).await {
+                        tracing::error!("Failed to save initial state to GCS: {}", e);
+                    } else {
+                        tracing::info!(
+                            "Successfully saved initial state to GCS for doc: {}",
+                            doc_name_clone
+                        );
+                    }
                 });
+            }
+        } else {
+            {
+                if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
+                    let store_clone = store.clone();
+                    let doc_name_clone = doc_name.clone();
+                    let awareness_clone = self.awareness_ref.clone();
+
+                    tokio::spawn(async move {
+                        Self::load_from_storage(&store_clone, &doc_name_clone, &awareness_clone)
+                            .await;
+                    });
+                }
             }
         }
     }

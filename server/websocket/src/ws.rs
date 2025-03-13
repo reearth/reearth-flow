@@ -192,8 +192,6 @@ async fn handle_socket(
     pool: Arc<BroadcastPool>,
     user_token: Option<String>,
 ) {
-    bcast.increment_connections();
-
     let (sender, receiver) = socket.split();
 
     let conn = crate::conn::Connection::with_broadcast_group_and_user(
@@ -204,7 +202,8 @@ async fn handle_socket(
     )
     .await;
 
-    if let Err(e) = conn.await {
+    let result = conn.await;
+    if let Err(e) = result {
         tracing::error!("WebSocket connection error: {}", e);
     }
     pool.remove_connection(&doc_id).await;
