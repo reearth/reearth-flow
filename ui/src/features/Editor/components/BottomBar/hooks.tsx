@@ -1,12 +1,11 @@
 import { useMemo } from "react";
 
-import { useJob } from "@flow/lib/gql/job";
+import { useJobStatus } from "@flow/lib/gql/job";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
 
 export default () => {
   const [currentProject] = useCurrentProject();
-  const { useGetJob } = useJob();
 
   const { value: debugRunState } = useIndexedDB("debugRun");
 
@@ -17,9 +16,9 @@ export default () => {
     [debugRunState, currentProject],
   );
 
-  const debugJob = useGetJob(debugJobId).job;
+  const { data: jobStatus } = useJobStatus(debugJobId);
 
   return {
-    debugJob,
+    jobStatus,
   };
 };

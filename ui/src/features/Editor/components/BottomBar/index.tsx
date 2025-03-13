@@ -25,7 +25,7 @@ const BottomBar: React.FC<Props> = ({
   onWorkflowRename,
 }) => {
   const t = useT();
-  const { debugJob } = useHooks();
+  const { jobStatus } = useHooks();
 
   return (
     <div
@@ -42,15 +42,15 @@ const BottomBar: React.FC<Props> = ({
         <p className="text-xs font-light">{t("Status: ")}</p>
         <div
           className={`${
-            debugJob?.status === "completed"
+            jobStatus === "completed"
               ? "bg-success"
-              : debugJob?.status === "running"
+              : jobStatus === "running"
                 ? "active-node-status"
-                : debugJob?.status === "cancelled"
+                : jobStatus === "cancelled"
                   ? "bg-warning"
-                  : debugJob?.status === "failed"
+                  : jobStatus === "failed"
                     ? "bg-destructive"
-                    : debugJob?.status === "queued"
+                    : jobStatus === "queued"
                       ? "queued-node-status"
                       : "bg-primary"
           } size-3 rounded-full`}
