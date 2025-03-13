@@ -66,7 +66,7 @@ unsafe impl Send for BroadcastGroup {}
 unsafe impl Sync for BroadcastGroup {}
 
 impl BroadcastGroup {
-    pub fn increment_connections(&self) {
+    pub async fn increment_connections(&self) -> Result<()> {
         let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
 
         if prev_count == 0 {
@@ -75,7 +75,14 @@ impl BroadcastGroup {
                 let doc_name_clone = doc_name.clone();
                 let awareness_clone = self.awareness_ref.clone();
                 let redis_store = self.redis_store.clone();
-
+                if let Some(redis_store) = &self.redis_store {
+                    let lock_key = format!("init_lock:{}", doc_name);
+                    let lock_value = uuid::Uuid::new_v4().to_string();
+                    let lock_acquired = redis_store.acquire_lock(&lock_key, &lock_value, 5).await?;
+                    if !lock_acquired {
+                        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    }
+                }
                 tokio::spawn(async move {
                     Self::load_from_storage(&store_clone, &doc_name_clone, &awareness_clone).await;
                     let awareness = awareness_clone.write().await;
@@ -119,6 +126,7 @@ impl BroadcastGroup {
                 }
             }
         }
+        Ok(())
     }
 
     pub fn decrement_connections(&self) -> usize {
@@ -535,7 +543,9 @@ impl BroadcastGroup {
 
         tokio::spawn(async move {
             Self::send_initial_sync(awareness, sink_clone).await;
-            self_clone.increment_connections();
+            if let Err(e) = self_clone.increment_connections().await {
+                tracing::error!("Failed to increment connections: {}", e);
+            }
             let _ = tx.send(());
         });
 
