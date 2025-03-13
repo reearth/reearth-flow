@@ -22,8 +22,8 @@ use yrs::sync::protocol::{MSG_SYNC, MSG_SYNC_UPDATE};
 use yrs::sync::{DefaultProtocol, Error, Message, Protocol, SyncMessage};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
+use yrs::Array;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
-
 const MSG_SYNC_STEP1: u8 = 0;
 const MSG_SYNC_STEP2: u8 = 1;
 
@@ -66,7 +66,7 @@ unsafe impl Send for BroadcastGroup {}
 unsafe impl Sync for BroadcastGroup {}
 
 impl BroadcastGroup {
-    pub fn increment_connections(&self) {
+    pub async fn increment_connections(&self) -> Result<()> {
         let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
 
         if prev_count == 0 {
@@ -75,8 +75,16 @@ impl BroadcastGroup {
                 let doc_name_clone = doc_name.clone();
                 let awareness_clone = self.awareness_ref.clone();
                 let redis_store = self.redis_store.clone();
-
+                if let Some(redis_store) = &self.redis_store {
+                    let lock_key = format!("init_lock:{}", doc_name);
+                    let lock_value = uuid::Uuid::new_v4().to_string();
+                    let lock_acquired = redis_store.acquire_lock(&lock_key, &lock_value, 5).await?;
+                    if !lock_acquired {
+                        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    }
+                }
                 tokio::spawn(async move {
+                    Self::load_from_storage(&store_clone, &doc_name_clone, &awareness_clone).await;
                     let awareness = awareness_clone.write().await;
                     let doc = awareness.doc();
                     let mut txn = doc.transact_mut();
@@ -118,6 +126,7 @@ impl BroadcastGroup {
                 }
             }
         }
+        Ok(())
     }
 
     pub fn decrement_connections(&self) -> usize {
@@ -492,7 +501,7 @@ impl BroadcastGroup {
     }
 
     pub fn subscribe_with_user<Sink, Stream, E>(
-        &self,
+        self: Arc<Self>,
         sink: Arc<Mutex<Sink>>,
         stream: Stream,
         user_token: Option<String>,
@@ -526,15 +535,25 @@ impl BroadcastGroup {
         }
 
         let subscription = self.subscribe_with(sink.clone(), stream, DefaultProtocol);
+        let (tx, rx) = tokio::sync::oneshot::channel();
 
         let awareness = self.awareness().clone();
         let sink_clone = sink.clone();
+        let self_clone = self.clone();
 
         tokio::spawn(async move {
             Self::send_initial_sync(awareness, sink_clone).await;
+            if let Err(e) = self_clone.increment_connections().await {
+                tracing::error!("Failed to increment connections: {}", e);
+            }
+            let _ = tx.send(());
         });
 
-        subscription
+        Subscription {
+            sink_task: subscription.sink_task,
+            stream_task: subscription.stream_task,
+            sync_complete: Some(rx),
+        }
     }
 
     pub fn subscribe_with<Sink, Stream, E, P>(
@@ -590,6 +609,19 @@ impl BroadcastGroup {
                     };
 
                     if let Message::Sync(msg) = &msg {
+                        {
+                            let awareness_lock = awareness.read().await;
+                            let doc = awareness_lock.doc();
+                            let mut txn = doc.transact_mut();
+                            if let Some(workflows) = txn.get_array("workflows") {
+                                let len = workflows.len(&txn);
+                                if len > 1 {
+                                    tracing::warn!("Found {} workflows, cleaning up extras", len);
+                                    workflows.remove_range(&mut txn, 1, len - 1);
+                                }
+                            }
+                        }
+
                         if let (Some(redis_store), Some(doc_name), Some(ttl)) =
                             (redis_store.as_ref(), doc_name.as_ref(), redis_ttl)
                         {
@@ -629,6 +661,7 @@ impl BroadcastGroup {
         Subscription {
             sink_task,
             stream_task,
+            sync_complete: None,
         }
     }
 
@@ -764,10 +797,15 @@ impl Drop for BroadcastGroup {
 pub struct Subscription {
     sink_task: JoinHandle<Result<(), Error>>,
     stream_task: JoinHandle<Result<(), Error>>,
+    sync_complete: Option<tokio::sync::oneshot::Receiver<()>>,
 }
 
 impl Subscription {
-    pub async fn completed(self) -> Result<(), Error> {
+    pub async fn completed(mut self) -> Result<(), Error> {
+        if let Some(sync_complete) = self.sync_complete.take() {
+            let _ = sync_complete.await;
+        }
+
         let res = select! {
             r1 = self.sink_task => r1,
             r2 = self.stream_task => r2,
