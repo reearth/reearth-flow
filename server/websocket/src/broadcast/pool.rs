@@ -3,7 +3,7 @@ use crate::storage::gcs::GcsStore;
 use crate::storage::kv::DocOps;
 use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use dashmap::DashMap;
 use dashmap::DashSet;
 use std::sync::Arc;
