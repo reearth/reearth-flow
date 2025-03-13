@@ -9,13 +9,15 @@ import useHooks from "./hooks";
 
 type Props = {
   jobId: string;
+  accessToken: string | undefined;
 };
 
-const JobDetails: React.FC<Props> = ({ jobId }) => {
+const JobDetails: React.FC<Props> = ({ jobId, accessToken }) => {
   const t = useT();
 
   const { job, details, jobStatus, handleBack, handleCancelJob } = useHooks({
     jobId,
+    accessToken,
   });
 
   return (
