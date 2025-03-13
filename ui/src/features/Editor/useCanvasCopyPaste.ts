@@ -30,6 +30,32 @@ export default ({
 }) => {
   const { copy, cut, paste } = useCopyPaste();
 
+  const getRelatedNodes = useCallback(
+    (selectedNodeIds: string[]) => {
+      const allRelatedNodes: Node[] = [];
+      const processedIds = new Set<string>();
+
+      const processNode = (nodeId: string) => {
+        if (processedIds.has(nodeId)) return;
+        processedIds.add(nodeId);
+
+        const node = nodes.find((n) => n.id === nodeId);
+        if (!node) return;
+        allRelatedNodes.push(node);
+
+        if (node.type === "batch") {
+          const children = nodes.filter((n) => n.parentId === node.id);
+          children.forEach((child) => processNode(child.id));
+        }
+      };
+      selectedNodeIds.forEach((nodeId) => {
+        processNode(nodeId);
+      });
+      return allRelatedNodes;
+    },
+    [nodes],
+  );
+
   const handleCopy = useCallback(async () => {
     const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
       nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
@@ -44,36 +70,54 @@ export default ({
   }, [nodes, edges, copy]);
 
   const handleCut = useCallback(async () => {
-    const selected:
-      | { nodeIds: string[]; edges: Edge[]; nodes: Node[] }
-      | undefined = {
+    const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
       nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
       edges: edges.filter((e) => e.selected),
-      nodes: nodes.filter((n) => n.selected),
     };
-    if (selected.nodes.some((n) => n.type === "reader")) return;
+
+    const selectedNodes = nodes.filter((n) => selected?.nodeIds.includes(n.id));
+    if (selectedNodes.some((n) => n.type === "reader")) return;
+
     if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
 
-    await cut(selected);
+    const allNodes = getRelatedNodes(selected.nodeIds);
+    const allNodeIds = allNodes.map((n) => n.id);
 
-    handleNodesChange(selected.nodeIds.map((id) => ({ id, type: "remove" })));
-    handleEdgesChange(
-      selected.edges.map((e) => ({ id: e.id, type: "remove" })),
+    const allEdges = edges.filter(
+      (edge) =>
+        allNodeIds.includes(edge.source) || allNodeIds.includes(edge.target),
     );
-  }, [nodes, edges, cut, handleNodesChange, handleEdgesChange]);
+
+    await cut({
+      nodeIds: selected.nodeIds,
+      edges: allEdges,
+      nodes: allNodes,
+    });
+
+    handleNodesChange(allNodeIds.map((id) => ({ id, type: "remove" })));
+
+    handleEdgesChange(allEdges.map((e) => ({ id: e.id, type: "remove" })));
+  }, [
+    nodes,
+    edges,
+    cut,
+    getRelatedNodes,
+    handleNodesChange,
+    handleEdgesChange,
+  ]);
 
   const handlePaste = useCallback(async () => {
     const {
       nodeIds: pnid,
       edges: pastedEdges,
-      nodes: cutNodes,
+      nodes: pastedCutNodes,
     } = (await paste()) || {
       nodeIds: [],
       edges: [],
     };
 
-    const copiedNodes = nodes.filter((n) => pnid.includes(n.id));
-    const pastedNodes = cutNodes ? cutNodes : copiedNodes;
+    const copiedPastedNodes = nodes.filter((n) => pnid.includes(n.id));
+    const pastedNodes = pastedCutNodes ? pastedCutNodes : copiedPastedNodes;
 
     const newEdgeCreation = (
       pe: Edge[],
