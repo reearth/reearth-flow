@@ -66,7 +66,7 @@ impl BroadcastGroup {
     pub fn increment_connections(&self) {
         let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
 
-        if prev_count == 0 {
+        if prev_count > 1 {
             if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
                 let store_clone = store.clone();
                 let doc_name_clone = doc_name.clone();
@@ -411,16 +411,8 @@ impl BroadcastGroup {
         let awareness = awareness.write().await;
         let mut txn = awareness.doc().transact_mut();
 
-        let timeout_duration = std::time::Duration::from_secs(5);
-
-        if let Err(e) =
-            tokio::time::timeout(timeout_duration, store.load_doc(doc_name, &mut txn)).await
-        {
-            tracing::error!(
-                "Timeout loading document '{}' from storage: {}",
-                doc_name,
-                e
-            );
+        if let Err(e) = store.load_doc(doc_name, &mut txn).await {
+            tracing::error!("Error loading document '{}' from storage: {}", doc_name, e);
         }
     }
 
