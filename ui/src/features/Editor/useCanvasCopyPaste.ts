@@ -34,7 +34,7 @@ export default ({
     (selectedNodeIds: string[]) => {
       const allRelatedNodes: Node[] = [];
       const processedIds = new Set<string>();
-      let subworkflowData = {};
+      let subworkflowData: Record<string, string | Node[] | Edge[]> = {};
 
       const processNode = (nodeId: string) => {
         if (processedIds.has(nodeId)) return;
