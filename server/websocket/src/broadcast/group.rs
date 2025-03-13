@@ -67,65 +67,7 @@ unsafe impl Sync for BroadcastGroup {}
 
 impl BroadcastGroup {
     pub async fn increment_connections(&self) -> Result<()> {
-        let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
-
-        if prev_count == 0 {
-            if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
-                let store_clone = store.clone();
-                let doc_name_clone = doc_name.clone();
-                let awareness_clone = self.awareness_ref.clone();
-                let redis_store = self.redis_store.clone();
-                if let Some(redis_store) = &self.redis_store {
-                    let lock_key = format!("init_lock:{}", doc_name);
-                    let lock_value = uuid::Uuid::new_v4().to_string();
-                    let lock_acquired = redis_store.acquire_lock(&lock_key, &lock_value, 5).await?;
-                    if !lock_acquired {
-                        tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                    }
-                }
-                tokio::spawn(async move {
-                    Self::load_from_storage(&store_clone, &doc_name_clone, &awareness_clone).await;
-                    let awareness = awareness_clone.write().await;
-                    let doc = awareness.doc();
-                    let mut txn = doc.transact_mut();
-
-                    if let Some(redis_store) = &redis_store {
-                        if let Ok(updates) = redis_store.get_pending_updates(&doc_name_clone).await
-                        {
-                            if !updates.is_empty() {
-                                for update in &updates {
-                                    if let Ok(decoded) =
-                                        yrs::updates::decoder::Decode::decode_v1(update)
-                                    {
-                                        let _ = txn.apply_update(decoded);
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    let state_vector = StateVector::default();
-                    let update = txn.encode_state_as_update_v1(&state_vector);
-
-                    if let Err(e) = store_clone.push_update(&doc_name_clone, &update).await {
-                        tracing::error!("Failed to save initial state to GCS: {}", e);
-                    }
-                });
-            }
-        } else {
-            {
-                if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
-                    let store_clone = store.clone();
-                    let doc_name_clone = doc_name.clone();
-                    let awareness_clone = self.awareness_ref.clone();
-
-                    tokio::spawn(async move {
-                        Self::load_from_storage(&store_clone, &doc_name_clone, &awareness_clone)
-                            .await;
-                    });
-                }
-            }
-        }
+        let _ = self.connections.fetch_add(1, Ordering::Relaxed);
         Ok(())
     }
 
@@ -677,6 +619,22 @@ impl BroadcastGroup {
                                                 txn.encode_state_as_update_v1(&state_vector);
                                             let store_clone = store.clone();
                                             let doc_name_clone = doc_name.clone();
+
+                                            if let Some(redis_store) = redis_store {
+                                                let rs = redis_store.clone();
+                                                let dn = doc_name.clone();
+                                                tokio::spawn(async move {
+                                                    if let Err(e) =
+                                                        rs.clear_pending_updates(&dn).await
+                                                    {
+                                                        tracing::warn!(
+                                                            "Failed to clear Redis updates: {}",
+                                                            e
+                                                        );
+                                                    }
+                                                });
+                                            }
+
                                             tokio::spawn(async move {
                                                 if let Err(e) = store_clone
                                                     .push_update(&doc_name_clone, &full_update)
