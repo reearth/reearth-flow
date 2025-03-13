@@ -106,7 +106,7 @@ impl BroadcastPool {
 
         if let Some(redis_store) = &self.redis_store {
             let lock_acquired = redis_store
-                .acquire_lock(&doc_lock_key, &lock_value, 3)
+                .acquire_lock(&doc_lock_key, &lock_value, 4)
                 .await?;
 
             if !lock_acquired {

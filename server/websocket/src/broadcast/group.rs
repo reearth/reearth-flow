@@ -589,6 +589,8 @@ impl BroadcastGroup {
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
             let redis_ttl = self.redis_ttl;
+            let storage = self.storage.clone();
+            let mut first_sync = true;
 
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
@@ -607,6 +609,28 @@ impl BroadcastGroup {
                             continue;
                         }
                     };
+
+                    if first_sync {
+                        if let Message::Sync(_) = &msg {
+                            if let (Some(store), Some(doc_name)) =
+                                (storage.as_ref(), doc_name.as_ref())
+                            {
+                                let awareness_lock = awareness.read().await;
+                                let doc = awareness_lock.doc();
+                                let txn = doc.transact();
+                                let state_vector = StateVector::default();
+                                let update = txn.encode_state_as_update_v1(&state_vector);
+
+                                if let Err(e) = store.push_update(doc_name, &update).await {
+                                    tracing::error!(
+                                        "Failed to save initial sync state to GCS: {}",
+                                        e
+                                    );
+                                }
+                                first_sync = false;
+                            }
+                        }
+                    }
 
                     if let Message::Sync(msg) = &msg {
                         if let (Some(redis_store), Some(doc_name), Some(ttl)) =
