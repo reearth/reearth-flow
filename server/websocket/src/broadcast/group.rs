@@ -589,6 +589,7 @@ impl BroadcastGroup {
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
             let redis_ttl = self.redis_ttl;
+            let gcs_store = self.storage.clone();
 
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
@@ -615,6 +616,7 @@ impl BroadcastGroup {
                         redis_store.as_ref(),
                         doc_name.as_ref(),
                         redis_ttl,
+                        gcs_store.as_ref(),
                     )
                     .await
                     {
@@ -646,40 +648,10 @@ impl BroadcastGroup {
         redis_store: Option<&Arc<RedisStore>>,
         doc_name: Option<&String>,
         redis_ttl: Option<usize>,
+        gcs_store: Option<&Arc<GcsStore>>,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
-                {
-                    let awareness_lock = awareness.read().await;
-                    let doc = awareness_lock.doc();
-                    let mut txn = doc.transact_mut();
-                    if let Some(workflows) = txn.get_array("workflows") {
-                        let len = workflows.len(&txn);
-                        if len > 1 {
-                            tracing::warn!("Found {} workflows, cleaning up extras", len);
-                            workflows.remove_range(&mut txn, 1, len - 1);
-                        }
-                    }
-                }
-
-                if let (Some(redis_store), Some(doc_name), Some(ttl)) =
-                    (redis_store, doc_name, redis_ttl)
-                {
-                    let rs = redis_store.clone();
-                    let dn = doc_name.clone();
-                    let update_clone = match &msg {
-                        SyncMessage::Update(update) => update.clone(),
-                        _ => Vec::new(),
-                    };
-                    let ttl_clone = ttl as u64;
-
-                    tokio::spawn(async move {
-                        if let Err(e) = rs.add_publish_update(&dn, &update_clone, ttl_clone).await {
-                            tracing::error!("Redis update failed: {}", e);
-                        }
-                    });
-                }
-
                 match msg {
                     SyncMessage::SyncStep1(state_vector) => {
                         let awareness = awareness.read().await;
@@ -687,8 +659,61 @@ impl BroadcastGroup {
                     }
                     SyncMessage::SyncStep2(update) => {
                         let awareness = awareness.write().await;
-                        let update = Update::decode_v1(&update)?;
-                        protocol.handle_sync_step2(&awareness, update)
+                        let update_bytes = update.clone();
+                        let decoded_update = Update::decode_v1(&update)?;
+
+                        {
+                            let doc = awareness.doc();
+                            let mut txn = doc.transact_mut();
+                            if let Some(workflows) = txn.get_array("workflows") {
+                                let len = workflows.len(&txn);
+                                match len {
+                                    0 => (),
+                                    1 => {
+                                        if let (Some(store), Some(doc_name)) = (gcs_store, doc_name)
+                                        {
+                                            let state_vector = StateVector::default();
+                                            let full_update =
+                                                txn.encode_state_as_update_v1(&state_vector);
+                                            let store_clone = store.clone();
+                                            let doc_name_clone = doc_name.clone();
+                                            tokio::spawn(async move {
+                                                if let Err(e) = store_clone
+                                                    .push_update(&doc_name_clone, &full_update)
+                                                    .await
+                                                {
+                                                    tracing::error!("Failed to save initial workflow to GCS: {}", e);
+                                                } else {
+                                                    tracing::info!("Successfully saved initial workflow to GCS");
+                                                }
+                                            });
+                                        }
+                                    }
+                                    n => {
+                                        tracing::warn!("Found {} workflows, cleaning up extras", n);
+                                        workflows.remove_range(&mut txn, 1, n - 1);
+                                    }
+                                }
+                            }
+                        }
+
+                        if let (Some(redis_store), Some(doc_name), Some(ttl)) =
+                            (redis_store, doc_name, redis_ttl)
+                        {
+                            let rs = redis_store.clone();
+                            let dn = doc_name.clone();
+                            let ttl_clone = ttl as u64;
+
+                            tokio::spawn(async move {
+                                if let Err(e) =
+                                    rs.add_publish_update(&dn, &update_bytes, ttl_clone).await
+                                {
+                                    tracing::error!("Redis update failed: {}", e);
+                                }
+                            });
+                        }
+
+                        protocol.handle_sync_step2(&awareness, decoded_update)
                     }
                     SyncMessage::Update(update) => {
                         let awareness = awareness.write().await;
