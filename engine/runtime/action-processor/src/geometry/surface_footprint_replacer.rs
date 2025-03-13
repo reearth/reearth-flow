@@ -35,7 +35,7 @@ impl ProcessorFactory for SurfaceFootprintReplacerFactory {
     }
 
     fn description(&self) -> &str {
-        "wip"
+        "Replace the geometry with its footprint"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
