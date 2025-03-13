@@ -22,8 +22,8 @@ use yrs::sync::protocol::{MSG_SYNC, MSG_SYNC_UPDATE};
 use yrs::sync::{DefaultProtocol, Error, Message, Protocol, SyncMessage};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
+use yrs::Array;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
-
 const MSG_SYNC_STEP1: u8 = 0;
 const MSG_SYNC_STEP2: u8 = 1;
 
@@ -589,8 +589,6 @@ impl BroadcastGroup {
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
             let redis_ttl = self.redis_ttl;
-            let storage = self.storage.clone();
-            let mut first_sync = true;
 
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
@@ -610,29 +608,20 @@ impl BroadcastGroup {
                         }
                     };
 
-                    if first_sync {
-                        if let Message::Sync(_) = &msg {
-                            if let (Some(store), Some(doc_name)) =
-                                (storage.as_ref(), doc_name.as_ref())
-                            {
-                                let awareness_lock = awareness.read().await;
-                                let doc = awareness_lock.doc();
-                                let txn = doc.transact();
-                                let state_vector = StateVector::default();
-                                let update = txn.encode_state_as_update_v1(&state_vector);
-
-                                if let Err(e) = store.push_update(doc_name, &update).await {
-                                    tracing::error!(
-                                        "Failed to save initial sync state to GCS: {}",
-                                        e
-                                    );
+                    if let Message::Sync(msg) = &msg {
+                        {
+                            let awareness_lock = awareness.read().await;
+                            let doc = awareness_lock.doc();
+                            let mut txn = doc.transact_mut();
+                            if let Some(workflows) = txn.get_array("workflows") {
+                                let len = workflows.len(&txn);
+                                if len > 1 {
+                                    tracing::warn!("Found {} workflows, cleaning up extras", len);
+                                    workflows.remove_range(&mut txn, 1, len - 1);
                                 }
-                                first_sync = false;
                             }
                         }
-                    }
 
-                    if let Message::Sync(msg) = &msg {
                         if let (Some(redis_store), Some(doc_name), Some(ttl)) =
                             (redis_store.as_ref(), doc_name.as_ref(), redis_ttl)
                         {
