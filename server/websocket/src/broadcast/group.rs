@@ -66,7 +66,7 @@ impl BroadcastGroup {
     pub fn increment_connections(&self) {
         let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
 
-        if prev_count > 1 {
+        if prev_count > 0 {
             if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
                 let store_clone = store.clone();
                 let doc_name_clone = doc_name.clone();

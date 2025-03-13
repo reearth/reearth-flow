@@ -223,6 +223,10 @@ impl BroadcastPool {
             .await?,
         );
 
+        if let Some(group) = self.groups.get(doc_id) {
+            return Ok(group.clone());
+        }
+
         self.groups.insert(doc_id.to_string(), group.clone());
 
         if let Some(redis_store) = &self.redis_store {
