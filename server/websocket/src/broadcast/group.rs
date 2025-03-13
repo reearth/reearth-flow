@@ -24,6 +24,9 @@ use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
+const MSG_SYNC_STEP1: u8 = 0;
+const MSG_SYNC_STEP2: u8 = 1;
+
 #[derive(Debug, Clone)]
 pub struct BroadcastConfig {
     pub storage_enabled: bool,
@@ -438,7 +441,16 @@ impl BroadcastGroup {
         <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
-        self.subscribe_with(sink, stream, DefaultProtocol)
+        let subscription = self.subscribe_with(sink.clone(), stream, DefaultProtocol);
+
+        let awareness = self.awareness().clone();
+        let sink_clone = sink.clone();
+
+        tokio::spawn(async move {
+            Self::send_initial_sync(awareness, sink_clone).await;
+        });
+
+        subscription
     }
 
     pub fn subscribe_with_user<Sink, Stream, E>(
@@ -475,7 +487,16 @@ impl BroadcastGroup {
             });
         }
 
-        self.subscribe_with(sink, stream, DefaultProtocol)
+        let subscription = self.subscribe_with(sink.clone(), stream, DefaultProtocol);
+
+        let awareness = self.awareness().clone();
+        let sink_clone = sink.clone();
+
+        tokio::spawn(async move {
+            Self::send_initial_sync(awareness, sink_clone).await;
+        });
+
+        subscription
     }
 
     pub fn subscribe_with<Sink, Stream, E, P>(
@@ -530,13 +551,16 @@ impl BroadcastGroup {
                         }
                     };
 
-                    if let Message::Sync(SyncMessage::Update(update)) = &msg {
+                    if let Message::Sync(msg) = &msg {
                         if let (Some(redis_store), Some(doc_name), Some(ttl)) =
                             (redis_store.as_ref(), doc_name.as_ref(), redis_ttl)
                         {
                             let rs = redis_store.clone();
                             let dn = doc_name.clone();
-                            let update_clone = update.clone();
+                            let update_clone = match msg {
+                                SyncMessage::Update(update) => update.clone(),
+                                _ => Vec::new(),
+                            };
                             let ttl_clone = ttl as u64;
 
                             tokio::spawn(async move {
@@ -607,6 +631,63 @@ impl BroadcastGroup {
             Message::Custom(tag, data) => {
                 let awareness = awareness.write().await;
                 protocol.missing_handle(&awareness, tag, data)
+            }
+        }
+    }
+
+    async fn send_initial_sync<Sink>(awareness: AwarenessRef, sink: Arc<Mutex<Sink>>)
+    where
+        Sink: SinkExt<Vec<u8>> + Send + Sync + Unpin + 'static,
+        <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
+    {
+        let awareness_lock = awareness.read().await;
+        let doc = awareness_lock.doc();
+
+        let state_vector = {
+            let txn = doc.transact();
+            txn.state_vector().encode_v1()
+        };
+
+        let sync_step1 = {
+            let mut encoder = EncoderV1::new();
+            encoder.write_var(MSG_SYNC);
+            encoder.write_var(MSG_SYNC_STEP1);
+            encoder.write_buf(&state_vector);
+            encoder.to_vec()
+        };
+
+        let state_update = {
+            let txn = doc.transact();
+            let sv = StateVector::default();
+            txn.encode_state_as_update_v1(&sv)
+        };
+
+        let sync_step2 = {
+            let mut encoder = EncoderV1::new();
+            encoder.write_var(MSG_SYNC);
+            encoder.write_var(MSG_SYNC_STEP2);
+            encoder.write_buf(&state_update);
+            encoder.to_vec()
+        };
+
+        let awareness_update = None;
+
+        drop(awareness_lock);
+
+        let mut sink_lock = sink.lock().await;
+        if let Err(e) = sink_lock.send(sync_step1).await {
+            tracing::warn!("Failed to send sync step 1: {}", e);
+            return;
+        }
+
+        if let Err(e) = sink_lock.send(sync_step2).await {
+            tracing::warn!("Failed to send sync step 2: {}", e);
+            return;
+        }
+
+        if let Some(update) = awareness_update {
+            if let Err(e) = sink_lock.send(update).await {
+                tracing::warn!("Failed to send awareness update: {}", e);
             }
         }
     }
