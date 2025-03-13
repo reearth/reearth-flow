@@ -818,6 +818,7 @@ Writes features to a file
 ```
 ### Input Ports
 * default
+* schema
 ### Output Ports
 ### Category
 * File

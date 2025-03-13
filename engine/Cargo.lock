@@ -3986,7 +3986,7 @@ dependencies = [
 [[package]]
 name = "macros"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.7#31a53952543c0550150fad2bb7084dc4d3ba0bd5"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.1#30999ecedee9847c8f9423080a745b19813bdd99"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -4439,8 +4439,8 @@ dependencies = [
 
 [[package]]
 name = "nusamai-citygml"
-version = "0.0.0-alpha.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.7#31a53952543c0550150fad2bb7084dc4d3ba0bd5"
+version = "0.8.0"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.1#30999ecedee9847c8f9423080a745b19813bdd99"
 dependencies = [
  "ahash 0.8.11",
  "chrono",
@@ -4461,7 +4461,7 @@ dependencies = [
 [[package]]
 name = "nusamai-czml"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.7#31a53952543c0550150fad2bb7084dc4d3ba0bd5"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.1#30999ecedee9847c8f9423080a745b19813bdd99"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -4472,7 +4472,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.7#31a53952543c0550150fad2bb7084dc4d3ba0bd5"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.1#30999ecedee9847c8f9423080a745b19813bdd99"
 dependencies = [
  "byteorder",
  "nusamai-gltf-json",
@@ -4482,7 +4482,7 @@ dependencies = [
 [[package]]
 name = "nusamai-gltf-json"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.7#31a53952543c0550150fad2bb7084dc4d3ba0bd5"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.1#30999ecedee9847c8f9423080a745b19813bdd99"
 dependencies = [
  "cesiumtiles",
  "serde",
@@ -4492,8 +4492,8 @@ dependencies = [
 
 [[package]]
 name = "nusamai-plateau"
-version = "0.0.0-alpha.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.7#31a53952543c0550150fad2bb7084dc4d3ba0bd5"
+version = "0.8.0"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.1#30999ecedee9847c8f9423080a745b19813bdd99"
 dependencies = [
  "chrono",
  "flatgeom",
@@ -4511,7 +4511,7 @@ dependencies = [
 [[package]]
 name = "nusamai-projection"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.7#31a53952543c0550150fad2bb7084dc4d3ba0bd5"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.1#30999ecedee9847c8f9423080a745b19813bdd99"
 dependencies = [
  "japan-geoid",
  "thiserror 2.0.12",
@@ -4520,7 +4520,7 @@ dependencies = [
 [[package]]
 name = "nusamai-shapefile"
 version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.7.7#31a53952543c0550150fad2bb7084dc4d3ba0bd5"
+source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.1#30999ecedee9847c8f9423080a745b19813bdd99"
 dependencies = [
  "flatgeom",
  "shapefile",

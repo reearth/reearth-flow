@@ -5,7 +5,7 @@ use std::path::Path;
 use thiserror::Error;
 use tracing::{info, warn};
 
-use crate::{group::RedisConfig, storage::gcs::GcsConfig};
+use crate::{storage::gcs::GcsConfig, storage::redis::RedisConfig};
 
 // Default configuration constants
 const DEFAULT_REDIS_URL: &str = "redis://127.0.0.1:6379";
@@ -36,7 +36,7 @@ pub struct AppConfig {
     pub origins: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone)]
 pub struct Config {
     pub redis: RedisConfig,
     pub gcs: GcsConfig,
