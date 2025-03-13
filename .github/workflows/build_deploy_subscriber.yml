@@ -131,15 +131,13 @@ jobs:
       id-token: write
     env:
       IMAGE: reearth/reearth-flow-subscriber:nightly
-      IMAGE_GCP: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-subscriber:nightly
-      GCP_REGION: us-central1
       CLOUD_RUN_SERVICE: reearth-flow-subscriber
     steps:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          service_account: ${{ secrets.GCP_SA_EMAIL }}
-          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
@@ -149,13 +147,13 @@ jobs:
 
       - name: Push Docker Image to GCP Artifact Registry
         run: |
-          docker pull $IMAGE
-          docker tag $IMAGE $IMAGE_GCP
-          docker push $IMAGE_GCP
+          docker pull ${{ env.IMAGE }}
+          docker tag ${{ env.IMAGE }} ${{ secrets.SUBSCRIBER_IMAGE_GC }}
+          docker push ${{ secrets.SUBSCRIBER_IMAGE_GC}}
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy $CLOUD_RUN_SERVICE \
-            --image $IMAGE_GCP \
-            --region $GCP_REGION \
+          gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }}  \
+            --image ${{ secrets.SUBSCRIBER_IMAGE_GC }} \
+            --region ${{ secrets.GC_REGION }} \
             --platform managed \
             --quiet
