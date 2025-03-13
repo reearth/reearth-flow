@@ -50,34 +50,9 @@ impl BroadcastPool {
     }
 
     pub async fn get_or_create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
-        if let Some(group) = self.groups.get(doc_id) {
-            let group_clone = group.clone();
-            drop(group);
-
-            if let Some(redis_store) = &self.redis_store {
-                if let Ok(has_updates) = redis_store.has_pending_updates(doc_id).await {
-                    if has_updates {
-                        if let Ok(updates) = redis_store.get_pending_updates(doc_id).await {
-                            if !updates.is_empty() {
-                                let _ = self.apply_updates_to_doc(&group_clone, updates).await;
-                            }
-                        }
-                    }
-                }
-            }
-
-            return Ok(group_clone);
-        }
-
         if !self.docs_in_creation.insert(doc_id.to_string()) {
             for delay_ms in [1, 2, 5, 10, 20, 50] {
                 tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
-
-                if let Some(group) = self.groups.get(doc_id) {
-                    let group_clone = group.clone();
-                    drop(group);
-                    return Ok(group_clone);
-                }
 
                 if self.docs_in_creation.insert(doc_id.to_string()) {
                     break;
@@ -117,8 +92,6 @@ impl BroadcastPool {
             }
         }
 
-        let group: Arc<BroadcastGroup>;
-
         let awareness: AwarenessRef = {
             let doc = Doc::new();
             let mut updates_from_redis = Vec::new();
@@ -144,7 +117,7 @@ impl BroadcastPool {
             Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
         };
 
-        group = Arc::new(
+        let group = Arc::new(
             BroadcastGroup::with_storage(
                 awareness,
                 self.buffer_capacity,
@@ -158,37 +131,33 @@ impl BroadcastPool {
             .await?,
         );
 
-        if let Some(group) = self.groups.get(doc_id) {
-            return Ok(group.clone());
-        }
-
         self.groups.insert(doc_id.to_string(), group.clone());
 
         Ok(group)
     }
 
-    async fn apply_updates_to_doc(
-        &self,
-        group: &Arc<BroadcastGroup>,
-        updates: Vec<Vec<u8>>,
-    ) -> Result<()> {
-        if updates.is_empty() {
-            return Ok(());
-        }
+    // async fn apply_updates_to_doc(
+    //     &self,
+    //     group: &Arc<BroadcastGroup>,
+    //     updates: Vec<Vec<u8>>,
+    // ) -> Result<()> {
+    //     if updates.is_empty() {
+    //         return Ok(());
+    //     }
 
-        let awareness = group.awareness();
-        let awareness_lock = awareness.read().await;
-        let doc = awareness_lock.doc();
-        let mut txn = doc.transact_mut();
+    //     let awareness = group.awareness();
+    //     let awareness_lock = awareness.read().await;
+    //     let doc = awareness_lock.doc();
+    //     let mut txn = doc.transact_mut();
 
-        for update in &updates {
-            if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(update) {
-                let _ = txn.apply_update(decoded);
-            }
-        }
+    //     for update in &updates {
+    //         if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(update) {
+    //             let _ = txn.apply_update(decoded);
+    //         }
+    //     }
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     pub async fn cleanup_empty_groups(&self) {
         self.groups.retain(|_, group| {
