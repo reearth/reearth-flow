@@ -805,6 +805,8 @@ impl Subscription {
             let _ = sync_complete.await;
         }
 
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
         let res = select! {
             r1 = self.sink_task => r1,
             r2 = self.stream_task => r2,
