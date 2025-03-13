@@ -594,6 +594,29 @@ impl BroadcastGroup {
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
+                if let (Some(redis_store), Some(doc_name), Some(ttl)) =
+                    (redis_store, doc_name, redis_ttl)
+                {
+                    let rs = redis_store.clone();
+                    let dn = doc_name.clone();
+                    let update_bytes = match &msg {
+                        SyncMessage::Update(update) => update.clone(),
+                        SyncMessage::SyncStep2(update) => update.clone(),
+                        _ => Vec::new(),
+                    };
+
+                    if !update_bytes.is_empty() {
+                        let ttl_clone = ttl as u64;
+                        tokio::spawn(async move {
+                            if let Err(e) =
+                                rs.add_publish_update(&dn, &update_bytes, ttl_clone).await
+                            {
+                                tracing::error!("Redis update failed: {}", e);
+                            }
+                        });
+                    }
+                }
+
                 match msg {
                     SyncMessage::SyncStep1(state_vector) => {
                         let awareness = awareness.read().await;
@@ -601,7 +624,6 @@ impl BroadcastGroup {
                     }
                     SyncMessage::SyncStep2(update) => {
                         let awareness = awareness.write().await;
-                        let update_bytes = update.clone();
                         let decoded_update = Update::decode_v1(&update)?;
 
                         {
@@ -653,22 +675,6 @@ impl BroadcastGroup {
                                     }
                                 }
                             }
-                        }
-
-                        if let (Some(redis_store), Some(doc_name), Some(ttl)) =
-                            (redis_store, doc_name, redis_ttl)
-                        {
-                            let rs = redis_store.clone();
-                            let dn = doc_name.clone();
-                            let ttl_clone = ttl as u64;
-
-                            tokio::spawn(async move {
-                                if let Err(e) =
-                                    rs.add_publish_update(&dn, &update_bytes, ttl_clone).await
-                                {
-                                    tracing::error!("Redis update failed: {}", e);
-                                }
-                            });
                         }
 
                         protocol.handle_sync_step2(&awareness, decoded_update)
