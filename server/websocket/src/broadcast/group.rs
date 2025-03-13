@@ -74,11 +74,27 @@ impl BroadcastGroup {
                 let store_clone = store.clone();
                 let doc_name_clone = doc_name.clone();
                 let awareness_clone = self.awareness_ref.clone();
+                let redis_store = self.redis_store.clone();
 
                 tokio::spawn(async move {
                     let awareness = awareness_clone.write().await;
                     let doc = awareness.doc();
-                    let txn = doc.transact_mut();
+                    let mut txn = doc.transact_mut();
+
+                    if let Some(redis_store) = &redis_store {
+                        if let Ok(updates) = redis_store.get_pending_updates(&doc_name_clone).await
+                        {
+                            if !updates.is_empty() {
+                                for update in &updates {
+                                    if let Ok(decoded) =
+                                        yrs::updates::decoder::Decode::decode_v1(update)
+                                    {
+                                        let _ = txn.apply_update(decoded);
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     let state_vector = StateVector::default();
                     let update = txn.encode_state_as_update_v1(&state_vector);
