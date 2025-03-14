@@ -242,11 +242,6 @@ impl BroadcastPool {
                                 doc_id,
                                 e
                             );
-                        } else {
-                            tracing::info!(
-                                "Set short TTL (1s) for document '{}' as fallback",
-                                doc_id
-                            );
                         }
                     }
                 }
@@ -257,13 +252,7 @@ impl BroadcastPool {
                         doc_id,
                         e
                     );
-                } else {
-                    tracing::info!(
-                        "Successfully shutdown broadcast group for document '{}'",
-                        doc_id
-                    );
                 }
-
                 self.groups.remove(doc_id);
             }
         }
