@@ -139,7 +139,7 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 	}
 
 	if b.config.WorkingDirectory != "" {
-		envVars["FLOW_WORKER_WORKING_DIRECTORY"] = b.config.WorkingDirectory
+		envVars["FLOW_RUNTIME_WORKING_DIRECTORY"] = b.config.WorkingDirectory
 		log.Debugfc(ctx, "gcpbatch: added working directory to environment variables: %s",
 			b.config.WorkingDirectory)
 	}
