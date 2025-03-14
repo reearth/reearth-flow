@@ -611,7 +611,7 @@ impl BroadcastGroup {
         redis_store: Option<&Arc<RedisStore>>,
         doc_name: Option<&String>,
         redis_ttl: Option<usize>,
-        gcs_store: Option<&Arc<GcsStore>>,
+        _gcs_store: Option<&Arc<GcsStore>>,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
