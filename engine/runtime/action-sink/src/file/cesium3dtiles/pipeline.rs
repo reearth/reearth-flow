@@ -53,7 +53,6 @@ pub(super) fn geometry_slicing_stage(
     attach_texture: bool,
 ) -> crate::errors::Result<()> {
     let bincode_config = bincode::config::standard();
-
     upstream.iter().par_bridge().try_for_each(|parcel| {
         slice_to_tiles(
             parcel,

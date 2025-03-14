@@ -3190,7 +3190,8 @@
         "default"
       ],
       "outputPorts": [
-        "default"
+        "default",
+        "schema"
       ],
       "categories": [
         "PLATEAU"

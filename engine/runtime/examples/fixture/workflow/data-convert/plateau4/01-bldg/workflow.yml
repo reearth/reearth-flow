@@ -464,3 +464,38 @@ graphs:
         to: 3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638
         fromPort: up_to_lod4
         toPort: default
+      - id: 14a2d089-6d1f-4014-bb71-ff976c8e388e
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: 41d69f1f-2a4d-4bc1-a5d0-175698273571
+        fromPort: schema
+        toPort: schema
+      - id: e327fb17-afa9-418d-8f71-ca2589dd5352
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: a61799d5-176e-4fb9-aa64-5d350adf0bb8
+        fromPort: schema
+        toPort: schema
+      - id: 62f229c1-9acb-4057-bc7f-137f5f3265e1
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: fc4c3817-6efe-4d6e-8e82-ebd84d5e6e19
+        fromPort: schema
+        toPort: schema
+      - id: 16173605-dccf-48bd-9f94-5b3792809d8a
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
+        fromPort: schema
+        toPort: schema
+      - id: b3438a6e-badd-4a08-9351-f35372593c16
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: 990ff798-168a-496e-a20a-b428de6a9ec0
+        fromPort: schema
+        toPort: schema
+      - id: b559f3df-c4cb-4b96-95d6-9e3561add2b7
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
+        fromPort: schema
+        toPort: schema
+      - id: 983d9b5f-3501-4440-9a65-12110cde81dd
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: 3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638
+        fromPort: schema
+        toPort: schema
