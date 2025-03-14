@@ -3,7 +3,8 @@ id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
 name: "PLATEAU4-A001-7-jp-standard-grid-accumulator-workflow"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
-  geojson: !include ./files/tsugaru_strait.geojson.txt
+  geojson_polygons: !include ./files/hokkaido_admins.geojson.txt
+  geojson_lines: !include ./files/hokkaido_power_lines.geojson.txt
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
@@ -15,7 +16,16 @@ graphs:
         with:
           format: geojson
           inline: |
-            env.get("geojson")
+            env.get("geojson_polygons")
+
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1af
+        name: FileReader
+        type: action
+        action: FileReader
+        with:
+          format: geojson
+          inline: |
+            env.get("geojson_lines")
 
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
         name: JPStandardGridAccumulator
@@ -33,6 +43,11 @@ graphs:
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
         from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
+        fromPort: default
+        toPort: default
+      - id: c064cf52-705f-443a-b2de-6795266c540e
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1af
         to: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
         fromPort: default
         toPort: default

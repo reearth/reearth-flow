@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use reearth_flow_geometry::types::geometry::Geometry2D;
-use reearth_flow_geometry::types::geometry_collection::GeometryCollection;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -26,7 +24,7 @@ impl ProcessorFactory for JPStandardGridAccumulatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Creates a convex hull based on a group of input features."
+        "Creates a convex partition based on a group of input features."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -121,8 +119,8 @@ impl Processor for JPStandardGridAccumulator {
                 };
 
                 if !self.buffer.contains_key(&key) {
-                    for hull in self.create_splitted() {
-                        fw.send(ctx.new_with_feature_and_port(hull, DEFAULT_PORT.clone()));
+                    for partition in self.devide_into_grid() {
+                        fw.send(ctx.new_with_feature_and_port(partition, DEFAULT_PORT.clone()));
                     }
                     self.buffer.clear();
                 }
@@ -140,10 +138,10 @@ impl Processor for JPStandardGridAccumulator {
     }
 
     fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
-        for hull in self.create_splitted() {
+        for partition in self.devide_into_grid() {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
-                hull,
+                partition,
                 DEFAULT_PORT.clone(),
             ));
         }
@@ -157,7 +155,7 @@ impl Processor for JPStandardGridAccumulator {
 }
 
 impl JPStandardGridAccumulator {
-    fn create_splitted(&self) -> Vec<Feature> {
+    fn devide_into_grid(&self) -> Vec<Feature> {
         vec![]
     }
 }
