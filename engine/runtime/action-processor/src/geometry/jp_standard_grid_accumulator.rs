@@ -441,7 +441,8 @@ mod tests {
     struct TestCase {
         inner_latitude: f64,
         inner_longitude: f64,
-        mesh_code: JPMeshCode,
+        mesh_code_number: u64,
+        mesh_code_type: JPMeshType,
         left_bottom_latitude: f64,
         left_bottom_longitude: f64,
     }
@@ -451,28 +452,32 @@ mod tests {
             TestCase {
                 inner_latitude: 43.058336,
                 inner_longitude: 141.337503,
-                mesh_code: JPMeshCode::from_number(64414277, JPMeshType::Mesh1km).unwrap(),
+                mesh_code_number: 64414277,
+                mesh_code_type: JPMeshType::Mesh1km,
                 left_bottom_latitude: 43.058333,
                 left_bottom_longitude: 141.3375,
             },
             TestCase {
                 inner_latitude: 40.81667,
                 inner_longitude: 140.737503,
-                mesh_code: JPMeshCode::from_number(61401589, JPMeshType::Mesh1km).unwrap(),
+                mesh_code_number: 61401589,
+                mesh_code_type: JPMeshType::Mesh1km,
                 left_bottom_latitude: 40.816667,
                 left_bottom_longitude: 140.7375,
             },
             TestCase {
                 inner_latitude: 39.700003,
                 inner_longitude: 141.150003,
-                mesh_code: JPMeshCode::from_number(59414142, JPMeshType::Mesh1km).unwrap(),
+                mesh_code_number: 59414142,
+                mesh_code_type: JPMeshType::Mesh1km,
                 left_bottom_latitude: 39.7,
                 left_bottom_longitude: 141.15,
             },
             TestCase {
                 inner_latitude: 38.26667,
                 inner_longitude: 140.862503,
-                mesh_code: JPMeshCode::from_number(57403629, JPMeshType::Mesh1km).unwrap(),
+                mesh_code_number: 57403629,
+                mesh_code_type: JPMeshType::Mesh1km,
                 left_bottom_latitude: 38.266667,
                 left_bottom_longitude: 140.8625,
             },
@@ -483,10 +488,10 @@ mod tests {
     fn test_mesh_code_generation() {
         for test_case in get_test_cases() {
             let coords = Coordinate2D::new_(test_case.inner_longitude, test_case.inner_latitude);
-            let mesh_code = JPMeshCode::new(coords, JPMeshType::Mesh1km);
+            let mesh_code = JPMeshCode::new(coords, test_case.mesh_code_type);
 
             let actual_number = mesh_code.to_number();
-            assert_eq!(actual_number, test_case.mesh_code.to_number());
+            assert_eq!(actual_number, test_case.mesh_code_number);
         }
     }
 
@@ -494,7 +499,7 @@ mod tests {
     fn test_mesh_code_into_bounds() {
         for test_case in get_test_cases() {
             let coords = Coordinate2D::new_(test_case.inner_longitude, test_case.inner_latitude);
-            let mesh_code = JPMeshCode::new(coords, JPMeshType::Mesh1km);
+            let mesh_code = JPMeshCode::new(coords, test_case.mesh_code_type);
 
             let bounds = mesh_code.into_bounds();
             let min_coord = bounds.min();
