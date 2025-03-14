@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use reearth_flow_geometry::types::coordinate::Coordinate2D;
+use reearth_flow_geometry::types::rect::{Rect, Rect2D};
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -188,28 +190,25 @@ impl MeshCodeType {
 
 struct MeshCode {
     mesh_code_type: MeshCodeType,
-    code_bin: [u8; 10],
+    seed: MeshCodeSeed,
 }
 
 impl MeshCode {
-    fn new(lon_degrees: f64, lat_degrees: f64, mesh_code_type: MeshCodeType) -> Self {
-        let seed = MeshCodeSeed::new(lon_degrees, lat_degrees);
-        let mut code_bin = [0u8; 10];
-        code_bin[..6].copy_from_slice(&seed.head);
-        code_bin[6..10].copy_from_slice(&seed.tail_bin);
+    fn new(coords: Coordinate2D<f64>, mesh_code_type: MeshCodeType) -> Self {
+        let seed = MeshCodeSeed::new(coords);
         MeshCode {
-            code_bin,
             mesh_code_type,
+            seed,
         }
     }
 
     fn to_slice(&self) -> &[u8] {
         match self.mesh_code_type {
-            MeshCodeType::First => &self.code_bin[..4],
-            MeshCodeType::Second => &self.code_bin[..6],
-            MeshCodeType::Third => &self.code_bin[..8],
-            MeshCodeType::Half => &self.code_bin[..9],
-            MeshCodeType::Quarter => &self.code_bin[..10],
+            MeshCodeType::First => &self.seed.code_bin[..4],
+            MeshCodeType::Second => &self.seed.code_bin[..6],
+            MeshCodeType::Third => &self.seed.code_bin[..8],
+            MeshCodeType::Half => &self.seed.code_bin[..9],
+            MeshCodeType::Quarter => &self.seed.code_bin[..10],
         }
     }
 
@@ -227,20 +226,22 @@ impl MeshCode {
         }
         result
     }
+
+    /// メッシュコードの値に対して、その地域を表す座標の形をRectで表現する
+    fn into_bounds(&self) -> Rect2D<f64> {
+        self.seed.into_bounds()
+    }
 }
 
 struct MeshCodeSeed {
-    /// 上位6桁 (第1次地域区画, 第2次地域区画)
-    head: [u8; 6],
-    /// 下位4桁 (基準地域メッシュ, {2,4,8}分の1地域メッシュ)
-    tail_bin: [u8; 4],
+    code_bin: [u8; 10],
 }
 
 impl MeshCodeSeed {
-    fn new(lon_degrees: f64, lat_degrees: f64) -> Self {
+    fn new(coords: Coordinate2D<f64>) -> Self {
         // 緯度の計算
         // 緯度 × 60分 ÷ 40分 ＝ p 余り a
-        let lat_minutes = lat_degrees * 60.0;
+        let lat_minutes = coords.y * 60.0;
         let p = (lat_minutes / 40.0).floor() as u8;
         let a_minutes = lat_minutes % 40.0;
 
@@ -263,8 +264,8 @@ impl MeshCodeSeed {
 
         // 経度の計算
         // 経度 － 100度 ＝ u 余り f
-        let u = (lon_degrees - 100.0).floor() as u8;
-        let f_degrees = lon_degrees - 100.0 - u as f64;
+        let u = (coords.x - 100.0).floor() as u8;
+        let f_degrees = coords.x - 100.0 - u as f64;
 
         // f × 60分 ÷ 7分30秒 ＝ v 余り g
         let f_minutes = f_degrees * 60.0;
@@ -291,6 +292,7 @@ impl MeshCodeSeed {
         // (t × 2)＋(y ＋ 1)＝ n
         let n = (t * 2) + (y + 1);
 
+        // 上位6桁 (第1次地域区画, 第2次地域区画)
         let head = {
             let v1 = (p / 10) % 10;
             let v2 = p % 10;
@@ -299,9 +301,54 @@ impl MeshCodeSeed {
             [v1, v2, v3, v4, q, v]
         };
 
+        // 下位4桁 (基準地域メッシュ, {2,4,8}分の1地域メッシュ)
         let tail_bin = { [r, w, m, n] };
 
-        MeshCodeSeed { head, tail_bin }
+        let mut code_bin = [0u8; 10];
+        code_bin[..6].copy_from_slice(&head);
+        code_bin[6..10].copy_from_slice(&tail_bin);
+
+        MeshCodeSeed { code_bin }
+    }
+
+    fn into_bounds(&self) -> Rect2D<f64> {
+        // メッシュコードから緯度経度の範囲を計算
+        let p = (self.code_bin[0] * 10 + self.code_bin[1]) as f64;
+        let u = (self.code_bin[2] * 10 + self.code_bin[3]) as f64;
+        let q = self.code_bin[4] as f64;
+        let v = self.code_bin[5] as f64;
+        let r = self.code_bin[6] as f64;
+        let w = self.code_bin[7] as f64;
+        let m = self.code_bin[8] as f64;
+        let n = self.code_bin[9] as f64;
+
+        // 緯度の計算（南西端）
+        let lat_base = p * 40.0 / 60.0;
+        let lat_q = q * 5.0 / 60.0;
+        let lat_r = r * 30.0 / 3600.0;
+        let lat_m = ((m - 1.0) % 2.0) * 15.0 / 3600.0;
+        let lat_n = ((n - 1.0) % 2.0) * 7.5 / 3600.0;
+
+        // 経度の計算（南西端）
+        let lon_base = 100.0 + u;
+        let lon_v = v * 7.5 / 60.0;
+        let lon_w = w * 45.0 / 3600.0;
+        let lon_m = ((m - 1.0) / 2.0) * 22.5 / 3600.0;
+        let lon_n = ((n - 1.0) / 2.0) * 11.25 / 3600.0;
+
+        // 南西端（左下）の座標
+        let min_lon = lon_base + lon_v + lon_w + lon_m + lon_n;
+        let min_lat = lat_base + lat_q + lat_r + lat_m + lat_n;
+
+        // 北東端（右上）の座標
+        // 4分の1地域メッシュの場合、緯度方向に7.5秒、経度方向に11.25秒の範囲
+        let max_lat = min_lat + 7.5 / 3600.0;
+        let max_lon = min_lon + 11.25 / 3600.0;
+
+        Rect::new(
+            Coordinate2D::new_(min_lon, min_lat),
+            Coordinate2D::new_(max_lon, max_lat),
+        )
     }
 }
 
@@ -309,6 +356,19 @@ impl MeshCodeSeed {
 mod tests {
     use super::*;
 
+    const EPSILON: f64 = 1e-6;
+
+    #[macro_export]
+    macro_rules! assert_approx_eq {
+        ($a:expr, $b:expr) => {
+            assert!(
+                ($a - $b).abs() < EPSILON,
+                "assertion failed: `(left ≈ right)`\n  left: `{}`\n right: `{}`\n",
+                $a,
+                $b
+            );
+        };
+    }
     #[derive(Debug)]
     struct TestCase {
         inner_latitude: f64,
@@ -317,59 +377,86 @@ mod tests {
         left_bottom_latitude: f64,
         left_bottom_longitude: f64,
     }
+    const TEST_CASES: [TestCase; 4] = [
+        TestCase {
+            inner_latitude: 43.058336,
+            inner_longitude: 141.337503,
+            mesh_code: 64414277,
+            left_bottom_latitude: 43.058333,
+            left_bottom_longitude: 141.3375,
+        },
+        TestCase {
+            inner_latitude: 40.81667,
+            inner_longitude: 140.737503,
+            mesh_code: 61401589,
+            left_bottom_latitude: 40.816667,
+            left_bottom_longitude: 140.7375,
+        },
+        TestCase {
+            inner_latitude: 39.700003,
+            inner_longitude: 141.150003,
+            mesh_code: 59414142,
+            left_bottom_latitude: 39.7,
+            left_bottom_longitude: 141.15,
+        },
+        TestCase {
+            inner_latitude: 38.26667,
+            inner_longitude: 140.862503,
+            mesh_code: 57403629,
+            left_bottom_latitude: 38.266667,
+            left_bottom_longitude: 140.8625,
+        },
+    ];
 
     #[test]
     fn test_mesh_code_generation() {
-        // テストケースの作成
-        let test_cases = vec![
-            TestCase {
-                inner_latitude: 43.058336,
-                inner_longitude: 141.337503,
-                mesh_code: 64414277,
-                left_bottom_latitude: 43.058333,
-                left_bottom_longitude: 141.3375,
-            },
-            TestCase {
-                inner_latitude: 40.81667,
-                inner_longitude: 140.737503,
-                mesh_code: 61401589,
-                left_bottom_latitude: 40.816667,
-                left_bottom_longitude: 140.7375,
-            },
-            TestCase {
-                inner_latitude: 39.700003,
-                inner_longitude: 141.150003,
-                mesh_code: 59414142,
-                left_bottom_latitude: 39.7,
-                left_bottom_longitude: 141.15,
-            },
-            TestCase {
-                inner_latitude: 38.26667,
-                inner_longitude: 140.862503,
-                mesh_code: 57403629,
-                left_bottom_latitude: 38.266667,
-                left_bottom_longitude: 140.8625,
-            },
-        ];
+        for test_case in TEST_CASES {
+            let coords = Coordinate2D::new_(test_case.inner_longitude, test_case.inner_latitude);
+            let mesh_code = MeshCode::new(coords, MeshCodeType::Third);
 
-        for test_case in test_cases {
-            let mesh_code = MeshCode::new(
-                test_case.inner_longitude,
-                test_case.inner_latitude,
-                MeshCodeType::Third,
-            );
-
-            let actual = mesh_code.to_number();
+            let actual_number = mesh_code.to_number();
 
             assert_eq!(
-                actual,
+                actual_number,
                 test_case.mesh_code,
                 "Failed to generate mesh code from latitude: {}, longitude: {}. Expected: {}, Actual: {}",
                 test_case.inner_latitude,
                 test_case.inner_longitude,
                 test_case.mesh_code,
-                actual
+                actual_number
             );
+
+            let actual_string = mesh_code.to_string();
+
+            assert_eq!(
+                actual_string,
+                test_case.mesh_code.to_string(),
+                "Failed to generate mesh code from latitude: {}, longitude: {}. Expected: {}, Actual: {}",
+                test_case.inner_latitude,
+                test_case.inner_longitude,
+                test_case.mesh_code,
+                actual_string
+            );
+        }
+    }
+
+    #[test]
+    fn test_mesh_code_into_bounds() {
+        for test_case in TEST_CASES {
+            let coords = Coordinate2D::new_(test_case.inner_longitude, test_case.inner_latitude);
+            let mesh_code = MeshCode::new(coords, MeshCodeType::Third);
+
+            let bounds = mesh_code.into_bounds();
+            let min_coord = bounds.min();
+
+            // check if the left bottom coordinate is correct
+            assert_approx_eq!(min_coord.x, test_case.left_bottom_longitude);
+            assert_approx_eq!(min_coord.y, test_case.left_bottom_latitude);
+
+            // check if the size of the area is correct
+            let max_coord = bounds.max();
+            assert_approx_eq!(max_coord.x - min_coord.x, 11.25 / 3600.0); // lon: 11.25 seconds
+            assert_approx_eq!(max_coord.y - min_coord.y, 7.5 / 3600.0); // lat: 7.5 seconds
         }
     }
 }
