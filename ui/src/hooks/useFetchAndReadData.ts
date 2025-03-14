@@ -25,8 +25,8 @@ export default ({ dataUrl = "" }: Props) => {
         setFileContent(fileContent);
         setFileType(type);
         setError(error);
+        setIsLoading(false);
       })();
-      setIsLoading(false);
       prevDataUrl.current = dataUrl;
     }
   }, [dataUrl, fileContent]);

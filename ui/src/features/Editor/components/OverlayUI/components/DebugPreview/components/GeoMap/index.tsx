@@ -7,7 +7,7 @@ type Props = {
   fileType: SupportedDataTypes | null;
 };
 
-const Map: React.FC<Props> = ({ className, fileContent, fileType }) => {
+const GeoMap: React.FC<Props> = ({ className, fileContent, fileType }) => {
   return (
     <div className={`relative size-full ${className}`}>
       <CesiumViewer fileContent={fileContent} fileType={fileType} />
@@ -15,4 +15,4 @@ const Map: React.FC<Props> = ({ className, fileContent, fileType }) => {
   );
 };
 
-export { Map };
+export { GeoMap };

@@ -99,12 +99,6 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
     }
   }, [debugJob?.logsURL, urlLogs, getLogsFromUrl]);
 
-  // useEffect(() => {
-  //   if (urlLogs) {
-  //     stopSubscription();
-  //   }
-  // }, [urlLogs, stopSubscription]);
-
   return (
     <LogsTable
       columns={columns}

@@ -21,7 +21,7 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
-import { DataTable, Map } from "./components";
+import { DataTable, GeoMap } from "./components";
 import useHooks from "./hooks";
 
 const DebugPreview: React.FC = () => {
@@ -103,7 +103,7 @@ const DebugPreview: React.FC = () => {
         <DataTable fileContent={fileContent} fileType={fileType} />
       </TabsContent>
       <TabsContent className="h-[calc(100%-35px)] px-1 pb-2" value="3d-viewer">
-        <Map fileContent={fileContent} fileType={fileType} />
+        <GeoMap fileContent={fileContent} fileType={fileType} />
       </TabsContent>
     </Tabs>
   ) : null;
