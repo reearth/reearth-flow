@@ -191,10 +191,10 @@ impl MeshCodeType {
         }
     }
 
-    fn lng_interval_seconds(&self) -> f64 {
+    fn lat_interval_seconds(&self) -> f64 {
         match self {
-            MeshCodeType::First => 40.0 * 60.0,
-            MeshCodeType::Second => 5.0 * 60.0,
+            MeshCodeType::First => 2400.0,
+            MeshCodeType::Second => 300.0,
             MeshCodeType::Third => 30.0,
             MeshCodeType::Half => 15.0,
             MeshCodeType::Quarter => 7.5,
@@ -202,10 +202,10 @@ impl MeshCodeType {
         }
     }
 
-    fn lat_interval_seconds(&self) -> f64 {
+    fn lng_interval_seconds(&self) -> f64 {
         match self {
             MeshCodeType::First => 3600.0,
-            MeshCodeType::Second => 7.5 * 60.0,
+            MeshCodeType::Second => 450.0,
             MeshCodeType::Third => 45.0,
             MeshCodeType::Half => 22.5,
             MeshCodeType::Quarter => 11.25,
@@ -213,20 +213,20 @@ impl MeshCodeType {
         }
     }
 
-    fn lng_interval_minutes(&self) -> f64 {
-        self.lng_interval_seconds() / 60.0
-    }
-
     fn lat_interval_minutes(&self) -> f64 {
         self.lat_interval_seconds() / 60.0
     }
 
-    fn lng_interval_degrees(&self) -> f64 {
-        self.lng_interval_seconds() / 3600.0
+    fn lng_interval_minutes(&self) -> f64 {
+        self.lng_interval_seconds() / 60.0
     }
 
     fn lat_interval_degrees(&self) -> f64 {
         self.lat_interval_seconds() / 3600.0
+    }
+
+    fn lng_interval_degrees(&self) -> f64 {
+        self.lng_interval_seconds() / 3600.0
     }
 }
 
@@ -381,23 +381,23 @@ impl MeshCodeSeed {
         let lat_n = ((n - 1.0) % 2.0) * 7.5 / 3600.0;
 
         // 経度の計算（南西端）
-        let lon_base = 100.0 + u;
-        let lon_v = v * 7.5 / 60.0;
-        let lon_w = w * 45.0 / 3600.0;
-        let lon_m = ((m - 1.0) / 2.0) * 22.5 / 3600.0;
-        let lon_n = ((n - 1.0) / 2.0) * 11.25 / 3600.0;
+        let lng_base = 100.0 + u;
+        let lng_v = v * 7.5 / 60.0;
+        let lng_w = w * 45.0 / 3600.0;
+        let lng_m = ((m - 1.0) / 2.0) * 22.5 / 3600.0;
+        let lng_n = ((n - 1.0) / 2.0) * 11.25 / 3600.0;
 
         // 南西端（左下）の座標
-        let min_lon = lon_base + lon_v + lon_w + lon_m + lon_n;
+        let min_lng = lng_base + lng_v + lng_w + lng_m + lng_n;
         let min_lat = lat_base + lat_q + lat_r + lat_m + lat_n;
 
         // 北東端（右上）の座標
         let max_lat = min_lat + mesh_code_type.lat_interval_degrees();
-        let max_lon = min_lon + mesh_code_type.lng_interval_degrees();
+        let max_lng = min_lng + mesh_code_type.lng_interval_degrees();
 
         Rect::new(
-            Coordinate2D::new_(min_lon, min_lat),
-            Coordinate2D::new_(max_lon, max_lat),
+            Coordinate2D::new_(min_lng, min_lat),
+            Coordinate2D::new_(max_lng, max_lat),
         )
     }
 }
@@ -466,12 +466,10 @@ mod tests {
             let mesh_code = MeshCode::new(coords, MeshCodeType::Third);
 
             let actual_number = mesh_code.to_number();
-
-            assert_eq!(actual_number, test_case.mesh_code,);
+            assert_eq!(actual_number, test_case.mesh_code);
 
             let actual_string = mesh_code.to_string();
-
-            assert_eq!(actual_string, test_case.mesh_code.to_string(),);
+            assert_eq!(actual_string, test_case.mesh_code.to_string());
         }
     }
 
@@ -490,14 +488,8 @@ mod tests {
 
             // check if the size of the area is correct
             let max_coord = bounds.max();
-            assert_approx_eq!(
-                max_coord.x - min_coord.x,
-                MeshCodeType::Third.lng_interval_degrees()
-            );
-            assert_approx_eq!(
-                max_coord.y - min_coord.y,
-                MeshCodeType::Third.lat_interval_degrees()
-            );
+            assert_approx_eq!(max_coord.x - min_coord.x, 45.0 / 3600.0);
+            assert_approx_eq!(max_coord.y - min_coord.y, 30.0 / 3600.0);
         }
     }
 }
