@@ -284,52 +284,50 @@ impl MeshCodeSeed {
     // 座標に対するメッシュコードの計算
     fn new(coords: Coordinate2D<f64>) -> Self {
         // 緯度の計算
-        // 緯度 * 60分 / 40分 = p 余り a
-        let lat_minutes = coords.y * 60.0;
-        let p = (lat_minutes / 40.0).floor() as u8;
-        let a_minutes = lat_minutes % 40.0;
+        // 緯度 / first_lat_degrees = p 余り a
+        let p = (coords.y / MeshCodeType::First.lat_interval_degrees()).floor() as u8;
+        let a_degrees = coords.y % MeshCodeType::First.lat_interval_degrees();
 
-        // a / 5分 = q 余り b
-        let q = (a_minutes / 5.0).floor() as u8;
-        let b_minutes = a_minutes % 5.0;
+        // a / second_lat_degrees = q 余り b
+        let q = (a_degrees / MeshCodeType::Second.lat_interval_degrees()).floor() as u8;
+        let b_degrees = a_degrees % MeshCodeType::Second.lat_interval_degrees();
 
-        // b * 60秒 / 30秒 = r 余り c
-        let b_seconds = b_minutes * 60.0;
-        let r = (b_seconds / 30.0).floor() as u8;
-        let c_seconds = b_seconds % 30.0;
+        // b / third_lat_degrees = r 余り c
+        let r = (b_degrees / MeshCodeType::Third.lat_interval_degrees()).floor() as u8;
+        let c_degrees = b_degrees % MeshCodeType::Third.lat_interval_degrees();
 
-        // c / 15秒 = s 余り d
-        let s = (c_seconds / 15.0).floor() as u8;
-        let d_seconds = c_seconds % 15.0;
+        // c / half_lat_degrees = s 余り d
+        let s = (c_degrees / MeshCodeType::Half.lat_interval_degrees()).floor() as u8;
+        let d_degrees = c_degrees % MeshCodeType::Half.lat_interval_degrees();
 
-        // d / 7.5秒 = t 余り e
-        let t = (d_seconds / 7.5).floor() as u8;
+        // d / quarter_lat_degrees = t 余り e
+        let t = (d_degrees / MeshCodeType::Quarter.lat_interval_degrees()).floor() as u8;
 
-        let tt = (d_seconds / 3.75).floor() as u8;
+        // d / eighth_lat_degrees = tt
+        let tt = (d_degrees / MeshCodeType::Eighth.lat_interval_degrees()).floor() as u8;
 
         // 経度の計算
         // 経度 - 100度 = u 余り f
         let u = (coords.x - 100.0).floor() as u8;
         let f_degrees = coords.x - 100.0 - u as f64;
 
-        // f * 60分 / 7分30秒 = v 余り g
-        let f_minutes = f_degrees * 60.0;
-        let v = (f_minutes / 7.5).floor() as u8;
-        let g_minutes = f_minutes % 7.5;
+        // f / second_lng_degrees = v 余り g
+        let v = (f_degrees / MeshCodeType::Second.lng_interval_degrees()).floor() as u8;
+        let g_degrees = f_degrees % MeshCodeType::Second.lng_interval_degrees();
 
-        // g * 60秒 / 45秒 = w 余り h
-        let g_seconds = g_minutes * 60.0;
-        let w = (g_seconds / 45.0).floor() as u8;
-        let h_seconds = g_seconds % 45.0;
+        // g / third_lng_degrees = w 余り h
+        let w = (g_degrees / MeshCodeType::Third.lng_interval_degrees()).floor() as u8;
+        let h_degrees = g_degrees % MeshCodeType::Third.lng_interval_degrees();
 
-        // h / 22.5秒 = x 余り i
-        let x = (h_seconds / 22.5).floor() as u8;
-        let i_seconds = h_seconds % 22.5;
+        // h / half_lng_degrees = x 余り i
+        let x = (h_degrees / MeshCodeType::Half.lng_interval_degrees()).floor() as u8;
+        let i_degrees = h_degrees % MeshCodeType::Half.lng_interval_degrees();
 
-        // i / 11.25秒 = y 余り j
-        let y = (i_seconds / 11.25).floor() as u8;
+        // i / quarter_lng_degrees = y 余り j
+        let y = (i_degrees / MeshCodeType::Quarter.lng_interval_degrees()).floor() as u8;
 
-        let yy = (i_seconds / 5.625).floor() as u8;
+        // i / eighth_lng_degrees = yy
+        let yy = (i_degrees / MeshCodeType::Eighth.lng_interval_degrees()).floor() as u8;
 
         // 最終計算
         // (s * 2)+(x + 1)= m
@@ -343,11 +341,11 @@ impl MeshCodeSeed {
 
         // 上位6桁 (第1次地域区画, 第2次地域区画)
         let head = {
-            let v1 = (p / 10) % 10;
-            let v2 = p % 10;
-            let v3 = (u / 10) % 10;
-            let v4 = u % 10;
-            [v1, v2, v3, v4, q, v]
+            let p1 = (p / 10) % 10;
+            let p2 = p % 10;
+            let u1 = (u / 10) % 10;
+            let u2 = u % 10;
+            [p1, p2, u1, u2, q, v]
         };
 
         // 下位5桁 (基準地域メッシュ, {2,4,8}分の1地域メッシュ)
@@ -374,22 +372,24 @@ impl MeshCodeSeed {
         let nn = self.code_bin[10] as f64;
 
         // 緯度の計算（南西端）
-        let lat_base = p * 40.0 / 60.0;
-        let lat_q = q * 5.0 / 60.0;
-        let lat_r = r * 30.0 / 3600.0;
-        let lat_m = ((m - 1.0) % 2.0) * 15.0 / 3600.0;
-        let lat_n = ((n - 1.0) % 2.0) * 7.5 / 3600.0;
+        let lat_base = p * MeshCodeType::First.lat_interval_degrees();
+        let lat_q = q * MeshCodeType::Second.lat_interval_degrees();
+        let lat_r = r * MeshCodeType::Third.lat_interval_degrees();
+        let lat_m = ((m - 1.0) % 2.0) * MeshCodeType::Half.lat_interval_degrees();
+        let lat_n = ((n - 1.0) % 2.0) * MeshCodeType::Quarter.lat_interval_degrees();
+        let lat_nn = ((nn - 1.0) % 2.0) * MeshCodeType::Eighth.lat_interval_degrees();
 
         // 経度の計算（南西端）
         let lng_base = 100.0 + u;
-        let lng_v = v * 7.5 / 60.0;
-        let lng_w = w * 45.0 / 3600.0;
-        let lng_m = ((m - 1.0) / 2.0) * 22.5 / 3600.0;
-        let lng_n = ((n - 1.0) / 2.0) * 11.25 / 3600.0;
+        let lng_v = v * MeshCodeType::Second.lng_interval_degrees();
+        let lng_w = w * MeshCodeType::Third.lng_interval_degrees();
+        let lng_m = ((m - 1.0) / 2.0) * MeshCodeType::Half.lng_interval_degrees();
+        let lng_n = ((n - 1.0) / 2.0) * MeshCodeType::Quarter.lng_interval_degrees();
+        let lng_nn = ((nn - 1.0) / 2.0) * MeshCodeType::Eighth.lng_interval_degrees();
 
         // 南西端（左下）の座標
-        let min_lng = lng_base + lng_v + lng_w + lng_m + lng_n;
-        let min_lat = lat_base + lat_q + lat_r + lat_m + lat_n;
+        let min_lng = lng_base + lng_v + lng_w + lng_m + lng_n + lng_nn;
+        let min_lat = lat_base + lat_q + lat_r + lat_m + lat_n + lat_nn;
 
         // 北東端（右上）の座標
         let max_lat = min_lat + mesh_code_type.lat_interval_degrees();
