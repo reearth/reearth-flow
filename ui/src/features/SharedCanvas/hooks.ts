@@ -62,7 +62,12 @@ export default ({
     undoTrackerActionWrapper,
   });
 
-  const edges = useY(currentYWorkflow?.get("edges") ?? new YArray()) as Edge[];
+  const rawEdges = useY(currentYWorkflow?.get("edges") ?? new YMap()) as Record<
+    string,
+    Edge
+  >;
+
+  const edges = useMemo(() => Object.values(rawEdges), [rawEdges]);
 
   const {
     openWorkflows,

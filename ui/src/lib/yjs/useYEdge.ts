@@ -4,7 +4,7 @@ import { Dispatch, SetStateAction, useCallback } from "react";
 import { Edge } from "@flow/types";
 
 import { yEdgeConstructor } from "./conversions";
-import type { YEdgesArray, YWorkflow } from "./types";
+import type { YEdge, YEdgesMap, YWorkflow } from "./types";
 
 export default ({
   currentYWorkflow,
@@ -18,11 +18,13 @@ export default ({
   const handleYEdgesAdd = useCallback(
     (newEdges: Edge[]) => {
       undoTrackerActionWrapper(() => {
-        const yEdges = currentYWorkflow?.get("edges") as
-          | YEdgesArray
-          | undefined;
+        const yEdges = currentYWorkflow?.get("edges") as YEdgesMap | undefined;
         if (!yEdges) return;
-        const newYEdges = newEdges.map((newEdge) => yEdgeConstructor(newEdge));
+        const newYEdges = new Map<string, YEdge>();
+        newEdges.forEach((newEdge) => {
+          const newYEdge = yEdgeConstructor(newEdge);
+          newYEdges.set(newEdge.id, newYEdge);
+        });
 
         newEdges.forEach((newEdge) => {
           if (newEdge.selected) {
@@ -31,8 +33,9 @@ export default ({
             });
           }
         });
-
-        yEdges.insert(yEdges.length, newYEdges);
+        newYEdges.forEach((newYEdge, key) => {
+          yEdges.set(key, newYEdge);
+        });
       });
     },
     [currentYWorkflow, setSelectedEdgeIds, undoTrackerActionWrapper],
@@ -40,59 +43,39 @@ export default ({
 
   const handleYEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      const yEdges = currentYWorkflow?.get("edges") as YEdgesArray | undefined;
+      const yEdges = currentYWorkflow?.get("edges") as YEdgesMap | undefined;
       if (!yEdges) return;
-
-      const existingEdgesMap = new Map(
-        Array.from(yEdges).map((yEdge, index) => [
-          yEdge.get("id")?.toString(),
-          { yEdge, index },
-        ]),
-      );
 
       undoTrackerActionWrapper(() => {
         changes.forEach((change) => {
           switch (change.type) {
             case "add": {
               const newYEdge = yEdgeConstructor(change.item);
-              yEdges.insert(yEdges.length, [newYEdge]);
+              yEdges.set(change.item.id, newYEdge);
               break;
             }
             case "replace": {
-              const existing = existingEdgesMap.get(change.id);
+              const existing = yEdges.get(change.id);
 
               if (existing) {
-                const index = Array.from(yEdges).findIndex(
-                  (ye) => ye.get("id")?.toString() === change.id,
-                );
+                setSelectedEdgeIds((seids) => {
+                  return seids.filter((seid) => seid !== change.id);
+                });
 
-                if (index !== -1) {
-                  setSelectedEdgeIds((seids) => {
-                    return seids.filter((seid) => seid !== change.id);
-                  });
-
-                  const newYEdge = yEdgeConstructor(change.item);
-                  yEdges.delete(index, 1);
-                  yEdges.insert(index, [newYEdge]);
-                }
+                const newYEdge = yEdgeConstructor(change.item);
+                yEdges.set(change.id, newYEdge);
               }
               break;
             }
             case "remove": {
-              const existing = existingEdgesMap.get(change.id);
+              const existing = yEdges.get(change.id);
 
               if (existing) {
-                const index = Array.from(yEdges).findIndex(
-                  (yn) => yn.get("id")?.toString() === change.id,
-                );
+                setSelectedEdgeIds((seids) => {
+                  return seids.filter((seid) => seid !== change.id);
+                });
 
-                if (index !== -1) {
-                  setSelectedEdgeIds((seids) => {
-                    return seids.filter((seid) => seid !== change.id);
-                  });
-
-                  yEdges.delete(index, 1);
-                }
+                yEdges.delete(change.id);
               }
               break;
             }

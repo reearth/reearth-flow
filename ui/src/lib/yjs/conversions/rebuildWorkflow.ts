@@ -127,11 +127,11 @@ export const rebuildWorkflow = (yWorkflow: YWorkflow): Workflow => {
       workflow.nodes = value
         .toArray()
         .map((yNode) => reassembleNode(yNode as YNode));
-    } else if (key === "edges" && value instanceof Y.Array) {
-      // Convert edges to plain objects
-      workflow.edges = value
-        .toArray()
-        .map((yEdge) => reassembleEdge(yEdge as YEdge));
+    } else if (key === "edges" && value instanceof Y.Map) {
+      // Convert map of edges to array of plain objects
+      workflow.edges = Array.from(value).map(([, yEdge]) =>
+        reassembleEdge(yEdge as YEdge),
+      );
     } else if (key === "createdAt" && value instanceof Y.Text) {
       workflow.createdAt = value.toString();
     } else if (key === "updatedAt" && value instanceof Y.Text) {

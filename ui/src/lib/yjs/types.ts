@@ -10,6 +10,6 @@ export type YEdge = Y.Map<YEdgeValue>;
 
 export type YNodesArray = Y.Array<YNode>;
 
-export type YEdgesArray = Y.Array<YEdge>;
+export type YEdgesMap = Y.Map<YEdge>;
 
-export type YWorkflow = Y.Map<Y.Text | YNodesArray | YEdgesArray>;
+export type YWorkflow = Y.Map<Y.Text | YNodesArray | YEdgesMap>;

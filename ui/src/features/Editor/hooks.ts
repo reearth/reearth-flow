@@ -92,14 +92,15 @@ export default ({
     [rawNodes, selectedNodeIds],
   );
 
-  const rawEdges = useY(
-    currentYWorkflow?.get("edges") ?? new YArray(),
-  ) as Edge[];
+  const rawEdges = useY(currentYWorkflow?.get("edges") ?? new YMap()) as Record<
+    string,
+    Edge
+  >;
 
   // Non-persistant state needs to be managed here
   const edges = useMemo(
     () =>
-      rawEdges.map((edge) => ({
+      Object.values(rawEdges).map((edge) => ({
         ...edge,
         selected:
           selectedEdgeIds.includes(edge.id) && !edge.selected

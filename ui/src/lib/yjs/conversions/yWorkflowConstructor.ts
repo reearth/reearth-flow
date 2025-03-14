@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import { toYjsArray, toYjsMap, toYjsText } from "@flow/lib/yjs/conversions";
 import type {
   YEdge,
+  YEdgesMap,
   YEdgeValue,
   YNode,
   YNodeValue,
@@ -85,9 +86,11 @@ export const yWorkflowConstructor = (
   const yNodes =
     toYjsArray<YNode>(nodes?.map((n) => yNodeConstructor(n))) ??
     new Y.Array<YNode>();
-  const yEdges =
-    toYjsArray<YEdge>(edges?.map((e) => yEdgeConstructor(e))) ??
-    new Y.Array<YEdge>();
+  const yEdges = new Y.Map() as YEdgesMap;
+  edges?.forEach((e) => {
+    const newYEdge = yEdgeConstructor(e);
+    yEdges.set(e.id, newYEdge);
+  });
 
   yWorkflow.set("id", yId);
   yWorkflow.set("name", yName);
