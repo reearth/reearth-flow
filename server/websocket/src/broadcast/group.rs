@@ -128,15 +128,6 @@ impl BroadcastGroup {
                                         .await;
                                     }
 
-                                    if let Err(e) =
-                                        redis_store.clear_pending_updates(&doc_name_clone).await
-                                    {
-                                        tracing::warn!(
-                                            "Failed to clear pending updates from Redis: {}",
-                                            e
-                                        );
-                                    }
-
                                     shutdown_flag_clone
                                         .store(true, std::sync::atomic::Ordering::SeqCst);
                                     return;
