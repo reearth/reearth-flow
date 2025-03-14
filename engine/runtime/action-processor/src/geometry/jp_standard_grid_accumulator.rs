@@ -281,9 +281,7 @@ struct JPMeshCodeSeed {
 }
 
 impl JPMeshCodeSeed {
-    // 座標に対するメッシュコードの計算
     fn new(coords: Coordinate2D<f64>) -> Self {
-        // 緯度の計算
         // 緯度 / first_lat_degrees = p 余り a
         let p = (coords.y / JPMeshType::Mesh80km.lat_interval_degrees()).floor() as u8;
         let a_degrees = coords.y % JPMeshType::Mesh80km.lat_interval_degrees();
@@ -306,7 +304,6 @@ impl JPMeshCodeSeed {
         // d / eighth_lat_degrees = tt
         let tt = (d_degrees / JPMeshType::Mesh125m.lat_interval_degrees()).floor() as u8;
 
-        // 経度の計算
         // 経度 - 100度 = u 余り f
         let u = (coords.x - 100.0).floor() as u8;
         let f_degrees = coords.x - 100.0 - u as f64;
@@ -329,7 +326,6 @@ impl JPMeshCodeSeed {
         // i / eighth_lng_degrees = yy
         let yy = (i_degrees / JPMeshType::Mesh125m.lng_interval_degrees()).floor() as u8;
 
-        // 最終計算
         // (s * 2)+(x + 1)= m
         let m = (s * 2) + (x + 1);
 
@@ -358,9 +354,7 @@ impl JPMeshCodeSeed {
         JPMeshCodeSeed { code_bin }
     }
 
-    // メッシュコードの値に対して、その地域を表す座標の形をRectで表現する
     fn into_bounds(&self, mesh_code_type: JPMeshType) -> Rect2D<f64> {
-        // メッシュコードから緯度経度の範囲を計算
         let p = (self.code_bin[0] * 10 + self.code_bin[1]) as f64;
         let u = (self.code_bin[2] * 10 + self.code_bin[3]) as f64;
         let q = self.code_bin[4] as f64;
