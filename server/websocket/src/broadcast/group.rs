@@ -79,7 +79,6 @@ impl BroadcastGroup {
             let shutdown_flag_clone = shutdown_flag.clone();
 
             tokio::spawn(async move {
-                // Get current state from awareness
                 let awareness = awareness.write().await;
                 let awareness_doc = awareness.doc();
                 let _awareness_state = awareness_doc.transact().state_vector();
@@ -360,7 +359,7 @@ impl BroadcastGroup {
         <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
-        self.subscribe_with(sink.clone(), stream, DefaultProtocol)
+        self.subscribe_with(sink, stream, DefaultProtocol)
     }
 
     pub fn subscribe_with_user<Sink, Stream, E>(
@@ -397,7 +396,7 @@ impl BroadcastGroup {
             });
         }
 
-        let subscription = self.subscribe_with(sink.clone(), stream, DefaultProtocol);
+        let subscription = self.subscribe_with(sink, stream, DefaultProtocol);
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         let self_clone = self.clone();
