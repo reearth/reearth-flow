@@ -437,49 +437,80 @@ mod tests {
         };
     }
 
+    #[macro_export]
+    macro_rules! assert_mesh_size_correct {
+        ($bounds:expr, $lng_interval_seconds:expr, $lat_interval_seconds:expr) => {
+            let min_coord = $bounds.min();
+            let max_coord = $bounds.max();
+            assert_approx_eq!(max_coord.x - min_coord.x, $lng_interval_seconds / 3600.0);
+            assert_approx_eq!(max_coord.y - min_coord.y, $lat_interval_seconds / 3600.0);
+        };
+    }
+
+    #[macro_export]
+    macro_rules! assert_rect_includes {
+        ($rect:expr, $point:expr) => {
+            assert!(
+                $rect.min().x <= $point.x
+                    && $rect.min().y <= $point.y
+                    && $rect.max().x > $point.x
+                    && $rect.max().y > $point.y
+            );
+        };
+    }
+
+    #[macro_export]
+    macro_rules! assert_rect_not_includes {
+        ($rect:expr, $point:expr) => {
+            assert!(
+                $rect.min().x > $point.x
+                    || $rect.min().y > $point.y
+                    || $rect.max().x <= $point.x
+                    || $rect.max().y <= $point.y
+            );
+        };
+    }
+
+    // small offset to avoid boundary problem
+    const INNER_OFFSET: f64 = 0.000003;
+
     #[derive(Debug)]
     struct TestCase {
-        inner_latitude: f64,
-        inner_longitude: f64,
         mesh_code_number: u64,
         mesh_code_type: JPMeshType,
-        left_bottom_latitude: f64,
-        left_bottom_longitude: f64,
+        left_bottom: Coordinate2D<f64>,
+    }
+
+    impl TestCase {
+        fn inner_coord(&self) -> Coordinate2D<f64> {
+            Coordinate2D::new_(
+                self.left_bottom.x + INNER_OFFSET,
+                self.left_bottom.y + INNER_OFFSET,
+            )
+        }
     }
 
     fn get_test_cases() -> Vec<TestCase> {
         return vec![
             TestCase {
-                inner_latitude: 43.058336,
-                inner_longitude: 141.337503,
                 mesh_code_number: 64414277,
                 mesh_code_type: JPMeshType::Mesh1km,
-                left_bottom_latitude: 43.058333,
-                left_bottom_longitude: 141.3375,
+                left_bottom: Coordinate2D::new_(141.3375, 43.058333),
             },
             TestCase {
-                inner_latitude: 40.81667,
-                inner_longitude: 140.737503,
                 mesh_code_number: 61401589,
                 mesh_code_type: JPMeshType::Mesh1km,
-                left_bottom_latitude: 40.816667,
-                left_bottom_longitude: 140.7375,
+                left_bottom: Coordinate2D::new_(140.7375, 40.816667),
             },
             TestCase {
-                inner_latitude: 39.700003,
-                inner_longitude: 141.150003,
                 mesh_code_number: 59414142,
                 mesh_code_type: JPMeshType::Mesh1km,
-                left_bottom_latitude: 39.7,
-                left_bottom_longitude: 141.15,
+                left_bottom: Coordinate2D::new_(141.15, 39.7),
             },
             TestCase {
-                inner_latitude: 38.26667,
-                inner_longitude: 140.862503,
                 mesh_code_number: 57403629,
                 mesh_code_type: JPMeshType::Mesh1km,
-                left_bottom_latitude: 38.266667,
-                left_bottom_longitude: 140.8625,
+                left_bottom: Coordinate2D::new_(140.8625, 38.266667),
             },
         ];
     }
@@ -487,8 +518,8 @@ mod tests {
     #[test]
     fn test_mesh_code_generation() {
         for test_case in get_test_cases() {
-            let coords = Coordinate2D::new_(test_case.inner_longitude, test_case.inner_latitude);
-            let mesh_code = JPMeshCode::new(coords, test_case.mesh_code_type);
+            let inner_coord = test_case.inner_coord();
+            let mesh_code = JPMeshCode::new(inner_coord, test_case.mesh_code_type);
 
             let actual_number = mesh_code.to_number();
             assert_eq!(actual_number, test_case.mesh_code_number);
@@ -498,20 +529,117 @@ mod tests {
     #[test]
     fn test_mesh_code_into_bounds() {
         for test_case in get_test_cases() {
-            let coords = Coordinate2D::new_(test_case.inner_longitude, test_case.inner_latitude);
-            let mesh_code = JPMeshCode::new(coords, test_case.mesh_code_type);
+            let inner_coord = test_case.inner_coord();
+            let mesh_code = JPMeshCode::new(inner_coord, test_case.mesh_code_type);
 
             let bounds = mesh_code.into_bounds();
             let min_coord = bounds.min();
 
             // check if the left bottom coordinate is correct
-            assert_approx_eq!(min_coord.x, test_case.left_bottom_longitude);
-            assert_approx_eq!(min_coord.y, test_case.left_bottom_latitude);
+            assert_approx_eq!(min_coord.x, test_case.left_bottom.x);
+            assert_approx_eq!(min_coord.y, test_case.left_bottom.y);
 
             // check if the size of the area is correct
-            let max_coord = bounds.max();
-            assert_approx_eq!(max_coord.x - min_coord.x, 45.0 / 3600.0);
-            assert_approx_eq!(max_coord.y - min_coord.y, 30.0 / 3600.0);
+            assert_mesh_size_correct!(bounds, 45.0, 30.0);
+        }
+    }
+
+    #[test]
+    fn test_mesh_code_from_number_to_number() {
+        // 要件1: データセットにあるinner座標に対して、任意のfrom_numberで生成したmesh_codeをto_numberに変換した結果が元の数値と一致すること
+        for test_case in get_test_cases() {
+            let mesh_code =
+                JPMeshCode::from_number(test_case.mesh_code_number, test_case.mesh_code_type)
+                    .unwrap();
+            let number = mesh_code.to_number();
+            assert_eq!(number, test_case.mesh_code_number);
+        }
+    }
+
+    #[test]
+    fn test_mesh_code_upscale() {
+        // 要件2: データセットのmesh_codeから、値を削り大きなスケールのメッシュを擬似的に作成し、
+        // データセットのactual_inner座標がそのメッシュの範囲内に含まれることを確認
+        for test_case in get_test_cases() {
+            // 1km -> 10km (下2桁削除)
+            let mesh_code_10km = test_case.mesh_code_number / 100;
+            let mesh_code_10km_obj =
+                JPMeshCode::from_number(mesh_code_10km, JPMeshType::Mesh10km).unwrap();
+            let bounds_10km = mesh_code_10km_obj.into_bounds();
+
+            // 内部座標がメッシュ範囲内に含まれることを確認
+            let inner_coord = test_case.inner_coord();
+
+            assert_rect_includes!(bounds_10km, inner_coord);
+
+            // メッシュサイズが正しいことを確認
+            assert_mesh_size_correct!(bounds_10km, 450.0, 300.0);
+
+            // 1km -> 80km (下4桁削除)
+            let mesh_code_80km = test_case.mesh_code_number / 10000;
+            let mesh_code_80km_obj =
+                JPMeshCode::from_number(mesh_code_80km, JPMeshType::Mesh80km).unwrap();
+            let bounds_80km = mesh_code_80km_obj.into_bounds();
+
+            // 内部座標がメッシュ範囲内に含まれることを確認
+            assert_rect_includes!(bounds_80km, inner_coord);
+
+            // メッシュサイズが正しいことを確認
+            assert_mesh_size_correct!(bounds_80km, 3600.0, 2400.0);
+        }
+    }
+
+    #[test]
+    fn test_mesh_code_downscale() {
+        // 要件3: データセットのmesh_codeから、値を加え小さなスケールのメッシュを擬似的に作成し、
+        // データセットのactual_inner座標がそのメッシュの範囲内に含まれることを確認
+        for test_case in get_test_cases() {
+            let inner_coord = test_case.inner_coord();
+
+            for i in 1..=4 {
+                let mesh_code_500m = test_case.mesh_code_number * 10 + i;
+                let mesh_code_500m_obj =
+                    JPMeshCode::from_number(mesh_code_500m, JPMeshType::Mesh500m).unwrap();
+                let bounds_500m = mesh_code_500m_obj.into_bounds();
+
+                assert_mesh_size_correct!(bounds_500m, 22.5, 15.0);
+
+                if i == 1 {
+                    assert_rect_includes!(bounds_500m, inner_coord);
+                } else {
+                    assert_rect_not_includes!(bounds_500m, inner_coord);
+                }
+            }
+
+            for j in 1..=4 {
+                let mesh_code_250m = test_case.mesh_code_number * 100 + 10 + j;
+                let mesh_code_250m_obj =
+                    JPMeshCode::from_number(mesh_code_250m, JPMeshType::Mesh250m).unwrap();
+                let bounds_250m = mesh_code_250m_obj.into_bounds();
+
+                assert_mesh_size_correct!(bounds_250m, 11.25, 7.5);
+
+                if j == 1 {
+                    assert_rect_includes!(bounds_250m, inner_coord);
+                } else {
+                    assert_rect_not_includes!(bounds_250m, inner_coord);
+                }
+            }
+
+            for k in 1..=4 {
+                let mesh_code_125m = test_case.mesh_code_number * 1000 + 110 + k;
+                let mesh_code_125m_obj =
+                    JPMeshCode::from_number(mesh_code_125m, JPMeshType::Mesh125m).unwrap();
+                let bounds_125m = mesh_code_125m_obj.into_bounds();
+
+                assert_mesh_size_correct!(bounds_125m, 5.625, 3.75);
+
+                if k == 1 {
+                    assert_rect_includes!(bounds_125m, inner_coord);
+                } else {
+                    assert_rect_not_includes!(bounds_125m, inner_coord);
+                }
+            }
         }
     }
 }
