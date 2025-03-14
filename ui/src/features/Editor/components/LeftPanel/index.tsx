@@ -27,7 +27,8 @@ type Props = {
   isOpen: boolean;
   isMainWorkflow: boolean;
   hasReader?: boolean;
-  onOpen: (panel?: "left" | "right" | "bottom") => void;
+  selected?: Node;
+  onOpen: (panel?: "left" | "right") => void;
   onNodesAdd: (node: Node[]) => void;
   onNodesChange: (changes: NodeChange[]) => void;
   onNodeDoubleClick: (
@@ -35,7 +36,6 @@ type Props = {
     nodeId: string,
     subworkflowId?: string,
   ) => void;
-  selected?: Node;
 };
 
 const LeftPanel: React.FC<Props> = ({

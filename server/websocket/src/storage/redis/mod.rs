@@ -63,23 +63,11 @@ impl RedisStore {
     pub async fn has_pending_updates(&self, doc_id: &str) -> Result<bool, anyhow::Error> {
         if let Some(pool) = &self.pool {
             let redis_key = format!("pending_updates:{}", doc_id);
-            let mut retry_count = 0;
-            const MAX_RETRIES: usize = 5;
 
-            while retry_count < MAX_RETRIES {
-                if let Ok(mut conn) = pool.get().await {
-                    match conn.llen::<_, i64>(&redis_key).await {
-                        Ok(len) if len > 0 => {
-                            return Ok(true);
-                        }
-                        Ok(_) => {}
-                        Err(_) => {}
-                    }
-                }
-
-                retry_count += 1;
-                if retry_count < MAX_RETRIES {
-                    tokio::time::sleep(Duration::from_millis(100)).await;
+            if let Ok(mut conn) = pool.get().await {
+                match conn.llen::<_, i64>(&redis_key).await {
+                    Ok(len) => return Ok(len > 0),
+                    Err(e) => return Err(anyhow::anyhow!("Redis error: {}", e)),
                 }
             }
         }
@@ -92,7 +80,7 @@ impl RedisStore {
         if let Some(pool) = &self.pool {
             let redis_key = format!("pending_updates:{}", doc_id);
             let mut retry_count = 0;
-            const MAX_RETRIES: usize = 5;
+            const MAX_RETRIES: usize = 1;
 
             while retry_count < MAX_RETRIES {
                 if let Ok(mut conn) = pool.get().await {
@@ -106,7 +94,7 @@ impl RedisStore {
 
                 retry_count += 1;
                 if retry_count < MAX_RETRIES {
-                    tokio::time::sleep(Duration::from_millis(100)).await;
+                    tokio::time::sleep(Duration::from_millis(5)).await;
                 }
             }
         }
@@ -335,6 +323,86 @@ impl RedisStore {
             .arg(update);
 
         let _: () = pipe.query_async(&mut *conn).await?;
+        Ok(())
+    }
+
+    pub async fn register_doc_instance(
+        &self,
+        doc_id: &str,
+        instance_id: &str,
+        ttl_seconds: u64,
+    ) -> Result<bool, anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let key = format!("doc:instance:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let result: bool = redis::cmd("SET")
+                    .arg(&key)
+                    .arg(instance_id)
+                    .arg("NX")
+                    .arg("EX")
+                    .arg(ttl_seconds)
+                    .query_async(&mut *conn)
+                    .await?;
+
+                return Ok(result);
+            }
+        }
+        Ok(false)
+    }
+
+    pub async fn get_doc_instance(&self, doc_id: &str) -> Result<Option<String>, anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let key = format!("doc:instance:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let result: Option<String> = conn.get(&key).await?;
+                return Ok(result);
+            }
+        }
+        Ok(None)
+    }
+
+    pub async fn refresh_doc_instance(
+        &self,
+        doc_id: &str,
+        instance_id: &str,
+        ttl_seconds: u64,
+    ) -> Result<(), anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let key = format!("doc:instance:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let current: Option<String> = conn.get(&key).await?;
+
+                if let Some(current_instance) = current {
+                    if current_instance == instance_id {
+                        let _: () = redis::cmd("EXPIRE")
+                            .arg(&key)
+                            .arg(ttl_seconds)
+                            .query_async(&mut *conn)
+                            .await?;
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn release_doc_instance(
+        &self,
+        doc_id: &str,
+        instance_id: &str,
+    ) -> Result<(), anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let key = format!("doc:instance:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let current: Option<String> = conn.get(&key).await?;
+
+                if let Some(current_instance) = current {
+                    if current_instance == instance_id {
+                        let _: () = redis::cmd("DEL").arg(&key).query_async(&mut *conn).await?;
+                    }
+                }
+            }
+        }
         Ok(())
     }
 }

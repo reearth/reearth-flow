@@ -41,12 +41,14 @@ pub struct RollbackQuery {
 pub struct AppState {
     pub pool: Arc<BroadcastPool>,
     pub auth: Arc<AuthService>,
+    pub instance_id: String,
 }
 
 #[cfg(not(feature = "auth"))]
 #[derive(Clone, Debug)]
 pub struct AppState {
     pub pool: Arc<BroadcastPool>,
+    pub instance_id: String,
 }
 
 #[cfg(feature = "auth")]

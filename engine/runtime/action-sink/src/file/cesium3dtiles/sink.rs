@@ -6,6 +6,7 @@ use std::{
     time, vec,
 };
 
+use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::event::{Event, EventHub};
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
@@ -20,6 +21,8 @@ use serde_json::Value as JsonValue;
 
 use crate::errors::SinkError;
 use crate::file::mvt::tileid::TileIdMethod;
+
+static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
 
 #[derive(Debug, Clone, Default)]
 pub struct Cesium3DTilesSinkFactory;
@@ -42,7 +45,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![DEFAULT_PORT.clone(), SCHEMA_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -93,6 +96,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
         let sink = Cesium3DTilesWriter {
             global_params: with,
             buffer: HashMap::new(),
+            schema: Default::default(),
             params: Cesium3DTilesWriterCompiledParam {
                 output,
                 min_zoom: params.min_zoom,
@@ -110,8 +114,9 @@ type BufferKey = (Uri, String, Option<Uri>); // (output, feature_type, compress_
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
-    pub(super) params: Cesium3DTilesWriterCompiledParam,
     pub(super) buffer: HashMap<BufferKey, Vec<Feature>>,
+    pub(super) schema: nusamai_citygml::schema::Schema,
+    pub(super) params: Cesium3DTilesWriterCompiledParam,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -139,43 +144,17 @@ impl Sink for Cesium3DTilesWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let Some(feature_type) = &ctx.feature.feature_type() else {
-            return Err(
-                SinkError::Cesium3DTilesWriter("Failed to get feature type".to_string()).into(),
-            );
-        };
-        let geometry = &ctx.feature.geometry;
-        if geometry.is_empty() {
-            return Err(SinkError::Cesium3DTilesWriter("Unsupported input".to_string()).into());
-        };
-        let geometry_value = &geometry.value;
-        if !matches!(
-            geometry_value,
-            geometry_types::GeometryValue::CityGmlGeometry(_)
-        ) {
-            return Err(SinkError::Cesium3DTilesWriter("Unsupported input".to_string()).into());
+        match &ctx.port {
+            port if *port == *DEFAULT_PORT => self.process_default(&ctx)?,
+            port if *port == SCHEMA_PORT.clone() => self.process_schema(&ctx)?,
+            port => {
+                return Err(SinkError::Cesium3DTilesWriter(format!(
+                    "Unknown port with: {:?}",
+                    port
+                ))
+                .into())
+            }
         }
-        let feature = ctx.feature;
-        let output = self.params.output.clone();
-        let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
-        let path = scope
-            .eval_ast::<String>(&output)
-            .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;
-        let output = Uri::from_str(path.as_str())?;
-        let compress_output = if let Some(compress_output) = &self.params.compress_output {
-            let compress_output = compress_output.clone();
-            let path = scope
-                .eval_ast::<String>(&compress_output)
-                .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;
-            Some(Uri::from_str(path.as_str())?)
-        } else {
-            None
-        };
-        let buffer = self
-            .buffer
-            .entry((output, feature_type.clone(), compress_output.clone()))
-            .or_default();
-        buffer.push(feature);
         Ok(())
     }
 
@@ -186,6 +165,63 @@ impl Sink for Cesium3DTilesWriter {
 }
 
 impl Cesium3DTilesWriter {
+    fn process_default(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
+        let Some(feature_type) = &ctx.feature.feature_type() else {
+            return Err(SinkError::Cesium3DTilesWriter(
+                "Failed to get feature type".to_string(),
+            ));
+        };
+        let geometry = &ctx.feature.geometry;
+        if geometry.is_empty() {
+            return Err(SinkError::Cesium3DTilesWriter(
+                "Unsupported input".to_string(),
+            ));
+        };
+        let geometry_value = &geometry.value;
+        if !matches!(
+            geometry_value,
+            geometry_types::GeometryValue::CityGmlGeometry(_)
+        ) {
+            return Err(SinkError::Cesium3DTilesWriter(
+                "Unsupported input".to_string(),
+            ));
+        }
+        let feature = &ctx.feature;
+        let output = self.params.output.clone();
+        let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
+        let path = scope
+            .eval_ast::<String>(&output)
+            .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;
+        let output = Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)?;
+        let compress_output = if let Some(compress_output) = &self.params.compress_output {
+            let compress_output = compress_output.clone();
+            let path = scope
+                .eval_ast::<String>(&compress_output)
+                .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;
+            Some(Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)?)
+        } else {
+            None
+        };
+        let buffer = self
+            .buffer
+            .entry((output, feature_type.clone(), compress_output.clone()))
+            .or_default();
+        buffer.push(feature.clone());
+        Ok(())
+    }
+
+    fn process_schema(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
+        let feature = &ctx.feature;
+        let typedef: nusamai_citygml::schema::TypeDef = feature.into();
+        let Some(feature_type) = &feature.feature_type() else {
+            return Err(SinkError::Cesium3DTilesWriter(
+                "Failed to get feature type".to_string(),
+            ));
+        };
+        self.schema.types.insert(feature_type.clone(), typedef);
+        Ok(())
+    }
+
     pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<()> {
         let mut features = HashMap::<(Uri, Option<Uri>), Vec<(String, Vec<Feature>)>>::new();
         for ((output, feature_type, compress_output), buffer) in &self.buffer {
@@ -211,13 +247,15 @@ impl Cesium3DTilesWriter {
         let tile_id_conv = TileIdMethod::Hilbert;
         let attach_texture = self.params.attach_texture.unwrap_or(false);
         let mut features = Vec::new();
-        let mut schema: nusamai_citygml::schema::Schema = Default::default();
+        let mut schema: nusamai_citygml::schema::Schema = self.schema.clone();
         for (feature_type, upstream) in upstream {
             let Some(feature) = upstream.first() else {
                 continue;
             };
-            let typedef: nusamai_citygml::schema::TypeDef = feature.into();
-            schema.types.insert(feature_type.clone(), typedef);
+            if !schema.types.contains_key(feature_type) {
+                let typedef: nusamai_citygml::schema::TypeDef = feature.into();
+                schema.types.insert(feature_type.clone(), typedef);
+            }
             features.extend(upstream.clone().into_iter());
         }
 
@@ -229,10 +267,12 @@ impl Cesium3DTilesWriter {
         std::thread::scope(|s| {
             {
                 let ctx = ctx.clone();
+                let schema = schema.clone();
                 s.spawn(move || {
                     let now = time::Instant::now();
                     let result = super::pipeline::geometry_slicing_stage(
                         &features,
+                        &schema,
                         tile_id_conv,
                         sender_sliced,
                         min_zoom,
@@ -286,6 +326,7 @@ impl Cesium3DTilesWriter {
             }
             {
                 let ctx = ctx.clone();
+                let schema = schema.clone();
                 s.spawn(move || {
                     let pool = rayon::ThreadPoolBuilder::new()
                         .use_current_thread()

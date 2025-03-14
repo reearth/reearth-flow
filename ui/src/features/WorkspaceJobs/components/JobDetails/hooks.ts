@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 
 import { DetailsBoxContent } from "@flow/features/common";
 import { useJob } from "@flow/lib/gql/job";
-import { useJobStatus } from "@flow/lib/gql/job/useSubscriptions";
+import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import { formatTimestamp } from "@flow/utils";
 
@@ -13,13 +13,7 @@ export default ({ jobId }: { jobId: string }) => {
 
   const { useGetJob, useJobCancel } = useJob();
 
-  const { data: jobStatus, isLoading, error } = useJobStatus(jobId);
-
-  const statusValue = isLoading
-    ? t("Loading...")
-    : error
-      ? t("Error")
-      : jobStatus;
+  const { data: jobStatus } = useSubscription("GetSubscribedJobStatus", jobId);
 
   const { job } = useGetJob(jobId);
 
@@ -57,7 +51,7 @@ export default ({ jobId }: { jobId: string }) => {
             {
               id: "status",
               name: t("Status"),
-              value: statusValue || job.status,
+              value: jobStatus || job.status,
             },
             {
               id: "startedAt",
@@ -81,12 +75,12 @@ export default ({ jobId }: { jobId: string }) => {
             },
           ]
         : undefined,
-    [t, job, statusValue],
+    [t, job, jobStatus],
   );
   return {
     job,
     details,
-    statusValue,
+    jobStatus,
     handleCancelJob,
     handleBack,
   };

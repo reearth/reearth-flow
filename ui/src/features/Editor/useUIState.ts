@@ -69,12 +69,12 @@ export default ({ hasReader }: { hasReader?: boolean }) => {
     [],
   );
 
-  const [openPanel, setOpenPanel] = useState<
-    "left" | "right" | "bottom" | undefined
-  >(undefined);
+  const [openPanel, setOpenPanel] = useState<"left" | "right" | undefined>(
+    undefined,
+  );
 
   const handlePanelOpen = useCallback(
-    (panel?: "left" | "right" | "bottom") => {
+    (panel?: "left" | "right") => {
       if (!panel || openPanel === panel) {
         setOpenPanel(undefined);
       } else {

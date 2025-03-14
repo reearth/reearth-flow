@@ -8,3 +8,4 @@ export { default as useProjectImport } from "./useProjectImport";
 export { default as useProjectPagination } from "./useProjectPagination";
 export { default as useWorkflowFileUpload } from "./useWorkflowFileUpload";
 export { default as useWorkflowImport } from "./useWorkflowImport";
+export { default as useJobSubscriptionsSetup } from "./useJobSubscriptionsSetup";
