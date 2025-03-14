@@ -33,22 +33,22 @@ pub struct Bounds {
 
 impl Bounds {
     fn min_x_value(&self) -> AttributeValue {
-        AttributeValue::Number(Number::from_f64(self.min_x).unwrap())
+        AttributeValue::Number(Number::from_f64(self.min_x).unwrap_or_else(|| Number::from(0)))
     }
     fn max_x_value(&self) -> AttributeValue {
-        AttributeValue::Number(Number::from_f64(self.max_x).unwrap())
+        AttributeValue::Number(Number::from_f64(self.max_x).unwrap_or_else(|| Number::from(0)))
     }
     fn min_y_value(&self) -> AttributeValue {
-        AttributeValue::Number(Number::from_f64(self.min_y).unwrap())
+        AttributeValue::Number(Number::from_f64(self.min_y).unwrap_or_else(|| Number::from(0)))
     }
     fn max_y_value(&self) -> AttributeValue {
-        AttributeValue::Number(Number::from_f64(self.max_y).unwrap())
+        AttributeValue::Number(Number::from_f64(self.max_y).unwrap_or_else(|| Number::from(0)))
     }
     fn min_z_value(&self) -> AttributeValue {
-        AttributeValue::Number(Number::from_f64(self.min_z).unwrap())
+        AttributeValue::Number(Number::from_f64(self.min_z).unwrap_or_else(|| Number::from(0)))
     }
     fn max_z_value(&self) -> AttributeValue {
-        AttributeValue::Number(Number::from_f64(self.max_z).unwrap())
+        AttributeValue::Number(Number::from_f64(self.max_z).unwrap_or_else(|| Number::from(0)))
     }
 }
 
