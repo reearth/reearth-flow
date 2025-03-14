@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet};
 
+use reearth_flow_geometry::algorithm::bool_ops::BooleanOps;
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::geometry::{Geometry, Geometry2D};
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
 use reearth_flow_geometry::types::rect::{Rect, Rect2D};
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
@@ -11,7 +13,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::GeometryValue;
+use reearth_flow_types::{Attribute, AttributeValue, GeometryValue};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
@@ -79,12 +81,27 @@ impl Processor for JPStandardGridAccumulator {
                     .map(|coord| JPMeshCode::new(*coord, JPMeshType::Mesh1km).to_number())
                     .collect::<HashSet<u64>>();
 
-                // 各メッシュコードに対してジオメトリを分割
                 for meshcode in meshcodes {
-                    let geometry = self.bind_geometry_into_mesh_2d(geometry, meshcode);
-                }
+                    let geometry = if let Some(geometry) =
+                        self.bind_geometry_into_mesh_2d(geometry, meshcode)
+                    {
+                        geometry
+                    } else {
+                        continue;
+                    };
 
-                // 今はfw.sendは実装しない
+                    let mut attributes = feature.attributes.clone();
+                    attributes.insert(
+                        Attribute::new("meshcode"),
+                        AttributeValue::String(meshcode.to_string()),
+                    );
+
+                    let mut new_feature = feature.clone();
+                    new_feature.geometry.value = GeometryValue::FlowGeometry2D(geometry);
+                    new_feature.attributes = attributes;
+
+                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                }
             }
             _ => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -103,45 +120,104 @@ impl Processor for JPStandardGridAccumulator {
 }
 
 impl JPStandardGridAccumulator {
-    fn bind_geometry_into_mesh_2d(&self, geometry: &Geometry2D, meshcode: u64) -> Geometry2D {
+    fn bind_geometry_into_mesh_2d(
+        &self,
+        geometry: &Geometry2D,
+        meshcode: u64,
+    ) -> Option<Geometry2D> {
         // メッシュコードからバウンディングボックスを取得
         let mesh = JPMeshCode::from_number(meshcode, JPMeshType::Mesh1km);
         let bounds = mesh.into_bounds();
 
+        let bounds_polygon = bounds.to_polygon();
+
         // ジオメトリの種類に応じて適切な処理を行う
-        match geometry {
+        let geometry = match geometry {
             // Pointの場合はそのまま返す
-            Geometry::Point(point) => geometry.clone(),
+            Geometry::Point(_) => geometry.clone(),
 
             // LineStringの場合はBooleanOpsを使用して分割
             Geometry::LineString(line_string) => {
-                // 現時点では未実装
-                unimplemented!("LineString分割は未実装です")
+                // LineStringをMultiLineStringに変換
+                let multi_line_string =
+                    reearth_flow_geometry::types::multi_line_string::MultiLineString2D::new(vec![
+                        line_string.clone(),
+                    ]);
+
+                // ポリゴンでクリップ
+                let clipped = bounds_polygon.clip(&multi_line_string, false);
+
+                // 結果が空の場合は元のジオメトリを返す
+                if clipped.0.is_empty() {
+                    geometry.clone()
+                } else if clipped.0.len() == 1 {
+                    // 結果が1つの場合はLineStringとして返す
+                    Geometry::LineString(clipped.0[0].clone())
+                } else {
+                    // 結果が複数の場合はMultiLineStringとして返す
+                    Geometry::MultiLineString(clipped)
+                }
             }
 
             // MultiLineStringの場合はBooleanOpsを使用して分割
             Geometry::MultiLineString(multi_line_string) => {
-                // 現時点では未実装
-                unimplemented!("MultiLineString分割は未実装です")
+                // ポリゴンでクリップ
+                let clipped = bounds_polygon.clip(multi_line_string, false);
+
+                // 結果が空の場合は元のジオメトリを返す
+                if clipped.0.is_empty() {
+                    geometry.clone()
+                } else if clipped.0.len() == 1 {
+                    // 結果が1つの場合はLineStringとして返す
+                    Geometry::LineString(clipped.0[0].clone())
+                } else {
+                    // 結果が複数の場合はMultiLineStringとして返す
+                    Geometry::MultiLineString(clipped)
+                }
             }
 
             // Polygonの場合はBooleanOpsを使用して分割
             Geometry::Polygon(polygon) => {
-                // 現時点では未実装
-                unimplemented!("Polygon分割は未実装です")
+                // ポリゴン同士の交差を計算
+                let intersection = polygon.intersection(&bounds_polygon);
+
+                // 結果が空の場合は元のジオメトリを返す
+                if intersection.0.is_empty() {
+                    geometry.clone()
+                } else if intersection.0.len() == 1 {
+                    // 結果が1つの場合はPolygonとして返す
+                    Geometry::Polygon(intersection.0[0].clone())
+                } else {
+                    // 結果が複数の場合はMultiPolygonとして返す
+                    Geometry::MultiPolygon(intersection)
+                }
             }
 
             // MultiPolygonの場合はBooleanOpsを使用して分割
             Geometry::MultiPolygon(multi_polygon) => {
-                // 現時点では未実装
-                unimplemented!("MultiPolygon分割は未実装です")
+                // ポリゴン同士の交差を計算
+                let intersection =
+                    multi_polygon.intersection(&MultiPolygon2D::new(vec![bounds_polygon]));
+
+                // 結果が空の場合は元のジオメトリを返す
+                if intersection.0.is_empty() {
+                    geometry.clone()
+                } else if intersection.0.len() == 1 {
+                    // 結果が1つの場合はPolygonとして返す
+                    Geometry::Polygon(intersection.0[0].clone())
+                } else {
+                    // 結果が複数の場合はMultiPolygonとして返す
+                    Geometry::MultiPolygon(intersection)
+                }
             }
 
             // その他の型の場合は未実装
             _ => {
-                unimplemented!("このジオメトリ型の分割は未実装です")
+                return None;
             }
-        }
+        };
+
+        Some(geometry)
     }
 }
 
@@ -162,18 +238,6 @@ enum JPMeshType {
 }
 
 impl JPMeshType {
-    fn from_str(s: &str) -> Option<JPMeshType> {
-        match s {
-            "Mesh80km" => Some(JPMeshType::Mesh80km),
-            "Mesh10km" => Some(JPMeshType::Mesh10km),
-            "Mesh1km" => Some(JPMeshType::Mesh1km),
-            "Mesh500m" => Some(JPMeshType::Mesh500m),
-            "Mesh250m" => Some(JPMeshType::Mesh250m),
-            "Mesh125m" => Some(JPMeshType::Mesh125m),
-            _ => None,
-        }
-    }
-
     const fn code_length(&self) -> usize {
         match self {
             JPMeshType::Mesh80km => 4,
