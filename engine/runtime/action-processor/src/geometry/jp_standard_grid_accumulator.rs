@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
+use reearth_flow_geometry::types::geometry::{Geometry, Geometry2D};
 use reearth_flow_geometry::types::rect::{Rect, Rect2D};
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
@@ -10,12 +11,8 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
+use reearth_flow_types::GeometryValue;
 use serde_json::Value;
-
-use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
 pub struct JPStandardGridAccumulatorFactory;
@@ -30,7 +27,7 @@ impl ProcessorFactory for JPStandardGridAccumulatorFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(JPStandardGridAccumulatorParam))
+        None
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -50,47 +47,14 @@ impl ProcessorFactory for JPStandardGridAccumulatorFactory {
         _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
-        with: Option<HashMap<String, Value>>,
+        _with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let param: JPStandardGridAccumulatorParam = if let Some(with) = with {
-            let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::JPStandardGridAccumulatorFactory(format!(
-                    "Failed to serialize 'with' parameter: {}",
-                    e
-                ))
-            })?;
-            serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::JPStandardGridAccumulatorFactory(format!(
-                    "Failed to deserialize 'with' parameter: {}",
-                    e
-                ))
-            })?
-        } else {
-            return Err(GeometryProcessorError::JPStandardGridAccumulatorFactory(
-                "Missing required parameter `with`".to_string(),
-            )
-            .into());
-        };
-        let process = JPStandardGridAccumulator {
-            group_by: param.group_by,
-            buffer: HashMap::new(),
-        };
-
-        Ok(Box::new(process))
+        Ok(Box::new(JPStandardGridAccumulator))
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct JPStandardGridAccumulatorParam {
-    group_by: Option<Vec<Attribute>>,
-}
-
 #[derive(Debug, Clone)]
-pub struct JPStandardGridAccumulator {
-    group_by: Option<Vec<Attribute>>,
-    buffer: HashMap<AttributeValue, Vec<Feature>>,
-}
+pub struct JPStandardGridAccumulator;
 
 impl Processor for JPStandardGridAccumulator {
     fn process(
@@ -108,29 +72,19 @@ impl Processor for JPStandardGridAccumulator {
             GeometryValue::None => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             }
-            GeometryValue::FlowGeometry2D(_) => {
-                let key = if let Some(group_by) = &self.group_by {
-                    AttributeValue::Array(
-                        group_by
-                            .iter()
-                            .filter_map(|attr| feature.attributes.get(attr).cloned())
-                            .collect(),
-                    )
-                } else {
-                    AttributeValue::Null
-                };
+            GeometryValue::FlowGeometry2D(geometry) => {
+                let meshcodes = geometry
+                    .get_all_coordinates()
+                    .iter()
+                    .map(|coord| JPMeshCode::new(*coord, JPMeshType::Mesh1km).to_number())
+                    .collect::<HashSet<u64>>();
 
-                if !self.buffer.contains_key(&key) {
-                    for partition in self.devide_into_grid() {
-                        fw.send(ctx.new_with_feature_and_port(partition, DEFAULT_PORT.clone()));
-                    }
-                    self.buffer.clear();
+                // 各メッシュコードに対してジオメトリを分割
+                for meshcode in meshcodes {
+                    let geometry = self.bind_geometry_into_mesh_2d(geometry, meshcode);
                 }
 
-                self.buffer
-                    .entry(key.clone())
-                    .or_default()
-                    .push(feature.clone());
+                // 今はfw.sendは実装しない
             }
             _ => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -139,15 +93,7 @@ impl Processor for JPStandardGridAccumulator {
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
-        for partition in self.devide_into_grid() {
-            fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                &ctx,
-                partition,
-                DEFAULT_PORT.clone(),
-            ));
-        }
-
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -157,8 +103,45 @@ impl Processor for JPStandardGridAccumulator {
 }
 
 impl JPStandardGridAccumulator {
-    fn devide_into_grid(&self) -> Vec<Feature> {
-        vec![]
+    fn bind_geometry_into_mesh_2d(&self, geometry: &Geometry2D, meshcode: u64) -> Geometry2D {
+        // メッシュコードからバウンディングボックスを取得
+        let mesh = JPMeshCode::from_number(meshcode, JPMeshType::Mesh1km);
+        let bounds = mesh.into_bounds();
+
+        // ジオメトリの種類に応じて適切な処理を行う
+        match geometry {
+            // Pointの場合はそのまま返す
+            Geometry::Point(point) => geometry.clone(),
+
+            // LineStringの場合はBooleanOpsを使用して分割
+            Geometry::LineString(line_string) => {
+                // 現時点では未実装
+                unimplemented!("LineString分割は未実装です")
+            }
+
+            // MultiLineStringの場合はBooleanOpsを使用して分割
+            Geometry::MultiLineString(multi_line_string) => {
+                // 現時点では未実装
+                unimplemented!("MultiLineString分割は未実装です")
+            }
+
+            // Polygonの場合はBooleanOpsを使用して分割
+            Geometry::Polygon(polygon) => {
+                // 現時点では未実装
+                unimplemented!("Polygon分割は未実装です")
+            }
+
+            // MultiPolygonの場合はBooleanOpsを使用して分割
+            Geometry::MultiPolygon(multi_polygon) => {
+                // 現時点では未実装
+                unimplemented!("MultiPolygon分割は未実装です")
+            }
+
+            // その他の型の場合は未実装
+            _ => {
+                unimplemented!("このジオメトリ型の分割は未実装です")
+            }
+        }
     }
 }
 
