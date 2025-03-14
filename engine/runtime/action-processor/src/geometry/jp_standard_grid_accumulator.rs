@@ -163,53 +163,53 @@ impl JPStandardGridAccumulator {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum MeshCodeType {
+enum JPMeshType {
     /// 第1次地域区画
-    First,
+    Mesh80km,
     /// 第2次地域区画
-    Second,
+    Mesh10km,
     /// 基準地域メッシュ
-    Third,
+    Mesh1km,
     /// 2分の1地域メッシュ
-    Half,
+    Mesh500m,
     /// 4分の1地域メッシュ
-    Quarter,
+    Mesh250m,
     /// 8分の1地域メッシュ
-    Eighth,
+    Mesh125m,
 }
 
-impl MeshCodeType {
-    fn from_string(s: &str) -> Option<MeshCodeType> {
+impl JPMeshType {
+    fn from_string(s: &str) -> Option<JPMeshType> {
         match s {
-            "First" => Some(MeshCodeType::First),
-            "Second" => Some(MeshCodeType::Second),
-            "Third" => Some(MeshCodeType::Third),
-            "Half" => Some(MeshCodeType::Half),
-            "Quarter" => Some(MeshCodeType::Quarter),
-            "Eighth" => Some(MeshCodeType::Eighth),
+            "Mesh80km" => Some(JPMeshType::Mesh80km),
+            "Mesh10km" => Some(JPMeshType::Mesh10km),
+            "Mesh1km" => Some(JPMeshType::Mesh1km),
+            "Mesh500m" => Some(JPMeshType::Mesh500m),
+            "Mesh250m" => Some(JPMeshType::Mesh250m),
+            "Mesh125m" => Some(JPMeshType::Mesh125m),
             _ => None,
         }
     }
 
     fn lat_interval_seconds(&self) -> f64 {
         match self {
-            MeshCodeType::First => 2400.0,
-            MeshCodeType::Second => 300.0,
-            MeshCodeType::Third => 30.0,
-            MeshCodeType::Half => 15.0,
-            MeshCodeType::Quarter => 7.5,
-            MeshCodeType::Eighth => 3.75,
+            JPMeshType::Mesh80km => 2400.0,
+            JPMeshType::Mesh10km => 300.0,
+            JPMeshType::Mesh1km => 30.0,
+            JPMeshType::Mesh500m => 15.0,
+            JPMeshType::Mesh250m => 7.5,
+            JPMeshType::Mesh125m => 3.75,
         }
     }
 
     fn lng_interval_seconds(&self) -> f64 {
         match self {
-            MeshCodeType::First => 3600.0,
-            MeshCodeType::Second => 450.0,
-            MeshCodeType::Third => 45.0,
-            MeshCodeType::Half => 22.5,
-            MeshCodeType::Quarter => 11.25,
-            MeshCodeType::Eighth => 5.625,
+            JPMeshType::Mesh80km => 3600.0,
+            JPMeshType::Mesh10km => 450.0,
+            JPMeshType::Mesh1km => 45.0,
+            JPMeshType::Mesh500m => 22.5,
+            JPMeshType::Mesh250m => 11.25,
+            JPMeshType::Mesh125m => 5.625,
         }
     }
 
@@ -230,15 +230,15 @@ impl MeshCodeType {
     }
 }
 
-struct MeshCode {
-    mesh_code_type: MeshCodeType,
-    seed: MeshCodeSeed,
+struct JPMeshCode {
+    mesh_code_type: JPMeshType,
+    seed: JPMeshCodeSeed,
 }
 
-impl MeshCode {
-    fn new(coords: Coordinate2D<f64>, mesh_code_type: MeshCodeType) -> Self {
-        let seed = MeshCodeSeed::new(coords);
-        MeshCode {
+impl JPMeshCode {
+    fn new(coords: Coordinate2D<f64>, mesh_code_type: JPMeshType) -> Self {
+        let seed = JPMeshCodeSeed::new(coords);
+        JPMeshCode {
             mesh_code_type,
             seed,
         }
@@ -246,12 +246,12 @@ impl MeshCode {
 
     fn to_slice(&self) -> &[u8] {
         match self.mesh_code_type {
-            MeshCodeType::First => &self.seed.code_bin[..4],
-            MeshCodeType::Second => &self.seed.code_bin[..6],
-            MeshCodeType::Third => &self.seed.code_bin[..8],
-            MeshCodeType::Half => &self.seed.code_bin[..9],
-            MeshCodeType::Quarter => &self.seed.code_bin[..10],
-            MeshCodeType::Eighth => &self.seed.code_bin[..11],
+            JPMeshType::Mesh80km => &self.seed.code_bin[..4],
+            JPMeshType::Mesh10km => &self.seed.code_bin[..6],
+            JPMeshType::Mesh1km => &self.seed.code_bin[..8],
+            JPMeshType::Mesh500m => &self.seed.code_bin[..9],
+            JPMeshType::Mesh250m => &self.seed.code_bin[..10],
+            JPMeshType::Mesh125m => &self.seed.code_bin[..11],
         }
     }
 
@@ -276,35 +276,35 @@ impl MeshCode {
     }
 }
 
-struct MeshCodeSeed {
+struct JPMeshCodeSeed {
     code_bin: [u8; 11],
 }
 
-impl MeshCodeSeed {
+impl JPMeshCodeSeed {
     // 座標に対するメッシュコードの計算
     fn new(coords: Coordinate2D<f64>) -> Self {
         // 緯度の計算
         // 緯度 / first_lat_degrees = p 余り a
-        let p = (coords.y / MeshCodeType::First.lat_interval_degrees()).floor() as u8;
-        let a_degrees = coords.y % MeshCodeType::First.lat_interval_degrees();
+        let p = (coords.y / JPMeshType::Mesh80km.lat_interval_degrees()).floor() as u8;
+        let a_degrees = coords.y % JPMeshType::Mesh80km.lat_interval_degrees();
 
         // a / second_lat_degrees = q 余り b
-        let q = (a_degrees / MeshCodeType::Second.lat_interval_degrees()).floor() as u8;
-        let b_degrees = a_degrees % MeshCodeType::Second.lat_interval_degrees();
+        let q = (a_degrees / JPMeshType::Mesh10km.lat_interval_degrees()).floor() as u8;
+        let b_degrees = a_degrees % JPMeshType::Mesh10km.lat_interval_degrees();
 
         // b / third_lat_degrees = r 余り c
-        let r = (b_degrees / MeshCodeType::Third.lat_interval_degrees()).floor() as u8;
-        let c_degrees = b_degrees % MeshCodeType::Third.lat_interval_degrees();
+        let r = (b_degrees / JPMeshType::Mesh1km.lat_interval_degrees()).floor() as u8;
+        let c_degrees = b_degrees % JPMeshType::Mesh1km.lat_interval_degrees();
 
         // c / half_lat_degrees = s 余り d
-        let s = (c_degrees / MeshCodeType::Half.lat_interval_degrees()).floor() as u8;
-        let d_degrees = c_degrees % MeshCodeType::Half.lat_interval_degrees();
+        let s = (c_degrees / JPMeshType::Mesh500m.lat_interval_degrees()).floor() as u8;
+        let d_degrees = c_degrees % JPMeshType::Mesh500m.lat_interval_degrees();
 
         // d / quarter_lat_degrees = t 余り e
-        let t = (d_degrees / MeshCodeType::Quarter.lat_interval_degrees()).floor() as u8;
+        let t = (d_degrees / JPMeshType::Mesh250m.lat_interval_degrees()).floor() as u8;
 
         // d / eighth_lat_degrees = tt
-        let tt = (d_degrees / MeshCodeType::Eighth.lat_interval_degrees()).floor() as u8;
+        let tt = (d_degrees / JPMeshType::Mesh125m.lat_interval_degrees()).floor() as u8;
 
         // 経度の計算
         // 経度 - 100度 = u 余り f
@@ -312,22 +312,22 @@ impl MeshCodeSeed {
         let f_degrees = coords.x - 100.0 - u as f64;
 
         // f / second_lng_degrees = v 余り g
-        let v = (f_degrees / MeshCodeType::Second.lng_interval_degrees()).floor() as u8;
-        let g_degrees = f_degrees % MeshCodeType::Second.lng_interval_degrees();
+        let v = (f_degrees / JPMeshType::Mesh10km.lng_interval_degrees()).floor() as u8;
+        let g_degrees = f_degrees % JPMeshType::Mesh10km.lng_interval_degrees();
 
         // g / third_lng_degrees = w 余り h
-        let w = (g_degrees / MeshCodeType::Third.lng_interval_degrees()).floor() as u8;
-        let h_degrees = g_degrees % MeshCodeType::Third.lng_interval_degrees();
+        let w = (g_degrees / JPMeshType::Mesh1km.lng_interval_degrees()).floor() as u8;
+        let h_degrees = g_degrees % JPMeshType::Mesh1km.lng_interval_degrees();
 
         // h / half_lng_degrees = x 余り i
-        let x = (h_degrees / MeshCodeType::Half.lng_interval_degrees()).floor() as u8;
-        let i_degrees = h_degrees % MeshCodeType::Half.lng_interval_degrees();
+        let x = (h_degrees / JPMeshType::Mesh500m.lng_interval_degrees()).floor() as u8;
+        let i_degrees = h_degrees % JPMeshType::Mesh500m.lng_interval_degrees();
 
         // i / quarter_lng_degrees = y 余り j
-        let y = (i_degrees / MeshCodeType::Quarter.lng_interval_degrees()).floor() as u8;
+        let y = (i_degrees / JPMeshType::Mesh250m.lng_interval_degrees()).floor() as u8;
 
         // i / eighth_lng_degrees = yy
-        let yy = (i_degrees / MeshCodeType::Eighth.lng_interval_degrees()).floor() as u8;
+        let yy = (i_degrees / JPMeshType::Mesh125m.lng_interval_degrees()).floor() as u8;
 
         // 最終計算
         // (s * 2)+(x + 1)= m
@@ -355,11 +355,11 @@ impl MeshCodeSeed {
         code_bin[..6].copy_from_slice(&head);
         code_bin[6..11].copy_from_slice(&tail_bin);
 
-        MeshCodeSeed { code_bin }
+        JPMeshCodeSeed { code_bin }
     }
 
     // メッシュコードの値に対して、その地域を表す座標の形をRectで表現する
-    fn into_bounds(&self, mesh_code_type: MeshCodeType) -> Rect2D<f64> {
+    fn into_bounds(&self, mesh_code_type: JPMeshType) -> Rect2D<f64> {
         // メッシュコードから緯度経度の範囲を計算
         let p = (self.code_bin[0] * 10 + self.code_bin[1]) as f64;
         let u = (self.code_bin[2] * 10 + self.code_bin[3]) as f64;
@@ -372,20 +372,20 @@ impl MeshCodeSeed {
         let nn = self.code_bin[10] as f64;
 
         // 緯度の計算（南西端）
-        let lat_base = p * MeshCodeType::First.lat_interval_degrees();
-        let lat_q = q * MeshCodeType::Second.lat_interval_degrees();
-        let lat_r = r * MeshCodeType::Third.lat_interval_degrees();
-        let lat_m = ((m - 1.0) % 2.0) * MeshCodeType::Half.lat_interval_degrees();
-        let lat_n = ((n - 1.0) % 2.0) * MeshCodeType::Quarter.lat_interval_degrees();
-        let lat_nn = ((nn - 1.0) % 2.0) * MeshCodeType::Eighth.lat_interval_degrees();
+        let lat_base = p * JPMeshType::Mesh80km.lat_interval_degrees();
+        let lat_q = q * JPMeshType::Mesh10km.lat_interval_degrees();
+        let lat_r = r * JPMeshType::Mesh1km.lat_interval_degrees();
+        let lat_m = ((m - 1.0) % 2.0) * JPMeshType::Mesh500m.lat_interval_degrees();
+        let lat_n = ((n - 1.0) % 2.0) * JPMeshType::Mesh250m.lat_interval_degrees();
+        let lat_nn = ((nn - 1.0) % 2.0) * JPMeshType::Mesh125m.lat_interval_degrees();
 
         // 経度の計算（南西端）
         let lng_base = 100.0 + u;
-        let lng_v = v * MeshCodeType::Second.lng_interval_degrees();
-        let lng_w = w * MeshCodeType::Third.lng_interval_degrees();
-        let lng_m = ((m - 1.0) / 2.0) * MeshCodeType::Half.lng_interval_degrees();
-        let lng_n = ((n - 1.0) / 2.0) * MeshCodeType::Quarter.lng_interval_degrees();
-        let lng_nn = ((nn - 1.0) / 2.0) * MeshCodeType::Eighth.lng_interval_degrees();
+        let lng_v = v * JPMeshType::Mesh10km.lng_interval_degrees();
+        let lng_w = w * JPMeshType::Mesh1km.lng_interval_degrees();
+        let lng_m = ((m - 1.0) / 2.0) * JPMeshType::Mesh500m.lng_interval_degrees();
+        let lng_n = ((n - 1.0) / 2.0) * JPMeshType::Mesh250m.lng_interval_degrees();
+        let lng_nn = ((nn - 1.0) / 2.0) * JPMeshType::Mesh125m.lng_interval_degrees();
 
         // 南西端（左下）の座標
         let min_lng = lng_base + lng_v + lng_w + lng_m + lng_n + lng_nn;
@@ -463,7 +463,7 @@ mod tests {
     fn test_mesh_code_generation() {
         for test_case in TEST_CASES {
             let coords = Coordinate2D::new_(test_case.inner_longitude, test_case.inner_latitude);
-            let mesh_code = MeshCode::new(coords, MeshCodeType::Third);
+            let mesh_code = JPMeshCode::new(coords, JPMeshType::Mesh1km);
 
             let actual_number = mesh_code.to_number();
             assert_eq!(actual_number, test_case.mesh_code);
@@ -477,7 +477,7 @@ mod tests {
     fn test_mesh_code_into_bounds() {
         for test_case in TEST_CASES {
             let coords = Coordinate2D::new_(test_case.inner_longitude, test_case.inner_latitude);
-            let mesh_code = MeshCode::new(coords, MeshCodeType::Third);
+            let mesh_code = JPMeshCode::new(coords, JPMeshType::Mesh1km);
 
             let bounds = mesh_code.into_bounds();
             let min_coord = bounds.min();
