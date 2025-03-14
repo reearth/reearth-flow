@@ -261,7 +261,7 @@ export default ({
     //   callback: () => handleYWorkflowAddFromSelection(nodes, edges),
     // },
   ]);
-
+  console.log(yWorkflows.length);
   return {
     currentWorkflowId,
     openWorkflows,

@@ -55,6 +55,34 @@ pub enum AttributeValue {
 }
 
 impl AttributeValue {
+    pub fn default_bool() -> Self {
+        Self::Bool(false)
+    }
+
+    pub fn default_number() -> Self {
+        Self::Number(Number::from(0))
+    }
+
+    pub fn default_string() -> Self {
+        Self::String("".to_owned())
+    }
+
+    pub fn default_datetime() -> Self {
+        Self::DateTime(DateTime::default())
+    }
+
+    pub fn default_array() -> Self {
+        Self::Array(Vec::new())
+    }
+
+    pub fn default_bytes() -> Self {
+        Self::Bytes(Bytes::new())
+    }
+
+    pub fn default_map() -> Self {
+        Self::Map(HashMap::new())
+    }
+
     pub fn as_bool(&self) -> Option<bool> {
         match self {
             Self::Bool(v) => Some(*v),
