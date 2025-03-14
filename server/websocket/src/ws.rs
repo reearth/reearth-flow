@@ -21,8 +21,6 @@ use crate::{pool::BroadcastPool, AppState};
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
 
-/// Connection Wrapper over a [WebSocket], which implements a Yjs/Yrs awareness and update exchange
-/// protocol.
 #[repr(transparent)]
 pub struct WarpConn(Connection<WarpSink, WarpStream>);
 
@@ -144,7 +142,6 @@ pub async fn ws_handler(
     #[cfg(not(feature = "auth"))]
     let user_token: Option<String> = None;
 
-    // Verify token
     #[cfg(feature = "auth")]
     {
         let authorized = state.auth.verify_token(&query.token).await;

@@ -26,7 +26,7 @@ impl BroadcastPool {
             store,
             redis_store,
             groups: DashMap::new(),
-            buffer_capacity: 1024,
+            buffer_capacity: 512,
             docs_in_creation: DashSet::new(),
         }
     }

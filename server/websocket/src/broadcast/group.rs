@@ -602,11 +602,6 @@ impl BroadcastGroup {
                 return Err(anyhow!("Failed to store final state: {}", e));
             }
 
-            tracing::info!(
-                "Successfully stored final state for document '{}'",
-                doc_name
-            );
-
             if let Some(redis_store) = &self.redis_store {
                 if let Err(e) = redis_store.clear_pending_updates(doc_name).await {
                     tracing::warn!("Failed to clear pending updates from Redis: {}", e);
