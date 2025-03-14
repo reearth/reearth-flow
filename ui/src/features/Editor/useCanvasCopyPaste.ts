@@ -30,118 +30,8 @@ export default ({
 }) => {
   const { copy, cut, paste } = useCopyPaste();
 
-  const getRelatedNodes = useCallback(
-    (selectedNodeIds: string[]) => {
-      const allRelatedNodes: Node[] = [];
-      const processedIds = new Set<string>();
-      let subworkflowData: Record<string, string | Node[] | Edge[]> = {};
-
-      const processNode = (nodeId: string) => {
-        if (processedIds.has(nodeId)) return;
-        processedIds.add(nodeId);
-
-        const node = nodes.find((n) => n.id === nodeId);
-        if (!node) return;
-        allRelatedNodes.push(node);
-
-        if (node.type === "batch") {
-          const children = nodes.filter((n) => n.parentId === node.id);
-          children.forEach((child) => processNode(child.id));
-        }
-
-        if (node.type === "subworkflow" && node.data.subworkflowId) {
-          const subworkflow = rawWorkflows.find(
-            (w) => w.id === node.data.subworkflowId,
-          );
-          if (subworkflow) {
-            subworkflowData = {
-              subworkFlowId: node.data.subworkflowId,
-              nodes: subworkflow.nodes,
-              edges: subworkflow.edges,
-            };
-          }
-        }
-      };
-      selectedNodeIds.forEach((nodeId) => {
-        processNode(nodeId);
-      });
-      return { allRelatedNodes, subworkflowData };
-    },
-    [nodes, rawWorkflows],
-  );
-
-  const handleCopy = useCallback(async () => {
-    const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
-      nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
-      edges: edges.filter((e) => e.selected),
-    };
-
-    const selectedNodes = nodes.filter((n) => selected.nodeIds.includes(n.id));
-    if (selectedNodes.some((n) => n.type === "reader")) return;
-
-    if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
-    await copy(selected);
-  }, [nodes, edges, copy]);
-
-  const handleCut = useCallback(async () => {
-    const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
-      nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
-      edges: edges.filter((e) => e.selected),
-    };
-
-    const selectedNodes = nodes.filter((n) => selected?.nodeIds.includes(n.id));
-    if (selectedNodes.some((n) => n.type === "reader")) return;
-
-    if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
-
-    const { allRelatedNodes: allNodes, subworkflowData } = getRelatedNodes(
-      selected.nodeIds,
-    );
-    const allNodeIds = allNodes.map((n) => n.id);
-
-    const allEdges = edges.filter(
-      (edge) =>
-        allNodeIds.includes(edge.source) || allNodeIds.includes(edge.target),
-    );
-
-    await cut({
-      nodeIds: selected.nodeIds,
-      edges: allEdges,
-      nodes: allNodes,
-      subworkflowData,
-    });
-
-    handleNodesChange(allNodeIds.map((id) => ({ id, type: "remove" })));
-
-    handleEdgesChange(allEdges.map((e) => ({ id: e.id, type: "remove" })));
-  }, [
-    nodes,
-    edges,
-    cut,
-    getRelatedNodes,
-    handleNodesChange,
-    handleEdgesChange,
-  ]);
-
-  const handlePaste = useCallback(async () => {
-    const {
-      nodeIds: pnid,
-      edges: pastedEdges,
-      nodes: pastedCutNodes,
-      subworkflowData: pastedCutSubworkflowData,
-    } = (await paste()) || {
-      nodeIds: [],
-      edges: [],
-    };
-
-    const copiedPastedNodes = nodes.filter((n) => pnid.includes(n.id));
-    const pastedNodes = pastedCutNodes ? pastedCutNodes : copiedPastedNodes;
-
-    const newEdgeCreation = (
-      pe: Edge[],
-      oldNodes: Node[],
-      newNodes: Node[],
-    ): Edge[] => {
+  const newEdgeCreation = useCallback(
+    (pe: Edge[], oldNodes: Node[], newNodes: Node[]): Edge[] => {
       let newEdges: Edge[] = [];
       for (const e of pe) {
         const sourceNode =
@@ -163,11 +53,12 @@ export default ({
         );
       }
       return newEdges;
-    };
-
-    const newNodeCreation = (pn: Node[]): Node[] => {
+    },
+    [],
+  );
+  const newNodeCreation = useCallback(
+    (pn: Node[]): Node[] => {
       const newNodes: Node[] = [];
-
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
 
       for (const n of pn) {
@@ -175,6 +66,7 @@ export default ({
         const newPosition = n.parentId
           ? { x: n.position.x, y: n.position.y }
           : { x: n.position.x + 40, y: n.position.y + 20 };
+
         const newNode: Node = {
           ...n,
           id: generateUUID(),
@@ -187,29 +79,7 @@ export default ({
 
         if (newNode.type === "batch") {
           parentIdMapArray.push({ prevId: n.id, newId: newNode.id });
-        }
-        // For Cut
-        if (newNode.type === "subworkflow" && pastedCutSubworkflowData) {
-          const subworkflowId = generateUUID();
-          const newSubworkflowNodes = newNodeCreation(
-            pastedCutSubworkflowData.nodes as Node[],
-          );
-          const newSubworkflowEdges = newEdgeCreation(
-            pastedCutSubworkflowData.edges as Edge[],
-            pastedCutSubworkflowData.nodes as Node[],
-            newSubworkflowNodes,
-          );
-
-          newNode.data.subworkflowId = subworkflowId;
-
-          handleWorkflowUpdate(
-            subworkflowId,
-            newSubworkflowNodes,
-            newSubworkflowEdges,
-          );
-        }
-        // For Copy
-        else if (newNode.type === "subworkflow") {
+        } else if (newNode.type === "subworkflow") {
           const subworkflowId = generateUUID();
 
           const subworkflowNodes = (rawWorkflows.find(
@@ -253,22 +123,85 @@ export default ({
       });
 
       return reBatchedNodes;
+    },
+    [rawWorkflows, handleWorkflowUpdate, newEdgeCreation],
+  );
+
+  const handleCopy = useCallback(async () => {
+    const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
+      nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
+      edges: edges.filter((e) => e.selected),
     };
 
-    const newNodes = newNodeCreation(pastedNodes);
-    const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
+    const selectedNodes = nodes.filter((n) => selected.nodeIds.includes(n.id));
+    if (selectedNodes.some((n) => n.type === "reader")) return;
+
+    if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
+    const copiedNodes = nodes.filter((n) => selected.nodeIds.includes(n.id));
+
+    const newNodes = newNodeCreation(copiedNodes);
+    const newEdges = newEdgeCreation(selected.edges, copiedNodes, newNodes);
+
+    await copy({ edges: newEdges, nodes: newNodes });
+  }, [nodes, edges, newNodeCreation, newEdgeCreation, copy]);
+
+  const handleCut = useCallback(async () => {
+    const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
+      nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
+      edges: edges.filter((e) => e.selected),
+    };
+
+    const selectedNodes = nodes.filter((n) => selected?.nodeIds.includes(n.id));
+    if (selectedNodes.some((n) => n.type === "reader")) return;
+
+    if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
+
+    const cutNodes = nodes.filter((n) => selected.nodeIds.includes(n.id));
+
+    const newNodes = newNodeCreation(cutNodes);
+    const newEdges = newEdgeCreation(selected.edges, cutNodes, newNodes);
+
+    await cut({
+      nodes: newNodes,
+      edges: newEdges,
+    });
+
+    const nodesToRemove = cutNodes.map((n) => n.id);
+    const edgesToRemove = edges.filter(
+      (edge) =>
+        nodesToRemove.includes(edge.source) ||
+        nodesToRemove.includes(edge.target),
+    );
+
+    handleNodesChange(nodesToRemove.map((id) => ({ id, type: "remove" })));
+    handleEdgesChange(edgesToRemove.map((e) => ({ id: e.id, type: "remove" })));
+  }, [
+    nodes,
+    edges,
+    cut,
+    newNodeCreation,
+    newEdgeCreation,
+    handleNodesChange,
+    handleEdgesChange,
+  ]);
+
+  const handlePaste = useCallback(async () => {
+    const { edges: pastedEdges, nodes: pastedNodes } = (await paste()) || {
+      nodes: [],
+      edges: [],
+    };
 
     // Copy new nodes and edges. Since they are selected now,
     // if the user pastes again, the new nodes and edges will
     // be what is pasted with an appropriate offset position.
     copy({
-      nodeIds: newNodes.map((n) => n.id),
-      edges: newEdges,
+      nodeIds: pastedNodes.map((n: Node) => n.id),
+      edges: pastedEdges,
     });
 
     cut({
-      nodeIds: newNodes.map((n) => n.id),
-      edges: newEdges,
+      nodeIds: pastedNodes.map((n: Node) => n.id),
+      edges: edges,
     });
 
     // deselect all previously selected nodes
@@ -280,16 +213,15 @@ export default ({
 
     handleNodesChange(nodeChanges);
 
-    handleNodesAdd([...newNodes]);
+    handleNodesAdd([...pastedNodes]);
 
-    handleEdgesAdd(newEdges);
+    handleEdgesAdd(pastedEdges);
   }, [
     nodes,
-    rawWorkflows,
+    edges,
     copy,
     cut,
     paste,
-    handleWorkflowUpdate,
     handleNodesAdd,
     handleNodesChange,
     handleEdgesAdd,
