@@ -162,7 +162,7 @@ impl JPStandardGridAccumulator {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum JPMeshType {
     /// 第1次地域区画
     Mesh80km,
@@ -188,6 +188,17 @@ impl JPMeshType {
             "Mesh250m" => Some(JPMeshType::Mesh250m),
             "Mesh125m" => Some(JPMeshType::Mesh125m),
             _ => None,
+        }
+    }
+
+    fn code_length(&self) -> usize {
+        match self {
+            JPMeshType::Mesh80km => 4,
+            JPMeshType::Mesh10km => 6,
+            JPMeshType::Mesh1km => 8,
+            JPMeshType::Mesh500m => 9,
+            JPMeshType::Mesh250m => 10,
+            JPMeshType::Mesh125m => 11,
         }
     }
 
@@ -230,6 +241,7 @@ impl JPMeshType {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct JPMeshCode {
     mesh_code_type: JPMeshType,
     seed: JPMeshCodeSeed,
@@ -255,11 +267,22 @@ impl JPMeshCode {
         }
     }
 
-    fn to_string(&self) -> String {
-        self.to_slice()
-            .iter()
-            .map(|&digit| digit.to_string())
-            .collect()
+    fn from_number(mesh_code: u64, mesh_code_type: JPMeshType) -> Option<Self> {
+        let mut code_bin = [0u8; 11];
+        let mut mesh_code = mesh_code;
+        let ifirst = 11 - mesh_code_type.code_length();
+        for i in (0..11).rev() {
+            let value = (mesh_code % 10) as u8;
+            if i >= ifirst {
+                code_bin[i - ifirst] = value;
+            }
+            mesh_code /= 10;
+        }
+
+        Some(JPMeshCode {
+            mesh_code_type,
+            seed: JPMeshCodeSeed { code_bin },
+        })
     }
 
     fn to_number(&self) -> u64 {
@@ -270,12 +293,12 @@ impl JPMeshCode {
         result
     }
 
-    /// メッシュコードの値に対して、その地域を表す座標の形をRectで表現する
     fn into_bounds(&self) -> Rect2D<f64> {
         self.seed.into_bounds(self.mesh_code_type)
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct JPMeshCodeSeed {
     code_bin: [u8; 11],
 }
@@ -418,58 +441,58 @@ mod tests {
     struct TestCase {
         inner_latitude: f64,
         inner_longitude: f64,
-        mesh_code: u64,
+        mesh_code: JPMeshCode,
         left_bottom_latitude: f64,
         left_bottom_longitude: f64,
     }
-    const TEST_CASES: [TestCase; 4] = [
-        TestCase {
-            inner_latitude: 43.058336,
-            inner_longitude: 141.337503,
-            mesh_code: 64414277,
-            left_bottom_latitude: 43.058333,
-            left_bottom_longitude: 141.3375,
-        },
-        TestCase {
-            inner_latitude: 40.81667,
-            inner_longitude: 140.737503,
-            mesh_code: 61401589,
-            left_bottom_latitude: 40.816667,
-            left_bottom_longitude: 140.7375,
-        },
-        TestCase {
-            inner_latitude: 39.700003,
-            inner_longitude: 141.150003,
-            mesh_code: 59414142,
-            left_bottom_latitude: 39.7,
-            left_bottom_longitude: 141.15,
-        },
-        TestCase {
-            inner_latitude: 38.26667,
-            inner_longitude: 140.862503,
-            mesh_code: 57403629,
-            left_bottom_latitude: 38.266667,
-            left_bottom_longitude: 140.8625,
-        },
-    ];
+
+    fn get_test_cases() -> Vec<TestCase> {
+        return vec![
+            TestCase {
+                inner_latitude: 43.058336,
+                inner_longitude: 141.337503,
+                mesh_code: JPMeshCode::from_number(64414277, JPMeshType::Mesh1km).unwrap(),
+                left_bottom_latitude: 43.058333,
+                left_bottom_longitude: 141.3375,
+            },
+            TestCase {
+                inner_latitude: 40.81667,
+                inner_longitude: 140.737503,
+                mesh_code: JPMeshCode::from_number(61401589, JPMeshType::Mesh1km).unwrap(),
+                left_bottom_latitude: 40.816667,
+                left_bottom_longitude: 140.7375,
+            },
+            TestCase {
+                inner_latitude: 39.700003,
+                inner_longitude: 141.150003,
+                mesh_code: JPMeshCode::from_number(59414142, JPMeshType::Mesh1km).unwrap(),
+                left_bottom_latitude: 39.7,
+                left_bottom_longitude: 141.15,
+            },
+            TestCase {
+                inner_latitude: 38.26667,
+                inner_longitude: 140.862503,
+                mesh_code: JPMeshCode::from_number(57403629, JPMeshType::Mesh1km).unwrap(),
+                left_bottom_latitude: 38.266667,
+                left_bottom_longitude: 140.8625,
+            },
+        ];
+    }
 
     #[test]
     fn test_mesh_code_generation() {
-        for test_case in TEST_CASES {
+        for test_case in get_test_cases() {
             let coords = Coordinate2D::new_(test_case.inner_longitude, test_case.inner_latitude);
             let mesh_code = JPMeshCode::new(coords, JPMeshType::Mesh1km);
 
             let actual_number = mesh_code.to_number();
-            assert_eq!(actual_number, test_case.mesh_code);
-
-            let actual_string = mesh_code.to_string();
-            assert_eq!(actual_string, test_case.mesh_code.to_string());
+            assert_eq!(actual_number, test_case.mesh_code.to_number());
         }
     }
 
     #[test]
     fn test_mesh_code_into_bounds() {
-        for test_case in TEST_CASES {
+        for test_case in get_test_cases() {
             let coords = Coordinate2D::new_(test_case.inner_longitude, test_case.inner_latitude);
             let mesh_code = JPMeshCode::new(coords, JPMeshType::Mesh1km);
 
