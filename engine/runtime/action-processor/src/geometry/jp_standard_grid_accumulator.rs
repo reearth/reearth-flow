@@ -186,77 +186,44 @@ impl MeshCodeType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum MeshCode {
-    /// 第1次地域区画
-    First([u8; 4]),
-    /// 第2次地域区画
-    Second([u8; 6]),
-    /// 基準地域メッシュ
-    Third([u8; 8]),
-    /// 2分の1地域メッシュ
-    Half([u8; 9]),
-    /// 4分の1地域メッシュ
-    Quarter([u8; 10]),
+struct MeshCode {
+    mesh_code_type: MeshCodeType,
+    code_bin: [u8; 10],
 }
 
 impl MeshCode {
-    fn new(lon_degrees: f64, lat_degrees: f64, mesh_code_type: MeshCodeType) -> MeshCode {
-        let s = calculate_mesh_code_seed(lon_degrees, lat_degrees);
-
-        match mesh_code_type {
-            MeshCodeType::First => {
-                let mut code = [0u8; 4];
-                code.copy_from_slice(&s.head[..4]);
-                MeshCode::First(code)
-            }
-            MeshCodeType::Second => {
-                let mut code = [0u8; 6];
-                code.copy_from_slice(&s.head[..6]);
-                MeshCode::Second(code)
-            }
-            MeshCodeType::Third => {
-                let mut code = [0u8; 8];
-                code[..6].copy_from_slice(&s.head[..6]);
-                code[6..8].copy_from_slice(&s.tail_bin[..2]);
-                MeshCode::Third(code)
-            }
-            MeshCodeType::Half => {
-                let mut code = [0u8; 9];
-                code[..6].copy_from_slice(&s.head[..6]);
-                code[6..9].copy_from_slice(&s.tail_bin[..3]);
-                MeshCode::Half(code)
-            }
-            MeshCodeType::Quarter => {
-                let mut code = [0u8; 10];
-                code[..6].copy_from_slice(&s.head[..6]);
-                code[6..10].copy_from_slice(&s.tail_bin[..4]);
-                MeshCode::Quarter(code)
-            }
+    fn new(lon_degrees: f64, lat_degrees: f64, mesh_code_type: MeshCodeType) -> Self {
+        let seed = MeshCodeSeed::new(lon_degrees, lat_degrees);
+        let mut code_bin = [0u8; 10];
+        code_bin[..6].copy_from_slice(&seed.head);
+        code_bin[6..10].copy_from_slice(&seed.tail_bin);
+        MeshCode {
+            code_bin,
+            mesh_code_type,
         }
     }
 
-    fn to_vec(&self) -> &[u8] {
-        match self {
-            MeshCode::First(code) => code,
-            MeshCode::Second(code) => code,
-            MeshCode::Third(code) => code,
-            MeshCode::Half(code) => code,
-            MeshCode::Quarter(code) => code,
+    fn to_slice(&self) -> &[u8] {
+        match self.mesh_code_type {
+            MeshCodeType::First => &self.code_bin[..4],
+            MeshCodeType::Second => &self.code_bin[..6],
+            MeshCodeType::Third => &self.code_bin[..8],
+            MeshCodeType::Half => &self.code_bin[..9],
+            MeshCodeType::Quarter => &self.code_bin[..10],
         }
     }
 
     fn to_string(&self) -> String {
-        self.to_vec()
+        self.to_slice()
             .iter()
             .map(|&digit| digit.to_string())
             .collect()
     }
 
-    fn to_number(&self) -> i32 {
+    fn to_number(&self) -> u64 {
         let mut result = 0;
-        for &digit in self.to_vec() {
-            result = result * 10 + digit as i32;
+        for &digit in self.to_slice() {
+            result = result * 10 + digit as u64;
         }
         result
     }
@@ -269,69 +236,140 @@ struct MeshCodeSeed {
     tail_bin: [u8; 4],
 }
 
-fn calculate_mesh_code_seed(lon_degrees: f64, lat_degrees: f64) -> MeshCodeSeed {
-    // 緯度の計算
-    // 緯度 × 60分 ÷ 40分 ＝ p 余り a
-    let lat_minutes = lat_degrees * 60.0;
-    let p = (lat_minutes / 40.0).floor() as u8;
-    let a_minutes = lat_minutes % 40.0;
+impl MeshCodeSeed {
+    fn new(lon_degrees: f64, lat_degrees: f64) -> Self {
+        // 緯度の計算
+        // 緯度 × 60分 ÷ 40分 ＝ p 余り a
+        let lat_minutes = lat_degrees * 60.0;
+        let p = (lat_minutes / 40.0).floor() as u8;
+        let a_minutes = lat_minutes % 40.0;
 
-    // a ÷ 5分 ＝ q 余り b
-    let q = (a_minutes / 5.0).floor() as u8;
-    let b_minutes = a_minutes % 5.0;
+        // a ÷ 5分 ＝ q 余り b
+        let q = (a_minutes / 5.0).floor() as u8;
+        let b_minutes = a_minutes % 5.0;
 
-    // b × 60秒 ÷ 30秒 ＝ r 余り c
-    let b_seconds = b_minutes * 60.0;
-    let r = (b_seconds / 30.0).floor() as u8;
-    let c_seconds = b_seconds % 30.0;
+        // b × 60秒 ÷ 30秒 ＝ r 余り c
+        let b_seconds = b_minutes * 60.0;
+        let r = (b_seconds / 30.0).floor() as u8;
+        let c_seconds = b_seconds % 30.0;
 
-    // c ÷ 15秒 ＝ s 余り d
-    let s = (c_seconds / 15.0).floor() as u8;
-    let d_seconds = c_seconds % 15.0;
+        // c ÷ 15秒 ＝ s 余り d
+        let s = (c_seconds / 15.0).floor() as u8;
+        let d_seconds = c_seconds % 15.0;
 
-    // d ÷ 7.5秒 ＝ t 余り e
-    let t = (d_seconds / 7.5).floor() as u8;
-    // e は使用しないので計算しない
+        // d ÷ 7.5秒 ＝ t 余り e
+        let t = (d_seconds / 7.5).floor() as u8;
+        // e は使用しないので計算しない
 
-    // 経度の計算
-    // 経度 － 100度 ＝ u 余り f
-    let u = (lon_degrees - 100.0).floor() as u8;
-    let f_degrees = lon_degrees - 100.0 - u as f64;
+        // 経度の計算
+        // 経度 － 100度 ＝ u 余り f
+        let u = (lon_degrees - 100.0).floor() as u8;
+        let f_degrees = lon_degrees - 100.0 - u as f64;
 
-    // f × 60分 ÷ 7分30秒 ＝ v 余り g
-    let f_minutes = f_degrees * 60.0;
-    let v = (f_minutes / 7.5).floor() as u8;
-    let g_minutes = f_minutes % 7.5;
+        // f × 60分 ÷ 7分30秒 ＝ v 余り g
+        let f_minutes = f_degrees * 60.0;
+        let v = (f_minutes / 7.5).floor() as u8;
+        let g_minutes = f_minutes % 7.5;
 
-    // g × 60秒 ÷ 45秒 ＝ w 余り h
-    let g_seconds = g_minutes * 60.0;
-    let w = (g_seconds / 45.0).floor() as u8;
-    let h_seconds = g_seconds % 45.0;
+        // g × 60秒 ÷ 45秒 ＝ w 余り h
+        let g_seconds = g_minutes * 60.0;
+        let w = (g_seconds / 45.0).floor() as u8;
+        let h_seconds = g_seconds % 45.0;
 
-    // h ÷ 22.5秒 ＝ x 余り i
-    let x = (h_seconds / 22.5).floor() as u8;
-    let i_seconds = h_seconds % 22.5;
+        // h ÷ 22.5秒 ＝ x 余り i
+        let x = (h_seconds / 22.5).floor() as u8;
+        let i_seconds = h_seconds % 22.5;
 
-    // i ÷ 11.25秒 ＝ y 余り j
-    let y = (i_seconds / 11.25).floor() as u8;
-    // j は使用しないので計算しない
+        // i ÷ 11.25秒 ＝ y 余り j
+        let y = (i_seconds / 11.25).floor() as u8;
+        // j は使用しないので計算しない
 
-    // 最終計算
-    // (s × 2)＋(x ＋ 1)＝ m
-    let m = (s * 2) + (x + 1);
+        // 最終計算
+        // (s × 2)＋(x ＋ 1)＝ m
+        let m = (s * 2) + (x + 1);
 
-    // (t × 2)＋(y ＋ 1)＝ n
-    let n = (t * 2) + (y + 1);
+        // (t × 2)＋(y ＋ 1)＝ n
+        let n = (t * 2) + (y + 1);
 
-    let head = {
-        let v1 = (p / 10) % 10;
-        let v2 = p % 10;
-        let v3 = (u / 10) % 10;
-        let v4 = u % 10;
-        [v1, v2, v3, v4, q, v]
-    };
+        let head = {
+            let v1 = (p / 10) % 10;
+            let v2 = p % 10;
+            let v3 = (u / 10) % 10;
+            let v4 = u % 10;
+            [v1, v2, v3, v4, q, v]
+        };
 
-    let tail_bin = { [r, w, m, n] };
+        let tail_bin = { [r, w, m, n] };
 
-    MeshCodeSeed { head, tail_bin }
+        MeshCodeSeed { head, tail_bin }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[derive(Debug)]
+    struct TestCase {
+        inner_latitude: f64,
+        inner_longitude: f64,
+        mesh_code: u64,
+        left_bottom_latitude: f64,
+        left_bottom_longitude: f64,
+    }
+
+    #[test]
+    fn test_mesh_code_generation() {
+        // テストケースの作成
+        let test_cases = vec![
+            TestCase {
+                inner_latitude: 43.058336,
+                inner_longitude: 141.337503,
+                mesh_code: 64414277,
+                left_bottom_latitude: 43.058333,
+                left_bottom_longitude: 141.3375,
+            },
+            TestCase {
+                inner_latitude: 40.81667,
+                inner_longitude: 140.737503,
+                mesh_code: 61401589,
+                left_bottom_latitude: 40.816667,
+                left_bottom_longitude: 140.7375,
+            },
+            TestCase {
+                inner_latitude: 39.700003,
+                inner_longitude: 141.150003,
+                mesh_code: 59414142,
+                left_bottom_latitude: 39.7,
+                left_bottom_longitude: 141.15,
+            },
+            TestCase {
+                inner_latitude: 38.26667,
+                inner_longitude: 140.862503,
+                mesh_code: 57403629,
+                left_bottom_latitude: 38.266667,
+                left_bottom_longitude: 140.8625,
+            },
+        ];
+
+        for test_case in test_cases {
+            let mesh_code = MeshCode::new(
+                test_case.inner_longitude,
+                test_case.inner_latitude,
+                MeshCodeType::Third,
+            );
+
+            let actual = mesh_code.to_number();
+
+            assert_eq!(
+                actual,
+                test_case.mesh_code,
+                "Failed to generate mesh code from latitude: {}, longitude: {}. Expected: {}, Actual: {}",
+                test_case.inner_latitude,
+                test_case.inner_longitude,
+                test_case.mesh_code,
+                actual
+            );
+        }
+    }
 }
