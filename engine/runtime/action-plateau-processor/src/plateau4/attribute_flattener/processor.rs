@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use itertools::Itertools;
+use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -8,13 +9,22 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue};
+use reearth_flow_types::{metadata::Metadata, Attribute, AttributeValue, Feature};
 use serde_json::Value;
 
 use crate::plateau4::errors::PlateauProcessorError;
 
+static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
+const BASE_SCHEMA_KEYS: [&str; 5] = [
+    "meshcode",
+    "feature_type",
+    "city_code",
+    "city_name",
+    "gml_id",
+];
+
 #[derive(Debug, Clone, Default)]
-pub struct AttributeFlattenerFactory;
+pub(crate) struct AttributeFlattenerFactory;
 
 impl ProcessorFactory for AttributeFlattenerFactory {
     fn name(&self) -> &str {
@@ -38,7 +48,7 @@ impl ProcessorFactory for AttributeFlattenerFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![DEFAULT_PORT.clone(), SCHEMA_PORT.clone()]
     }
 
     fn build(
@@ -48,15 +58,16 @@ impl ProcessorFactory for AttributeFlattenerFactory {
         _action: String,
         _with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let flattener = super::flattener::Flattener;
-        let process = AttributeFlattener { flattener };
+        let process = AttributeFlattener::default();
         Ok(Box::new(process))
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct AttributeFlattener {
+#[derive(Debug, Clone, Default)]
+pub(super) struct AttributeFlattener {
+    existing_flatten_attributes: HashSet<String>,
     flattener: super::flattener::Flattener,
+    common_attribute_processor: super::flattener::CommonAttributeProcessor,
 }
 
 impl Processor for AttributeFlattener {
@@ -86,6 +97,8 @@ impl Processor for AttributeFlattener {
                 else {
                     continue;
                 };
+                self.existing_flatten_attributes
+                    .insert(attribute.attribute.clone());
                 new_city_gml_attribute
                     .insert(Attribute::new(attribute.attribute.clone()), new_attribute);
             }
@@ -95,6 +108,11 @@ impl Processor for AttributeFlattener {
             .into_iter()
             .map(|(k, v)| (k.to_string(), v))
             .collect::<HashMap<String, AttributeValue>>();
+        new_city_gml_attribute.extend(
+            self.common_attribute_processor
+                .flatten_generic_attributes(&edit_city_gml_attribute),
+        );
+
         new_city_gml_attribute.extend(
             self.flattener
                 .extract_fld_risk_attribute(&edit_city_gml_attribute),
@@ -134,7 +152,58 @@ impl Processor for AttributeFlattener {
         Ok(())
     }
 
-    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+        let mut feature = Feature::new();
+        feature.metadata = Metadata {
+            feature_id: None,
+            feature_type: Some("bldg:Building".to_string()),
+            lod: None,
+        };
+        for schema in BASE_SCHEMA_KEYS.iter() {
+            feature.attributes.insert(
+                Attribute::new(schema.to_string()),
+                AttributeValue::default_string(),
+            );
+        }
+        if let Some(flatten_attributes) =
+            super::constants::FLATTEN_ATTRIBUTES.get("bldg/bldg:Building")
+        {
+            for attribute in flatten_attributes {
+                if !self
+                    .existing_flatten_attributes
+                    .contains(&attribute.attribute)
+                {
+                    continue;
+                }
+                let data_type = match attribute.data_type.as_str() {
+                    "string" | "date" => AttributeValue::default_string(),
+                    "int" | "double" | "measure" => AttributeValue::default_number(),
+                    _ => continue,
+                };
+                feature
+                    .attributes
+                    .insert(Attribute::new(attribute.attribute.clone()), data_type);
+            }
+        }
+        let generic_schema = self.common_attribute_processor.get_generic_schema();
+        feature.extend(generic_schema);
+
+        for typ in ["fld", "tnm", "htd", "ifld", "rfld", "lsld"] {
+            if let Some(definition) = self.flattener.risk_to_attribute_definitions.get(typ) {
+                feature.extend(
+                    definition
+                        .clone()
+                        .into_iter()
+                        .map(|(k, v)| (Attribute::new(k), v))
+                        .collect::<HashMap<Attribute, AttributeValue>>(),
+                );
+            }
+        }
+        fw.send(ExecutorContext::new_with_node_context_feature_and_port(
+            &ctx,
+            feature,
+            SCHEMA_PORT.clone(),
+        ));
         Ok(())
     }
 
