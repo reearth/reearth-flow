@@ -147,3 +147,80 @@ jobs:
           docker pull $IMAGE_NAME:${{ inputs.name }}
           docker tag $IMAGE_NAME:${{ inputs.name }} $IMAGE_GCP:${{ inputs.name }}
           docker push $IMAGE_GCP:${{ inputs.name }}
+
+# Temporary workaround for deploying worker directly to plateau artifacts: @pyshx
+  deploy-plateau-dev-worker:
+    name: Deploy Plateau Development Worker
+    needs: build-docker-image
+    runs-on: ubuntu-latest
+    if: ${{ inputs.name == 'nightly' }}
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      WORKER_IMAGE_NAME: reearth/reearth-flow-worker:nightly
+      WORKER_IMAGE_NAME_GHCR: ghcr.io/reearth/reearth-flow/reearth-flow-worker:latest
+      WORKER_IMAGE_NAME_GCP: asia-northeast1-docker.pkg.dev/reearth-plateau-dev/reearth-plateau/reearth-flow-worker:latest
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          service_account: ${{ secrets.GCP_DEV_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_DEV_WORKLOAD_IDENTITY_PROVIDER }}
+      - name: Configure docker
+        run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pull docker images
+        run: docker pull $WORKER_IMAGE_NAME
+      - name: Tag docker images
+        run: docker tag $WORKER_IMAGE_NAME $WORKER_IMAGE_NAME_GHCR && docker tag $WORKER_IMAGE_NAME $WORKER_IMAGE_NAME_GCP
+      - name: Push docker images
+        run: docker push $WORKER_IMAGE_NAME_GHCR && docker push $WORKER_IMAGE_NAME_GCP
+      - name: Deploy
+        run: |
+          gcloud run deploy reearth-flow-worker \
+            --image $WORKER_IMAGE_NAME_GCP \
+            --region asia-northeast1 \
+            --platform managed \
+            --quiet
+
+  deploy-plateau-prod-worker:
+    name: Deploy Plateau Production Worker
+    needs: deploy-plateau-dev-worker
+    runs-on: ubuntu-latest
+    if: ${{ inputs.name == 'nightly' }}
+    permissions:
+      contents: read
+      id-token: write
+      packages: read
+    env:
+      WORKER_IMAGE_NAME_GHCR: ghcr.io/reearth/reearth-flow/reearth-flow-worker:latest
+      WORKER_IMAGE_NAME_GCP: asia-northeast1-docker.pkg.dev/reearth-plateau/reearth-plateau/reearth-flow-worker:latest
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          service_account: ${{ secrets.GCP_PROD_SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ secrets.GCP_PROD_WORKLOAD_IDENTITY_PROVIDER }}
+      - name: Configure docker
+        run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev --quiet
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pull docker image
+        run: docker pull $WORKER_IMAGE_NAME_GHCR
+      - name: Tag and push docker image
+        run: docker tag $WORKER_IMAGE_NAME_GHCR $WORKER_IMAGE_NAME_GCP && docker push $WORKER_IMAGE_NAME_GCP
+      - name: Deploy
+        run: |
+          gcloud run deploy reearth-flow-worker \
+            --image $WORKER_IMAGE_NAME_GCP \
+            --region asia-northeast1 \
+            --platform managed \
+            --quiet

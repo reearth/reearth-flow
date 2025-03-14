@@ -107,6 +107,10 @@ pub(super) enum GeometryProcessorError {
     JPStandardGridAccumulatorFactory(String),
     #[error("JPStandardGridAccumulator error: {0}")]
     JPStandardGridAccumulator(String),
+    #[error("SurfaceFootprintReplacer Factory error: {0}")]
+    SurfaceFootprintReplacerFactory(String),
+    #[error("SurfaceFootprintReplacer error: {0}")]
+    SurfaceFootprintReplacer(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

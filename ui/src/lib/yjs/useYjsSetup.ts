@@ -72,12 +72,11 @@ export default ({
       })();
     }
 
-    // Initial state setup
     setYDocState(yDoc);
 
     return () => {
-      setIsSynced(false); // Mark as not synced
-      yWebSocketProvider?.destroy(); // Cleanup on unmount
+      setIsSynced(false);
+      yWebSocketProvider?.destroy();
     };
   }, [projectId, workflowId, isProtected, getAccessToken]);
 

@@ -21,9 +21,8 @@ export default () => {
   const handleExpand = () => {
     if (minimized) {
       setMinimized(false);
-    } else {
-      setExpanded((prev) => !prev);
     }
+    setExpanded((prev) => !prev);
   };
 
   const handleMinimize = (e: MouseEvent) => {
