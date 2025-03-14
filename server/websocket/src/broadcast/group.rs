@@ -93,7 +93,6 @@ impl BroadcastGroup {
 
                 let gcs_state = gcs_txn.state_vector();
 
-                // Calculate difference between awareness and GCS state
                 let awareness_txn = awareness_doc.transact();
                 let update = awareness_txn.encode_state_as_update_v1(&gcs_state);
                 Self::handle_gcs_update(update, &doc_name_clone, &store_clone).await;
@@ -273,7 +272,7 @@ impl BroadcastGroup {
                 let redis_url = redis_store
                     .get_config()
                     .map(|config| config.url.clone())
-                    .expect("Redis store should have config");
+                    .unwrap_or_default();
 
                 let consumer_name = format!("instance-{}", rand::random::<u32>());
                 let awareness_for_sub = group.awareness_ref.clone();
