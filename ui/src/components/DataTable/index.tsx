@@ -236,14 +236,16 @@ function DataTable<TData, TValue>({
             </TableBody>
           </Table>
         </div>
+        {enablePagination && (
+          <div className="my-8">
+            <Pagination
+              currentPage={currentPage}
+              setCurrentPage={setCurrentPage}
+              totalPages={totalPages}
+            />
+          </div>
+        )}
       </div>
-      {enablePagination && (
-        <Pagination
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          totalPages={totalPages}
-        />
-      )}
     </div>
   );
 }
