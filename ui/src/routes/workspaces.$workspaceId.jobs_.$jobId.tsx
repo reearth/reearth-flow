@@ -24,7 +24,7 @@ function RouteComponent() {
     }
   }, [accessToken, getAccessToken]);
 
-  return jobId ? (
+  return jobId && accessToken ? (
     <div className="flex flex-1">
       <JobDetails jobId={jobId} accessToken={accessToken} />
     </div>

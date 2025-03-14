@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import {
   LogFragment,
@@ -7,36 +7,24 @@ import {
 } from "@flow/lib/gql/__gen__/graphql";
 import { toJobStatus, toLog } from "@flow/lib/gql/convert";
 import { useSubscriptionSetup } from "@flow/lib/gql/subscriptions/useSubscriptionSetup";
-import { useIndexedDB } from "@flow/lib/indexedDB";
-import { useCurrentProject } from "@flow/stores";
 import { Log } from "@flow/types";
 
-export default (accessToken?: string) => {
-  const [currentProject] = useCurrentProject();
-  const { value: debugRunState } = useIndexedDB("debugRun");
-
-  const currentDebugJobId = useMemo(
-    () =>
-      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
-        ?.jobId,
-    [debugRunState, currentProject],
-  );
-
+export default (accessToken?: string, jobId?: string) => {
   const processedLogIds = useRef(new Set<string>());
 
   useSubscriptionSetup<OnJobStatusChangeSubscription>(
     "GetSubscribedJobStatus",
     accessToken,
-    { jobId: currentDebugJobId },
-    currentDebugJobId,
+    { jobId },
+    jobId,
     (data) => toJobStatus(data.jobStatus),
-    !currentDebugJobId,
+    !jobId,
   );
   useSubscriptionSetup<RealTimeLogsSubscription, Log[]>(
     "GetSubscribedLogs",
     accessToken,
-    { jobId: currentDebugJobId },
-    currentDebugJobId,
+    { jobId },
+    jobId,
     (data, cachedData) => {
       if (data?.logs && (!cachedData || Array.isArray(cachedData))) {
         const cachedLogs = [...(cachedData ?? [])];
@@ -67,12 +55,12 @@ export default (accessToken?: string) => {
         return [...cachedLogs];
       }
     },
-    !currentDebugJobId,
+    !jobId,
   );
 
   useEffect(() => {
-    if (!currentDebugJobId && processedLogIds.current.size > 0) {
+    if (!jobId && processedLogIds.current.size > 0) {
       processedLogIds.current.clear();
     }
-  }, [currentDebugJobId]);
+  }, [jobId]);
 };

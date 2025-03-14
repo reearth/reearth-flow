@@ -3,21 +3,23 @@ import { CaretLeft, XCircle } from "@phosphor-icons/react";
 import { Button } from "@flow/components";
 import { DetailsBox } from "@flow/features/common";
 import LogsConsole from "@flow/features/LogsConsole";
+import { useJobSubscriptionsSetup } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 
 import useHooks from "./hooks";
 
 type Props = {
   jobId: string;
-  accessToken: string | undefined;
+  accessToken: string;
 };
 
 const JobDetails: React.FC<Props> = ({ jobId, accessToken }) => {
   const t = useT();
 
+  useJobSubscriptionsSetup(accessToken, jobId);
+
   const { job, details, jobStatus, handleBack, handleCancelJob } = useHooks({
     jobId,
-    accessToken,
   });
 
   return (

@@ -2,34 +2,16 @@ import { useRouter } from "@tanstack/react-router";
 import { useCallback, useMemo } from "react";
 
 import { DetailsBoxContent } from "@flow/features/common";
-import { OnJobStatusChangeSubscription } from "@flow/lib/gql/__gen__/graphql";
-import { toJobStatus } from "@flow/lib/gql/convert";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
-import { useSubscriptionSetup } from "@flow/lib/gql/subscriptions/useSubscriptionSetup";
 import { useT } from "@flow/lib/i18n";
 import { formatTimestamp } from "@flow/utils";
 
-export default ({
-  jobId,
-  accessToken,
-}: {
-  jobId: string;
-  accessToken: string | undefined;
-}) => {
+export default ({ jobId }: { jobId: string }) => {
   const t = useT();
   const { navigate } = useRouter();
 
   const { useGetJob, useJobCancel } = useJob();
-
-  useSubscriptionSetup<OnJobStatusChangeSubscription>(
-    "GetSubscribedJobStatus",
-    accessToken,
-    { jobId },
-    jobId,
-    (data) => toJobStatus(data.jobStatus),
-    !jobId,
-  );
 
   const { data: jobStatus } = useSubscription("GetSubscribedJobStatus", jobId);
 

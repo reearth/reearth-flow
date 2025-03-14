@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { createClient } from "graphql-ws";
+import { Client, createClient } from "graphql-ws";
 import { useEffect, useRef } from "react";
 
 import { config } from "@flow/config";
@@ -34,38 +34,63 @@ const SubscriptionStrings: Record<PossibleSubscriptionKeys, string> = {
   GetSubscribedLogs: LOG_SUBSCRIPTION,
 };
 
+const getWebSocketClient = (() => {
+  const clients = new Map<string, Client>();
+
+  return (
+    url: string,
+    key: string,
+    accessToken?: string,
+  ): Client | undefined => {
+    if (!accessToken) return undefined;
+
+    if (!clients.has(key)) {
+      const newClient = createClient({
+        url,
+        retryAttempts: 5,
+        shouldRetry: () => true,
+        connectionParams: () => ({
+          headers: {
+            authorization: `Bearer ${accessToken}`,
+          },
+        }),
+        lazy: true,
+      });
+
+      clients.set(key, newClient);
+      return newClient;
+    }
+
+    const client = clients.get(key);
+
+    return client;
+  };
+})();
+
 export function useSubscriptionSetup<Data = any, CachedData = any>(
   subscriptionKey: PossibleSubscriptionKeys,
   accessToken: string | undefined,
-  variables?: Record<string, unknown>,
+  variables: Record<string, unknown>,
   secondaryCacheKey?: string,
   dataFormatter?: (data: Data, cachedData?: CachedData) => unknown | undefined,
   disabled?: boolean,
 ) {
-  const isSubscribedRef = useRef(false);
-  const queryClient = useQueryClient();
-
   const api = config().api;
 
-  const wsClient = createClient({
-    url: `${api}/api/graphql`,
-    retryAttempts: 5,
-    shouldRetry: () => true,
-    connectionParams: () => {
-      return {
-        headers: {
-          authorization: accessToken ? `Bearer ${accessToken}` : "",
-        },
-      };
-    },
-  });
+  const isSubscribedRef = useRef(false);
+  const queryClient = useQueryClient();
+  const wsClient = getWebSocketClient(
+    `${api}/api/graphql`,
+    `${subscriptionKey}:${secondaryCacheKey}`,
+    accessToken,
+  );
 
   useEffect(() => {
-    if (isSubscribedRef.current || disabled || !variables) return;
+    if (isSubscribedRef.current || disabled) return;
 
     isSubscribedRef.current = true;
     // Set up subscription only once
-    const unsubscribe = wsClient.subscribe<Data>(
+    const unsubscribe = wsClient?.subscribe<Data>(
       {
         query: SubscriptionStrings[subscriptionKey],
         variables,
@@ -73,10 +98,6 @@ export function useSubscriptionSetup<Data = any, CachedData = any>(
       {
         next: (data) => {
           if (data.data) {
-            console.log(
-              `Subscription data for ${subscriptionKey}: `,
-              data.data,
-            );
             // Update React Query cache
             const cachedData = queryClient.getQueryData<CachedData>([
               SubscriptionKeys[subscriptionKey],
@@ -104,9 +125,8 @@ export function useSubscriptionSetup<Data = any, CachedData = any>(
     );
 
     return () => {
-      console.log("unsubscribing", subscriptionKey, variables);
       isSubscribedRef.current = false;
-      unsubscribe();
+      unsubscribe?.();
     };
   }, [
     disabled,
