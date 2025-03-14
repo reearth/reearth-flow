@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 
 import {
   Button,
@@ -117,4 +117,4 @@ const LayoutOptionsDialog: React.FC<Props> = ({
   );
 };
 
-export default LayoutOptionsDialog;
+export default memo(LayoutOptionsDialog);

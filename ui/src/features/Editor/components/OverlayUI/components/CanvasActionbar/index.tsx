@@ -20,7 +20,7 @@ const CanvasActionBar = () => {
   const { isFullscreen, handleFullscreenToggle } = useFullscreen();
 
   return (
-    <div className="m-1 rounded-md border bg-secondary">
+    <div className="pointer-events-auto rounded-md border bg-secondary">
       <div className="flex rounded-md">
         <div className="flex flex-1 flex-col justify-end align-middle">
           <IconButton

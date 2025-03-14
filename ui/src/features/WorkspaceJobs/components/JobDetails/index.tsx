@@ -3,18 +3,22 @@ import { CaretLeft, XCircle } from "@phosphor-icons/react";
 import { Button } from "@flow/components";
 import { DetailsBox } from "@flow/features/common";
 import LogsConsole from "@flow/features/LogsConsole";
+import { useJobSubscriptionsSetup } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 
 import useHooks from "./hooks";
 
 type Props = {
   jobId: string;
+  accessToken: string;
 };
 
-const JobDetails: React.FC<Props> = ({ jobId }) => {
+const JobDetails: React.FC<Props> = ({ jobId, accessToken }) => {
   const t = useT();
 
-  const { job, details, statusValue, handleBack, handleCancelJob } = useHooks({
+  useJobSubscriptionsSetup(accessToken, jobId);
+
+  const { job, details, jobStatus, handleBack, handleCancelJob } = useHooks({
     jobId,
   });
 
@@ -25,7 +29,7 @@ const JobDetails: React.FC<Props> = ({ jobId }) => {
           <Button size="icon" variant="ghost" onClick={handleBack}>
             <CaretLeft />
           </Button>
-          {(statusValue === "queued" || statusValue === "running") && (
+          {(jobStatus === "queued" || jobStatus === "running") && (
             <Button variant="destructive" size="sm" onClick={handleCancelJob}>
               <XCircle />
               {t("Cancel Job")}

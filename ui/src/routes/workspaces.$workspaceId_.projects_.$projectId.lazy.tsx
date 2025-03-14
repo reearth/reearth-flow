@@ -1,6 +1,6 @@
 import { createLazyFileRoute, useParams } from "@tanstack/react-router";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { LoadingSplashscreen } from "@flow/components";
 import Editor from "@flow/features/Editor";
@@ -9,9 +9,15 @@ import {
   WorkspaceIdWrapper,
 } from "@flow/features/PageWrapper";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useFullscreen, useShortcuts } from "@flow/hooks";
+import {
+  useJobSubscriptionsSetup,
+  useFullscreen,
+  useShortcuts,
+} from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
+import { useIndexedDB } from "@flow/lib/indexedDB";
 import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
+import { useCurrentProject } from "@flow/stores";
 // import { useShortcut } from "@flow/hooks/useShortcut";
 
 export const Route = createLazyFileRoute(
@@ -67,6 +73,18 @@ const EditorComponent = () => {
   const { projectId }: { projectId: string } = useParams({
     strict: false,
   });
+
+  const [currentProject] = useCurrentProject();
+  const { value: debugRunState } = useIndexedDB("debugRun");
+
+  const currentDebugJobId = useMemo(
+    () =>
+      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
+        ?.jobId,
+    [debugRunState, currentProject],
+  );
+
+  useJobSubscriptionsSetup(accessToken, currentDebugJobId);
 
   const { yWorkflows, isSynced, undoManager, undoTrackerActionWrapper } =
     useYjsSetup({

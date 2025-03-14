@@ -1,4 +1,4 @@
-import { Fragment } from "react";
+import { Fragment, memo } from "react";
 
 import { Dialog, DialogContent, DialogTitle, Input } from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
@@ -73,4 +73,4 @@ const NodePickerDialog: React.FC<Props> = ({
   );
 };
 
-export default NodePickerDialog;
+export default memo(NodePickerDialog);

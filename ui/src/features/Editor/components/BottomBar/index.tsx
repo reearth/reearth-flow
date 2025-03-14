@@ -12,8 +12,6 @@ type Props = {
     id: string;
     name: string;
   }[];
-  isOpen: boolean;
-  onOpen: (panel?: "left" | "right" | "bottom") => void;
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
   onWorkflowRename: (id: string, name: string) => void;
@@ -22,17 +20,12 @@ type Props = {
 const BottomBar: React.FC<Props> = ({
   currentWorkflowId,
   openWorkflows,
-  isOpen,
-  onOpen,
   onWorkflowClose,
   onWorkflowChange,
   onWorkflowRename,
 }) => {
   const t = useT();
-  const { debugJob } = useHooks({
-    isOpen,
-    onOpen,
-  });
+  const { jobStatus } = useHooks();
 
   return (
     <div
@@ -49,15 +42,15 @@ const BottomBar: React.FC<Props> = ({
         <p className="text-xs font-light">{t("Status: ")}</p>
         <div
           className={`${
-            debugJob?.status === "completed"
+            jobStatus === "completed"
               ? "bg-success"
-              : debugJob?.status === "running"
+              : jobStatus === "running"
                 ? "active-node-status"
-                : debugJob?.status === "cancelled"
+                : jobStatus === "cancelled"
                   ? "bg-warning"
-                  : debugJob?.status === "failed"
+                  : jobStatus === "failed"
                     ? "bg-destructive"
-                    : debugJob?.status === "queued"
+                    : jobStatus === "queued"
                       ? "queued-node-status"
                       : "bg-primary"
           } size-3 rounded-full`}
