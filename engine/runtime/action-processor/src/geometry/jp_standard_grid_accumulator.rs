@@ -162,6 +162,7 @@ impl JPStandardGridAccumulator {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 enum MeshCodeType {
     /// 第1次地域区画
     First,
@@ -173,6 +174,8 @@ enum MeshCodeType {
     Half,
     /// 4分の1地域メッシュ
     Quarter,
+    /// 8分の1地域メッシュ
+    Eighth,
 }
 
 impl MeshCodeType {
@@ -183,8 +186,47 @@ impl MeshCodeType {
             "Third" => Some(MeshCodeType::Third),
             "Half" => Some(MeshCodeType::Half),
             "Quarter" => Some(MeshCodeType::Quarter),
+            "Eighth" => Some(MeshCodeType::Eighth),
             _ => None,
         }
+    }
+
+    fn lng_interval_seconds(&self) -> f64 {
+        match self {
+            MeshCodeType::First => 40.0 * 60.0,
+            MeshCodeType::Second => 5.0 * 60.0,
+            MeshCodeType::Third => 30.0,
+            MeshCodeType::Half => 15.0,
+            MeshCodeType::Quarter => 7.5,
+            MeshCodeType::Eighth => 3.75,
+        }
+    }
+
+    fn lat_interval_seconds(&self) -> f64 {
+        match self {
+            MeshCodeType::First => 3600.0,
+            MeshCodeType::Second => 7.5 * 60.0,
+            MeshCodeType::Third => 45.0,
+            MeshCodeType::Half => 22.5,
+            MeshCodeType::Quarter => 11.25,
+            MeshCodeType::Eighth => 5.625,
+        }
+    }
+
+    fn lng_interval_minutes(&self) -> f64 {
+        self.lng_interval_seconds() / 60.0
+    }
+
+    fn lat_interval_minutes(&self) -> f64 {
+        self.lat_interval_seconds() / 60.0
+    }
+
+    fn lng_interval_degrees(&self) -> f64 {
+        self.lng_interval_seconds() / 3600.0
+    }
+
+    fn lat_interval_degrees(&self) -> f64 {
+        self.lat_interval_seconds() / 3600.0
     }
 }
 
@@ -209,6 +251,7 @@ impl MeshCode {
             MeshCodeType::Third => &self.seed.code_bin[..8],
             MeshCodeType::Half => &self.seed.code_bin[..9],
             MeshCodeType::Quarter => &self.seed.code_bin[..10],
+            MeshCodeType::Eighth => &self.seed.code_bin[..11],
         }
     }
 
@@ -229,68 +272,74 @@ impl MeshCode {
 
     /// メッシュコードの値に対して、その地域を表す座標の形をRectで表現する
     fn into_bounds(&self) -> Rect2D<f64> {
-        self.seed.into_bounds()
+        self.seed.into_bounds(self.mesh_code_type)
     }
 }
 
 struct MeshCodeSeed {
-    code_bin: [u8; 10],
+    code_bin: [u8; 11],
 }
 
 impl MeshCodeSeed {
+    // 座標に対するメッシュコードの計算
     fn new(coords: Coordinate2D<f64>) -> Self {
         // 緯度の計算
-        // 緯度 × 60分 ÷ 40分 ＝ p 余り a
+        // 緯度 * 60分 / 40分 = p 余り a
         let lat_minutes = coords.y * 60.0;
         let p = (lat_minutes / 40.0).floor() as u8;
         let a_minutes = lat_minutes % 40.0;
 
-        // a ÷ 5分 ＝ q 余り b
+        // a / 5分 = q 余り b
         let q = (a_minutes / 5.0).floor() as u8;
         let b_minutes = a_minutes % 5.0;
 
-        // b × 60秒 ÷ 30秒 ＝ r 余り c
+        // b * 60秒 / 30秒 = r 余り c
         let b_seconds = b_minutes * 60.0;
         let r = (b_seconds / 30.0).floor() as u8;
         let c_seconds = b_seconds % 30.0;
 
-        // c ÷ 15秒 ＝ s 余り d
+        // c / 15秒 = s 余り d
         let s = (c_seconds / 15.0).floor() as u8;
         let d_seconds = c_seconds % 15.0;
 
-        // d ÷ 7.5秒 ＝ t 余り e
+        // d / 7.5秒 = t 余り e
         let t = (d_seconds / 7.5).floor() as u8;
-        // e は使用しないので計算しない
+
+        let tt = (d_seconds / 3.75).floor() as u8;
 
         // 経度の計算
-        // 経度 － 100度 ＝ u 余り f
+        // 経度 - 100度 = u 余り f
         let u = (coords.x - 100.0).floor() as u8;
         let f_degrees = coords.x - 100.0 - u as f64;
 
-        // f × 60分 ÷ 7分30秒 ＝ v 余り g
+        // f * 60分 / 7分30秒 = v 余り g
         let f_minutes = f_degrees * 60.0;
         let v = (f_minutes / 7.5).floor() as u8;
         let g_minutes = f_minutes % 7.5;
 
-        // g × 60秒 ÷ 45秒 ＝ w 余り h
+        // g * 60秒 / 45秒 = w 余り h
         let g_seconds = g_minutes * 60.0;
         let w = (g_seconds / 45.0).floor() as u8;
         let h_seconds = g_seconds % 45.0;
 
-        // h ÷ 22.5秒 ＝ x 余り i
+        // h / 22.5秒 = x 余り i
         let x = (h_seconds / 22.5).floor() as u8;
         let i_seconds = h_seconds % 22.5;
 
-        // i ÷ 11.25秒 ＝ y 余り j
+        // i / 11.25秒 = y 余り j
         let y = (i_seconds / 11.25).floor() as u8;
-        // j は使用しないので計算しない
+
+        let yy = (i_seconds / 5.625).floor() as u8;
 
         // 最終計算
-        // (s × 2)＋(x ＋ 1)＝ m
+        // (s * 2)+(x + 1)= m
         let m = (s * 2) + (x + 1);
 
-        // (t × 2)＋(y ＋ 1)＝ n
+        // (t * 2)+(y + 1)= n
         let n = (t * 2) + (y + 1);
+
+        // (tt * 2)+(yy + 1)= nn
+        let nn = (tt * 2) + (yy + 1);
 
         // 上位6桁 (第1次地域区画, 第2次地域区画)
         let head = {
@@ -301,17 +350,18 @@ impl MeshCodeSeed {
             [v1, v2, v3, v4, q, v]
         };
 
-        // 下位4桁 (基準地域メッシュ, {2,4,8}分の1地域メッシュ)
-        let tail_bin = { [r, w, m, n] };
+        // 下位5桁 (基準地域メッシュ, {2,4,8}分の1地域メッシュ)
+        let tail_bin = { [r, w, m, n, nn] };
 
-        let mut code_bin = [0u8; 10];
+        let mut code_bin = [0u8; 11];
         code_bin[..6].copy_from_slice(&head);
-        code_bin[6..10].copy_from_slice(&tail_bin);
+        code_bin[6..11].copy_from_slice(&tail_bin);
 
         MeshCodeSeed { code_bin }
     }
 
-    fn into_bounds(&self) -> Rect2D<f64> {
+    // メッシュコードの値に対して、その地域を表す座標の形をRectで表現する
+    fn into_bounds(&self, mesh_code_type: MeshCodeType) -> Rect2D<f64> {
         // メッシュコードから緯度経度の範囲を計算
         let p = (self.code_bin[0] * 10 + self.code_bin[1]) as f64;
         let u = (self.code_bin[2] * 10 + self.code_bin[3]) as f64;
@@ -321,6 +371,7 @@ impl MeshCodeSeed {
         let w = self.code_bin[7] as f64;
         let m = self.code_bin[8] as f64;
         let n = self.code_bin[9] as f64;
+        let nn = self.code_bin[10] as f64;
 
         // 緯度の計算（南西端）
         let lat_base = p * 40.0 / 60.0;
@@ -341,9 +392,8 @@ impl MeshCodeSeed {
         let min_lat = lat_base + lat_q + lat_r + lat_m + lat_n;
 
         // 北東端（右上）の座標
-        // 4分の1地域メッシュの場合、緯度方向に7.5秒、経度方向に11.25秒の範囲
-        let max_lat = min_lat + 7.5 / 3600.0;
-        let max_lon = min_lon + 11.25 / 3600.0;
+        let max_lat = min_lat + mesh_code_type.lat_interval_degrees();
+        let max_lon = min_lon + mesh_code_type.lng_interval_degrees();
 
         Rect::new(
             Coordinate2D::new_(min_lon, min_lat),
@@ -369,6 +419,7 @@ mod tests {
             );
         };
     }
+
     #[derive(Debug)]
     struct TestCase {
         inner_latitude: f64,
@@ -416,27 +467,11 @@ mod tests {
 
             let actual_number = mesh_code.to_number();
 
-            assert_eq!(
-                actual_number,
-                test_case.mesh_code,
-                "Failed to generate mesh code from latitude: {}, longitude: {}. Expected: {}, Actual: {}",
-                test_case.inner_latitude,
-                test_case.inner_longitude,
-                test_case.mesh_code,
-                actual_number
-            );
+            assert_eq!(actual_number, test_case.mesh_code,);
 
             let actual_string = mesh_code.to_string();
 
-            assert_eq!(
-                actual_string,
-                test_case.mesh_code.to_string(),
-                "Failed to generate mesh code from latitude: {}, longitude: {}. Expected: {}, Actual: {}",
-                test_case.inner_latitude,
-                test_case.inner_longitude,
-                test_case.mesh_code,
-                actual_string
-            );
+            assert_eq!(actual_string, test_case.mesh_code.to_string(),);
         }
     }
 
@@ -455,8 +490,14 @@ mod tests {
 
             // check if the size of the area is correct
             let max_coord = bounds.max();
-            assert_approx_eq!(max_coord.x - min_coord.x, 11.25 / 3600.0); // lon: 11.25 seconds
-            assert_approx_eq!(max_coord.y - min_coord.y, 7.5 / 3600.0); // lat: 7.5 seconds
+            assert_approx_eq!(
+                max_coord.x - min_coord.x,
+                MeshCodeType::Third.lng_interval_degrees()
+            );
+            assert_approx_eq!(
+                max_coord.y - min_coord.y,
+                MeshCodeType::Third.lat_interval_degrees()
+            );
         }
     }
 }
