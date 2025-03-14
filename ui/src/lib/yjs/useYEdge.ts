@@ -11,14 +11,16 @@ export default ({
   setSelectedEdgeIds,
   undoTrackerActionWrapper,
 }: {
-  currentYWorkflow: YWorkflow;
+  currentYWorkflow?: YWorkflow;
   setSelectedEdgeIds: Dispatch<SetStateAction<string[]>>;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
   const handleYEdgesAdd = useCallback(
     (newEdges: Edge[]) => {
       undoTrackerActionWrapper(() => {
-        const yEdges = currentYWorkflow.get("edges") as YEdgesArray | undefined;
+        const yEdges = currentYWorkflow?.get("edges") as
+          | YEdgesArray
+          | undefined;
         if (!yEdges) return;
         const newYEdges = newEdges.map((newEdge) => yEdgeConstructor(newEdge));
 

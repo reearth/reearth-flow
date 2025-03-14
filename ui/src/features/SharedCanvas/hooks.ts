@@ -1,7 +1,7 @@
 import { useReactFlow } from "@xyflow/react";
 import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useY } from "react-yjs";
-import { Array as YArray } from "yjs";
+import { Map as YMap, Array as YArray } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useProjectExport } from "@flow/hooks";
@@ -19,7 +19,7 @@ export default ({
   project,
   undoTrackerActionWrapper,
 }: {
-  yWorkflows: YArray<YWorkflow>;
+  yWorkflows: YMap<YWorkflow>;
   project?: Project;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
@@ -31,14 +31,14 @@ export default ({
     DEFAULT_ENTRY_GRAPH_ID,
   );
 
-  const rawWorkflows = yWorkflows.map((w) => rebuildWorkflow(w));
-
-  const currentYWorkflow = yWorkflows.get(
-    rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
+  const rawWorkflows = Array.from(yWorkflows.entries()).map(([, w]) =>
+    rebuildWorkflow(w),
   );
 
+  const currentYWorkflow = yWorkflows.get(currentWorkflowId);
+
   const rawNodes = useY(
-    currentYWorkflow.get("nodes") ?? new YArray(),
+    currentYWorkflow?.get("nodes") ?? new YArray(),
   ) as Node[];
 
   // Non-persistant state needs to be managed here
@@ -62,7 +62,7 @@ export default ({
     undoTrackerActionWrapper,
   });
 
-  const edges = useY(currentYWorkflow.get("edges") ?? new YArray()) as Edge[];
+  const edges = useY(currentYWorkflow?.get("edges") ?? new YArray()) as Edge[];
 
   const {
     openWorkflows,

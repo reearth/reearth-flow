@@ -14,10 +14,10 @@ afterEach(() => {
 describe("useYNode", () => {
   test("should add nodes correctly", () => {
     const yDoc = new Y.Doc();
-    const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+    const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
     const yWorkflow = yWorkflowConstructor("workflow-1", "My Workflow");
 
-    yWorkflows.push([yWorkflow]);
+    yWorkflows.set("workflow-1", yWorkflow);
 
     const { result } = renderHook(() =>
       useYNode({

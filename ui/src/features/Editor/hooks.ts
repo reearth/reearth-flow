@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { useY } from "react-yjs";
-import { Array as YArray, UndoManager as YUndoManager } from "yjs";
+import { Map as YMap, Array as YArray, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useShortcuts } from "@flow/hooks";
@@ -31,7 +31,7 @@ export default ({
   undoManager,
   undoTrackerActionWrapper,
 }: {
-  yWorkflows: YArray<YWorkflow>;
+  yWorkflows: YMap<YWorkflow>;
   undoManager: YUndoManager | null;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
@@ -76,7 +76,7 @@ export default ({
   });
 
   const rawNodes = useY(
-    currentYWorkflow.get("nodes") ?? new YArray(),
+    currentYWorkflow?.get("nodes") ?? new YArray(),
   ) as Node[];
 
   // Non-persistant state needs to be managed here
@@ -93,7 +93,7 @@ export default ({
   );
 
   const rawEdges = useY(
-    currentYWorkflow.get("edges") ?? new YArray(),
+    currentYWorkflow?.get("edges") ?? new YArray(),
   ) as Edge[];
 
   // Non-persistant state needs to be managed here

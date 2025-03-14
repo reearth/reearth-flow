@@ -1,7 +1,7 @@
 import { Dispatch, SetStateAction, useCallback, useRef } from "react";
 import * as Y from "yjs";
 
-import type { Edge, Node, NodeChange } from "@flow/types";
+import type { Node, NodeChange, Workflow } from "@flow/types";
 
 import { fromYjsText, yNodeConstructor } from "./conversions";
 import type { YNodesArray, YNodeValue, YWorkflow } from "./types";
@@ -16,9 +16,9 @@ export default ({
   undoTrackerActionWrapper,
   handleYWorkflowRemove,
 }: {
-  currentYWorkflow: YWorkflow;
-  yWorkflows: Y.Array<YWorkflow>;
-  rawWorkflows: Record<string, string | Node[] | Edge[]>[];
+  currentYWorkflow?: YWorkflow;
+  yWorkflows: Y.Map<YWorkflow>;
+  rawWorkflows: Workflow[];
   setSelectedNodeIds: Dispatch<SetStateAction<string[]>>;
   undoTrackerActionWrapper: (callback: () => void) => void;
   handleYWorkflowRemove?: (workflowId: string) => void;
@@ -26,7 +26,9 @@ export default ({
   const handleYNodesAdd = useCallback(
     (newNodes: Node[]) => {
       undoTrackerActionWrapper(() => {
-        const yNodes = currentYWorkflow.get("nodes") as YNodesArray | undefined;
+        const yNodes = currentYWorkflow?.get("nodes") as
+          | YNodesArray
+          | undefined;
         if (!yNodes) return;
         const newYNodes = newNodes.map((newNode) => yNodeConstructor(newNode));
 
@@ -124,18 +126,19 @@ export default ({
                 ) {
                   handleYWorkflowRemove?.(nodeToDelete.data.subworkflowId);
                 } else if (nodeToDelete.data.params?.routingPort) {
-                  const workflowIndex = rawWorkflows.findIndex((w) => {
+                  const parentWorkflowId = rawWorkflows.find((w) => {
                     const nodes = w.nodes as Node[];
                     return nodes.some(
                       (n) =>
                         n.id ===
-                        (currentYWorkflow.get("id")?.toJSON() as string),
+                        (currentYWorkflow?.get("id")?.toJSON() as string),
                     );
-                  });
-                  const parentYWorkflow = yWorkflows.get(workflowIndex);
+                  })?.id;
+                  if (!parentWorkflowId) return;
+                  const parentYWorkflow = yWorkflows.get(parentWorkflowId);
                   if (parentYWorkflow) {
                     removeParentYWorkflowNodePseudoPort(
-                      currentYWorkflow.get("id")?.toJSON() as string,
+                      currentYWorkflow?.get("id")?.toJSON() as string,
                       parentYWorkflow,
                       nodeToDelete,
                     );
@@ -192,16 +195,18 @@ export default ({
         // we need to update pseudoInputs and pseudoOutputs on the parent node.
         if (dataField === "params" && updatedValue.routingPort) {
           const currentWorkflowId = currentYWorkflow
-            .get("id")
+            ?.get("id")
             ?.toJSON() as string;
 
-          const parentWorkflowIndex = rawWorkflows.findIndex((w) => {
+          const parentWorkflow = rawWorkflows.find((w) => {
             const nodes = w.nodes as Node[];
             return nodes.some(
               (n) => n.data.subworkflowId === currentWorkflowId,
             );
           });
-          const parentYWorkflow = yWorkflows.get(parentWorkflowIndex);
+          if (!parentWorkflow) return;
+          const parentYWorkflow = yWorkflows.get(parentWorkflow.id);
+          if (!parentYWorkflow) return;
 
           updateParentYWorkflow(
             currentWorkflowId,
