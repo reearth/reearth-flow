@@ -647,57 +647,6 @@ impl BroadcastGroup {
                         let awareness = awareness.write().await;
                         let decoded_update = Update::decode_v1(&update)?;
 
-                        // {
-                        //     let doc = awareness.doc();
-                        //     let mut txn = doc.transact_mut();
-                        //     if let Some(workflows) = txn.get_array("workflows") {
-                        //         let len = workflows.len(&txn);
-                        //         match len {
-                        //             0 => (),
-                        //             1 => {
-                        //                 if let (Some(store), Some(doc_name)) = (gcs_store, doc_name)
-                        //                 {
-                        //                     let state_vector = StateVector::default();
-                        //                     let full_update =
-                        //                         txn.encode_state_as_update_v1(&state_vector);
-                        //                     let store_clone = store.clone();
-                        //                     let doc_name_clone = doc_name.clone();
-
-                        //                     if let Some(redis_store) = redis_store {
-                        //                         let rs = redis_store.clone();
-                        //                         let dn = doc_name.clone();
-                        //                         tokio::spawn(async move {
-                        //                             if let Err(e) =
-                        //                                 rs.clear_pending_updates(&dn).await
-                        //                             {
-                        //                                 tracing::warn!(
-                        //                                     "Failed to clear Redis updates: {}",
-                        //                                     e
-                        //                                 );
-                        //                             }
-                        //                         });
-                        //                     }
-
-                        //                     tokio::spawn(async move {
-                        //                         if let Err(e) = store_clone
-                        //                             .push_update(&doc_name_clone, &full_update)
-                        //                             .await
-                        //                         {
-                        //                             tracing::error!("Failed to save initial workflow to GCS: {}", e);
-                        //                         } else {
-                        //                             tracing::info!("Successfully saved initial workflow to GCS");
-                        //                         }
-                        //                     });
-                        //                 }
-                        //             }
-                        //             n => {
-                        //                 tracing::warn!("Found {} workflows, cleaning up extras", n);
-                        //                 workflows.remove_range(&mut txn, 1, n - 1);
-                        //             }
-                        //         }
-                        //     }
-                        // }
-
                         protocol.handle_sync_step2(&awareness, decoded_update)
                     }
                     SyncMessage::Update(update) => {
