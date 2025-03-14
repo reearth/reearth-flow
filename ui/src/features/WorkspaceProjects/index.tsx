@@ -157,14 +157,17 @@ const ProjectsManager: React.FC = () => {
             icon={<FlowLogo className="size-16 text-accent" />}
           />
         )}
+        {projects && projects.length > 0 && (
+          <div className="my-8">
+            <Pagination
+              currentPage={currentPage}
+              setCurrentPage={setCurrentPage}
+              totalPages={totalPages}
+            />
+          </div>
+        )}
       </div>
-      <div className="mb-3">
-        <Pagination
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          totalPages={totalPages}
-        />
-      </div>
+
       {/* This (ghost) input is used for uploading the project to be imported */}
       <input
         type="file"

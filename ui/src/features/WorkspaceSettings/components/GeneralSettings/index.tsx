@@ -59,6 +59,9 @@ const GeneralSettings: React.FC = () => {
         <p className="text-lg dark:font-extralight">{t("General Settings")}</p>
       </div>
       <div className="mt-4 flex max-w-[700px] flex-col gap-6">
+        <div className="flex flex-col gap-2">{currentWorkspace?.personal}</div>
+      </div>
+      <div className="mt-4 flex max-w-[700px] flex-col gap-6">
         <div className="flex flex-col gap-2">
           <Label htmlFor="workspace-name">{t("Workspace Name")}</Label>
           <Input
