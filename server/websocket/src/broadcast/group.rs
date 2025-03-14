@@ -23,6 +23,8 @@ use yrs::sync::{DefaultProtocol, Error, Message, Protocol, SyncMessage};
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
+const MSG_SYNC_STEP1: u8 = 0;
+const MSG_SYNC_STEP2: u8 = 1;
 
 #[derive(Debug, Clone)]
 pub struct BroadcastConfig {
@@ -63,20 +65,9 @@ unsafe impl Send for BroadcastGroup {}
 unsafe impl Sync for BroadcastGroup {}
 
 impl BroadcastGroup {
-    pub fn increment_connections(&self) {
-        let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
-
-        if prev_count == 0 {
-            if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
-                let store_clone = store.clone();
-                let doc_name_clone = doc_name.clone();
-                let awareness_clone = self.awareness_ref.clone();
-
-                tokio::spawn(async move {
-                    Self::load_from_storage(&store_clone, &doc_name_clone, &awareness_clone).await;
-                });
-            }
-        }
+    pub async fn increment_connections(&self) -> Result<()> {
+        let _ = self.connections.fetch_add(1, Ordering::Relaxed);
+        Ok(())
     }
 
     pub fn decrement_connections(&self) -> usize {
@@ -102,6 +93,8 @@ impl BroadcastGroup {
             let doc_name_clone = doc_name.clone();
             let redis_store = self.redis_store.clone();
             let pending_updates = self.pending_updates.clone();
+            let shutdown_flag = Arc::new(AtomicBool::new(false));
+            let shutdown_flag_clone = shutdown_flag.clone();
 
             tokio::spawn(async move {
                 let updates = {
@@ -135,27 +128,27 @@ impl BroadcastGroup {
                                         .await;
                                     }
 
-                                    if let Err(e) =
-                                        redis_store.clear_pending_updates(&doc_name_clone).await
-                                    {
-                                        tracing::warn!(
-                                            "Failed to clear pending updates from Redis: {}",
-                                            e
-                                        );
-                                    }
-
+                                    shutdown_flag_clone
+                                        .store(true, std::sync::atomic::Ordering::SeqCst);
                                     return;
                                 }
-                                Ok(_) => return,
+                                Ok(_) => {
+                                    shutdown_flag_clone
+                                        .store(true, std::sync::atomic::Ordering::SeqCst);
+                                    return;
+                                }
                                 Err(e) => {
                                     tracing::warn!(
                                         "Failed to load pending updates from Redis: {}",
                                         e
                                     );
+                                    shutdown_flag_clone
+                                        .store(true, std::sync::atomic::Ordering::SeqCst);
                                     return;
                                 }
                             };
                         }
+                        shutdown_flag_clone.store(true, std::sync::atomic::Ordering::SeqCst);
                         return;
                     }
                     std::mem::take(&mut *pending)
@@ -184,6 +177,17 @@ impl BroadcastGroup {
                     if let Err(e) = redis_store.clear_pending_updates(&doc_name_clone).await {
                         tracing::warn!("Failed to clear pending updates from Redis: {}", e);
                     }
+                }
+
+                shutdown_flag_clone.store(true, std::sync::atomic::Ordering::SeqCst);
+            });
+
+            tokio::spawn(async move {
+                for _ in 0..10 {
+                    if shutdown_flag.load(std::sync::atomic::Ordering::SeqCst) {
+                        break;
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
                 }
             });
         }
@@ -411,16 +415,8 @@ impl BroadcastGroup {
         let awareness = awareness.write().await;
         let mut txn = awareness.doc().transact_mut();
 
-        let timeout_duration = std::time::Duration::from_secs(5);
-
-        if let Err(e) =
-            tokio::time::timeout(timeout_duration, store.load_doc(doc_name, &mut txn)).await
-        {
-            tracing::error!(
-                "Timeout loading document '{}' from storage: {}",
-                doc_name,
-                e
-            );
+        if let Err(e) = store.load_doc(doc_name, &mut txn).await {
+            tracing::error!("Error loading document '{}' from storage: {}", doc_name, e);
         }
     }
 
@@ -446,11 +442,20 @@ impl BroadcastGroup {
         <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
-        self.subscribe_with(sink, stream, DefaultProtocol)
+        let subscription = self.subscribe_with(sink.clone(), stream, DefaultProtocol);
+
+        let awareness = self.awareness().clone();
+        let sink_clone = sink.clone();
+
+        tokio::spawn(async move {
+            Self::send_initial_sync(awareness, sink_clone).await;
+        });
+
+        subscription
     }
 
     pub fn subscribe_with_user<Sink, Stream, E>(
-        &self,
+        self: Arc<Self>,
         sink: Arc<Mutex<Sink>>,
         stream: Stream,
         user_token: Option<String>,
@@ -483,7 +488,26 @@ impl BroadcastGroup {
             });
         }
 
-        self.subscribe_with(sink, stream, DefaultProtocol)
+        let subscription = self.subscribe_with(sink.clone(), stream, DefaultProtocol);
+        let (tx, rx) = tokio::sync::oneshot::channel();
+
+        let awareness = self.awareness().clone();
+        let sink_clone = sink.clone();
+        let self_clone = self.clone();
+
+        tokio::spawn(async move {
+            Self::send_initial_sync(awareness, sink_clone).await;
+            if let Err(e) = self_clone.increment_connections().await {
+                tracing::error!("Failed to increment connections: {}", e);
+            }
+            let _ = tx.send(());
+        });
+
+        Subscription {
+            sink_task: subscription.sink_task,
+            stream_task: subscription.stream_task,
+            sync_complete: Some(rx),
+        }
     }
 
     pub fn subscribe_with<Sink, Stream, E, P>(
@@ -519,6 +543,7 @@ impl BroadcastGroup {
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
             let redis_ttl = self.redis_ttl;
+            let gcs_store = self.storage.clone();
 
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
@@ -538,26 +563,17 @@ impl BroadcastGroup {
                         }
                     };
 
-                    if let Message::Sync(SyncMessage::Update(update)) = &msg {
-                        if let (Some(redis_store), Some(doc_name), Some(ttl)) =
-                            (redis_store.as_ref(), doc_name.as_ref(), redis_ttl)
-                        {
-                            let rs = redis_store.clone();
-                            let dn = doc_name.clone();
-                            let update_clone = update.clone();
-                            let ttl_clone = ttl as u64;
-
-                            tokio::spawn(async move {
-                                if let Err(e) =
-                                    rs.add_publish_update(&dn, &update_clone, ttl_clone).await
-                                {
-                                    tracing::error!("Redis update failed: {}", e);
-                                }
-                            });
-                        }
-                    }
-
-                    match Self::handle_msg(&protocol, &awareness, msg).await {
+                    match Self::handle_msg(
+                        &protocol,
+                        &awareness,
+                        msg,
+                        redis_store.as_ref(),
+                        doc_name.as_ref(),
+                        redis_ttl,
+                        gcs_store.as_ref(),
+                    )
+                    .await
+                    {
                         Ok(Some(reply)) => {
                             let mut sink_lock = sink.lock().await;
                             if let Err(e) = sink_lock.send(reply.encode_v1()).await {
@@ -575,6 +591,7 @@ impl BroadcastGroup {
         Subscription {
             sink_task,
             stream_task,
+            sync_complete: None,
         }
     }
 
@@ -582,24 +599,54 @@ impl BroadcastGroup {
         protocol: &P,
         awareness: &AwarenessRef,
         msg: Message,
+        redis_store: Option<&Arc<RedisStore>>,
+        doc_name: Option<&String>,
+        redis_ttl: Option<usize>,
+        _gcs_store: Option<&Arc<GcsStore>>,
     ) -> Result<Option<Message>, Error> {
         match msg {
-            Message::Sync(msg) => match msg {
-                SyncMessage::SyncStep1(state_vector) => {
-                    let awareness = awareness.read().await;
-                    protocol.handle_sync_step1(&awareness, state_vector)
+            Message::Sync(msg) => {
+                if let (Some(redis_store), Some(doc_name), Some(ttl)) =
+                    (redis_store, doc_name, redis_ttl)
+                {
+                    let rs = redis_store.clone();
+                    let dn = doc_name.clone();
+                    let update_bytes = match &msg {
+                        SyncMessage::Update(update) => update.clone(),
+                        SyncMessage::SyncStep2(update) => update.clone(),
+                        _ => Vec::new(),
+                    };
+
+                    if !update_bytes.is_empty() {
+                        let ttl_clone = ttl as u64;
+                        tokio::spawn(async move {
+                            if let Err(e) =
+                                rs.add_publish_update(&dn, &update_bytes, ttl_clone).await
+                            {
+                                tracing::error!("Redis update failed: {}", e);
+                            }
+                        });
+                    }
                 }
-                SyncMessage::SyncStep2(update) => {
-                    let awareness = awareness.write().await;
-                    let update = Update::decode_v1(&update)?;
-                    protocol.handle_sync_step2(&awareness, update)
+
+                match msg {
+                    SyncMessage::SyncStep1(state_vector) => {
+                        let awareness = awareness.read().await;
+                        protocol.handle_sync_step1(&awareness, state_vector)
+                    }
+                    SyncMessage::SyncStep2(update) => {
+                        let awareness = awareness.write().await;
+                        let decoded_update = Update::decode_v1(&update)?;
+
+                        protocol.handle_sync_step2(&awareness, decoded_update)
+                    }
+                    SyncMessage::Update(update) => {
+                        let awareness = awareness.write().await;
+                        let update = Update::decode_v1(&update)?;
+                        protocol.handle_sync_step2(&awareness, update)
+                    }
                 }
-                SyncMessage::Update(update) => {
-                    let awareness = awareness.write().await;
-                    let update = Update::decode_v1(&update)?;
-                    protocol.handle_sync_step2(&awareness, update)
-                }
-            },
+            }
             Message::Auth(deny_reason) => {
                 let awareness = awareness.read().await;
                 protocol.handle_auth(&awareness, deny_reason)
@@ -617,6 +664,123 @@ impl BroadcastGroup {
                 protocol.missing_handle(&awareness, tag, data)
             }
         }
+    }
+
+    async fn send_initial_sync<Sink>(awareness: AwarenessRef, sink: Arc<Mutex<Sink>>)
+    where
+        Sink: SinkExt<Vec<u8>> + Send + Sync + Unpin + 'static,
+        <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
+    {
+        let awareness_lock = awareness.read().await;
+        let doc = awareness_lock.doc();
+
+        let state_vector = {
+            let txn = doc.transact();
+            txn.state_vector().encode_v1()
+        };
+
+        let sync_step1 = {
+            let mut encoder = EncoderV1::new();
+            encoder.write_var(MSG_SYNC);
+            encoder.write_var(MSG_SYNC_STEP1);
+            encoder.write_buf(&state_vector);
+            encoder.to_vec()
+        };
+
+        let state_update = {
+            let txn = doc.transact();
+            let sv = StateVector::default();
+            txn.encode_state_as_update_v1(&sv)
+        };
+
+        let sync_step2 = {
+            let mut encoder = EncoderV1::new();
+            encoder.write_var(MSG_SYNC);
+            encoder.write_var(MSG_SYNC_STEP2);
+            encoder.write_buf(&state_update);
+            encoder.to_vec()
+        };
+
+        let awareness_update = None;
+
+        drop(awareness_lock);
+
+        let mut sink_lock = sink.lock().await;
+        if let Err(e) = sink_lock.send(sync_step1).await {
+            tracing::warn!("Failed to send sync step 1: {}", e);
+            return;
+        }
+
+        if let Err(e) = sink_lock.send(sync_step2).await {
+            tracing::warn!("Failed to send sync step 2: {}", e);
+            return;
+        }
+
+        if let Some(update) = awareness_update {
+            if let Err(e) = sink_lock.send(update).await {
+                tracing::warn!("Failed to send awareness update: {}", e);
+            }
+        }
+    }
+
+    pub async fn shutdown(&self) -> Result<()> {
+        self.shutdown_complete
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+
+        if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
+            let pending_updates = {
+                let mut guard = self.pending_updates.lock().await;
+                if guard.is_empty() {
+                    Vec::new()
+                } else {
+                    std::mem::take(&mut *guard)
+                }
+            };
+
+            if !pending_updates.is_empty() {
+                tracing::info!(
+                    "Flushing {} pending updates for document '{}'",
+                    pending_updates.len(),
+                    doc_name
+                );
+
+                let doc = Doc::new();
+                let mut txn = doc.transact_mut();
+
+                let mut has_updates = false;
+                for update in pending_updates.iter() {
+                    if let Ok(decoded) = Update::decode_v1(update) {
+                        if txn.apply_update(decoded).is_ok() {
+                            has_updates = true;
+                        }
+                    }
+                }
+
+                if has_updates {
+                    let state_vector = StateVector::default();
+                    let merged_update = txn.encode_state_as_update_v1(&state_vector);
+
+                    if let Err(e) = store.push_update(doc_name, &merged_update).await {
+                        tracing::error!(
+                            "Failed to flush updates for document '{}': {}",
+                            doc_name,
+                            e
+                        );
+                        return Err(anyhow!("Failed to flush updates: {}", e));
+                    }
+
+                    tracing::info!("Successfully flushed updates for document '{}'", doc_name);
+                }
+            }
+
+            if let Some(redis_store) = &self.redis_store {
+                if let Err(e) = redis_store.clear_pending_updates(doc_name).await {
+                    tracing::warn!("Failed to clear pending updates from Redis: {}", e);
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -636,14 +800,22 @@ impl Drop for BroadcastGroup {
 
         self.awareness_updater.abort();
 
-        if !self
-            .shutdown_complete
-            .load(std::sync::atomic::Ordering::SeqCst)
-        {
-            if let (Some(_store), Some(doc_name)) = (&self.storage, &self.doc_name) {
+        self.shutdown_complete
+            .store(true, std::sync::atomic::Ordering::SeqCst);
+
+        if let (Some(_store), Some(doc_name)) = (&self.storage, &self.doc_name) {
+            let pending_count = {
+                match self.pending_updates.try_lock() {
+                    Ok(guard) => guard.len(),
+                    Err(_) => 0,
+                }
+            };
+
+            if pending_count > 0 {
                 tracing::warn!(
-                    "Document '{}' may have pending updates that weren't flushed",
-                    doc_name
+                    "Document '{}' may have pending updates that weren't flushed (count: {})",
+                    doc_name,
+                    pending_count
                 );
             }
         }
@@ -653,10 +825,17 @@ impl Drop for BroadcastGroup {
 pub struct Subscription {
     sink_task: JoinHandle<Result<(), Error>>,
     stream_task: JoinHandle<Result<(), Error>>,
+    sync_complete: Option<tokio::sync::oneshot::Receiver<()>>,
 }
 
 impl Subscription {
-    pub async fn completed(self) -> Result<(), Error> {
+    pub async fn completed(mut self) -> Result<(), Error> {
+        if let Some(sync_complete) = self.sync_complete.take() {
+            let _ = sync_complete.await;
+        }
+
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+
         let res = select! {
             r1 = self.sink_task => r1,
             r2 = self.stream_task => r2,

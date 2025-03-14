@@ -1,15 +1,20 @@
+// import { Viewer as CesiumViewerType } from "cesium";
+import { SceneMode } from "cesium";
 import { useEffect, useState } from "react";
-import { Viewer } from "resium";
+import { Viewer, ViewerProps } from "resium";
 
-import { CesiumContents } from "./Contents";
+import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
+
+import GeoJsonData from "./GeoJson";
 
 const dummyCredit = document.createElement("div");
 
-const defaultCesiumProps = {
+const defaultCesiumProps: Partial<ViewerProps> = {
   // timeline: false,
-  // homeButton: false,
   // baseLayerPicker: false,
   // sceneModePicker: false,
+  sceneMode: SceneMode.COLUMBUS_VIEW,
+  homeButton: false,
   fullscreenButton: false,
   geocoder: false,
   animation: false,
@@ -17,7 +22,12 @@ const defaultCesiumProps = {
   creditContainer: dummyCredit,
 };
 
-const CesiumViewer: React.FC = () => {
+type Props = {
+  fileContent: string | null;
+  fileType: SupportedDataTypes | null;
+};
+
+const CesiumViewer: React.FC<Props> = ({ fileContent, fileType }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -27,7 +37,9 @@ const CesiumViewer: React.FC = () => {
 
   return (
     <Viewer full {...defaultCesiumProps}>
-      <CesiumContents isLoaded={isLoaded} />
+      {isLoaded && fileType === "geojson" && (
+        <GeoJsonData geoJsonData={fileContent} />
+      )}
     </Viewer>
   );
 };

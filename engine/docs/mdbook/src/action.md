@@ -818,6 +818,7 @@ Writes features to a file
 ```
 ### Input Ports
 * default
+* schema
 ### Output Ports
 ### Category
 * File
@@ -3157,6 +3158,7 @@ Flatten attributes for building feature
 * default
 ### Output Ports
 * default
+* schema
 ### Category
 * PLATEAU
 
@@ -3623,6 +3625,54 @@ Calculates statistics of features
 * complete
 ### Category
 * Attribute
+
+## SurfaceFootprintReplacer
+### Type
+* processor
+### Description
+Replace the geometry with its footprint
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SurfaceFootprintReplacerParam",
+  "type": "object",
+  "properties": {
+    "elevation": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "lightDirection": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "number",
+        "format": "double"
+      },
+      "maxItems": 3,
+      "minItems": 3
+    },
+    "shadowMode": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* footprint
+* rejected
+### Category
+* Geometry
 
 ## ThreeDimensionBoxReplacer
 ### Type
