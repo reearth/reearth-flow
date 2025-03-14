@@ -15,13 +15,24 @@ use serde_json::Value;
 use crate::plateau4::errors::PlateauProcessorError;
 
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
-const BASE_SCHEMA_KEYS: [&str; 5] = [
-    "meshcode",
-    "feature_type",
-    "city_code",
-    "city_name",
-    "gml_id",
-];
+static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
+    vec![
+        ("meshcode".to_string(), AttributeValue::default_string()),
+        ("feature_type".to_string(), AttributeValue::default_string()),
+        ("city_code".to_string(), AttributeValue::default_string()),
+        ("city_name".to_string(), AttributeValue::default_string()),
+        ("gml_id".to_string(), AttributeValue::default_string()),
+        ("_lod".to_string(), AttributeValue::default_string()),
+        ("_x".to_string(), AttributeValue::default_float()),
+        ("_y".to_string(), AttributeValue::default_float()),
+        ("_xmin".to_string(), AttributeValue::default_float()),
+        ("_xmax".to_string(), AttributeValue::default_float()),
+        ("_ymin".to_string(), AttributeValue::default_float()),
+        ("_ymax".to_string(), AttributeValue::default_float()),
+        ("_zmin".to_string(), AttributeValue::default_float()),
+        ("_zmax".to_string(), AttributeValue::default_float()),
+    ]
+});
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct AttributeFlattenerFactory;
@@ -159,11 +170,8 @@ impl Processor for AttributeFlattener {
             feature_type: Some("bldg:Building".to_string()),
             lod: None,
         };
-        for schema in BASE_SCHEMA_KEYS.iter() {
-            feature.attributes.insert(
-                Attribute::new(schema.to_string()),
-                AttributeValue::default_string(),
-            );
+        for (key, value) in BASE_SCHEMA_KEYS.clone().into_iter() {
+            feature.attributes.insert(Attribute::new(key), value);
         }
         if let Some(flatten_attributes) =
             super::constants::FLATTEN_ATTRIBUTES.get("bldg/bldg:Building")
