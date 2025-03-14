@@ -120,6 +120,7 @@ export function useSubscriptionSetup<Data = any, CachedData = any>(
         complete: () => {
           console.info(`Subscription completed for ${subscriptionKey}`);
           isSubscribedRef.current = false;
+          unsubscribe?.();
         },
       },
     );
