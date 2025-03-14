@@ -176,11 +176,11 @@ enum MeshCodeType {
 impl MeshCodeType {
     fn from_string(s: &str) -> Option<MeshCodeType> {
         match s {
-            "first" => Some(MeshCodeType::First),
-            "second" => Some(MeshCodeType::Second),
-            "third" => Some(MeshCodeType::Third),
-            "half" => Some(MeshCodeType::Half),
-            "quarter" => Some(MeshCodeType::Quarter),
+            "First" => Some(MeshCodeType::First),
+            "Second" => Some(MeshCodeType::Second),
+            "Third" => Some(MeshCodeType::Third),
+            "Half" => Some(MeshCodeType::Half),
+            "Quarter" => Some(MeshCodeType::Quarter),
             _ => None,
         }
     }
@@ -236,29 +236,26 @@ impl MeshCode {
         }
     }
 
-    fn to_string(&self) -> String {
-        let code = match self {
-            MeshCode::First(code) => code.to_vec(),
-            MeshCode::Second(code) => code.to_vec(),
-            MeshCode::Third(code) => code.to_vec(),
-            MeshCode::Half(code) => code.to_vec(),
-            MeshCode::Quarter(code) => code.to_vec(),
-        };
+    fn to_vec(&self) -> &[u8] {
+        match self {
+            MeshCode::First(code) => code,
+            MeshCode::Second(code) => code,
+            MeshCode::Third(code) => code,
+            MeshCode::Half(code) => code,
+            MeshCode::Quarter(code) => code,
+        }
+    }
 
-        code.iter().map(|&digit| digit.to_string()).collect()
+    fn to_string(&self) -> String {
+        self.to_vec()
+            .iter()
+            .map(|&digit| digit.to_string())
+            .collect()
     }
 
     fn to_number(&self) -> i32 {
-        let code = match self {
-            MeshCode::First(code) => code.to_vec(),
-            MeshCode::Second(code) => code.to_vec(),
-            MeshCode::Third(code) => code.to_vec(),
-            MeshCode::Half(code) => code.to_vec(),
-            MeshCode::Quarter(code) => code.to_vec(),
-        };
-
         let mut result = 0;
-        for &digit in code.iter() {
+        for &digit in self.to_vec() {
             result = result * 10 + digit as i32;
         }
         result
