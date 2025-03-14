@@ -26,6 +26,8 @@ type BatchConfig struct {
 	ComputeCpuMilli                 int
 	ComputeMemoryMib                int
 	ImageURI                        string
+    LocalSSDCount                   int
+	LocalSSDMountPath               string 
 	MachineType                     string
 	PubSubLogStreamTopic            string
 	PubSubJobCompleteTopic          string
@@ -34,6 +36,7 @@ type BatchConfig struct {
 	Region                          string
 	SAEmail                         string
 	TaskCount                       int
+	WorkingDirectory                string 
 }
 
 type BatchClient interface {
@@ -128,19 +131,51 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		MemoryMib:   int64(b.config.ComputeMemoryMib),
 	}
 
+	envVars := map[string]string{
+		"FLOW_WORKER_ENABLE_JSON_LOG":               "true",
+		"FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC": b.config.PubSubEdgePassThroughEventTopic,
+		"FLOW_WORKER_LOG_STREAM_TOPIC":              b.config.PubSubLogStreamTopic,
+		"FLOW_WORKER_JOB_COMPLETE_TOPIC":            b.config.PubSubJobCompleteTopic,
+	}
+
+	if b.config.WorkingDirectory != "" {
+		envVars["FLOW_WORKER_WORKING_DIRECTORY"] = b.config.WorkingDirectory
+		log.Debugfc(ctx, "gcpbatch: added working directory to environment variables: %s",
+			b.config.WorkingDirectory)
+	}
+
+	var volumes []*batchpb.Volume
+	if b.config.LocalSSDCount > 0 && b.config.LocalSSDMountPath != "" {
+		// In GCP, local SSDs are attached as devices with names like "local-ssd-0", "local-ssd-1", etc.
+		for i := 0; i < b.config.LocalSSDCount; i++ {
+			deviceName := fmt.Sprintf("local-ssd-%d", i)
+			mountPath := b.config.LocalSSDMountPath
+			if b.config.LocalSSDCount > 1 {
+				// If we have multiple SSDs, mount them as subdirectories
+				mountPath = fmt.Sprintf("%s/%d", b.config.LocalSSDMountPath, i)
+			}
+
+			volumes = append(volumes, &batchpb.Volume{
+				Source: &batchpb.Volume_DeviceName{
+					DeviceName: deviceName,
+				},
+				MountPath: mountPath,
+			})
+
+			log.Debugfc(ctx, "gcpbatch: configured volume mounting from device %s to %s",
+				deviceName, mountPath)
+		}
+	}
+
 	taskSpec := &batchpb.TaskSpec{
 		ComputeResource: computeResource,
 		Runnables: []*batchpb.Runnable{
 			runnable,
 		},
 		Environment: &batchpb.Environment{
-			Variables: map[string]string{
-				"FLOW_WORKER_ENABLE_JSON_LOG":               "true",
-				"FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC": b.config.PubSubEdgePassThroughEventTopic,
-				"FLOW_WORKER_LOG_STREAM_TOPIC":              b.config.PubSubLogStreamTopic,
-				"FLOW_WORKER_JOB_COMPLETE_TOPIC":            b.config.PubSubJobCompleteTopic,
-			},
+			Variables: envVars,
 		},
+		Volumes: volumes,
 	}
 
 	taskGroup := &batchpb.TaskGroup{
@@ -154,10 +189,31 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		SizeGb: int64(b.config.BootDiskSizeGB),
 	}
 
+	var attachedDisks []*batchpb.AllocationPolicy_AttachedDisk
+	if b.config.LocalSSDCount > 0 {
+		for i := 0; i < b.config.LocalSSDCount; i++ {
+			localSSD := &batchpb.AllocationPolicy_Disk{
+				Type: "local-ssd",
+			}
+
+			diskName := fmt.Sprintf("local-ssd-%d", i)
+			attachedDisk := &batchpb.AllocationPolicy_AttachedDisk{
+				DeviceName: diskName,
+				Attached: &batchpb.AllocationPolicy_AttachedDisk_NewDisk{
+					NewDisk: localSSD,
+				},
+			}
+			attachedDisks = append(attachedDisks, attachedDisk)
+		}
+
+		log.Debugfc(ctx, "gcpbatch: configured %d local SSD disks", b.config.LocalSSDCount)
+	}
+
 	instancePolicy := &batchpb.AllocationPolicy_InstancePolicy{
 		ProvisioningModel: batchpb.AllocationPolicy_STANDARD,
 		MachineType:       b.config.MachineType,
 		BootDisk:          bootDisk,
+		Disks:             attachedDisks,
 	}
 	log.Debugfc(ctx, "gcpbatch: configured instance policy with machine=%s", instancePolicy.MachineType)
 
