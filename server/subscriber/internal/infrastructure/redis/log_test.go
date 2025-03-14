@@ -17,6 +17,16 @@ type mockRedisClient struct {
 	mock.Mock
 }
 
+// Expire implements RedisClient.
+func (m *mockRedisClient) Expire(ctx context.Context, key string, expiration time.Duration) *redis.BoolCmd {
+	panic("unimplemented")
+}
+
+// LPush implements RedisClient.
+func (m *mockRedisClient) LPush(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
+	panic("unimplemented")
+}
+
 func (m *mockRedisClient) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
 	args := m.Called(ctx, key, value, expiration)
 

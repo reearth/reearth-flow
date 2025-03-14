@@ -16,68 +16,139 @@ import (
 
 	flow_pubsub "github.com/reearth/reearth-flow/subscriber/internal/adapter/pubsub"
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure"
+	flow_mongo "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/mongo"
 	flow_redis "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/interactor"
 )
 
+type Subscriber interface {
+	StartListening(ctx context.Context) error
+}
+
+type clients struct {
+	pubsub *pubsub.Client
+	redis  *redis.Client
+	mongo  flow_mongo.MongoClient
+}
+
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
-	conf, cerr := ReadConfig(true)
-	if cerr != nil {
-		log.Fatalf("failed to load config: %v", cerr)
+	conf, err := ReadConfig(true)
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
 	}
 	log.Printf("config: %s", conf.Print())
 
-	pubsubClient, err := pubsub.NewClient(ctx, conf.GCPProject)
+	clients, err := initClients(ctx, conf)
 	if err != nil {
-		log.Fatalf("Failed to create pubsub client: %v", err)
+		log.Fatalf("Failed to initialize clients: %v", err)
 	}
-	defer func() {
-		if cerr := pubsubClient.Close(); cerr != nil {
-			log.Printf("failed to close pubsub client: %v", cerr)
-		}
-	}()
+	defer closeClients(ctx, clients)
 
-	sub := pubsubClient.Subscription(conf.LogSubscriptionID)
-	subAdapter := flow_pubsub.NewRealSubscription(sub)
-
-	opt, err := redis.ParseURL(conf.RedisURL)
+	subscribers, err := initSubscribers(ctx, conf, clients)
 	if err != nil {
-		log.Fatalf("Failed to parse Redis URL: %v", err)
+		log.Fatalf("Failed to initialize subscribers: %v", err)
 	}
 
-	rdb := redis.NewClient(opt)
-	if err := rdb.Ping(ctx).Err(); err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
-	}
-
-	redisStorage := flow_redis.NewRedisStorage(rdb)
-	storageImpl := infrastructure.NewStorageImpl(redisStorage)
-	logSubscriberUC := interactor.NewLogSubscriberUseCase(storageImpl)
-	subscriber := flow_pubsub.NewSubscriber(subAdapter, logSubscriberUC)
-
-	log.Println("[subscriber] Starting subscriber...")
+	server := startHTTPServer(conf.Port)
 
 	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		if err := subscriber.StartListening(ctx); err != nil {
-			log.Printf("[subscriber] Subscriber error: %v", err)
-			cancel()
-		}
-	}()
+	runSubscribers(ctx, &wg, subscribers)
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	go handleShutdown(sigCh, server, cancel)
+
+	wg.Wait()
+	log.Println("[subscriber] Subscribers stopped gracefully.")
+}
+
+func initClients(ctx context.Context, conf *Config) (*clients, error) {
+	pubsubClient, err := pubsub.NewClient(ctx, conf.GCPProject)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create pubsub client: %w", err)
+	}
+
+	redisOpt, err := redis.ParseURL(conf.RedisURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse Redis URL: %w", err)
+	}
+	redisClient := redis.NewClient(redisOpt)
+	if err := redisClient.Ping(ctx).Err(); err != nil {
+		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
+	}
+
+	mongoClient, err := flow_mongo.NewMongoClient(ctx, conf.MongoURI, conf.MongoDatabaseName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to MongoDB: %w", err)
+	}
+
+	return &clients{
+		pubsub: pubsubClient,
+		redis:  redisClient,
+		mongo:  mongoClient,
+	}, nil
+}
+
+func closeClients(ctx context.Context, c *clients) {
+	if c.pubsub != nil {
+		if err := c.pubsub.Close(); err != nil {
+			log.Printf("failed to close pubsub client: %v", err)
+		}
+	}
+	
+	if c.redis != nil {
+		if err := c.redis.Close(); err != nil {
+			log.Printf("failed to close Redis client: %v", err)
+		}
+	}
+	
+	if c.mongo != nil {
+		if err := c.mongo.Disconnect(ctx); err != nil {
+			log.Printf("failed to disconnect MongoDB client: %v", err)
+		}
+	}
+}
+
+func initSubscribers(ctx context.Context, conf *Config, c *clients) ([]Subscriber, error) {
+	redisStorage := flow_redis.NewRedisStorage(c.redis)
+	mongoStorage := flow_mongo.NewMongoStorage(
+		c.mongo,
+		conf.MongoJobCollection,
+		"graphs",
+		"edges",
+	)
+
+	logStorageImpl := infrastructure.NewStorageImpl(redisStorage)
+	logSubscriberUC := interactor.NewLogSubscriberUseCase(logStorageImpl)
+	
+	logSub := c.pubsub.Subscription(conf.LogSubscriptionID)
+	logSubAdapter := flow_pubsub.NewRealSubscription(logSub)
+	logSubscriber := flow_pubsub.NewSubscriber(logSubAdapter, logSubscriberUC)
+
+	nodeStatusStorageImpl := infrastructure.NewNodeStatusStorageImpl(redisStorage, mongoStorage)
+	nodeStatusSubscriberUC := interactor.NewNodeStatusSubscriberUseCase(nodeStatusStorageImpl)
+	
+	edgePassSub := c.pubsub.Subscription(conf.EdgePassSubscriptionID)
+	edgePassSubAdapter := flow_pubsub.NewRealSubscription(edgePassSub)
+	edgePassSubscriber := flow_pubsub.NewEdgeSubscriber(edgePassSubAdapter, nodeStatusSubscriberUC)
+
+	return []Subscriber{logSubscriber, edgePassSubscriber}, nil
+}
+
+func startHTTPServer(port string) *http.Server {
+	mux := http.NewServeMux()
+	
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if _, err := fmt.Fprintf(w, "Subscriber is running"); err != nil {
 			log.Printf("failed to write response: %v", err)
 		}
 	})
 
-	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		if _, err := fmt.Fprintf(w, "OK"); err != nil {
 			log.Printf("failed to write response: %v", err)
@@ -85,32 +156,52 @@ func main() {
 	})
 
 	server := &http.Server{
-		Addr:    ":" + conf.Port,
-		Handler: http.DefaultServeMux,
+		Addr:         ":" + port,
+		Handler:      mux,
+		ReadTimeout:  15 * time.Second,
+		WriteTimeout: 15 * time.Second,
+		IdleTimeout:  60 * time.Second,
 	}
 
 	go func() {
-		log.Printf("[subscriber] Starting HTTP server on port %s...", conf.Port)
+		log.Printf("[subscriber] Starting HTTP server on port %s...", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Printf("[subscriber] HTTP server error: %v", err)
-			cancel()
 		}
 	}()
+	
+	return server
+}
 
-	go func() {
-		sig := <-sigCh
-		log.Printf("[subscriber] Received signal: %v. Shutting down...", sig)
+func runSubscribers(ctx context.Context, wg *sync.WaitGroup, subscribers []Subscriber) {
+	log.Println("[subscriber] Starting subscribers...")
+	
+	for i, sub := range subscribers {
+		wg.Add(1)
+		
+		go func(index int, s Subscriber) {
+			defer wg.Done()
+			subscriberName := fmt.Sprintf("Subscriber-%d", index+1)
+			
+			log.Printf("[%s] Starting...", subscriberName)
+			if err := s.StartListening(ctx); err != nil {
+				log.Printf("[%s] Error: %v", subscriberName, err)
+			}
+			log.Printf("[%s] Stopped", subscriberName)
+		}(i, sub)
+	}
+}
 
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer shutdownCancel()
+func handleShutdown(sigCh chan os.Signal, server *http.Server, cancel context.CancelFunc) {
+	sig := <-sigCh
+	log.Printf("[subscriber] Received signal: %v. Shutting down...", sig)
 
-		if err := server.Shutdown(shutdownCtx); err != nil {
-			log.Printf("[subscriber] HTTP server shutdown error: %v", err)
-		}
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
 
-		cancel()
-	}()
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		log.Printf("[subscriber] HTTP server shutdown error: %v", err)
+	}
 
-	wg.Wait()
-	log.Println("[subscriber] Subscriber stopped gracefully.")
+	cancel()
 }

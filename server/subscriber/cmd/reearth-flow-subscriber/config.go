@@ -16,11 +16,15 @@ func init() {
 }
 
 type Config struct {
-	Dev               bool   `pp:",omitempty"`
-	GCPProject        string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
-	LogSubscriptionID string `envconfig:"LOG_SUBSCRIPTION_ID" default:"flow-log-stream-main"`
-	Port              string `envconfig:"PORT" default:"8080"`
-	RedisURL          string `envconfig:"REDIS_URL" default:"redis://localhost:6379"`
+	Dev                    bool   `pp:",omitempty"`
+	GCPProject             string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
+	LogSubscriptionID      string `envconfig:"LOG_SUBSCRIPTION_ID" default:"flow-log-stream-main"`
+	EdgePassSubscriptionID string `envconfig:"EDGE_PASS_SUBSCRIPTION_ID" default:"flow-edge-pass-through-main"`
+	Port                   string `envconfig:"PORT" default:"8080"`
+	RedisURL               string `envconfig:"REDIS_URL" default:"redis://localhost:6379"`
+	MongoURI               string `envconfig:"MONGO_URI" default:"mongodb://localhost:27017"`
+	MongoDatabaseName      string `envconfig:"MONGO_DATABASE_NAME" default:"reearth-flow"`
+	MongoJobCollection     string `envconfig:"MONGO_JOB_COLLECTION" default:"jobs"`
 }
 
 func ReadConfig(debug bool) (*Config, error) {
