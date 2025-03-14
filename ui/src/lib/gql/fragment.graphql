@@ -1,6 +1,7 @@
 fragment Project on Project {
   id
   name
+  version
   description
   createdAt
   updatedAt
@@ -56,6 +57,19 @@ fragment Job on Job {
   # workspace{
   #   ...Workspace
   # }
+}
+
+fragment ProjectDocument on ProjectDocument {
+  id
+  timestamp
+  updates
+  version
+}
+
+fragment ProjectSnapshot on ProjectSnapshot {
+  timestamp
+  updates
+  version
 }
 
 fragment Log on Log {

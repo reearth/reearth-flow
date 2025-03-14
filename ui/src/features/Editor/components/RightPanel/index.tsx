@@ -1,22 +1,27 @@
 import { X } from "@phosphor-icons/react";
 import { memo } from "react";
+import { Doc } from "yjs";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { mockVersionHistory } from "@flow/mock_data/versionHistoryData";
+import type { Project } from "@flow/types";
 
 import { VersionHistoryList } from "./components";
 
 type Props = {
   contentType?: "version-history";
   onClose: () => void;
+  project?: Project;
+  yDoc: Doc | null;
 };
 
-const RightPanel: React.FC<Props> = ({ contentType, onClose }) => {
+const RightPanel: React.FC<Props> = ({
+  contentType,
+  onClose,
+  project,
+  yDoc,
+}) => {
   const t = useT();
-  // TODO: Hook up gql, correct types and remove mock data
-  const versionHistory = [...mockVersionHistory];
-
   return (
     <div
       id="right-panel"
@@ -38,7 +43,7 @@ const RightPanel: React.FC<Props> = ({ contentType, onClose }) => {
         </div>
       </div>
       {contentType === "version-history" && (
-        <VersionHistoryList versionHistory={versionHistory} />
+        <VersionHistoryList project={project} yDoc={yDoc} />
       )}
     </div>
   );
