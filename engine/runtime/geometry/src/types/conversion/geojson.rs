@@ -122,11 +122,11 @@ where
 }
 
 pub(crate) fn create_geo_coordinate_2d(point_type: &geojson::PointType) -> Coordinate2D<f64> {
-    Coordinate2D::new_(point_type[1], point_type[0])
+    Coordinate2D::new_(point_type[0], point_type[1])
 }
 
 pub(crate) fn create_geo_coordinate_3d(point_type: &geojson::PointType) -> Coordinate3D<f64> {
-    Coordinate3D::new__(point_type[1], point_type[0], point_type[2])
+    Coordinate3D::new__(point_type[0], point_type[1], point_type[2])
 }
 
 pub fn is_2d(point_type: &geojson::PointType) -> bool {
