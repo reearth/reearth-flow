@@ -3,8 +3,8 @@ id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
 name: "PLATEAU4-A001-7-jp-standard-grid-accumulator-workflow"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
-  geojson_polygons: !include ./files/hokkaido_admins.geojson.txt
-  geojson_lines: !include ./files/hokkaido_power_lines.geojson.txt
+  geojson_polygons: !include ./files/tsugaru_strait.geojson.txt
+  geojson_lines: !include ./files/tsugaru_strait_power_lines.geojson.txt
   outputPath:
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
