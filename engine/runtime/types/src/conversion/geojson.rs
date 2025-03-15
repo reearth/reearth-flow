@@ -6,7 +6,7 @@ use reearth_flow_geometry::types::conversion::is_2d_geojson_value;
 
 use crate::{
     error::{Error, Result},
-    Attribute, AttributeValue, Feature, GeometryValue,
+    Attribute, AttributeValue, Feature, GeometryValue, GmlGeometry,
 };
 
 impl TryFrom<Feature> for Vec<geojson::Feature> {
@@ -89,6 +89,18 @@ impl TryFrom<geojson::Value> for GeometryValue {
                 value.try_into().map_err(Error::unsupported_feature)?,
             ))
         }
+    }
+}
+
+impl From<GmlGeometry> for Vec<geojson::Value> {
+    fn from(feature: GmlGeometry) -> Self {
+        let mut values = feature
+            .polygons
+            .into_iter()
+            .map(|poly| poly.into())
+            .collect::<Vec<_>>();
+        values.extend(feature.line_strings.into_iter().map(|line| line.into()));
+        values
     }
 }
 

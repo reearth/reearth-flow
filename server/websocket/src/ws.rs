@@ -21,8 +21,6 @@ use crate::{pool::BroadcastPool, AppState};
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
 
-/// Connection Wrapper over a [WebSocket], which implements a Yjs/Yrs awareness and update exchange
-/// protocol.
 #[repr(transparent)]
 pub struct WarpConn(Connection<WarpSink, WarpStream>);
 
@@ -144,7 +142,6 @@ pub async fn ws_handler(
     #[cfg(not(feature = "auth"))]
     let user_token: Option<String> = None;
 
-    // Verify token
     #[cfg(feature = "auth")]
     {
         let authorized = state.auth.verify_token(&query.token).await;
@@ -189,7 +186,7 @@ pub async fn ws_handler(
             }
             Ok(_) => {
                 if let Err(e) = redis_store
-                    .register_doc_instance(&doc_id, &state.instance_id, 60)
+                    .register_doc_instance(&doc_id, &state.instance_id, 5)
                     .await
                 {
                     tracing::warn!("Failed to register instance for document {}: {}", doc_id, e);
@@ -218,11 +215,11 @@ pub async fn ws_handler(
         let instance_id = state.instance_id.clone();
 
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(2));
             loop {
                 interval.tick().await;
                 if let Err(e) = redis_store_clone
-                    .refresh_doc_instance(&doc_id_clone, &instance_id, 60)
+                    .refresh_doc_instance(&doc_id_clone, &instance_id, 5)
                     .await
                 {
                     tracing::warn!(
