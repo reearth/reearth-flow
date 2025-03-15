@@ -144,6 +144,11 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		log.Fatalf("invalid task count: %v", err)
 	}
 
+	localSSDCount, err := strconv.Atoi(conf.Worker_LocalSSDCount)
+	if err != nil {
+		log.Fatalf("invalid local SSD count: %v", err)
+	}
+
 	config := gcpbatch.BatchConfig{
 		AllowedLocations:                conf.Worker_AllowedLocations,
 		BinaryPath:                      conf.Worker_BinaryPath,
@@ -152,6 +157,8 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		ComputeCpuMilli:                 computeCpuMilli,
 		ComputeMemoryMib:                computeMemoryMib,
 		ImageURI:                        conf.Worker_ImageURL,
+		LocalSSDCount:                   localSSDCount,
+	    LocalSSDMountPath:               conf.Worker_LocalSSDMountPath,
 		MachineType:                     conf.Worker_MachineType,
 		PubSubLogStreamTopic:            conf.Worker_PubSubLogStreamTopic,
 		PubSubJobCompleteTopic:          conf.Worker_PubSubJobCompleteTopic,
@@ -160,6 +167,7 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		Region:                          conf.GCPRegion,
 		SAEmail:                         conf.Worker_BatchSAEmail,
 		TaskCount:                       taskCount,
+		WorkingDirectory:                 conf.Worker_WorkingDirectory,
 	}
 
 	batchRepo, err = gcpbatch.NewBatch(ctx, config)
