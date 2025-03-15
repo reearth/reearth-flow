@@ -18,13 +18,15 @@ export default ({
   undoTrackerActionWrapper,
 }: {
   currentWorkflowId: string;
-  yWorkflows: Y.Array<YWorkflow>;
+  yWorkflows: Y.Map<YWorkflow>;
   undoManager: Y.UndoManager | null;
   setSelectedNodeIds: Dispatch<SetStateAction<string[]>>;
   setSelectedEdgeIds: Dispatch<SetStateAction<string[]>>;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
-  const rawWorkflows = yWorkflows.map((w) => rebuildWorkflow(w));
+  const rawWorkflows = Array.from(yWorkflows.entries()).map(([_, value]) =>
+    rebuildWorkflow(value),
+  );
 
   const {
     currentYWorkflow,
@@ -35,7 +37,6 @@ export default ({
     handleYWorkflowAddFromSelection,
   } = useYWorkflow({
     yWorkflows,
-    rawWorkflows,
     currentWorkflowId,
     undoTrackerActionWrapper,
   });

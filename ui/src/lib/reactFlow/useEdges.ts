@@ -23,14 +23,12 @@ export default ({ edges, onEdgesAdd, onEdgesChange }: Props) => {
 
   const handleConnect: OnConnect = useCallback(
     (connection) => {
-      const edgeId = generateUUID();
-      if (edges.find((e) => e.id === edgeId)) return;
-      onEdgesAdd?.([
-        {
-          id: edgeId,
-          ...connection,
-        },
-      ]);
+      const newEdge: Edge = {
+        id: generateUUID(),
+        ...connection,
+      };
+      if (edges.find((e) => e.id === newEdge.id)) return;
+      onEdgesAdd?.([newEdge]);
     },
     [edges, onEdgesAdd],
   );

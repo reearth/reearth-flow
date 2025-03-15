@@ -1,7 +1,7 @@
 import { cleanup } from "@testing-library/react";
 import * as Y from "yjs";
 
-import type { YEdgesArray, YNodesArray, YWorkflow } from "@flow/lib/yjs/types";
+import type { YEdgesMap, YNodesArray, YWorkflow } from "@flow/lib/yjs/types";
 import type { Edge, Node } from "@flow/types";
 
 import { reassembleEdge, reassembleNode } from "./rebuildWorkflow";
@@ -14,12 +14,12 @@ afterEach(() => {
 describe("yWorkflowConstructor", () => {
   test("should create a YWorkflow with the provided id and name", () => {
     const yDoc = new Y.Doc();
-    const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+    const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
     const id = "workflow-1";
     const name = "My Workflow";
     const yWorkflow = yWorkflowConstructor(id, name);
 
-    yWorkflows.push([yWorkflow]);
+    yWorkflows.set(id, yWorkflow);
 
     expect(yWorkflow.get("id")?.toJSON()).toEqual(id);
     expect(yWorkflow.get("name")?.toJSON()).toEqual(name);
@@ -27,7 +27,7 @@ describe("yWorkflowConstructor", () => {
 
   test("should create a YWorkflow with the provided nodes and edges", () => {
     const yDoc = new Y.Doc();
-    const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+    const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
     const id = "workflow-1";
     const name = "My Workflow";
 
@@ -64,7 +64,7 @@ describe("yWorkflowConstructor", () => {
       { id: "edge-1", source: "node-1", target: "node-2" },
     ];
     const yWorkflow = yWorkflowConstructor(id, name, nodes, edges);
-    yWorkflows.push([yWorkflow]);
+    yWorkflows.set(id, yWorkflow);
 
     expect(yWorkflow.get("id")?.toJSON()).toEqual(id);
     expect(yWorkflow.get("name")?.toJSON()).toEqual(name);
@@ -72,7 +72,9 @@ describe("yWorkflowConstructor", () => {
       (yWorkflow.get("nodes") as YNodesArray).map((yn) => reassembleNode(yn)),
     ).toEqual(nodes);
     expect(
-      (yWorkflow.get("edges") as YEdgesArray).map((ye) => reassembleEdge(ye)),
+      Array.from(yWorkflow.get("edges") as YEdgesMap).map(([, ye]) =>
+        reassembleEdge(ye),
+      ),
     ).toEqual(edges);
   });
 
@@ -88,6 +90,6 @@ describe("yWorkflowConstructor", () => {
     expect(yWorkflow.get("id")?.toJSON()).toEqual(id);
     expect(yWorkflow.get("name")?.toJSON()).toEqual(name);
     expect((yWorkflow.get("nodes") as YNodesArray)?.toArray()).toEqual([]);
-    expect((yWorkflow.get("edges") as YEdgesArray)?.toArray()).toEqual([]);
+    expect(Array.from(yWorkflow.get("edges") as YEdgesMap)).toEqual([]);
   });
 });

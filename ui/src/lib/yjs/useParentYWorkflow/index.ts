@@ -1,6 +1,6 @@
 import { Node, PseudoPort } from "@flow/types";
 
-import type { YEdgesArray, YNodesArray, YWorkflow } from "../types";
+import type { YEdgesMap, YNodesArray, YWorkflow } from "../types";
 
 import { updateParentYWorkflowEdges } from "./updateParentYWorkflowEdges";
 import { updateParentYWorkflowNode } from "./updateParentYWorkflowNode";
@@ -12,7 +12,7 @@ export function updateParentYWorkflow(
   newParams: any,
 ) {
   const parentYNodes = parentYWorkflow.get("nodes") as YNodesArray;
-  const parentYEdges = parentYWorkflow.get("edges") as YEdgesArray;
+  const parentYEdges = parentYWorkflow.get("edges") as YEdgesMap;
 
   const newPseudoPort: PseudoPort = {
     nodeId: prevNode.id,

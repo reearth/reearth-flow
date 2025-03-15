@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import * as Y from "yjs";
 
-import { Algorithm, Direction, Edge, Node } from "@flow/types";
+import { Algorithm, Direction, Edge, Node, Workflow } from "@flow/types";
 import { autoLayout } from "@flow/utils/autoLayout";
 
 import { yNodeConstructor } from "./conversions";
@@ -12,15 +12,15 @@ export default ({
   rawWorkflows,
   undoTrackerActionWrapper,
 }: {
-  yWorkflows: Y.Array<YWorkflow>;
-  rawWorkflows: Record<string, string | Node[] | Edge[]>[];
+  yWorkflows?: Y.Map<YWorkflow>;
+  rawWorkflows: Workflow[];
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
   const handleYLayoutChange = useCallback(
     (algorithm: Algorithm, direction: Direction, _spacing: number) => {
       undoTrackerActionWrapper(() => {
-        const updatedRawWorkflows: Record<string, string | Node[] | Edge[]>[] =
-          rawWorkflows.map((rawWorkflow) => {
+        const updatedRawWorkflows: Workflow[] = rawWorkflows.map(
+          (rawWorkflow) => {
             const nodes = rawWorkflow.nodes as Node[];
             const edges = rawWorkflow.edges as Edge[];
             const layoutedElements = autoLayout(
@@ -36,10 +36,11 @@ export default ({
               nodes: layoutedElements.nodes,
               edges: layoutedElements.edges,
             };
-          });
+          },
+        );
 
-        updatedRawWorkflows.forEach((rawWorkflow, index) => {
-          const yWorkflow = yWorkflows.get(index);
+        updatedRawWorkflows.forEach((rawWorkflow) => {
+          const yWorkflow = yWorkflows?.get(rawWorkflow.id);
           const yNodes = yWorkflow?.get("nodes") as YNodesArray;
 
           if (!yWorkflow) {

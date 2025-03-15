@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { Edge, Node } from "@flow/types";
+import { Workflow } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 export default ({
@@ -10,7 +10,7 @@ export default ({
   setCurrentWorkflowId,
 }: {
   currentWorkflowId: string;
-  rawWorkflows: Record<string, string | Node[] | Edge[]>[];
+  rawWorkflows: Workflow[];
   setCurrentWorkflowId: (id: string) => void;
 }) => {
   const isMainWorkflow = useMemo(

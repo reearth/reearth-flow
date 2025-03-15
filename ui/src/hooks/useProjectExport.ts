@@ -20,7 +20,6 @@ export default (project?: Project) => {
     if (!project) return;
     setIsExporting(true);
     const yDoc = new Y.Doc();
-    const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
 
     const { websocket } = config();
     let yWebSocketProvider: WebsocketProvider | null = null;
@@ -40,13 +39,19 @@ export default (project?: Project) => {
         );
 
         yWebSocketProvider.once("sync", async () => {
-          if (yWorkflows.length === 0) {
+          const metadata = yDoc.getMap("metadata");
+          if (!metadata.get("initialized")) {
             yDoc.transact(() => {
-              const yWorkflow = yWorkflowConstructor(
-                DEFAULT_ENTRY_GRAPH_ID,
-                "Main Workflow",
-              );
-              yWorkflows.insert(0, [yWorkflow]);
+              const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
+              if (yWorkflows.get(DEFAULT_ENTRY_GRAPH_ID)) return;
+              if (!metadata.get("initialized")) {
+                const yWorkflow = yWorkflowConstructor(
+                  DEFAULT_ENTRY_GRAPH_ID,
+                  "Main Workflow",
+                );
+                yWorkflows.set(DEFAULT_ENTRY_GRAPH_ID, yWorkflow);
+                metadata.set("initialized", true);
+              }
             });
           }
 

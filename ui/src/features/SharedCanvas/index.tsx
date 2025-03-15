@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Array as YArray } from "yjs";
+import { Map as YMap } from "yjs";
 
 import { Button } from "@flow/components";
 import Canvas from "@flow/features/Canvas";
@@ -13,7 +13,7 @@ import { EditorContextType, EditorProvider } from "../Editor/editorContext";
 import useHooks from "./hooks";
 
 type Props = {
-  yWorkflows: YArray<YWorkflow>;
+  yWorkflows: YMap<YWorkflow>;
   project?: Project;
   undoTrackerActionWrapper: (callback: () => void) => void;
 };

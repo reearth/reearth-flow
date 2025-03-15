@@ -83,8 +83,8 @@ export default () => {
                 Y.applyUpdate(yDoc, yDocBinary);
               });
 
-              const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-              if (!yWorkflows.length) {
+              const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
+              if (!yWorkflows.get(DEFAULT_ENTRY_GRAPH_ID)) {
                 console.warn("Imported project has no workflows");
               }
 

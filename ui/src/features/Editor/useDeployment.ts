@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { Array as YArray } from "yjs";
+import { Map as YMap } from "yjs";
 
 import { useDeployment } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
@@ -18,7 +18,7 @@ export default ({
   yWorkflows,
 }: {
   currentNodes: Node[];
-  yWorkflows: YArray<YWorkflow>;
+  yWorkflows: YMap<YWorkflow>;
 }) => {
   const { toast } = useToast();
   const t = useT();
@@ -43,7 +43,9 @@ export default ({
 
       const engineReadyWorkflow = createEngineReadyWorkflow(
         projectName,
-        yWorkflows.map((w) => rebuildWorkflow(w)).filter(isDefined),
+        Array.from(yWorkflows.entries())
+          .map(([, w]) => rebuildWorkflow(w))
+          .filter(isDefined),
       );
 
       if (!engineReadyWorkflow) {
