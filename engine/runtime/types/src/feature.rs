@@ -467,6 +467,10 @@ impl Feature {
             "__feature_id",
             serde_json::Value::String(self.feature_id().unwrap_or_default()),
         );
+        scope.set(
+            "__lod",
+            serde_json::Value::String(self.lod().unwrap_or_default()),
+        );
         if let Some(with) = with {
             for (k, v) in with {
                 scope.set(k, v.clone());
@@ -527,6 +531,12 @@ impl Feature {
 
     pub fn feature_type(&self) -> Option<String> {
         self.metadata.feature_type.clone()
+    }
+
+    pub fn lod(&self) -> Option<String> {
+        self.metadata
+            .lod
+            .and_then(|lod| lod.highest_lod().map(|lod| lod.to_string()))
     }
 
     pub fn update_feature_type(&mut self, feature_type: String) {

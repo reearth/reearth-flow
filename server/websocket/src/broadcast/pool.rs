@@ -49,6 +49,10 @@ impl BroadcastPool {
         self.store.clone()
     }
 
+    pub fn get_redis_store(&self) -> Option<Arc<RedisStore>> {
+        self.redis_store.clone()
+    }
+
     pub async fn get_or_create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         if let Some(group) = self.groups.get(doc_id) {
             let group_clone = group.clone();
@@ -68,7 +72,6 @@ impl BroadcastPool {
 
             return Ok(group_clone);
         }
-
         if !self.docs_in_creation.insert(doc_id.to_string()) {
             for delay_ms in [1, 2, 5, 10, 20, 50] {
                 tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
@@ -197,12 +200,37 @@ impl BroadcastPool {
         });
     }
 
-    pub async fn remove_connection(&self, doc_id: &str) {
+    pub async fn remove_connection(&self, doc_id: &str, instance_id: &str) {
         if let Some(group) = self.groups.get(doc_id) {
             let group_clone = group.clone();
             let remaining = group.decrement_connections();
 
             if remaining == 0 && group_clone.connection_count() == 0 {
+                if let Some(redis_store) = &self.redis_store {
+                    if let Err(e) = redis_store.release_doc_instance(doc_id, instance_id).await {
+                        tracing::warn!(
+                            "Failed to release document instance registration for '{}': {}",
+                            doc_id,
+                            e
+                        );
+                    } else {
+                        tracing::info!("Released document instance registration for '{}'", doc_id);
+                    }
+                }
+
+                if let Err(e) = group_clone.shutdown().await {
+                    tracing::warn!(
+                        "Failed to shutdown broadcast group for document '{}': {}",
+                        doc_id,
+                        e
+                    );
+                } else {
+                    tracing::info!(
+                        "Successfully shutdown broadcast group for document '{}'",
+                        doc_id
+                    );
+                }
+
                 self.groups.remove(doc_id);
             }
         }

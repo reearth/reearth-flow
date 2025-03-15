@@ -111,6 +111,10 @@ pub(super) enum GeometryProcessorError {
     SurfaceFootprintReplacerFactory(String),
     #[error("SurfaceFootprintReplacer error: {0}")]
     SurfaceFootprintReplacer(String),
+    #[error("BoundsExtractor Factory error: {0}")]
+    BoundsExtractorFactory(String),
+    #[error("BoundsExtractor error: {0}")]
+    BoundsExtractor(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

@@ -252,11 +252,10 @@ impl Cesium3DTilesWriter {
             let Some(feature) = upstream.first() else {
                 continue;
             };
-            if schema.types.contains_key(feature_type) {
-                continue;
+            if !schema.types.contains_key(feature_type) {
+                let typedef: nusamai_citygml::schema::TypeDef = feature.into();
+                schema.types.insert(feature_type.clone(), typedef);
             }
-            let typedef: nusamai_citygml::schema::TypeDef = feature.into();
-            schema.types.insert(feature_type.clone(), typedef);
             features.extend(upstream.clone().into_iter());
         }
 
