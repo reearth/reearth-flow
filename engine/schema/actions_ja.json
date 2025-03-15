@@ -2740,6 +2740,23 @@
       ]
     },
     {
+      "name": "JPStandardGridAccumulator",
+      "type": "processor",
+      "description": "Divides the input geometry into Japanese standard (1km) mesh grid.",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "LineOnLineOverlayer",
       "type": "processor",
       "description": "交点を点フィーチャに変換し、元の交差したラインの属性リストを結合して含めることができる",

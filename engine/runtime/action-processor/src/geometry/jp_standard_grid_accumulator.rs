@@ -28,7 +28,7 @@ impl ProcessorFactory for JPStandardGridAccumulatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Divides the input geometry into standard (1km) mesh grid."
+        "Divides the input geometry into Japanese standard (1km) mesh grid."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
