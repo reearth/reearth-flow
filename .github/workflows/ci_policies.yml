@@ -19,7 +19,7 @@ jobs:
 
       - name: Generate policies
         run: |
-          set -e
+          set -eo pipefail
           if ! make gen-policies; then
             echo "Policy generation failed"
             exit 1
