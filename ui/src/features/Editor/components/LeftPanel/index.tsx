@@ -7,7 +7,7 @@ import {
   RectangleDashed,
   TreeView,
 } from "@phosphor-icons/react";
-import { Link, useParams } from "@tanstack/react-router";
+import { useNavigate, useParams } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
@@ -49,9 +49,14 @@ const LeftPanel: React.FC<Props> = ({
   onNodeDoubleClick,
 }) => {
   const t = useT();
+  const navigate = useNavigate();
   const { workspaceId } = useParams({ strict: false });
   const [selectedTab, setSelectedTab] = useState<Tab | undefined>();
   const [nodeId, setNodeId] = useState<string | undefined>(undefined);
+
+  const handleNavigationToDashboard = useCallback(() => {
+    navigate({ to: `/workspaces/${workspaceId}/projects` });
+  }, [workspaceId, navigate]);
 
   useEffect(() => {
     if (!isOpen && nodeId) {
@@ -193,12 +198,12 @@ const LeftPanel: React.FC<Props> = ({
       <aside className="relative z-10 w-14 border-r bg-secondary">
         <div className="flex h-full flex-col">
           <nav className="flex flex-col items-center gap-5 p-3">
-            <Link
-              to={`/workspaces/${workspaceId}/projects`}
-              className="flex shrink-0 items-center justify-center gap-2 text-lg font-semibold md:size-8 md:text-base">
+            <div
+              className="flex shrink-0 items-center justify-center gap-2 text-lg font-semibold md:size-8 md:text-base"
+              onClick={handleNavigationToDashboard}>
               <FlowLogo className="size-7 transition-all hover:size-[30px] hover:text-[#46ce7c]" />
               <span className="sr-only">{t("Dashboard")}</span>
-            </Link>
+            </div>
             {tabs.map((tab) => (
               <IconButton
                 key={tab.id}

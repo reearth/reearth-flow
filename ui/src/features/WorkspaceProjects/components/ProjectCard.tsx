@@ -27,33 +27,39 @@ import {
 } from "@flow/components";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useProjectExport } from "@flow/hooks";
+import { useDocument } from "@flow/lib/gql/document";
 import { useT } from "@flow/lib/i18n";
-import { Project } from "@flow/types";
+import { Project, ProjectDocument } from "@flow/types";
 import { openLinkInNewTab } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 type Props = {
   project: Project;
-  currentProject: Project | undefined;
+  isDuplicating: boolean;
   setEditProject: (project: Project | undefined) => void;
   setProjectToBeDeleted: (project: string | undefined) => void;
   onProjectSelect: (p: Project) => void;
+  onProjectDuplication: (
+    project: Project,
+    projectDocument?: ProjectDocument,
+  ) => Promise<void>;
 };
 
 const ProjectCard: React.FC<Props> = ({
   project,
-  currentProject,
+  isDuplicating,
   setEditProject,
   setProjectToBeDeleted,
   onProjectSelect,
+  onProjectDuplication,
 }) => {
   const t = useT();
   const { toast } = useToast();
   const { id, name, description, updatedAt, sharedToken } = project;
 
   const [persistOverlay, setPersistOverlay] = useState(false);
-
   // TODO: isShared and sharedURL are temp values.
+
   const BASE_URL = window.location.origin;
 
   const sharedUrl = sharedToken
@@ -79,15 +85,28 @@ const ProjectCard: React.FC<Props> = ({
 
   const { isExporting, handleProjectExport } = useProjectExport(project);
 
+  const { useGetLatestProjectSnapshot } = useDocument();
+
+  const { projectDocument } = useGetLatestProjectSnapshot(project.id);
+
+  const handleProjectDuplication = () => {
+    onProjectDuplication(project, projectDocument);
+  };
+
   return (
     <Card
-      className={`group relative cursor-pointer border-transparent bg-secondary ${currentProject && currentProject.id === id ? "border-border" : "hover:border-border"}`}
+      className="group relative cursor-pointer border-transparent bg-secondary hover:border-border"
       key={id}
       onClick={() => onProjectSelect(project)}>
       <CardContent className="relative flex h-[120px] items-center justify-center p-0">
         {isExporting && (
           <p className="loading-pulse absolute left-2 top-2 font-thin">
             {t("Exporting...")}
+          </p>
+        )}
+        {isDuplicating && (
+          <p className="loading-pulse absolute left-2 top-2 font-thin">
+            {t("Duplicating...")}
           </p>
         )}
         <FlowLogo
@@ -137,11 +156,7 @@ const ProjectCard: React.FC<Props> = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="justify-between gap-2"
-                disabled
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // handleProjectDuplication();
-                }}>
+                onClick={handleProjectDuplication}>
                 {t("Duplicate Project")}
                 <Copy weight="light" />
               </DropdownMenuItem>
