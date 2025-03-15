@@ -2,8 +2,6 @@ use std::collections::HashMap;
 
 use reearth_flow_geometry::algorithm::bool_ops::BooleanOps;
 use reearth_flow_geometry::algorithm::bounding_rect::BoundingRect;
-use reearth_flow_geometry::algorithm::contains::Contains;
-use reearth_flow_geometry::algorithm::intersects::Intersects;
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::geometry::{Geometry, Geometry2D};
 use reearth_flow_geometry::types::line_string::LineString2D;
@@ -30,7 +28,7 @@ impl ProcessorFactory for JPStandardGridAccumulatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Creates a convex partition based on a group of input features."
+        "Divides the input geometry into standard (1km) mesh grid."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -87,26 +85,11 @@ impl Processor for JPStandardGridAccumulator {
                     return Ok(());
                 };
 
-                let meshs_80km_inside_bounds =
-                    JPMeshCode::from_inside_bounds(bounds, JPMeshType::Mesh80km);
-                let meshs_80km = meshs_80km_inside_bounds
-                    .iter()
-                    .filter(|&mesh| JPStandardGridAccumulator::check_intersects(geometry, mesh))
-                    .collect::<Vec<_>>();
-                let meshs_10km = meshs_80km
-                    .iter()
-                    .flat_map(|mesh| mesh.downscale())
-                    .filter(|mesh| JPStandardGridAccumulator::check_intersects(geometry, mesh))
-                    .collect::<Vec<_>>();
-                let meshes_1km = meshs_10km
-                    .iter()
-                    .flat_map(|mesh| mesh.downscale())
-                    .filter(|mesh| JPStandardGridAccumulator::check_intersects(geometry, mesh))
-                    .collect::<Vec<_>>();
+                let meshes_1km = JPMeshCode::from_inside_bounds(bounds, JPMeshType::Mesh1km);
 
                 for meshcode in meshes_1km {
                     let binded_geometry = if let Some(binded_geometry) =
-                        self.bind_geometry_into_mesh_2d(geometry, meshcode.to_number())
+                        self.bind_geometry_into_mesh_2d(geometry, meshcode.clone())
                     {
                         binded_geometry
                     } else {
@@ -143,26 +126,12 @@ impl Processor for JPStandardGridAccumulator {
 }
 
 impl JPStandardGridAccumulator {
-    fn check_intersects(geometry: &Geometry2D, mesh: &JPMeshCode) -> bool {
-        let bounds = mesh.into_bounds();
-        match geometry {
-            Geometry::Point(point) => bounds.contains(&point.0),
-            Geometry::LineString(line_string) => bounds.intersects(line_string),
-            Geometry::MultiLineString(multi_line_string) => bounds.intersects(multi_line_string),
-            Geometry::Polygon(polygon) => bounds.intersects(polygon),
-            Geometry::MultiPolygon(multi_polygon) => bounds.intersects(multi_polygon),
-            _ => false,
-        }
-    }
-
     fn bind_geometry_into_mesh_2d(
         &self,
         geometry: &Geometry2D,
-        meshcode: u64,
+        mesh: JPMeshCode,
     ) -> Option<Geometry2D> {
-        // メッシュコードからバウンディングボックスを取得
-        let mesh = JPMeshCode::from_number(meshcode, JPMeshType::Mesh1km);
-        let bounds = mesh.into_bounds();
+        let bounds = mesh.bounds();
 
         let bounds_polygon = Polygon2D::new(
             LineString2D::new(vec![
@@ -175,88 +144,61 @@ impl JPStandardGridAccumulator {
             vec![],
         );
 
-        // ジオメトリの種類に応じて適切な処理を行う
         let bind_geometry = match geometry {
-            // Pointの場合はそのまま返す
             Geometry::Point(_) => geometry.clone(),
-
-            // LineStringの場合はBooleanOpsを使用して分割
             Geometry::LineString(line_string) => {
-                // LineStringをMultiLineStringに変換
                 let multi_line_string =
                     reearth_flow_geometry::types::multi_line_string::MultiLineString2D::new(vec![
                         line_string.clone(),
                     ]);
 
-                // ポリゴンでクリップ
                 let clipped = bounds_polygon.clip(&multi_line_string, false);
 
-                // 結果が空の場合は元のジオメトリを返す
                 if clipped.0.is_empty() {
                     return None;
                 } else if clipped.0.len() == 1 {
-                    // 結果が1つの場合はLineStringとして返す
                     Geometry::LineString(clipped.0[0].clone())
                 } else {
-                    // 結果が複数の場合はMultiLineStringとして返す
                     Geometry::MultiLineString(clipped)
                 }
             }
 
-            // MultiLineStringの場合はBooleanOpsを使用して分割
             Geometry::MultiLineString(multi_line_string) => {
-                // ポリゴンでクリップ
                 let clipped = bounds_polygon.clip(multi_line_string, false);
 
-                // 結果が空の場合は元のジオメトリを返す
                 if clipped.0.is_empty() {
                     return None;
                 } else if clipped.0.len() == 1 {
-                    // 結果が1つの場合はLineStringとして返す
                     Geometry::LineString(clipped.0[0].clone())
                 } else {
-                    // 結果が複数の場合はMultiLineStringとして返す
                     Geometry::MultiLineString(clipped)
                 }
             }
 
-            // Polygonの場合はBooleanOpsを使用して分割
             Geometry::Polygon(polygon) => {
-                // ポリゴン同士の交差を計算
-                let intersection = MultiPolygon2D::new(vec![bounds_polygon])
-                    .intersection(&MultiPolygon2D::new(vec![polygon.clone()]));
+                let intersection = polygon.intersection(&bounds_polygon);
 
-                // 結果が空の場合は元のジオメトリを返す
                 if intersection.0.is_empty() {
                     return None;
                 } else if intersection.0.len() == 1 {
-                    // 結果が1つの場合はPolygonとして返す
                     Geometry::Polygon(intersection.0[0].clone())
                 } else {
-                    // 結果が複数の場合はMultiPolygonとして返す
                     Geometry::MultiPolygon(intersection)
                 }
             }
 
-            // MultiPolygonの場合はBooleanOpsを使用して分割
             Geometry::MultiPolygon(multi_polygon) => {
-                // ポリゴン同士の交差を計算
                 let intersection =
-                    MultiPolygon2D::new(vec![bounds_polygon]).intersection(multi_polygon);
-
-                // 結果が空の場合は元のジオメトリを返す
+                    multi_polygon.intersection(&MultiPolygon2D::new(vec![bounds_polygon]));
                 if intersection.0.is_empty() {
                     return None;
                 } else if intersection.0.len() == 1 {
-                    // 結果が1つの場合はPolygonとして返す
                     Geometry::Polygon(intersection.0[0].clone())
                 } else {
-                    // 結果が複数の場合はMultiPolygonとして返す
                     Geometry::MultiPolygon(intersection)
                 }
             }
 
-            // その他の型の場合は未実装
             _ => {
                 return None;
             }

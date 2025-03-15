@@ -76,23 +76,20 @@ impl JPMeshType {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JPMeshCode {
-    mesh_code_type: JPMeshType,
+    mesh_type: JPMeshType,
     seed: JPMeshCodeSeed,
 }
 
 impl JPMeshCode {
-    pub fn new(coords: Coordinate2D<f64>, mesh_code_type: JPMeshType) -> Self {
+    pub fn new(coords: Coordinate2D<f64>, mesh_type: JPMeshType) -> Self {
         let seed = JPMeshCodeSeed::new(coords);
-        JPMeshCode {
-            mesh_code_type,
-            seed,
-        }
+        JPMeshCode { mesh_type, seed }
     }
 
-    pub fn from_number(mesh_code: u64, mesh_code_type: JPMeshType) -> Self {
+    pub fn from_number(mesh_code: u64, mesh_type: JPMeshType) -> Self {
         let mut code_2 = [0u8; 11];
         let mut mesh_code = mesh_code;
-        let ifirst = 11 - mesh_code_type.code_length();
+        let ifirst = 11 - mesh_type.code_length();
         for i in (0..11).rev() {
             let value = (mesh_code % 10) as u8;
             if i >= ifirst {
@@ -102,31 +99,33 @@ impl JPMeshCode {
         }
 
         JPMeshCode {
-            mesh_code_type,
+            mesh_type,
             seed: JPMeshCodeSeed { code_2 },
         }
     }
 
-    pub fn from_inside_bounds(bounds: Rect2D<f64>, mesh_code_type: JPMeshType) -> Vec<Self> {
+    pub fn from_inside_bounds(bounds: Rect2D<f64>, mesh_type: JPMeshType) -> Vec<Self> {
         let mut mesh_codes = vec![];
         let min = bounds.min();
         let max = bounds.max();
+        let lat_len = ((max.y - min.y) / mesh_type.lat_interval()).ceil() as u64;
+        let lng_len = ((max.x - min.x) / mesh_type.lng_interval()).ceil() as u64;
 
-        let mut lat = min.y;
-        while lat < max.y {
-            let mut lng = min.x;
-            while lng < max.x {
-                let coords = Coordinate2D::new_(lng, lat);
-                mesh_codes.push(JPMeshCode::new(coords, mesh_code_type));
-                lng += mesh_code_type.lng_interval();
+        for i in 0..=lat_len {
+            for j in 0..=lng_len {
+                let coords = Coordinate2D::new_(
+                    min.x + j as f64 * mesh_type.lng_interval(),
+                    min.y + i as f64 * mesh_type.lat_interval(),
+                );
+                mesh_codes.push(JPMeshCode::new(coords, mesh_type));
             }
-            lat += mesh_code_type.lat_interval();
         }
+
         mesh_codes
     }
 
     pub fn downscale(&self) -> Vec<Self> {
-        match self.mesh_code_type {
+        match self.mesh_type {
             JPMeshType::Mesh80km => (0..8)
                 .flat_map(|i| {
                     (0..8)
@@ -165,7 +164,7 @@ impl JPMeshCode {
     }
 
     pub fn upscale(&self) -> Option<Self> {
-        match self.mesh_code_type {
+        match self.mesh_type {
             JPMeshType::Mesh10km => Some(Self::from_number(
                 self.to_number() / 100,
                 JPMeshType::Mesh80km,
@@ -199,18 +198,18 @@ impl JPMeshCode {
     }
 
     pub fn to_slice(&self) -> &[u8] {
-        match self.mesh_code_type {
-            JPMeshType::Mesh80km => &self.seed.code_2[..4],
-            JPMeshType::Mesh10km => &self.seed.code_2[..6],
-            JPMeshType::Mesh1km => &self.seed.code_2[..8],
-            JPMeshType::Mesh500m => &self.seed.code_2[..9],
-            JPMeshType::Mesh250m => &self.seed.code_2[..10],
-            JPMeshType::Mesh125m => &self.seed.code_2[..11],
+        match self.mesh_type {
+            JPMeshType::Mesh80km => &self.seed.code_2[..JPMeshType::Mesh80km.code_length()],
+            JPMeshType::Mesh10km => &self.seed.code_2[..JPMeshType::Mesh10km.code_length()],
+            JPMeshType::Mesh1km => &self.seed.code_2[..JPMeshType::Mesh1km.code_length()],
+            JPMeshType::Mesh500m => &self.seed.code_2[..JPMeshType::Mesh500m.code_length()],
+            JPMeshType::Mesh250m => &self.seed.code_2[..JPMeshType::Mesh250m.code_length()],
+            JPMeshType::Mesh125m => &self.seed.code_2[..JPMeshType::Mesh125m.code_length()],
         }
     }
 
-    pub fn into_bounds(&self) -> Rect2D<f64> {
-        self.seed.into_bounds(self.mesh_code_type)
+    pub fn bounds(&self) -> Rect2D<f64> {
+        self.seed.bounds(self.mesh_type)
     }
 }
 
@@ -240,9 +239,10 @@ impl JPMeshCodeSeed {
 
         // d / lat_interval (Mesh250m) = t % e
         let t = (d / JPMeshType::Mesh250m.lat_interval()).floor() as u8;
+        let e = d % JPMeshType::Mesh250m.lat_interval();
 
-        // d / lat_interval (Mesh125m) = tt
-        let tt = (d / JPMeshType::Mesh125m.lat_interval()).floor() as u8;
+        // e / lat_interval (Mesh125m) = tt
+        let tt = (e / JPMeshType::Mesh125m.lat_interval()).floor() as u8;
 
         // longitude - 100 degrees = u % f
         let u = (coords.x - 100.0).floor() as u8;
@@ -262,9 +262,10 @@ impl JPMeshCodeSeed {
 
         // i / lng_interval (Mesh250m) = y % j
         let y = (i / JPMeshType::Mesh250m.lng_interval()).floor() as u8;
+        let j = i % JPMeshType::Mesh250m.lng_interval();
 
-        // i / lng_interval (Mesh125m) = yy
-        let yy = (i / JPMeshType::Mesh125m.lng_interval()).floor() as u8;
+        // j / lng_interval (Mesh125m) = yy
+        let yy = (j / JPMeshType::Mesh125m.lng_interval()).floor() as u8;
 
         // (s * 2)+(x + 1)= m
         let m = (s * 2) + (x + 1);
@@ -294,40 +295,46 @@ impl JPMeshCodeSeed {
         JPMeshCodeSeed { code_2 }
     }
 
-    fn into_bounds(&self, mesh_code_type: JPMeshType) -> Rect2D<f64> {
-        let p = (self.code_2[0] * 10 + self.code_2[1]) as f64;
-        let u = (self.code_2[2] * 10 + self.code_2[3]) as f64;
-        let q = self.code_2[4] as f64;
-        let v = self.code_2[5] as f64;
-        let r = self.code_2[6] as f64;
-        let w = self.code_2[7] as f64;
-        let m = self.code_2[8] as f64;
-        let n = self.code_2[9] as f64;
-        let nn = self.code_2[10] as f64;
+    fn bounds(&self, mesh_type: JPMeshType) -> Rect2D<f64> {
+        let mut code_2 = self.code_2;
+
+        for (i, code) in code_2.iter_mut().enumerate().skip(mesh_type.code_length()) {
+            *code = if i >= mesh_type.code_length() { 1 } else { 0 };
+        }
+
+        let p = (code_2[0] * 10 + code_2[1]) as f64;
+        let u = (code_2[2] * 10 + code_2[3]) as f64;
+        let q = code_2[4] as f64;
+        let v = code_2[5] as f64;
+        let r = code_2[6] as f64;
+        let w = code_2[7] as f64;
+        let m = code_2[8] as f64;
+        let n = code_2[9] as f64;
+        let nn = code_2[10] as f64;
 
         // Calculate latitude (southwest corner)
         let lat_base = p * JPMeshType::Mesh80km.lat_interval();
         let lat_q = q * JPMeshType::Mesh10km.lat_interval();
         let lat_r = r * JPMeshType::Mesh1km.lat_interval();
-        let lat_m = ((m - 1.0) % 2.0) * JPMeshType::Mesh500m.lat_interval();
-        let lat_n = ((n - 1.0) % 2.0) * JPMeshType::Mesh250m.lat_interval();
-        let lat_nn = ((nn - 1.0) % 2.0) * JPMeshType::Mesh125m.lat_interval();
+        let lat_s = ((m - 1.0) / 2.0).floor() * JPMeshType::Mesh500m.lat_interval();
+        let lat_t = ((n - 1.0) / 2.0).floor() * JPMeshType::Mesh250m.lat_interval();
+        let lat_tt = ((nn - 1.0) / 2.0).floor() * JPMeshType::Mesh125m.lat_interval();
 
         // Calculate longitude (southwest corner)
         let lng_base = 100.0 + u;
         let lng_v = v * JPMeshType::Mesh10km.lng_interval();
         let lng_w = w * JPMeshType::Mesh1km.lng_interval();
-        let lng_m = ((m - 1.0) / 2.0) * JPMeshType::Mesh500m.lng_interval();
-        let lng_n = ((n - 1.0) / 2.0) * JPMeshType::Mesh250m.lng_interval();
-        let lng_nn = ((nn - 1.0) / 2.0) * JPMeshType::Mesh125m.lng_interval();
+        let lng_x = ((m - 1.0) % 2.0) * JPMeshType::Mesh500m.lng_interval();
+        let lng_y = ((n - 1.0) % 2.0) * JPMeshType::Mesh250m.lng_interval();
+        let lng_yy = ((nn - 1.0) % 2.0) * JPMeshType::Mesh125m.lng_interval();
 
         // Coordinates of southwest corner
-        let min_lng = lng_base + lng_v + lng_w + lng_m + lng_n + lng_nn;
-        let min_lat = lat_base + lat_q + lat_r + lat_m + lat_n + lat_nn;
+        let min_lat = lat_base + lat_q + lat_r + lat_s + lat_t + lat_tt;
+        let min_lng = lng_base + lng_v + lng_w + lng_x + lng_y + lng_yy;
 
         // Coordinates of northeast corner
-        let max_lat = min_lat + mesh_code_type.lat_interval();
-        let max_lng = min_lng + mesh_code_type.lng_interval();
+        let max_lat = min_lat + mesh_type.lat_interval();
+        let max_lng = min_lng + mesh_type.lng_interval();
 
         Rect::new(
             Coordinate2D::new_(min_lng, min_lat),
@@ -394,7 +401,7 @@ mod tests {
     #[derive(Debug)]
     struct TestCase {
         mesh_code_number: u64,
-        mesh_code_type: JPMeshType,
+        mesh_type: JPMeshType,
         left_bottom: Coordinate2D<f64>,
     }
 
@@ -411,22 +418,22 @@ mod tests {
         return vec![
             TestCase {
                 mesh_code_number: 64414277,
-                mesh_code_type: JPMeshType::Mesh1km,
+                mesh_type: JPMeshType::Mesh1km,
                 left_bottom: Coordinate2D::new_(141.3375, 43.058333),
             },
             TestCase {
                 mesh_code_number: 61401589,
-                mesh_code_type: JPMeshType::Mesh1km,
+                mesh_type: JPMeshType::Mesh1km,
                 left_bottom: Coordinate2D::new_(140.7375, 40.816667),
             },
             TestCase {
                 mesh_code_number: 59414142,
-                mesh_code_type: JPMeshType::Mesh1km,
+                mesh_type: JPMeshType::Mesh1km,
                 left_bottom: Coordinate2D::new_(141.15, 39.7),
             },
             TestCase {
                 mesh_code_number: 57403629,
-                mesh_code_type: JPMeshType::Mesh1km,
+                mesh_type: JPMeshType::Mesh1km,
                 left_bottom: Coordinate2D::new_(140.8625, 38.266667),
             },
         ];
@@ -436,7 +443,7 @@ mod tests {
     fn test_mesh_code_generation() {
         for test_case in get_test_cases() {
             let inner_coord = test_case.inner_coord();
-            let mesh_code = JPMeshCode::new(inner_coord, test_case.mesh_code_type);
+            let mesh_code = JPMeshCode::new(inner_coord, test_case.mesh_type);
 
             let actual_number = mesh_code.to_number();
             assert_eq!(actual_number, test_case.mesh_code_number);
@@ -444,12 +451,12 @@ mod tests {
     }
 
     #[test]
-    fn test_mesh_code_into_bounds() {
+    fn test_mesh_code_bounds() {
         for test_case in get_test_cases() {
             let inner_coord = test_case.inner_coord();
-            let mesh_code = JPMeshCode::new(inner_coord, test_case.mesh_code_type);
+            let mesh_code = JPMeshCode::new(inner_coord, test_case.mesh_type);
 
-            let bounds = mesh_code.into_bounds();
+            let bounds = mesh_code.bounds();
             let min_coord = bounds.min();
 
             // check if the bottom left coordinate is correct
@@ -465,7 +472,7 @@ mod tests {
     fn test_mesh_code_from_number_to_number() {
         for test_case in get_test_cases() {
             let mesh_code =
-                JPMeshCode::from_number(test_case.mesh_code_number, test_case.mesh_code_type);
+                JPMeshCode::from_number(test_case.mesh_code_number, test_case.mesh_type);
             let number = mesh_code.to_number();
             assert_eq!(number, test_case.mesh_code_number);
         }
@@ -477,11 +484,11 @@ mod tests {
         // and verify that the dataset's inner coordinates are contained within these mesh boundaries
         for test_case in get_test_cases() {
             let mesh_code =
-                JPMeshCode::from_number(test_case.mesh_code_number, test_case.mesh_code_type);
+                JPMeshCode::from_number(test_case.mesh_code_number, test_case.mesh_type);
 
             // 1km -> 10km
             let mesh_code_10km = mesh_code.upscale().unwrap();
-            let bounds_10km = mesh_code_10km.into_bounds();
+            let bounds_10km = mesh_code_10km.bounds();
 
             // verify that inner coordinates are contained within the mesh boundaries
             let inner_coord = test_case.inner_coord();
@@ -492,7 +499,7 @@ mod tests {
 
             // 1km -> 80km
             let mesh_code_80km = mesh_code_10km.upscale().unwrap();
-            let bounds_80km = mesh_code_80km.into_bounds();
+            let bounds_80km = mesh_code_80km.bounds();
 
             // check if the inner coordinate is included in the mesh
             assert_rect_includes!(bounds_80km, inner_coord);
@@ -510,12 +517,12 @@ mod tests {
             // the mesh code will be (test_case.mesh_code_number * 1000 + 111)
             let inner_coord = test_case.inner_coord();
             let mesh_codes =
-                JPMeshCode::from_number(test_case.mesh_code_number, test_case.mesh_code_type);
+                JPMeshCode::from_number(test_case.mesh_code_number, test_case.mesh_type);
 
             // 1km -> 500m
             let mesh_codes_500m = mesh_codes.downscale();
             for (i, mesh_code_500m) in mesh_codes_500m.iter().enumerate() {
-                let bounds_500m = mesh_code_500m.into_bounds();
+                let bounds_500m = mesh_code_500m.bounds();
 
                 assert_mesh_size_correct!(bounds_500m, 22.5, 15.0);
 
@@ -529,7 +536,7 @@ mod tests {
             // 1km -> 250m
             let mesh_codes_250m = mesh_codes_500m.first().unwrap().downscale();
             for (i, mesh_code_250m) in mesh_codes_250m.iter().enumerate() {
-                let bounds_250m = mesh_code_250m.into_bounds();
+                let bounds_250m = mesh_code_250m.bounds();
 
                 assert_mesh_size_correct!(bounds_250m, 11.25, 7.5);
 
@@ -543,7 +550,7 @@ mod tests {
             // 1km -> 125m
             let mesh_codes_125m = mesh_codes_250m.first().unwrap().downscale();
             for (i, mesh_code_125m) in mesh_codes_125m.iter().enumerate() {
-                let bounds_125m = mesh_code_125m.into_bounds();
+                let bounds_125m = mesh_code_125m.bounds();
 
                 assert_mesh_size_correct!(bounds_125m, 5.625, 3.75);
 
@@ -557,7 +564,7 @@ mod tests {
     }
 
     #[test]
-    fn test_mesh_code_type_order() {
+    fn test_mesh_type_order() {
         let mesh_types = vec![
             JPMeshType::Mesh80km,
             JPMeshType::Mesh10km,

@@ -47,11 +47,11 @@ graphs:
         to: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
         fromPort: default
         toPort: default
-      # - id: c064cf52-705f-443a-b2de-6795266c540e
-      #   from: 90f40a3e-61d3-48e2-a328-e7226c2ad1af
-      #   to: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
-      #   fromPort: default
-      #   toPort: default
+      - id: c064cf52-705f-443a-b2de-6795266c540e
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1af
+        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
+        fromPort: default
+        toPort: default
       - id: c81ea200-9aa1-4522-9f72-10e8b9184cb9
         from: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
         to: f5e66920-24c0-4c70-ae16-6be1ed3b906d
