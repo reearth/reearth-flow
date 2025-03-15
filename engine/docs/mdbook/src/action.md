@@ -2727,6 +2727,21 @@ Action for first port forwarding for sub-workflows.
 ### Category
 * System
 
+## JPStandardGridAccumulator
+### Type
+* processor
+### Description
+Divides the input geometry into Japanese standard (1km) mesh grid.
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Geometry
+
 ## LineOnLineOverlayer
 ### Type
 * processor

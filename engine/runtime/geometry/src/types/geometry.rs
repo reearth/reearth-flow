@@ -11,6 +11,7 @@ use super::conversion::geojson::{
     create_geo_multi_line_string_3d, create_geo_multi_polygon_2d, create_geo_multi_polygon_3d,
     create_geo_point_2d, create_geo_point_3d, create_geo_polygon_2d, create_geo_polygon_3d,
 };
+use super::coordinate::Coordinate;
 use super::coordnum::{CoordFloat, CoordNum};
 use super::line::Line;
 use super::line_string::LineString;
@@ -132,6 +133,74 @@ impl<T: CoordNum, Z: CoordNum> Geometry<T, Z> {
         match self {
             Geometry::GeometryCollection(gc) => Some(gc.clone()),
             _ => None,
+        }
+    }
+
+    pub fn get_all_coordinates(&self) -> Vec<Coordinate<T, Z>> {
+        match self {
+            Geometry::Point(p) => vec![p.0],
+            Geometry::Line(l) => vec![l.start, l.end],
+            Geometry::LineString(ls) => ls.0.clone(),
+            Geometry::Polygon(poly) => {
+                let mut coords = poly.exterior.0.clone();
+                for interior in &poly.interiors {
+                    coords.extend(interior.0.clone());
+                }
+                coords
+            }
+            Geometry::MultiPoint(mp) => mp.0.iter().map(|p| p.0).collect(),
+            Geometry::MultiLineString(mls) => {
+                let mut coords = Vec::new();
+                for ls in &mls.0 {
+                    coords.extend(ls.0.clone());
+                }
+                coords
+            }
+            Geometry::MultiPolygon(mp) => {
+                let mut coords = Vec::new();
+                for poly in &mp.0 {
+                    coords.extend(poly.exterior.0.clone());
+                    for interior in &poly.interiors {
+                        coords.extend(interior.0.clone());
+                    }
+                }
+                coords
+            }
+            Geometry::Rect(rect) => {
+                vec![
+                    Coordinate::new__(rect.min.x, rect.min.y, rect.min.z),
+                    Coordinate::new__(rect.max.x, rect.min.y, rect.min.z),
+                    Coordinate::new__(rect.min.x, rect.max.y, rect.min.z),
+                    Coordinate::new__(rect.max.x, rect.max.y, rect.min.z),
+                    Coordinate::new__(rect.min.x, rect.min.y, rect.max.z),
+                    Coordinate::new__(rect.max.x, rect.min.y, rect.max.z),
+                    Coordinate::new__(rect.min.x, rect.max.y, rect.max.z),
+                    Coordinate::new__(rect.max.x, rect.max.y, rect.max.z),
+                ]
+            }
+            Geometry::Triangle(triangle) => {
+                vec![triangle.0, triangle.1, triangle.2]
+            }
+            Geometry::Solid(solid) => {
+                let mut coords = Vec::new();
+                for polygon in &solid.top {
+                    coords.extend(polygon.0.clone());
+                }
+                for polygon in &solid.sides {
+                    coords.extend(polygon.0.clone());
+                }
+                for polygon in &solid.bottom {
+                    coords.extend(polygon.0.clone());
+                }
+                coords
+            }
+            Geometry::GeometryCollection(gc) => {
+                let mut coords = Vec::new();
+                for geom in gc {
+                    coords.extend(geom.get_all_coordinates());
+                }
+                coords
+            }
         }
     }
 }
