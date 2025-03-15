@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use reearth_flow_geometry::algorithm::bool_ops::BooleanOps;
 use reearth_flow_geometry::algorithm::bounding_rect::BoundingRect;
+use reearth_flow_geometry::algorithm::contains::Contains;
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::geometry::{Geometry, Geometry2D};
 use reearth_flow_geometry::types::line_string::LineString2D;
@@ -145,7 +146,14 @@ impl JPStandardGridAccumulator {
         );
 
         let bind_geometry = match geometry {
-            Geometry::Point(_) => geometry.clone(),
+            Geometry::Point(point) => {
+                let coords = point.0;
+                if bounds.contains(&coords) {
+                    geometry.clone()
+                } else {
+                    return None;
+                }
+            }
             Geometry::LineString(line_string) => {
                 let multi_line_string =
                     reearth_flow_geometry::types::multi_line_string::MultiLineString2D::new(vec![
@@ -162,7 +170,6 @@ impl JPStandardGridAccumulator {
                     Geometry::MultiLineString(clipped)
                 }
             }
-
             Geometry::MultiLineString(multi_line_string) => {
                 let clipped = bounds_polygon.clip(multi_line_string, false);
 
@@ -174,7 +181,6 @@ impl JPStandardGridAccumulator {
                     Geometry::MultiLineString(clipped)
                 }
             }
-
             Geometry::Polygon(polygon) => {
                 let intersection = polygon.intersection(&bounds_polygon);
 
@@ -186,7 +192,6 @@ impl JPStandardGridAccumulator {
                     Geometry::MultiPolygon(intersection)
                 }
             }
-
             Geometry::MultiPolygon(multi_polygon) => {
                 let intersection =
                     multi_polygon.intersection(&MultiPolygon2D::new(vec![bounds_polygon]));
@@ -198,7 +203,6 @@ impl JPStandardGridAccumulator {
                     Geometry::MultiPolygon(intersection)
                 }
             }
-
             _ => {
                 return None;
             }
