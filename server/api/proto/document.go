@@ -7,11 +7,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
-	"time"
 	thrift "github.com/apache/thrift/lib/go/thrift"
-	"strings"
+	"log/slog"
 	"regexp"
+	"strings"
+	"time"
 )
 
 // (needed to ensure safety because of naive import list construction.)
@@ -22,46 +22,38 @@ var _ = fmt.Printf
 var _ = slog.Log
 var _ = time.Now
 var _ = thrift.ZERO
+
 // (needed by validator.)
 var _ = strings.Contains
 var _ = regexp.MatchString
 
 // Attributes:
-//  - ID
-//  - Updates
-//  - Version
-//  - Timestamp
-// 
+//   - ID
+//   - Updates
+//   - Version
+//   - Timestamp
 type Document struct {
-	ID string `thrift:"id,1" db:"id" json:"id"`
-	Updates []int32 `thrift:"updates,2" db:"updates" json:"updates"`
-	Version int32 `thrift:"version,3" db:"version" json:"version"`
-	Timestamp string `thrift:"timestamp,4" db:"timestamp" json:"timestamp"`
+	ID        string  `thrift:"id,1" db:"id" json:"id"`
+	Updates   []int32 `thrift:"updates,2" db:"updates" json:"updates"`
+	Version   int32   `thrift:"version,3" db:"version" json:"version"`
+	Timestamp string  `thrift:"timestamp,4" db:"timestamp" json:"timestamp"`
 }
 
 func NewDocument() *Document {
 	return &Document{}
 }
 
-
-
 func (p *Document) GetID() string {
 	return p.ID
 }
-
-
 
 func (p *Document) GetUpdates() []int32 {
 	return p.Updates
 }
 
-
-
 func (p *Document) GetVersion() int32 {
 	return p.Version
 }
-
-
 
 func (p *Document) GetTimestamp() string {
 	return p.Timestamp
@@ -71,7 +63,6 @@ func (p *Document) Read(ctx context.Context, iprot thrift.TProtocol) error {
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -191,10 +182,18 @@ func (p *Document) Write(ctx context.Context, oprot thrift.TProtocol) error {
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
-		if err := p.writeField2(ctx, oprot); err != nil { return err }
-		if err := p.writeField3(ctx, oprot); err != nil { return err }
-		if err := p.writeField4(ctx, oprot); err != nil { return err }
+		if err := p.writeField1(ctx, oprot); err != nil {
+			return err
+		}
+		if err := p.writeField2(ctx, oprot); err != nil {
+			return err
+		}
+		if err := p.writeField3(ctx, oprot); err != nil {
+			return err
+		}
+		if err := p.writeField4(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -271,14 +270,24 @@ func (p *Document) Equals(other *Document) bool {
 	} else if p == nil || other == nil {
 		return false
 	}
-	if p.ID != other.ID { return false }
-	if len(p.Updates) != len(other.Updates) { return false }
+	if p.ID != other.ID {
+		return false
+	}
+	if len(p.Updates) != len(other.Updates) {
+		return false
+	}
 	for i, _tgt := range p.Updates {
 		_src1 := other.Updates[i]
-		if _tgt != _src1 { return false }
+		if _tgt != _src1 {
+			return false
+		}
 	}
-	if p.Version != other.Version { return false }
-	if p.Timestamp != other.Timestamp { return false }
+	if p.Version != other.Version {
+		return false
+	}
+	if p.Timestamp != other.Timestamp {
+		return false
+	}
 	return true
 }
 
@@ -294,7 +303,7 @@ func (p *Document) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.Document",
+		Type:  "*proto.Document",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -307,33 +316,26 @@ func (p *Document) Validate() error {
 }
 
 // Attributes:
-//  - Updates
-//  - Version
-//  - Timestamp
-// 
+//   - Updates
+//   - Version
+//   - Timestamp
 type History struct {
-	Updates []int32 `thrift:"updates,1" db:"updates" json:"updates"`
-	Version int32 `thrift:"version,2" db:"version" json:"version"`
-	Timestamp string `thrift:"timestamp,3" db:"timestamp" json:"timestamp"`
+	Updates   []int32 `thrift:"updates,1" db:"updates" json:"updates"`
+	Version   int32   `thrift:"version,2" db:"version" json:"version"`
+	Timestamp string  `thrift:"timestamp,3" db:"timestamp" json:"timestamp"`
 }
 
 func NewHistory() *History {
 	return &History{}
 }
 
-
-
 func (p *History) GetUpdates() []int32 {
 	return p.Updates
 }
 
-
-
 func (p *History) GetVersion() int32 {
 	return p.Version
 }
-
-
 
 func (p *History) GetTimestamp() string {
 	return p.Timestamp
@@ -343,7 +345,6 @@ func (p *History) Read(ctx context.Context, iprot thrift.TProtocol) error {
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -444,9 +445,15 @@ func (p *History) Write(ctx context.Context, oprot thrift.TProtocol) error {
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
-		if err := p.writeField2(ctx, oprot); err != nil { return err }
-		if err := p.writeField3(ctx, oprot); err != nil { return err }
+		if err := p.writeField1(ctx, oprot); err != nil {
+			return err
+		}
+		if err := p.writeField2(ctx, oprot); err != nil {
+			return err
+		}
+		if err := p.writeField3(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -510,13 +517,21 @@ func (p *History) Equals(other *History) bool {
 	} else if p == nil || other == nil {
 		return false
 	}
-	if len(p.Updates) != len(other.Updates) { return false }
+	if len(p.Updates) != len(other.Updates) {
+		return false
+	}
 	for i, _tgt := range p.Updates {
 		_src3 := other.Updates[i]
-		if _tgt != _src3 { return false }
+		if _tgt != _src3 {
+			return false
+		}
 	}
-	if p.Version != other.Version { return false }
-	if p.Timestamp != other.Timestamp { return false }
+	if p.Version != other.Version {
+		return false
+	}
+	if p.Timestamp != other.Timestamp {
+		return false
+	}
 	return true
 }
 
@@ -532,7 +547,7 @@ func (p *History) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.History",
+		Type:  "*proto.History",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -545,8 +560,7 @@ func (p *History) Validate() error {
 }
 
 // Attributes:
-//  - DocID
-// 
+//   - DocID
 type GetLatestRequest struct {
 	DocID string `thrift:"doc_id,1" db:"doc_id" json:"doc_id"`
 }
@@ -554,8 +568,6 @@ type GetLatestRequest struct {
 func NewGetLatestRequest() *GetLatestRequest {
 	return &GetLatestRequest{}
 }
-
-
 
 func (p *GetLatestRequest) GetDocID() string {
 	return p.DocID
@@ -565,7 +577,6 @@ func (p *GetLatestRequest) Read(ctx context.Context, iprot thrift.TProtocol) err
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -615,7 +626,9 @@ func (p *GetLatestRequest) Write(ctx context.Context, oprot thrift.TProtocol) er
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
+		if err := p.writeField1(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -645,7 +658,9 @@ func (p *GetLatestRequest) Equals(other *GetLatestRequest) bool {
 	} else if p == nil || other == nil {
 		return false
 	}
-	if p.DocID != other.DocID { return false }
+	if p.DocID != other.DocID {
+		return false
+	}
 	return true
 }
 
@@ -661,7 +676,7 @@ func (p *GetLatestRequest) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.GetLatestRequest",
+		Type:  "*proto.GetLatestRequest",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -674,8 +689,7 @@ func (p *GetLatestRequest) Validate() error {
 }
 
 // Attributes:
-//  - Document
-// 
+//   - Document
 type GetLatestResponse struct {
 	Document *Document `thrift:"document,1" db:"document" json:"document"`
 }
@@ -701,7 +715,6 @@ func (p *GetLatestResponse) Read(ctx context.Context, iprot thrift.TProtocol) er
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -750,7 +763,9 @@ func (p *GetLatestResponse) Write(ctx context.Context, oprot thrift.TProtocol) e
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
+		if err := p.writeField1(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -780,7 +795,9 @@ func (p *GetLatestResponse) Equals(other *GetLatestResponse) bool {
 	} else if p == nil || other == nil {
 		return false
 	}
-	if !p.Document.Equals(other.Document) { return false }
+	if !p.Document.Equals(other.Document) {
+		return false
+	}
 	return true
 }
 
@@ -796,7 +813,7 @@ func (p *GetLatestResponse) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.GetLatestResponse",
+		Type:  "*proto.GetLatestResponse",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -809,8 +826,7 @@ func (p *GetLatestResponse) Validate() error {
 }
 
 // Attributes:
-//  - DocID
-// 
+//   - DocID
 type GetHistoryRequest struct {
 	DocID string `thrift:"doc_id,1" db:"doc_id" json:"doc_id"`
 }
@@ -818,8 +834,6 @@ type GetHistoryRequest struct {
 func NewGetHistoryRequest() *GetHistoryRequest {
 	return &GetHistoryRequest{}
 }
-
-
 
 func (p *GetHistoryRequest) GetDocID() string {
 	return p.DocID
@@ -829,7 +843,6 @@ func (p *GetHistoryRequest) Read(ctx context.Context, iprot thrift.TProtocol) er
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -879,7 +892,9 @@ func (p *GetHistoryRequest) Write(ctx context.Context, oprot thrift.TProtocol) e
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
+		if err := p.writeField1(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -909,7 +924,9 @@ func (p *GetHistoryRequest) Equals(other *GetHistoryRequest) bool {
 	} else if p == nil || other == nil {
 		return false
 	}
-	if p.DocID != other.DocID { return false }
+	if p.DocID != other.DocID {
+		return false
+	}
 	return true
 }
 
@@ -925,7 +942,7 @@ func (p *GetHistoryRequest) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.GetHistoryRequest",
+		Type:  "*proto.GetHistoryRequest",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -938,8 +955,7 @@ func (p *GetHistoryRequest) Validate() error {
 }
 
 // Attributes:
-//  - History
-// 
+//   - History
 type GetHistoryResponse struct {
 	History []*History `thrift:"history,1" db:"history" json:"history"`
 }
@@ -947,8 +963,6 @@ type GetHistoryResponse struct {
 func NewGetHistoryResponse() *GetHistoryResponse {
 	return &GetHistoryResponse{}
 }
-
-
 
 func (p *GetHistoryResponse) GetHistory() []*History {
 	return p.History
@@ -958,7 +972,6 @@ func (p *GetHistoryResponse) Read(ctx context.Context, iprot thrift.TProtocol) e
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -1019,7 +1032,9 @@ func (p *GetHistoryResponse) Write(ctx context.Context, oprot thrift.TProtocol) 
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
+		if err := p.writeField1(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -1057,10 +1072,14 @@ func (p *GetHistoryResponse) Equals(other *GetHistoryResponse) bool {
 	} else if p == nil || other == nil {
 		return false
 	}
-	if len(p.History) != len(other.History) { return false }
+	if len(p.History) != len(other.History) {
+		return false
+	}
 	for i, _tgt := range p.History {
 		_src5 := other.History[i]
-		if !_tgt.Equals(_src5) { return false }
+		if !_tgt.Equals(_src5) {
+			return false
+		}
 	}
 	return true
 }
@@ -1077,7 +1096,7 @@ func (p *GetHistoryResponse) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.GetHistoryResponse",
+		Type:  "*proto.GetHistoryResponse",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -1090,25 +1109,20 @@ func (p *GetHistoryResponse) Validate() error {
 }
 
 // Attributes:
-//  - DocID
-//  - Version
-// 
+//   - DocID
+//   - Version
 type RollbackRequest struct {
-	DocID string `thrift:"doc_id,1" db:"doc_id" json:"doc_id"`
-	Version int32 `thrift:"version,2" db:"version" json:"version"`
+	DocID   string `thrift:"doc_id,1" db:"doc_id" json:"doc_id"`
+	Version int32  `thrift:"version,2" db:"version" json:"version"`
 }
 
 func NewRollbackRequest() *RollbackRequest {
 	return &RollbackRequest{}
 }
 
-
-
 func (p *RollbackRequest) GetDocID() string {
 	return p.DocID
 }
-
-
 
 func (p *RollbackRequest) GetVersion() int32 {
 	return p.Version
@@ -1118,7 +1132,6 @@ func (p *RollbackRequest) Read(ctx context.Context, iprot thrift.TProtocol) erro
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -1187,8 +1200,12 @@ func (p *RollbackRequest) Write(ctx context.Context, oprot thrift.TProtocol) err
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
-		if err := p.writeField2(ctx, oprot); err != nil { return err }
+		if err := p.writeField1(ctx, oprot); err != nil {
+			return err
+		}
+		if err := p.writeField2(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -1231,8 +1248,12 @@ func (p *RollbackRequest) Equals(other *RollbackRequest) bool {
 	} else if p == nil || other == nil {
 		return false
 	}
-	if p.DocID != other.DocID { return false }
-	if p.Version != other.Version { return false }
+	if p.DocID != other.DocID {
+		return false
+	}
+	if p.Version != other.Version {
+		return false
+	}
 	return true
 }
 
@@ -1248,7 +1269,7 @@ func (p *RollbackRequest) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.RollbackRequest",
+		Type:  "*proto.RollbackRequest",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -1261,8 +1282,7 @@ func (p *RollbackRequest) Validate() error {
 }
 
 // Attributes:
-//  - Document
-// 
+//   - Document
 type RollbackResponse struct {
 	Document *Document `thrift:"document,1" db:"document" json:"document"`
 }
@@ -1288,7 +1308,6 @@ func (p *RollbackResponse) Read(ctx context.Context, iprot thrift.TProtocol) err
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -1337,7 +1356,9 @@ func (p *RollbackResponse) Write(ctx context.Context, oprot thrift.TProtocol) er
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
+		if err := p.writeField1(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -1367,7 +1388,9 @@ func (p *RollbackResponse) Equals(other *RollbackResponse) bool {
 	} else if p == nil || other == nil {
 		return false
 	}
-	if !p.Document.Equals(other.Document) { return false }
+	if !p.Document.Equals(other.Document) {
+		return false
+	}
 	return true
 }
 
@@ -1383,7 +1406,7 @@ func (p *RollbackResponse) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.RollbackResponse",
+		Type:  "*proto.RollbackResponse",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -1398,20 +1421,20 @@ func (p *RollbackResponse) Validate() error {
 type DocumentService interface {
 	// Parameters:
 	//  - Request
-	// 
+	//
 	GetLatest(ctx context.Context, request *GetLatestRequest) (_r *GetLatestResponse, _err error)
 	// Parameters:
 	//  - Request
-	// 
+	//
 	GetHistory(ctx context.Context, request *GetHistoryRequest) (_r *GetHistoryResponse, _err error)
 	// Parameters:
 	//  - Request
-	// 
+	//
 	Rollback(ctx context.Context, request *RollbackRequest) (_r *RollbackResponse, _err error)
 }
 
 type DocumentServiceClient struct {
-	c thrift.TClient
+	c    thrift.TClient
 	meta thrift.ResponseMeta
 }
 
@@ -1446,8 +1469,7 @@ func (p *DocumentServiceClient) SetLastResponseMeta_(meta thrift.ResponseMeta) {
 }
 
 // Parameters:
-//  - Request
-// 
+//   - Request
 func (p *DocumentServiceClient) GetLatest(ctx context.Context, request *GetLatestRequest) (_r *GetLatestResponse, _err error) {
 	var _args6 DocumentServiceGetLatestArgs
 	_args6.Request = request
@@ -1465,8 +1487,7 @@ func (p *DocumentServiceClient) GetLatest(ctx context.Context, request *GetLates
 }
 
 // Parameters:
-//  - Request
-// 
+//   - Request
 func (p *DocumentServiceClient) GetHistory(ctx context.Context, request *GetHistoryRequest) (_r *GetHistoryResponse, _err error) {
 	var _args10 DocumentServiceGetHistoryArgs
 	_args10.Request = request
@@ -1484,8 +1505,7 @@ func (p *DocumentServiceClient) GetHistory(ctx context.Context, request *GetHist
 }
 
 // Parameters:
-//  - Request
-// 
+//   - Request
 func (p *DocumentServiceClient) Rollback(ctx context.Context, request *RollbackRequest) (_r *RollbackResponse, _err error) {
 	var _args14 DocumentServiceRollbackArgs
 	_args14.Request = request
@@ -1504,7 +1524,7 @@ func (p *DocumentServiceClient) Rollback(ctx context.Context, request *RollbackR
 
 type DocumentServiceProcessor struct {
 	processorMap map[string]thrift.TProcessorFunction
-	handler DocumentService
+	handler      DocumentService
 }
 
 func (p *DocumentServiceProcessor) AddToProcessorMap(key string, processor thrift.TProcessorFunction) {
@@ -1522,22 +1542,24 @@ func (p *DocumentServiceProcessor) ProcessorMap() map[string]thrift.TProcessorFu
 
 func NewDocumentServiceProcessor(handler DocumentService) *DocumentServiceProcessor {
 
-	self18 := &DocumentServiceProcessor{handler:handler, processorMap:make(map[string]thrift.TProcessorFunction)}
-	self18.processorMap["GetLatest"] = &documentServiceProcessorGetLatest{handler:handler}
-	self18.processorMap["GetHistory"] = &documentServiceProcessorGetHistory{handler:handler}
-	self18.processorMap["Rollback"] = &documentServiceProcessorRollback{handler:handler}
+	self18 := &DocumentServiceProcessor{handler: handler, processorMap: make(map[string]thrift.TProcessorFunction)}
+	self18.processorMap["GetLatest"] = &documentServiceProcessorGetLatest{handler: handler}
+	self18.processorMap["GetHistory"] = &documentServiceProcessorGetHistory{handler: handler}
+	self18.processorMap["Rollback"] = &documentServiceProcessorRollback{handler: handler}
 	return self18
 }
 
 func (p *DocumentServiceProcessor) Process(ctx context.Context, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
 	name, _, seqId, err2 := iprot.ReadMessageBegin(ctx)
-	if err2 != nil { return false, thrift.WrapTException(err2) }
+	if err2 != nil {
+		return false, thrift.WrapTException(err2)
+	}
 	if processor, ok := p.GetProcessorFunction(name); ok {
 		return processor.Process(ctx, seqId, iprot, oprot)
 	}
 	iprot.Skip(ctx, thrift.STRUCT)
 	iprot.ReadMessageEnd(ctx)
-	x19 := thrift.NewTApplicationException(thrift.UNKNOWN_METHOD, "Unknown function " + name)
+	x19 := thrift.NewTApplicationException(thrift.UNKNOWN_METHOD, "Unknown function "+name)
 	oprot.WriteMessageBegin(ctx, name, thrift.EXCEPTION, seqId)
 	x19.Write(ctx, oprot)
 	oprot.WriteMessageEnd(ctx)
@@ -1601,7 +1623,7 @@ func (p *documentServiceProcessorGetLatest) Process(ctx context.Context, seqId i
 				return false, thrift.WrapTException(err)
 			}
 		}
-		_exc21 := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing GetLatest: " + err2.Error())
+		_exc21 := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing GetLatest: "+err2.Error())
 		if err2 := oprot.WriteMessageBegin(ctx, "GetLatest", thrift.EXCEPTION, seqId); err2 != nil {
 			_write_err20 = thrift.WrapTException(err2)
 		}
@@ -1696,7 +1718,7 @@ func (p *documentServiceProcessorGetHistory) Process(ctx context.Context, seqId 
 				return false, thrift.WrapTException(err)
 			}
 		}
-		_exc23 := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing GetHistory: " + err2.Error())
+		_exc23 := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing GetHistory: "+err2.Error())
 		if err2 := oprot.WriteMessageBegin(ctx, "GetHistory", thrift.EXCEPTION, seqId); err2 != nil {
 			_write_err22 = thrift.WrapTException(err2)
 		}
@@ -1791,7 +1813,7 @@ func (p *documentServiceProcessorRollback) Process(ctx context.Context, seqId in
 				return false, thrift.WrapTException(err)
 			}
 		}
-		_exc25 := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing Rollback: " + err2.Error())
+		_exc25 := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing Rollback: "+err2.Error())
 		if err2 := oprot.WriteMessageBegin(ctx, "Rollback", thrift.EXCEPTION, seqId); err2 != nil {
 			_write_err24 = thrift.WrapTException(err2)
 		}
@@ -1830,12 +1852,10 @@ func (p *documentServiceProcessorRollback) Process(ctx context.Context, seqId in
 	return true, err
 }
 
-
 // HELPER FUNCTIONS AND STRUCTURES
 
 // Attributes:
-//  - Request
-// 
+//   - Request
 type DocumentServiceGetLatestArgs struct {
 	Request *GetLatestRequest `thrift:"request,1" db:"request" json:"request"`
 }
@@ -1861,7 +1881,6 @@ func (p *DocumentServiceGetLatestArgs) Read(ctx context.Context, iprot thrift.TP
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -1910,7 +1929,9 @@ func (p *DocumentServiceGetLatestArgs) Write(ctx context.Context, oprot thrift.T
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
+		if err := p.writeField1(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -1946,7 +1967,7 @@ func (p *DocumentServiceGetLatestArgs) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.DocumentServiceGetLatestArgs",
+		Type:  "*proto.DocumentServiceGetLatestArgs",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -1955,8 +1976,7 @@ func (p *DocumentServiceGetLatestArgs) LogValue() slog.Value {
 var _ slog.LogValuer = (*DocumentServiceGetLatestArgs)(nil)
 
 // Attributes:
-//  - Success
-// 
+//   - Success
 type DocumentServiceGetLatestResult struct {
 	Success *GetLatestResponse `thrift:"success,0" db:"success" json:"success,omitempty"`
 }
@@ -1982,7 +2002,6 @@ func (p *DocumentServiceGetLatestResult) Read(ctx context.Context, iprot thrift.
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -2031,7 +2050,9 @@ func (p *DocumentServiceGetLatestResult) Write(ctx context.Context, oprot thrift
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField0(ctx, oprot); err != nil { return err }
+		if err := p.writeField0(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -2069,7 +2090,7 @@ func (p *DocumentServiceGetLatestResult) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.DocumentServiceGetLatestResult",
+		Type:  "*proto.DocumentServiceGetLatestResult",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -2078,8 +2099,7 @@ func (p *DocumentServiceGetLatestResult) LogValue() slog.Value {
 var _ slog.LogValuer = (*DocumentServiceGetLatestResult)(nil)
 
 // Attributes:
-//  - Request
-// 
+//   - Request
 type DocumentServiceGetHistoryArgs struct {
 	Request *GetHistoryRequest `thrift:"request,1" db:"request" json:"request"`
 }
@@ -2105,7 +2125,6 @@ func (p *DocumentServiceGetHistoryArgs) Read(ctx context.Context, iprot thrift.T
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -2154,7 +2173,9 @@ func (p *DocumentServiceGetHistoryArgs) Write(ctx context.Context, oprot thrift.
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
+		if err := p.writeField1(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -2190,7 +2211,7 @@ func (p *DocumentServiceGetHistoryArgs) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.DocumentServiceGetHistoryArgs",
+		Type:  "*proto.DocumentServiceGetHistoryArgs",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -2199,8 +2220,7 @@ func (p *DocumentServiceGetHistoryArgs) LogValue() slog.Value {
 var _ slog.LogValuer = (*DocumentServiceGetHistoryArgs)(nil)
 
 // Attributes:
-//  - Success
-// 
+//   - Success
 type DocumentServiceGetHistoryResult struct {
 	Success *GetHistoryResponse `thrift:"success,0" db:"success" json:"success,omitempty"`
 }
@@ -2226,7 +2246,6 @@ func (p *DocumentServiceGetHistoryResult) Read(ctx context.Context, iprot thrift
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -2275,7 +2294,9 @@ func (p *DocumentServiceGetHistoryResult) Write(ctx context.Context, oprot thrif
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField0(ctx, oprot); err != nil { return err }
+		if err := p.writeField0(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -2313,7 +2334,7 @@ func (p *DocumentServiceGetHistoryResult) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.DocumentServiceGetHistoryResult",
+		Type:  "*proto.DocumentServiceGetHistoryResult",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -2322,8 +2343,7 @@ func (p *DocumentServiceGetHistoryResult) LogValue() slog.Value {
 var _ slog.LogValuer = (*DocumentServiceGetHistoryResult)(nil)
 
 // Attributes:
-//  - Request
-// 
+//   - Request
 type DocumentServiceRollbackArgs struct {
 	Request *RollbackRequest `thrift:"request,1" db:"request" json:"request"`
 }
@@ -2349,7 +2369,6 @@ func (p *DocumentServiceRollbackArgs) Read(ctx context.Context, iprot thrift.TPr
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -2398,7 +2417,9 @@ func (p *DocumentServiceRollbackArgs) Write(ctx context.Context, oprot thrift.TP
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
+		if err := p.writeField1(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -2434,7 +2455,7 @@ func (p *DocumentServiceRollbackArgs) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.DocumentServiceRollbackArgs",
+		Type:  "*proto.DocumentServiceRollbackArgs",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -2443,8 +2464,7 @@ func (p *DocumentServiceRollbackArgs) LogValue() slog.Value {
 var _ slog.LogValuer = (*DocumentServiceRollbackArgs)(nil)
 
 // Attributes:
-//  - Success
-// 
+//   - Success
 type DocumentServiceRollbackResult struct {
 	Success *RollbackResponse `thrift:"success,0" db:"success" json:"success,omitempty"`
 }
@@ -2470,7 +2490,6 @@ func (p *DocumentServiceRollbackResult) Read(ctx context.Context, iprot thrift.T
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -2519,7 +2538,9 @@ func (p *DocumentServiceRollbackResult) Write(ctx context.Context, oprot thrift.
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField0(ctx, oprot); err != nil { return err }
+		if err := p.writeField0(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -2557,12 +2578,10 @@ func (p *DocumentServiceRollbackResult) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.DocumentServiceRollbackResult",
+		Type:  "*proto.DocumentServiceRollbackResult",
 		Value: p,
 	}
 	return slog.AnyValue(v)
 }
 
 var _ slog.LogValuer = (*DocumentServiceRollbackResult)(nil)
-
-

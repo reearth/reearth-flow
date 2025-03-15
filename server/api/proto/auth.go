@@ -7,11 +7,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
-	"time"
 	thrift "github.com/apache/thrift/lib/go/thrift"
-	"strings"
+	"log/slog"
 	"regexp"
+	"strings"
+	"time"
 )
 
 // (needed to ensure safety because of naive import list construction.)
@@ -22,13 +22,13 @@ var _ = fmt.Printf
 var _ = slog.Log
 var _ = time.Now
 var _ = thrift.ZERO
+
 // (needed by validator.)
 var _ = strings.Contains
 var _ = regexp.MatchString
 
 // Attributes:
-//  - Token
-// 
+//   - Token
 type APITokenVerifyRequest struct {
 	Token string `thrift:"token,1" db:"token" json:"token"`
 }
@@ -36,8 +36,6 @@ type APITokenVerifyRequest struct {
 func NewAPITokenVerifyRequest() *APITokenVerifyRequest {
 	return &APITokenVerifyRequest{}
 }
-
-
 
 func (p *APITokenVerifyRequest) GetToken() string {
 	return p.Token
@@ -47,7 +45,6 @@ func (p *APITokenVerifyRequest) Read(ctx context.Context, iprot thrift.TProtocol
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -97,7 +94,9 @@ func (p *APITokenVerifyRequest) Write(ctx context.Context, oprot thrift.TProtoco
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
+		if err := p.writeField1(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -127,7 +126,9 @@ func (p *APITokenVerifyRequest) Equals(other *APITokenVerifyRequest) bool {
 	} else if p == nil || other == nil {
 		return false
 	}
-	if p.Token != other.Token { return false }
+	if p.Token != other.Token {
+		return false
+	}
 	return true
 }
 
@@ -143,7 +144,7 @@ func (p *APITokenVerifyRequest) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.APITokenVerifyRequest",
+		Type:  "*proto.APITokenVerifyRequest",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -156,8 +157,7 @@ func (p *APITokenVerifyRequest) Validate() error {
 }
 
 // Attributes:
-//  - Authorized
-// 
+//   - Authorized
 type APITokenVerifyResponse struct {
 	Authorized bool `thrift:"authorized,1" db:"authorized" json:"authorized"`
 }
@@ -165,8 +165,6 @@ type APITokenVerifyResponse struct {
 func NewAPITokenVerifyResponse() *APITokenVerifyResponse {
 	return &APITokenVerifyResponse{}
 }
-
-
 
 func (p *APITokenVerifyResponse) GetAuthorized() bool {
 	return p.Authorized
@@ -176,7 +174,6 @@ func (p *APITokenVerifyResponse) Read(ctx context.Context, iprot thrift.TProtoco
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -226,7 +223,9 @@ func (p *APITokenVerifyResponse) Write(ctx context.Context, oprot thrift.TProtoc
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
+		if err := p.writeField1(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -256,7 +255,9 @@ func (p *APITokenVerifyResponse) Equals(other *APITokenVerifyResponse) bool {
 	} else if p == nil || other == nil {
 		return false
 	}
-	if p.Authorized != other.Authorized { return false }
+	if p.Authorized != other.Authorized {
+		return false
+	}
 	return true
 }
 
@@ -272,7 +273,7 @@ func (p *APITokenVerifyResponse) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.APITokenVerifyResponse",
+		Type:  "*proto.APITokenVerifyResponse",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -287,12 +288,12 @@ func (p *APITokenVerifyResponse) Validate() error {
 type AuthService interface {
 	// Parameters:
 	//  - Request
-	// 
+	//
 	VerifyAPIToken(ctx context.Context, request *APITokenVerifyRequest) (_r *APITokenVerifyResponse, _err error)
 }
 
 type AuthServiceClient struct {
-	c thrift.TClient
+	c    thrift.TClient
 	meta thrift.ResponseMeta
 }
 
@@ -327,8 +328,7 @@ func (p *AuthServiceClient) SetLastResponseMeta_(meta thrift.ResponseMeta) {
 }
 
 // Parameters:
-//  - Request
-// 
+//   - Request
 func (p *AuthServiceClient) VerifyAPIToken(ctx context.Context, request *APITokenVerifyRequest) (_r *APITokenVerifyResponse, _err error) {
 	var _args0 AuthServiceVerifyAPITokenArgs
 	_args0.Request = request
@@ -347,7 +347,7 @@ func (p *AuthServiceClient) VerifyAPIToken(ctx context.Context, request *APIToke
 
 type AuthServiceProcessor struct {
 	processorMap map[string]thrift.TProcessorFunction
-	handler AuthService
+	handler      AuthService
 }
 
 func (p *AuthServiceProcessor) AddToProcessorMap(key string, processor thrift.TProcessorFunction) {
@@ -365,20 +365,22 @@ func (p *AuthServiceProcessor) ProcessorMap() map[string]thrift.TProcessorFuncti
 
 func NewAuthServiceProcessor(handler AuthService) *AuthServiceProcessor {
 
-	self4 := &AuthServiceProcessor{handler:handler, processorMap:make(map[string]thrift.TProcessorFunction)}
-	self4.processorMap["VerifyAPIToken"] = &authServiceProcessorVerifyAPIToken{handler:handler}
+	self4 := &AuthServiceProcessor{handler: handler, processorMap: make(map[string]thrift.TProcessorFunction)}
+	self4.processorMap["VerifyAPIToken"] = &authServiceProcessorVerifyAPIToken{handler: handler}
 	return self4
 }
 
 func (p *AuthServiceProcessor) Process(ctx context.Context, iprot, oprot thrift.TProtocol) (success bool, err thrift.TException) {
 	name, _, seqId, err2 := iprot.ReadMessageBegin(ctx)
-	if err2 != nil { return false, thrift.WrapTException(err2) }
+	if err2 != nil {
+		return false, thrift.WrapTException(err2)
+	}
 	if processor, ok := p.GetProcessorFunction(name); ok {
 		return processor.Process(ctx, seqId, iprot, oprot)
 	}
 	iprot.Skip(ctx, thrift.STRUCT)
 	iprot.ReadMessageEnd(ctx)
-	x5 := thrift.NewTApplicationException(thrift.UNKNOWN_METHOD, "Unknown function " + name)
+	x5 := thrift.NewTApplicationException(thrift.UNKNOWN_METHOD, "Unknown function "+name)
 	oprot.WriteMessageBegin(ctx, name, thrift.EXCEPTION, seqId)
 	x5.Write(ctx, oprot)
 	oprot.WriteMessageEnd(ctx)
@@ -442,7 +444,7 @@ func (p *authServiceProcessorVerifyAPIToken) Process(ctx context.Context, seqId 
 				return false, thrift.WrapTException(err)
 			}
 		}
-		_exc7 := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing VerifyAPIToken: " + err2.Error())
+		_exc7 := thrift.NewTApplicationException(thrift.INTERNAL_ERROR, "Internal error processing VerifyAPIToken: "+err2.Error())
 		if err2 := oprot.WriteMessageBegin(ctx, "VerifyAPIToken", thrift.EXCEPTION, seqId); err2 != nil {
 			_write_err6 = thrift.WrapTException(err2)
 		}
@@ -481,12 +483,10 @@ func (p *authServiceProcessorVerifyAPIToken) Process(ctx context.Context, seqId 
 	return true, err
 }
 
-
 // HELPER FUNCTIONS AND STRUCTURES
 
 // Attributes:
-//  - Request
-// 
+//   - Request
 type AuthServiceVerifyAPITokenArgs struct {
 	Request *APITokenVerifyRequest `thrift:"request,1" db:"request" json:"request"`
 }
@@ -512,7 +512,6 @@ func (p *AuthServiceVerifyAPITokenArgs) Read(ctx context.Context, iprot thrift.T
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -561,7 +560,9 @@ func (p *AuthServiceVerifyAPITokenArgs) Write(ctx context.Context, oprot thrift.
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField1(ctx, oprot); err != nil { return err }
+		if err := p.writeField1(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -597,7 +598,7 @@ func (p *AuthServiceVerifyAPITokenArgs) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.AuthServiceVerifyAPITokenArgs",
+		Type:  "*proto.AuthServiceVerifyAPITokenArgs",
 		Value: p,
 	}
 	return slog.AnyValue(v)
@@ -606,8 +607,7 @@ func (p *AuthServiceVerifyAPITokenArgs) LogValue() slog.Value {
 var _ slog.LogValuer = (*AuthServiceVerifyAPITokenArgs)(nil)
 
 // Attributes:
-//  - Success
-// 
+//   - Success
 type AuthServiceVerifyAPITokenResult struct {
 	Success *APITokenVerifyResponse `thrift:"success,0" db:"success" json:"success,omitempty"`
 }
@@ -633,7 +633,6 @@ func (p *AuthServiceVerifyAPITokenResult) Read(ctx context.Context, iprot thrift
 	if _, err := iprot.ReadStructBegin(ctx); err != nil {
 		return thrift.PrependError(fmt.Sprintf("%T read error: ", p), err)
 	}
-
 
 	for {
 		_, fieldTypeId, fieldId, err := iprot.ReadFieldBegin(ctx)
@@ -682,7 +681,9 @@ func (p *AuthServiceVerifyAPITokenResult) Write(ctx context.Context, oprot thrif
 		return thrift.PrependError(fmt.Sprintf("%T write struct begin error: ", p), err)
 	}
 	if p != nil {
-		if err := p.writeField0(ctx, oprot); err != nil { return err }
+		if err := p.writeField0(ctx, oprot); err != nil {
+			return err
+		}
 	}
 	if err := oprot.WriteFieldStop(ctx); err != nil {
 		return thrift.PrependError("write field stop error: ", err)
@@ -720,12 +721,10 @@ func (p *AuthServiceVerifyAPITokenResult) LogValue() slog.Value {
 		return slog.AnyValue(nil)
 	}
 	v := thrift.SlogTStructWrapper{
-		Type: "*proto.AuthServiceVerifyAPITokenResult",
+		Type:  "*proto.AuthServiceVerifyAPITokenResult",
 		Value: p,
 	}
 	return slog.AnyValue(v)
 }
 
 var _ slog.LogValuer = (*AuthServiceVerifyAPITokenResult)(nil)
-
-

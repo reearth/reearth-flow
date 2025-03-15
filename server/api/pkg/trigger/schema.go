@@ -6,6 +6,4 @@ const (
 	ExecutionSchemaPath = "trigger/execution.json"
 )
 
-var (
-	ExecutionValidator = schema.NewValidator(ExecutionSchemaPath)
-)
+var ExecutionValidator = schema.NewValidator(ExecutionSchemaPath)

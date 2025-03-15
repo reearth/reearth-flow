@@ -5,10 +5,12 @@ import (
 	"github.com/reearth/reearthx/account/accountdomain"
 )
 
-type ID = id.DeploymentID
-type ProjectID = id.ProjectID
-type WorkflowID = id.WorkflowID
-type WorkspaceID = accountdomain.WorkspaceID
+type (
+	ID          = id.DeploymentID
+	ProjectID   = id.ProjectID
+	WorkflowID  = id.WorkflowID
+	WorkspaceID = accountdomain.WorkspaceID
+)
 
 var NewID = id.NewDeploymentID
 

@@ -73,7 +73,6 @@ func New(domain, clientID, clientSecret string) *Auth0 {
 }
 
 func (a *Auth0) UpdateUser(ctx context.Context, p accountgateway.AuthenticatorUpdateUserParam) (data accountgateway.AuthenticatorUser, err error) {
-
 	payload := map[string]string{}
 	if p.Name != nil {
 		payload["name"] = *p.Name

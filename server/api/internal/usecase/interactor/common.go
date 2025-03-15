@@ -8,6 +8,8 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/document"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
@@ -40,6 +42,7 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Asset:         NewAsset(r, g, permissionChecker),
 		Job:           job,
 		Deployment:    NewDeployment(r, g, job, permissionChecker),
+		Document:      NewDocument(),
 		Log:           NewLogInteractor(g.LogRedis, permissionChecker),
 		Parameter:     NewParameter(r, permissionChecker),
 		Project:       NewProject(r, g, job, permissionChecker),
@@ -48,6 +51,28 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Trigger:       NewTrigger(r, g, job, permissionChecker),
 		User:          accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
 	}
+}
+
+func NewDocument() interfaces.Document {
+	return &documentInteractor{}
+}
+
+type documentInteractor struct{}
+
+func (d *documentInteractor) Close() error {
+	return CloseWebsocketClient()
+}
+
+func (d *documentInteractor) GetLatest(ctx context.Context, docID id.DocumentID) (*document.Document, error) {
+	return GetLatest(ctx, docID.String())
+}
+
+func (d *documentInteractor) GetHistory(ctx context.Context, docID id.DocumentID) ([]*document.History, error) {
+	return GetHistory(ctx, docID.String())
+}
+
+func (d *documentInteractor) Rollback(ctx context.Context, docID id.ProjectID, version int) (*document.Document, error) {
+	return Rollback(ctx, docID.String(), version)
 }
 
 type ProjectDeleter struct {

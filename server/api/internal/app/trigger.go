@@ -56,7 +56,6 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 		}(),
 		Variables: req.With,
 	})
-
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 	}

@@ -166,6 +166,26 @@ type DeploymentPayload struct {
 	Deployment *Deployment `json:"deployment"`
 }
 
+type Document struct {
+	ID        ID        `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+	Updates   []int     `json:"updates"`
+	Version   int       `json:"version"`
+}
+
+func (Document) IsNode()        {}
+func (this Document) GetID() ID { return this.ID }
+
+type DocumentPayload struct {
+	Document *Document `json:"document"`
+}
+
+type DocumentSnapshot struct {
+	Timestamp time.Time `json:"timestamp"`
+	Updates   []int     `json:"updates"`
+	Version   int       `json:"version"`
+}
+
 type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
 }
@@ -176,9 +196,17 @@ type GetByVersionInput struct {
 	Version     string `json:"version"`
 }
 
+type GetDocumentHistoryInput struct {
+	ProjectID ID `json:"projectId"`
+}
+
 type GetHeadInput struct {
 	WorkspaceID ID  `json:"workspaceId"`
 	ProjectID   *ID `json:"projectId,omitempty"`
+}
+
+type GetLatestDocumentInput struct {
+	ProjectID ID `json:"projectId"`
 }
 
 type Job struct {
@@ -290,16 +318,6 @@ type ProjectConnection struct {
 	TotalCount int        `json:"totalCount"`
 }
 
-type ProjectDocument struct {
-	ID        ID        `json:"id"`
-	Timestamp time.Time `json:"timestamp"`
-	Updates   []int     `json:"updates"`
-	Version   int       `json:"version"`
-}
-
-func (ProjectDocument) IsNode()        {}
-func (this ProjectDocument) GetID() ID { return this.ID }
-
 type ProjectPayload struct {
 	Project *Project `json:"project"`
 }
@@ -307,12 +325,6 @@ type ProjectPayload struct {
 type ProjectSharingInfoPayload struct {
 	ProjectID    ID      `json:"projectId"`
 	SharingToken *string `json:"sharingToken,omitempty"`
-}
-
-type ProjectSnapshot struct {
-	Timestamp time.Time `json:"timestamp"`
-	Updates   []int     `json:"updates"`
-	Version   int       `json:"version"`
 }
 
 type Query struct {
@@ -341,6 +353,11 @@ type RemoveMyAuthInput struct {
 
 type RemoveParameterInput struct {
 	ParamID ID `json:"paramId"`
+}
+
+type RollbackDocumentInput struct {
+	ProjectID ID  `json:"projectId"`
+	Version   int `json:"version"`
 }
 
 type RunProjectInput struct {

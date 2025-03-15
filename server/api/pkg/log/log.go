@@ -33,15 +33,19 @@ func NewLog(jobID JobID, nodeID *NodeID, time time.Time, level Level, message st
 func (l *Log) JobID() JobID {
 	return l.jobID
 }
+
 func (l *Log) NodeID() *NodeID {
 	return l.nodeID
 }
+
 func (l *Log) Timestamp() time.Time {
 	return l.timestamp
 }
+
 func (l *Log) Level() Level {
 	return l.level
 }
+
 func (l *Log) Message() string {
 	return l.message
 }
