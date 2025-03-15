@@ -18,7 +18,7 @@ import {
   yNodeConstructor,
   yWorkflowConstructor,
 } from "./conversions";
-import type { YNode, YNodesArray, YWorkflow } from "./types";
+import type { YNode, YNodesMap, YWorkflow } from "./types";
 
 export default ({
   yWorkflows,
@@ -134,11 +134,9 @@ export default ({
 
           const parentWorkflow = currentYWorkflow;
           const parentWorkflowNodes = parentWorkflow?.get("nodes") as
-            | YNodesArray
+            | YNodesMap
             | undefined;
-          parentWorkflowNodes?.insert(parentWorkflowNodes.length, [
-            newSubworkflowNode,
-          ]);
+          parentWorkflowNodes?.set(workflowId, newSubworkflowNode);
 
           yWorkflows.set(workflowId, newYWorkflow);
         });
@@ -331,9 +329,9 @@ export default ({
 
         // Update subworkflow node in main workflow if this is a subworkflow
         const mainWorkflow = yWorkflows.get(DEFAULT_ENTRY_GRAPH_ID);
-        const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesArray;
+        const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesMap;
 
-        for (const node of mainWorkflowNodes) {
+        mainWorkflowNodes.forEach((node) => {
           // Get the id from the YNode
           const nodeId = (node.get("id") as Y.Text).toString();
 
@@ -344,7 +342,7 @@ export default ({
             if (nodeData.get("customName")?.toString() === name) return;
             nodeData.set("customName", name);
           }
-        }
+        });
       }),
     [undoTrackerActionWrapper, yWorkflows],
   );

@@ -6,6 +6,7 @@ import type {
   YEdgesMap,
   YEdgeValue,
   YNode,
+  YNodesMap,
   YNodeValue,
   YWorkflow,
 } from "@flow/lib/yjs/types";
@@ -83,9 +84,11 @@ export const yWorkflowConstructor = (
   const yWorkflow = new Y.Map() as YWorkflow;
   const yId = toYjsText(id) ?? new Y.Text();
   const yName = toYjsText(name) ?? new Y.Text();
-  const yNodes =
-    toYjsArray<YNode>(nodes?.map((n) => yNodeConstructor(n))) ??
-    new Y.Array<YNode>();
+  const yNodes = new Y.Map() as YNodesMap;
+  nodes?.forEach((n) => {
+    const newYNode = yNodeConstructor(n);
+    yNodes.set(n.id, newYNode);
+  });
   const yEdges = new Y.Map() as YEdgesMap;
   edges?.forEach((e) => {
     const newYEdge = yEdgeConstructor(e);

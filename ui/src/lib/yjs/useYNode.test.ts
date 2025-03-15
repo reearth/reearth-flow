@@ -4,7 +4,7 @@ import * as Y from "yjs";
 import { Node } from "@flow/types";
 
 import { yWorkflowConstructor } from "./conversions";
-import type { YNodesArray, YWorkflow } from "./types";
+import type { YNodesMap, YWorkflow } from "./types";
 import useYNode from "./useYNode";
 
 afterEach(() => {
@@ -54,9 +54,9 @@ describe("useYNode", () => {
 
     handleYNodesAdd(newNodes);
 
-    const yNodes = yWorkflow.get("nodes") as YNodesArray;
+    const yNodes = yWorkflow.get("nodes") as YNodesMap;
 
-    const n = yNodes.toJSON() as Node[];
+    const n = Object.values(yNodes.toJSON()) as Node[];
 
     const expectedNodes = newNodes.map((node) => ({
       ...node,

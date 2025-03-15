@@ -1,7 +1,7 @@
 import { cleanup } from "@testing-library/react";
 import * as Y from "yjs";
 
-import type { YEdgesMap, YNodesArray, YWorkflow } from "@flow/lib/yjs/types";
+import type { YEdgesMap, YNodesMap, YWorkflow } from "@flow/lib/yjs/types";
 import type { Edge, Node } from "@flow/types";
 
 import { reassembleEdge, reassembleNode } from "./rebuildWorkflow";
@@ -69,7 +69,9 @@ describe("yWorkflowConstructor", () => {
     expect(yWorkflow.get("id")?.toJSON()).toEqual(id);
     expect(yWorkflow.get("name")?.toJSON()).toEqual(name);
     expect(
-      (yWorkflow.get("nodes") as YNodesArray).map((yn) => reassembleNode(yn)),
+      Array.from(yWorkflow.get("nodes") as YNodesMap).map(([, yn]) =>
+        reassembleNode(yn),
+      ),
     ).toEqual(nodes);
     expect(
       Array.from(yWorkflow.get("edges") as YEdgesMap).map(([, ye]) =>
@@ -89,7 +91,7 @@ describe("yWorkflowConstructor", () => {
 
     expect(yWorkflow.get("id")?.toJSON()).toEqual(id);
     expect(yWorkflow.get("name")?.toJSON()).toEqual(name);
-    expect((yWorkflow.get("nodes") as YNodesArray)?.toArray()).toEqual([]);
+    expect(Array.from(yWorkflow.get("nodes") as YNodesMap)).toEqual([]);
     expect(Array.from(yWorkflow.get("edges") as YEdgesMap)).toEqual([]);
   });
 });

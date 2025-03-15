@@ -1,18 +1,18 @@
 import type { Node } from "@flow/types";
 
 import { reassembleEdge, yEdgeConstructor } from "../conversions";
-import type { YEdge, YEdgesMap, YNodesArray, YWorkflow } from "../types";
+import type { YEdge, YEdgesMap, YNodesMap, YWorkflow } from "../types";
 
 import { getUpdatedPseudoPortsParam } from "./utils";
 
 export function updateParentYWorkflowEdges(
   currentWorkflowId: string,
-  parentYNodes: YNodesArray,
+  parentYNodes: YNodesMap,
   parentYEdges: YEdgesMap,
   prevNode: Node,
   newPseudoPort: { nodeId: string; portName: string },
 ) {
-  const parentNodes = parentYNodes.toJSON() as Node[];
+  const parentNodes = Object.values(parentYNodes.toJSON()) as Node[];
 
   // Update the subworkflow node with the updated input/output
   const subworkflowParentNode = parentNodes.find(

@@ -24,8 +24,8 @@ export default ({
   setSelectedEdgeIds: Dispatch<SetStateAction<string[]>>;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
-  const rawWorkflows = Array.from(yWorkflows.entries()).map(([_, value]) =>
-    rebuildWorkflow(value),
+  const rawWorkflows = Array.from(yWorkflows.entries()).map(([_, yw]) =>
+    rebuildWorkflow(yw),
   );
 
   const {

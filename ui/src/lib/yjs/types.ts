@@ -8,8 +8,8 @@ export type YEdgeValue = Y.Text;
 
 export type YEdge = Y.Map<YEdgeValue>;
 
-export type YNodesArray = Y.Array<YNode>;
+export type YNodesMap = Y.Map<YNode>;
 
 export type YEdgesMap = Y.Map<YEdge>;
 
-export type YWorkflow = Y.Map<Y.Text | YNodesArray | YEdgesMap>;
+export type YWorkflow = Y.Map<Y.Text | YNodesMap | YEdgesMap>;

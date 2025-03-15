@@ -1,7 +1,7 @@
 import { useReactFlow } from "@xyflow/react";
 import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useY } from "react-yjs";
-import { Map as YMap, Array as YArray } from "yjs";
+import { Map as YMap } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useProjectExport } from "@flow/hooks";
@@ -31,20 +31,21 @@ export default ({
     DEFAULT_ENTRY_GRAPH_ID,
   );
 
-  const rawWorkflows = Array.from(yWorkflows.entries()).map(([, w]) =>
-    rebuildWorkflow(w),
+  const rawWorkflows = Array.from(yWorkflows.entries()).map(([, yw]) =>
+    rebuildWorkflow(yw),
   );
 
   const currentYWorkflow = yWorkflows.get(currentWorkflowId);
 
-  const rawNodes = useY(
-    currentYWorkflow?.get("nodes") ?? new YArray(),
-  ) as Node[];
+  const rawNodes = useY(currentYWorkflow?.get("nodes") ?? new YMap()) as Record<
+    string,
+    Node
+  >;
 
   // Non-persistant state needs to be managed here
   const nodes = useMemo(
     () =>
-      rawNodes.map((node) => ({
+      Object.values(rawNodes).map((node) => ({
         ...node,
         selected:
           selectedNodeIds.includes(node.id) && !node.selected

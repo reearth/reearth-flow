@@ -1,7 +1,7 @@
 import { Node } from "@flow/types";
 
 import { yNodeConstructor } from "../conversions";
-import { YNodesArray, YWorkflow } from "../types";
+import { YNodesMap, YWorkflow } from "../types";
 
 import { removeEdgePort } from "./updateParentYWorkflowEdges";
 import { splitPorts } from "./utils";
@@ -11,10 +11,10 @@ export function removeParentYWorkflowNodePseudoPort(
   parentYWorkflow: YWorkflow,
   nodeToDelete: Node,
 ) {
-  const parentYNodes = parentYWorkflow?.get("nodes") as YNodesArray | undefined;
+  const parentYNodes = parentYWorkflow?.get("nodes") as YNodesMap | undefined;
   if (!parentYNodes) return;
 
-  const parentNodes = parentYNodes.toJSON() as Node[];
+  const parentNodes = Object.values(parentYNodes.toJSON()) as Node[];
 
   const subworkflowNode = parentNodes.find(
     (n) => n.data.subworkflowId === currentWorkflowId,
@@ -60,11 +60,8 @@ export function removeParentYWorkflowNodePseudoPort(
     }
   }
 
-  const newParentNodes = parentNodes.map((node) =>
-    node.id === subworkflowNode.id ? updatedSubworkflowNode : node,
+  parentYNodes.set(
+    subworkflowNode.id,
+    yNodeConstructor(updatedSubworkflowNode),
   );
-
-  const newParentYNodes = newParentNodes.map((node) => yNodeConstructor(node));
-  parentYNodes.delete(0, parentNodes.length);
-  parentYNodes.insert(0, newParentYNodes);
 }
