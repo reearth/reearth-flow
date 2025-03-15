@@ -219,7 +219,7 @@ pub async fn ws_handler(
             loop {
                 interval.tick().await;
                 if let Err(e) = redis_store_clone
-                    .refresh_doc_instance(&doc_id_clone, &instance_id, 5)
+                    .refresh_doc_instance(&doc_id_clone, &instance_id, 6)
                     .await
                 {
                     tracing::warn!(
