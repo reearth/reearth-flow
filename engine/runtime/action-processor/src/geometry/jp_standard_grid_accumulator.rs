@@ -1,9 +1,14 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use reearth_flow_geometry::algorithm::bool_ops::BooleanOps;
+use reearth_flow_geometry::algorithm::bounding_rect::BoundingRect;
+use reearth_flow_geometry::algorithm::contains::Contains;
+use reearth_flow_geometry::algorithm::intersects::Intersects;
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::geometry::{Geometry, Geometry2D};
+use reearth_flow_geometry::types::line_string::LineString2D;
 use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
+use reearth_flow_geometry::types::polygon::Polygon2D;
 use reearth_flow_geometry::types::rect::{Rect, Rect2D};
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
@@ -75,17 +80,35 @@ impl Processor for JPStandardGridAccumulator {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             }
             GeometryValue::FlowGeometry2D(geometry) => {
-                let meshcodes = geometry
-                    .get_all_coordinates()
-                    .iter()
-                    .map(|coord| JPMeshCode::new(*coord, JPMeshType::Mesh1km).to_number())
-                    .collect::<HashSet<u64>>();
+                let bounds = if let Some(bounds) = geometry.bounding_rect() {
+                    bounds
+                } else {
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                    return Ok(());
+                };
 
-                for meshcode in meshcodes {
-                    let geometry = if let Some(geometry) =
-                        self.bind_geometry_into_mesh_2d(geometry, meshcode)
+                let meshs_80km_inside_bounds =
+                    JPMeshCode::from_inside_bounds(bounds, JPMeshType::Mesh80km);
+                let meshs_80km = meshs_80km_inside_bounds
+                    .iter()
+                    .filter(|&mesh| JPStandardGridAccumulator::check_intersects(geometry, mesh))
+                    .collect::<Vec<_>>();
+                let meshs_10km = meshs_80km
+                    .iter()
+                    .flat_map(|mesh| mesh.downscale())
+                    .filter(|mesh| JPStandardGridAccumulator::check_intersects(geometry, mesh))
+                    .collect::<Vec<_>>();
+                let meshes_1km = meshs_10km
+                    .iter()
+                    .flat_map(|mesh| mesh.downscale())
+                    .filter(|mesh| JPStandardGridAccumulator::check_intersects(geometry, mesh))
+                    .collect::<Vec<_>>();
+
+                for meshcode in meshes_1km {
+                    let binded_geometry = if let Some(binded_geometry) =
+                        self.bind_geometry_into_mesh_2d(geometry, meshcode.to_number())
                     {
-                        geometry
+                        binded_geometry
                     } else {
                         continue;
                     };
@@ -93,11 +116,11 @@ impl Processor for JPStandardGridAccumulator {
                     let mut attributes = feature.attributes.clone();
                     attributes.insert(
                         Attribute::new("meshcode"),
-                        AttributeValue::String(meshcode.to_string()),
+                        AttributeValue::String(meshcode.to_number().to_string()),
                     );
 
                     let mut new_feature = feature.clone();
-                    new_feature.geometry.value = GeometryValue::FlowGeometry2D(geometry);
+                    new_feature.geometry.value = GeometryValue::FlowGeometry2D(binded_geometry);
                     new_feature.attributes = attributes;
 
                     fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
@@ -120,6 +143,18 @@ impl Processor for JPStandardGridAccumulator {
 }
 
 impl JPStandardGridAccumulator {
+    fn check_intersects(geometry: &Geometry2D, mesh: &JPMeshCode) -> bool {
+        let bounds = mesh.into_bounds();
+        match geometry {
+            Geometry::Point(point) => bounds.contains(&point.0),
+            Geometry::LineString(line_string) => bounds.intersects(line_string),
+            Geometry::MultiLineString(multi_line_string) => bounds.intersects(multi_line_string),
+            Geometry::Polygon(polygon) => bounds.intersects(polygon),
+            Geometry::MultiPolygon(multi_polygon) => bounds.intersects(multi_polygon),
+            _ => false,
+        }
+    }
+
     fn bind_geometry_into_mesh_2d(
         &self,
         geometry: &Geometry2D,
@@ -129,10 +164,19 @@ impl JPStandardGridAccumulator {
         let mesh = JPMeshCode::from_number(meshcode, JPMeshType::Mesh1km);
         let bounds = mesh.into_bounds();
 
-        let bounds_polygon = bounds.to_polygon();
+        let bounds_polygon = Polygon2D::new(
+            LineString2D::new(vec![
+                Coordinate2D::new_(bounds.min().x, bounds.min().y),
+                Coordinate2D::new_(bounds.max().x, bounds.min().y),
+                Coordinate2D::new_(bounds.max().x, bounds.max().y),
+                Coordinate2D::new_(bounds.min().x, bounds.max().y),
+                Coordinate2D::new_(bounds.min().x, bounds.min().y),
+            ]),
+            vec![],
+        );
 
         // ジオメトリの種類に応じて適切な処理を行う
-        let geometry = match geometry {
+        let bind_geometry = match geometry {
             // Pointの場合はそのまま返す
             Geometry::Point(_) => geometry.clone(),
 
@@ -149,7 +193,7 @@ impl JPStandardGridAccumulator {
 
                 // 結果が空の場合は元のジオメトリを返す
                 if clipped.0.is_empty() {
-                    geometry.clone()
+                    return None;
                 } else if clipped.0.len() == 1 {
                     // 結果が1つの場合はLineStringとして返す
                     Geometry::LineString(clipped.0[0].clone())
@@ -166,7 +210,7 @@ impl JPStandardGridAccumulator {
 
                 // 結果が空の場合は元のジオメトリを返す
                 if clipped.0.is_empty() {
-                    geometry.clone()
+                    return None;
                 } else if clipped.0.len() == 1 {
                     // 結果が1つの場合はLineStringとして返す
                     Geometry::LineString(clipped.0[0].clone())
@@ -179,11 +223,12 @@ impl JPStandardGridAccumulator {
             // Polygonの場合はBooleanOpsを使用して分割
             Geometry::Polygon(polygon) => {
                 // ポリゴン同士の交差を計算
-                let intersection = polygon.intersection(&bounds_polygon);
+                let intersection = MultiPolygon2D::new(vec![bounds_polygon])
+                    .intersection(&MultiPolygon2D::new(vec![polygon.clone()]));
 
                 // 結果が空の場合は元のジオメトリを返す
                 if intersection.0.is_empty() {
-                    geometry.clone()
+                    return None;
                 } else if intersection.0.len() == 1 {
                     // 結果が1つの場合はPolygonとして返す
                     Geometry::Polygon(intersection.0[0].clone())
@@ -197,11 +242,11 @@ impl JPStandardGridAccumulator {
             Geometry::MultiPolygon(multi_polygon) => {
                 // ポリゴン同士の交差を計算
                 let intersection =
-                    multi_polygon.intersection(&MultiPolygon2D::new(vec![bounds_polygon]));
+                    MultiPolygon2D::new(vec![bounds_polygon]).intersection(multi_polygon);
 
                 // 結果が空の場合は元のジオメトリを返す
                 if intersection.0.is_empty() {
-                    geometry.clone()
+                    return None;
                 } else if intersection.0.len() == 1 {
                     // 結果が1つの場合はPolygonとして返す
                     Geometry::Polygon(intersection.0[0].clone())
@@ -217,7 +262,7 @@ impl JPStandardGridAccumulator {
             }
         };
 
-        Some(geometry)
+        Some(bind_geometry)
     }
 }
 
@@ -235,6 +280,18 @@ enum JPMeshType {
     Mesh250m,
     /// 8分の1地域メッシュ
     Mesh125m,
+}
+
+impl Ord for JPMeshType {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.code_length().cmp(&other.code_length()).reverse()
+    }
+}
+
+impl PartialOrd for JPMeshType {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 impl JPMeshType {
@@ -295,17 +352,6 @@ impl JPMeshCode {
         }
     }
 
-    fn to_slice(&self) -> &[u8] {
-        match self.mesh_code_type {
-            JPMeshType::Mesh80km => &self.seed.code_2[..4],
-            JPMeshType::Mesh10km => &self.seed.code_2[..6],
-            JPMeshType::Mesh1km => &self.seed.code_2[..8],
-            JPMeshType::Mesh500m => &self.seed.code_2[..9],
-            JPMeshType::Mesh250m => &self.seed.code_2[..10],
-            JPMeshType::Mesh125m => &self.seed.code_2[..11],
-        }
-    }
-
     fn from_number(mesh_code: u64, mesh_code_type: JPMeshType) -> Self {
         let mut code_2 = [0u8; 11];
         let mut mesh_code = mesh_code;
@@ -324,12 +370,106 @@ impl JPMeshCode {
         }
     }
 
+    fn from_inside_bounds(bounds: Rect2D<f64>, mesh_code_type: JPMeshType) -> Vec<Self> {
+        let mut mesh_codes = vec![];
+        let min = bounds.min();
+        let max = bounds.max();
+
+        let mut lat = min.y;
+        while lat < max.y {
+            let mut lng = min.x;
+            while lng < max.x {
+                let coords = Coordinate2D::new_(lng, lat);
+                mesh_codes.push(JPMeshCode::new(coords, mesh_code_type));
+                lng += mesh_code_type.lng_interval();
+            }
+            lat += mesh_code_type.lat_interval();
+        }
+        mesh_codes
+    }
+
+    fn downscale(&self) -> Vec<Self> {
+        match self.mesh_code_type {
+            JPMeshType::Mesh80km => (0..8)
+                .flat_map(|i| {
+                    (0..8)
+                        .map(|j| {
+                            Self::from_number(
+                                self.to_number() * 100 + i * 10 + j,
+                                JPMeshType::Mesh10km,
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect(),
+            JPMeshType::Mesh10km => (0..10)
+                .flat_map(|i| {
+                    (0..10)
+                        .map(|j| {
+                            Self::from_number(
+                                self.to_number() * 100 + i * 10 + j,
+                                JPMeshType::Mesh1km,
+                            )
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .collect(),
+            JPMeshType::Mesh1km => (1..=4)
+                .map(|i| Self::from_number(self.to_number() * 10 + i, JPMeshType::Mesh500m))
+                .collect(),
+            JPMeshType::Mesh500m => (1..=4)
+                .map(|i| Self::from_number(self.to_number() * 10 + i, JPMeshType::Mesh250m))
+                .collect(),
+            JPMeshType::Mesh250m => (1..=4)
+                .map(|i| Self::from_number(self.to_number() * 10 + i, JPMeshType::Mesh125m))
+                .collect(),
+            _ => Vec::new(),
+        }
+    }
+
+    fn upscale(&self) -> Option<Self> {
+        match self.mesh_code_type {
+            JPMeshType::Mesh10km => Some(Self::from_number(
+                self.to_number() / 100,
+                JPMeshType::Mesh80km,
+            )),
+            JPMeshType::Mesh1km => Some(Self::from_number(
+                self.to_number() / 100,
+                JPMeshType::Mesh10km,
+            )),
+            JPMeshType::Mesh500m => Some(Self::from_number(
+                self.to_number() / 10,
+                JPMeshType::Mesh1km,
+            )),
+            JPMeshType::Mesh250m => Some(Self::from_number(
+                self.to_number() / 10,
+                JPMeshType::Mesh500m,
+            )),
+            JPMeshType::Mesh125m => Some(Self::from_number(
+                self.to_number() / 10,
+                JPMeshType::Mesh250m,
+            )),
+            _ => None,
+        }
+    }
+
     fn to_number(&self) -> u64 {
         let mut result = 0;
         for &digit in self.to_slice() {
             result = result * 10 + digit as u64;
         }
         result
+    }
+
+    fn to_slice(&self) -> &[u8] {
+        match self.mesh_code_type {
+            JPMeshType::Mesh80km => &self.seed.code_2[..4],
+            JPMeshType::Mesh10km => &self.seed.code_2[..6],
+            JPMeshType::Mesh1km => &self.seed.code_2[..8],
+            JPMeshType::Mesh500m => &self.seed.code_2[..9],
+            JPMeshType::Mesh250m => &self.seed.code_2[..10],
+            JPMeshType::Mesh125m => &self.seed.code_2[..11],
+        }
     }
 
     fn into_bounds(&self) -> Rect2D<f64> {
@@ -599,10 +739,12 @@ mod tests {
         // Create larger scale meshes by truncating digits from the dataset's mesh_code,
         // and verify that the dataset's inner coordinates are contained within these mesh boundaries
         for test_case in get_test_cases() {
+            let mesh_code =
+                JPMeshCode::from_number(test_case.mesh_code_number, test_case.mesh_code_type);
+
             // 1km -> 10km
-            let mesh_code_10km = test_case.mesh_code_number / 100;
-            let mesh_code_10km_obj = JPMeshCode::from_number(mesh_code_10km, JPMeshType::Mesh10km);
-            let bounds_10km = mesh_code_10km_obj.into_bounds();
+            let mesh_code_10km = mesh_code.upscale().unwrap();
+            let bounds_10km = mesh_code_10km.into_bounds();
 
             // verify that inner coordinates are contained within the mesh boundaries
             let inner_coord = test_case.inner_coord();
@@ -612,9 +754,8 @@ mod tests {
             assert_mesh_size_correct!(bounds_10km, 450.0, 300.0);
 
             // 1km -> 80km
-            let mesh_code_80km = test_case.mesh_code_number / 10000;
-            let mesh_code_80km_obj = JPMeshCode::from_number(mesh_code_80km, JPMeshType::Mesh80km);
-            let bounds_80km = mesh_code_80km_obj.into_bounds();
+            let mesh_code_80km = mesh_code_10km.upscale().unwrap();
+            let bounds_80km = mesh_code_80km.into_bounds();
 
             // check if the inner coordinate is included in the mesh
             assert_rect_includes!(bounds_80km, inner_coord);
@@ -631,17 +772,17 @@ mod tests {
         for test_case in get_test_cases() {
             // the mesh code will be (test_case.mesh_code_number * 1000 + 111)
             let inner_coord = test_case.inner_coord();
+            let mesh_codes =
+                JPMeshCode::from_number(test_case.mesh_code_number, test_case.mesh_code_type);
 
             // 1km -> 500m
-            for i in 1..=4 {
-                let mesh_code_500m = test_case.mesh_code_number * 10 + i;
-                let mesh_code_500m_obj =
-                    JPMeshCode::from_number(mesh_code_500m, JPMeshType::Mesh500m);
-                let bounds_500m = mesh_code_500m_obj.into_bounds();
+            let mesh_codes_500m = mesh_codes.downscale();
+            for (i, mesh_code_500m) in mesh_codes_500m.iter().enumerate() {
+                let bounds_500m = mesh_code_500m.into_bounds();
 
                 assert_mesh_size_correct!(bounds_500m, 22.5, 15.0);
 
-                if i == 1 {
+                if i == 0 {
                     assert_rect_includes!(bounds_500m, inner_coord);
                 } else {
                     assert_rect_not_includes!(bounds_500m, inner_coord);
@@ -649,15 +790,13 @@ mod tests {
             }
 
             // 1km -> 250m
-            for j in 1..=4 {
-                let mesh_code_250m = test_case.mesh_code_number * 100 + 10 + j;
-                let mesh_code_250m_obj =
-                    JPMeshCode::from_number(mesh_code_250m, JPMeshType::Mesh250m);
-                let bounds_250m = mesh_code_250m_obj.into_bounds();
+            let mesh_codes_250m = mesh_codes_500m.first().unwrap().downscale();
+            for (i, mesh_code_250m) in mesh_codes_250m.iter().enumerate() {
+                let bounds_250m = mesh_code_250m.into_bounds();
 
                 assert_mesh_size_correct!(bounds_250m, 11.25, 7.5);
 
-                if j == 1 {
+                if i == 0 {
                     assert_rect_includes!(bounds_250m, inner_coord);
                 } else {
                     assert_rect_not_includes!(bounds_250m, inner_coord);
@@ -665,20 +804,34 @@ mod tests {
             }
 
             // 1km -> 125m
-            for k in 1..=4 {
-                let mesh_code_125m = test_case.mesh_code_number * 1000 + 110 + k;
-                let mesh_code_125m_obj =
-                    JPMeshCode::from_number(mesh_code_125m, JPMeshType::Mesh125m);
-                let bounds_125m = mesh_code_125m_obj.into_bounds();
+            let mesh_codes_125m = mesh_codes_250m.first().unwrap().downscale();
+            for (i, mesh_code_125m) in mesh_codes_125m.iter().enumerate() {
+                let bounds_125m = mesh_code_125m.into_bounds();
 
                 assert_mesh_size_correct!(bounds_125m, 5.625, 3.75);
 
-                if k == 1 {
+                if i == 0 {
                     assert_rect_includes!(bounds_125m, inner_coord);
                 } else {
                     assert_rect_not_includes!(bounds_125m, inner_coord);
                 }
             }
+        }
+    }
+
+    #[test]
+    fn test_mesh_code_type_order() {
+        let mesh_types = vec![
+            JPMeshType::Mesh80km,
+            JPMeshType::Mesh10km,
+            JPMeshType::Mesh1km,
+            JPMeshType::Mesh500m,
+            JPMeshType::Mesh250m,
+            JPMeshType::Mesh125m,
+        ];
+
+        for i in 1..mesh_types.len() {
+            assert!(mesh_types[i - 1] > mesh_types[i]);
         }
     }
 }
