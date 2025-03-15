@@ -26,7 +26,7 @@ impl BroadcastPool {
             store,
             redis_store,
             groups: DashMap::new(),
-            buffer_capacity: 1024,
+            buffer_capacity: 512,
             docs_in_creation: DashSet::new(),
         }
     }
@@ -207,14 +207,42 @@ impl BroadcastPool {
 
             if remaining == 0 && group_clone.connection_count() == 0 {
                 if let Some(redis_store) = &self.redis_store {
-                    if let Err(e) = redis_store.release_doc_instance(doc_id, instance_id).await {
-                        tracing::warn!(
-                            "Failed to release document instance registration for '{}': {}",
-                            doc_id,
-                            e
-                        );
-                    } else {
-                        tracing::info!("Released document instance registration for '{}'", doc_id);
+                    let mut success = false;
+                    for retry in 0..3 {
+                        match redis_store.release_doc_instance(doc_id, instance_id).await {
+                            Ok(_) => {
+                                tracing::info!(
+                                    "Released document instance registration for '{}' (attempt {})",
+                                    doc_id,
+                                    retry + 1
+                                );
+                                success = true;
+                                break;
+                            }
+                            Err(e) => {
+                                tracing::warn!(
+                                    "Failed to release document instance registration for '{}' (attempt {}): {}",
+                                    doc_id,
+                                    retry + 1,
+                                    e
+                                );
+                                if retry < 2 {
+                                    tokio::time::sleep(tokio::time::Duration::from_millis(100))
+                                        .await;
+                                }
+                            }
+                        }
+                    }
+
+                    if !success {
+                        let key = format!("doc:instance:{}", doc_id);
+                        if let Err(e) = redis_store.expire(&key, 1).await {
+                            tracing::warn!(
+                                "Failed to set short TTL for document '{}': {}",
+                                doc_id,
+                                e
+                            );
+                        }
                     }
                 }
 
@@ -224,13 +252,7 @@ impl BroadcastPool {
                         doc_id,
                         e
                     );
-                } else {
-                    tracing::info!(
-                        "Successfully shutdown broadcast group for document '{}'",
-                        doc_id
-                    );
                 }
-
                 self.groups.remove(doc_id);
             }
         }
