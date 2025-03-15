@@ -19,10 +19,10 @@ where
     let y: f64 = point.y().to_f64().expect("Failed to convert y to f64");
 
     if point.z().is_nan() {
-        vec![y, x]
+        vec![x, y]
     } else {
         let z: f64 = point.z().to_f64().expect("Failed to convert z to f64");
-        vec![y, x, z]
+        vec![x, y, z]
     }
 }
 
@@ -174,11 +174,11 @@ pub fn is_3d_geojson_value(value: &geojson::Value) -> bool {
 }
 
 pub(crate) fn create_geo_point_2d(point_type: &geojson::PointType) -> Point2D<f64> {
-    Point2D::from((point_type[1], point_type[0]))
+    Point2D::from((point_type[0], point_type[1]))
 }
 
 pub(crate) fn create_geo_point_3d(point_type: &geojson::PointType) -> Point3D<f64> {
-    Point3D::new(point_type[1], point_type[0], point_type[2])
+    Point3D::new(point_type[0], point_type[1], point_type[2])
 }
 
 pub(crate) fn create_geo_line_string_2d(line_type: &geojson::LineStringType) -> LineString2D<f64> {
@@ -293,16 +293,16 @@ mod test {
         assert!(is_2d(&point_type));
         assert!(!is_3d(&point_type));
         let point = create_geo_point_2d(&point_type);
-        assert_eq!(point.x(), 2.0);
-        assert_eq!(point.y(), 1.0);
+        assert_eq!(point.x(), 1.0);
+        assert_eq!(point.y(), 2.0);
         assert_eq!(point.z(), NoValue);
 
         let point_type: PointType = vec![1.0, 2.0, 1.0];
         assert!(!is_2d(&point_type));
         assert!(is_3d(&point_type));
         let point = create_geo_point_3d(&point_type);
-        assert_eq!(point.x(), 2.0);
-        assert_eq!(point.y(), 1.0);
+        assert_eq!(point.x(), 1.0);
+        assert_eq!(point.y(), 2.0);
         assert_eq!(point.z(), 1.0);
     }
 }
