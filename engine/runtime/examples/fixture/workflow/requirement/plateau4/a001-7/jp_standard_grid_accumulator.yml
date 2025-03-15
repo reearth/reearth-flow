@@ -5,6 +5,7 @@ entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
   geojson_polygons: !include ./files/hokkaido_admins.geojson.txt
   geojson_lines: !include ./files/hokkaido_power_lines.geojson.txt
+  outputPath:
 graphs:
   - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
     name: entry_point
@@ -38,7 +39,7 @@ graphs:
         action: GeoJsonWriter
         with:
           output: |
-            file::join_path(env.get("currentPath"), "a001-7-jp-standard-grid-accumulator.geojson")
+            file::join_path(env.get("outputPath"), "a001-7-jp-standard-grid-accumulator.geojson")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
