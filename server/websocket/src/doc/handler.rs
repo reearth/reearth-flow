@@ -83,21 +83,12 @@ impl DocumentServiceSyncHandler for DocumentHandler {
                         let state = read_txn.encode_diff_v1(&StateVector::default());
                         drop(read_txn);
 
-                        let updates = storage.get_updates(&doc_id_clone).await?;
+                        let metadata = storage.get_latest_update_metadata(&doc_id_clone).await?;
 
-                        let latest_clock = if !updates.is_empty() {
-                            updates.last().unwrap().clock as i32
-                        } else {
-                            0
-                        };
-
-                        let timestamp = if !updates.is_empty() {
-                            let last_update = updates.last().unwrap();
-                            chrono::DateTime::from_timestamp(
-                                last_update.timestamp.unix_timestamp(),
-                                0,
-                            )
-                            .unwrap_or(Utc::now())
+                        let latest_clock = metadata.map(|(clock, _)| clock as i32).unwrap_or(0);
+                        let timestamp = if let Some((_, ts)) = metadata {
+                            chrono::DateTime::from_timestamp(ts.unix_timestamp(), 0)
+                                .unwrap_or(Utc::now())
                         } else {
                             Utc::now()
                         };

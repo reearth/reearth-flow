@@ -258,6 +258,60 @@ impl GcsStore {
         drop(txn);
         Ok(doc)
     }
+
+    pub async fn get_latest_update_metadata(
+        &self,
+        doc_id: &str,
+    ) -> Result<Option<(u32, OffsetDateTime)>, anyhow::Error> {
+        let oid = match get_oid(self, doc_id.as_bytes()).await? {
+            Some(oid) => oid,
+            None => return Ok(None),
+        };
+
+        let prefix_bytes = [V1, KEYSPACE_DOC]
+            .iter()
+            .chain(&oid.to_be_bytes())
+            .chain(&[SUB_UPDATE])
+            .copied()
+            .collect::<Vec<_>>();
+        let prefix_str = hex::encode(&prefix_bytes);
+
+        let request = ListObjectsRequest {
+            bucket: self.bucket.clone(),
+            prefix: Some(prefix_str),
+            ..Default::default()
+        };
+
+        let objects = self
+            .client
+            .list_objects(&request)
+            .await?
+            .items
+            .unwrap_or_default();
+
+        if objects.is_empty() {
+            return Ok(None);
+        }
+
+        let mut latest_clock = 0u32;
+        let mut latest_timestamp = OffsetDateTime::now_utc();
+
+        for obj in objects {
+            if let Ok(key_bytes) = hex::decode(&obj.name) {
+                if key_bytes.len() >= 12 {
+                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+                    let clock = u32::from_be_bytes(clock_bytes);
+
+                    if clock > latest_clock {
+                        latest_clock = clock;
+                        latest_timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
+                    }
+                }
+            }
+        }
+
+        Ok(Some((latest_clock, latest_timestamp)))
+    }
 }
 
 impl DocOps<'_> for GcsStore {}
