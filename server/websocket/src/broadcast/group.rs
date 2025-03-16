@@ -136,7 +136,7 @@ impl BroadcastGroup {
                     encoder.write_buf(&u.update);
                     let msg = encoder.to_vec();
                     if let Err(_e) = sink.send(msg) {
-                        tracing::warn!("broadcast channel closed");
+                        tracing::debug!("broadcast channel closed");
                     }
 
                     let update_clone = u.update.clone();
