@@ -45,6 +45,7 @@ pub struct BroadcastGroup {
     pending_updates: Arc<Mutex<Vec<Vec<u8>>>>,
     redis_subscriber_task: Option<JoinHandle<()>>,
     redis_consumer_name: Option<String>,
+    redis_group_name: Option<String>,
     shutdown_complete: AtomicBool,
 }
 
@@ -202,6 +203,7 @@ impl BroadcastGroup {
             pending_updates,
             redis_subscriber_task: None,
             redis_consumer_name: None,
+            redis_group_name: None,
             shutdown_complete: AtomicBool::new(false),
         };
 
@@ -268,67 +270,33 @@ impl BroadcastGroup {
                     }
                 });
 
-                let redis_url = redis_store
-                    .get_config()
-                    .map(|config| config.url.clone())
-                    .unwrap_or_default();
-
                 let consumer_name = format!("instance-{}", rand::random::<u32>());
+                let consumer_name_clone = consumer_name.clone();
                 let awareness_for_sub = group.awareness_ref.clone();
                 let sender_for_sub = group.sender.clone();
                 let doc_name_for_sub = doc_name.clone();
                 let redis_store_for_sub = redis_store.clone();
-                let consumer_name_for_sub = consumer_name.clone();
+
+                let group_name = format!("yjs-group-{}", consumer_name);
+                let group_name_clone = group_name.clone();
 
                 let redis_subscriber_task = tokio::spawn(async move {
-                    let group_name = "yjs-collaborators";
-
                     if let Err(e) = redis_store_for_sub
-                        .create_consumer_group(&doc_name_for_sub, group_name)
+                        .create_consumer_group(&doc_name_for_sub, &group_name_clone)
                         .await
                     {
                         tracing::error!("Failed to create Redis consumer group: {}", e);
                         return;
                     }
 
-                    if let Ok(pending_messages) = redis_store_for_sub
-                        .read_pending_messages(
-                            &doc_name_for_sub,
-                            group_name,
-                            &consumer_name_for_sub,
-                            10,
-                        )
-                        .await
-                    {
-                        for (msg_id, update) in pending_messages {
-                            let awareness = awareness_for_sub.write().await;
-                            let mut txn = awareness.doc().transact_mut();
-
-                            if let Ok(decoded) = Update::decode_v1(&update) {
-                                if let Err(e) = txn.apply_update(decoded) {
-                                    tracing::warn!("Failed to apply update from Redis: {}", e);
-                                } else {
-                                    let _ = sender_for_sub.send(update.clone());
-                                }
-                            }
-
-                            if let Err(e) = redis_store_for_sub
-                                .ack_message(&doc_name_for_sub, group_name, &msg_id)
-                                .await
-                            {
-                                tracing::warn!("Failed to acknowledge Redis message: {}", e);
-                            }
-                        }
-                    }
-
                     loop {
                         match redis_store_for_sub
                             .read_stream_messages(
                                 &doc_name_for_sub,
-                                group_name,
-                                &consumer_name_for_sub,
-                                1,
-                                1000,
+                                &group_name_clone,
+                                &consumer_name_clone,
+                                10,
+                                2000,
                             )
                             .await
                         {
@@ -349,7 +317,7 @@ impl BroadcastGroup {
                                     }
 
                                     if let Err(e) = redis_store_for_sub
-                                        .ack_message(&doc_name_for_sub, group_name, &msg_id)
+                                        .ack_message(&doc_name_for_sub, &group_name_clone, &msg_id)
                                         .await
                                     {
                                         tracing::warn!(
@@ -369,6 +337,7 @@ impl BroadcastGroup {
 
                 group.redis_subscriber_task = Some(redis_subscriber_task);
                 group.redis_consumer_name = Some(consumer_name);
+                group.redis_group_name = Some(group_name);
             }
         }
 
@@ -620,11 +589,14 @@ impl BroadcastGroup {
         self.shutdown_complete
             .store(true, std::sync::atomic::Ordering::SeqCst);
 
-        // If Redis is configured, ensure we acknowledge all our pending messages
-        if let (Some(redis_store), Some(doc_name), Some(consumer_name)) =
-            (&self.redis_store, &self.doc_name, &self.redis_consumer_name)
-        {
-            let group_name = "yjs-collaborators";
+        // 如果Redis已配置，确保我们确认所有待处理的消息
+        if let (Some(redis_store), Some(doc_name), Some(consumer_name), Some(group_name)) = (
+            &self.redis_store,
+            &self.doc_name,
+            &self.redis_consumer_name,
+            &self.redis_group_name,
+        ) {
+            // 读取并确认所有待处理的消息
             match redis_store
                 .read_pending_messages(doc_name, group_name, consumer_name, 100)
                 .await
@@ -633,12 +605,10 @@ impl BroadcastGroup {
                     for (msg_id, _) in pending {
                         let _ = redis_store.ack_message(doc_name, group_name, &msg_id).await;
                     }
-                    tracing::debug!(
-                        "Acknowledged all pending Redis stream messages during shutdown"
-                    );
+                    tracing::debug!("确认了关闭期间所有待处理的Redis流消息");
                 }
                 Err(e) => {
-                    tracing::warn!("Failed to clean up Redis stream during shutdown: {}", e);
+                    tracing::warn!("关闭期间清理Redis流失败: {}", e);
                 }
             }
         }
@@ -651,7 +621,7 @@ impl BroadcastGroup {
             let mut gcs_txn = gcs_doc.transact_mut();
 
             if let Err(e) = store.load_doc(doc_name, &mut gcs_txn).await {
-                tracing::warn!("Failed to load current state from GCS: {}", e);
+                tracing::warn!("从GCS加载当前状态失败: {}", e);
             }
 
             let gcs_state = gcs_txn.state_vector();
@@ -660,12 +630,8 @@ impl BroadcastGroup {
             let update = awareness_txn.encode_state_as_update_v1(&gcs_state);
 
             if let Err(e) = store.push_update(doc_name, &update).await {
-                tracing::error!(
-                    "Failed to store final state for document '{}': {}",
-                    doc_name,
-                    e
-                );
-                return Err(anyhow!("Failed to store final state: {}", e));
+                tracing::error!("存储文档'{}'的最终状态失败: {}", doc_name, e);
+                return Err(anyhow!("存储最终状态失败: {}", e));
             }
         }
 
@@ -686,31 +652,35 @@ impl Drop for BroadcastGroup {
         if let Some(task) = self.redis_subscriber_task.take() {
             task.abort();
 
-            // If we have Redis store and consumer information, clean up pending messages
-            if let (Some(redis_store), Some(doc_name), Some(consumer_name)) =
-                (&self.redis_store, &self.doc_name, &self.redis_consumer_name)
-            {
+            // 如果我们有Redis存储和消费者组信息，清理待处理的消息
+            if let (Some(redis_store), Some(doc_name), Some(consumer_name), Some(group_name)) = (
+                &self.redis_store,
+                &self.doc_name,
+                &self.redis_consumer_name,
+                &self.redis_group_name,
+            ) {
                 let rs = redis_store.clone();
                 let dn = doc_name.clone();
                 let cn = consumer_name.clone();
+                let gn = group_name.clone();
 
-                // We can't use await in Drop, so spawn a task to handle cleanup
+                // 我们不能在Drop中使用await，所以生成一个任务来处理清理
                 tokio::spawn(async move {
-                    // Try to clean up any pending messages by acknowledging them
-                    // This prevents them from being reprocessed by other consumers
-                    let group_name = "yjs-collaborators";
-                    match rs.read_pending_messages(&dn, group_name, &cn, 100).await {
+                    // 尝试通过确认待处理的消息来清理
+                    // 这可以防止它们被其他消费者重新处理
+                    match rs.read_pending_messages(&dn, &gn, &cn, 100).await {
                         Ok(pending) => {
                             for (msg_id, _) in pending {
-                                let _ = rs.ack_message(&dn, group_name, &msg_id).await;
+                                let _ = rs.ack_message(&dn, &gn, &msg_id).await;
                             }
-                            tracing::debug!("Cleaned up Redis stream pending messages for {}", dn);
+                            tracing::debug!("已清理{}的Redis流待处理消息", dn);
+
+                            // 可选的：如果需要，我们也可以尝试删除消费者组
+                            // 这在有多个实例时通常不需要，因为其他实例可能还在使用流
+                            // 但如果是最后一个实例，可以考虑清理
                         }
                         Err(e) => {
-                            tracing::warn!(
-                                "Failed to clean up Redis stream pending messages: {}",
-                                e
-                            );
+                            tracing::warn!("清理Redis流待处理消息失败: {}", e);
                         }
                     }
                 });
@@ -732,7 +702,7 @@ impl Drop for BroadcastGroup {
 
             if pending_count > 0 {
                 tracing::warn!(
-                    "Document '{}' may have pending updates that weren't flushed (count: {})",
+                    "文档'{}'可能有未刷新的待处理更新（数量: {}）",
                     doc_name,
                     pending_count
                 );

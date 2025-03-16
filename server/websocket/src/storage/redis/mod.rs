@@ -97,7 +97,7 @@ impl RedisStore {
                     .arg("CREATE")
                     .arg(&stream_key)
                     .arg(group_name)
-                    .arg("$")
+                    .arg("0")
                     .arg("MKSTREAM")
                     .query_async(&mut *conn)
                     .await;
@@ -464,5 +464,50 @@ impl RedisStore {
             }
         }
         Ok(())
+    }
+
+    pub async fn read_all_stream_messages(
+        &self,
+        doc_id: &str,
+        last_id: &str,
+        count: usize,
+        block_ms: usize,
+    ) -> Result<(Vec<(String, Vec<u8>)>, String), anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let result: Vec<(String, Vec<(String, Vec<(String, Vec<u8>)>)>)> =
+                    redis::cmd("XREAD")
+                        .arg("COUNT")
+                        .arg(count)
+                        .arg("BLOCK")
+                        .arg(block_ms)
+                        .arg("STREAMS")
+                        .arg(&stream_key)
+                        .arg(last_id)
+                        .query_async(&mut *conn)
+                        .await?;
+
+                let mut updates = Vec::new();
+                let mut newest_id = last_id.to_string();
+
+                if !result.is_empty() && !result[0].1.is_empty() {
+                    for (msg_id, fields) in &result[0].1 {
+                        newest_id = msg_id.clone();
+                        for (field_name, field_value) in fields {
+                            if field_name == "update" {
+                                updates.push((msg_id.clone(), field_value.clone()));
+                            }
+                        }
+                    }
+                }
+
+                Ok((updates, newest_id))
+            } else {
+                Err(anyhow::anyhow!("Failed to get Redis connection"))
+            }
+        } else {
+            Err(anyhow::anyhow!("Redis pool is not initialized"))
+        }
     }
 }
