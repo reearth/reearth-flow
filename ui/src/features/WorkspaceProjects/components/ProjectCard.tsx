@@ -89,7 +89,7 @@ const ProjectCard: React.FC<Props> = ({
       <CardContent className="relative flex h-[120px] items-center justify-center p-0">
         {isExporting && (
           <p className="loading-pulse absolute left-2 top-2 font-thin">
-            {t("Duplicating...")}
+            {t("Exporting...")}
           </p>
         )}
         {isDuplicating && (
