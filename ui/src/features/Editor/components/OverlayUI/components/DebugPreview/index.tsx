@@ -9,6 +9,7 @@ import {
 import { memo } from "react";
 
 import {
+  LoadingSkeleton,
   Select,
   SelectContent,
   SelectItem,
@@ -27,18 +28,21 @@ import useHooks from "./hooks";
 const DebugPreview: React.FC = () => {
   const t = useT();
   const {
+    selectedDataURL,
     dataURLs,
     expanded,
     minimized,
     selectedOutputData,
     fileType,
+    debugJob,
+    isLoadingData,
     handleExpand,
     handleMinimize,
     handleTabChange,
     handleSelectedDataChange,
   } = useHooks();
 
-  return dataURLs ? (
+  return debugJob && dataURLs ? (
     <Tabs
       className={`pointer-events-auto w-[45vw] min-w-[700px] rounded border bg-secondary transition-all ${minimized ? "h-[36px]" : expanded ? "h-[85vh] w-[90vw]" : "h-[500px]"}`}
       defaultValue="data-viewer">
@@ -46,6 +50,7 @@ const DebugPreview: React.FC = () => {
         <div className="absolute left-1 top-1">
           <Select
             defaultValue={dataURLs[0].key}
+            value={selectedDataURL}
             onValueChange={handleSelectedDataChange}>
             <SelectTrigger className="h-[26px] max-w-[200px] border-none">
               <SelectValue placeholder={t("Select Data to Preview")} />
@@ -96,14 +101,22 @@ const DebugPreview: React.FC = () => {
           )}
         </div>
       </div>
-      <TabsContent
-        className="h-[calc(100%-35px)] overflow-scroll"
-        value="data-viewer">
-        <DataTable fileContent={selectedOutputData} fileType={fileType} />
-      </TabsContent>
-      <TabsContent className="h-[calc(100%-35px)] px-1 pb-2" value="3d-viewer">
-        <GeoMap fileContent={selectedOutputData} fileType={fileType} />
-      </TabsContent>
+      {isLoadingData ? (
+        <LoadingSkeleton />
+      ) : (
+        <>
+          <TabsContent
+            className="h-[calc(100%-35px)] overflow-scroll"
+            value="data-viewer">
+            <DataTable fileContent={selectedOutputData} fileType={fileType} />
+          </TabsContent>
+          <TabsContent
+            className="h-[calc(100%-35px)] px-1 pb-2"
+            value="3d-viewer">
+            <GeoMap fileContent={selectedOutputData} fileType={fileType} />
+          </TabsContent>
+        </>
+      )}
     </Tabs>
   ) : null;
 };

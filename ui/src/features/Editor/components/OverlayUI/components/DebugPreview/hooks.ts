@@ -1,4 +1,4 @@
-import { MouseEvent, useEffect, useMemo, useState } from "react";
+import { MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import useFetchAndReadData from "@flow/hooks/useFetchAndReadData";
 import { useJob } from "@flow/lib/gql/job";
@@ -8,6 +8,8 @@ import { useCurrentProject } from "@flow/stores";
 
 export default () => {
   const t = useT();
+
+  const prevIntermediateDataUrl = useRef<string | undefined>(undefined);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
 
@@ -26,9 +28,7 @@ export default () => {
   const outputURLs = useGetJob(debugJob?.jobId ?? "").job?.outputURLs;
 
   const intermediateDataURL = useMemo(
-    () =>
-      debugJob?.selectedIntermediateData?.url ??
-      "/7571eea0-eabf-4ff7-b978-e5965d882409.jsonl", // TODO: Remove this default value
+    () => debugJob?.selectedIntermediateData?.url,
     [debugJob],
   );
 
@@ -51,19 +51,31 @@ export default () => {
     return urls.length ? urls : undefined;
   }, [outputURLs, intermediateDataURL, t]);
 
-  const [selectedDataURL, setSelectedDataURL] = useState<string | null>(null);
+  const [selectedDataURL, setSelectedDataURL] = useState<string | undefined>(
+    undefined,
+  );
 
   useEffect(() => {
-    if (dataURLs?.length && !selectedDataURL) {
-      setSelectedDataURL(dataURLs[0].key);
+    if (intermediateDataURL !== prevIntermediateDataUrl.current) {
+      setSelectedDataURL(intermediateDataURL);
+      prevIntermediateDataUrl.current = intermediateDataURL;
+    } else if (
+      (dataURLs?.length && !selectedDataURL) ||
+      (selectedDataURL && !dataURLs?.find((u) => u.key === selectedDataURL))
+    ) {
+      setSelectedDataURL(dataURLs?.[0].key);
     }
-  }, [dataURLs, selectedDataURL]);
+  }, [dataURLs, selectedDataURL, intermediateDataURL]);
 
   const handleSelectedDataChange = (url: string) => {
     setSelectedDataURL(url);
   };
 
-  const { fileContent: selectedOutputData, fileType } = useFetchAndReadData({
+  const {
+    fileContent: selectedOutputData,
+    fileType,
+    isLoading: isLoadingData,
+  } = useFetchAndReadData({
     dataUrl: selectedDataURL ?? "",
   });
 
@@ -83,11 +95,14 @@ export default () => {
   };
 
   return {
+    selectedDataURL,
     dataURLs,
     expanded,
     minimized,
     selectedOutputData,
     fileType,
+    debugJob,
+    isLoadingData,
     handleExpand,
     handleMinimize,
     handleTabChange,
