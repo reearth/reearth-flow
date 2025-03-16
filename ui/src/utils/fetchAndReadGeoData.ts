@@ -14,7 +14,6 @@ export async function fetchAndReadData(fileUrl: string): Promise<{
 
   try {
     const response = await fetch(fileUrl);
-    console.log(" MY RESPONSE", response);
 
     if (!response.ok) {
       throw new Error(
