@@ -73,7 +73,7 @@ impl BroadcastPool {
             return Ok(group_clone);
         }
         if !self.docs_in_creation.insert(doc_id.to_string()) {
-            for delay_ms in [1, 2, 5, 10, 20, 50] {
+            for delay_ms in [1, 2, 5, 10, 20, 50, 100] {
                 tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
 
                 if let Some(group) = self.groups.get(doc_id) {
