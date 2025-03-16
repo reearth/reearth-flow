@@ -7,9 +7,8 @@ use anyhow::Result;
 use dashmap::DashMap;
 use dashmap::DashSet;
 use std::sync::Arc;
-use uuid;
 use yrs::sync::Awareness;
-use yrs::{Doc, Transact};
+use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
@@ -104,23 +103,8 @@ impl BroadcastPool {
             doc_id: doc_id.to_string(),
         };
 
-        let doc_lock_key = format!("lock:doc:{}", doc_id);
-        let lock_value = uuid::Uuid::new_v4().to_string();
-
-        if let Some(redis_store) = &self.redis_store {
-            let lock_acquired = redis_store
-                .acquire_lock(&doc_lock_key, &lock_value, 4)
-                .await?;
-
-            if !lock_acquired {
-                tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-                let _lock_acquired = redis_store
-                    .acquire_lock(&doc_lock_key, &lock_value, 3)
-                    .await?;
-            }
-        }
-
         let group: Arc<BroadcastGroup>;
+        let mut need_initial_save = false;
 
         let awareness: AwarenessRef = {
             let doc = Doc::new();
@@ -128,7 +112,18 @@ impl BroadcastPool {
 
             {
                 let mut txn = doc.transact_mut();
-                let _load_result = self.store.load_doc(doc_id, &mut txn).await;
+                match self.store.load_doc(doc_id, &mut txn).await {
+                    Ok(loaded) => {
+                        if !loaded {
+                            need_initial_save = true;
+                        }
+                    }
+
+                    Err(e) => {
+                        tracing::error!("Failed to load document '{}': {}", doc_id, e);
+                        return Err(e);
+                    }
+                }
             }
 
             if let Some(redis_store) = &self.redis_store {
@@ -146,6 +141,29 @@ impl BroadcastPool {
 
             Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
         };
+
+        if need_initial_save {
+            let doc_id_clone = doc_id.to_string();
+            let store_clone = self.store.clone();
+            let awareness_clone = awareness.clone();
+
+            tokio::spawn(async move {
+                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+
+                let awareness_guard = awareness_clone.read().await;
+                let doc = awareness_guard.doc();
+                let txn = doc.transact();
+                let update = txn.encode_state_as_update_v1(&StateVector::default());
+
+                if let Err(e) = store_clone.push_update(&doc_id_clone, &update).await {
+                    tracing::error!(
+                        "Failed to save initial awareness state for document '{}' after 2s: {}",
+                        doc_id_clone,
+                        e
+                    );
+                }
+            });
+        }
 
         group = Arc::new(
             BroadcastGroup::with_storage(
