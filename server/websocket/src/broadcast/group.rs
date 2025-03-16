@@ -447,7 +447,6 @@ impl BroadcastGroup {
             let awareness = self.awareness().clone();
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
-            let redis_ttl = self.redis_ttl;
             let gcs_store = self.storage.clone();
 
             tokio::spawn(async move {
@@ -474,7 +473,6 @@ impl BroadcastGroup {
                         msg,
                         redis_store.as_ref(),
                         doc_name.as_ref(),
-                        redis_ttl,
                         gcs_store.as_ref(),
                     )
                     .await
@@ -506,14 +504,11 @@ impl BroadcastGroup {
         msg: Message,
         redis_store: Option<&Arc<RedisStore>>,
         doc_name: Option<&String>,
-        redis_ttl: Option<usize>,
         _gcs_store: Option<&Arc<GcsStore>>,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
-                if let (Some(redis_store), Some(doc_name), Some(ttl)) =
-                    (redis_store, doc_name, redis_ttl)
-                {
+                if let (Some(redis_store), Some(doc_name)) = (redis_store, doc_name) {
                     let rs = redis_store.clone();
                     let dn = doc_name.clone();
                     let update_bytes = match &msg {
@@ -523,11 +518,8 @@ impl BroadcastGroup {
                     };
 
                     if !update_bytes.is_empty() {
-                        let ttl_clone = ttl as u64;
                         tokio::spawn(async move {
-                            if let Err(e) =
-                                rs.add_publish_update(&dn, &update_bytes, ttl_clone).await
-                            {
+                            if let Err(e) = rs.publish_update(&dn, &update_bytes).await {
                                 tracing::error!("Redis update failed: {}", e);
                             }
                         });
@@ -598,12 +590,6 @@ impl BroadcastGroup {
                     e
                 );
                 return Err(anyhow!("Failed to store final state: {}", e));
-            }
-
-            if let Some(redis_store) = &self.redis_store {
-                if let Err(e) = redis_store.clear_pending_updates(doc_name).await {
-                    tracing::warn!("Failed to clear pending updates from Redis: {}", e);
-                }
             }
         }
 

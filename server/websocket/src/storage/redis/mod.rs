@@ -58,75 +58,6 @@ impl RedisStore {
         Ok(Arc::new(pool))
     }
 
-    pub async fn has_pending_updates(&self, doc_id: &str) -> Result<bool, anyhow::Error> {
-        if let Some(pool) = &self.pool {
-            let redis_key = format!("pending_updates:{}", doc_id);
-
-            if let Ok(mut conn) = pool.get().await {
-                match conn.llen::<_, i64>(&redis_key).await {
-                    Ok(len) => return Ok(len > 0),
-                    Err(e) => return Err(anyhow::anyhow!("Redis error: {}", e)),
-                }
-            }
-        }
-        Ok(false)
-    }
-
-    pub async fn get_pending_updates(&self, doc_id: &str) -> Result<Vec<Vec<u8>>, anyhow::Error> {
-        let mut updates = Vec::new();
-
-        if let Some(pool) = &self.pool {
-            let redis_key = format!("pending_updates:{}", doc_id);
-            let mut retry_count = 0;
-            const MAX_RETRIES: usize = 1;
-
-            while retry_count < MAX_RETRIES {
-                if let Ok(mut conn) = pool.get().await {
-                    if let Ok(result) = conn.lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1).await {
-                        if !result.is_empty() {
-                            updates = result;
-                            break;
-                        }
-                    }
-                }
-
-                retry_count += 1;
-                if retry_count < MAX_RETRIES {
-                    tokio::time::sleep(Duration::from_millis(5)).await;
-                }
-            }
-        }
-
-        Ok(updates)
-    }
-
-    pub async fn clear_pending_updates(&self, doc_id: &str) -> Result<(), anyhow::Error> {
-        if let Some(pool) = &self.pool {
-            let redis_key = format!("pending_updates:{}", doc_id);
-            if let Ok(mut conn) = pool.get().await {
-                let _: () = redis::cmd("DEL")
-                    .arg(&redis_key)
-                    .query_async(&mut *conn)
-                    .await?;
-            }
-        }
-        Ok(())
-    }
-
-    pub async fn add_update(&self, doc_id: &str, update: &[u8]) -> Result<(), anyhow::Error> {
-        if let Some(pool) = &self.pool {
-            let redis_key = format!("pending_updates:{}", doc_id);
-            if let Ok(mut conn) = pool.get().await {
-                let _: () = conn.rpush(&redis_key, update).await?;
-
-                if let Some(config) = &self.config {
-                    let _: () = conn.expire(&redis_key, config.ttl as i64).await?;
-                }
-            }
-        }
-        Ok(())
-    }
-
     pub async fn publish_update(&self, doc_id: &str, update: &[u8]) -> Result<(), anyhow::Error> {
         if let Some(pool) = &self.pool {
             let channel = format!("yjs:updates:{}", doc_id);
@@ -289,38 +220,6 @@ impl RedisStore {
                     .await?;
             }
         }
-        Ok(())
-    }
-
-    pub async fn add_publish_update(
-        &self,
-        doc_id: &str,
-        update: &[u8],
-        ttl_seconds: u64,
-    ) -> Result<(), anyhow::Error> {
-        if self.pool.is_none() {
-            return Ok(());
-        }
-        let pool = self.pool.as_ref().unwrap();
-
-        let redis_key = format!("pending_updates:{}", doc_id);
-        let channel = format!("yjs:updates:{}", doc_id);
-
-        let mut conn = pool.get().await?;
-
-        let mut pipe = redis::pipe();
-        pipe.atomic()
-            .cmd("LPUSH")
-            .arg(&redis_key)
-            .arg(update)
-            .cmd("EXPIRE")
-            .arg(&redis_key)
-            .arg(ttl_seconds as i64)
-            .cmd("PUBLISH")
-            .arg(&channel)
-            .arg(update);
-
-        let _: () = pipe.query_async(&mut *conn).await?;
         Ok(())
     }
 
