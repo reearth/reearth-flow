@@ -336,7 +336,8 @@ impl BroadcastGroup {
                 let redis_store_clone = redis_store.clone();
 
                 tokio::spawn(async move {
-                    let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300));
+                    let mut interval =
+                        tokio::time::interval(tokio::time::Duration::from_secs(3600));
                     loop {
                         interval.tick().await;
                         if let Err(e) = redis_store_clone.optimize_stream(&doc_name_clone).await {
