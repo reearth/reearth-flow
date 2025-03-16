@@ -7,24 +7,23 @@ services:
       - "8000:8000"
     # env_file:
     #   - .env.docker
-    depends_on:
-      - redis
-      - fake-gcs
+    # depends_on:
+    #   - redis
+    #   - fake-gcs
     # extra_hosts:
     #   - "host.docker.internal:host-gateway"
 
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
 
-  fake-gcs:
-    image: fsouza/fake-gcs-server
-    ports:
-      - "4443:4443"
-    command: ["-scheme", "http"]
-    volumes:
-      - gcs-data:/data
-
-volumes:
-  gcs-data:
+  # fake-gcs:
+  #   image: fsouza/fake-gcs-server
+  #   ports:
+  #     - "4443:4443"
+  #   command: ["-scheme", "http"]
+  #   volumes:
+  #     - gcs-data:/data
+# volumes:
+#   gcs-data:

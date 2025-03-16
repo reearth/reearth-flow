@@ -64,7 +64,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
       <ContextMenu>
         <ContextMenuTrigger>
           <div
-            className="z-0 h-full rounded-sm bg-secondary/50 p-2"
+            className="z-0 h-full rounded-b-sm bg-secondary/50 p-2"
             ref={(element) => {
               if (element) {
                 element.style.setProperty(

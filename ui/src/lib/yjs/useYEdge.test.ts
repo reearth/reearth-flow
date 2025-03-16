@@ -5,7 +5,7 @@ import * as Y from "yjs";
 import type { Edge } from "@flow/types";
 
 import { yEdgeConstructor, yWorkflowConstructor } from "./conversions";
-import { YEdgesArray, YWorkflow } from "./types";
+import { YEdgesMap, YWorkflow } from "./types";
 import useYEdge from "./useYEdge";
 
 afterEach(() => {
@@ -15,10 +15,10 @@ afterEach(() => {
 describe("useYEdge", () => {
   test("should add edges correctly", () => {
     const yDoc = new Y.Doc();
-    const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+    const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
     const yWorkflow = yWorkflowConstructor("workflow-1", "My Workflow");
-
-    yWorkflows.push([yWorkflow]);
+    yWorkflows.set("workflow-1", yWorkflow);
+    const yEdges = yWorkflow.get("edges") as YEdgesMap;
 
     const { result } = renderHook(() =>
       useYEdge({
@@ -49,17 +49,16 @@ describe("useYEdge", () => {
 
     handleYEdgesAdd(newEdges);
 
-    const yEdges = yWorkflow.get("edges") as YEdgesArray;
+    const expectedArray = Array.from(Object.values(yEdges.toJSON())) as Edge[];
 
-    const e = yEdges.toJSON() as Edge[];
-
-    expect(e).toEqual(newEdges);
+    expect(expectedArray).toEqual(newEdges);
   });
 
   test("should update edges correctly", () => {
     const yDoc = new Y.Doc();
-    const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+    const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
     const yWorkflow = yWorkflowConstructor("workflow-1", "My Workflow");
+    yWorkflows.set("workflow-1", yWorkflow);
 
     const initialEdges: Edge[] = [
       {
@@ -77,12 +76,15 @@ describe("useYEdge", () => {
         targetHandle: "input2",
       },
     ];
-    (yWorkflow.get("edges") as YEdgesArray)?.insert(
-      0,
-      initialEdges.map((ie) => yEdgeConstructor(ie)),
-    );
 
-    yWorkflows.push([yWorkflow]);
+    const initialYEdges = new Y.Map() as YEdgesMap;
+
+    initialEdges.forEach((ie) => {
+      const yEdge = yEdgeConstructor(ie);
+      initialYEdges.set(ie.id, yEdge);
+    });
+
+    yWorkflow.set("edges", initialYEdges);
 
     const { result } = renderHook(() =>
       useYEdge({
@@ -122,10 +124,10 @@ describe("useYEdge", () => {
       },
     ]);
 
-    const yEdges = yWorkflow.get("edges") as YEdgesArray;
+    const yEdges = yWorkflow.get("edges") as YEdgesMap;
 
-    const e = yEdges.toJSON() as Edge[];
+    const expectedArray = Array.from(Object.values(yEdges.toJSON())) as Edge[];
 
-    expect(e).toEqual(newEdges);
+    expect(expectedArray).toEqual(newEdges);
   });
 });
