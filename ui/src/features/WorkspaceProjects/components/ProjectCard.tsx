@@ -26,8 +26,7 @@ import {
   TooltipTrigger,
 } from "@flow/components";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
-import { useProjectDuplication, useProjectExport } from "@flow/hooks";
-import { useDocument } from "@flow/lib/gql/document";
+import { useProjectExport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
 import { openLinkInNewTab } from "@flow/utils";
@@ -79,11 +78,8 @@ const ProjectCard: React.FC<Props> = ({
     e.stopPropagation();
     openLinkInNewTab(sharedUrl);
   };
-  const { useGetLatestProjectSnapshot } = useDocument();
-  const { projectDocument } = useGetLatestProjectSnapshot(project?.id ?? "");
-  const { isExporting, handleProjectExport } = useProjectExport(project);
 
-  const { isDuplicating, handleProjectDuplication } = useProjectDuplication();
+  const { isExporting, handleProjectExport } = useProjectExport(project);
 
   return (
     <Card

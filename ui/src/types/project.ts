@@ -13,7 +13,6 @@ export type Project = {
   workflows?: Workflow[];
   sharedToken?: string;
   deployment?: Deployment;
-  version: number;
 };
 
 export type ProjectToImport = {

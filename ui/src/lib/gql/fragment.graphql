@@ -1,7 +1,6 @@
 fragment Project on Project {
   id
   name
-  version
   description
   createdAt
   updatedAt

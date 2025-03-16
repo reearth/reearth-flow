@@ -23,7 +23,6 @@ import { formatDate } from "@flow/utils";
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
   name: project.name,
-  version: project.version,
   createdAt: formatDate(project.createdAt),
   updatedAt: formatDate(project.updatedAt),
   description: project.description,
