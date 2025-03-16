@@ -3,7 +3,7 @@ import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
 type Props = {
-  fileContent: string | null;
+  fileContent: any | null;
   fileType: SupportedDataTypes | null;
 };
 

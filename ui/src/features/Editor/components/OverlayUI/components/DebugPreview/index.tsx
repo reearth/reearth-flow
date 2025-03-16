@@ -27,10 +27,10 @@ import useHooks from "./hooks";
 const DebugPreview: React.FC = () => {
   const t = useT();
   const {
-    outputURLs,
+    dataURLs,
     expanded,
     minimized,
-    fileContent,
+    selectedOutputData,
     fileType,
     handleExpand,
     handleMinimize,
@@ -38,23 +38,22 @@ const DebugPreview: React.FC = () => {
     handleSelectedDataChange,
   } = useHooks();
 
-  return outputURLs ? (
+  return dataURLs ? (
     <Tabs
       className={`pointer-events-auto w-[45vw] min-w-[700px] rounded border bg-secondary transition-all ${minimized ? "h-[36px]" : expanded ? "h-[85vh] w-[90vw]" : "h-[500px]"}`}
       defaultValue="data-viewer">
       <div className="relative flex items-center p-1">
         <div className="absolute left-1 top-1">
           <Select
-            defaultValue={outputURLs[0]}
+            defaultValue={dataURLs[0].key}
             onValueChange={handleSelectedDataChange}>
             <SelectTrigger className="h-[26px] max-w-[200px] border-none">
               <SelectValue placeholder={t("Select Data to Preview")} />
             </SelectTrigger>
             <SelectContent>
-              {outputURLs.map((url) => (
-                <SelectItem key={url} value={url}>
-                  {url.split("/").pop()}
-                  {t(" (Output data)")}
+              {dataURLs.map(({ key, name }) => (
+                <SelectItem key={key} value={key}>
+                  {name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -100,10 +99,10 @@ const DebugPreview: React.FC = () => {
       <TabsContent
         className="h-[calc(100%-35px)] overflow-scroll"
         value="data-viewer">
-        <DataTable fileContent={fileContent} fileType={fileType} />
+        <DataTable fileContent={selectedOutputData} fileType={fileType} />
       </TabsContent>
       <TabsContent className="h-[calc(100%-35px)] px-1 pb-2" value="3d-viewer">
-        <GeoMap fileContent={fileContent} fileType={fileType} />
+        <GeoMap fileContent={selectedOutputData} fileType={fileType} />
       </TabsContent>
     </Tabs>
   ) : null;
