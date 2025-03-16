@@ -277,40 +277,93 @@ impl BroadcastGroup {
                 let awareness_for_sub = group.awareness_ref.clone();
                 let sender_for_sub = group.sender.clone();
                 let doc_name_for_sub = doc_name.clone();
+                let redis_store_for_sub = redis_store.clone();
+                let consumer_name_for_sub = consumer_name.clone();
 
                 let redis_subscriber_task = tokio::spawn(async move {
-                    if let Ok(client) = redis::Client::open(redis_url) {
-                        if let Ok(mut pubsub) = client.get_async_pubsub().await {
-                            let channel = format!("yjs:updates:{}", doc_name_for_sub);
-                            if (pubsub.subscribe(&channel).await).is_ok() {
-                                let mut stream = pubsub.on_message();
-                                while let Some(msg) = stream.next().await {
-                                    if let Ok(payload) = msg.get_payload::<Vec<u8>>() {
-                                        let awareness = awareness_for_sub.write().await;
-                                        let mut txn = awareness.doc().transact_mut();
+                    let group_name = "yjs-collaborators";
 
-                                        if let Ok(decoded) = Update::decode_v1(&payload) {
-                                            if let Err(e) = txn.apply_update(decoded) {
-                                                tracing::warn!(
-                                                    "Failed to apply update from Redis: {}",
-                                                    e
-                                                );
-                                            } else {
-                                                let _ = sender_for_sub.send(payload);
-                                            }
+                    if let Err(e) = redis_store_for_sub
+                        .create_consumer_group(&doc_name_for_sub, group_name)
+                        .await
+                    {
+                        tracing::error!("Failed to create Redis consumer group: {}", e);
+                        return;
+                    }
+
+                    if let Ok(pending_messages) = redis_store_for_sub
+                        .read_pending_messages(
+                            &doc_name_for_sub,
+                            group_name,
+                            &consumer_name_for_sub,
+                            10,
+                        )
+                        .await
+                    {
+                        for (msg_id, update) in pending_messages {
+                            let awareness = awareness_for_sub.write().await;
+                            let mut txn = awareness.doc().transact_mut();
+
+                            if let Ok(decoded) = Update::decode_v1(&update) {
+                                if let Err(e) = txn.apply_update(decoded) {
+                                    tracing::warn!("Failed to apply update from Redis: {}", e);
+                                } else {
+                                    let _ = sender_for_sub.send(update.clone());
+                                }
+                            }
+
+                            if let Err(e) = redis_store_for_sub
+                                .ack_message(&doc_name_for_sub, group_name, &msg_id)
+                                .await
+                            {
+                                tracing::warn!("Failed to acknowledge Redis message: {}", e);
+                            }
+                        }
+                    }
+
+                    loop {
+                        match redis_store_for_sub
+                            .read_stream_messages(
+                                &doc_name_for_sub,
+                                group_name,
+                                &consumer_name_for_sub,
+                                1,
+                                1000,
+                            )
+                            .await
+                        {
+                            Ok(messages) => {
+                                for (msg_id, update) in messages {
+                                    let awareness = awareness_for_sub.write().await;
+                                    let mut txn = awareness.doc().transact_mut();
+
+                                    if let Ok(decoded) = Update::decode_v1(&update) {
+                                        if let Err(e) = txn.apply_update(decoded) {
+                                            tracing::warn!(
+                                                "Failed to apply update from Redis: {}",
+                                                e
+                                            );
+                                        } else {
+                                            let _ = sender_for_sub.send(update.clone());
                                         }
-                                    } else {
-                                        tracing::error!("Failed to get payload from Redis message");
+                                    }
+
+                                    if let Err(e) = redis_store_for_sub
+                                        .ack_message(&doc_name_for_sub, group_name, &msg_id)
+                                        .await
+                                    {
+                                        tracing::warn!(
+                                            "Failed to acknowledge Redis message: {}",
+                                            e
+                                        );
                                     }
                                 }
-                            } else {
-                                tracing::error!("Failed to subscribe to Redis channel");
                             }
-                        } else {
-                            tracing::error!("Failed to get async connection to Redis");
+                            Err(e) => {
+                                tracing::error!("Error reading from Redis Stream: {}", e);
+                                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
+                            }
                         }
-                    } else {
-                        tracing::error!("Failed to open Redis client");
                     }
                 });
 
@@ -520,7 +573,7 @@ impl BroadcastGroup {
                     if !update_bytes.is_empty() {
                         tokio::spawn(async move {
                             if let Err(e) = rs.publish_update(&dn, &update_bytes).await {
-                                tracing::error!("Redis update failed: {}", e);
+                                tracing::error!("Redis Stream update failed: {}", e);
                             }
                         });
                     }
@@ -567,6 +620,29 @@ impl BroadcastGroup {
         self.shutdown_complete
             .store(true, std::sync::atomic::Ordering::SeqCst);
 
+        // If Redis is configured, ensure we acknowledge all our pending messages
+        if let (Some(redis_store), Some(doc_name), Some(consumer_name)) =
+            (&self.redis_store, &self.doc_name, &self.redis_consumer_name)
+        {
+            let group_name = "yjs-collaborators";
+            match redis_store
+                .read_pending_messages(doc_name, group_name, consumer_name, 100)
+                .await
+            {
+                Ok(pending) => {
+                    for (msg_id, _) in pending {
+                        let _ = redis_store.ack_message(doc_name, group_name, &msg_id).await;
+                    }
+                    tracing::debug!(
+                        "Acknowledged all pending Redis stream messages during shutdown"
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to clean up Redis stream during shutdown: {}", e);
+                }
+            }
+        }
+
         if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
             let awareness = self.awareness_ref.read().await;
             let awareness_doc = awareness.doc();
@@ -609,6 +685,36 @@ impl Drop for BroadcastGroup {
 
         if let Some(task) = self.redis_subscriber_task.take() {
             task.abort();
+
+            // If we have Redis store and consumer information, clean up pending messages
+            if let (Some(redis_store), Some(doc_name), Some(consumer_name)) =
+                (&self.redis_store, &self.doc_name, &self.redis_consumer_name)
+            {
+                let rs = redis_store.clone();
+                let dn = doc_name.clone();
+                let cn = consumer_name.clone();
+
+                // We can't use await in Drop, so spawn a task to handle cleanup
+                tokio::spawn(async move {
+                    // Try to clean up any pending messages by acknowledging them
+                    // This prevents them from being reprocessed by other consumers
+                    let group_name = "yjs-collaborators";
+                    match rs.read_pending_messages(&dn, group_name, &cn, 100).await {
+                        Ok(pending) => {
+                            for (msg_id, _) in pending {
+                                let _ = rs.ack_message(&dn, group_name, &msg_id).await;
+                            }
+                            tracing::debug!("Cleaned up Redis stream pending messages for {}", dn);
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "Failed to clean up Redis stream pending messages: {}",
+                                e
+                            );
+                        }
+                    }
+                });
+            }
         }
 
         self.awareness_updater.abort();

@@ -60,16 +60,178 @@ impl RedisStore {
 
     pub async fn publish_update(&self, doc_id: &str, update: &[u8]) -> Result<(), anyhow::Error> {
         if let Some(pool) = &self.pool {
-            let channel = format!("yjs:updates:{}", doc_id);
+            let stream_key = format!("yjs:stream:{}", doc_id);
             if let Ok(mut conn) = pool.get().await {
-                let _: () = redis::cmd("PUBLISH")
-                    .arg(&channel)
-                    .arg(update)
+                let fields = &[("update", update)];
+                let _: String = redis::cmd("XADD")
+                    .arg(&stream_key)
+                    .arg("MAXLEN")
+                    .arg("~")
+                    .arg(1000)
+                    .arg("*")
+                    .arg(fields)
                     .query_async(&mut *conn)
                     .await?;
+
+                if let Some(config) = &self.config {
+                    let _: () = redis::cmd("EXPIRE")
+                        .arg(&stream_key)
+                        .arg(config.ttl)
+                        .query_async(&mut *conn)
+                        .await?;
+                }
             }
         }
         Ok(())
+    }
+
+    pub async fn create_consumer_group(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+    ) -> Result<(), anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let result: Result<String, redis::RedisError> = redis::cmd("XGROUP")
+                    .arg("CREATE")
+                    .arg(&stream_key)
+                    .arg(group_name)
+                    .arg("$")
+                    .arg("MKSTREAM")
+                    .query_async(&mut *conn)
+                    .await;
+
+                match result {
+                    Ok(_) => Ok(()),
+                    Err(e) => {
+                        if e.to_string().contains("BUSYGROUP") {
+                            Ok(())
+                        } else {
+                            Err(e.into())
+                        }
+                    }
+                }
+            } else {
+                Err(anyhow::anyhow!("Failed to get Redis connection"))
+            }
+        } else {
+            Err(anyhow::anyhow!("Redis pool is not initialized"))
+        }
+    }
+
+    pub async fn read_stream_messages(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+        consumer_name: &str,
+        count: usize,
+        block_ms: usize,
+    ) -> Result<Vec<(String, Vec<u8>)>, anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let result: Vec<(String, Vec<(String, Vec<(String, Vec<u8>)>)>)> =
+                    redis::cmd("XREADGROUP")
+                        .arg("GROUP")
+                        .arg(group_name)
+                        .arg(consumer_name)
+                        .arg("COUNT")
+                        .arg(count)
+                        .arg("BLOCK")
+                        .arg(block_ms)
+                        .arg("STREAMS")
+                        .arg(&stream_key)
+                        .arg(">")
+                        .query_async(&mut *conn)
+                        .await?;
+
+                let mut updates = Vec::new();
+                if !result.is_empty() && !result[0].1.is_empty() {
+                    for (msg_id, fields) in &result[0].1 {
+                        for (field_name, field_value) in fields {
+                            if field_name == "update" {
+                                updates.push((msg_id.clone(), field_value.clone()));
+                            }
+                        }
+                    }
+                }
+
+                Ok(updates)
+            } else {
+                Err(anyhow::anyhow!("Failed to get Redis connection"))
+            }
+        } else {
+            Err(anyhow::anyhow!("Redis pool is not initialized"))
+        }
+    }
+
+    pub async fn ack_message(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+        message_id: &str,
+    ) -> Result<(), anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let _: () = redis::cmd("XACK")
+                    .arg(&stream_key)
+                    .arg(group_name)
+                    .arg(message_id)
+                    .query_async(&mut *conn)
+                    .await?;
+
+                Ok(())
+            } else {
+                Err(anyhow::anyhow!("Failed to get Redis connection"))
+            }
+        } else {
+            Err(anyhow::anyhow!("Redis pool is not initialized"))
+        }
+    }
+
+    pub async fn read_pending_messages(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+        consumer_name: &str,
+        count: usize,
+    ) -> Result<Vec<(String, Vec<u8>)>, anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let result: Vec<(String, Vec<(String, Vec<(String, Vec<u8>)>)>)> =
+                    redis::cmd("XREADGROUP")
+                        .arg("GROUP")
+                        .arg(group_name)
+                        .arg(consumer_name)
+                        .arg("COUNT")
+                        .arg(count)
+                        .arg("STREAMS")
+                        .arg(&stream_key)
+                        .arg("0")
+                        .query_async(&mut *conn)
+                        .await?;
+
+                let mut updates = Vec::new();
+                if !result.is_empty() && !result[0].1.is_empty() {
+                    for (msg_id, fields) in &result[0].1 {
+                        for (field_name, field_value) in fields {
+                            if field_name == "update" {
+                                updates.push((msg_id.clone(), field_value.clone()));
+                            }
+                        }
+                    }
+                }
+
+                Ok(updates)
+            } else {
+                Err(anyhow::anyhow!("Failed to get Redis connection"))
+            }
+        } else {
+            Err(anyhow::anyhow!("Redis pool is not initialized"))
+        }
     }
 
     pub async fn acquire_lock(
