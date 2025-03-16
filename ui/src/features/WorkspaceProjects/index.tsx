@@ -189,7 +189,7 @@ const ProjectsManager: React.FC = () => {
         isOpen={openProjectAddDialog}
         onOpenChange={(o) => setOpenProjectAddDialog(o)}
       />
-      {duplicateProject && (
+      {duplicateProject && !isDuplicating && (
         <ProjectDuplicateDialog
           duplicateProject={duplicateProject}
           setDuplicateProject={setDuplicateProject}
