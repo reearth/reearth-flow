@@ -16,7 +16,7 @@ import {
   type Project,
   type Trigger,
   type ProjectSnapshot,
-  ProjectDocument,
+  type ProjectDocument,
 } from "@flow/types";
 import { formatDate } from "@flow/utils";
 

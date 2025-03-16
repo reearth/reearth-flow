@@ -35,16 +35,18 @@ import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 type Props = {
   project: Project;
-  currentProject: Project | undefined;
+  isDuplicating: boolean;
   setEditProject: (project: Project | undefined) => void;
+  setDuplicateProject: (project: Project | undefined) => void;
   setProjectToBeDeleted: (project: string | undefined) => void;
   onProjectSelect: (p: Project) => void;
 };
 
 const ProjectCard: React.FC<Props> = ({
   project,
-  currentProject,
+  isDuplicating,
   setEditProject,
+  setDuplicateProject,
   setProjectToBeDeleted,
   onProjectSelect,
 }) => {
@@ -53,8 +55,8 @@ const ProjectCard: React.FC<Props> = ({
   const { id, name, description, updatedAt, sharedToken } = project;
 
   const [persistOverlay, setPersistOverlay] = useState(false);
-
   // TODO: isShared and sharedURL are temp values.
+
   const BASE_URL = window.location.origin;
 
   const sharedUrl = sharedToken
@@ -85,7 +87,7 @@ const ProjectCard: React.FC<Props> = ({
 
   return (
     <Card
-      className={`group relative cursor-pointer border-transparent bg-secondary ${currentProject && currentProject.id === id ? "border-border" : "hover:border-border"}`}
+      className="group relative cursor-pointer border-transparent bg-secondary hover:border-border"
       key={id}
       onClick={() => onProjectSelect(project)}>
       <CardContent className="relative flex h-[120px] items-center justify-center p-0">
@@ -97,6 +99,11 @@ const ProjectCard: React.FC<Props> = ({
         {isDuplicating && (
           <p className="loading-pulse absolute left-2 top-2 font-thin">
             {t("Exporting...")}
+          </p>
+        )}
+        {isDuplicating && (
+          <p className="loading-pulse absolute left-2 top-2 font-thin">
+            {t("Duplicating...")}
           </p>
         )}
         <FlowLogo
@@ -146,9 +153,7 @@ const ProjectCard: React.FC<Props> = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="justify-between gap-2"
-                onClick={() =>
-                  handleProjectDuplication(project, projectDocument)
-                }>
+                onClick={() => setDuplicateProject({ ...project })}>
                 {t("Duplicate Project")}
                 <Copy weight="light" />
               </DropdownMenuItem>

@@ -79,3 +79,16 @@ fragment Log on Log {
   logLevel
   message
 }
+
+fragment ProjectDocument on ProjectDocument {
+  id
+  timestamp
+  updates
+  version
+}
+
+fragment ProjectSnapshot on ProjectSnapshot {
+  timestamp
+  updates
+  version
+}

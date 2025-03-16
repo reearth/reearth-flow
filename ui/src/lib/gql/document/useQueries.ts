@@ -1,7 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-// import { isDefined } from "@flow/utils";
-
 import type { ProjectSnapshot } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
