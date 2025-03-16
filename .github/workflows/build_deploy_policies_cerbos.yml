@@ -1,4 +1,4 @@
-name: update-policies-and-deploy-cerbos
+name: build-deploy-policies-cerbos
 on:
   workflow_call:
   workflow_dispatch:
