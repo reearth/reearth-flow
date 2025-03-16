@@ -175,14 +175,15 @@ pub async fn ws_handler(
                     instance_id
                 );
 
-                return ws.on_upgrade(move |mut socket| async move {
-                    let close_frame = axum::extract::ws::CloseFrame {
-                        code: 1012,
-                        reason: format!("instance:{}", instance_id).into(),
-                    };
+                // return ws.on_upgrade(move |mut socket| async move {
+                //     let close_frame = axum::extract::ws::CloseFrame {
+                //         code: 1012,
+                //         reason: format!("instance:{}", instance_id).into(),
+                //     };
 
-                    let _ = socket.send(Message::Close(Some(close_frame))).await;
-                });
+                //     let _ = socket.send(Message::Close(Some(close_frame))).await;
+                // });
+                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
             }
             Ok(_) => {
                 if let Err(e) = redis_store

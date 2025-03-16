@@ -589,14 +589,12 @@ impl BroadcastGroup {
         self.shutdown_complete
             .store(true, std::sync::atomic::Ordering::SeqCst);
 
-        // 如果Redis已配置，确保我们确认所有待处理的消息
         if let (Some(redis_store), Some(doc_name), Some(consumer_name), Some(group_name)) = (
             &self.redis_store,
             &self.doc_name,
             &self.redis_consumer_name,
             &self.redis_group_name,
         ) {
-            // 读取并确认所有待处理的消息
             match redis_store
                 .read_pending_messages(doc_name, group_name, consumer_name, 100)
                 .await
@@ -605,10 +603,9 @@ impl BroadcastGroup {
                     for (msg_id, _) in pending {
                         let _ = redis_store.ack_message(doc_name, group_name, &msg_id).await;
                     }
-                    tracing::debug!("确认了关闭期间所有待处理的Redis流消息");
                 }
                 Err(e) => {
-                    tracing::warn!("关闭期间清理Redis流失败: {}", e);
+                    tracing::warn!("{}", e);
                 }
             }
         }
@@ -621,7 +618,7 @@ impl BroadcastGroup {
             let mut gcs_txn = gcs_doc.transact_mut();
 
             if let Err(e) = store.load_doc(doc_name, &mut gcs_txn).await {
-                tracing::warn!("从GCS加载当前状态失败: {}", e);
+                tracing::warn!(" {}", e);
             }
 
             let gcs_state = gcs_txn.state_vector();
@@ -630,8 +627,7 @@ impl BroadcastGroup {
             let update = awareness_txn.encode_state_as_update_v1(&gcs_state);
 
             if let Err(e) = store.push_update(doc_name, &update).await {
-                tracing::error!("存储文档'{}'的最终状态失败: {}", doc_name, e);
-                return Err(anyhow!("存储最终状态失败: {}", e));
+                tracing::warn!(" {}", e);
             }
         }
 
@@ -652,7 +648,6 @@ impl Drop for BroadcastGroup {
         if let Some(task) = self.redis_subscriber_task.take() {
             task.abort();
 
-            // 如果我们有Redis存储和消费者组信息，清理待处理的消息
             if let (Some(redis_store), Some(doc_name), Some(consumer_name), Some(group_name)) = (
                 &self.redis_store,
                 &self.doc_name,
@@ -664,23 +659,15 @@ impl Drop for BroadcastGroup {
                 let cn = consumer_name.clone();
                 let gn = group_name.clone();
 
-                // 我们不能在Drop中使用await，所以生成一个任务来处理清理
                 tokio::spawn(async move {
-                    // 尝试通过确认待处理的消息来清理
-                    // 这可以防止它们被其他消费者重新处理
                     match rs.read_pending_messages(&dn, &gn, &cn, 100).await {
                         Ok(pending) => {
                             for (msg_id, _) in pending {
                                 let _ = rs.ack_message(&dn, &gn, &msg_id).await;
                             }
-                            tracing::debug!("已清理{}的Redis流待处理消息", dn);
-
-                            // 可选的：如果需要，我们也可以尝试删除消费者组
-                            // 这在有多个实例时通常不需要，因为其他实例可能还在使用流
-                            // 但如果是最后一个实例，可以考虑清理
                         }
                         Err(e) => {
-                            tracing::warn!("清理Redis流待处理消息失败: {}", e);
+                            tracing::warn!("{}", e);
                         }
                     }
                 });
@@ -701,11 +688,7 @@ impl Drop for BroadcastGroup {
             };
 
             if pending_count > 0 {
-                tracing::warn!(
-                    "文档'{}'可能有未刷新的待处理更新（数量: {}）",
-                    doc_name,
-                    pending_count
-                );
+                tracing::warn!("maybe {} has unsaved updates", doc_name);
             }
         }
     }
