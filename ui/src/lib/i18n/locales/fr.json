@@ -217,6 +217,7 @@
   "Delete Project": "Supprimer le projet",
   "Public Read Access": "Accès en lecture publique",
   "This action cannot be undone. This will permanently delete your project and remove your data from our servers.": "Cette action est irréversible. Cela supprimera définitivement votre projet et supprimera vos données de nos serveurs.",
+  "This will duplicate {{project}} and all its contents. Are you sure you want to continue?": "",
   "Edit Project": "Modifier le projet",
   "Your project name goes here...": "Le nom de votre projet ici...",
   "Project Description": "Description du projet",

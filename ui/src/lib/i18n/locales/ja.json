@@ -217,6 +217,7 @@
   "Delete Project": "プロジェクトを削除",
   "Public Read Access": "公開リードアクセス",
   "This action cannot be undone. This will permanently delete your project and remove your data from our servers.": "この操作は元に戻すことができません。この操作はプロジェクトを完全に削除し、データをサーバーから削除します。",
+  "This will duplicate {{project}} and all its contents. Are you sure you want to continue?": "{{project}}とそのすべての内容を複製します。続行しますか？",
   "Edit Project": "プロジェクトを編集",
   "Your project name goes here...": "プロジェクト名を入力してください",
   "Project Description": "プロジェクトの説明",

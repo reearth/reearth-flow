@@ -217,6 +217,7 @@
   "Delete Project": "删除项目",
   "Public Read Access": "公共读取访问",
   "This action cannot be undone. This will permanently delete your project and remove your data from our servers.": "此操作无法撤销。这将永久删除您的项目并从我们的服务器中删除您的数据。",
+  "This will duplicate {{project}} and all its contents. Are you sure you want to continue?": "",
   "Edit Project": "编辑项目",
   "Your project name goes here...": "您的项目名称在这里...",
   "Project Description": "项目描述",

@@ -30,6 +30,7 @@ import {
   ProjectDeletionDialog,
   ProjectEditDialog,
 } from "./components";
+import { ProjectDuplicateDialog } from "./components/ProjectDuplicateDialog";
 import useHooks from "./hooks";
 
 const ProjectsManager: React.FC = () => {
@@ -40,6 +41,7 @@ const ProjectsManager: React.FC = () => {
     ref,
     projectToBeDeleted,
     editProject,
+    duplicateProject,
     showError,
     buttonDisabled,
     openProjectAddDialog,
@@ -51,6 +53,7 @@ const ProjectsManager: React.FC = () => {
     orderDirections,
     setOpenProjectAddDialog,
     setEditProject,
+    setDuplicateProject,
     setProjectToBeDeleted,
     setCurrentPage,
     handleProjectDuplication,
@@ -76,6 +79,7 @@ const ProjectsManager: React.FC = () => {
     handleWorkflowImportClick,
     handleWorkflowFileUpload,
   } = useWorkflowImport();
+
   return (
     <div className="flex h-full flex-1 flex-col">
       <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pb-2 pt-4">
@@ -146,9 +150,9 @@ const ProjectsManager: React.FC = () => {
                 project={p}
                 isDuplicating={isDuplicating}
                 setEditProject={setEditProject}
+                setDuplicateProject={setDuplicateProject}
                 setProjectToBeDeleted={setProjectToBeDeleted}
                 onProjectSelect={handleProjectSelect}
-                onProjectDuplication={handleProjectDuplication}
               />
             ))}
           </div>
@@ -185,6 +189,13 @@ const ProjectsManager: React.FC = () => {
         isOpen={openProjectAddDialog}
         onOpenChange={(o) => setOpenProjectAddDialog(o)}
       />
+      {duplicateProject && (
+        <ProjectDuplicateDialog
+          duplicateProject={duplicateProject}
+          setDuplicateProject={setDuplicateProject}
+          onProjectDuplication={handleProjectDuplication}
+        />
+      )}
       <ProjectEditDialog
         editProject={editProject}
         showError={showError}

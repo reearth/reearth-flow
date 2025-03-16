@@ -14,7 +14,6 @@ export default () => {
   const { isDuplicating, handleProjectDuplication } = useProjectDuplicate();
 
   const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
-
   const { deleteProject, updateProject } = useProject();
 
   const {
@@ -29,12 +28,17 @@ export default () => {
   } = useProjectPagination({ workspace });
 
   const [openProjectAddDialog, setOpenProjectAddDialog] = useState(false);
+  const [openProjectDuplicateDialog, setOpenProjectDuplicateDialog] =
+    useState(false);
   const [showError, setShowError] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
   const [projectToBeDeleted, setProjectToBeDeleted] = useState<
     string | undefined
   >(undefined);
   const [editProject, setEditProject] = useState<undefined | Project>(
+    undefined,
+  );
+  const [duplicateProject, setDuplicateProject] = useState<undefined | Project>(
     undefined,
   );
 
@@ -80,9 +84,11 @@ export default () => {
     ref,
     projectToBeDeleted,
     editProject,
+    duplicateProject,
     showError,
     buttonDisabled,
     openProjectAddDialog,
+    openProjectDuplicateDialog,
     currentPage,
     totalPages,
     isFetching,
@@ -90,7 +96,9 @@ export default () => {
     currentOrder,
     orderDirections,
     setOpenProjectAddDialog,
+    setOpenProjectDuplicateDialog,
     setEditProject,
+    setDuplicateProject,
     setProjectToBeDeleted,
     setCurrentPage,
     handleProjectDuplication,

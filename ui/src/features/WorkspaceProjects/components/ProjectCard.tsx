@@ -27,9 +27,8 @@ import {
 } from "@flow/components";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useProjectExport } from "@flow/hooks";
-import { useDocument } from "@flow/lib/gql/document";
 import { useT } from "@flow/lib/i18n";
-import { Project, ProjectDocument } from "@flow/types";
+import { Project } from "@flow/types";
 import { openLinkInNewTab } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
@@ -37,21 +36,18 @@ type Props = {
   project: Project;
   isDuplicating: boolean;
   setEditProject: (project: Project | undefined) => void;
+  setDuplicateProject: (project: Project | undefined) => void;
   setProjectToBeDeleted: (project: string | undefined) => void;
   onProjectSelect: (p: Project) => void;
-  onProjectDuplication: (
-    project: Project,
-    projectDocument?: ProjectDocument,
-  ) => Promise<void>;
 };
 
 const ProjectCard: React.FC<Props> = ({
   project,
   isDuplicating,
   setEditProject,
+  setDuplicateProject,
   setProjectToBeDeleted,
   onProjectSelect,
-  onProjectDuplication,
 }) => {
   const t = useT();
   const { toast } = useToast();
@@ -84,14 +80,6 @@ const ProjectCard: React.FC<Props> = ({
   };
 
   const { isExporting, handleProjectExport } = useProjectExport(project);
-
-  const { useGetLatestProjectSnapshot } = useDocument();
-
-  const { projectDocument } = useGetLatestProjectSnapshot(project.id);
-
-  const handleProjectDuplication = () => {
-    onProjectDuplication(project, projectDocument);
-  };
 
   return (
     <Card
@@ -156,7 +144,7 @@ const ProjectCard: React.FC<Props> = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="justify-between gap-2"
-                onClick={handleProjectDuplication}>
+                onClick={() => setDuplicateProject({ ...project })}>
                 {t("Duplicate Project")}
                 <Copy weight="light" />
               </DropdownMenuItem>
