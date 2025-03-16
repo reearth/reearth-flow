@@ -30,6 +30,7 @@ import {
   ProjectDeletionDialog,
   ProjectEditDialog,
 } from "./components";
+import { ProjectDuplicateDialog } from "./components/ProjectDuplicateDialog";
 import useHooks from "./hooks";
 
 const ProjectsManager: React.FC = () => {
@@ -38,21 +39,24 @@ const ProjectsManager: React.FC = () => {
   const {
     projects,
     ref,
-    currentProject,
     projectToBeDeleted,
     editProject,
+    duplicateProject,
     showError,
     buttonDisabled,
     openProjectAddDialog,
     currentPage,
     totalPages,
     isFetching,
+    isDuplicating,
     currentOrder,
     orderDirections,
     setOpenProjectAddDialog,
     setEditProject,
+    setDuplicateProject,
     setProjectToBeDeleted,
     setCurrentPage,
+    handleProjectDuplication,
     handleProjectSelect,
     handleDeleteProject,
     handleUpdateValue,
@@ -134,7 +138,7 @@ const ProjectsManager: React.FC = () => {
             </SelectContent>
           </Select>
         )}
-        {isFetching || isProjectImporting ? (
+        {isFetching || isProjectImporting || isDuplicating ? (
           <LoadingSkeleton />
         ) : projects && projects.length > 0 ? (
           <div
@@ -144,8 +148,9 @@ const ProjectsManager: React.FC = () => {
               <ProjectCard
                 key={p.id}
                 project={p}
-                currentProject={currentProject}
+                isDuplicating={isDuplicating}
                 setEditProject={setEditProject}
+                setDuplicateProject={setDuplicateProject}
                 setProjectToBeDeleted={setProjectToBeDeleted}
                 onProjectSelect={handleProjectSelect}
               />
@@ -184,6 +189,13 @@ const ProjectsManager: React.FC = () => {
         isOpen={openProjectAddDialog}
         onOpenChange={(o) => setOpenProjectAddDialog(o)}
       />
+      {duplicateProject && !isDuplicating && (
+        <ProjectDuplicateDialog
+          duplicateProject={duplicateProject}
+          setDuplicateProject={setDuplicateProject}
+          onProjectDuplication={handleProjectDuplication}
+        />
+      )}
       <ProjectEditDialog
         editProject={editProject}
         showError={showError}
