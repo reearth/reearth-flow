@@ -159,7 +159,7 @@ export default ({
         const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
         if (!yNodes) return;
 
-        const nodes = yNodes.toJSON() as Node[];
+        const nodes = Object.values(yNodes.toJSON()) as Node[];
 
         const prevNode = nodes.find((n) => n.id === nodeId);
 
