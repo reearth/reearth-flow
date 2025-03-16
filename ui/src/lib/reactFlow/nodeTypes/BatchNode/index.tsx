@@ -58,7 +58,6 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, type, id }) => {
           }}
           minWidth={bounds.width}
           minHeight={bounds.height}
-          onResize={() => "asldfkjsadf"}
           onResizeEnd={handleOnEndResize}
         />
       )}

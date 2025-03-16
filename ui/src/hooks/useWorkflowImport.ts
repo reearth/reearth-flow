@@ -93,18 +93,16 @@ export default () => {
 
               await new Promise<void>((resolve) => {
                 yWebSocketProvider.once("sync", () => {
-                  const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-                  yWorkflows.insert(
-                    0,
-                    canvasReadyWorkflows.workflows.map((w) =>
-                      yWorkflowConstructor(
-                        w.id,
-                        w.name ?? "undefined",
-                        w.nodes,
-                        w.edges,
-                      ),
-                    ),
-                  );
+                  const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
+                  canvasReadyWorkflows.workflows.forEach((w) => {
+                    const yWorkflow = yWorkflowConstructor(
+                      w.id,
+                      w.name ?? "undefined",
+                      w.nodes,
+                      w.edges,
+                    );
+                    yWorkflows.set(w.id, yWorkflow);
+                  });
 
                   setIsWorkflowImporting(false);
                   resolve();
