@@ -94,11 +94,6 @@ const ProjectCard: React.FC<Props> = ({
         )}
         {isDuplicating && (
           <p className="loading-pulse absolute left-2 top-2 font-thin">
-            {t("Exporting...")}
-          </p>
-        )}
-        {isDuplicating && (
-          <p className="loading-pulse absolute left-2 top-2 font-thin">
             {t("Duplicating...")}
           </p>
         )}
