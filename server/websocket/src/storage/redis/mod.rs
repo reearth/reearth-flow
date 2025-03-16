@@ -333,7 +333,7 @@ impl RedisStore {
         if let Some(pool) = &self.pool {
             let key = format!("doc:instance:{}", doc_id);
             if let Ok(mut conn) = pool.get().await {
-                let effective_ttl = if ttl_seconds < 6 { 6 } else { ttl_seconds };
+                let effective_ttl = if ttl_seconds < 2 { 2 } else { ttl_seconds };
                 let result: bool = redis::cmd("SET")
                     .arg(&key)
                     .arg(instance_id)

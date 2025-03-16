@@ -186,7 +186,7 @@ pub async fn ws_handler(
             }
             Ok(_) => {
                 if let Err(e) = redis_store
-                    .register_doc_instance(&doc_id, &state.instance_id, 5)
+                    .register_doc_instance(&doc_id, &state.instance_id, 2)
                     .await
                 {
                     tracing::warn!("Failed to register instance for document {}: {}", doc_id, e);
@@ -208,29 +208,6 @@ pub async fn ws_handler(
                 .unwrap();
         }
     };
-
-    if let Some(redis_store) = state.pool.get_redis_store() {
-        let redis_store_clone = redis_store.clone();
-        let doc_id_clone = doc_id.clone();
-        let instance_id = state.instance_id.clone();
-
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(2));
-            loop {
-                interval.tick().await;
-                if let Err(e) = redis_store_clone
-                    .refresh_doc_instance(&doc_id_clone, &instance_id, 6)
-                    .await
-                {
-                    tracing::warn!(
-                        "Failed to refresh instance registration for document {}: {}",
-                        doc_id_clone,
-                        e
-                    );
-                }
-            }
-        });
-    }
 
     ws.on_upgrade(move |socket| {
         handle_socket(
