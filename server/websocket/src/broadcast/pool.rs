@@ -25,7 +25,7 @@ impl BroadcastPool {
             store,
             redis_store,
             groups: DashMap::new(),
-            buffer_capacity: 512,
+            buffer_capacity: 256,
             docs_in_creation: DashSet::new(),
         }
     }
@@ -148,7 +148,7 @@ impl BroadcastPool {
             let awareness_clone = awareness.clone();
 
             tokio::spawn(async move {
-                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
                 let awareness_guard = awareness_clone.read().await;
                 let doc = awareness_guard.doc();
