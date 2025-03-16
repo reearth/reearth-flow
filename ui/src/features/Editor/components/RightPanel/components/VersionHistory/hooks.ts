@@ -3,6 +3,7 @@ import { Doc } from "yjs";
 import * as Y from "yjs";
 
 import { useDocument } from "@flow/lib/gql/document/useApi";
+import { YWorkflow } from "@flow/lib/yjs/types";
 
 export default ({
   projectId,
@@ -48,8 +49,8 @@ export default ({
       const tempYDoc = new Y.Doc();
       Y.applyUpdate(tempYDoc, convertedUpdates);
       // for testing but could use temp doc to convert etc
-      const tempWorkflows = tempYDoc.getArray("workflows");
-      if (!tempWorkflows.length) {
+      const tempWorkflows = tempYDoc.getMap<YWorkflow>("workflows");
+      if (!tempWorkflows) {
         console.warn("⚠️ No workflows found inside the rollback update.");
       } else {
         console.log(
@@ -59,17 +60,17 @@ export default ({
       }
 
       yDoc.transact(() => {
-        const yWorkflows = yDoc.getArray("workflows");
+        const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
 
-        if (yWorkflows.length) {
+        if (yWorkflows) {
           console.log("Deleting existing workflows");
-          yWorkflows.delete(0, yWorkflows.length);
+          yWorkflows.clear();
         }
 
-        // Fails here possibly due to a null value
-        // Insert rollback workflows
         console.log("Inserting rollback workflows");
-        yWorkflows.insert(0, tempWorkflows.toArray());
+        tempWorkflows.forEach((yWorkflow, wId) => {
+          yWorkflows.set(wId, yWorkflow);
+        });
 
         console.log(
           "Workflows inside yDoc after rollback:",
