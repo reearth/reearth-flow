@@ -256,8 +256,6 @@ where
         };
         let clock = last_clock + 1;
         let update_key = key_update(oid, clock)?;
-        debug!("Pushing update to KV store - key: {:?}", update_key);
-        debug!("Update-----------------------------");
         self.upsert(&update_key, update).await?;
         Ok(clock)
     }

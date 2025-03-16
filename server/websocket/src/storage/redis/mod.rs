@@ -4,8 +4,6 @@ use redis::AsyncCommands;
 use std::sync::Arc;
 use std::time::Duration;
 
-pub mod pubsub;
-
 #[derive(Debug, Clone)]
 pub struct RedisConfig {
     pub url: String,
@@ -335,12 +333,13 @@ impl RedisStore {
         if let Some(pool) = &self.pool {
             let key = format!("doc:instance:{}", doc_id);
             if let Ok(mut conn) = pool.get().await {
+                let effective_ttl = if ttl_seconds < 6 { 6 } else { ttl_seconds };
                 let result: bool = redis::cmd("SET")
                     .arg(&key)
                     .arg(instance_id)
                     .arg("NX")
                     .arg("EX")
-                    .arg(ttl_seconds)
+                    .arg(effective_ttl)
                     .query_async(&mut *conn)
                     .await?;
 

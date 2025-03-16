@@ -20,7 +20,7 @@ jobs:
 
       - name: changed files for api
         id: api
-        uses: tj-actions/changed-files@v45
+        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
         with:
             files: |
               server/api/**
@@ -32,7 +32,7 @@ jobs:
 
       - name: changed files for subscriber
         id: subscriber
-        uses: tj-actions/changed-files@v45
+        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
         with:
             files: |
               server/subscriber/**
@@ -43,7 +43,7 @@ jobs:
 
       - name: changed files for ui
         id: ui
-        uses: tj-actions/changed-files@v45
+        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
         with:
           files: |
             ui/**
@@ -54,7 +54,7 @@ jobs:
 
       - name: changed files for websocket
         id: websocket
-        uses: tj-actions/changed-files@v45
+        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
         with:
           files: |
             server/websocket/**
@@ -65,7 +65,7 @@ jobs:
 
       - name: changed files for engine
         id: engine
-        uses: tj-actions/changed-files@v45
+        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
         with:
           files: |
             engine/**
@@ -76,7 +76,7 @@ jobs:
 
       - name: changed files for policies
         id: policies
-        uses: tj-actions/changed-files@v45
+        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
         with:
           files: |
             server/api/internal/rbac/**
