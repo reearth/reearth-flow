@@ -167,7 +167,7 @@ impl GcsStore {
             }
         }
 
-        updates.sort_unstable_by_key(|info| info.clock);
+        updates.sort_unstable_by_key(|info| std::cmp::Reverse(info.clock));
 
         Ok(updates)
     }
