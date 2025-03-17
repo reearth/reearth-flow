@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::{
-    algorithm::bool_ops::BooleanOps,
+    algorithm::{bool_ops::BooleanOps, coordinate_meter_converter::meter_to_coordinate_diff},
     types::{
         coordinate::{Coordinate, Coordinate2D},
         line_string::{LineString2D, LineString3D},
@@ -277,7 +277,6 @@ impl SurfaceFootprintReplacer {
     }
 }
 
-// project point to
 fn project_point_to_elevation(
     point: &Coordinate<f64, f64>,
     elevation: f64,
@@ -287,18 +286,7 @@ fn project_point_to_elevation(
 
     let offset_meter_x = height * light_dir[0] / light_dir[2];
     let offset_meter_y = height * light_dir[1] / light_dir[2];
-    let (lng, lat) = offset_with_meter(point.x, point.y, offset_meter_x, offset_meter_y);
+    let (offset_lng, offset_lat) = meter_to_coordinate_diff(offset_meter_x, offset_meter_y);
 
-    Coordinate::new__(lng, lat, elevation)
-}
-
-const EARTH_RADIUS: f64 = 6_378_137.0;
-const DEG_TO_RAD: f64 = std::f64::consts::PI / 180.0;
-const RAD_TO_DEG: f64 = 180.0 / std::f64::consts::PI;
-
-fn offset_with_meter(lng: f64, lat: f64, meter_x: f64, meter_y: f64) -> (f64, f64) {
-    let dlat = (meter_y / EARTH_RADIUS) * RAD_TO_DEG;
-    let lat_rad = lat * DEG_TO_RAD;
-    let dlng = (meter_x / (EARTH_RADIUS * lat_rad.cos())) * RAD_TO_DEG;
-    (lng + dlng, lat + dlat)
+    Coordinate::new__(point.x + offset_lng, point.y + offset_lat, elevation)
 }
