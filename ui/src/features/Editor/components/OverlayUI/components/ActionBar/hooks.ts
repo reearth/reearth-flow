@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useProjectExport } from "@flow/hooks";
 import { useJob } from "@flow/lib/gql/job";
+import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
 
@@ -13,6 +14,10 @@ export default ({
   const [currentProject] = useCurrentProject();
 
   const { handleProjectExport } = useProjectExport(currentProject);
+
+  const [showDialog, setShowDialog] = useState<
+    "deploy" | "share" | "debugStop" | undefined
+  >(undefined);
 
   const handleShowDeployDialog = () => setShowDialog("deploy");
   const handleShowShareDialog = () => setShowDialog("share");
@@ -27,28 +32,38 @@ export default ({
   const debugJobId = useMemo(
     () =>
       debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
-        ?.jobId ?? "",
+        ?.jobId,
     [debugRunState, currentProject],
   );
 
   const debugJob = useGetJob(debugJobId).job;
 
-  const [showDialog, setShowDialog] = useState<
-    "deploy" | "share" | "debugStop" | undefined
-  >(undefined);
+  const { data: realTimeJobStatus } = useSubscription(
+    "GetSubscribedJobStatus",
+    debugJobId,
+    !debugJob ||
+      debugJob?.status === "completed" ||
+      debugJob?.status === "failed" ||
+      debugJob?.status === "cancelled",
+  );
+
+  const jobStatus = useMemo(
+    () => realTimeJobStatus ?? debugJob?.status ?? undefined,
+    [realTimeJobStatus, debugJob],
+  );
+
   const [debugRunStarted, setDebugRunStarted] = useState(false);
 
   useEffect(() => {
     if (
       debugRunStarted &&
-      debugJob &&
-      (debugJob.status === "completed" ||
-        debugJob.status === "failed" ||
-        debugJob.status === "cancelled")
+      (jobStatus === "completed" ||
+        jobStatus === "failed" ||
+        jobStatus === "cancelled")
     ) {
       setDebugRunStarted(false);
     }
-  }, [debugJob, debugRunStarted]);
+  }, [debugJob, jobStatus, debugRunStarted]);
 
   const handleDebugRunStart = async () => {
     setDebugRunStarted(true);
@@ -66,6 +81,7 @@ export default ({
   return {
     showDialog,
     debugRunStarted,
+    jobStatus,
     debugJob,
     handleDebugRunStart,
     handleShowDeployDialog,

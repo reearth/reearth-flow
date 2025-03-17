@@ -48,6 +48,7 @@ const ActionBar: React.FC<Props> = ({
   const {
     showDialog,
     debugRunStarted,
+    jobStatus,
     debugJob,
     handleDebugRunStart,
     handleShowDeployDialog,
@@ -68,8 +69,8 @@ const ActionBar: React.FC<Props> = ({
             tooltipOffset={tooltipOffset}
             disabled={
               debugRunStarted ||
-              (debugJob &&
-                (debugJob.status === "running" || debugJob.status === "queued"))
+              jobStatus === "running" ||
+              jobStatus === "queued"
             }
             icon={<Play weight="thin" />}
             onClick={handleDebugRunStart}
@@ -79,11 +80,7 @@ const ActionBar: React.FC<Props> = ({
             tooltipText={t("Stop project workflow")}
             tooltipOffset={tooltipOffset}
             disabled={
-              !debugJob ||
-              (debugJob &&
-                !(
-                  debugJob.status === "running" || debugJob.status === "queued"
-                ))
+              !jobStatus || (jobStatus !== "running" && jobStatus !== "queued")
             }
             icon={<Stop weight="thin" />}
             onClick={handleShowDebugStopDialog}
@@ -92,7 +89,7 @@ const ActionBar: React.FC<Props> = ({
             className="rounded-none"
             tooltipText={t("Clear debug run results")}
             tooltipOffset={tooltipOffset}
-            disabled={!debugJob?.outputURLs}
+            disabled={!debugJob}
             icon={<XCircle weight="thin" />}
             onClick={handleDebugRunReset}
           />
