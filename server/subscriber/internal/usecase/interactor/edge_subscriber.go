@@ -8,6 +8,7 @@ import (
 
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/subscriber/pkg/edge"
+	"github.com/reearth/reearth-flow/subscriber/pkg/id"
 )
 
 type EdgeSubscriberUseCase interface {
@@ -50,7 +51,8 @@ func (u *edgeSubscriberUseCase) ProcessEdgeEvent(ctx context.Context, event *edg
 		}
 
 		edgeExec := &edge.EdgeExecution{
-			ID:        updatedEdge.ID,
+			ID:        id.NewEdgeExecutionID().String(),
+			EdgeID:    updatedEdge.ID,
 			Status:    updatedEdge.Status,
 			FeatureID: featureIDStr,
 		}

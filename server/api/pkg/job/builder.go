@@ -2,8 +2,6 @@ package job
 
 import (
 	"time"
-
-	"github.com/reearth/reearth-flow/api/pkg/edge"
 )
 
 type JobBuilder struct {
@@ -46,12 +44,6 @@ func (b *JobBuilder) Debug(debug *bool) *JobBuilder {
 
 func (b *JobBuilder) Deployment(deployment DeploymentID) *JobBuilder {
 	b.j.deployment = deployment
-	return b
-}
-
-func (b *JobBuilder) EdgeExecutions(edges []*edge.EdgeExecution) *JobBuilder {
-	b.j.edgeExecutions = make([]*edge.EdgeExecution, len(edges))
-	copy(b.j.edgeExecutions, edges)
 	return b
 }
 

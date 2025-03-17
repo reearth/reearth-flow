@@ -18,7 +18,7 @@ import (
 )
 
 type EdgeExecution struct {
-	jobRepo           repo.Job
+	edgeRepo          repo.EdgeExecution
 	redisGateway      gateway.Redis
 	subscriptions     *subscription.EdgeManager
 	watchers          map[string]context.CancelFunc
@@ -49,37 +49,17 @@ func (ei *EdgeExecution) checkPermission(ctx context.Context, action string) err
 	return err
 }
 
-func (i *EdgeExecution) FindByEdgeID(ctx context.Context, id id.JobID, edgeID string) (*edge.EdgeExecution, error) {
-	log.Printf("DEBUG: FindByEdgeID called for jobID=%s, edgeID=%s", id.String(), edgeID)
-
+func (i *EdgeExecution) FindByJobEdgeID(ctx context.Context, id id.JobID, edgeID string) (*edge.EdgeExecution, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		log.Printf("ERROR: Permission denied for FindByEdgeID: %v", err)
 		return nil, err
 	}
 
-	log.Printf("DEBUG: Looking up job with ID %s", id.String())
-	j, err := i.jobRepo.FindByID(ctx, id)
+	edge, err := i.edgeRepo.FindByJobEdgeID(ctx, id, edgeID)
 	if err != nil {
-		log.Printf("ERROR: Failed to find job %s: %v", id.String(), err)
 		return nil, err
 	}
 
-	if j == nil {
-		log.Printf("ERROR: Job %s not found", id.String())
-		return nil, fmt.Errorf("job not found")
-	}
-
-	log.Printf("DEBUG: Found job with ID %s, scanning %d edge executions", id.String(), len(j.EdgeExecutions()))
-	for idx, e := range j.EdgeExecutions() {
-		log.Printf("DEBUG: Checking edge %d/%d with ID %s", idx+1, len(j.EdgeExecutions()), e.ID())
-		if e.ID() == edgeID {
-			log.Printf("DEBUG: Found matching edge with ID %s and status %s", e.ID(), e.Status())
-			return e, nil
-		}
-	}
-
-	log.Printf("ERROR: Edge %s not found in job %s", edgeID, id.String())
-	return nil, fmt.Errorf("edge not found")
+	return edge, nil
 }
 
 func (ei *EdgeExecution) GetEdgeExecutions(ctx context.Context, jobID id.JobID) ([]*edge.EdgeExecution, error) {

@@ -57,8 +57,8 @@ func TestEdgeExecution_GetEdgeExecutions(t *testing.T) {
 	jobID := id.NewJobID()
 	now := time.Now()
 	edges := []*edge.EdgeExecution{
-		edge.NewEdgeExecution("edge1", jobID, "workflow1", edge.StatusInProgress, &now, nil, nil, nil),
-		edge.NewEdgeExecution("edge2", jobID, "workflow1", edge.StatusCompleted, &now, &now, nil, nil),
+		edge.NewEdgeExecution("random1", "edge1", jobID, "workflow1", edge.StatusInProgress, &now, nil, nil, nil),
+		edge.NewEdgeExecution("random2", "edge2", jobID, "workflow1", edge.StatusCompleted, &now, &now, nil, nil),
 	}
 
 	// Create auth context
@@ -108,7 +108,7 @@ func TestEdgeExecution_GetEdgeExecution(t *testing.T) {
 	jobID := id.NewJobID()
 	edgeID := "edge1"
 	now := time.Now()
-	edgeExec := edge.NewEdgeExecution(edgeID, jobID, "workflow1", edge.StatusInProgress, &now, nil, nil, nil)
+	edgeExec := edge.NewEdgeExecution("random", edgeID, jobID, "workflow1", edge.StatusInProgress, &now, nil, nil, nil)
 
 	// Create auth context
 	mockAuthInfo := &appx.AuthInfo{

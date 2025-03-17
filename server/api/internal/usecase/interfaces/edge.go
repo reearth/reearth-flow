@@ -8,7 +8,7 @@ import (
 )
 
 type EdgeExecution interface {
-	FindByEdgeID(ctx context.Context, jobID id.JobID, edgeID string) (*edge.EdgeExecution, error)
+	FindByJobEdgeID(ctx context.Context, jobID id.JobID, edgeID string) (*edge.EdgeExecution, error)
 	GetEdgeExecutions(ctx context.Context, jobID id.JobID) ([]*edge.EdgeExecution, error)
 	GetEdgeExecution(ctx context.Context, jobID id.JobID, edgeID string) (*edge.EdgeExecution, error)
 	SubscribeToEdge(ctx context.Context, jobID id.JobID, edgeID string) (chan *edge.EdgeExecution, error)
