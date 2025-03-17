@@ -111,7 +111,7 @@ jobs:
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
         with:
-          file: server/subscriber
+          file: server/subscriber/Dockerfile
           platforms: ${{ steps.options.outputs.platforms }}
           push: true
           build-args: VERSION=${{ steps.options.outputs.version }}
