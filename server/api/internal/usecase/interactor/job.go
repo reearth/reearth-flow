@@ -160,8 +160,6 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 		return err
 	}
 
-	log.Debugfc(ctx, "job: starting monitoring for jobID=%s workspace=%s", j.ID(), j.Workspace())
-
 	monitorCtx, cancel := context.WithCancel(context.Background())
 
 	i.monitor.Register(j.ID().String(), &monitor.Config{
@@ -175,18 +173,26 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 }
 
 func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return
-	}
-
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
+
+	jobID := j.ID().String()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			i.watchersMu.Lock()
+			if i.subscriptions.CountSubscribers(jobID) == 0 {
+				delete(i.activeWatchers, jobID)
+				i.watchersMu.Unlock()
+
+				i.monitor.Remove(jobID)
+				return
+			}
+			i.watchersMu.Unlock()
+
 			if err := i.checkJobStatus(ctx, j); err != nil {
 				log.Errorfc(ctx, "job: status check failed: %v", err)
 			}
@@ -204,8 +210,11 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 		return err
 	}
 
-	if j.Status() != job.Status(status) {
-		if err := i.updateJobStatus(ctx, j, job.Status(status)); err != nil {
+	newStatus := job.Status(status)
+	if j.Status() != newStatus {
+		log.Infof("job status changed from %s to %s for job ID %s", j.Status(), newStatus, j.ID())
+
+		if err := i.updateJobStatus(ctx, j, newStatus); err != nil {
 			return err
 		}
 	}
@@ -255,7 +264,6 @@ func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 	}
 
 	jobID := j.ID().String()
-	log.Debugfc(ctx, "job: handling completion for jobID=%s with status=%s", jobID, j.Status())
 
 	config := i.monitor.Get(jobID)
 
@@ -342,8 +350,6 @@ func (i *Job) sendCompletionNotification(ctx context.Context, j *job.Job, notifi
 		Outputs:      j.OutputURLs(),
 	}
 
-	log.Debugfc(ctx, "job: sending notification for jobID=%s to URL=%s", jobID, notificationURL)
-
 	return i.notifier.Send(notificationURL, payload)
 }
 
@@ -352,30 +358,49 @@ func (i *Job) Subscribe(ctx context.Context, jobID id.JobID) (chan job.Status, e
 		return nil, err
 	}
 
-	j, err := i.FindByID(ctx, jobID)
-	if err != nil {
-		return nil, err
-	}
-
 	ch := i.subscriptions.Subscribe(jobID.String())
-	ch <- j.Status()
 
-	i.watchersMu.Lock()
-	if i.activeWatchers == nil {
-		i.activeWatchers = make(map[string]bool)
-	}
-	i.activeWatchers[jobID.String()] = true
-	i.watchersMu.Unlock()
+	go func() {
+		j, err := i.FindByID(context.Background(), jobID)
+		if err == nil {
+			i.subscriptions.Notify(jobID.String(), j.Status())
+		}
+	}()
+
+	i.startMonitoringIfNeeded(jobID)
 
 	return ch, nil
 }
 
+func (i *Job) startMonitoringIfNeeded(jobID id.JobID) {
+	i.watchersMu.Lock()
+	defer i.watchersMu.Unlock()
+
+	jobKey := jobID.String()
+	if i.activeWatchers == nil {
+		i.activeWatchers = make(map[string]bool)
+	}
+
+	if _, exists := i.activeWatchers[jobKey]; exists {
+		return
+	}
+
+	i.activeWatchers[jobKey] = true
+
+	j, err := i.jobRepo.FindByID(context.Background(), jobID)
+	if err != nil {
+		log.Errorfc(context.Background(), "job: failed to find job for monitoring: %v", err)
+		return
+	}
+
+	monitorCtx, cancel := context.WithCancel(context.Background())
+	i.monitor.Register(jobKey, &monitor.Config{
+		Cancel: cancel,
+	})
+
+	go i.runMonitoringLoop(monitorCtx, j)
+}
+
 func (i *Job) Unsubscribe(jobID id.JobID, ch chan job.Status) {
 	i.subscriptions.Unsubscribe(jobID.String(), ch)
-
-	if i.subscriptions.CountSubscribers(jobID.String()) == 0 {
-		i.watchersMu.Lock()
-		delete(i.activeWatchers, jobID.String())
-		i.watchersMu.Unlock()
-	}
 }

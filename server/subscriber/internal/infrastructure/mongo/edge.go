@@ -27,7 +27,7 @@ func NewMongoStorage(client *mongox.Client, gcsBucket, baseURL string) *MongoSto
 	transaction := &usecasex.NopTransaction{}
 
 	return &MongoStorage{
-		client:      client.WithCollection("edge_executions"),
+		client:      client.WithCollection("edgeExecutions"),
 		transaction: transaction,
 		baseURL:     baseURL,
 		gcsBucket:   gcsBucket,
@@ -52,7 +52,7 @@ func (m *MongoStorage) UpdateEdgeStatusInMongo(ctx context.Context, jobID string
 		}
 	}()
 
-	intermediateDataURL := m.ConstructIntermediateDataURL(jobID, edgeExec.ID)
+	intermediateDataURL := m.ConstructIntermediateDataURL(jobID, edgeExec.EdgeID)
 
 	edgeDoc := bson.M{
 		"id":        edgeExec.ID,

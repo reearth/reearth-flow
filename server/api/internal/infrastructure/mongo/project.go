@@ -2,7 +2,6 @@ package mongo
 
 import (
 	"context"
-	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -114,11 +113,6 @@ func (r *Project) FindByWorkspace(ctx context.Context, id accountdomain.Workspac
 
 		if err := r.client.Find(ctx, filter, c, opts); err != nil {
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
-		}
-
-		fmt.Printf("DEBUG: Found %d results\n", len(c.Result))
-		for _, p := range c.Result {
-			fmt.Printf("DEBUG: Project name=%s\n", p.Name())
 		}
 
 		return c.Result, interfaces.NewPageBasedInfo(total, pagination.Page.Page, pagination.Page.PageSize), nil
