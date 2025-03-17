@@ -158,7 +158,7 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		ComputeMemoryMib:                computeMemoryMib,
 		ImageURI:                        conf.Worker_ImageURL,
 		LocalSSDCount:                   localSSDCount,
-	    LocalSSDMountPath:               conf.Worker_LocalSSDMountPath,
+		LocalSSDMountPath:               conf.Worker_LocalSSDMountPath,
 		MachineType:                     conf.Worker_MachineType,
 		PubSubLogStreamTopic:            conf.Worker_PubSubLogStreamTopic,
 		PubSubJobCompleteTopic:          conf.Worker_PubSubJobCompleteTopic,
@@ -167,7 +167,7 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		Region:                          conf.GCPRegion,
 		SAEmail:                         conf.Worker_BatchSAEmail,
 		TaskCount:                       taskCount,
-		WorkingDirectory:                 conf.Worker_WorkingDirectory,
+		WorkingDirectory:                conf.Worker_WorkingDirectory,
 	}
 
 	batchRepo, err = gcpbatch.NewBatch(ctx, config)

@@ -26,8 +26,8 @@ type BatchConfig struct {
 	ComputeCpuMilli                 int
 	ComputeMemoryMib                int
 	ImageURI                        string
-    LocalSSDCount                   int
-	LocalSSDMountPath               string 
+	LocalSSDCount                   int
+	LocalSSDMountPath               string
 	MachineType                     string
 	PubSubLogStreamTopic            string
 	PubSubJobCompleteTopic          string
@@ -36,7 +36,7 @@ type BatchConfig struct {
 	Region                          string
 	SAEmail                         string
 	TaskCount                       int
-	WorkingDirectory                string 
+	WorkingDirectory                string
 }
 
 type BatchClient interface {
