@@ -1010,11 +1010,11 @@ export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: a
 
 export type JobFragment = { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null };
 
-export type LogFragment = { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string };
-
 export type ProjectDocumentFragment = { __typename?: 'ProjectDocument', id: string, timestamp: any, updates: Array<number>, version: number };
 
 export type ProjectSnapshotFragment = { __typename?: 'ProjectSnapshot', timestamp: any, updates: Array<number>, version: number };
+
+export type LogFragment = { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string };
 
 export type GetJobsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
@@ -1288,15 +1288,6 @@ export const JobFragmentDoc = gql`
   }
 }
     `;
-export const LogFragmentDoc = gql`
-    fragment Log on Log {
-  jobId
-  nodeId
-  timestamp
-  logLevel
-  message
-}
-    `;
 export const ProjectDocumentFragmentDoc = gql`
     fragment ProjectDocument on ProjectDocument {
   id
@@ -1310,6 +1301,15 @@ export const ProjectSnapshotFragmentDoc = gql`
   timestamp
   updates
   version
+}
+    `;
+export const LogFragmentDoc = gql`
+    fragment Log on Log {
+  jobId
+  nodeId
+  timestamp
+  logLevel
+  message
 }
     `;
 export const WorkspaceFragmentDoc = gql`

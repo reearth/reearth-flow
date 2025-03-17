@@ -86,12 +86,17 @@ const EditorComponent = () => {
 
   useJobSubscriptionsSetup(accessToken, currentDebugJobId);
 
-  const { yWorkflows, isSynced, undoManager, undoTrackerActionWrapper } =
-    useYjsSetup({
-      isProtected: true,
-      projectId,
-      workflowId: DEFAULT_ENTRY_GRAPH_ID,
-    });
+  const {
+    yWorkflows,
+    isSynced,
+    undoManager,
+    undoTrackerActionWrapper,
+    yDocState,
+  } = useYjsSetup({
+    isProtected: true,
+    projectId,
+    workflowId: DEFAULT_ENTRY_GRAPH_ID,
+  });
 
   return !yWorkflows || !isSynced || !undoTrackerActionWrapper ? (
     <LoadingSplashscreen />
@@ -99,6 +104,7 @@ const EditorComponent = () => {
     <Editor
       yWorkflows={yWorkflows}
       undoManager={undoManager}
+      yDoc={yDocState}
       undoTrackerActionWrapper={undoTrackerActionWrapper}
     />
   );

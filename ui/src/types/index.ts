@@ -12,5 +12,6 @@ export * from "./project";
 export * from "./shared";
 export * from "./shortcuts";
 export * from "./trigger";
+export * from "./document";
 export * from "./workflow";
 export * from "./workspace";
