@@ -32,7 +32,7 @@ pub mod normal_3d;
 pub mod relate;
 pub mod remove_repeated_points;
 pub mod rotate_3d;
-pub mod rotation_query_3d;
+pub mod rotator_3d;
 pub mod sweep;
 pub mod transverse_mercator_proj;
 pub mod utils;
