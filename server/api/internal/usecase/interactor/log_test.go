@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
+	"github.com/reearth/reearth-flow/api/pkg/edge"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/log"
 	"github.com/reearth/reearthx/account/accountdomain/user"
@@ -17,6 +18,21 @@ import (
 type mockLogGateway struct {
 	logs []*log.Log
 	err  error
+}
+
+// GetEdgeExecution implements gateway.Redis.
+func (m *mockLogGateway) GetEdgeExecution(ctx context.Context, jobID id.JobID, edgeID string) (*edge.EdgeExecution, error) {
+	panic("unimplemented")
+}
+
+// GetEdgeExecutions implements gateway.Redis.
+func (m *mockLogGateway) GetEdgeExecutions(ctx context.Context, jobID id.JobID) ([]*edge.EdgeExecution, error) {
+	panic("unimplemented")
+}
+
+// SubscribeToEdgeStatus implements gateway.Redis.
+func (m *mockLogGateway) SubscribeToEdgeStatus(ctx context.Context, jobID id.JobID, edgeID string) (<-chan edge.Status, error) {
+	panic("unimplemented")
 }
 
 func (m *mockLogGateway) GetLogs(ctx context.Context, since time.Time, until time.Time, jobID id.JobID) ([]*log.Log, error) {

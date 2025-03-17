@@ -11,7 +11,8 @@ import (
 )
 
 type JobLoader struct {
-	usecase interfaces.Job
+	usecase        interfaces.Job
+	edgeExecutions interfaces.EdgeExecution
 }
 
 func NewJobLoader(usecase interfaces.Job) *JobLoader {
@@ -78,6 +79,20 @@ func (c *JobLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, p
 		PageInfo:   gqlmodel.ToPageInfo(pi),
 		TotalCount: int(pi.TotalCount),
 	}, nil
+}
+
+func (c *JobLoader) FindEdgeExecutionByJobID(ctx context.Context, jobID gqlmodel.ID, edgeID string) (*gqlmodel.EdgeExecution, error) {
+	jid, err := id.JobIDFrom(string(jobID))
+	if err != nil {
+		return nil, err
+	}
+
+	ee, err := c.edgeExecutions.FindByEdgeID(ctx, jid, string(edgeID))
+	if err != nil {
+		return nil, err
+	}
+
+	return gqlmodel.ToEdgeExecution(ee), nil
 }
 
 // data loaders

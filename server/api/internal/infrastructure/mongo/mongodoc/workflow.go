@@ -12,7 +12,6 @@ type WorkflowDocument struct {
 	Project   string
 	Workspace string
 	URL       string
-	Graph     string
 }
 
 type WorkflowConsumer = Consumer[*WorkflowDocument, *workflow.Workflow]
@@ -30,7 +29,6 @@ func NewWorkflow(wf *workflow.Workflow) (*WorkflowDocument, string) {
 		Project:   wf.Project().String(),
 		Workspace: wf.Workspace().String(),
 		URL:       wf.URL(),
-		Graph:     wf.Graph().String(),
 	}, wid
 }
 
@@ -47,16 +45,11 @@ func (d *WorkflowDocument) Model() (*workflow.Workflow, error) {
 	if err != nil {
 		return nil, err
 	}
-	gid, err := id.GraphIDFrom(d.Graph)
-	if err != nil {
-		return nil, err
-	}
 	wf := workflow.NewWorkflow(
 		wid,
 		pid,
 		tid,
 		d.URL,
-		gid,
 	)
 
 	return wf, nil

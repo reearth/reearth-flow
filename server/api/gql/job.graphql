@@ -15,7 +15,7 @@ type Job implements Node {
 }
 
 type EdgeExecution {
-  id: ID!
+  id: String!
   status: EdgeStatus!
   startedAt: DateTime
   completedAt: DateTime
@@ -58,14 +58,14 @@ type JobConnection {
 # Subscripton Types
 
 extend type Subscription {
-  edgeStatus(jobId: ID!, edgeId: ID!): EdgeStatus!
+  edgeStatus(jobId: ID!, edgeId: String!): EdgeStatus!
   jobStatus(jobId: ID!): JobStatus!
 }
 
 # Query and Mutation
 
 extend type Query {
-  edgeExecutions(jobId: ID!): [EdgeExecution!]!
+  edgeExecution(id: ID!, edgeId: String!): EdgeExecution!
   jobs(workspaceId: ID!, pagination: PageBasedPagination!): JobConnection!
   job(id: ID!): Job
 }

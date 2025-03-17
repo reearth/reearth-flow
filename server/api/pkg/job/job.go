@@ -2,6 +2,8 @@ package job
 
 import (
 	"time"
+
+	"github.com/reearth/reearth-flow/api/pkg/edge"
 )
 
 type Status string
@@ -15,17 +17,18 @@ const (
 )
 
 type Job struct {
-	completedAt *time.Time
-	debug       *bool
-	deployment  DeploymentID
-	gcpJobID    string
-	id          ID
-	logsURL     string
-	metadataURL string
-	outputURLs  []string
-	startedAt   time.Time
-	status      Status
-	workspace   WorkspaceID
+	completedAt    *time.Time
+	debug          *bool
+	deployment     DeploymentID
+	edgeExecutions []*edge.EdgeExecution
+	gcpJobID       string
+	id             ID
+	logsURL        string
+	metadataURL    string
+	outputURLs     []string
+	startedAt      time.Time
+	status         Status
+	workspace      WorkspaceID
 }
 
 func NewJob(id ID, deployment DeploymentID, workspace WorkspaceID, gcpJobID string) *Job {
@@ -50,6 +53,10 @@ func (j *Job) Debug() *bool {
 
 func (j *Job) Deployment() DeploymentID {
 	return j.deployment
+}
+
+func (j *Job) EdgeExecutions() []*edge.EdgeExecution {
+	return j.edgeExecutions
 }
 
 func (j *Job) Workspace() WorkspaceID {
