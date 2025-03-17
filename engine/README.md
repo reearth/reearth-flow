@@ -157,6 +157,7 @@ export FLOW_VAR_targetPackages='["bldg", "fld"]'
 | FLOW_RUNTIME_ASYNC_WORKER_NUM        | Tokio Worker number                                                | cpu num |
 | FLOW_RUNTIME_FEATURE_WRITER_DISABLE  | Whether to disable the ability to export data to the feature store | false   |
 | FLOW_RUNTIME_SLOW_ACTION_THRESHOLD   | Threshold for writing slow action logs(ms)                         | 300     |
+| FLOW_RUNTIME_WORKING_DIRECTORY       | working directory                                                  | mac: $HOMELibrary/Caches/<project_path>, linux: $HOME/.cache/<project_path>  |
 
 ## Usage
 
