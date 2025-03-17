@@ -295,7 +295,7 @@ impl BroadcastGroup {
                                 &doc_name_for_sub,
                                 &group_name_clone,
                                 &consumer_name_clone,
-                                200,
+                                20,
                             )
                             .await
                         {
@@ -320,7 +320,7 @@ impl BroadcastGroup {
                             }
                             Err(e) => {
                                 tracing::error!("Error reading from Redis Stream: {}", e);
-                                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+                                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                             }
                         }
 
