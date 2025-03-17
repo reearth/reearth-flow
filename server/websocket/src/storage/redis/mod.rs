@@ -711,6 +711,12 @@ impl RedisStore {
                     
                     -- Read messages
                     local result = redis.call('XREADGROUP', 'GROUP', group_name, consumer_name, 'COUNT', count, 'STREAMS', stream_key, '>')
+                    
+                    -- Check if result is a table and has content
+                    if type(result) ~= 'table' then
+                        return {}
+                    end
+                    
                     if #result == 0 then
                         return {}
                     end
