@@ -6,13 +6,11 @@ import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useAuth } from "@flow/lib/auth";
 import { useProject } from "@flow/lib/gql";
-import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import { Project, ProjectDocument } from "@flow/types";
 
 export default () => {
   const { getAccessToken } = useAuth();
-  const t = useT();
   const [isDuplicating, setIsDuplicating] = useState<boolean>(false);
   const [currentWorkspace] = useCurrentWorkspace();
   const { createProject } = useProject();
@@ -29,7 +27,7 @@ export default () => {
 
         const { project: newProject } = await createProject({
           workspaceId: currentWorkspace.id,
-          name: project.name + t("(duplicate)"),
+          name: project.name,
           description: project.description,
         });
 
@@ -75,7 +73,7 @@ export default () => {
         setIsDuplicating(false);
       }
     },
-    [currentWorkspace, t, getAccessToken, createProject],
+    [currentWorkspace, getAccessToken, createProject],
   );
 
   return {
