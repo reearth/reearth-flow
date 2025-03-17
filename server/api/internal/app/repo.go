@@ -75,8 +75,8 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 	if err != nil {
 		log.Fatalf("Failed to init mongo: %+v\n", err)
 	}
-	// Log
-	gateways.LogRedis = initLogRedis(ctx, conf)
+	// Redis
+	gateways.Redis = initRedis(ctx, conf)
 
 	// File
 	gateways.File = initFile(ctx, conf)
@@ -170,7 +170,7 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 	return
 }
 
-func initLogRedis(ctx context.Context, conf *config.Config) gateway.Log {
+func initRedis(ctx context.Context, conf *config.Config) gateway.Redis {
 	if conf.Redis_URL == "" {
 		return nil
 	}
@@ -181,9 +181,9 @@ func initLogRedis(ctx context.Context, conf *config.Config) gateway.Log {
 		log.Fatalf("failed to parse redis url: %s\n", err.Error())
 	}
 	client := redis.NewClient(opt)
-	logRedisRepo, err := redisrepo.NewRedisLog(client)
+	RedisRepo, err := redisrepo.NewRedisLog(client)
 	if err != nil {
 		log.Warnf("log: failed to init redis storage: %s\n", err.Error())
 	}
-	return logRedisRepo
+	return RedisRepo
 }

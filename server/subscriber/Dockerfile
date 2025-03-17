@@ -1,4 +1,4 @@
-FROM golang:1.22-alpine AS build
+FROM golang:1.24-alpine AS build
 ARG TAG=release
 ARG VERSION
 
@@ -20,11 +20,11 @@ RUN CGO_ENABLED=0 go build \
     -o /reearth-flow/reearth-flow-subscriber \
     ./cmd/reearth-flow-subscriber
 
-
-FROM scratch
+FROM alpine:latest
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /reearth-flow/reearth-flow-subscriber /reearth-flow/reearth-flow-subscriber
 
 WORKDIR /reearth-flow
+
 CMD ["./reearth-flow-subscriber"]
