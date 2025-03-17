@@ -194,6 +194,11 @@ fn rotate_polygon_to_2d(polygon: &Polygon3D<f64>) -> Option<Polygon2D<f64>> {
     if exterior_coords.len() < 3 {
         return None;
     }
+
+    let centoroid = polygon.centroid()?;
+
+    println!("Centroid: {:?}", centoroid);
+
     let from_vector = compute_normal_3d(
         Point3D::new(
             exterior_coords[0].x,
@@ -212,21 +217,18 @@ fn rotate_polygon_to_2d(polygon: &Polygon3D<f64>) -> Option<Polygon2D<f64>> {
         ),
         true,
     )?;
+
+    println!("Normal vector: {:?}", from_vector);
+
     let to_vector = Point3D::new(0.0, 0.0, 1.0);
 
-    let rotation_query = RotationQuery3D::from_vectors(from_vector, to_vector)?;
+    let rotation_query = RotationQuery3D::from_vectors(from_vector, to_vector, Some(centoroid))?;
 
-    let centoroid = polygon.centroid()?;
+    println!("Rotation query: {:?}", rotation_query);
 
     let exterior_2d = exterior_coords
         .iter()
-        .map(|coord| {
-            coord.rotate_3d(
-                rotation_query.degrees,
-                Some(centoroid),
-                rotation_query.direction,
-            )
-        })
+        .map(|coord| coord.rotate_3d(rotation_query.degrees, None, rotation_query.direction))
         .map(|coord| Coordinate2D::new_(coord.x, coord.y))
         .collect::<Vec<_>>();
 
@@ -240,7 +242,7 @@ fn rotate_polygon_to_2d(polygon: &Polygon3D<f64>) -> Option<Polygon2D<f64>> {
                 .map(|coord| {
                     coord.rotate_3d(
                         rotation_query.degrees,
-                        Some(centoroid),
+                        rotation_query.origin,
                         rotation_query.direction,
                     )
                 })
