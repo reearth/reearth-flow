@@ -83,11 +83,8 @@ export default ({
 
       const convertedUpdates = new Uint8Array(updates);
 
-      const tempYDoc = new Y.Doc();
-      Y.applyUpdate(tempYDoc, convertedUpdates);
-
       const getMetadata = (key: string): "Text" | "Map" | "Array" => {
-        const sharedType = tempYDoc.share.get(key);
+        const sharedType = yDoc.share.get(key);
         if (sharedType instanceof Y.Text) return "Text";
         if (sharedType instanceof Y.Map) return "Map";
         if (sharedType instanceof Y.Array) return "Array";
@@ -104,7 +101,6 @@ export default ({
       console.error("Project Rollback Failed:", error);
     }
     setIsReverting(false);
-    // setOpenVersionChangeDialog(false);
   }, [
     selectedProjectSnapshotVersion,
     useRollbackProject,
