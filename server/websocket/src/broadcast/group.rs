@@ -258,7 +258,7 @@ impl BroadcastGroup {
                             updates_to_send.iter().map(|v| v.as_slice()).collect();
 
                         if let Err(e) = redis_store_for_batch
-                            .publish_batch_updates_with_lua(&doc_name_for_batch, &updates_as_slices)
+                            .publish_batch_updates(&doc_name_for_batch, &updates_as_slices)
                             .await
                         {
                             tracing::error!("Failed to batch publish updates to Redis: {}", e);
@@ -609,7 +609,7 @@ impl BroadcastGroup {
                     final_updates.iter().map(|v| v.as_slice()).collect();
 
                 if let Err(e) = redis_store
-                    .publish_batch_updates_with_lua(doc_name, &updates_as_slices)
+                    .publish_batch_updates(doc_name, &updates_as_slices)
                     .await
                 {
                     tracing::warn!("Failed to send final batch updates during shutdown: {}", e);

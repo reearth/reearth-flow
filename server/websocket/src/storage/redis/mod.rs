@@ -112,45 +112,11 @@ impl RedisStore {
         if let Some(pool) = &self.pool {
             let stream_key = format!("yjs:stream:{}", doc_id);
             if let Ok(mut conn) = pool.get().await {
-                let mut pipe = redis::pipe();
-
-                for update in updates {
-                    let fields = &[("update", *update)];
-                    pipe.cmd("XADD")
-                        .arg(&stream_key)
-                        .arg("MAXLEN")
-                        .arg("~")
-                        .arg(1000)
-                        .arg("NOMKSTREAM")
-                        .arg("*")
-                        .arg(fields);
-                }
-
-                if let Some(config) = &self.config {
-                    pipe.cmd("EXPIRE").arg(&stream_key).arg(config.ttl);
-                }
-
-                let _: () = pipe.query_async(&mut *conn).await?;
-            }
-        }
-        Ok(())
-    }
-
-    pub async fn publish_batch_updates_with_lua(
-        &self,
-        doc_id: &str,
-        updates: &[&[u8]],
-    ) -> Result<(), anyhow::Error> {
-        if updates.is_empty() {
-            return Ok(());
-        }
-
-        if let Some(pool) = &self.pool {
-            let stream_key = format!("yjs:stream:{}", doc_id);
-            if let Ok(mut conn) = pool.get().await {
                 let ttl = self.config.as_ref().map(|c| c.ttl).unwrap_or(3600);
 
                 let mut pipe = redis::pipe();
+
+                pipe.atomic();
 
                 for update in updates {
                     let fields = &[("update", *update)];
