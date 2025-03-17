@@ -6,7 +6,7 @@ export type EdgeStatus = "inProgress" | "completed" | "failed";
 
 export type EdgeExecution = {
   id: string;
-  status: EdgeStatus;
+  status?: EdgeStatus;
   startedAt?: string;
   completedAt?: string;
   featureId?: string;

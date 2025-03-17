@@ -99,6 +99,11 @@ export default ({ id, selected }: { id: string; selected?: boolean }) => {
     updateValue(newDebugRunState);
   }, [selected, debugRunState, currentProject, id, updateValue]);
 
+  const { useGetEdgeExecution } = useJob();
+
+  const { edgeExecution } = useGetEdgeExecution(debugJobState?.jobId, id);
+  console.log("edgeExecution", edgeExecution);
+
   return {
     edgeStatus,
     intermediateDataUrl,

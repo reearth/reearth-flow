@@ -1064,6 +1064,14 @@ export type GetJobQueryVariables = Exact<{
 
 export type GetJobQuery = { __typename?: 'Query', job?: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null, edgeExecutions?: Array<{ __typename?: 'EdgeExecution', id: string, status: EdgeStatus, startedAt?: any | null, completedAt?: any | null, featureId?: string | null, intermediateDataUrl?: string | null }> | null } | null };
 
+export type GetEdgeExecutionQueryVariables = Exact<{
+  id: Scalars['ID']['input'];
+  edgeId: Scalars['String']['input'];
+}>;
+
+
+export type GetEdgeExecutionQuery = { __typename?: 'Query', edgeExecution: { __typename?: 'EdgeExecution', id: string, status: EdgeStatus, startedAt?: any | null, completedAt?: any | null, featureId?: string | null, intermediateDataUrl?: string | null } };
+
 export type CancelJobMutationVariables = Exact<{
   input: CancelJobInput;
 }>;
@@ -1489,6 +1497,13 @@ export const GetJobDocument = gql`
   }
 }
     ${JobFragmentDoc}`;
+export const GetEdgeExecutionDocument = gql`
+    query GetEdgeExecution($id: ID!, $edgeId: String!) {
+  edgeExecution(id: $id, edgeId: $edgeId) {
+    ...EdgeExecution
+  }
+}
+    ${EdgeExecutionFragmentDoc}`;
 export const CancelJobDocument = gql`
     mutation CancelJob($input: CancelJobInput!) {
   cancelJob(input: $input) {
@@ -1784,6 +1799,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     GetJob(variables: GetJobQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetJobQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetJobQuery>(GetJobDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetJob', 'query', variables);
+    },
+    GetEdgeExecution(variables: GetEdgeExecutionQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetEdgeExecutionQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetEdgeExecutionQuery>(GetEdgeExecutionDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetEdgeExecution', 'query', variables);
     },
     CancelJob(variables: CancelJobMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CancelJobMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CancelJobMutation>(CancelJobDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CancelJob', 'mutation', variables);

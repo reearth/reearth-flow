@@ -6,7 +6,12 @@ import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { useQueries } from "./useQueries";
 
 export const useJob = () => {
-  const { useGetJobsQuery, useGetJobQuery, cancelJobMutation } = useQueries();
+  const {
+    useGetJobsQuery,
+    useGetJobQuery,
+    useGetEdgeExecutionQuery,
+    cancelJobMutation,
+  } = useQueries();
   const { toast } = useToast();
   const t = useT();
   const useGetJobs = (
@@ -24,6 +29,14 @@ export const useJob = () => {
     const { data, ...rest } = useGetJobQuery(jobId);
     return {
       job: data,
+      ...rest,
+    };
+  };
+
+  const useGetEdgeExecution = (jobId?: string, edgeId?: string) => {
+    const { data, ...rest } = useGetEdgeExecutionQuery(jobId, edgeId);
+    return {
+      edgeExecution: data,
       ...rest,
     };
   };
@@ -53,5 +66,6 @@ export const useJob = () => {
     useGetJob,
     useGetJobs,
     useJobCancel,
+    useGetEdgeExecution,
   };
 };
