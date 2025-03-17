@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import {
   LogFragment,
@@ -12,20 +12,10 @@ import { Log } from "@flow/types";
 export default (accessToken?: string, jobId?: string) => {
   const processedLogIds = useRef(new Set<string>());
 
-  useSubscriptionSetup<OnJobStatusChangeSubscription>(
-    "GetSubscribedJobStatus",
-    accessToken,
-    { jobId },
-    jobId,
-    (data) => toJobStatus(data.jobStatus),
-    !jobId,
-  );
-  useSubscriptionSetup<RealTimeLogsSubscription, Log[]>(
-    "GetSubscribedLogs",
-    accessToken,
-    { jobId },
-    jobId,
-    (data, cachedData) => {
+  const variables = useMemo(() => ({ jobId }), [jobId]);
+
+  const logsDataFormatter = useCallback(
+    (data: RealTimeLogsSubscription, cachedData?: Log[] | undefined) => {
       if (data?.logs && (!cachedData || Array.isArray(cachedData))) {
         const cachedLogs = [...(cachedData ?? [])];
         // Get log data and transform it
@@ -55,6 +45,30 @@ export default (accessToken?: string, jobId?: string) => {
         return [...cachedLogs];
       }
     },
+    [],
+  );
+
+  const jobStatusDataFormatter = useCallback(
+    (data: OnJobStatusChangeSubscription) => {
+      return toJobStatus(data.jobStatus);
+    },
+    [],
+  );
+
+  useSubscriptionSetup<OnJobStatusChangeSubscription>(
+    "GetSubscribedJobStatus",
+    accessToken,
+    variables,
+    jobId,
+    jobStatusDataFormatter,
+    !jobId,
+  );
+  useSubscriptionSetup<RealTimeLogsSubscription, Log[]>(
+    "GetSubscribedLogs",
+    accessToken,
+    variables,
+    jobId,
+    logsDataFormatter,
     !jobId,
   );
 

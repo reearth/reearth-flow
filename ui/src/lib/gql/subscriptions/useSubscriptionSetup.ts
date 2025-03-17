@@ -86,8 +86,13 @@ export function useSubscriptionSetup<Data = any, CachedData = any>(
   const api = config().api;
 
   const isSubscribedRef = useRef(false);
-  const queryClient = useQueryClient();
-  const wsClient = getWebSocketClient(disabled)(
+  const wsClientRef = useRef<Client | undefined>(undefined);
+  const queryClientRef = useRef<ReturnType<typeof useQueryClient> | undefined>(
+    undefined,
+  );
+
+  queryClientRef.current = useQueryClient();
+  wsClientRef.current = getWebSocketClient(disabled)(
     `${api}/api/graphql`,
     `${subscriptionKey}:${secondaryCacheKey}`,
     accessToken,
@@ -98,7 +103,7 @@ export function useSubscriptionSetup<Data = any, CachedData = any>(
 
     isSubscribedRef.current = true;
     // Set up subscription only once
-    const unsubscribe = wsClient?.subscribe<Data>(
+    const unsubscribe = wsClientRef.current?.subscribe<Data>(
       {
         query: SubscriptionStrings[subscriptionKey],
         variables,
@@ -107,16 +112,15 @@ export function useSubscriptionSetup<Data = any, CachedData = any>(
         next: (data) => {
           if (data.data) {
             // Update React Query cache
-            const cachedData = queryClient.getQueryData<CachedData>([
-              SubscriptionKeys[subscriptionKey],
-              secondaryCacheKey,
-            ]);
+            const cachedData = queryClientRef.current?.getQueryData<CachedData>(
+              [SubscriptionKeys[subscriptionKey], secondaryCacheKey],
+            );
 
             const formattedData = dataFormatter
               ? dataFormatter(data.data, cachedData)
               : data.data;
 
-            queryClient.setQueryData(
+            queryClientRef.current?.setQueryData(
               [SubscriptionKeys[subscriptionKey], secondaryCacheKey],
               formattedData,
             );
@@ -137,13 +141,5 @@ export function useSubscriptionSetup<Data = any, CachedData = any>(
       isSubscribedRef.current = false;
       unsubscribe?.();
     };
-  }, [
-    disabled,
-    variables,
-    secondaryCacheKey,
-    subscriptionKey,
-    wsClient,
-    queryClient,
-    dataFormatter,
-  ]);
+  }, [disabled, variables, secondaryCacheKey, subscriptionKey, dataFormatter]);
 }

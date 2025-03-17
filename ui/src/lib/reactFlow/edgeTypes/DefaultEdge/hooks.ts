@@ -42,18 +42,31 @@ export default ({ id, selected }: { id: string; selected?: boolean }) => {
     [debugRun, id],
   );
 
+  const subscriptionVariables = useMemo(
+    () => ({ jobId: debugJobState?.jobId, edgeId: id }),
+    [debugJobState?.jobId, id],
+  );
+
+  const subscriptionDataFormatter = useCallback(
+    (data: OnEdgeStatusChangeSubscription) => {
+      return toEdgeStatus(data.edgeStatus);
+    },
+    [],
+  );
+
   useSubscriptionSetup<OnEdgeStatusChangeSubscription>(
     "GetSubscribedEdgeStatus",
     accessToken,
-    { jobId: debugJobState?.jobId, edgeId: id },
+    subscriptionVariables,
     id,
-    (data) => toEdgeStatus(data.edgeStatus),
+    subscriptionDataFormatter,
     !id || !debugRun,
   );
 
   const { data: realTimeEdgeStatus } = useSubscription(
     "GetSubscribedEdgeStatus",
     id,
+    !id || !debugRun,
   );
 
   const edgeStatus = useMemo(() => {
@@ -65,8 +78,6 @@ export default ({ id, selected }: { id: string; selected?: boolean }) => {
     }
     return realTimeEdgeStatus;
   }, [debugRun, realTimeEdgeStatus, id]);
-
-  console.log("edgeStatus", edgeStatus);
 
   const handleIntermediateDataSet = useCallback(() => {
     if (!selected) return;

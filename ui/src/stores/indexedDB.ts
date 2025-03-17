@@ -5,7 +5,7 @@ export type GeneralState = {
 export type JobState = {
   projectId: string;
   jobId: string;
-  edgeExecutions: {
+  edgeExecutions?: {
     edgeId: string;
     status: string;
   }[];
