@@ -46,4 +46,17 @@ mod tests {
         assert_relative_eq!(dx_meter, 100.0, epsilon = 1.0);
         assert_relative_eq!(dy_meter, 100.0, epsilon = 1.0);
     }
+
+    #[test]
+    fn test_meter_to_coordinate_diff() {
+        let coords_a = Coordinate2D::new_(139.6917, 35.6895);
+        let coords_b = Coordinate2D::new_(139.69280478, 35.69040128);
+
+        let (dx_meter, dy_meter) = (100.0, 100.0);
+
+        let (dx, dy) = meter_to_coordinate_diff(dx_meter, dy_meter, coords_a.y);
+
+        assert_relative_eq!(dx, coords_b.x - coords_a.x, epsilon = 1e-5);
+        assert_relative_eq!(dy, coords_b.y - coords_a.y, epsilon = 1e-5);
+    }
 }
