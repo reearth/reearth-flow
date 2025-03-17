@@ -5,17 +5,15 @@ type Workflow struct {
 	project   ProjectID
 	workspace WorkspaceID
 	// Meta      *string
-	url   string
-	graph GraphID
+	url string
 }
 
-func NewWorkflow(id ID, project ProjectID, workspace WorkspaceID, url string, graph GraphID) *Workflow {
+func NewWorkflow(id ID, project ProjectID, workspace WorkspaceID, url string) *Workflow {
 	return &Workflow{
 		id:        id,
 		project:   project,
 		workspace: workspace,
 		url:       url,
-		graph:     graph,
 	}
 }
 
@@ -33,8 +31,4 @@ func (w *Workflow) Workspace() WorkspaceID {
 
 func (w *Workflow) URL() string {
 	return w.url
-}
-
-func (w *Workflow) Graph() GraphID {
-	return w.graph
 }

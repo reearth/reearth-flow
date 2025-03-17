@@ -16,14 +16,14 @@ import (
 )
 
 type LogInteractor struct {
-	logsGatewayRedis  gateway.Log
+	logsGatewayRedis  gateway.Redis
 	subscriptions     *subscription.LogManager
 	watchers          map[string]context.CancelFunc
 	mu                sync.Mutex
 	permissionChecker gateway.PermissionChecker
 }
 
-func NewLogInteractor(lgRedis gateway.Log, permissionChecker gateway.PermissionChecker) interfaces.Log {
+func NewLogInteractor(lgRedis gateway.Redis, permissionChecker gateway.PermissionChecker) interfaces.Log {
 	return &LogInteractor{
 		logsGatewayRedis:  lgRedis,
 		subscriptions:     subscription.NewLogManager(),
@@ -53,7 +53,6 @@ func (li *LogInteractor) GetLogs(ctx context.Context, since time.Time, jobID id.
 		return nil, fmt.Errorf("failed to get logs from Redis: %w", err)
 	}
 	return logs, nil
-
 }
 
 func (li *LogInteractor) Subscribe(ctx context.Context, jobID id.JobID) (chan *log.Log, error) {

@@ -4,5 +4,5 @@ type Container struct {
 	Authenticator Authenticator
 	File          File
 	Batch         Batch
-	LogRedis      Log
+	Redis         Redis
 }
