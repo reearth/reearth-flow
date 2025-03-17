@@ -208,7 +208,7 @@
   "Failed to create project": "创建项目失败",
   "Copied to clipboard": "已复制到剪贴板",
   "{{project}} project's share URL copied to clipboard": "{{project}}项目的共享URL已复制到剪贴板",
-  "Exporting...": "正在导出...",
+  "Exporting...": "",
   "Duplicating...": "",
   "Last modified:": "最后修改:",
   "Edit Details": "编辑详情",

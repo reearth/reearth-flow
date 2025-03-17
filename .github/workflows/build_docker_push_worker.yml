@@ -181,13 +181,6 @@ jobs:
         run: docker tag $WORKER_IMAGE_NAME $WORKER_IMAGE_NAME_GHCR && docker tag $WORKER_IMAGE_NAME $WORKER_IMAGE_NAME_GCP
       - name: Push docker images
         run: docker push $WORKER_IMAGE_NAME_GHCR && docker push $WORKER_IMAGE_NAME_GCP
-      - name: Deploy
-        run: |
-          gcloud run deploy reearth-flow-worker \
-            --image $WORKER_IMAGE_NAME_GCP \
-            --region asia-northeast1 \
-            --platform managed \
-            --quiet
             
 # Temporary workaround for deploying worker directly to plateau artifacts: @pyshx
   deploy-plateau-prod-worker:
@@ -219,10 +212,3 @@ jobs:
         run: docker pull $WORKER_IMAGE_NAME_GHCR
       - name: Tag and push docker image
         run: docker tag $WORKER_IMAGE_NAME_GHCR $WORKER_IMAGE_NAME_GCP && docker push $WORKER_IMAGE_NAME_GCP
-      - name: Deploy
-        run: |
-          gcloud run deploy reearth-flow-worker \
-            --image $WORKER_IMAGE_NAME_GCP \
-            --region asia-northeast1 \
-            --platform managed \
-            --quiet
