@@ -258,7 +258,7 @@ impl BroadcastGroup {
                             updates_to_send.iter().map(|v| v.as_slice()).collect();
 
                         if let Err(e) = redis_store_for_batch
-                            .publish_batch_updates(&doc_name_for_batch, &updates_as_slices)
+                            .publish_batch_updates_with_lua(&doc_name_for_batch, &updates_as_slices)
                             .await
                         {
                             tracing::error!("Failed to batch publish updates to Redis: {}", e);
@@ -289,7 +289,7 @@ impl BroadcastGroup {
 
                 loop {
                     match redis_store_for_sub
-                        .read_and_ack_messages(
+                        .read_and_ack_with_lua(
                             &doc_name_for_sub,
                             &group_name_clone,
                             &consumer_name_clone,
@@ -297,12 +297,12 @@ impl BroadcastGroup {
                         )
                         .await
                     {
-                        Ok(messages) => {
-                            if !messages.is_empty() {
+                        Ok(updates) => {
+                            if !updates.is_empty() {
                                 let awareness = awareness_for_sub.write().await;
                                 let mut txn = awareness.doc().transact_mut();
 
-                                for (_, update) in &messages {
+                                for update in &updates {
                                     if let Ok(decoded) = Update::decode_v1(update) {
                                         if let Err(e) = txn.apply_update(decoded) {
                                             tracing::warn!(
@@ -609,7 +609,7 @@ impl BroadcastGroup {
                     final_updates.iter().map(|v| v.as_slice()).collect();
 
                 if let Err(e) = redis_store
-                    .publish_batch_updates(doc_name, &updates_as_slices)
+                    .publish_batch_updates_with_lua(doc_name, &updates_as_slices)
                     .await
                 {
                     tracing::warn!("Failed to send final batch updates during shutdown: {}", e);
