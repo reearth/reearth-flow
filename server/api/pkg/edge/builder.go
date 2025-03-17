@@ -44,11 +44,6 @@ func (b *EdgeExecutionBuilder) JobID(jobID id.JobID) *EdgeExecutionBuilder {
 	return b
 }
 
-func (b *EdgeExecutionBuilder) WorkflowID(workflowID string) *EdgeExecutionBuilder {
-	b.e.workflowID = workflowID
-	return b
-}
-
 func (b *EdgeExecutionBuilder) Status(status Status) *EdgeExecutionBuilder {
 	b.e.status = status
 	return b

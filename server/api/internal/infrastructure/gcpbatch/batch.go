@@ -14,7 +14,6 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
-	"github.com/reearth/reearthx/log"
 	"google.golang.org/api/iterator"
 )
 
@@ -62,32 +61,22 @@ func NewBatch(ctx context.Context, config BatchConfig) (gateway.Batch, error) {
 }
 
 func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL, metadataURL string, variables map[string]interface{}, projectID id.ProjectID, workspaceID accountdomain.WorkspaceID) (string, error) {
-	log.Debugfc(ctx, "gcpbatch: starting job submission with jobID=%s projectID=%s workspaceID=%s", jobID, projectID, workspaceID)
 
 	formattedJobID := formatJobID(jobID.String())
-	log.Debugfc(ctx, "gcpbatch: formatted jobID from %s to %s", jobID, formattedJobID)
 
 	jobName := fmt.Sprintf("projects/%s/locations/%s/jobs/%s", b.config.ProjectID, b.config.Region, formattedJobID)
 	parent := fmt.Sprintf("projects/%s/locations/%s", b.config.ProjectID, b.config.Region)
-	log.Debugfc(ctx, "gcpbatch: constructed job name=%s parent=%s", jobName, parent)
 
 	binaryPath := b.config.BinaryPath
 	if binaryPath == "" {
 		binaryPath = "reearth-flow-worker"
-		log.Debugfc(ctx, "gcpbatch: using default binary path=%s", binaryPath)
-	} else {
-		log.Debugfc(ctx, "gcpbatch: using configured binary path=%s", binaryPath)
 	}
 
 	var varArgs []string
 	if len(variables) > 0 {
-		log.Debugfc(ctx, "gcpbatch: processing %d variables", len(variables))
 		for k, v := range variables {
 			varArgs = append(varArgs, fmt.Sprintf("--var=%s=%v", k, v))
-			log.Debugfc(ctx, "gcpbatch: added variable %s=%v", k, v)
 		}
-	} else {
-		log.Debugfc(ctx, "gcpbatch: no variables provided")
 	}
 
 	varString := strings.Join(varArgs, " ")
@@ -98,7 +87,6 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		metadataURL,
 		varString,
 	)
-	log.Debugfc(ctx, "gcpbatch: constructed workflow command: %s", workflowCommand)
 
 	commands := []string{
 		"/bin/sh",
@@ -110,7 +98,6 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		ImageUri: b.config.ImageURI,
 		Commands: commands,
 	}
-	log.Debugfc(ctx, "gcpbatch: created container config with image=%s and JSON logging enabled", b.config.ImageURI)
 
 	runnable := &batchpb.Runnable{
 		Executable: &batchpb.Runnable_Container_{
@@ -147,7 +134,6 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		TaskCount: int64(b.config.TaskCount),
 		TaskSpec:  taskSpec,
 	}
-	log.Debugfc(ctx, "gcpbatch: configured task group with count=%d", taskGroup.TaskCount)
 
 	bootDisk := &batchpb.AllocationPolicy_Disk{
 		Type:   b.config.BootDiskType,
@@ -159,7 +145,6 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		MachineType:       b.config.MachineType,
 		BootDisk:          bootDisk,
 	}
-	log.Debugfc(ctx, "gcpbatch: configured instance policy with machine=%s", instancePolicy.MachineType)
 
 	instancePolicyOrTemplate := &batchpb.AllocationPolicy_InstancePolicyOrTemplate{
 		PolicyTemplate: &batchpb.AllocationPolicy_InstancePolicyOrTemplate_Policy{
@@ -176,7 +161,6 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 			Email: b.config.SAEmail,
 		},
 	}
-	log.Debugfc(ctx, "gcpbatch: configured allocation policy with service account=%s", b.config.SAEmail)
 
 	if len(b.config.AllowedLocations) > 0 {
 		allocationPolicy.Location = &batchpb.AllocationPolicy_LocationPolicy{
@@ -188,7 +172,6 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		"project_id":  projectID.String(),
 		"original_id": jobID.String(),
 	}
-	log.Debugfc(ctx, "gcpbatch: set job labels: %v", labels)
 
 	logsPolicy := &batchpb.LogsPolicy{
 		Destination: batchpb.LogsPolicy_CLOUD_LOGGING,
@@ -207,20 +190,16 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 		JobId:  formattedJobID,
 		Job:    job,
 	}
-	log.Debugfc(ctx, "gcpbatch: submitting job create request for jobID=%s", formattedJobID)
 
 	resp, err := b.client.CreateJob(ctx, req)
 	if err != nil {
-		log.Errorfc(ctx, "gcpbatch: failed to create job: %v", err)
 		return "", fmt.Errorf("failed to create job: %v", err)
 	}
-	log.Debugfc(ctx, "gcpbatch: successfully created job with name=%s", resp.Name)
 
 	return resp.Name, nil
 }
 
 func (b *BatchRepo) GetJobStatus(ctx context.Context, jobName string) (gateway.JobStatus, error) {
-	log.Debugfc(ctx, "gcpbatch: getting status for job=%s", jobName)
 
 	req := &batchpb.GetJobRequest{
 		Name: jobName,
@@ -228,12 +207,10 @@ func (b *BatchRepo) GetJobStatus(ctx context.Context, jobName string) (gateway.J
 
 	job, err := b.client.GetJob(ctx, req)
 	if err != nil {
-		log.Errorfc(ctx, "gcpbatch: failed to get job status: %v", err)
 		return gateway.JobStatusUnknown, fmt.Errorf("failed to get job status: %v", err)
 	}
 
 	status := convertGCPStatusToGatewayStatus(job.Status.State)
-	log.Debugfc(ctx, "gcpbatch: job=%s state=%s converted_status=%s", jobName, job.Status.State, status)
 
 	return status, nil
 }
@@ -256,7 +233,6 @@ func (b *BatchRepo) ListJobs(ctx context.Context, projectID id.ProjectID) ([]gat
 			break
 		}
 		if err != nil {
-			log.Errorfc(ctx, "gcpbatch: failed to list jobs: %v", err)
 			return nil, fmt.Errorf("failed to list jobs: %v", err)
 		}
 		jobID, err := id.JobIDFrom(job.Uid)
@@ -280,7 +256,6 @@ func (b *BatchRepo) CancelJob(ctx context.Context, jobName string) error {
 
 	_, err := b.client.DeleteJob(ctx, req)
 	if err != nil {
-		log.Errorfc(ctx, "gcpbatch: failed to cancel job: %v", err)
 		return fmt.Errorf("failed to cancel job: %v", err)
 	}
 
