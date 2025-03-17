@@ -7,9 +7,8 @@ use anyhow::Result;
 use dashmap::DashMap;
 use dashmap::DashSet;
 use std::sync::Arc;
-use uuid;
 use yrs::sync::Awareness;
-use yrs::{Doc, Transact};
+use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
@@ -26,7 +25,7 @@ impl BroadcastPool {
             store,
             redis_store,
             groups: DashMap::new(),
-            buffer_capacity: 512,
+            buffer_capacity: 256,
             docs_in_creation: DashSet::new(),
         }
     }
@@ -57,21 +56,9 @@ impl BroadcastPool {
         if let Some(group) = self.groups.get(doc_id) {
             let group_clone = group.clone();
             drop(group);
-
-            if let Some(redis_store) = &self.redis_store {
-                if let Ok(has_updates) = redis_store.has_pending_updates(doc_id).await {
-                    if has_updates {
-                        if let Ok(updates) = redis_store.get_pending_updates(doc_id).await {
-                            if !updates.is_empty() {
-                                let _ = self.apply_updates_to_doc(&group_clone, updates).await;
-                            }
-                        }
-                    }
-                }
-            }
-
             return Ok(group_clone);
         }
+
         if !self.docs_in_creation.insert(doc_id.to_string()) {
             for delay_ms in [1, 2, 5, 10, 20, 50, 100] {
                 tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
@@ -104,48 +91,53 @@ impl BroadcastPool {
             doc_id: doc_id.to_string(),
         };
 
-        let doc_lock_key = format!("lock:doc:{}", doc_id);
-        let lock_value = uuid::Uuid::new_v4().to_string();
-
-        if let Some(redis_store) = &self.redis_store {
-            let lock_acquired = redis_store
-                .acquire_lock(&doc_lock_key, &lock_value, 4)
-                .await?;
-
-            if !lock_acquired {
-                tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
-                let _lock_acquired = redis_store
-                    .acquire_lock(&doc_lock_key, &lock_value, 3)
-                    .await?;
-            }
-        }
-
         let group: Arc<BroadcastGroup>;
+        let mut need_initial_save = false;
 
         let awareness: AwarenessRef = {
             let doc = Doc::new();
-            let mut updates_from_redis = Vec::new();
 
             {
                 let mut txn = doc.transact_mut();
-                let _load_result = self.store.load_doc(doc_id, &mut txn).await;
-            }
+                match self.store.load_doc(doc_id, &mut txn).await {
+                    Ok(loaded) => {
+                        if !loaded {
+                            need_initial_save = true;
+                        }
+                    }
 
-            if let Some(redis_store) = &self.redis_store {
-                updates_from_redis = redis_store.get_pending_updates(doc_id).await?;
-            }
-
-            if !updates_from_redis.is_empty() {
-                let mut txn = doc.transact_mut();
-                for update in &updates_from_redis {
-                    if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(update) {
-                        let _ = txn.apply_update(decoded);
+                    Err(e) => {
+                        tracing::error!("Failed to load document '{}': {}", doc_id, e);
+                        return Err(e);
                     }
                 }
             }
 
             Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
         };
+
+        if need_initial_save {
+            let doc_id_clone = doc_id.to_string();
+            let store_clone = self.store.clone();
+            let awareness_clone = awareness.clone();
+
+            tokio::spawn(async move {
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+                let awareness_guard = awareness_clone.read().await;
+                let doc = awareness_guard.doc();
+                let txn = doc.transact();
+                let update = txn.encode_state_as_update_v1(&StateVector::default());
+
+                if let Err(e) = store_clone.push_update(&doc_id_clone, &update).await {
+                    tracing::error!(
+                        "Failed to save initial awareness state for document '{}' after 2s: {}",
+                        doc_id_clone,
+                        e
+                    );
+                }
+            });
+        }
 
         group = Arc::new(
             BroadcastGroup::with_storage(
@@ -168,29 +160,6 @@ impl BroadcastPool {
         self.groups.insert(doc_id.to_string(), group.clone());
 
         Ok(group)
-    }
-
-    async fn apply_updates_to_doc(
-        &self,
-        group: &Arc<BroadcastGroup>,
-        updates: Vec<Vec<u8>>,
-    ) -> Result<()> {
-        if updates.is_empty() {
-            return Ok(());
-        }
-
-        let awareness = group.awareness();
-        let awareness_lock = awareness.read().await;
-        let doc = awareness_lock.doc();
-        let mut txn = doc.transact_mut();
-
-        for update in &updates {
-            if let Ok(decoded) = yrs::updates::decoder::Decode::decode_v1(update) {
-                let _ = txn.apply_update(decoded);
-            }
-        }
-
-        Ok(())
     }
 
     pub async fn cleanup_empty_groups(&self) {

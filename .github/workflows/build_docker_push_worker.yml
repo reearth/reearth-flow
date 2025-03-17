@@ -188,7 +188,8 @@ jobs:
             --region asia-northeast1 \
             --platform managed \
             --quiet
-
+            
+# Temporary workaround for deploying worker directly to plateau artifacts: @pyshx
   deploy-plateau-prod-worker:
     name: Deploy Plateau Production Worker
     needs: deploy-plateau-dev-worker

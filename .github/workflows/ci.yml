@@ -236,6 +236,6 @@ jobs:
       - ci
       - ci-policies
       - ci-collect-info
-    uses: ./.github/workflows/update_policies_and_deploy_cerbos.yml
+    uses: ./.github/workflows/build_deploy_policies_cerbos.yml
     if: ${{ !failure() && needs.ci-policies.result == 'success' && github.event_name == 'push' && github.ref_name == 'main' }}
     secrets: inherit

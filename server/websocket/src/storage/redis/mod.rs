@@ -4,6 +4,13 @@ use redis::AsyncCommands;
 use std::sync::Arc;
 use std::time::Duration;
 
+type RedisField = (String, Vec<u8>);
+type RedisFields = Vec<RedisField>;
+type RedisStreamMessage = (String, RedisFields);
+type RedisStreamMessages = Vec<RedisStreamMessage>;
+type RedisStreamResult = (String, RedisStreamMessages);
+type RedisStreamResults = Vec<RedisStreamResult>;
+
 #[derive(Debug, Clone)]
 pub struct RedisConfig {
     pub url: String,
@@ -58,54 +65,307 @@ impl RedisStore {
         Ok(Arc::new(pool))
     }
 
-    pub async fn has_pending_updates(&self, doc_id: &str) -> Result<bool, anyhow::Error> {
+    pub async fn publish_update(&self, doc_id: &str, update: &[u8]) -> Result<(), anyhow::Error> {
         if let Some(pool) = &self.pool {
-            let redis_key = format!("pending_updates:{}", doc_id);
-
+            let stream_key = format!("yjs:stream:{}", doc_id);
             if let Ok(mut conn) = pool.get().await {
-                match conn.llen::<_, i64>(&redis_key).await {
-                    Ok(len) => return Ok(len > 0),
-                    Err(e) => return Err(anyhow::anyhow!("Redis error: {}", e)),
+                let fields = &[("update", update)];
+                let _: String = redis::cmd("XADD")
+                    .arg(&stream_key)
+                    .arg("MAXLEN")
+                    .arg("~")
+                    .arg(1000)
+                    .arg("*")
+                    .arg(fields)
+                    .query_async(&mut *conn)
+                    .await?;
+
+                if let Some(config) = &self.config {
+                    let _: () = redis::cmd("EXPIRE")
+                        .arg(&stream_key)
+                        .arg(config.ttl)
+                        .query_async(&mut *conn)
+                        .await?;
                 }
             }
         }
-        Ok(false)
+        Ok(())
     }
 
-    pub async fn get_pending_updates(&self, doc_id: &str) -> Result<Vec<Vec<u8>>, anyhow::Error> {
-        let mut updates = Vec::new();
+    pub async fn publish_batch_updates(
+        &self,
+        doc_id: &str,
+        updates: &[&[u8]],
+    ) -> Result<(), anyhow::Error> {
+        if updates.is_empty() {
+            return Ok(());
+        }
 
         if let Some(pool) = &self.pool {
-            let redis_key = format!("pending_updates:{}", doc_id);
-            let mut retry_count = 0;
-            const MAX_RETRIES: usize = 1;
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let mut pipe = redis::pipe();
 
-            while retry_count < MAX_RETRIES {
-                if let Ok(mut conn) = pool.get().await {
-                    if let Ok(result) = conn.lrange::<_, Vec<Vec<u8>>>(&redis_key, 0, -1).await {
-                        if !result.is_empty() {
-                            updates = result;
-                            break;
+                for update in updates {
+                    let fields = &[("update", *update)];
+                    pipe.cmd("XADD")
+                        .arg(&stream_key)
+                        .arg("MAXLEN")
+                        .arg("~")
+                        .arg(1000)
+                        .arg("*")
+                        .arg(fields);
+                }
+
+                let _: () = pipe.query_async(&mut *conn).await?;
+
+                if let Some(config) = &self.config {
+                    let _: () = redis::cmd("EXPIRE")
+                        .arg(&stream_key)
+                        .arg(config.ttl)
+                        .query_async(&mut *conn)
+                        .await?;
+                }
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn create_consumer_group(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+    ) -> Result<(), anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let result: Result<String, redis::RedisError> = redis::cmd("XGROUP")
+                    .arg("CREATE")
+                    .arg(&stream_key)
+                    .arg(group_name)
+                    .arg("0")
+                    .arg("MKSTREAM")
+                    .query_async(&mut *conn)
+                    .await;
+
+                match result {
+                    Ok(_) => Ok(()),
+                    Err(e) => {
+                        if e.to_string().contains("BUSYGROUP") {
+                            Ok(())
+                        } else {
+                            Err(e.into())
+                        }
+                    }
+                }
+            } else {
+                Err(anyhow::anyhow!("Failed to get Redis connection"))
+            }
+        } else {
+            Err(anyhow::anyhow!("Redis pool is not initialized"))
+        }
+    }
+
+    pub async fn read_stream_messages(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+        consumer_name: &str,
+        count: usize,
+        block_ms: usize,
+    ) -> Result<Vec<(String, Vec<u8>)>, anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let result: RedisStreamResults = redis::cmd("XREADGROUP")
+                    .arg("GROUP")
+                    .arg(group_name)
+                    .arg(consumer_name)
+                    .arg("COUNT")
+                    .arg(count)
+                    .arg("BLOCK")
+                    .arg(block_ms)
+                    .arg("STREAMS")
+                    .arg(&stream_key)
+                    .arg(">")
+                    .query_async(&mut *conn)
+                    .await?;
+
+                let mut updates = Vec::new();
+                if !result.is_empty() && !result[0].1.is_empty() {
+                    for (msg_id, fields) in &result[0].1 {
+                        for (field_name, field_value) in fields {
+                            if field_name == "update" {
+                                updates.push((msg_id.clone(), field_value.clone()));
+                            }
                         }
                     }
                 }
 
-                retry_count += 1;
-                if retry_count < MAX_RETRIES {
-                    tokio::time::sleep(Duration::from_millis(5)).await;
-                }
+                Ok(updates)
+            } else {
+                Err(anyhow::anyhow!("Failed to get Redis connection"))
             }
+        } else {
+            Err(anyhow::anyhow!("Redis pool is not initialized"))
         }
-
-        Ok(updates)
     }
 
-    pub async fn clear_pending_updates(&self, doc_id: &str) -> Result<(), anyhow::Error> {
+    pub async fn batch_ack_messages(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+        message_ids: &[String],
+    ) -> Result<(), anyhow::Error> {
+        if message_ids.is_empty() {
+            return Ok(());
+        }
+
         if let Some(pool) = &self.pool {
-            let redis_key = format!("pending_updates:{}", doc_id);
+            let stream_key = format!("yjs:stream:{}", doc_id);
             if let Ok(mut conn) = pool.get().await {
-                let _: () = redis::cmd("DEL")
-                    .arg(&redis_key)
+                let mut cmd = redis::cmd("XACK");
+                cmd.arg(&stream_key).arg(group_name);
+
+                for id in message_ids {
+                    cmd.arg(id);
+                }
+
+                let _: () = cmd.query_async(&mut *conn).await?;
+                return Ok(());
+            }
+        }
+        Err(anyhow::anyhow!("Redis pool is not initialized"))
+    }
+
+    pub async fn read_and_ack_messages(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+        consumer_name: &str,
+        count: usize,
+    ) -> Result<Vec<(String, Vec<u8>)>, anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let result: RedisStreamResults = redis::cmd("XREADGROUP")
+                    .arg("GROUP")
+                    .arg(group_name)
+                    .arg(consumer_name)
+                    .arg("COUNT")
+                    .arg(count)
+                    .arg("STREAMS")
+                    .arg(&stream_key)
+                    .arg(">")
+                    .query_async(&mut *conn)
+                    .await?;
+
+                let mut updates = Vec::new();
+                let mut message_ids = Vec::new();
+
+                if !result.is_empty() && !result[0].1.is_empty() {
+                    for (msg_id, fields) in &result[0].1 {
+                        message_ids.push(msg_id.clone());
+
+                        for (field_name, field_value) in fields {
+                            if field_name == "update" {
+                                updates.push((msg_id.clone(), field_value.clone()));
+                            }
+                        }
+                    }
+
+                    if !message_ids.is_empty() {
+                        let mut cmd = redis::cmd("XACK");
+                        cmd.arg(&stream_key).arg(group_name);
+
+                        for id in &message_ids {
+                            cmd.arg(id);
+                        }
+
+                        let _: () = cmd.query_async(&mut *conn).await?;
+                    }
+                }
+
+                Ok(updates)
+            } else {
+                Err(anyhow::anyhow!("Failed to get Redis connection"))
+            }
+        } else {
+            Err(anyhow::anyhow!("Redis pool is not initialized"))
+        }
+    }
+
+    pub async fn read_batch_messages(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+        consumer_name: &str,
+        count: usize,
+        block_ms: usize,
+    ) -> Result<Vec<(String, Vec<u8>)>, anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let result: RedisStreamResults = redis::cmd("XREADGROUP")
+                    .arg("GROUP")
+                    .arg(group_name)
+                    .arg(consumer_name)
+                    .arg("COUNT")
+                    .arg(count)
+                    .arg("BLOCK")
+                    .arg(block_ms)
+                    .arg("STREAMS")
+                    .arg(&stream_key)
+                    .arg(">")
+                    .query_async(&mut *conn)
+                    .await?;
+
+                let mut updates = Vec::new();
+                let mut message_ids = Vec::new();
+
+                if !result.is_empty() && !result[0].1.is_empty() {
+                    for (msg_id, fields) in &result[0].1 {
+                        message_ids.push(msg_id.clone());
+
+                        for (field_name, field_value) in fields {
+                            if field_name == "update" {
+                                updates.push((msg_id.clone(), field_value.clone()));
+                            }
+                        }
+                    }
+
+                    if !message_ids.is_empty() {
+                        let mut pipe = redis::pipe();
+                        let mut cmd = redis::cmd("XACK");
+                        cmd.arg(&stream_key).arg(group_name);
+
+                        for id in &message_ids {
+                            cmd.arg(id);
+                        }
+
+                        pipe.add_command(cmd);
+                        let _: () = pipe.query_async(&mut *conn).await?;
+                    }
+                }
+
+                Ok(updates)
+            } else {
+                Err(anyhow::anyhow!("Failed to get Redis connection"))
+            }
+        } else {
+            Err(anyhow::anyhow!("Redis pool is not initialized"))
+        }
+    }
+
+    pub async fn trim_stream(&self, doc_id: &str, max_len: usize) -> Result<(), anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let _: () = redis::cmd("XTRIM")
+                    .arg(&stream_key)
+                    .arg("MAXLEN")
+                    .arg("~")
+                    .arg(max_len)
                     .query_async(&mut *conn)
                     .await?;
             }
@@ -113,32 +373,102 @@ impl RedisStore {
         Ok(())
     }
 
-    pub async fn add_update(&self, doc_id: &str, update: &[u8]) -> Result<(), anyhow::Error> {
+    pub async fn optimize_stream(&self, doc_id: &str) -> Result<(), anyhow::Error> {
         if let Some(pool) = &self.pool {
-            let redis_key = format!("pending_updates:{}", doc_id);
+            let stream_key = format!("yjs:stream:{}", doc_id);
             if let Ok(mut conn) = pool.get().await {
-                let _: () = conn.rpush(&redis_key, update).await?;
+                let length: Option<usize> = redis::cmd("XLEN")
+                    .arg(&stream_key)
+                    .query_async(&mut *conn)
+                    .await?;
 
-                if let Some(config) = &self.config {
-                    let _: () = conn.expire(&redis_key, config.ttl as i64).await?;
+                if let Some(len) = length {
+                    if len > 5000 {
+                        let _: () = redis::cmd("XTRIM")
+                            .arg(&stream_key)
+                            .arg("MAXLEN")
+                            .arg("~")
+                            .arg(2000)
+                            .query_async(&mut *conn)
+                            .await?;
+
+                        tracing::info!(
+                            "Trimmed Redis stream for doc '{}' from {} to 2000 messages",
+                            doc_id,
+                            len
+                        );
+                    }
                 }
             }
         }
         Ok(())
     }
 
-    pub async fn publish_update(&self, doc_id: &str, update: &[u8]) -> Result<(), anyhow::Error> {
+    pub async fn ack_message(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+        message_id: &str,
+    ) -> Result<(), anyhow::Error> {
         if let Some(pool) = &self.pool {
-            let channel = format!("yjs:updates:{}", doc_id);
+            let stream_key = format!("yjs:stream:{}", doc_id);
             if let Ok(mut conn) = pool.get().await {
-                let _: () = redis::cmd("PUBLISH")
-                    .arg(&channel)
-                    .arg(update)
+                let _: () = redis::cmd("XACK")
+                    .arg(&stream_key)
+                    .arg(group_name)
+                    .arg(message_id)
                     .query_async(&mut *conn)
                     .await?;
+
+                Ok(())
+            } else {
+                Err(anyhow::anyhow!("Failed to get Redis connection"))
             }
+        } else {
+            Err(anyhow::anyhow!("Redis pool is not initialized"))
         }
-        Ok(())
+    }
+
+    pub async fn read_pending_messages(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+        consumer_name: &str,
+        count: usize,
+    ) -> Result<Vec<(String, Vec<u8>)>, anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let result: RedisStreamResults = redis::cmd("XREADGROUP")
+                    .arg("GROUP")
+                    .arg(group_name)
+                    .arg(consumer_name)
+                    .arg("COUNT")
+                    .arg(count)
+                    .arg("STREAMS")
+                    .arg(&stream_key)
+                    .arg("0")
+                    .query_async(&mut *conn)
+                    .await?;
+
+                let mut updates = Vec::new();
+                if !result.is_empty() && !result[0].1.is_empty() {
+                    for (msg_id, fields) in &result[0].1 {
+                        for (field_name, field_value) in fields {
+                            if field_name == "update" {
+                                updates.push((msg_id.clone(), field_value.clone()));
+                            }
+                        }
+                    }
+                }
+
+                Ok(updates)
+            } else {
+                Err(anyhow::anyhow!("Failed to get Redis connection"))
+            }
+        } else {
+            Err(anyhow::anyhow!("Redis pool is not initialized"))
+        }
     }
 
     pub async fn acquire_lock(
@@ -292,38 +622,6 @@ impl RedisStore {
         Ok(())
     }
 
-    pub async fn add_publish_update(
-        &self,
-        doc_id: &str,
-        update: &[u8],
-        ttl_seconds: u64,
-    ) -> Result<(), anyhow::Error> {
-        if self.pool.is_none() {
-            return Ok(());
-        }
-        let pool = self.pool.as_ref().unwrap();
-
-        let redis_key = format!("pending_updates:{}", doc_id);
-        let channel = format!("yjs:updates:{}", doc_id);
-
-        let mut conn = pool.get().await?;
-
-        let mut pipe = redis::pipe();
-        pipe.atomic()
-            .cmd("LPUSH")
-            .arg(&redis_key)
-            .arg(update)
-            .cmd("EXPIRE")
-            .arg(&redis_key)
-            .arg(ttl_seconds as i64)
-            .cmd("PUBLISH")
-            .arg(&channel)
-            .arg(update);
-
-        let _: () = pipe.query_async(&mut *conn).await?;
-        Ok(())
-    }
-
     pub async fn register_doc_instance(
         &self,
         doc_id: &str,
@@ -333,7 +631,7 @@ impl RedisStore {
         if let Some(pool) = &self.pool {
             let key = format!("doc:instance:{}", doc_id);
             if let Ok(mut conn) = pool.get().await {
-                let effective_ttl = if ttl_seconds < 6 { 6 } else { ttl_seconds };
+                let effective_ttl = if ttl_seconds < 2 { 2 } else { ttl_seconds };
                 let result: bool = redis::cmd("SET")
                     .arg(&key)
                     .arg(instance_id)
