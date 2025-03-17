@@ -210,6 +210,28 @@ impl BroadcastPool {
                     );
                 }
                 self.groups.remove(doc_id);
+
+                if let Some(redis_store) = &self.redis_store {
+                    let redis_store_clone = redis_store.clone();
+                    let doc_id_clone = doc_id.to_string();
+
+                    tokio::spawn(async move {
+                        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+
+                        if let Err(e) = redis_store_clone.delete_stream(&doc_id_clone).await {
+                            tracing::warn!(
+                                "Failed to delete Redis stream for '{}': {}",
+                                doc_id_clone,
+                                e
+                            );
+                        } else {
+                            tracing::info!(
+                                "Successfully deleted Redis stream for '{}'",
+                                doc_id_clone
+                            );
+                        }
+                    });
+                }
             }
         }
     }

@@ -329,19 +329,6 @@ impl BroadcastGroup {
             group.redis_subscriber_task = Some(redis_subscriber_task);
             group.redis_consumer_name = Some(consumer_name);
             group.redis_group_name = Some(group_name);
-
-            let doc_name_clone = doc_name.clone();
-            let redis_store_clone = redis_store.clone();
-
-            tokio::spawn(async move {
-                let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(3600));
-                loop {
-                    interval.tick().await;
-                    if let Err(e) = redis_store_clone.optimize_stream(&doc_name_clone).await {
-                        tracing::warn!("Failed to optimize Redis stream: {}", e);
-                    }
-                }
-            });
         }
 
         group.storage = Some(store);

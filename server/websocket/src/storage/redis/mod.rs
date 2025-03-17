@@ -371,53 +371,6 @@ impl RedisStore {
         }
     }
 
-    pub async fn trim_stream(&self, doc_id: &str, max_len: usize) -> Result<(), anyhow::Error> {
-        if let Some(pool) = &self.pool {
-            let stream_key = format!("yjs:stream:{}", doc_id);
-            if let Ok(mut conn) = pool.get().await {
-                let _: () = redis::cmd("XTRIM")
-                    .arg(&stream_key)
-                    .arg("MAXLEN")
-                    .arg("~")
-                    .arg(max_len)
-                    .query_async(&mut *conn)
-                    .await?;
-            }
-        }
-        Ok(())
-    }
-
-    pub async fn optimize_stream(&self, doc_id: &str) -> Result<(), anyhow::Error> {
-        if let Some(pool) = &self.pool {
-            let stream_key = format!("yjs:stream:{}", doc_id);
-            if let Ok(mut conn) = pool.get().await {
-                let length: Option<usize> = redis::cmd("XLEN")
-                    .arg(&stream_key)
-                    .query_async(&mut *conn)
-                    .await?;
-
-                if let Some(len) = length {
-                    if len > 5000 {
-                        let _: () = redis::cmd("XTRIM")
-                            .arg(&stream_key)
-                            .arg("MAXLEN")
-                            .arg("~")
-                            .arg(2000)
-                            .query_async(&mut *conn)
-                            .await?;
-
-                        tracing::info!(
-                            "Trimmed Redis stream for doc '{}' from {} to 2000 messages",
-                            doc_id,
-                            len
-                        );
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
-
     pub async fn ack_message(
         &self,
         doc_id: &str,
@@ -743,5 +696,18 @@ impl RedisStore {
         } else {
             Err(anyhow::anyhow!("Redis pool is not initialized"))
         }
+    }
+
+    pub async fn delete_stream(&self, doc_id: &str) -> Result<(), anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let _: () = redis::cmd("DEL")
+                    .arg(&stream_key)
+                    .query_async(&mut *conn)
+                    .await?;
+            }
+        }
+        Ok(())
     }
 }
