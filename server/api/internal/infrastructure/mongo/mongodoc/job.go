@@ -48,10 +48,10 @@ func NewJobConsumer(workspaces []accountdomain.WorkspaceID) *JobConsumer {
 	} else {
 		log.Printf("DEBUG: No workspace filtering applied to job consumer")
 	}
-	
+
 	return NewConsumer[*JobDocument, *job.Job](func(j *job.Job) bool {
 		result := workspaces == nil || slices.Contains(workspaces, j.Workspace())
-		log.Printf("DEBUG: Job filter check for job %s in workspace %s: %v", 
+		log.Printf("DEBUG: Job filter check for job %s in workspace %s: %v",
 			j.ID().String(), j.Workspace().String(), result)
 		return result
 	})
@@ -62,28 +62,27 @@ func NewJob(j *job.Job) (*JobDocument, string) {
 		log.Printf("ERROR: Attempted to create job document from nil job")
 		return nil, ""
 	}
-	
+
 	jid := j.ID().String()
 	log.Printf("DEBUG: Creating job document for job ID %s", jid)
 
 	edgeExecs := make([]EdgeExecutionDocument, 0, len(j.EdgeExecutions()))
 	log.Printf("DEBUG: Converting %d edge executions", len(j.EdgeExecutions()))
-	
+
 	for i, e := range j.EdgeExecutions() {
 		eid := e.ID()
 		status := string(e.Status())
-		
+
 		var featureIDStr string
 		if e.FeatureID() != nil {
 			featureIDStr = *e.FeatureID()
 		} else {
 			featureIDStr = "<nil>"
 		}
-		
-		
-		log.Printf("DEBUG: Edge execution %d/%d: ID=%s, Status=%s, FeatureID=%s", 
+
+		log.Printf("DEBUG: Edge execution %d/%d: ID=%s, Status=%s, FeatureID=%s",
 			i+1, len(j.EdgeExecutions()), eid, status, featureIDStr)
-		
+
 		edgeExecs = append(edgeExecs, EdgeExecutionDocument{
 			ID:                  eid,
 			Status:              status,
@@ -108,10 +107,10 @@ func NewJob(j *job.Job) (*JobDocument, string) {
 		OutputURLs:     j.OutputURLs(),
 		EdgeExecutions: edgeExecs,
 	}
-	
-	log.Printf("DEBUG: Created job document with ID=%s, DeploymentID=%s, Status=%s, EdgeExecutions=%d", 
+
+	log.Printf("DEBUG: Created job document with ID=%s, DeploymentID=%s, Status=%s, EdgeExecutions=%d",
 		doc.ID, doc.DeploymentID, doc.Status, len(doc.EdgeExecutions))
-	
+
 	return doc, jid
 }
 
@@ -120,21 +119,21 @@ func (d *JobDocument) Model() (*job.Job, error) {
 		log.Printf("ERROR: Attempted to convert nil job document to model")
 		return nil, nil
 	}
-	
+
 	log.Printf("DEBUG: Converting job document to model: ID=%s, Status=%s", d.ID, d.Status)
-	
+
 	jid, err := id.JobIDFrom(d.ID)
 	if err != nil {
 		log.Printf("ERROR: Invalid job ID in document: %s, error: %v", d.ID, err)
 		return nil, err
 	}
-	
+
 	did, err := id.DeploymentIDFrom(d.DeploymentID)
 	if err != nil {
 		log.Printf("ERROR: Invalid deployment ID in document: %s, error: %v", d.DeploymentID, err)
 		return nil, err
 	}
-	
+
 	wid, err := accountdomain.WorkspaceIDFrom(d.WorkspaceID)
 	if err != nil {
 		log.Printf("ERROR: Invalid workspace ID in document: %s, error: %v", d.WorkspaceID, err)
@@ -143,25 +142,24 @@ func (d *JobDocument) Model() (*job.Job, error) {
 
 	log.Printf("DEBUG: Converting %d edge execution documents to models", len(d.EdgeExecutions))
 	edgeExecs := make([]*edge.EdgeExecution, 0, len(d.EdgeExecutions))
-	
+
 	for i, e := range d.EdgeExecutions {
 		jobID, err := id.JobIDFrom(d.ID)
 		if err != nil {
 			log.Printf("ERROR: Failed to parse job ID %s for edge execution: %v", d.ID, err)
 			return nil, err
 		}
-		
+
 		var featureIDStr string
 		if e.FeatureID != nil {
 			featureIDStr = *e.FeatureID
 		} else {
 			featureIDStr = "<nil>"
 		}
-		
-		
-		log.Printf("DEBUG: Converting edge execution %d/%d: ID=%s, Status=%s, FeatureID=%s", 
+
+		log.Printf("DEBUG: Converting edge execution %d/%d: ID=%s, Status=%s, FeatureID=%s",
 			i+1, len(d.EdgeExecutions), e.ID, e.Status, featureIDStr)
-		
+
 		edgeExec := edge.NewEdgeExecution(
 			e.ID,
 			jobID,
@@ -172,7 +170,7 @@ func (d *JobDocument) Model() (*job.Job, error) {
 			e.FeatureID,
 			e.IntermediateDataURL,
 		)
-		
+
 		edgeExecs = append(edgeExecs, edgeExec)
 	}
 
@@ -203,7 +201,7 @@ func (d *JobDocument) Model() (*job.Job, error) {
 		log.Printf("ERROR: Failed to build job model: %v", err)
 		return nil, err
 	}
-	
+
 	log.Printf("DEBUG: Successfully built job model with ID=%s, Status=%s, EdgeExecutions=%d",
 		jobModel.ID().String(), jobModel.Status(), len(jobModel.EdgeExecutions()))
 	return jobModel, nil

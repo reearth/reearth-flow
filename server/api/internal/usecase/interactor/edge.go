@@ -51,7 +51,7 @@ func (ei *EdgeExecution) checkPermission(ctx context.Context, action string) err
 
 func (i *EdgeExecution) FindByEdgeID(ctx context.Context, id id.JobID, edgeID string) (*edge.EdgeExecution, error) {
 	log.Printf("DEBUG: FindByEdgeID called for jobID=%s, edgeID=%s", id.String(), edgeID)
-	
+
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		log.Printf("ERROR: Permission denied for FindByEdgeID: %v", err)
 		return nil, err
@@ -84,7 +84,7 @@ func (i *EdgeExecution) FindByEdgeID(ctx context.Context, id id.JobID, edgeID st
 
 func (ei *EdgeExecution) GetEdgeExecutions(ctx context.Context, jobID id.JobID) ([]*edge.EdgeExecution, error) {
 	log.Printf("DEBUG: GetEdgeExecutions called for jobID=%s", jobID.String())
-	
+
 	if err := ei.checkPermission(ctx, rbac.ActionAny); err != nil {
 		log.Printf("ERROR: Permission denied for GetEdgeExecutions: %v", err)
 		return nil, err
@@ -111,13 +111,13 @@ func (ei *EdgeExecution) GetEdgeExecutions(ctx context.Context, jobID id.JobID) 
 	for i, edge := range edges {
 		log.Printf("DEBUG: Edge %d/%d: ID=%s, Status=%s", i+1, len(edges), edge.ID(), edge.Status())
 	}
-	
+
 	return edges, nil
 }
 
 func (ei *EdgeExecution) GetEdgeExecution(ctx context.Context, jobID id.JobID, edgeID string) (*edge.EdgeExecution, error) {
 	log.Printf("DEBUG: GetEdgeExecution called for jobID=%s, edgeID=%s", jobID.String(), edgeID)
-	
+
 	if err := ei.checkPermission(ctx, rbac.ActionAny); err != nil {
 		log.Printf("ERROR: Permission denied for GetEdgeExecution: %v", err)
 		return nil, err
@@ -135,7 +135,7 @@ func (ei *EdgeExecution) GetEdgeExecution(ctx context.Context, jobID id.JobID, e
 	log.Printf("DEBUG: Fetching edge execution from Redis for jobID=%s, edgeID=%s", jobID.String(), edgeID)
 	edgeExec, err := ei.redisGateway.GetEdgeExecution(ctx, jobID, edgeID)
 	if err != nil {
-		log.Printf("ERROR: Failed to get edge execution from Redis for jobID=%s, edgeID=%s: %v", 
+		log.Printf("ERROR: Failed to get edge execution from Redis for jobID=%s, edgeID=%s: %v",
 			jobID.String(), edgeID, err)
 		return nil, fmt.Errorf("failed to get edge execution from Redis: %w", err)
 	}
@@ -145,13 +145,13 @@ func (ei *EdgeExecution) GetEdgeExecution(ctx context.Context, jobID id.JobID, e
 	} else {
 		log.Printf("DEBUG: Edge execution not found in Redis")
 	}
-	
+
 	return edgeExec, nil
 }
 
 func (ei *EdgeExecution) SubscribeToEdge(ctx context.Context, jobID id.JobID, edgeID string) (chan *edge.EdgeExecution, error) {
 	log.Printf("DEBUG: SubscribeToEdge called for jobID=%s, edgeID=%s", jobID.String(), edgeID)
-	
+
 	if err := ei.checkPermission(ctx, rbac.ActionAny); err != nil {
 		log.Printf("ERROR: Permission denied for SubscribeToEdge: %v", err)
 		return nil, err
@@ -176,7 +176,7 @@ func (ei *EdgeExecution) SubscribeToEdge(ctx context.Context, jobID id.JobID, ed
 			log.Printf("WARN: Failed to get initial edge state for key=%s: %v", key, err)
 			return
 		}
-		
+
 		if edgeExec != nil {
 			log.Printf("DEBUG: Sending initial edge notification, key=%s, status=%s", key, edgeExec.Status())
 			ei.subscriptions.Notify(key, []*edge.EdgeExecution{edgeExec})
@@ -194,7 +194,7 @@ func (ei *EdgeExecution) SubscribeToEdge(ctx context.Context, jobID id.JobID, ed
 func (ei *EdgeExecution) startWatchingEdgeIfNeeded(jobID id.JobID, edgeID string) {
 	key := fmt.Sprintf("%s:%s", jobID.String(), edgeID)
 	log.Printf("DEBUG: startWatchingEdgeIfNeeded called for key=%s", key)
-	
+
 	ei.mu.Lock()
 	defer ei.mu.Unlock()
 
@@ -215,7 +215,7 @@ func (ei *EdgeExecution) startWatchingEdgeIfNeeded(jobID id.JobID, edgeID string
 func (ei *EdgeExecution) runEdgeMonitoringLoop(ctx context.Context, jobID id.JobID, edgeID string) {
 	key := fmt.Sprintf("%s:%s", jobID.String(), edgeID)
 	log.Printf("DEBUG: Edge monitoring loop started for key=%s", key)
-	
+
 	if err := ei.checkPermission(ctx, rbac.ActionAny); err != nil {
 		log.Printf("ERROR: Permission denied for edge monitoring loop, key=%s: %v", key, err)
 		return
@@ -248,12 +248,12 @@ func (ei *EdgeExecution) runEdgeMonitoringLoop(ctx context.Context, jobID id.Job
 			return
 		case <-ticker.C:
 			loopCount++
-			
+
 			// Check if we still have subscribers
 			subscriberCount := ei.subscriptions.CountSubscribers(key)
-			log.Printf("DEBUG: [Loop %d] Checking subscribers for key=%s: count=%d", 
+			log.Printf("DEBUG: [Loop %d] Checking subscribers for key=%s: count=%d",
 				loopCount, key, subscriberCount)
-			
+
 			if subscriberCount == 0 {
 				log.Printf("DEBUG: No more subscribers for key=%s, stopping monitoring", key)
 				ei.stopWatchingEdge(key)
@@ -275,11 +275,11 @@ func (ei *EdgeExecution) runEdgeMonitoringLoop(ctx context.Context, jobID id.Job
 			}
 
 			currentStatus := edgeExec.Status()
-			log.Printf("DEBUG: [Loop %d] Edge status for key=%s: current=%s, last=%s", 
+			log.Printf("DEBUG: [Loop %d] Edge status for key=%s: current=%s, last=%s",
 				loopCount, key, currentStatus, lastStatus)
-				
+
 			if currentStatus != lastStatus {
-				log.Printf("DEBUG: [Loop %d] Status changed for key=%s: %s -> %s, notifying subscribers", 
+				log.Printf("DEBUG: [Loop %d] Status changed for key=%s: %s -> %s, notifying subscribers",
 					loopCount, key, lastStatus, currentStatus)
 				lastStatus = currentStatus
 				ei.subscriptions.Notify(key, []*edge.EdgeExecution{edgeExec})
@@ -290,7 +290,7 @@ func (ei *EdgeExecution) runEdgeMonitoringLoop(ctx context.Context, jobID id.Job
 
 func (ei *EdgeExecution) stopWatchingEdge(key string) {
 	log.Printf("DEBUG: stopWatchingEdge called for key=%s", key)
-	
+
 	ei.mu.Lock()
 	defer ei.mu.Unlock()
 
@@ -307,14 +307,14 @@ func (ei *EdgeExecution) stopWatchingEdge(key string) {
 func (ei *EdgeExecution) UnsubscribeFromEdge(jobID id.JobID, edgeID string, ch chan *edge.EdgeExecution) {
 	key := fmt.Sprintf("%s:%s", jobID.String(), edgeID)
 	log.Printf("DEBUG: UnsubscribeFromEdge called for key=%s", key)
-	
+
 	beforeCount := ei.subscriptions.CountSubscribers(key)
 	ei.subscriptions.Unsubscribe(key, ch)
 	afterCount := ei.subscriptions.CountSubscribers(key)
-	
-	log.Printf("DEBUG: Unsubscribed from edge, key=%s, subscribers: %d -> %d", 
+
+	log.Printf("DEBUG: Unsubscribed from edge, key=%s, subscribers: %d -> %d",
 		key, beforeCount, afterCount)
-		
+
 	if afterCount == 0 {
 		log.Printf("DEBUG: No more subscribers for key=%s, watcher will auto-terminate on next cycle", key)
 	}
