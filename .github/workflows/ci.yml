@@ -7,17 +7,16 @@ jobs:
   prepare:
     runs-on: ubuntu-latest
     outputs:
-      ui: ${{ steps.ui.outputs.any_changed }}
       api: ${{ steps.api.outputs.any_changed }}
-      subscriber: ${{ steps.subscriber.outputs.any_changed }}
       engine: ${{ steps.engine.outputs.any_changed }}
-      websocket: ${{ steps.websocket.outputs.any_changed }}
       policies: ${{ steps.policies.outputs.any_changed }}
+      subscriber: ${{ steps.subscriber.outputs.any_changed }}
+      ui: ${{ steps.ui.outputs.any_changed }}
+      websocket: ${{ steps.websocket.outputs.any_changed }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: changed files for api
         id: api
         uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
@@ -29,7 +28,26 @@ jobs:
               .github/workflows/ci_api.yml
               .github/workflows/build_deploy_api.yml
               CHANGELOG.md
-
+      - name: changed files for engine
+        id: engine
+        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
+        with:
+          files: |
+            engine/**
+            .github/workflows/ci.yml
+            .github/workflows/ci_engine.yml
+            .github/workflows/build_docker_push_worker.yml
+            CHANGELOG.md
+      - name: changed files for policies
+        id: policies
+        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
+        with:
+          files: |
+            server/api/internal/rbac/**
+            .github/workflows/ci.yml
+            .github/workflows/ci_policies.yml
+            .github/workflows/update_policies_and_deploy_cerbos.yml
+            CHANGELOG.md
       - name: changed files for subscriber
         id: subscriber
         uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
@@ -40,7 +58,6 @@ jobs:
               .github/workflows/ci_subscriber.yml
               .github/workflows/build_deploy_subscriber.yml
               CHANGELOG.md
-
       - name: changed files for ui
         id: ui
         uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
@@ -51,7 +68,6 @@ jobs:
             .github/workflows/ci_ui.yml
             .github/workflows/build_deploy_ui.yml
             CHANGELOG.md
-
       - name: changed files for websocket
         id: websocket
         uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
@@ -63,32 +79,18 @@ jobs:
             .github/workflows/build_deploy_websocket.yml
             CHANGELOG.md
 
-      - name: changed files for engine
-        id: engine
-        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
-        with:
-          files: |
-            engine/**
-            .github/workflows/ci.yml
-            .github/workflows/ci_engine.yml
-            .github/workflows/build_docker_push_worker.yml
-            CHANGELOG.md
-
-      - name: changed files for policies
-        id: policies
-        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
-        with:
-          files: |
-            server/api/internal/rbac/**
-            .github/workflows/ci.yml
-            .github/workflows/ci_policies.yml
-            .github/workflows/update_policies_and_deploy_cerbos.yml
-            CHANGELOG.md
-
   ci-api:
     needs: prepare
     if: needs.prepare.outputs.api == 'true'
     uses: ./.github/workflows/ci_api.yml
+  ci-engine:
+    needs: prepare
+    if: needs.prepare.outputs.engine == 'true'
+    uses: ./.github/workflows/ci_engine.yml
+  ci-policies:
+    needs: prepare
+    if: needs.prepare.outputs.policies == 'true'
+    uses: ./.github/workflows/ci_policies.yml
   ci-subscriber:
     needs: prepare
     if: needs.prepare.outputs.subscriber == 'true'
@@ -98,39 +100,33 @@ jobs:
     if: needs.prepare.outputs.ui == 'true'
     uses: ./.github/workflows/ci_ui.yml
   ci-websocket:
-      needs: prepare
-      if: needs.prepare.outputs.websocket == 'true'
-      uses: ./.github/workflows/ci_websocket.yml
-  ci-engine:
     needs: prepare
-    if: needs.prepare.outputs.engine == 'true'
-    uses: ./.github/workflows/ci_engine.yml
-  ci-policies:
-    needs: prepare
-    if: needs.prepare.outputs.policies == 'true'
-    uses: ./.github/workflows/ci_policies.yml
+    if: needs.prepare.outputs.websocket == 'true'
+    uses: ./.github/workflows/ci_websocket.yml
+
   ci:
     runs-on: ubuntu-latest
     needs:
       - ci-api
+      - ci-engine
+      - ci-policies
       - ci-subscriber
       - ci-ui
       - ci-websocket
-      - ci-engine
-      - ci-policies
     if: '!failure()'
     steps:
       - run: echo OK
+
   ci-collect-info:
     name: Collect information
     needs: ci
     if: '!failure()'
     runs-on: ubuntu-latest
     outputs:
-      sha_short: ${{ steps.info.outputs.sha_short || 'blank' }}
+      name: ${{ steps.info.outputs.name || 'blank' }}
       new_tag: ${{ steps.info.outputs.new_tag || 'blank' }}
       new_tag_short: ${{ steps.info.outputs.new_tag_short || 'blank' }}
-      name: ${{ steps.info.outputs.name || 'blank' }}
+      sha_short: ${{ steps.info.outputs.sha_short || 'blank' }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
@@ -161,6 +157,7 @@ jobs:
           NEW_TAG_SHORT: ${{ steps.info.outputs.new_tag_short }}
           NAME: ${{ steps.info.outputs.name }}
         run: echo "sha_short=$SHA_SHORT, new_tag=$NEW_TAG, new_tag_short=$NEW_TAG_SHORT, name=$NAME"
+
   build-and-deploy-api:
     needs:
       - ci
@@ -169,26 +166,12 @@ jobs:
     uses: ./.github/workflows/build_deploy_api.yml
     if: ${{ !failure() && needs.ci-api.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
     with:
-      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+      name: ${{ needs.ci-collect-info.outputs.name }}
       new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
       new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-      name: ${{ needs.ci-collect-info.outputs.name }}
       sha: ${{ github.sha }}
+      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
     secrets: inherit  
-  build-and-deploy-ui:
-    needs:
-      - ci
-      - ci-ui
-      - ci-collect-info
-    uses: ./.github/workflows/build_deploy_ui.yml
-    if: ${{ !failure() && needs.ci-ui.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
-    with:
-      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
-      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-      name: ${{ needs.ci-collect-info.outputs.name }}
-      sha: ${{ github.sha }}
-    secrets: inherit
   build-and-deploy-subscriber:
     needs:
       - ci
@@ -197,11 +180,25 @@ jobs:
     uses: ./.github/workflows/build_deploy_subscriber.yml
     if: ${{ !failure() && needs.ci-subscriber.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
     with:
-      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+      name: ${{ needs.ci-collect-info.outputs.name }}
       new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
       new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-      name: ${{ needs.ci-collect-info.outputs.name }}
       sha: ${{ github.sha }}
+      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+    secrets: inherit
+  build-and-deploy-ui:
+    needs:
+      - ci
+      - ci-ui
+      - ci-collect-info
+    uses: ./.github/workflows/build_deploy_ui.yml
+    if: ${{ !failure() && needs.ci-ui.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
+    with:
+      name: ${{ needs.ci-collect-info.outputs.name }}
+      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
+      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
+      sha: ${{ github.sha }}
+      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
     secrets: inherit
   build-and-deploy-websocket:
     needs:
@@ -211,26 +208,26 @@ jobs:
     uses: ./.github/workflows/build_deploy_websocket.yml
     if: ${{ !failure() && needs.ci-websocket.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
     with:
-      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+      name: ${{ needs.ci-collect-info.outputs.name }}
       new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
       new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-      name: ${{ needs.ci-collect-info.outputs.name }}
       sha: ${{ github.sha }}
+      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
     secrets: inherit
   build-docker-push-worker:
-      needs:
-        - ci
-        - ci-engine
-        - ci-collect-info
-      uses: ./.github/workflows/build_docker_push_worker.yml
-      if: ${{ !failure() && needs.ci-engine.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
-      with:
-        sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-        new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
-        new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-        name: ${{ needs.ci-collect-info.outputs.name }}
-        sha: ${{ github.sha }}
-      secrets: inherit
+    needs:
+      - ci
+      - ci-engine
+      - ci-collect-info
+    uses: ./.github/workflows/build_docker_push_worker.yml
+    if: ${{ !failure() && needs.ci-engine.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
+    with:
+      name: ${{ needs.ci-collect-info.outputs.name }}
+      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
+      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
+      sha: ${{ github.sha }}
+      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+    secrets: inherit
   update-policies-and-deploy-cerbos:
     needs:
       - ci
