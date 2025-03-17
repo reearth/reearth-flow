@@ -47,6 +47,8 @@ pub struct BroadcastGroup {
     redis_consumer_name: Option<String>,
     redis_group_name: Option<String>,
     shutdown_complete: AtomicBool,
+    update_batch_buffer: Arc<Mutex<Vec<Vec<u8>>>>,
+    batch_sender_task: Option<JoinHandle<()>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -126,6 +128,8 @@ impl BroadcastGroup {
         let (_storage_tx, storage_rx) = tokio::sync::mpsc::unbounded_channel();
         let pending_updates = Arc::new(Mutex::new(Vec::new()));
         let pending_updates_clone = pending_updates.clone();
+        let update_batch_buffer = Arc::new(Mutex::new(Vec::with_capacity(10)));
+        let update_batch_buffer_clone = update_batch_buffer.clone();
 
         let doc_sub = {
             lock.doc_mut()
@@ -141,8 +145,14 @@ impl BroadcastGroup {
 
                     let update_clone = u.update.clone();
                     let updates_arc = pending_updates_clone.clone();
+                    let batch_buffer = update_batch_buffer_clone.clone();
 
                     tokio::spawn(async move {
+                        {
+                            let mut batch = batch_buffer.lock().await;
+                            batch.push(update_clone.clone());
+                        }
+
                         let mut updates = updates_arc.lock().await;
                         updates.push(update_clone.clone());
                     });
@@ -205,6 +215,8 @@ impl BroadcastGroup {
             redis_consumer_name: None,
             redis_group_name: None,
             shutdown_complete: AtomicBool::new(false),
+            update_batch_buffer,
+            batch_sender_task: None,
         };
 
         Ok(result)
@@ -223,7 +235,7 @@ impl BroadcastGroup {
 
         let mut group = Self::new(awareness, buffer_capacity).await?;
 
-        let doc_name = config.doc_name.unwrap_or_default();
+        let doc_name = config.doc_name.clone().unwrap_or_default();
 
         let redis_ttl = redis_store
             .as_ref()
@@ -232,8 +244,40 @@ impl BroadcastGroup {
 
         Self::load_from_storage(&store, &doc_name, &group.awareness_ref).await;
 
-        if let Some(redis_store) = redis_store {
+        if let Some(redis_store) = redis_store.clone() {
             group.redis_store = Some(redis_store.clone());
+
+            let doc_name_for_batch = doc_name.clone();
+            let update_buffer = group.update_batch_buffer.clone();
+            let redis_store_for_batch = redis_store.clone();
+            let batch_sender_task = tokio::spawn(async move {
+                let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(10));
+                loop {
+                    interval.tick().await;
+                    let updates_to_send = {
+                        let mut buffer = update_buffer.lock().await;
+                        if buffer.is_empty() {
+                            continue;
+                        }
+                        let updates = buffer.clone();
+                        buffer.clear();
+                        updates
+                    };
+
+                    if !updates_to_send.is_empty() {
+                        let updates_as_slices: Vec<&[u8]> =
+                            updates_to_send.iter().map(|v| v.as_slice()).collect();
+
+                        if let Err(e) = redis_store_for_batch
+                            .publish_batch_updates(&doc_name_for_batch, &updates_as_slices)
+                            .await
+                        {
+                            tracing::error!("Failed to batch publish updates to Redis: {}", e);
+                        }
+                    }
+                }
+            });
+            group.batch_sender_task = Some(batch_sender_task);
 
             if let Some(pool) = redis_store.get_pool() {
                 let redis_key = format!("pending_updates:{}", doc_name);
@@ -295,7 +339,7 @@ impl BroadcastGroup {
                                 &doc_name_for_sub,
                                 &group_name_clone,
                                 &consumer_name_clone,
-                                200,
+                                20,
                             )
                             .await
                         {
@@ -320,7 +364,7 @@ impl BroadcastGroup {
                             }
                             Err(e) => {
                                 tracing::error!("Error reading from Redis Stream: {}", e);
-                                tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+                                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                             }
                         }
 
@@ -596,6 +640,31 @@ impl BroadcastGroup {
         self.shutdown_complete
             .store(true, std::sync::atomic::Ordering::SeqCst);
 
+        if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
+            let final_updates = {
+                let mut buffer = self.update_batch_buffer.lock().await;
+                if !buffer.is_empty() {
+                    let updates = buffer.clone();
+                    buffer.clear();
+                    updates
+                } else {
+                    Vec::new()
+                }
+            };
+
+            if !final_updates.is_empty() {
+                let updates_as_slices: Vec<&[u8]> =
+                    final_updates.iter().map(|v| v.as_slice()).collect();
+
+                if let Err(e) = redis_store
+                    .publish_batch_updates(doc_name, &updates_as_slices)
+                    .await
+                {
+                    tracing::warn!("Failed to send final batch updates during shutdown: {}", e);
+                }
+            }
+        }
+
         if let (Some(redis_store), Some(doc_name), Some(consumer_name), Some(group_name)) = (
             &self.redis_store,
             &self.doc_name,
@@ -650,6 +719,10 @@ impl Drop for BroadcastGroup {
 
         if let Some(sub) = self.awareness_sub.take() {
             drop(sub);
+        }
+
+        if let Some(task) = self.batch_sender_task.take() {
+            task.abort();
         }
 
         if let Some(task) = self.redis_subscriber_task.take() {
