@@ -29,284 +29,159 @@ import (
 const databaseName = "reearth-flow"
 
 func main() {
-	log.Printf("INFO: Starting reearth-flow subscriber service")
-
 	ctx, cancel := context.WithCancel(context.Background())
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-	log.Printf("DEBUG: Context and signal handlers initialized")
 
 	conf, cerr := ReadConfig(true)
 	if cerr != nil {
-		log.Fatalf("FATAL: Failed to load config: %v", cerr)
+		log.Fatalf("failed to load config: %v", cerr)
 	}
-	log.Printf("INFO: Configuration loaded successfully: %s", conf.Print())
+	log.Printf("config: %s", conf.Print())
 
-	log.Printf("DEBUG: Initializing clients")
-	pubsubClient, redisClient, mongoClient := initClients(ctx, conf)
-	defer cleanupClients(pubsubClient, redisClient, mongoClient)
-	log.Printf("INFO: All clients initialized successfully")
-
-	log.Printf("DEBUG: Initializing storage containers")
-	storages := initStorages(ctx, conf, redisClient, mongoClient)
-	log.Printf("INFO: Storage containers initialized successfully")
-
-	log.Printf("DEBUG: Initializing subscribers")
-	subscribers := initSubscribers(ctx, conf, pubsubClient, storages)
-	log.Printf("INFO: Subscribers initialized successfully")
-
-	log.Printf("DEBUG: Starting HTTP server")
-	server := startHTTPServer(conf.Port)
-	log.Printf("INFO: HTTP server started on port %s", conf.Port)
-
-	var wg sync.WaitGroup
-	log.Printf("DEBUG: Starting subscriber listeners")
-	startSubscribers(ctx, &wg, subscribers, cancel)
-	log.Printf("INFO: All subscriber listeners started")
-
-	log.Printf("DEBUG: Setting up graceful shutdown handler")
-	handleGracefulShutdown(ctx, sigCh, server, cancel)
-	log.Printf("INFO: Graceful shutdown handler configured")
-
-	log.Printf("INFO: Service is now fully operational")
-	wg.Wait()
-	log.Println("INFO: All subscribers stopped gracefully")
-}
-
-func initClients(ctx context.Context, conf *Config) (*pubsub.Client, *redis.Client, *mongo.Client) {
-	log.Printf("DEBUG: Creating PubSub client for project %s", conf.GCPProject)
+	// Initialize PubSub client
 	pubsubClient, err := pubsub.NewClient(ctx, conf.GCPProject)
 	if err != nil {
-		log.Fatalf("FATAL: Failed to create PubSub client: %v", err)
+		log.Fatalf("Failed to create pubsub client: %v", err)
 	}
-	log.Printf("DEBUG: PubSub client created successfully")
+	defer func() {
+		if cerr := pubsubClient.Close(); cerr != nil {
+			log.Printf("failed to close pubsub client: %v", cerr)
+		}
+	}()
 
-	log.Printf("DEBUG: Parsing Redis URL %s", maskSensitiveURL(conf.RedisURL))
-	redisOpt, err := redis.ParseURL(conf.RedisURL)
+	// Initialize Redis client
+	opt, err := redis.ParseURL(conf.RedisURL)
 	if err != nil {
-		log.Fatalf("FATAL: Failed to parse Redis URL: %v", err)
+		log.Fatalf("Failed to parse Redis URL: %v", err)
 	}
-
-	log.Printf("DEBUG: Creating Redis client")
-	redisClient := redis.NewClient(redisOpt)
-
-	log.Printf("DEBUG: Testing Redis connection")
+	redisClient := redis.NewClient(opt)
 	if err := redisClient.Ping(ctx).Err(); err != nil {
-		log.Fatalf("FATAL: Failed to connect to Redis: %v", err)
+		log.Fatalf("Failed to connect to Redis: %v", err)
 	}
-	log.Printf("DEBUG: Redis connection successful")
-
-	log.Printf("DEBUG: Creating MongoDB client for %s", maskSensitiveURL(conf.DB))
-	mongoClient, err := mongo.Connect(ctx, options.Client().ApplyURI(conf.DB).SetMonitor(otelmongo.NewMonitor()))
-	if err != nil {
-		log.Fatalf("FATAL: Failed to connect to MongoDB: %v", err)
-	}
-
-	log.Printf("DEBUG: Testing MongoDB connection")
-	if err := mongoClient.Ping(ctx, nil); err != nil {
-		log.Fatalf("FATAL: Failed to ping MongoDB: %v", err)
-	}
-	log.Printf("DEBUG: MongoDB connection successful")
-
-	return pubsubClient, redisClient, mongoClient
-}
-
-// Mask sensitive parts of URLs for logging
-func maskSensitiveURL(url string) string {
-	// This is a simple implementation - in production you might want something more robust
-	// that properly handles different URL formats
-	return url // For this example, we're not implementing the masking
-}
-
-func cleanupClients(pubsubClient *pubsub.Client, redisClient *redis.Client, mongoClient *mongo.Client) {
-	log.Printf("DEBUG: Starting cleanup of clients")
-
-	if pubsubClient != nil {
-		log.Printf("DEBUG: Closing PubSub client")
-		if err := pubsubClient.Close(); err != nil {
-			log.Printf("ERROR: Failed to close PubSub client: %v", err)
-		} else {
-			log.Printf("DEBUG: PubSub client closed successfully")
+	defer func() {
+		if rerr := redisClient.Close(); rerr != nil {
+			log.Printf("failed to close redis client: %v", rerr)
 		}
-	}
+	}()
 
-	if redisClient != nil {
-		log.Printf("DEBUG: Closing Redis client")
-		if err := redisClient.Close(); err != nil {
-			log.Printf("ERROR: Failed to close Redis client: %v", err)
-		} else {
-			log.Printf("DEBUG: Redis client closed successfully")
-		}
-	}
-
-	if mongoClient != nil {
-		log.Printf("DEBUG: Disconnecting MongoDB client")
-		if err := mongoClient.Disconnect(context.Background()); err != nil {
-			log.Printf("ERROR: Failed to close MongoDB client: %v", err)
-		} else {
-			log.Printf("DEBUG: MongoDB client disconnected successfully")
-		}
-	}
-
-	log.Printf("DEBUG: Client cleanup completed")
-}
-
-type StorageContainers struct {
-	Redis *flow_redis.RedisStorage
-	Mongo *flow_mongo.MongoStorage
-	Log   gateway.LogStorage
-	Edge  gateway.EdgeStorage
-}
-
-func initStorages(ctx context.Context, conf *Config, redisClient *redis.Client, mongoClient *mongo.Client) *StorageContainers {
-	log.Printf("DEBUG: Initializing Redis storage")
+	// Initialize storage components
 	redisStorage := flow_redis.NewRedisStorage(redisClient)
-	log.Printf("DEBUG: Redis storage initialized")
-
-	log.Printf("DEBUG: Initializing MongoDB storage with bucket=%s, baseURL=%s", conf.GCSBucket, conf.AssetBaseURL)
-	mongoStorage := flow_mongo.NewMongoStorage(
-		mongox.NewClient(databaseName, mongoClient),
-		conf.GCSBucket,
-		conf.AssetBaseURL,
-	)
-	log.Printf("DEBUG: MongoDB storage initialized")
-
-	log.Printf("DEBUG: Initializing Log storage implementation")
 	logStorage := infrastructure.NewLogStorageImpl(redisStorage)
-	log.Printf("DEBUG: Log storage implementation initialized")
 
-	log.Printf("DEBUG: Initializing Edge storage implementation")
-	edgeStorage := infrastructure.NewEdgeStorageImpl(redisStorage, mongoStorage)
-	log.Printf("DEBUG: Edge storage implementation initialized")
+	// Initialize MongoDB client and edge storage if needed
+	var mongoClient *mongo.Client
+	var edgeStorage gateway.EdgeStorage
 
-	return &StorageContainers{
-		Redis: redisStorage,
-		Mongo: mongoStorage,
-		Log:   logStorage,
-		Edge:  edgeStorage,
+	if conf.EdgeSubscriptionID != "" {
+		mongoClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.DB).SetMonitor(otelmongo.NewMonitor()))
+		if err != nil {
+			log.Fatalf("Failed to connect to MongoDB: %v", err)
+		}
+		if err := mongoClient.Ping(ctx, nil); err != nil {
+			log.Fatalf("Failed to ping MongoDB: %v", err)
+		}
+
+		defer func() {
+			if merr := mongoClient.Disconnect(context.Background()); merr != nil {
+				log.Printf("failed to disconnet mongo client: %v", merr)
+			}
+		}()
+
+		mongoStorage := flow_mongo.NewMongoStorage(
+			mongox.NewClient(databaseName, mongoClient),
+			conf.GCSBucket,
+			conf.AssetBaseURL,
+		)
+		edgeStorage = infrastructure.NewEdgeStorageImpl(redisStorage, mongoStorage)
 	}
-}
 
-type Subscribers struct {
-	Log  *flow_pubsub.LogSubscriber
-	Edge *flow_pubsub.EdgeSubscriber
-}
+	// Set up subscribers with respective subscriptions
+	var wg sync.WaitGroup
 
-func initSubscribers(_ context.Context, conf *Config, pubsubClient *pubsub.Client, storages *StorageContainers) *Subscribers {
-	var logSubscriber *flow_pubsub.LogSubscriber
+	// Set up log subscriber if configured
 	if conf.LogSubscriptionID != "" {
-		log.Printf("DEBUG: Initializing Log subscriber with subscription ID: %s", conf.LogSubscriptionID)
 		logSub := pubsubClient.Subscription(conf.LogSubscriptionID)
 		logSubAdapter := flow_pubsub.NewRealSubscription(logSub)
-		logSubscriberUC := interactor.NewLogSubscriberUseCase(storages.Log)
-		logSubscriber = flow_pubsub.NewLogSubscriber(logSubAdapter, logSubscriberUC)
-		log.Printf("DEBUG: Log subscriber initialized")
+		logSubscriberUC := interactor.NewLogSubscriberUseCase(logStorage)
+		logSubscriber := flow_pubsub.NewLogSubscriber(logSubAdapter, logSubscriberUC)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Println("[subscriber] Starting log subscriber...")
+			if err := logSubscriber.StartListening(ctx); err != nil {
+				log.Printf("[subscriber] Log subscriber error: %v", err)
+				cancel()
+			}
+			log.Println("[subscriber] Log subscriber stopped")
+		}()
 	} else {
-		log.Printf("WARN: Log subscription ID not provided, Log subscriber will not be initialized")
+		log.Println("Log subscription ID not provided, log subscriber will not be started")
 	}
 
-	var edgeSubscriber *flow_pubsub.EdgeSubscriber
-	if conf.EdgeSubscriptionID != "" {
-		log.Printf("DEBUG: Initializing Edge subscriber with subscription ID: %s", conf.EdgeSubscriptionID)
+	// Set up edge subscriber if configured
+	if conf.EdgeSubscriptionID != "" && edgeStorage != nil {
 		edgeSub := pubsubClient.Subscription(conf.EdgeSubscriptionID)
 		edgeSubAdapter := flow_pubsub.NewRealSubscription(edgeSub)
-		edgeSubscriberUC := interactor.NewEdgeSubscriberUseCase(storages.Edge)
-		edgeSubscriber = flow_pubsub.NewEdgeSubscriber(edgeSubAdapter, edgeSubscriberUC)
-		log.Printf("DEBUG: Edge subscriber initialized")
+		edgeSubscriberUC := interactor.NewEdgeSubscriberUseCase(edgeStorage)
+		edgeSubscriber := flow_pubsub.NewEdgeSubscriber(edgeSubAdapter, edgeSubscriberUC)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Println("[subscriber] Starting edge subscriber...")
+			if err := edgeSubscriber.StartListening(ctx); err != nil {
+				log.Printf("[subscriber] Edge subscriber error: %v", err)
+				cancel()
+			}
+			log.Println("[subscriber] Edge subscriber stopped")
+		}()
+	} else if conf.EdgeSubscriptionID != "" {
+		log.Println("Edge storage not properly initialized, edge subscriber will not be started")
 	} else {
-		log.Printf("WARN: Edge subscription ID not provided, Edge subscriber will not be initialized")
+		log.Println("Edge subscription ID not provided, edge subscriber will not be started")
 	}
 
-	return &Subscribers{
-		Log:  logSubscriber,
-		Edge: edgeSubscriber,
-	}
-}
-
-func startHTTPServer(port string) *http.Server {
-	log.Printf("DEBUG: Setting up HTTP endpoints")
-
+	// Set up HTTP server
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("DEBUG: Received request at / from %s", r.RemoteAddr)
-		if _, err := fmt.Fprintf(w, "Subscriber service is running"); err != nil {
-			log.Printf("ERROR: Failed to write response for / endpoint: %v", err)
+		if _, err := fmt.Fprintf(w, "Subscriber is running"); err != nil {
+			log.Printf("failed to write response: %v", err)
 		}
 	})
 
 	http.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("DEBUG: Received health check request from %s", r.RemoteAddr)
 		w.WriteHeader(http.StatusOK)
 		if _, err := fmt.Fprintf(w, "OK"); err != nil {
-			log.Printf("ERROR: Failed to write response for /health endpoint: %v", err)
+			log.Printf("failed to write response: %v", err)
 		}
 	})
 
 	server := &http.Server{
-		Addr:    ":" + port,
+		Addr:    ":" + conf.Port,
 		Handler: http.DefaultServeMux,
 	}
 
 	go func() {
-		log.Printf("INFO: Starting HTTP server on port %s", port)
+		log.Printf("[subscriber] Starting HTTP server on port %s...", conf.Port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Printf("ERROR: HTTP server error: %v", err)
+			log.Printf("[subscriber] HTTP server error: %v", err)
+			cancel()
 		}
 	}()
 
-	return server
-}
-
-func startSubscribers(ctx context.Context, wg *sync.WaitGroup, subscribers *Subscribers, cancel context.CancelFunc) {
-	if subscribers.Log != nil {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			log.Printf("INFO: Starting Log subscriber...")
-			if err := subscribers.Log.StartListening(ctx); err != nil {
-				log.Printf("ERROR: Log subscriber error: %v", err)
-				log.Printf("INFO: Cancelling context due to Log subscriber error")
-				cancel()
-			}
-			log.Printf("DEBUG: Log subscriber.StartListening returned")
-		}()
-	} else {
-		log.Printf("WARN: Log subscriber not configured, skipping...")
-	}
-
-	if subscribers.Edge != nil {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			log.Printf("INFO: Starting Edge subscriber...")
-			if err := subscribers.Edge.StartListening(ctx); err != nil {
-				log.Printf("ERROR: Edge subscriber error: %v", err)
-				log.Printf("INFO: Cancelling context due to Edge subscriber error")
-				cancel()
-			}
-			log.Printf("DEBUG: Edge subscriber.StartListening returned")
-		}()
-	} else {
-		log.Printf("WARN: Edge subscriber not configured, skipping...")
-	}
-}
-
-func handleGracefulShutdown(_ context.Context, sigCh chan os.Signal, server *http.Server, cancel context.CancelFunc) {
+	// Set up graceful shutdown handler
 	go func() {
 		sig := <-sigCh
-		log.Printf("INFO: Received signal: %v. Starting graceful shutdown...", sig)
-
+		log.Printf("[subscriber] Received signal: %v. Shutting down...", sig)
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer shutdownCancel()
-
-		log.Printf("DEBUG: Shutting down HTTP server")
 		if err := server.Shutdown(shutdownCtx); err != nil {
-			log.Printf("ERROR: HTTP server shutdown error: %v", err)
-		} else {
-			log.Printf("DEBUG: HTTP server shutdown successful")
+			log.Printf("[subscriber] HTTP server shutdown error: %v", err)
 		}
-
-		log.Printf("DEBUG: Canceling main context")
 		cancel()
-		log.Printf("DEBUG: Main context canceled")
 	}()
+
+	wg.Wait()
+	log.Println("[subscriber] All subscribers stopped gracefully.")
 }

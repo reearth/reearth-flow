@@ -14,6 +14,7 @@ import (
 
 type EdgeEntry struct {
 	ID                  string     `json:"id"`
+	EdgeID              string     `json:"edgeId"`
 	WorkflowID          string     `json:"workflowId"`
 	JobID               string     `json:"jobId"`
 	Status              string     `json:"status"`
@@ -32,6 +33,7 @@ func (e *EdgeEntry) ToDomain() (*edge.EdgeExecution, error) {
 
 	return edge.NewEdgeExecution(
 		e.ID,
+		e.EdgeID,
 		jid,
 		e.WorkflowID,
 		edge.Status(e.Status),
