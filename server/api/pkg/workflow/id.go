@@ -9,13 +9,11 @@ type (
 	ID          = id.WorkflowID
 	ProjectID   = id.ProjectID
 	WorkspaceID = accountdomain.WorkspaceID
-	GraphID     = id.GraphID
 )
 
 var (
 	NewProjectID   = id.NewProjectID
 	NewWorkspaceID = accountdomain.NewWorkspaceID
-	NewGraphID     = id.NewGraphID
 )
 
 var (
