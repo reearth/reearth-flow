@@ -86,6 +86,7 @@ impl RedisStore {
                     .arg("MAXLEN")
                     .arg("~")
                     .arg(1000)
+                    .arg("NOMKSTREAM")
                     .arg("*")
                     .arg(fields);
 
@@ -111,7 +112,11 @@ impl RedisStore {
         if let Some(pool) = &self.pool {
             let stream_key = format!("yjs:stream:{}", doc_id);
             if let Ok(mut conn) = pool.get().await {
+                let ttl = self.config.as_ref().map(|c| c.ttl).unwrap_or(3600);
+
                 let mut pipe = redis::pipe();
+
+                pipe.atomic();
 
                 for update in updates {
                     let fields = &[("update", *update)];
@@ -120,13 +125,12 @@ impl RedisStore {
                         .arg("MAXLEN")
                         .arg("~")
                         .arg(1000)
+                        .arg("NOMKSTREAM")
                         .arg("*")
                         .arg(fields);
                 }
 
-                if let Some(config) = &self.config {
-                    pipe.cmd("EXPIRE").arg(&stream_key).arg(config.ttl);
-                }
+                pipe.cmd("EXPIRE").arg(&stream_key).arg(ttl);
 
                 let _: () = pipe.query_async(&mut *conn).await?;
             }
@@ -668,31 +672,6 @@ impl RedisStore {
         Ok(None)
     }
 
-    pub async fn refresh_doc_instance(
-        &self,
-        doc_id: &str,
-        instance_id: &str,
-        ttl_seconds: u64,
-    ) -> Result<(), anyhow::Error> {
-        if let Some(pool) = &self.pool {
-            let key = format!("doc:instance:{}", doc_id);
-            if let Ok(mut conn) = pool.get().await {
-                let current: Option<String> = conn.get(&key).await?;
-
-                if let Some(current_instance) = current {
-                    if current_instance == instance_id {
-                        let _: () = redis::cmd("EXPIRE")
-                            .arg(&key)
-                            .arg(ttl_seconds)
-                            .query_async(&mut *conn)
-                            .await?;
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
-
     pub async fn release_doc_instance(
         &self,
         doc_id: &str,
@@ -711,5 +690,78 @@ impl RedisStore {
             }
         }
         Ok(())
+    }
+
+    pub async fn read_and_ack_with_lua(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+        consumer_name: &str,
+        count: usize,
+    ) -> Result<Vec<Vec<u8>>, anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let script = redis::Script::new(
+                    r#"
+                    local stream_key = KEYS[1]
+                    local group_name = ARGV[1]
+                    local consumer_name = ARGV[2]
+                    local count = tonumber(ARGV[3])
+                    
+                    -- Read messages
+                    local result = redis.call('XREADGROUP', 'GROUP', group_name, consumer_name, 'COUNT', count, 'STREAMS', stream_key, '>')
+                    
+                    -- Check if result is a table and has content
+                    if type(result) ~= 'table' then
+                        return {}
+                    end
+                    
+                    if #result == 0 then
+                        return {}
+                    end
+                    
+                    local messages = result[1][2]
+                    local updates = {}
+                    local ids_to_ack = {}
+                    
+                    -- Extract updates and IDs to acknowledge
+                    for i, message in ipairs(messages) do
+                        local id = message[1]
+                        table.insert(ids_to_ack, id)
+                        
+                        local fields = message[2]
+                        for j = 1, #fields, 2 do
+                            if fields[j] == "update" then
+                                table.insert(updates, fields[j+1])
+                            end
+                        end
+                    end
+                    
+                    -- Acknowledge messages
+                    if #ids_to_ack > 0 then
+                        redis.call('XACK', stream_key, group_name, unpack(ids_to_ack))
+                    end
+                    
+                    return updates
+                "#,
+                );
+
+                let effective_count = count.max(50);
+                let updates: Vec<Vec<u8>> = script
+                    .key(stream_key)
+                    .arg(group_name)
+                    .arg(consumer_name)
+                    .arg(effective_count)
+                    .invoke_async(&mut *conn)
+                    .await?;
+
+                Ok(updates)
+            } else {
+                Err(anyhow::anyhow!("Failed to get Redis connection"))
+            }
+        } else {
+            Err(anyhow::anyhow!("Redis pool is not initialized"))
+        }
     }
 }
