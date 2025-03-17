@@ -13,7 +13,6 @@ import {
   Label,
   TextArea,
 } from "@flow/components";
-// import ConfirmationDialog from "@flow/features/ConfirmationDialog";
 import { useDocument } from "@flow/lib/gql/document";
 import { useT } from "@flow/lib/i18n";
 import { Project, ProjectDocument } from "@flow/types";
