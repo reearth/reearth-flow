@@ -10,6 +10,7 @@ use std::sync::Arc;
 use yrs::sync::Awareness;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
+const DEFAULT_DOC_ID: &str = "01jpjf97g0avcdcefqybd4kx9e";
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
     store: Arc<GcsStore>,
@@ -105,17 +106,37 @@ impl BroadcastPool {
 
             {
                 let mut txn = doc.transact_mut();
+                let mut loaded = false;
+
                 match self.store.load_doc(doc_id, &mut txn).await {
-                    Ok(loaded) => {
-                        if !loaded {
+                    Ok(true) => {
+                        loaded = true;
+                    }
+                    Ok(false) => match self.store.load_doc(DEFAULT_DOC_ID, &mut txn).await {
+                        Ok(true) => {
+                            tracing::info!("Loaded default document '{}'", DEFAULT_DOC_ID);
+                            loaded = true;
+                        }
+                        Ok(false) => {
                             need_initial_save = true;
                         }
-                    }
-
+                        Err(e) => {
+                            tracing::warn!(
+                                "Failed to load default document '{}': {}",
+                                DEFAULT_DOC_ID,
+                                e
+                            );
+                            need_initial_save = true;
+                        }
+                    },
                     Err(e) => {
                         tracing::error!("Failed to load document '{}': {}", doc_id, e);
                         return Err(e);
                     }
+                }
+
+                if !loaded {
+                    need_initial_save = true;
                 }
             }
 

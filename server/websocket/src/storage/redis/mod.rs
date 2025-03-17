@@ -77,9 +77,6 @@ impl RedisStore {
             let fields = &[("update", update)];
             pipe.cmd("XADD")
                 .arg(&stream_key)
-                .arg("MAXLEN")
-                .arg("~")
-                .arg(1000)
                 .arg("NOMKSTREAM")
                 .arg("*")
                 .arg(fields);
