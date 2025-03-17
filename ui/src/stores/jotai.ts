@@ -7,6 +7,3 @@ export const useCurrentProject = () => useAtom(currentProject);
 
 const currentWorkspace = atom<Workspace | undefined>(undefined);
 export const useCurrentWorkspace = () => useAtom(currentWorkspace);
-
-const isReverting = atom<boolean>(false);
-export const useIsReverting = () => useAtom(isReverting);

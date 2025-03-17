@@ -1,10 +1,8 @@
 import { useMemo } from "react";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
-import { LoadingSplashscreen } from "@flow/components";
 import Canvas from "@flow/features/Canvas";
 import { YWorkflow } from "@flow/lib/yjs/types";
-import { useIsReverting } from "@flow/stores";
 
 import {
   BottomBar,
@@ -78,7 +76,7 @@ export default function Editor({
     }),
     [handleNodesChange, handleNodeDoubleClick],
   );
-  const [isReverting] = useIsReverting();
+
   return (
     <div className="flex h-screen flex-col">
       <div className="relative flex flex-1">
@@ -113,24 +111,20 @@ export default function Editor({
               onDebugRunStart={handleDebugRunStart}
               onDebugRunStop={handleDebugRunStop}
               onLayoutChange={handleLayoutChange}>
-              {!isReverting ? (
-                <Canvas
-                  nodes={nodes}
-                  edges={edges}
-                  canvasLock={!!locallyLockedNode}
-                  onWorkflowAdd={handleWorkflowAdd}
-                  onNodesAdd={handleNodesAdd}
-                  onNodesChange={handleNodesChange}
-                  onNodeHover={handleNodeHover}
-                  onNodeDoubleClick={handleNodeDoubleClick}
-                  onNodePickerOpen={handleNodePickerOpen}
-                  onEdgesAdd={handleEdgesAdd}
-                  onEdgesChange={handleEdgesChange}
-                  onEdgeHover={handleEdgeHover}
-                />
-              ) : (
-                <LoadingSplashscreen />
-              )}
+              <Canvas
+                nodes={nodes}
+                edges={edges}
+                canvasLock={!!locallyLockedNode}
+                onWorkflowAdd={handleWorkflowAdd}
+                onNodesAdd={handleNodesAdd}
+                onNodesChange={handleNodesChange}
+                onNodeHover={handleNodeHover}
+                onNodeDoubleClick={handleNodeDoubleClick}
+                onNodePickerOpen={handleNodePickerOpen}
+                onEdgesAdd={handleEdgesAdd}
+                onEdgesChange={handleEdgesChange}
+                onEdgeHover={handleEdgeHover}
+              />
             </OverlayUI>
             <BottomBar
               currentWorkflowId={currentWorkflowId}

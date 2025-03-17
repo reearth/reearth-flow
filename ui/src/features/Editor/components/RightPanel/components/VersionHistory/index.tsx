@@ -1,6 +1,10 @@
 import { Doc } from "yjs";
 
-import { LoadingSkeleton, ScrollArea } from "@flow/components";
+import {
+  LoadingSkeleton,
+  LoadingSplashscreen,
+  ScrollArea,
+} from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { Project } from "@flow/types";
 import { formatDate } from "@flow/utils";
@@ -86,6 +90,7 @@ const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
             onRollbackProject={onRollbackProject}
           />
         )}
+      {isReverting && <LoadingSplashscreen />}
     </div>
   );
 };

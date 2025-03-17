@@ -3,7 +3,6 @@ import { Doc } from "yjs";
 import * as Y from "yjs";
 
 import { useDocument } from "@flow/lib/gql/document/useApi";
-import { useIsReverting } from "@flow/stores";
 
 export default ({
   projectId,
@@ -19,13 +18,14 @@ export default ({
   } = useDocument();
 
   const { history, isFetching } = useGetProjectHistory(projectId);
-  const [isReverting, setIsReverting] = useIsReverting();
+
   const { projectDocument } = useGetLatestProjectSnapshot(projectId);
 
   const [selectedProjectSnapshotVersion, setSelectedProjectSnapshotVersion] =
     useState<number | null>(null);
   const [openVersionChangeDialog, setOpenVersionChangeDialog] =
     useState<boolean>(false);
+  const [isReverting, setIsReverting] = useState<boolean>(false);
   const snapshotOrigin = "snapshot-rollback";
   // Note: This function comes from this forum: https://discuss.yjs.dev/t/is-there-a-way-to-revert-to-a-specific-version/379/6
   function revertUpdate(
