@@ -3,7 +3,6 @@ import { Doc } from "yjs";
 import * as Y from "yjs";
 
 import { useDocument } from "@flow/lib/gql/document/useApi";
-import { YWorkflow } from "@flow/lib/yjs/types";
 
 export default ({
   projectId,
@@ -27,6 +26,45 @@ export default ({
   const [openVersionChangeDialog, setOpenVersionChangeDialog] =
     useState<boolean>(false);
 
+  const snapshotOrigin = "snapshot-rollback";
+
+  function revertUpdate(
+    doc: Y.Doc,
+    snapshotUpdate: Uint8Array,
+    getMetadata: (key: string) => "Text" | "Map" | "Array",
+  ) {
+    const snapshotDoc = new Y.Doc();
+    Y.applyUpdate(snapshotDoc, snapshotUpdate, snapshotOrigin);
+    const currentStateVector = Y.encodeStateVector(doc);
+    const snapshotStateVector = Y.encodeStateVector(snapshotDoc);
+    const changesSinceSnapshotUpdate = Y.encodeStateAsUpdate(
+      doc,
+      snapshotStateVector,
+    );
+    const undoManager = new Y.UndoManager(
+      [...snapshotDoc.share.keys()].map((key) => {
+        const type = getMetadata(key);
+        if (type === "Text") {
+          return snapshotDoc.getText(key);
+        } else if (type === "Map") {
+          return snapshotDoc.getMap(key);
+        } else if (type === "Array") {
+          return snapshotDoc.getArray(key);
+        }
+        throw new Error("Unknown type");
+      }),
+      {
+        trackedOrigins: new Set([snapshotOrigin]),
+      },
+    );
+    Y.applyUpdate(snapshotDoc, changesSinceSnapshotUpdate, snapshotOrigin);
+    undoManager.undo();
+    const revertChangesSinceSnapshotUpdate = Y.encodeStateAsUpdate(
+      snapshotDoc,
+      currentStateVector,
+    );
+    Y.applyUpdate(doc, revertChangesSinceSnapshotUpdate, snapshotOrigin);
+  }
   const handleRollbackProject = useCallback(async () => {
     if (selectedProjectSnapshotVersion === null) return;
 
@@ -38,54 +76,34 @@ export default ({
       const updates = rollbackData.projectDocument?.updates;
 
       if (!updates || !updates.length || !yDoc) {
+        console.error("No updates found or yDoc not available");
         return;
       }
 
       const convertedUpdates = new Uint8Array(updates);
 
-      console.log("Update contents...");
-
-      // Load temp doc to check if workflows are present
       const tempYDoc = new Y.Doc();
       Y.applyUpdate(tempYDoc, convertedUpdates);
-      // for testing but could use temp doc to convert etc
-      const tempWorkflows = tempYDoc.getMap<YWorkflow>("workflows");
-      if (!tempWorkflows) {
-        console.warn("⚠️ No workflows found inside the rollback update.");
-      } else {
-        console.log(
-          "Workflows inside rollback update:",
-          tempWorkflows.toJSON(),
-        );
-      }
+
+      const getMetadata = (key: string): "Text" | "Map" | "Array" => {
+        const sharedType = tempYDoc.share.get(key);
+        if (sharedType instanceof Y.Text) return "Text";
+        if (sharedType instanceof Y.Map) return "Map";
+        if (sharedType instanceof Y.Array) return "Array";
+
+        console.warn(`Could not determine type for ${key}, defaulting to Map`);
+        return "Map";
+      };
 
       yDoc.transact(() => {
-        const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
-
-        if (yWorkflows) {
-          console.log("Deleting existing workflows");
-          yWorkflows.clear();
-        }
-
-        console.log("Inserting rollback workflows");
-        tempWorkflows.forEach((yWorkflow, wId) => {
-          yWorkflows.set(wId, yWorkflow);
-        });
-
-        console.log(
-          "Workflows inside yDoc after rollback:",
-          yWorkflows.toJSON(),
-        );
+        revertUpdate(yDoc, convertedUpdates, getMetadata);
       });
-
-      console.log("Rollback completed successfully.");
     } catch (error) {
       console.error("Project Rollback Failed:", error);
     }
 
     setOpenVersionChangeDialog(false);
   }, [selectedProjectSnapshotVersion, useRollbackProject, projectId, yDoc]);
-
   const latestProjectSnapshotVersion = projectDocument;
   return {
     history,
