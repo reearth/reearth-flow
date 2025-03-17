@@ -93,7 +93,6 @@ const ActionBar: React.FC<Props> = ({
             icon={<Broom weight="thin" />}
             onClick={handleDebugRunReset}
           />
-          <div className="border-l" />
           <IconButton
             className="rounded-none"
             tooltipText={t("Deploy project's workflow")}
@@ -101,7 +100,6 @@ const ActionBar: React.FC<Props> = ({
             icon={<RocketLaunch weight="thin" />}
             onClick={handleShowDeployDialog}
           />
-          <div className="border-l" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <IconButton

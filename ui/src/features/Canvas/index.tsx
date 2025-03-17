@@ -24,7 +24,7 @@ import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
 
-const gridSize = 30;
+const gridSize = 25;
 
 const snapGrid: SnapGrid = [gridSize, gridSize];
 
@@ -90,7 +90,6 @@ const Canvas: React.FC<Props> = ({
       // minZoom={0.7}
       // maxZoom={1}
       // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
-      // nodeDragThreshold={60}
       // translateExtent={[
       //   [-1000, -1000],
       //   [1000, 1000],
@@ -117,6 +116,8 @@ const Canvas: React.FC<Props> = ({
       connectOnClick={!canvasLock}
       // Locking props END
 
+      nodeDragThreshold={2}
+      snapToGrid
       snapGrid={snapGrid}
       selectionMode={SelectionMode["Partial"]}
       nodes={nodes}
