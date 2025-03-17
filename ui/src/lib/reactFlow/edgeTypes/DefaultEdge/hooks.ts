@@ -34,6 +34,14 @@ export default ({ id, selected }: { id: string; selected?: boolean }) => {
   );
   const { job: debugRun } = useGetJob(debugJobState?.jobId);
 
+  const intermediateDataUrl = useMemo(
+    () =>
+      debugRun?.status === "completed" &&
+      debugRun?.edgeExecutions?.find((edge) => edge.id === id)
+        ?.intermediateDataUrl,
+    [debugRun, id],
+  );
+
   useSubscriptionSetup<OnEdgeStatusChangeSubscription>(
     "GetSubscribedEdgeStatus",
     accessToken,
@@ -43,7 +51,20 @@ export default ({ id, selected }: { id: string; selected?: boolean }) => {
     !id || !debugRun,
   );
 
-  const { data: edgeStatus } = useSubscription("GetSubscribedEdgeStatus", id);
+  const { data: realTimeEdgeStatus } = useSubscription(
+    "GetSubscribedEdgeStatus",
+    id,
+  );
+
+  const edgeStatus = useMemo(() => {
+    if (debugRun?.edgeExecutions) {
+      const edge = debugRun.edgeExecutions.find(
+        (edgeExecution) => edgeExecution.id === id,
+      );
+      return edge?.status;
+    }
+    return realTimeEdgeStatus;
+  }, [debugRun, realTimeEdgeStatus, id]);
 
   console.log("edgeStatus", edgeStatus);
 
@@ -69,6 +90,7 @@ export default ({ id, selected }: { id: string; selected?: boolean }) => {
 
   return {
     edgeStatus,
+    intermediateDataUrl,
     handleIntermediateDataSet,
   };
 };

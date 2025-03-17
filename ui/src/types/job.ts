@@ -4,6 +4,15 @@ export type NodeStatus = "pending" | "running" | "succeeded" | "failed";
 
 export type EdgeStatus = "inProgress" | "completed" | "failed";
 
+export type EdgeExecution = {
+  id: string;
+  status: EdgeStatus;
+  startedAt?: string;
+  completedAt?: string;
+  featureId?: string;
+  intermediateDataUrl?: string;
+};
+
 export type NodeExecution = {
   nodeId: string;
   status: NodeStatus;
@@ -29,7 +38,7 @@ export type Job = {
   completedAt: string;
   outputURLs?: string[];
   logsURL?: string;
-  nodeExecutions?: NodeExecution[];
+  edgeExecutions?: EdgeExecution[];
 };
 
 export type CancelJob = {

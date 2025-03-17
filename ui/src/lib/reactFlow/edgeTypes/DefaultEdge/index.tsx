@@ -33,10 +33,11 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
     targetPosition,
   });
 
-  const { edgeStatus, handleIntermediateDataSet } = useHooks({
-    id,
-    selected,
-  });
+  const { edgeStatus, intermediateDataUrl, handleIntermediateDataSet } =
+    useHooks({
+      id,
+      selected,
+    });
 
   return (
     <>
@@ -50,7 +51,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             }}
           />
-        ) : edgeStatus === "completed" ? (
+        ) : edgeStatus === "completed" && intermediateDataUrl ? (
           <Table
             className="nodrag nopan absolute size-[30px] origin-center rounded-full border border-white bg-primary p-1 transition-[height,width] hover:size-[50px]"
             style={{
