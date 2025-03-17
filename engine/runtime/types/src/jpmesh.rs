@@ -111,11 +111,15 @@ impl JPMeshCode {
         let lat_len = ((max.y - min.y) / mesh_type.lat_interval()).ceil() as u64;
         let lng_len = ((max.x - min.x) / mesh_type.lng_interval()).ceil() as u64;
 
+        let start_bounds = JPMeshCode::new(min, mesh_type).bounds();
+        let start_lng = (start_bounds.min().x + start_bounds.max().x) / 2.0;
+        let start_lat = (start_bounds.min().y + start_bounds.max().y) / 2.0;
+
         for i in 0..=lat_len {
             for j in 0..=lng_len {
                 let coords = Coordinate2D::new_(
-                    min.x + j as f64 * mesh_type.lng_interval(),
-                    min.y + i as f64 * mesh_type.lat_interval(),
+                    start_lng + j as f64 * mesh_type.lng_interval(),
+                    start_lat + i as f64 * mesh_type.lat_interval(),
                 );
                 mesh_codes.push(JPMeshCode::new(coords, mesh_type));
             }
@@ -298,7 +302,7 @@ impl JPMeshCodeSeed {
     fn bounds(&self, mesh_type: JPMeshType) -> Rect2D<f64> {
         let mut code_2 = self.code_2;
 
-        for (i, code) in code_2.iter_mut().enumerate().skip(mesh_type.code_length()) {
+        for (i, code) in code_2.iter_mut().enumerate().skip(8) {
             *code = if i >= mesh_type.code_length() { 1 } else { 0 };
         }
 
