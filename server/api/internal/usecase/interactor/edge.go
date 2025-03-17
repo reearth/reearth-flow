@@ -13,6 +13,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/edge"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/subscription"
+	"github.com/reearth/reearthx/log"
 )
 
 type EdgeExecution struct {
@@ -72,7 +73,6 @@ func (ei *EdgeExecution) GetEdgeExecutions(ctx context.Context, jobID id.JobID) 
 }
 
 func (ei *EdgeExecution) GetEdgeExecution(ctx context.Context, jobID id.JobID, edgeID string) (*edge.EdgeExecution, error) {
-
 	if err := ei.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, err
 	}
@@ -102,16 +102,11 @@ func (ei *EdgeExecution) SubscribeToEdge(ctx context.Context, jobID id.JobID, ed
 	}
 
 	key := fmt.Sprintf("%s:%s", jobID.String(), edgeID)
-
 	ch := ei.subscriptions.Subscribe(key)
 
 	go func() {
-		edgeExec, err := ei.redisGateway.GetEdgeExecution(ctx, jobID, edgeID)
-		if err != nil {
-			return
-		}
-
-		if edgeExec != nil {
+		edgeExec, err := ei.redisGateway.GetEdgeExecution(context.Background(), jobID, edgeID)
+		if err == nil && edgeExec != nil {
 			ei.subscriptions.Notify(key, []*edge.EdgeExecution{edgeExec})
 		}
 	}()
@@ -138,50 +133,63 @@ func (ei *EdgeExecution) startWatchingEdgeIfNeeded(jobID id.JobID, edgeID string
 }
 
 func (ei *EdgeExecution) runEdgeMonitoringLoop(ctx context.Context, jobID id.JobID, edgeID string) {
-	key := fmt.Sprintf("%s:%s", jobID.String(), edgeID)
-
 	if err := ei.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return
 	}
 
+	key := fmt.Sprintf("%s:%s", jobID.String(), edgeID)
 	ticker := time.NewTicker(3 * time.Second)
 	defer ticker.Stop()
 
 	var lastStatus edge.Status
+	var initialFetch bool
 
 	edgeExec, err := ei.redisGateway.GetEdgeExecution(ctx, jobID, edgeID)
-	if err != nil {
-	} else if edgeExec != nil {
+	if err == nil && edgeExec != nil {
 		lastStatus = edgeExec.Status()
+		initialFetch = true
 	}
 
-	loopCount := 0
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			loopCount++
-
-			subscriberCount := ei.subscriptions.CountSubscribers(key)
-
-			if subscriberCount == 0 {
+			if ei.subscriptions.CountSubscribers(key) == 0 {
 				ei.stopWatchingEdge(key)
 				return
 			}
 
+			currentEdgeExec, err := ei.redisGateway.GetEdgeExecution(ctx, jobID, edgeID)
 			if err != nil {
+				log.Warnfc(ctx, "edge: failed to get edge execution: %v", err)
 				continue
 			}
 
-			if edgeExec == nil {
+			if currentEdgeExec == nil {
 				continue
 			}
 
-			currentStatus := edgeExec.Status()
-			if currentStatus != lastStatus {
+			currentStatus := currentEdgeExec.Status()
+
+			if currentStatus != lastStatus || !initialFetch {
+				if initialFetch {
+					log.Debugfc(ctx, "edge: status changed from %s to %s for job %s, edge %s",
+						lastStatus, currentStatus, jobID, edgeID)
+				} else {
+					initialFetch = true
+				}
+
 				lastStatus = currentStatus
-				ei.subscriptions.Notify(key, []*edge.EdgeExecution{edgeExec})
+				ei.subscriptions.Notify(key, []*edge.EdgeExecution{currentEdgeExec})
+			}
+
+			if currentStatus == edge.StatusCompleted ||
+				currentStatus == edge.StatusFailed {
+				log.Debugfc(ctx, "edge: monitoring stopped for job %s, edge %s (status: %s)",
+					jobID, edgeID, currentStatus)
+				ei.stopWatchingEdge(key)
+				return
 			}
 		}
 	}
