@@ -672,26 +672,6 @@ impl RedisStore {
         Ok(None)
     }
 
-    pub async fn release_doc_instance(
-        &self,
-        doc_id: &str,
-        instance_id: &str,
-    ) -> Result<(), anyhow::Error> {
-        if let Some(pool) = &self.pool {
-            let key = format!("doc:instance:{}", doc_id);
-            if let Ok(mut conn) = pool.get().await {
-                let current: Option<String> = conn.get(&key).await?;
-
-                if let Some(current_instance) = current {
-                    if current_instance == instance_id {
-                        let _: () = redis::cmd("DEL").arg(&key).query_async(&mut *conn).await?;
-                    }
-                }
-            }
-        }
-        Ok(())
-    }
-
     pub async fn read_and_ack_with_lua(
         &self,
         doc_id: &str,

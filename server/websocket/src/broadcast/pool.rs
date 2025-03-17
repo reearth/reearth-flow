@@ -196,37 +196,12 @@ impl BroadcastPool {
         }
     }
 
-    pub async fn remove_connection(&self, doc_id: &str, instance_id: &str) {
+    pub async fn remove_connection(&self, doc_id: &str) {
         if let Some(group) = self.groups.get(doc_id) {
             let group_clone = group.clone();
             let remaining = group.decrement_connections();
 
             if remaining == 0 && group_clone.connection_count() == 0 {
-                if let Some(redis_store) = &self.redis_store {
-                    let key = format!("doc:instance:{}", doc_id);
-                    match redis_store.release_doc_instance(doc_id, instance_id).await {
-                        Ok(_) => {
-                            tracing::info!(
-                                "Released document instance registration for '{}'",
-                                doc_id
-                            );
-                        }
-                        Err(e) => {
-                            tracing::warn!(
-                                "Failed to release document instance, setting short TTL: {}",
-                                e
-                            );
-                            if let Err(e) = redis_store.expire(&key, 5).await {
-                                tracing::warn!(
-                                    "Failed to set short TTL for document '{}': {}",
-                                    doc_id,
-                                    e
-                                );
-                            }
-                        }
-                    }
-                }
-
                 if let Err(e) = group_clone.shutdown().await {
                     tracing::warn!(
                         "Failed to shutdown broadcast group for document '{}': {}",

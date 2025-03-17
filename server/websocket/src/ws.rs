@@ -210,38 +210,8 @@ pub async fn ws_handler(
         }
     };
 
-    // if let Some(redis_store) = state.pool.get_redis_store() {
-    //     let redis_store_clone = redis_store.clone();
-    //     let doc_id_clone = doc_id.clone();
-    //     let instance_id = state.instance_id.clone();
-
-    //     tokio::spawn(async move {
-    //         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(2));
-    //         loop {
-    //             interval.tick().await;
-    //             if let Err(e) = redis_store_clone
-    //                 .refresh_doc_instance(&doc_id_clone, &instance_id, 6)
-    //                 .await
-    //             {
-    //                 tracing::warn!(
-    //                     "Failed to refresh instance registration for document {}: {}",
-    //                     doc_id_clone,
-    //                     e
-    //                 );
-    //             }
-    //         }
-    //     });
-    // }
-
     ws.on_upgrade(move |socket| {
-        handle_socket(
-            socket,
-            bcast,
-            doc_id,
-            state.pool.clone(),
-            user_token,
-            state.instance_id.clone(),
-        )
+        handle_socket(socket, bcast, doc_id, state.pool.clone(), user_token)
     })
 }
 
@@ -251,7 +221,6 @@ async fn handle_socket(
     doc_id: String,
     pool: Arc<BroadcastPool>,
     user_token: Option<String>,
-    instance_id: String,
 ) {
     let (sender, receiver) = socket.split();
 
@@ -267,7 +236,7 @@ async fn handle_socket(
     if let Err(e) = result {
         tracing::error!("WebSocket connection error: {}", e);
     }
-    pool.remove_connection(&doc_id, &instance_id).await;
+    pool.remove_connection(&doc_id).await;
 }
 
 fn normalize_doc_id(doc_id: &str) -> String {
