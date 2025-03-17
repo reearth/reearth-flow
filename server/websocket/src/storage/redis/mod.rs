@@ -15,6 +15,9 @@ type RedisStreamResults = Vec<RedisStreamResult>;
 pub struct RedisConfig {
     pub url: String,
     pub ttl: u64,
+    pub max_connections: Option<u32>,
+    pub min_idle: Option<u32>,
+    pub connection_timeout: Option<u64>,
 }
 
 pub type RedisPool = Pool<RedisConnectionManager>;
@@ -32,7 +35,7 @@ impl RedisStore {
 
     pub async fn init(&mut self) -> Result<(), redis::RedisError> {
         if let Some(config) = &self.config {
-            let pool = Self::init_redis_connection(&config.url).await?;
+            let pool = Self::init_redis_connection(config).await?;
             self.pool = Some(pool);
             Ok(())
         } else {
@@ -51,17 +54,23 @@ impl RedisStore {
         self.config.clone()
     }
 
-    pub async fn init_redis_connection(url: &str) -> Result<Arc<RedisPool>, redis::RedisError> {
-        let manager = RedisConnectionManager::new(url)?;
-        let pool = Pool::builder()
-            .max_size(1024)
-            .min_idle(5)
-            .connection_timeout(Duration::from_secs(5))
+    pub async fn init_redis_connection(
+        config: &RedisConfig,
+    ) -> Result<Arc<RedisPool>, redis::RedisError> {
+        let manager = RedisConnectionManager::new(config.url.clone())?;
+
+        let builder = Pool::builder()
+            .max_size(config.max_connections.unwrap_or(1024))
+            .min_idle(config.min_idle.or(Some(10)))
+            .connection_timeout(Duration::from_secs(config.connection_timeout.unwrap_or(5)))
             .idle_timeout(Some(Duration::from_secs(500)))
-            .max_lifetime(Some(Duration::from_secs(7200)))
+            .max_lifetime(Some(Duration::from_secs(7200)));
+
+        let pool = builder
             .build(manager)
             .await
             .map_err(|e| redis::RedisError::from(std::io::Error::other(e)))?;
+
         Ok(Arc::new(pool))
     }
 
@@ -69,24 +78,22 @@ impl RedisStore {
         if let Some(pool) = &self.pool {
             let stream_key = format!("yjs:stream:{}", doc_id);
             if let Ok(mut conn) = pool.get().await {
+                let mut pipe = redis::pipe();
+
                 let fields = &[("update", update)];
-                let _: String = redis::cmd("XADD")
+                pipe.cmd("XADD")
                     .arg(&stream_key)
                     .arg("MAXLEN")
                     .arg("~")
                     .arg(1000)
                     .arg("*")
-                    .arg(fields)
-                    .query_async(&mut *conn)
-                    .await?;
+                    .arg(fields);
 
                 if let Some(config) = &self.config {
-                    let _: () = redis::cmd("EXPIRE")
-                        .arg(&stream_key)
-                        .arg(config.ttl)
-                        .query_async(&mut *conn)
-                        .await?;
+                    pipe.cmd("EXPIRE").arg(&stream_key).arg(config.ttl);
                 }
+
+                let _: () = pipe.query_async(&mut *conn).await?;
             }
         }
         Ok(())
@@ -117,15 +124,11 @@ impl RedisStore {
                         .arg(fields);
                 }
 
-                let _: () = pipe.query_async(&mut *conn).await?;
-
                 if let Some(config) = &self.config {
-                    let _: () = redis::cmd("EXPIRE")
-                        .arg(&stream_key)
-                        .arg(config.ttl)
-                        .query_async(&mut *conn)
-                        .await?;
+                    pipe.cmd("EXPIRE").arg(&stream_key).arg(config.ttl);
                 }
+
+                let _: () = pipe.query_async(&mut *conn).await?;
             }
         }
         Ok(())
@@ -224,6 +227,8 @@ impl RedisStore {
         if let Some(pool) = &self.pool {
             let stream_key = format!("yjs:stream:{}", doc_id);
             if let Ok(mut conn) = pool.get().await {
+                let mut pipe = redis::pipe();
+
                 let mut cmd = redis::cmd("XACK");
                 cmd.arg(&stream_key).arg(group_name);
 
@@ -231,7 +236,9 @@ impl RedisStore {
                     cmd.arg(id);
                 }
 
-                let _: () = cmd.query_async(&mut *conn).await?;
+                pipe.add_command(cmd);
+
+                let _: () = pipe.query_async(&mut *conn).await?;
                 return Ok(());
             }
         }
@@ -248,12 +255,14 @@ impl RedisStore {
         if let Some(pool) = &self.pool {
             let stream_key = format!("yjs:stream:{}", doc_id);
             if let Ok(mut conn) = pool.get().await {
+                let effective_count = count.max(50);
+
                 let result: RedisStreamResults = redis::cmd("XREADGROUP")
                     .arg("GROUP")
                     .arg(group_name)
                     .arg(consumer_name)
                     .arg("COUNT")
-                    .arg(count)
+                    .arg(effective_count)
                     .arg("STREAMS")
                     .arg(&stream_key)
                     .arg(">")
@@ -264,6 +273,9 @@ impl RedisStore {
                 let mut message_ids = Vec::new();
 
                 if !result.is_empty() && !result[0].1.is_empty() {
+                    message_ids.reserve(result[0].1.len());
+                    updates.reserve(result[0].1.len());
+
                     for (msg_id, fields) in &result[0].1 {
                         message_ids.push(msg_id.clone());
 
@@ -275,14 +287,12 @@ impl RedisStore {
                     }
 
                     if !message_ids.is_empty() {
-                        let mut cmd = redis::cmd("XACK");
-                        cmd.arg(&stream_key).arg(group_name);
-
-                        for id in &message_ids {
-                            cmd.arg(id);
+                        let ack_result = self
+                            .batch_ack_messages(doc_id, group_name, &message_ids)
+                            .await;
+                        if let Err(e) = ack_result {
+                            tracing::warn!("Failed to acknowledge messages: {}", e);
                         }
-
-                        let _: () = cmd.query_async(&mut *conn).await?;
                     }
                 }
 

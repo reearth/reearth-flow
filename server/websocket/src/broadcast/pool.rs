@@ -17,32 +17,57 @@ pub struct BroadcastPool {
     groups: DashMap<String, Arc<BroadcastGroup>>,
     buffer_capacity: usize,
     docs_in_creation: DashSet<String>,
+    last_cleanup: Arc<std::sync::Mutex<std::time::Instant>>,
 }
 
 impl BroadcastPool {
     pub fn new(store: Arc<GcsStore>, redis_store: Option<Arc<RedisStore>>) -> Self {
-        Self {
+        let pool = Self {
             store,
             redis_store,
             groups: DashMap::new(),
             buffer_capacity: 256,
             docs_in_creation: DashSet::new(),
-        }
+            last_cleanup: Arc::new(std::sync::Mutex::new(std::time::Instant::now())),
+        };
+
+        let pool_clone = pool.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(3600));
+            loop {
+                interval.tick().await;
+                pool_clone.cleanup_empty_groups().await;
+            }
+        });
+
+        pool
     }
 
-    pub fn with_buffer_capacity(
-        store: Arc<GcsStore>,
-        redis_store: Option<Arc<RedisStore>>,
-        buffer_capacity: usize,
-    ) -> Self {
-        Self {
-            store,
-            redis_store,
-            groups: DashMap::new(),
-            buffer_capacity,
-            docs_in_creation: DashSet::new(),
-        }
-    }
+    // pub fn with_buffer_capacity(
+    //     store: Arc<GcsStore>,
+    //     redis_store: Option<Arc<RedisStore>>,
+    //     buffer_capacity: usize,
+    // ) -> Self {
+    //     let pool = Self {
+    //         store,
+    //         redis_store,
+    //         groups: DashMap::new(),
+    //         buffer_capacity,
+    //         docs_in_creation: DashSet::new(),
+    //         last_cleanup: Arc::new(std::sync::Mutex::new(std::time::Instant::now())),
+    //     };
+
+    //     let pool_clone = pool.clone();
+    //     tokio::spawn(async move {
+    //         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300));
+    //         loop {
+    //             interval.tick().await;
+    //             pool_clone.cleanup_empty_groups().await;
+    //         }
+    //     });
+
+    //     pool
+    // }
 
     pub fn get_store(&self) -> Arc<GcsStore> {
         self.store.clone()
@@ -60,7 +85,8 @@ impl BroadcastPool {
         }
 
         if !self.docs_in_creation.insert(doc_id.to_string()) {
-            for delay_ms in [1, 2, 5, 10, 20, 50, 100] {
+            for i in 0..6 {
+                let delay_ms = 5 * (1 << i);
                 tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
 
                 if let Some(group) = self.groups.get(doc_id) {
@@ -90,6 +116,12 @@ impl BroadcastPool {
             pool: self,
             doc_id: doc_id.to_string(),
         };
+
+        if let Some(group) = self.groups.get(doc_id) {
+            let group_clone = group.clone();
+            drop(group);
+            return Ok(group_clone);
+        }
 
         let group: Arc<BroadcastGroup>;
         let mut need_initial_save = false;
@@ -153,8 +185,8 @@ impl BroadcastPool {
             .await?,
         );
 
-        if let Some(group) = self.groups.get(doc_id) {
-            return Ok(group.clone());
+        if let Some(existing_group) = self.groups.get(doc_id) {
+            return Ok(existing_group.clone());
         }
 
         self.groups.insert(doc_id.to_string(), group.clone());
@@ -163,10 +195,31 @@ impl BroadcastPool {
     }
 
     pub async fn cleanup_empty_groups(&self) {
-        self.groups.retain(|_, group| {
-            let count = group.connection_count();
-            count > 0
-        });
+        {
+            let mut last_cleanup = self.last_cleanup.lock().unwrap();
+            let now = std::time::Instant::now();
+            if now.duration_since(*last_cleanup).as_secs() < 60 {
+                return;
+            }
+            *last_cleanup = now;
+        }
+
+        let mut groups_to_remove = Vec::new();
+
+        for entry in self.groups.iter() {
+            let count = entry.value().connection_count();
+            if count == 0 {
+                groups_to_remove.push(entry.key().clone());
+            }
+        }
+
+        for doc_id in groups_to_remove {
+            if let Some((_, group)) = self.groups.remove(&doc_id) {
+                if let Err(e) = group.shutdown().await {
+                    tracing::warn!("Error shutting down empty group for '{}': {}", doc_id, e);
+                }
+            }
+        }
     }
 
     pub async fn remove_connection(&self, doc_id: &str, instance_id: &str) {
@@ -176,41 +229,26 @@ impl BroadcastPool {
 
             if remaining == 0 && group_clone.connection_count() == 0 {
                 if let Some(redis_store) = &self.redis_store {
-                    let mut success = false;
-                    for retry in 0..3 {
-                        match redis_store.release_doc_instance(doc_id, instance_id).await {
-                            Ok(_) => {
-                                tracing::info!(
-                                    "Released document instance registration for '{}' (attempt {})",
-                                    doc_id,
-                                    retry + 1
-                                );
-                                success = true;
-                                break;
-                            }
-                            Err(e) => {
-                                tracing::warn!(
-                                    "Failed to release document instance registration for '{}' (attempt {}): {}",
-                                    doc_id,
-                                    retry + 1,
-                                    e
-                                );
-                                if retry < 2 {
-                                    tokio::time::sleep(tokio::time::Duration::from_millis(100))
-                                        .await;
-                                }
-                            }
+                    let key = format!("doc:instance:{}", doc_id);
+                    match redis_store.release_doc_instance(doc_id, instance_id).await {
+                        Ok(_) => {
+                            tracing::info!(
+                                "Released document instance registration for '{}'",
+                                doc_id
+                            );
                         }
-                    }
-
-                    if !success {
-                        let key = format!("doc:instance:{}", doc_id);
-                        if let Err(e) = redis_store.expire(&key, 1).await {
+                        Err(e) => {
                             tracing::warn!(
-                                "Failed to set short TTL for document '{}': {}",
-                                doc_id,
+                                "Failed to release document instance, setting short TTL: {}",
                                 e
                             );
+                            if let Err(e) = redis_store.expire(&key, 5).await {
+                                tracing::warn!(
+                                    "Failed to set short TTL for document '{}': {}",
+                                    doc_id,
+                                    e
+                                );
+                            }
                         }
                     }
                 }
