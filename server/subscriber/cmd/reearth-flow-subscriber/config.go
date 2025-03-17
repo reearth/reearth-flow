@@ -16,11 +16,15 @@ func init() {
 }
 
 type Config struct {
-	Dev               bool   `pp:",omitempty"`
-	GCPProject        string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
-	LogSubscriptionID string `envconfig:"LOG_SUBSCRIPTION_ID" default:"flow-log-stream-main"`
-	Port              string `envconfig:"PORT" default:"8080"`
-	RedisURL          string `envconfig:"REDIS_URL" default:"redis://localhost:6379"`
+	AssetBaseURL       string `envconfig:"ASSET_BASE_URL" default:"http://localhost:8080/assets"`
+	DB                 string `default:"mongodb://localhost"`
+	Dev                bool   `pp:",omitempty"`
+	EdgeSubscriptionID string `envconfig:"EDGE_SUBSCRIPTION_ID" default:"flow-edge-pass-through-main"`
+	GCPProject         string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
+	GCSBucket          string `envconfig:"GCS_BUCKET" pp:",omitempty"`
+	LogSubscriptionID  string `envconfig:"LOG_SUBSCRIPTION_ID" default:"flow-log-stream-main"`
+	Port               string `envconfig:"PORT" default:"8080"`
+	RedisURL           string `envconfig:"REDIS_URL" default:"redis://localhost:6379"`
 }
 
 func ReadConfig(debug bool) (*Config, error) {
