@@ -169,7 +169,7 @@ pub async fn ws_handler(
     if let Some(redis_store) = state.pool.get_redis_store() {
         match redis_store.get_doc_instance(&doc_id).await {
             Ok(Some(instance_id)) if instance_id != state.instance_id => {
-                tracing::info!(
+                tracing::debug!(
                     "Document {} is already being handled by instance {}",
                     doc_id,
                     instance_id
