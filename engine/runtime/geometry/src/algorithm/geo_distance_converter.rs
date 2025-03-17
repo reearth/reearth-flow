@@ -1,3 +1,6 @@
+// TODO: Implement more accurate conversion
+// After improving the accuracy, algorithm/rotator_3d.rs should be updated
+
 const EARTH_RADIUS: f64 = 6_378_137.0;
 const DEG_TO_RAD: f64 = std::f64::consts::PI / 180.0;
 const RAD_TO_DEG: f64 = 180.0 / std::f64::consts::PI;

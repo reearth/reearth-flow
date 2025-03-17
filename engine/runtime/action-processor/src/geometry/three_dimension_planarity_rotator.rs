@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use reearth_flow_geometry::algorithm::centroid::Centroid;
 use reearth_flow_geometry::algorithm::normal_3d::compute_normal_3d;
 use reearth_flow_geometry::algorithm::rotate_3d::Rotate3D;
-use reearth_flow_geometry::algorithm::rotation_query_3d::RotationQuery3D;
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_geometry::types::line_string::LineString2D;
@@ -187,72 +186,76 @@ impl ThreeDimensionPlanarityRotator {
 }
 
 fn rotate_polygon_to_2d(polygon: &Polygon3D<f64>) -> Option<Polygon2D<f64>> {
-    let exterior_coords = polygon.exterior().coords().cloned().collect::<Vec<_>>();
-    if exterior_coords.is_empty() {
-        return None;
-    }
-    if exterior_coords.len() < 3 {
-        return None;
-    }
-
-    let centoroid = polygon.centroid()?;
-
-    println!("Centroid: {:?}", centoroid);
-
-    let from_vector = compute_normal_3d(
-        Point3D::new(
-            exterior_coords[0].x,
-            exterior_coords[0].y,
-            exterior_coords[0].z,
-        ),
-        Point3D::new(
-            exterior_coords[1].x,
-            exterior_coords[1].y,
-            exterior_coords[1].z,
-        ),
-        Point3D::new(
-            exterior_coords[2].x,
-            exterior_coords[2].y,
-            exterior_coords[2].z,
-        ),
-        true,
-    )?;
-
-    println!("Normal vector: {:?}", from_vector);
-
-    let to_vector = Point3D::new(0.0, 0.0, 1.0);
-
-    let rotation_query = RotationQuery3D::from_vectors(from_vector, to_vector, Some(centoroid))?;
-
-    println!("Rotation query: {:?}", rotation_query);
-
-    let exterior_2d = exterior_coords
-        .iter()
-        .map(|coord| coord.rotate_3d(rotation_query.degrees, None, rotation_query.direction))
-        .map(|coord| Coordinate2D::new_(coord.x, coord.y))
-        .collect::<Vec<_>>();
-
-    let interiors_2d = polygon
-        .interiors()
-        .iter()
-        .map(|line_string| {
-            let coords = line_string.coords().cloned().collect::<Vec<_>>();
-            coords
-                .iter()
-                .map(|coord| {
-                    coord.rotate_3d(
-                        rotation_query.degrees,
-                        rotation_query.origin,
-                        rotation_query.direction,
-                    )
-                })
-                .map(|coord| Coordinate2D::new_(coord.x, coord.y))
-                .collect::<Vec<_>>()
-        })
-        .collect::<Vec<_>>();
-
-    Some(Polygon2D::new(
-        LineString2D::new(exterior_2d),
-        interiors_2d.into_iter().map(LineString2D::new).collect(),
-    ))
+    None
 }
+
+// fn rotate_polygon_to_2d(polygon: &Polygon3D<f64>) -> Option<Polygon2D<f64>> {
+//     let exterior_coords = polygon.exterior().coords().cloned().collect::<Vec<_>>();
+//     if exterior_coords.is_empty() {
+//         return None;
+//     }
+//     if exterior_coords.len() < 3 {
+//         return None;
+//     }
+
+//     let centoroid = polygon.centroid()?;
+
+//     println!("Centroid: {:?}", centoroid);
+
+//     let from_vector = compute_normal_3d(
+//         Point3D::new(
+//             exterior_coords[0].x,
+//             exterior_coords[0].y,
+//             exterior_coords[0].z,
+//         ),
+//         Point3D::new(
+//             exterior_coords[1].x,
+//             exterior_coords[1].y,
+//             exterior_coords[1].z,
+//         ),
+//         Point3D::new(
+//             exterior_coords[2].x,
+//             exterior_coords[2].y,
+//             exterior_coords[2].z,
+//         ),
+//         true,
+//     )?;
+
+//     println!("Normal vector: {:?}", from_vector);
+
+//     let to_vector = Point3D::new(0.0, 0.0, 1.0);
+
+//     let rotation_query = RotationQuery3D::from_vectors(from_vector, to_vector, Some(centoroid))?;
+
+//     println!("Rotation query: {:?}", rotation_query);
+
+//     let exterior_2d = exterior_coords
+//         .iter()
+//         .map(|coord| coord.rotate_3d(rotation_query.degrees, None, rotation_query.direction))
+//         .map(|coord| Coordinate2D::new_(coord.x, coord.y))
+//         .collect::<Vec<_>>();
+
+//     let interiors_2d = polygon
+//         .interiors()
+//         .iter()
+//         .map(|line_string| {
+//             let coords = line_string.coords().cloned().collect::<Vec<_>>();
+//             coords
+//                 .iter()
+//                 .map(|coord| {
+//                     coord.rotate_3d(
+//                         rotation_query.degrees,
+//                         rotation_query.origin,
+//                         rotation_query.direction,
+//                     )
+//                 })
+//                 .map(|coord| Coordinate2D::new_(coord.x, coord.y))
+//                 .collect::<Vec<_>>()
+//         })
+//         .collect::<Vec<_>>();
+
+//     Some(Polygon2D::new(
+//         LineString2D::new(exterior_2d),
+//         interiors_2d.into_iter().map(LineString2D::new).collect(),
+//     ))
+// }

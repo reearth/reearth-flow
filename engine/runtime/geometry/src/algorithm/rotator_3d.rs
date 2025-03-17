@@ -179,20 +179,29 @@ mod tests {
         assert_relative_eq!(rotated.z(), expected_norm, epsilon = 1e-10);
     }
 
-    // #[test]
-    // fn test_rotation_origin() {
-    //     let from = Point3D::new(1.0, 1.0, 2.0);
-    //     let to = Point3D::new(2.0, 2.0, 2.0);
-    //     let origin = Coordinate3D::new_(1.0, 1.0, 1.0);
+    #[test]
+    fn test_rotation_matrix_arbitrary_coordinates() {
+        let from = Point3D::new(0.0, 0.0, 1.0);
+        let to = Point3D::new(-1.0, 1.0, 0.0);
 
-    //     let rotation_query = Rotator3D::from_vectors(from, to, Some(origin)).unwrap();
+        let rotation_query = Rotator3D::from_vectors(from, to).unwrap();
 
-    //     let point = Point3D::new(1.0, 1.0, 2.0);
-    //     let rotated = rotate(&rotation_query, point);
+        let coords_from = Coordinate3D::new__(139.6917, 35.6895, 200.0f64.sqrt());
+        let coords_origin = Coordinate3D::new__(139.6917, 35.6895, 0.0);
+        let coords_target = Coordinate3D::new__(139.69280478, 35.69040128, 0.0);
 
-    //     let expected_norm = (3.0_f64).sqrt().recip() + 1.0; // 1/√3 + 1
-    //     assert_relative_eq!(rotated.x(), expected_norm, epsilon = 1e-10);
-    //     assert_relative_eq!(rotated.y(), expected_norm, epsilon = 1e-10);
-    //     assert_relative_eq!(rotated.z(), expected_norm, epsilon = 1e-10);
-    // }
+        let rotated_coords = rotation_query.rotate_coordinates(coords_from, Some(coords_origin));
+
+        assert_relative_eq!(rotated_coords.x, coords_target.x, epsilon = 1e-2);
+        assert_relative_eq!(rotated_coords.y, coords_target.y, epsilon = 1e-2);
+        assert_relative_eq!(rotated_coords.z, coords_target.z, epsilon = 1e-2);
+
+        let rotation_query =
+            Rotator3D::from_coordinates(coords_from, coords_target, Some(coords_origin)).unwrap();
+        let rotated_coords = rotation_query.rotate_coordinates(coords_from, Some(coords_origin));
+
+        assert_relative_eq!(rotated_coords.x, coords_target.x, epsilon = 1e-2);
+        assert_relative_eq!(rotated_coords.y, coords_target.y, epsilon = 1e-2);
+        assert_relative_eq!(rotated_coords.z, coords_target.z, epsilon = 1e-2);
+    }
 }
