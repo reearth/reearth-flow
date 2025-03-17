@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use indexmap::IndexMap;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -161,7 +162,7 @@ impl Processor for AttributeMapper {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let mut attributes = HashMap::<Attribute, AttributeValue>::new();
+        let mut attributes = IndexMap::<Attribute, AttributeValue>::new();
         let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
         for mapper in &self.mapper.mappers {
             match &mapper.attribute {

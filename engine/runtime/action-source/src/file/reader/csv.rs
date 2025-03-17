@@ -1,6 +1,7 @@
-use std::{collections::HashMap, io::Cursor};
+use std::io::Cursor;
 
 use bytes::Bytes;
+use indexmap::IndexMap;
 use reearth_flow_common::csv::Delimiter;
 use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
 use reearth_flow_types::{AttributeValue, Feature};
@@ -39,7 +40,7 @@ pub(crate) async fn read_csv(
             .iter()
             .enumerate()
             .map(|(i, value)| (header[i].clone(), AttributeValue::String(value.clone())))
-            .collect::<HashMap<String, AttributeValue>>();
+            .collect::<IndexMap<String, AttributeValue>>();
         let feature = Feature::from(row);
         sender
             .send((

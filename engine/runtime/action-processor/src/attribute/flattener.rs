@@ -100,8 +100,8 @@ impl Processor for AttributeFlattener {
                         .iter()
                         .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
                         .collect::<HashMap<_, _>>();
-                    feature.attributes.extend(new_attributes);
-                    feature.attributes.remove(attribute);
+                    feature.extend(new_attributes);
+                    feature.remove(attribute);
                 } else {
                     continue;
                 }
@@ -124,6 +124,7 @@ impl Processor for AttributeFlattener {
 // Gnerate test code
 mod test {
     use crate::tests::utils::create_default_execute_context;
+    use indexmap::IndexMap;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_types::Feature;
 
@@ -138,7 +139,7 @@ mod test {
         )]
         .into_iter()
         .collect();
-        let attributes: HashMap<Attribute, AttributeValue> =
+        let attributes: IndexMap<Attribute, AttributeValue> =
             vec![(Attribute::new("test"), AttributeValue::Map(flattener))]
                 .into_iter()
                 .collect();

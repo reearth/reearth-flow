@@ -5,6 +5,7 @@ use std::{
     sync::{Arc, RwLock},
 };
 
+use indexmap::IndexMap;
 use nusamai_citygml::{CityGmlElement, CityGmlReader, Envelope, ParseError, SubTreeReader};
 use nusamai_plateau::{
     appearance::AppearanceStore, models, Entity, FlattenTreeTransform, GeometricMergedownTransform,
@@ -75,7 +76,7 @@ pub(super) fn read_citygml(
 
 fn parse_tree_reader<R: BufRead>(
     st: &mut SubTreeReader<'_, '_, R>,
-    base_attributes: &HashMap<Attribute, AttributeValue>,
+    base_attributes: &IndexMap<Attribute, AttributeValue>,
     flatten: bool,
     base_url: Url,
     ctx: &Context,

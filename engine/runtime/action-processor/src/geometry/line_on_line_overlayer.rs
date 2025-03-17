@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use rayon::iter::{IndexedParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use reearth_flow_geometry::algorithm::line_intersection::LineIntersection;
@@ -265,9 +266,9 @@ impl LineOnLineOverlayer {
                         let value = last_feature.get(attr).cloned()?;
                         Some((attr.clone(), value))
                     })
-                    .collect::<HashMap<_, _>>();
+                    .collect::<IndexMap<_, _>>();
             } else {
-                feature.attributes = HashMap::new();
+                feature.attributes = IndexMap::new();
             }
 
             feature.geometry.value =
