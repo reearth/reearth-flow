@@ -1,4 +1,5 @@
 import {
+  Broom,
   DotsThreeVertical,
   Export,
   LetterCircleV,
@@ -6,7 +7,6 @@ import {
   RocketLaunch,
   ShareFat,
   Stop,
-  XCircle,
 } from "@phosphor-icons/react";
 import { memo } from "react";
 
@@ -65,7 +65,7 @@ const ActionBar: React.FC<Props> = ({
         <div className="flex align-middle">
           <IconButton
             className="rounded-l-[4px] rounded-r-none"
-            tooltipText={t("Run project workflow")}
+            tooltipText={t("Start debug run of workflow")}
             tooltipOffset={tooltipOffset}
             disabled={
               debugRunStarted ||
@@ -77,7 +77,7 @@ const ActionBar: React.FC<Props> = ({
           />
           <IconButton
             className="rounded-none"
-            tooltipText={t("Stop project workflow")}
+            tooltipText={t("Stop debug run of workflow")}
             tooltipOffset={tooltipOffset}
             disabled={
               !jobStatus || (jobStatus !== "running" && jobStatus !== "queued")
@@ -87,19 +87,21 @@ const ActionBar: React.FC<Props> = ({
           />
           <IconButton
             className="rounded-none"
-            tooltipText={t("Clear debug run results")}
+            tooltipText={t("Clear debug run and results")}
             tooltipOffset={tooltipOffset}
             disabled={!debugJob}
-            icon={<XCircle weight="thin" />}
+            icon={<Broom weight="thin" />}
             onClick={handleDebugRunReset}
           />
+          <div className="border-l" />
           <IconButton
             className="rounded-none"
-            tooltipText={t("Deploy project workflow")}
+            tooltipText={t("Deploy project's workflow")}
             tooltipOffset={tooltipOffset}
             icon={<RocketLaunch weight="thin" />}
             onClick={handleShowDeployDialog}
           />
+          <div className="border-l" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <IconButton

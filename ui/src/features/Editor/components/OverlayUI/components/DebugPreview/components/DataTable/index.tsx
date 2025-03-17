@@ -14,7 +14,7 @@ const DataTable: React.FC<Props> = ({ fileContent, fileType }) => {
   });
   return (
     <div className="box-border flex h-full flex-1">
-      <div className="m-2 mb-1 box-border flex-1 overflow-scroll">
+      <div className="mx-1 mb-1 mt-0 box-border flex-1 overflow-scroll">
         <Table
           columns={tableColumns}
           data={tableData}
