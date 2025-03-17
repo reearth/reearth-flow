@@ -2,6 +2,8 @@ import type { ApiResponse } from "./api";
 
 export type NodeStatus = "pending" | "running" | "succeeded" | "failed";
 
+export type EdgeStatus = "inProgress" | "completed" | "failed";
+
 export type NodeExecution = {
   nodeId: string;
   status: NodeStatus;

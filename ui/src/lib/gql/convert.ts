@@ -3,6 +3,7 @@ import type {
   ProjectFragment,
   JobFragment,
   JobStatus as GraphqlJobStatus,
+  EdgeStatus as GraphqlEdgeStatus,
   TriggerFragment,
   LogFragment,
   ProjectSnapshotFragment,
@@ -17,6 +18,7 @@ import {
   type Trigger,
   type ProjectSnapshot,
   type ProjectDocument,
+  EdgeStatus,
 } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
@@ -106,5 +108,20 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
     case "PENDING":
     default:
       return "queued";
+  }
+};
+
+export const toEdgeStatus = (
+  status: GraphqlEdgeStatus,
+): EdgeStatus | undefined => {
+  switch (status) {
+    case "IN_PROGRESS":
+      return "inProgress";
+    case "COMPLETED":
+      return "completed";
+    case "FAILED":
+      return "failed";
+    default:
+      return undefined;
   }
 };

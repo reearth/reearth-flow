@@ -50,14 +50,15 @@ export const useQueries = () => {
       },
       enabled: !!workspaceId,
     });
-  const useGetJobQuery = (jobId: string) =>
+  const useGetJobQuery = (jobId?: string) =>
     useQuery({
       queryKey: [JobQueryKeys.GetJob, jobId],
       queryFn: async () => {
-        const data = await graphQLContext?.GetJob({ id: jobId });
+        const data = await graphQLContext?.GetJob({ id: jobId ?? "" });
         if (!data?.job) return;
         return toJob(data.job);
       },
+      enabled: !!jobId,
     });
 
   const cancelJobMutation = useMutation({

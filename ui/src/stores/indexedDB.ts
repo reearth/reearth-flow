@@ -5,6 +5,10 @@ export type GeneralState = {
 export type JobState = {
   projectId: string;
   jobId: string;
+  edgeExecutions: {
+    edgeId: string;
+    status: string;
+  }[];
   selectedIntermediateData?: {
     edgeId: string;
     url: string;

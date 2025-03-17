@@ -186,6 +186,22 @@ export type DeploymentPayload = {
   deployment: Deployment;
 };
 
+export type EdgeExecution = {
+  __typename?: 'EdgeExecution';
+  completedAt?: Maybe<Scalars['DateTime']['output']>;
+  featureId?: Maybe<Scalars['ID']['output']>;
+  id: Scalars['String']['output'];
+  intermediateDataUrl?: Maybe<Scalars['String']['output']>;
+  startedAt?: Maybe<Scalars['DateTime']['output']>;
+  status: EdgeStatus;
+};
+
+export enum EdgeStatus {
+  Completed = 'COMPLETED',
+  Failed = 'FAILED',
+  InProgress = 'IN_PROGRESS'
+}
+
 export enum EventSourceType {
   ApiDriven = 'API_DRIVEN',
   TimeDriven = 'TIME_DRIVEN'
@@ -212,6 +228,7 @@ export type Job = Node & {
   debug?: Maybe<Scalars['Boolean']['output']>;
   deployment?: Maybe<Deployment>;
   deploymentId: Scalars['ID']['output'];
+  edgeExecutions?: Maybe<Array<EdgeExecution>>;
   id: Scalars['ID']['output'];
   logs?: Maybe<Array<Maybe<Log>>>;
   logsURL?: Maybe<Scalars['String']['output']>;
@@ -597,6 +614,7 @@ export type Query = {
   deploymentHead?: Maybe<Deployment>;
   deploymentVersions: Array<Deployment>;
   deployments: DeploymentConnection;
+  edgeExecution: EdgeExecution;
   job?: Maybe<Job>;
   jobs: JobConnection;
   latestProjectSnapshot?: Maybe<ProjectDocument>;
@@ -639,6 +657,12 @@ export type QueryDeploymentVersionsArgs = {
 export type QueryDeploymentsArgs = {
   pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
+};
+
+
+export type QueryEdgeExecutionArgs = {
+  edgeId: Scalars['String']['input'];
+  id: Scalars['ID']['input'];
 };
 
 
@@ -777,8 +801,15 @@ export type SignupPayload = {
 
 export type Subscription = {
   __typename?: 'Subscription';
+  edgeStatus: EdgeStatus;
   jobStatus: JobStatus;
   logs?: Maybe<Log>;
+};
+
+
+export type SubscriptionEdgeStatusArgs = {
+  edgeId: Scalars['String']['input'];
+  jobId: Scalars['ID']['input'];
 };
 
 
@@ -963,7 +994,7 @@ export type ExecuteDeploymentMutationVariables = Exact<{
 }>;
 
 
-export type ExecuteDeploymentMutation = { __typename?: 'Mutation', executeDeployment?: { __typename?: 'JobPayload', job: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } } | null };
+export type ExecuteDeploymentMutation = { __typename?: 'Mutation', executeDeployment?: { __typename?: 'JobPayload', job: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null, edgeExecutions?: Array<{ __typename?: 'EdgeExecution', id: string, status: EdgeStatus, startedAt?: any | null, completedAt?: any | null, featureId?: string | null, intermediateDataUrl?: string | null }> | null } } | null };
 
 export type GetDeploymentsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
@@ -1008,7 +1039,9 @@ export type DeploymentFragment = { __typename?: 'Deployment', id: string, projec
 
 export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } };
 
-export type JobFragment = { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null };
+export type EdgeExecutionFragment = { __typename?: 'EdgeExecution', id: string, status: EdgeStatus, startedAt?: any | null, completedAt?: any | null, featureId?: string | null, intermediateDataUrl?: string | null };
+
+export type JobFragment = { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null, edgeExecutions?: Array<{ __typename?: 'EdgeExecution', id: string, status: EdgeStatus, startedAt?: any | null, completedAt?: any | null, featureId?: string | null, intermediateDataUrl?: string | null }> | null };
 
 export type LogFragment = { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string };
 
@@ -1022,21 +1055,21 @@ export type GetJobsQueryVariables = Exact<{
 }>;
 
 
-export type GetJobsQuery = { __typename?: 'Query', jobs: { __typename?: 'JobConnection', totalCount: number, nodes: Array<{ __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
+export type GetJobsQuery = { __typename?: 'Query', jobs: { __typename?: 'JobConnection', totalCount: number, nodes: Array<{ __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null, edgeExecutions?: Array<{ __typename?: 'EdgeExecution', id: string, status: EdgeStatus, startedAt?: any | null, completedAt?: any | null, featureId?: string | null, intermediateDataUrl?: string | null }> | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
 
 export type GetJobQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
 
 
-export type GetJobQuery = { __typename?: 'Query', job?: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } | null };
+export type GetJobQuery = { __typename?: 'Query', job?: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null, edgeExecutions?: Array<{ __typename?: 'EdgeExecution', id: string, status: EdgeStatus, startedAt?: any | null, completedAt?: any | null, featureId?: string | null, intermediateDataUrl?: string | null }> | null } | null };
 
 export type CancelJobMutationVariables = Exact<{
   input: CancelJobInput;
 }>;
 
 
-export type CancelJobMutation = { __typename?: 'Mutation', cancelJob: { __typename?: 'CancelJobPayload', job?: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } | null } };
+export type CancelJobMutation = { __typename?: 'Mutation', cancelJob: { __typename?: 'CancelJobPayload', job?: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null, edgeExecutions?: Array<{ __typename?: 'EdgeExecution', id: string, status: EdgeStatus, startedAt?: any | null, completedAt?: any | null, featureId?: string | null, intermediateDataUrl?: string | null }> | null } | null } };
 
 export type CreateProjectMutationVariables = Exact<{
   input: CreateProjectInput;
@@ -1079,7 +1112,7 @@ export type RunProjectMutationVariables = Exact<{
 }>;
 
 
-export type RunProjectMutation = { __typename?: 'Mutation', runProject?: { __typename?: 'RunProjectPayload', job: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } } | null };
+export type RunProjectMutation = { __typename?: 'Mutation', runProject?: { __typename?: 'RunProjectPayload', job: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null, edgeExecutions?: Array<{ __typename?: 'EdgeExecution', id: string, status: EdgeStatus, startedAt?: any | null, completedAt?: any | null, featureId?: string | null, intermediateDataUrl?: string | null }> | null } } | null };
 
 export type GetSharedProjectQueryVariables = Exact<{
   token: Scalars['String']['input'];
@@ -1122,6 +1155,14 @@ export type RealTimeLogsSubscriptionVariables = Exact<{
 
 
 export type RealTimeLogsSubscription = { __typename?: 'Subscription', logs?: { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string } | null };
+
+export type OnEdgeStatusChangeSubscriptionVariables = Exact<{
+  jobId: Scalars['ID']['input'];
+  edgeId: Scalars['String']['input'];
+}>;
+
+
+export type OnEdgeStatusChangeSubscription = { __typename?: 'Subscription', edgeStatus: EdgeStatus };
 
 export type CreateTriggerMutationVariables = Exact<{
   input: CreateTriggerInput;
@@ -1273,6 +1314,16 @@ export const TriggerFragmentDoc = gql`
   description
 }
     ${DeploymentFragmentDoc}`;
+export const EdgeExecutionFragmentDoc = gql`
+    fragment EdgeExecution on EdgeExecution {
+  id
+  status
+  startedAt
+  completedAt
+  featureId
+  intermediateDataUrl
+}
+    `;
 export const JobFragmentDoc = gql`
     fragment Job on Job {
   id
@@ -1286,8 +1337,11 @@ export const JobFragmentDoc = gql`
     id
     description
   }
+  edgeExecutions {
+    ...EdgeExecution
+  }
 }
-    `;
+    ${EdgeExecutionFragmentDoc}`;
 export const LogFragmentDoc = gql`
     fragment Log on Log {
   jobId
@@ -1549,6 +1603,11 @@ export const RealTimeLogsDocument = gql`
   }
 }
     `;
+export const OnEdgeStatusChangeDocument = gql`
+    subscription OnEdgeStatusChange($jobId: ID!, $edgeId: String!) {
+  edgeStatus(jobId: $jobId, edgeId: $edgeId)
+}
+    `;
 export const CreateTriggerDocument = gql`
     mutation CreateTrigger($input: CreateTriggerInput!) {
   createTrigger(input: $input) {
@@ -1764,6 +1823,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     RealTimeLogs(variables: RealTimeLogsSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RealTimeLogsSubscription> {
       return withWrapper((wrappedRequestHeaders) => client.request<RealTimeLogsSubscription>(RealTimeLogsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RealTimeLogs', 'subscription', variables);
+    },
+    OnEdgeStatusChange(variables: OnEdgeStatusChangeSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<OnEdgeStatusChangeSubscription> {
+      return withWrapper((wrappedRequestHeaders) => client.request<OnEdgeStatusChangeSubscription>(OnEdgeStatusChangeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'OnEdgeStatusChange', 'subscription', variables);
     },
     CreateTrigger(variables: CreateTriggerMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateTriggerMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateTriggerMutation>(CreateTriggerDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateTrigger', 'mutation', variables);

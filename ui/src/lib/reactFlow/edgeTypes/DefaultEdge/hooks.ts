@@ -1,0 +1,74 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+
+import { useAuth } from "@flow/lib/auth";
+import { OnEdgeStatusChangeSubscription } from "@flow/lib/gql/__gen__/graphql";
+import { toEdgeStatus } from "@flow/lib/gql/convert";
+import { useJob } from "@flow/lib/gql/job";
+import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
+import { useSubscriptionSetup } from "@flow/lib/gql/subscriptions/useSubscriptionSetup";
+import { useIndexedDB } from "@flow/lib/indexedDB";
+import { DebugRunState, useCurrentProject } from "@flow/stores";
+
+export default ({ id, selected }: { id: string; selected?: boolean }) => {
+  const [currentProject] = useCurrentProject();
+
+  const { getAccessToken } = useAuth();
+  const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
+
+  useEffect(() => {
+    if (!accessToken) {
+      (async () => {
+        const token = await getAccessToken();
+        setAccessToken(token);
+      })();
+    }
+  }, [accessToken, getAccessToken]);
+
+  const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
+
+  const { useGetJob } = useJob();
+  const debugJobState = useMemo(
+    () =>
+      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
+    [debugRunState, currentProject],
+  );
+  const { job: debugRun } = useGetJob(debugJobState?.jobId);
+
+  useSubscriptionSetup<OnEdgeStatusChangeSubscription>(
+    "GetSubscribedEdgeStatus",
+    accessToken,
+    { jobId: debugJobState?.jobId, edgeId: id },
+    id,
+    (data) => toEdgeStatus(data.edgeStatus),
+    !id || !debugRun,
+  );
+
+  const { data: edgeStatus } = useSubscription("GetSubscribedEdgeStatus", id);
+
+  console.log("edgeStatus", edgeStatus);
+
+  const handleIntermediateDataSet = useCallback(() => {
+    if (!selected) return;
+    const newDebugRunState: DebugRunState = {
+      ...debugRunState,
+      jobs:
+        debugRunState?.jobs?.map((job) =>
+          job.projectId === currentProject?.id
+            ? {
+                ...job,
+                selectedIntermediateData: {
+                  edgeId: id,
+                  url: "/7571eea0-eabf-4ff7-b978-e5965d882409.jsonl", //TODO: replace with actual intermediate data
+                },
+              }
+            : job,
+        ) ?? [],
+    };
+    updateValue(newDebugRunState);
+  }, [selected, debugRunState, currentProject, id, updateValue]);
+
+  return {
+    edgeStatus,
+    handleIntermediateDataSet,
+  };
+};

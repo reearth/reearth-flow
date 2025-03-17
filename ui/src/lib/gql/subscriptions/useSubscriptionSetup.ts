@@ -7,6 +7,7 @@ import { config } from "@flow/config";
 export enum SubscriptionKeys {
   GetSubscribedLogs = "getSubscribedLogs",
   GetSubscribedJobStatus = "getSubscribedJobStatus",
+  GetSubscribedEdgeStatus = "getSubscribedEdgeStatus",
 }
 
 export type PossibleSubscriptionKeys = keyof typeof SubscriptionKeys;
@@ -29,12 +30,19 @@ const LOG_SUBSCRIPTION = `
  }
 `;
 
+const EDGE_STATUS_SUBSCRIPTION = `
+  subscription OnEdgeStatusChange($jobId: ID!, $edgeId: String!) {
+    edgeStatus(jobId: $jobId, edgeId: $edgeId)
+  }
+`;
+
 const SubscriptionStrings: Record<PossibleSubscriptionKeys, string> = {
   GetSubscribedJobStatus: JOB_STATUS_SUBSCRIPTION,
+  GetSubscribedEdgeStatus: EDGE_STATUS_SUBSCRIPTION,
   GetSubscribedLogs: LOG_SUBSCRIPTION,
 };
 
-const getWebSocketClient = (() => {
+const getWebSocketClient = (disabled?: boolean) => {
   const clients = new Map<string, Client>();
 
   return (
@@ -42,7 +50,7 @@ const getWebSocketClient = (() => {
     key: string,
     accessToken?: string,
   ): Client | undefined => {
-    if (!accessToken) return undefined;
+    if (!accessToken || disabled) return undefined;
 
     if (!clients.has(key)) {
       const newClient = createClient({
@@ -65,7 +73,7 @@ const getWebSocketClient = (() => {
 
     return client;
   };
-})();
+};
 
 export function useSubscriptionSetup<Data = any, CachedData = any>(
   subscriptionKey: PossibleSubscriptionKeys,
@@ -79,7 +87,7 @@ export function useSubscriptionSetup<Data = any, CachedData = any>(
 
   const isSubscribedRef = useRef(false);
   const queryClient = useQueryClient();
-  const wsClient = getWebSocketClient(
+  const wsClient = getWebSocketClient(disabled)(
     `${api}/api/graphql`,
     `${subscriptionKey}:${secondaryCacheKey}`,
     accessToken,

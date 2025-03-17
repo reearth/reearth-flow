@@ -41,6 +41,15 @@ fragment Trigger on Trigger {
   description
 }
 
+fragment EdgeExecution on EdgeExecution {
+  id
+  status
+  startedAt
+  completedAt
+  featureId
+  intermediateDataUrl
+}
+
 fragment Job on Job {
   id
   workspaceId
@@ -53,9 +62,9 @@ fragment Job on Job {
     id
     description
   }
-  # workspace{
-  #   ...Workspace
-  # }
+  edgeExecutions {
+    ...EdgeExecution
+  }
 }
 
 fragment Log on Log {

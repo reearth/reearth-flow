@@ -20,7 +20,7 @@ export const useJob = () => {
     };
   };
 
-  const useGetJob = (jobId: string) => {
+  const useGetJob = (jobId?: string) => {
     const { data, ...rest } = useGetJobQuery(jobId);
     return {
       job: data,
