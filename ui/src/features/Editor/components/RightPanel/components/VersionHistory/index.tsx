@@ -19,6 +19,7 @@ const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
   const {
     history,
     isFetching,
+    isReverting,
     selectedProjectSnapshotVersion,
     latestProjectSnapshotVersion,
     setSelectedProjectSnapshotVersion,
@@ -76,13 +77,15 @@ const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
           </div>
         ) : null}
       </ScrollArea>
-      {openVersionChangeDialog && selectedProjectSnapshotVersion && (
-        <VersionHistoryChangeDialog
-          selectedProjectSnapshotVersion={selectedProjectSnapshotVersion}
-          onDialogClose={() => setOpenVersionChangeDialog(false)}
-          onRollbackProject={onRollbackProject}
-        />
-      )}
+      {openVersionChangeDialog &&
+        selectedProjectSnapshotVersion &&
+        !isReverting && (
+          <VersionHistoryChangeDialog
+            selectedProjectSnapshotVersion={selectedProjectSnapshotVersion}
+            onDialogClose={() => setOpenVersionChangeDialog(false)}
+            onRollbackProject={onRollbackProject}
+          />
+        )}
     </div>
   );
 };
