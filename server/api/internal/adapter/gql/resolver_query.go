@@ -40,6 +40,10 @@ func (r *queryResolver) DeploymentVersions(ctx context.Context, workspaceID gqlm
 	return loaders(ctx).Deployment.FindVersions(ctx, workspaceID, projectID)
 }
 
+func (r *queryResolver) EdgeExecution(ctx context.Context, jobID gqlmodel.ID, edgeID string) (*gqlmodel.EdgeExecution, error) {
+	return loaders(ctx).Job.FindEdgeExecutionByJobID(ctx, jobID, edgeID)
+}
+
 func (r *queryResolver) Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error) {
 	return loaders(ctx).Job.FindByID(ctx, id)
 }

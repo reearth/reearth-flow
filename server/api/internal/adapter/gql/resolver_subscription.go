@@ -13,6 +13,40 @@ func (r *Resolver) Subscription() SubscriptionResolver {
 
 type subscriptionResolver struct{ *Resolver }
 
+func (r *subscriptionResolver) EdgeStatus(ctx context.Context, jobID gqlmodel.ID, edgeId string) (<-chan gqlmodel.EdgeStatus, error) {
+	jid, err := id.JobIDFrom(string(jobID))
+	if err != nil {
+		return nil, err
+	}
+
+	edgeExCh, err := usecases(ctx).Edge.SubscribeToEdge(ctx, jid, edgeId)
+	if err != nil {
+		return nil, err
+	}
+
+	resultCh := make(chan gqlmodel.EdgeStatus)
+
+	go func() {
+		defer close(resultCh)
+		defer usecases(ctx).Edge.UnsubscribeFromEdge(jid, string(edgeId), edgeExCh)
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case edgeEx, ok := <-edgeExCh:
+				if !ok {
+					return
+				}
+				res := gqlmodel.EdgeStatus(edgeEx.Status())
+				resultCh <- res
+			}
+		}
+	}()
+
+	return resultCh, nil
+}
+
 func (r *subscriptionResolver) JobStatus(ctx context.Context, jobID gqlmodel.ID) (<-chan gqlmodel.JobStatus, error) {
 	jID, err := id.JobIDFrom(string(jobID))
 	if err != nil {

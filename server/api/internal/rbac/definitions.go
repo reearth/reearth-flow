@@ -12,6 +12,7 @@ const (
 const (
 	ResourceAsset         = "asset"
 	ResourceDeployment    = "deployment"
+	ResourceEdge          = "edge"
 	ResourceJob           = "job"
 	ResourceLog           = "log"
 	ResourceParameter     = "parameter"
@@ -51,6 +52,11 @@ func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDef
 			}),
 		}).
 		AddResource(ResourceDeployment, []generator.ActionDefinition{
+			generator.NewActionDefinition(ActionAny, []string{
+				roleMaintainer,
+			}),
+		}).
+		AddResource(ResourceEdge, []generator.ActionDefinition{
 			generator.NewActionDefinition(ActionAny, []string{
 				roleMaintainer,
 			}),
