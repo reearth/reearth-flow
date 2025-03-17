@@ -4,7 +4,7 @@ use reearth_flow_geometry::algorithm::centroid::Centroid;
 use reearth_flow_geometry::algorithm::normal_3d::compute_normal_3d;
 use reearth_flow_geometry::algorithm::rotate_3d::Rotate3D;
 use reearth_flow_geometry::algorithm::rotation_query_3d::RotationQuery3D;
-use reearth_flow_geometry::types::coordinate::{Coordinate2D, Coordinate3D};
+use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_geometry::types::line_string::LineString2D;
 use reearth_flow_geometry::types::multi_point::{MultiPoint2D, MultiPoint3D};
@@ -195,12 +195,24 @@ fn rotate_polygon_to_2d(polygon: &Polygon3D<f64>) -> Option<Polygon2D<f64>> {
         return None;
     }
     let from_vector = compute_normal_3d(
-        exterior_coords[0],
-        exterior_coords[1],
-        exterior_coords[2],
+        Point3D::new(
+            exterior_coords[0].x,
+            exterior_coords[0].y,
+            exterior_coords[0].z,
+        ),
+        Point3D::new(
+            exterior_coords[1].x,
+            exterior_coords[1].y,
+            exterior_coords[1].z,
+        ),
+        Point3D::new(
+            exterior_coords[2].x,
+            exterior_coords[2].y,
+            exterior_coords[2].z,
+        ),
         true,
     )?;
-    let to_vector = Coordinate3D::<f64>::new__(0.0, 0.0, 1.0);
+    let to_vector = Point3D::new(0.0, 0.0, 1.0);
 
     let rotation_query = RotationQuery3D::from_vectors(from_vector, to_vector)?;
 

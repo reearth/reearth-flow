@@ -1,6 +1,6 @@
 use nalgebra::Vector3;
 
-use crate::types::{coordinate::Coordinate3D, point::Point3D};
+use crate::types::point::Point3D;
 
 /// A query to rotate a point in 3D space.
 #[derive(Debug, Clone)]
@@ -13,9 +13,9 @@ impl RotationQuery3D {
     /// Creates a new `RotationQuery3D` which rotates a vector from `from` to `to`.
     /// This returns `None` if any of the vectors is a zero vector.
     /// Note that if two vectors are same or opposite, the rotation angle will be 0.
-    pub fn from_vectors(from: Coordinate3D<f64>, to: Coordinate3D<f64>) -> Option<Self> {
-        let a = Vector3::new(from.x, from.y, from.z);
-        let b = Vector3::new(to.x, to.y, to.z);
+    pub fn from_vectors(from: Point3D<f64>, to: Point3D<f64>) -> Option<Self> {
+        let a = Vector3::new(from.x(), from.y(), from.z());
+        let b = Vector3::new(to.x(), to.y(), to.z());
 
         let a = normalize_vector(a)?;
         let b = normalize_vector(b)?;
@@ -56,14 +56,14 @@ mod tests {
     use approx::assert_relative_eq;
 
     // helper function to rotate a point around an direction
-    fn rotate(rotation_query: &RotationQuery3D, point: Coordinate3D<f64>) -> Coordinate3D<f64> {
+    fn rotate(rotation_query: &RotationQuery3D, point: Point3D<f64>) -> Point3D<f64> {
         point.rotate_3d(rotation_query.degrees, None, rotation_query.direction)
     }
 
     #[test]
     fn test_rotation_matrix_collinear() {
-        let from = Coordinate3D::new__(0.0, 0.0, 1.0);
-        let to = Coordinate3D::new__(0.0, 0.0, -1.0);
+        let from = Point3D::new(0.0, 0.0, 1.0);
+        let to = Point3D::new(0.0, 0.0, -1.0);
         assert_eq!(
             RotationQuery3D::from_vectors(from, to).unwrap().degrees,
             0.0
@@ -72,46 +72,46 @@ mod tests {
 
     #[test]
     fn test_rotation_matrix_perpendicular() {
-        let from = Coordinate3D::new__(0.0, 0.0, 1.0);
-        let to = Coordinate3D::new__(1.0, 0.0, 0.0);
+        let from = Point3D::new(0.0, 0.0, 1.0);
+        let to = Point3D::new(1.0, 0.0, 0.0);
 
         let rotation_query = RotationQuery3D::from_vectors(from, to).unwrap();
 
-        let point = Coordinate3D::new__(0.0, 0.0, 1.0);
+        let point = Point3D::new(0.0, 0.0, 1.0);
         let rotated = rotate(&rotation_query, point);
 
-        assert_relative_eq!(rotated.x, 1.0, epsilon = 1e-10);
-        assert_relative_eq!(rotated.y, 0.0, epsilon = 1e-10);
-        assert_relative_eq!(rotated.z, 0.0, epsilon = 1e-10);
+        assert_relative_eq!(rotated.x(), 1.0, epsilon = 1e-10);
+        assert_relative_eq!(rotated.y(), 0.0, epsilon = 1e-10);
+        assert_relative_eq!(rotated.z(), 0.0, epsilon = 1e-10);
 
-        let point = Coordinate3D::new__(1.0, 0.0, 0.0);
+        let point = Point3D::new(1.0, 0.0, 0.0);
         let rotated = rotate(&rotation_query, point);
 
-        assert_relative_eq!(rotated.x, 0.0, epsilon = 1e-10);
-        assert_relative_eq!(rotated.y, 0.0, epsilon = 1e-10);
-        assert_relative_eq!(rotated.z, -1.0, epsilon = 1e-10);
+        assert_relative_eq!(rotated.x(), 0.0, epsilon = 1e-10);
+        assert_relative_eq!(rotated.y(), 0.0, epsilon = 1e-10);
+        assert_relative_eq!(rotated.z(), -1.0, epsilon = 1e-10);
 
-        let point = Coordinate3D::new__(0.0, 1.0, 0.0);
+        let point = Point3D::new(0.0, 1.0, 0.0);
         let rotated = rotate(&rotation_query, point);
 
-        assert_relative_eq!(rotated.x, 0.0, epsilon = 1e-10);
-        assert_relative_eq!(rotated.y, 1.0, epsilon = 1e-10);
-        assert_relative_eq!(rotated.z, 0.0, epsilon = 1e-10);
+        assert_relative_eq!(rotated.x(), 0.0, epsilon = 1e-10);
+        assert_relative_eq!(rotated.y(), 1.0, epsilon = 1e-10);
+        assert_relative_eq!(rotated.z(), 0.0, epsilon = 1e-10);
     }
 
     #[test]
     fn test_rotation_matrix_arbitrary() {
-        let from = Coordinate3D::new__(0.0, 0.0, 1.0);
-        let to = Coordinate3D::new__(1.0, 1.0, 1.0);
+        let from = Point3D::new(0.0, 0.0, 1.0);
+        let to = Point3D::new(1.0, 1.0, 1.0);
 
         let rotation_query = RotationQuery3D::from_vectors(from, to).unwrap();
 
-        let point = Coordinate3D::new__(0.0, 0.0, 1.0);
+        let point = Point3D::new(0.0, 0.0, 1.0);
         let rotated = rotate(&rotation_query, point);
 
         let expected_norm = (3.0_f64).sqrt().recip(); // 1/√3
-        assert_relative_eq!(rotated.x, expected_norm, epsilon = 1e-10);
-        assert_relative_eq!(rotated.y, expected_norm, epsilon = 1e-10);
-        assert_relative_eq!(rotated.z, expected_norm, epsilon = 1e-10);
+        assert_relative_eq!(rotated.x(), expected_norm, epsilon = 1e-10);
+        assert_relative_eq!(rotated.y(), expected_norm, epsilon = 1e-10);
+        assert_relative_eq!(rotated.z(), expected_norm, epsilon = 1e-10);
     }
 }
