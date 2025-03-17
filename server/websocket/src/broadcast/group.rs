@@ -291,39 +291,30 @@ impl BroadcastGroup {
 
                     loop {
                         match redis_store_for_sub
-                            .read_stream_messages(
+                            .read_and_ack_messages(
                                 &doc_name_for_sub,
                                 &group_name_clone,
                                 &consumer_name_clone,
-                                15,
-                                100,
+                                200,
                             )
                             .await
                         {
                             Ok(messages) => {
-                                for (msg_id, update) in messages {
+                                if !messages.is_empty() {
                                     let awareness = awareness_for_sub.write().await;
                                     let mut txn = awareness.doc().transact_mut();
 
-                                    if let Ok(decoded) = Update::decode_v1(&update) {
-                                        if let Err(e) = txn.apply_update(decoded) {
-                                            tracing::warn!(
-                                                "Failed to apply update from Redis: {}",
-                                                e
-                                            );
-                                        } else {
-                                            let _ = sender_for_sub.send(update.clone());
+                                    for (_, update) in &messages {
+                                        if let Ok(decoded) = Update::decode_v1(update) {
+                                            if let Err(e) = txn.apply_update(decoded) {
+                                                tracing::warn!(
+                                                    "Failed to apply update from Redis: {}",
+                                                    e
+                                                );
+                                            } else {
+                                                let _ = sender_for_sub.send(update.clone());
+                                            }
                                         }
-                                    }
-
-                                    if let Err(e) = redis_store_for_sub
-                                        .ack_message(&doc_name_for_sub, &group_name_clone, &msg_id)
-                                        .await
-                                    {
-                                        tracing::warn!(
-                                            "Failed to acknowledge Redis message: {}",
-                                            e
-                                        );
                                     }
                                 }
                             }
@@ -332,12 +323,28 @@ impl BroadcastGroup {
                                 tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
                             }
                         }
+
+                        tokio::task::yield_now().await;
                     }
                 });
 
                 group.redis_subscriber_task = Some(redis_subscriber_task);
                 group.redis_consumer_name = Some(consumer_name);
                 group.redis_group_name = Some(group_name);
+
+                let doc_name_clone = doc_name.clone();
+                let redis_store_clone = redis_store.clone();
+
+                tokio::spawn(async move {
+                    let mut interval =
+                        tokio::time::interval(tokio::time::Duration::from_secs(3600));
+                    loop {
+                        interval.tick().await;
+                        if let Err(e) = redis_store_clone.optimize_stream(&doc_name_clone).await {
+                            tracing::warn!("Failed to optimize Redis stream: {}", e);
+                        }
+                    }
+                });
             }
         }
 

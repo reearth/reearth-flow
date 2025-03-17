@@ -6,9 +6,6 @@ type (
 	Asset         struct{}
 	AuthRequest   struct{}
 	Deployment    struct{}
-	Edge          struct{}
-	Graph         struct{}
-	Node          struct{}
 	Parameter     struct{}
 	Project       struct{}
 	ProjectAccess struct{}
@@ -21,9 +18,6 @@ type (
 func (Asset) Type() string         { return "asset" }
 func (AuthRequest) Type() string   { return "authRequest" }
 func (Deployment) Type() string    { return "deployment" }
-func (Edge) Type() string          { return "edge" }
-func (Graph) Type() string         { return "graph" }
-func (Node) Type() string          { return "node" }
 func (Parameter) Type() string     { return "parameter" }
 func (Project) Type() string       { return "project" }
 func (ProjectAccess) Type() string { return "projectAccess" }
@@ -36,9 +30,6 @@ type (
 	AssetID         = idx.ID[Asset]
 	AuthRequestID   = idx.ID[AuthRequest]
 	DeploymentID    = idx.ID[Deployment]
-	EdgeID          = idx.ID[Edge]
-	GraphID         = idx.ID[Graph]
-	NodeID          = idx.ID[Node]
 	ParameterID     = idx.ID[Parameter]
 	ProjectID       = idx.ID[Project]
 	ProjectAccessID = idx.ID[ProjectAccess]
@@ -52,9 +43,6 @@ var (
 	NewAssetID         = idx.New[Asset]
 	NewAuthRequestID   = idx.New[AuthRequest]
 	NewDeploymentID    = idx.New[Deployment]
-	NewEdgeID          = idx.New[Edge]
-	NewGraphID         = idx.New[Graph]
-	NewNodeID          = idx.New[Node]
 	NewParameterID     = idx.New[Parameter]
 	NewProjectID       = idx.New[Project]
 	NewProjectAccessID = idx.New[ProjectAccess]
@@ -81,9 +69,6 @@ var (
 	AssetIDFrom         = idx.From[Asset]
 	AuthRequestIDFrom   = idx.From[AuthRequest]
 	DeploymentIDFrom    = idx.From[Deployment]
-	EdgeIDFrom          = idx.From[Edge]
-	GraphIDFrom         = idx.From[Graph]
-	NodeIDFrom          = idx.From[Node]
 	ParameterIDFrom     = idx.From[Parameter]
 	ProjectIDFrom       = idx.From[Project]
 	ProjectAccessIDFrom = idx.From[ProjectAccess]

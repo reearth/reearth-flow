@@ -1,12 +1,16 @@
 use std::{
-    fs,
+    env, fs,
     path::{Path, PathBuf},
     str::FromStr,
 };
 
 use directories::ProjectDirs;
+use once_cell::sync::Lazy;
 
 use crate::{uri::Uri, Error};
+
+static WORKING_DIRECTORY: Lazy<Option<String>> =
+    Lazy::new(|| env::var("FLOW_RUNTIME_WORKING_DIRECTORY").ok());
 
 pub fn project_temp_dir(id: &str) -> crate::Result<PathBuf> {
     let p = get_project_cache_dir_path("temp")?;
@@ -16,12 +20,21 @@ pub fn project_temp_dir(id: &str) -> crate::Result<PathBuf> {
 }
 
 pub fn get_project_cache_dir_path(key: &str) -> crate::Result<String> {
-    ProjectDirs::from("reearth", "flow", key)
-        .ok_or(Error::dir("No project directory available"))?
-        .cache_dir()
-        .to_str()
-        .ok_or(Error::dir("Invalid project directory path"))
-        .map(String::from)
+    if let Some(dir) = WORKING_DIRECTORY.as_ref() {
+        PathBuf::from(dir)
+            .join("projects")
+            .join(key)
+            .to_str()
+            .ok_or(Error::dir("Invalid project directory path"))
+            .map(String::from)
+    } else {
+        ProjectDirs::from("reearth", "flow", key)
+            .ok_or(Error::dir("No project directory available"))?
+            .cache_dir()
+            .to_str()
+            .ok_or(Error::dir("Invalid project directory path"))
+            .map(String::from)
+    }
 }
 
 pub fn get_job_root_dir_path(key: &str, job_id: uuid::Uuid) -> crate::Result<PathBuf> {

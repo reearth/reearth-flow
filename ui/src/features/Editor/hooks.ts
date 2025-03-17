@@ -273,6 +273,7 @@ export default ({
   return {
     currentWorkflowId,
     openWorkflows,
+    currentProject,
     nodes,
     edges,
     lockedNodeIds,

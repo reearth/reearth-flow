@@ -92,6 +92,45 @@ impl RedisStore {
         Ok(())
     }
 
+    pub async fn publish_batch_updates(
+        &self,
+        doc_id: &str,
+        updates: &[&[u8]],
+    ) -> Result<(), anyhow::Error> {
+        if updates.is_empty() {
+            return Ok(());
+        }
+
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let mut pipe = redis::pipe();
+
+                for update in updates {
+                    let fields = &[("update", *update)];
+                    pipe.cmd("XADD")
+                        .arg(&stream_key)
+                        .arg("MAXLEN")
+                        .arg("~")
+                        .arg(1000)
+                        .arg("*")
+                        .arg(fields);
+                }
+
+                let _: () = pipe.query_async(&mut *conn).await?;
+
+                if let Some(config) = &self.config {
+                    let _: () = redis::cmd("EXPIRE")
+                        .arg(&stream_key)
+                        .arg(config.ttl)
+                        .query_async(&mut *conn)
+                        .await?;
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub async fn create_consumer_group(
         &self,
         doc_id: &str,
@@ -170,6 +209,199 @@ impl RedisStore {
         } else {
             Err(anyhow::anyhow!("Redis pool is not initialized"))
         }
+    }
+
+    pub async fn batch_ack_messages(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+        message_ids: &[String],
+    ) -> Result<(), anyhow::Error> {
+        if message_ids.is_empty() {
+            return Ok(());
+        }
+
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let mut cmd = redis::cmd("XACK");
+                cmd.arg(&stream_key).arg(group_name);
+
+                for id in message_ids {
+                    cmd.arg(id);
+                }
+
+                let _: () = cmd.query_async(&mut *conn).await?;
+                return Ok(());
+            }
+        }
+        Err(anyhow::anyhow!("Redis pool is not initialized"))
+    }
+
+    pub async fn read_and_ack_messages(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+        consumer_name: &str,
+        count: usize,
+    ) -> Result<Vec<(String, Vec<u8>)>, anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let result: RedisStreamResults = redis::cmd("XREADGROUP")
+                    .arg("GROUP")
+                    .arg(group_name)
+                    .arg(consumer_name)
+                    .arg("COUNT")
+                    .arg(count)
+                    .arg("STREAMS")
+                    .arg(&stream_key)
+                    .arg(">")
+                    .query_async(&mut *conn)
+                    .await?;
+
+                let mut updates = Vec::new();
+                let mut message_ids = Vec::new();
+
+                if !result.is_empty() && !result[0].1.is_empty() {
+                    for (msg_id, fields) in &result[0].1 {
+                        message_ids.push(msg_id.clone());
+
+                        for (field_name, field_value) in fields {
+                            if field_name == "update" {
+                                updates.push((msg_id.clone(), field_value.clone()));
+                            }
+                        }
+                    }
+
+                    if !message_ids.is_empty() {
+                        let mut cmd = redis::cmd("XACK");
+                        cmd.arg(&stream_key).arg(group_name);
+
+                        for id in &message_ids {
+                            cmd.arg(id);
+                        }
+
+                        let _: () = cmd.query_async(&mut *conn).await?;
+                    }
+                }
+
+                Ok(updates)
+            } else {
+                Err(anyhow::anyhow!("Failed to get Redis connection"))
+            }
+        } else {
+            Err(anyhow::anyhow!("Redis pool is not initialized"))
+        }
+    }
+
+    pub async fn read_batch_messages(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+        consumer_name: &str,
+        count: usize,
+        block_ms: usize,
+    ) -> Result<Vec<(String, Vec<u8>)>, anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let result: RedisStreamResults = redis::cmd("XREADGROUP")
+                    .arg("GROUP")
+                    .arg(group_name)
+                    .arg(consumer_name)
+                    .arg("COUNT")
+                    .arg(count)
+                    .arg("BLOCK")
+                    .arg(block_ms)
+                    .arg("STREAMS")
+                    .arg(&stream_key)
+                    .arg(">")
+                    .query_async(&mut *conn)
+                    .await?;
+
+                let mut updates = Vec::new();
+                let mut message_ids = Vec::new();
+
+                if !result.is_empty() && !result[0].1.is_empty() {
+                    for (msg_id, fields) in &result[0].1 {
+                        message_ids.push(msg_id.clone());
+
+                        for (field_name, field_value) in fields {
+                            if field_name == "update" {
+                                updates.push((msg_id.clone(), field_value.clone()));
+                            }
+                        }
+                    }
+
+                    if !message_ids.is_empty() {
+                        let mut pipe = redis::pipe();
+                        let mut cmd = redis::cmd("XACK");
+                        cmd.arg(&stream_key).arg(group_name);
+
+                        for id in &message_ids {
+                            cmd.arg(id);
+                        }
+
+                        pipe.add_command(cmd);
+                        let _: () = pipe.query_async(&mut *conn).await?;
+                    }
+                }
+
+                Ok(updates)
+            } else {
+                Err(anyhow::anyhow!("Failed to get Redis connection"))
+            }
+        } else {
+            Err(anyhow::anyhow!("Redis pool is not initialized"))
+        }
+    }
+
+    pub async fn trim_stream(&self, doc_id: &str, max_len: usize) -> Result<(), anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let _: () = redis::cmd("XTRIM")
+                    .arg(&stream_key)
+                    .arg("MAXLEN")
+                    .arg("~")
+                    .arg(max_len)
+                    .query_async(&mut *conn)
+                    .await?;
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn optimize_stream(&self, doc_id: &str) -> Result<(), anyhow::Error> {
+        if let Some(pool) = &self.pool {
+            let stream_key = format!("yjs:stream:{}", doc_id);
+            if let Ok(mut conn) = pool.get().await {
+                let length: Option<usize> = redis::cmd("XLEN")
+                    .arg(&stream_key)
+                    .query_async(&mut *conn)
+                    .await?;
+
+                if let Some(len) = length {
+                    if len > 5000 {
+                        let _: () = redis::cmd("XTRIM")
+                            .arg(&stream_key)
+                            .arg("MAXLEN")
+                            .arg("~")
+                            .arg(2000)
+                            .query_async(&mut *conn)
+                            .await?;
+
+                        tracing::info!(
+                            "Trimmed Redis stream for doc '{}' from {} to 2000 messages",
+                            doc_id,
+                            len
+                        );
+                    }
+                }
+            }
+        }
+        Ok(())
     }
 
     pub async fn ack_message(
