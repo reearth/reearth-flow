@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::{
-    algorithm::{bool_ops::BooleanOps, coordinate_meter_converter::meter_to_coordinate_diff},
+    algorithm::{bool_ops::BooleanOps, geo_distance_converter::meter_to_coordinate_diff},
     types::{
         coordinate::{Coordinate, Coordinate2D},
         line_string::{LineString2D, LineString3D},
@@ -286,7 +286,8 @@ fn project_point_to_elevation(
 
     let offset_meter_x = height * light_dir[0] / light_dir[2];
     let offset_meter_y = height * light_dir[1] / light_dir[2];
-    let (offset_lng, offset_lat) = meter_to_coordinate_diff(offset_meter_x, offset_meter_y);
+    let (offset_lng, offset_lat) =
+        meter_to_coordinate_diff(offset_meter_x, offset_meter_y, point.y);
 
     Coordinate::new__(point.x + offset_lng, point.y + offset_lat, elevation)
 }

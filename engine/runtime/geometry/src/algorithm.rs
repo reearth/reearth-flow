@@ -13,7 +13,7 @@ pub mod centroid;
 pub mod clipper;
 pub mod contains;
 pub mod convex_hull;
-pub mod coordinate_meter_converter;
+pub mod geo_distance_converter;
 pub mod coordinate_position;
 pub mod coords_iter;
 pub mod dimensions;
