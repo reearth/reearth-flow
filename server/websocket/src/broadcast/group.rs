@@ -579,6 +579,14 @@ impl BroadcastGroup {
         self.shutdown_complete
             .store(true, std::sync::atomic::Ordering::SeqCst);
 
+        if let Some(task) = &self.redis_subscriber_task {
+            task.abort();
+        }
+
+        if let Some(task) = &self.batch_sender_task {
+            task.abort();
+        }
+
         if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
             let final_updates = {
                 let mut buffer = self.update_batch_buffer.lock().await;
