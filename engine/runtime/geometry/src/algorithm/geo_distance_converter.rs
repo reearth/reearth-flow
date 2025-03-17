@@ -26,3 +26,24 @@ pub fn meter_to_coordinate_diff(meter_x: f64, meter_y: f64, lat: f64) -> (f64, f
 
     (dlng, dlat)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::types::coordinate::Coordinate2D;
+
+    use super::*;
+    use approx::assert_relative_eq;
+
+    #[test]
+    fn test_coordinate_diff_to_meter() {
+        // calculated using "Online geodesic calculations using the GeodSolve utility (https://geographiclib.sourceforge.io/cgi-bin/GeodSolve)"
+        let coords_a = Coordinate2D::new_(139.6917, 35.6895);
+        let coords_b = Coordinate2D::new_(139.69280478, 35.69040128);
+
+        let (dx_meter, dy_meter) =
+            coordinate_diff_to_meter(coords_b.x - coords_a.x, coords_b.y - coords_a.y, coords_a.y);
+
+        assert_relative_eq!(dx_meter, 100.0, epsilon = 1.0);
+        assert_relative_eq!(dy_meter, 100.0, epsilon = 1.0);
+    }
+}
