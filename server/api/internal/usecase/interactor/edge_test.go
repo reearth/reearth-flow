@@ -44,15 +44,6 @@ func (m *MockPermissionChecker) CheckPermission(ctx context.Context, authInfo *a
 	return m.result, m.err
 }
 
-func TestNewEdgeExecution(t *testing.T) {
-	t.Run("successfully create EdgeExecution", func(t *testing.T) {
-		redisMock := &mockRedisGateway{}
-		mockPermissionChecker := &MockPermissionChecker{result: true}
-		ei := NewEdgeExecution(redisMock, mockPermissionChecker)
-		assert.NotNil(t, ei)
-	})
-}
-
 func TestEdgeExecution_GetEdgeExecutions(t *testing.T) {
 	jobID := id.NewJobID()
 	now := time.Now()

@@ -25,8 +25,9 @@ type EdgeExecution struct {
 	permissionChecker gateway.PermissionChecker
 }
 
-func NewEdgeExecution(redisGateway gateway.Redis, permissionChecker gateway.PermissionChecker) interfaces.EdgeExecution {
+func NewEdgeExecution(edgeRepo repo.EdgeExecution, redisGateway gateway.Redis, permissionChecker gateway.PermissionChecker) interfaces.EdgeExecution {
 	ee := &EdgeExecution{
+		edgeRepo:          edgeRepo,
 		redisGateway:      redisGateway,
 		subscriptions:     subscription.NewEdgeManager(),
 		watchers:          make(map[string]context.CancelFunc),
