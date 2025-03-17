@@ -60,7 +60,7 @@ const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
           </div>
         )}
         {isFetching ? (
-          <LoadingSkeleton className="pt-12" />
+          <LoadingSkeleton className="h-[75vh] pt-12" />
         ) : previousVersions && previousVersions.length > 0 ? (
           <div className="flex flex-col overflow-auto">
             {previousVersions?.map((version) => (
