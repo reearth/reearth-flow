@@ -38,6 +38,8 @@ type EdgeExecution struct {
 type JobStatus string
 
 const (
+	JobStatusUnknown   JobStatus = "UNKNOWN"
+	JobStatusCancelled JobStatus = "CANCELLED"
 	JobStatusPending   JobStatus = "PENDING"
 	JobStatusRunning   JobStatus = "RUNNING"
 	JobStatusCompleted JobStatus = "COMPLETED"

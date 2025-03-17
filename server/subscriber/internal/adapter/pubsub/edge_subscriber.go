@@ -28,7 +28,6 @@ func (s *EdgeSubscriber) StartListening(ctx context.Context) error {
 		defer func() {
 			if r := recover(); r != nil {
 				log.Printf("[EdgeSubscriber] panic recovered: %v", r)
-				m.Nack()
 			}
 		}()
 
