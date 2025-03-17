@@ -114,7 +114,7 @@ impl BroadcastPool {
                     }
                     Ok(false) => match self.store.load_doc(DEFAULT_DOC_ID, &mut txn).await {
                         Ok(true) => {
-                            tracing::info!("Loaded default document '{}'", DEFAULT_DOC_ID);
+                            tracing::debug!("Loaded default document '{}'", DEFAULT_DOC_ID);
                             loaded = true;
                         }
                         Ok(false) => {
