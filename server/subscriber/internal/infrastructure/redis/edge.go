@@ -16,9 +16,9 @@ func (r *RedisStorage) SaveEdgeEventToRedis(ctx context.Context, event *edge.Pas
 		return fmt.Errorf("cannot save nil event to Redis")
 	}
 
-	log.Printf("DEBUG: Starting Redis save for JobID=%s, WorkflowID=%s with %d edges", 
+	log.Printf("DEBUG: Starting Redis save for JobID=%s, WorkflowID=%s with %d edges",
 		event.JobID, event.WorkflowID, len(event.UpdatedEdges))
-	
+
 	jobEventsKey := fmt.Sprintf("edgeEvents:%s", event.JobID)
 	log.Printf("DEBUG: Using Redis list key: %s", jobEventsKey)
 
@@ -47,7 +47,7 @@ func (r *RedisStorage) SaveEdgeEventToRedis(ctx context.Context, event *edge.Pas
 	// Process individual edge updates
 	for i, updatedEdge := range event.UpdatedEdges {
 		edgeKey := fmt.Sprintf("edge:%s:%s", event.JobID, updatedEdge.ID)
-		log.Printf("DEBUG: Processing edge %d/%d, key=%s, status=%s", 
+		log.Printf("DEBUG: Processing edge %d/%d, key=%s, status=%s",
 			i+1, len(event.UpdatedEdges), edgeKey, updatedEdge.Status)
 
 		edgeData := map[string]interface{}{

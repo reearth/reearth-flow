@@ -73,9 +73,9 @@ func (m *MongoStorage) UpdateEdgeStatusInMongo(ctx context.Context, jobID string
 		return fmt.Errorf("edge execution is nil")
 	}
 
-	log.Printf("DEBUG: Updating edge status in MongoDB for jobID=%s, edgeID=%s, status=%s", 
+	log.Printf("DEBUG: Updating edge status in MongoDB for jobID=%s, edgeID=%s, status=%s",
 		jobID, edgeExec.ID, edgeExec.Status)
-	
+
 	filter := bson.M{
 		"id":                jobID,
 		"edgeExecutions.id": edgeExec.ID,
@@ -113,7 +113,7 @@ func (m *MongoStorage) UpdateEdgeStatusInMongo(ctx context.Context, jobID string
 	err := m.client.UpdateMany(ctx, filter, updateFields)
 	if err != nil {
 		log.Printf("DEBUG: Edge execution not found, will attempt to add it. Error: %v", err)
-		
+
 		consumer := &jobStatusConsumer{}
 		err := m.client.FindOne(ctx, bson.M{"id": jobID}, consumer)
 
@@ -159,7 +159,7 @@ func (m *MongoStorage) checkAndUpdateJobStatus(ctx context.Context, jobID string
 		return fmt.Errorf("job not found: %s", jobID)
 	}
 
-	log.Printf("DEBUG: Current job status: %s with %d edge executions", 
+	log.Printf("DEBUG: Current job status: %s with %d edge executions",
 		consumer.Status, len(consumer.EdgeExecutions))
 
 	if consumer.Status == string(edge.JobStatusCompleted) || consumer.Status == string(edge.JobStatusFailed) {
@@ -176,9 +176,9 @@ func (m *MongoStorage) checkAndUpdateJobStatus(ctx context.Context, jobID string
 	anyFailed := false
 
 	for i, e := range consumer.EdgeExecutions {
-		log.Printf("DEBUG: Edge execution %d/%d: ID=%s, Status=%s", 
+		log.Printf("DEBUG: Edge execution %d/%d: ID=%s, Status=%s",
 			i+1, len(consumer.EdgeExecutions), e.ID, e.Status)
-		
+
 		if e.Status != string(edge.StatusCompleted) {
 			allCompleted = false
 		}
@@ -202,7 +202,7 @@ func (m *MongoStorage) checkAndUpdateJobStatus(ctx context.Context, jobID string
 			log.Printf("ERROR: Failed to update job status to failed: %v", err)
 			return fmt.Errorf("failed to update job status to failed: %w", err)
 		}
-		log.Printf("DEBUG: Successfully updated job status to Failed with completedAt=%s", 
+		log.Printf("DEBUG: Successfully updated job status to Failed with completedAt=%s",
 			now.Format(time.RFC3339))
 	} else if allCompleted {
 		log.Printf("DEBUG: All edge executions completed, updating job status to Completed")
@@ -215,7 +215,7 @@ func (m *MongoStorage) checkAndUpdateJobStatus(ctx context.Context, jobID string
 			log.Printf("ERROR: Failed to update job status to completed: %v", err)
 			return fmt.Errorf("failed to update job status to completed: %w", err)
 		}
-		log.Printf("DEBUG: Successfully updated job status to Completed with completedAt=%s", 
+		log.Printf("DEBUG: Successfully updated job status to Completed with completedAt=%s",
 			now.Format(time.RFC3339))
 	} else {
 		log.Printf("DEBUG: Job still in progress, no status update needed")
@@ -226,7 +226,7 @@ func (m *MongoStorage) checkAndUpdateJobStatus(ctx context.Context, jobID string
 
 func (m *MongoStorage) ConstructIntermediateDataURL(jobID, edgeID string) string {
 	log.Printf("DEBUG: Constructing intermediate data URL for jobID=%s, edgeID=%s", jobID, edgeID)
-	
+
 	const artifactBasePath = "artifacts"
 	const featureStorePath = "feature-store"
 

@@ -86,10 +86,10 @@ func initClients(ctx context.Context, conf *Config) (*pubsub.Client, *redis.Clie
 	if err != nil {
 		log.Fatalf("FATAL: Failed to parse Redis URL: %v", err)
 	}
-	
+
 	log.Printf("DEBUG: Creating Redis client")
 	redisClient := redis.NewClient(redisOpt)
-	
+
 	log.Printf("DEBUG: Testing Redis connection")
 	if err := redisClient.Ping(ctx).Err(); err != nil {
 		log.Fatalf("FATAL: Failed to connect to Redis: %v", err)
@@ -120,7 +120,7 @@ func maskSensitiveURL(url string) string {
 
 func cleanupClients(pubsubClient *pubsub.Client, redisClient *redis.Client, mongoClient *mongo.Client) {
 	log.Printf("DEBUG: Starting cleanup of clients")
-	
+
 	if pubsubClient != nil {
 		log.Printf("DEBUG: Closing PubSub client")
 		if err := pubsubClient.Close(); err != nil {
@@ -147,7 +147,7 @@ func cleanupClients(pubsubClient *pubsub.Client, redisClient *redis.Client, mong
 			log.Printf("DEBUG: MongoDB client disconnected successfully")
 		}
 	}
-	
+
 	log.Printf("DEBUG: Client cleanup completed")
 }
 
@@ -174,7 +174,7 @@ func initStorages(ctx context.Context, conf *Config, redisClient *redis.Client, 
 	log.Printf("DEBUG: Initializing Log storage implementation")
 	logStorage := infrastructure.NewLogStorageImpl(redisStorage)
 	log.Printf("DEBUG: Log storage implementation initialized")
-	
+
 	log.Printf("DEBUG: Initializing Edge storage implementation")
 	edgeStorage := infrastructure.NewEdgeStorageImpl(redisStorage, mongoStorage)
 	log.Printf("DEBUG: Edge storage implementation initialized")
@@ -225,7 +225,7 @@ func initSubscribers(_ context.Context, conf *Config, pubsubClient *pubsub.Clien
 
 func startHTTPServer(port string) *http.Server {
 	log.Printf("DEBUG: Setting up HTTP endpoints")
-	
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("DEBUG: Received request at / from %s", r.RemoteAddr)
 		if _, err := fmt.Fprintf(w, "Subscriber service is running"); err != nil {
