@@ -1,7 +1,7 @@
 import { useReactFlow } from "@xyflow/react";
 import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useY } from "react-yjs";
-import { Array as YArray } from "yjs";
+import { Map as YMap } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useProjectExport } from "@flow/hooks";
@@ -19,7 +19,7 @@ export default ({
   project,
   undoTrackerActionWrapper,
 }: {
-  yWorkflows: YArray<YWorkflow>;
+  yWorkflows: YMap<YWorkflow>;
   project?: Project;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
@@ -31,20 +31,21 @@ export default ({
     DEFAULT_ENTRY_GRAPH_ID,
   );
 
-  const rawWorkflows = yWorkflows.map((w) => rebuildWorkflow(w));
-
-  const currentYWorkflow = yWorkflows.get(
-    rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
+  const rawWorkflows = Array.from(yWorkflows.entries()).map(([, yw]) =>
+    rebuildWorkflow(yw),
   );
 
-  const rawNodes = useY(
-    currentYWorkflow.get("nodes") ?? new YArray(),
-  ) as Node[];
+  const currentYWorkflow = yWorkflows.get(currentWorkflowId);
+
+  const rawNodes = useY(currentYWorkflow?.get("nodes") ?? new YMap()) as Record<
+    string,
+    Node
+  >;
 
   // Non-persistant state needs to be managed here
   const nodes = useMemo(
     () =>
-      rawNodes.map((node) => ({
+      Object.values(rawNodes).map((node) => ({
         ...node,
         selected:
           selectedNodeIds.includes(node.id) && !node.selected
@@ -62,7 +63,12 @@ export default ({
     undoTrackerActionWrapper,
   });
 
-  const edges = useY(currentYWorkflow.get("edges") ?? new YArray()) as Edge[];
+  const rawEdges = useY(currentYWorkflow?.get("edges") ?? new YMap()) as Record<
+    string,
+    Edge
+  >;
+
+  const edges = useMemo(() => Object.values(rawEdges), [rawEdges]);
 
   const {
     openWorkflows,

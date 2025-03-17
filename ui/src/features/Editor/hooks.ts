@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import { useY } from "react-yjs";
-import { Array as YArray, UndoManager as YUndoManager } from "yjs";
+import { Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useShortcuts } from "@flow/hooks";
@@ -31,7 +31,7 @@ export default ({
   undoManager,
   undoTrackerActionWrapper,
 }: {
-  yWorkflows: YArray<YWorkflow>;
+  yWorkflows: YMap<YWorkflow>;
   undoManager: YUndoManager | null;
   undoTrackerActionWrapper: (callback: () => void) => void;
 }) => {
@@ -75,31 +75,40 @@ export default ({
     undoTrackerActionWrapper,
   });
 
-  const rawNodes = useY(
-    currentYWorkflow.get("nodes") ?? new YArray(),
-  ) as Node[];
+  const rawNodes = useY(currentYWorkflow?.get("nodes") ?? new YMap()) as Record<
+    string,
+    Node
+  >;
 
   // Non-persistant state needs to be managed here
   const nodes = useMemo(
     () =>
-      rawNodes.map((node) => ({
-        ...node,
-        selected:
-          selectedNodeIds.includes(node.id) && !node.selected
-            ? true
-            : (node.selected ?? false),
-      })),
+      Object.values(rawNodes)
+        .map((node) => ({
+          ...node,
+          selected:
+            selectedNodeIds.includes(node.id) && !node.selected
+              ? true
+              : (node.selected ?? false),
+        }))
+        .sort((a, b) => {
+          // React Flow needs batch nodes to be rendered first
+          if (a.type === "batch" && b.type !== "batch") return -1;
+          if (a.type !== "batch" && b.type === "batch") return 1;
+          return 0;
+        }),
     [rawNodes, selectedNodeIds],
   );
 
-  const rawEdges = useY(
-    currentYWorkflow.get("edges") ?? new YArray(),
-  ) as Edge[];
+  const rawEdges = useY(currentYWorkflow?.get("edges") ?? new YMap()) as Record<
+    string,
+    Edge
+  >;
 
   // Non-persistant state needs to be managed here
   const edges = useMemo(
     () =>
-      rawEdges.map((edge) => ({
+      Object.values(rawEdges).map((edge) => ({
         ...edge,
         selected:
           selectedEdgeIds.includes(edge.id) && !edge.selected
@@ -264,6 +273,7 @@ export default ({
   return {
     currentWorkflowId,
     openWorkflows,
+    currentProject,
     nodes,
     edges,
     lockedNodeIds,

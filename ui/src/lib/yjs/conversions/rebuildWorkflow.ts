@@ -3,7 +3,7 @@ import * as Y from "yjs";
 import { Workflow } from "@flow/types";
 import type { Edge, Node, NodeData, NodeType } from "@flow/types";
 
-import type { YWorkflow, YEdge, YNode } from "../types";
+import type { YWorkflow, YEdge, YNode, YNodesMap, YEdgesMap } from "../types";
 
 export const reassembleNode = (yNode: YNode): Node => {
   const id = yNode.get("id")?.toString() as string;
@@ -122,16 +122,16 @@ export const rebuildWorkflow = (yWorkflow: YWorkflow): Workflow => {
       workflow.id = value.toString();
     } else if (key === "name" && value instanceof Y.Text) {
       workflow.name = value.toString();
-    } else if (key === "nodes" && value instanceof Y.Array) {
-      // Convert nodes to plain objects
-      workflow.nodes = value
-        .toArray()
-        .map((yNode) => reassembleNode(yNode as YNode));
-    } else if (key === "edges" && value instanceof Y.Array) {
-      // Convert edges to plain objects
-      workflow.edges = value
-        .toArray()
-        .map((yEdge) => reassembleEdge(yEdge as YEdge));
+    } else if (key === "nodes" && value instanceof Y.Map) {
+      // Convert map of nodes to array of plain objects
+      workflow.nodes = Array.from(value as YNodesMap).map(([, yNode]) =>
+        reassembleNode(yNode as YNode),
+      );
+    } else if (key === "edges" && value instanceof Y.Map) {
+      // Convert map of edges to array of plain objects
+      workflow.edges = Array.from(value as YEdgesMap).map(([, yEdge]) =>
+        reassembleEdge(yEdge as YEdge),
+      );
     } else if (key === "createdAt" && value instanceof Y.Text) {
       workflow.createdAt = value.toString();
     } else if (key === "updatedAt" && value instanceof Y.Text) {

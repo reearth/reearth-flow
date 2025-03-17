@@ -171,7 +171,6 @@ impl RunWorkerCommand {
         let job_result = match result {
             Ok(_) => {
                 if node_failure_handler.all_success() {
-                    self.cleanup(&meta, &storage_resolver).await?;
                     JobResult::Success
                 } else {
                     tracing::error!("Failed nodes: {:?}", node_failure_handler.failed_nodes());
@@ -180,6 +179,7 @@ impl RunWorkerCommand {
             }
             Err(_) => JobResult::Failed,
         };
+        self.cleanup(&meta, &storage_resolver).await?;
         let pubsub = PubSubBackend::try_from(self.pubsub_backend.as_str())
             .await
             .map_err(crate::errors::Error::init)?;

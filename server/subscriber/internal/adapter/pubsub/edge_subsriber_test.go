@@ -11,55 +11,56 @@ import (
 	"github.com/stretchr/testify/mock"
 
 	. "github.com/reearth/reearth-flow/subscriber/internal/adapter/pubsub"
-	domainLog "github.com/reearth/reearth-flow/subscriber/pkg/log"
+	"github.com/reearth/reearth-flow/subscriber/pkg/edge"
 )
 
-type mockSubscription struct {
+type mockEdgeSubscription struct {
 	mock.Mock
 }
 
-func (m *mockSubscription) Receive(ctx context.Context, f func(context.Context, Message)) error {
+func (m *mockEdgeSubscription) Receive(ctx context.Context, f func(context.Context, Message)) error {
 	args := m.Called(ctx, f)
 	return args.Error(0)
 }
 
-type mockMessage struct {
+type mockEdgeMessage struct {
 	mock.Mock
 	data []byte
 }
 
-func (m *mockMessage) Data() []byte {
+func (m *mockEdgeMessage) Data() []byte {
 	return m.data
 }
-func (m *mockMessage) Ack() {
+func (m *mockEdgeMessage) Ack() {
 	m.Called()
 }
-func (m *mockMessage) Nack() {
+func (m *mockEdgeMessage) Nack() {
 	m.Called()
 }
 
-type mockUseCase struct {
+type mockEdgeUseCase struct {
 	mock.Mock
 }
 
-func (m *mockUseCase) ProcessLogEvent(ctx context.Context, event *domainLog.LogEvent) error {
+func (m *mockEdgeUseCase) ProcessEdgeEvent(ctx context.Context, event *edge.PassThroughEvent) error {
 	args := m.Called(ctx, event)
 	return args.Error(0)
 }
 
-func TestSubscriber_StartListening_Success(t *testing.T) {
+func TestEdgeSubscriber_StartListening_Success(t *testing.T) {
 	ctx := context.Background()
 
-	mSub := new(mockSubscription)
-	mUseCase := new(mockUseCase)
-	mMsg := new(mockMessage)
+	mSub := new(mockEdgeSubscription)
+	mUseCase := new(mockEdgeUseCase)
+	mMsg := new(mockEdgeMessage)
 
-	testEvent := domainLog.LogEvent{
-		WorkflowID: "workflow-123",
-		JobID:      "job-abc",
-		Timestamp:  time.Now(),
-		LogLevel:   domainLog.LogLevelInfo,
-		Message:    "Hello from test",
+	timestamp := time.Now()
+	testEvent := edge.PassThroughEvent{
+		WorkflowID:   "workflow-123",
+		JobID:        "job-xyz",
+		Status:       edge.StatusCompleted,
+		Timestamp:    timestamp,
+		UpdatedEdges: []edge.UpdatedEdge{{ID: "edge-1", Status: edge.StatusInProgress}},
 	}
 	data, _ := json.Marshal(testEvent)
 	mMsg.data = data
@@ -67,7 +68,7 @@ func TestSubscriber_StartListening_Success(t *testing.T) {
 	mMsg.On("Ack").Return().Once()
 	mMsg.On("Nack").Return().Maybe()
 
-	mUseCase.On("ProcessLogEvent", mock.Anything, mock.AnythingOfType("*log.LogEvent")).
+	mUseCase.On("ProcessEdgeEvent", mock.Anything, mock.AnythingOfType("*edge.PassThroughEvent")).
 		Return(nil).Once()
 
 	mSub.On("Receive", ctx, mock.Anything).
@@ -77,7 +78,7 @@ func TestSubscriber_StartListening_Success(t *testing.T) {
 		}).
 		Return(nil).Once()
 
-	s := NewSubscriber(mSub, mUseCase)
+	s := NewEdgeSubscriber(mSub, mUseCase)
 	err := s.StartListening(ctx)
 	assert.NoError(t, err)
 
@@ -86,23 +87,23 @@ func TestSubscriber_StartListening_Success(t *testing.T) {
 	mSub.AssertExpectations(t)
 }
 
-func TestSubscriber_StartListening_ProcessError(t *testing.T) {
+func TestEdgeSubscriber_StartListening_ProcessError(t *testing.T) {
 	ctx := context.Background()
 
-	mSub := new(mockSubscription)
-	mUseCase := new(mockUseCase)
-	mMsg := new(mockMessage)
+	mSub := new(mockEdgeSubscription)
+	mUseCase := new(mockEdgeUseCase)
+	mMsg := new(mockEdgeMessage)
 
-	testEvent := domainLog.LogEvent{
-		WorkflowID: "wf",
-		JobID:      "job",
+	testEvent := edge.PassThroughEvent{
+		WorkflowID: "workflow-123",
+		JobID:      "job-123",
+		Status:     edge.StatusFailed,
 	}
 	data, _ := json.Marshal(testEvent)
 	mMsg.data = data
 
-	mUseCase.
-		On("ProcessLogEvent", mock.Anything, mock.AnythingOfType("*log.LogEvent")).
-		Return(errors.New("something failed")).Once()
+	mUseCase.On("ProcessEdgeEvent", mock.Anything, mock.AnythingOfType("*edge.PassThroughEvent")).
+		Return(errors.New("processing failed")).Once()
 
 	mMsg.On("Ack").Return().Maybe()
 	mMsg.On("Nack").Return().Once()
@@ -114,7 +115,7 @@ func TestSubscriber_StartListening_ProcessError(t *testing.T) {
 		}).
 		Return(nil).Once()
 
-	s := NewSubscriber(mSub, mUseCase)
+	s := NewEdgeSubscriber(mSub, mUseCase)
 	err := s.StartListening(ctx)
 	assert.NoError(t, err)
 
@@ -123,12 +124,12 @@ func TestSubscriber_StartListening_ProcessError(t *testing.T) {
 	mSub.AssertExpectations(t)
 }
 
-func TestSubscriber_StartListening_InvalidJSON(t *testing.T) {
+func TestEdgeSubscriber_StartListening_InvalidJSON(t *testing.T) {
 	ctx := context.Background()
 
-	mSub := new(mockSubscription)
-	mUseCase := new(mockUseCase)
-	mMsg := new(mockMessage)
+	mSub := new(mockEdgeSubscription)
+	mUseCase := new(mockEdgeUseCase)
+	mMsg := new(mockEdgeMessage)
 
 	mMsg.data = []byte(`{ "invalid": ??? }`)
 
@@ -142,11 +143,11 @@ func TestSubscriber_StartListening_InvalidJSON(t *testing.T) {
 		}).
 		Return(nil).Once()
 
-	s := NewSubscriber(mSub, mUseCase)
+	s := NewEdgeSubscriber(mSub, mUseCase)
 	err := s.StartListening(ctx)
 	assert.NoError(t, err)
 
-	mUseCase.AssertNotCalled(t, "ProcessLogEvent")
+	mUseCase.AssertNotCalled(t, "ProcessEdgeEvent")
 
 	mMsg.AssertExpectations(t)
 	mUseCase.AssertExpectations(t)

@@ -166,6 +166,15 @@ type DeploymentPayload struct {
 	Deployment *Deployment `json:"deployment"`
 }
 
+type EdgeExecution struct {
+	ID                  string     `json:"id"`
+	Status              EdgeStatus `json:"status"`
+	StartedAt           *time.Time `json:"startedAt,omitempty"`
+	CompletedAt         *time.Time `json:"completedAt,omitempty"`
+	FeatureID           *ID        `json:"featureId,omitempty"`
+	IntermediateDataURL *string    `json:"intermediateDataUrl,omitempty"`
+}
+
 type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
 }
@@ -182,18 +191,19 @@ type GetHeadInput struct {
 }
 
 type Job struct {
-	CompletedAt  *time.Time  `json:"completedAt,omitempty"`
-	Deployment   *Deployment `json:"deployment,omitempty"`
-	DeploymentID ID          `json:"deploymentId"`
-	Debug        *bool       `json:"debug,omitempty"`
-	ID           ID          `json:"id"`
-	LogsURL      *string     `json:"logsURL,omitempty"`
-	OutputURLs   []string    `json:"outputURLs,omitempty"`
-	StartedAt    time.Time   `json:"startedAt"`
-	Status       JobStatus   `json:"status"`
-	Workspace    *Workspace  `json:"workspace,omitempty"`
-	WorkspaceID  ID          `json:"workspaceId"`
-	Logs         []*Log      `json:"logs,omitempty"`
+	CompletedAt    *time.Time       `json:"completedAt,omitempty"`
+	Deployment     *Deployment      `json:"deployment,omitempty"`
+	DeploymentID   ID               `json:"deploymentId"`
+	Debug          *bool            `json:"debug,omitempty"`
+	ID             ID               `json:"id"`
+	LogsURL        *string          `json:"logsURL,omitempty"`
+	OutputURLs     []string         `json:"outputURLs,omitempty"`
+	StartedAt      time.Time        `json:"startedAt"`
+	Status         JobStatus        `json:"status"`
+	Workspace      *Workspace       `json:"workspace,omitempty"`
+	WorkspaceID    ID               `json:"workspaceId"`
+	Logs           []*Log           `json:"logs,omitempty"`
+	EdgeExecutions []*EdgeExecution `json:"edgeExecutions,omitempty"`
 }
 
 func (Job) IsNode()        {}
@@ -549,6 +559,49 @@ func (e *AssetSortType) UnmarshalGQL(v interface{}) error {
 }
 
 func (e AssetSortType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type EdgeStatus string
+
+const (
+	EdgeStatusInProgress EdgeStatus = "IN_PROGRESS"
+	EdgeStatusCompleted  EdgeStatus = "COMPLETED"
+	EdgeStatusFailed     EdgeStatus = "FAILED"
+)
+
+var AllEdgeStatus = []EdgeStatus{
+	EdgeStatusInProgress,
+	EdgeStatusCompleted,
+	EdgeStatusFailed,
+}
+
+func (e EdgeStatus) IsValid() bool {
+	switch e {
+	case EdgeStatusInProgress, EdgeStatusCompleted, EdgeStatusFailed:
+		return true
+	}
+	return false
+}
+
+func (e EdgeStatus) String() string {
+	return string(e)
+}
+
+func (e *EdgeStatus) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = EdgeStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid EdgeStatus", str)
+	}
+	return nil
+}
+
+func (e EdgeStatus) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

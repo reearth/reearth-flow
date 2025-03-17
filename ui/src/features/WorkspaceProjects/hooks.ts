@@ -1,9 +1,9 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useRef, useState } from "react";
 
-import { useProjectPagination } from "@flow/hooks";
+import { useProjectDuplicate, useProjectPagination } from "@flow/hooks";
 import { useProject } from "@flow/lib/gql";
-import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
+import { useCurrentWorkspace } from "@flow/stores";
 import { Project } from "@flow/types";
 
 export default () => {
@@ -11,7 +11,7 @@ export default () => {
 
   const [workspace] = useCurrentWorkspace();
 
-  const [currentProject, setCurrentProject] = useCurrentProject();
+  const { isDuplicating, handleProjectDuplication } = useProjectDuplicate();
 
   const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
   const { deleteProject, updateProject } = useProject();
@@ -28,6 +28,8 @@ export default () => {
   } = useProjectPagination({ workspace });
 
   const [openProjectAddDialog, setOpenProjectAddDialog] = useState(false);
+  const [openProjectDuplicateDialog, setOpenProjectDuplicateDialog] =
+    useState(false);
   const [showError, setShowError] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
   const [projectToBeDeleted, setProjectToBeDeleted] = useState<
@@ -36,11 +38,12 @@ export default () => {
   const [editProject, setEditProject] = useState<undefined | Project>(
     undefined,
   );
+  const [duplicateProject, setDuplicateProject] = useState<undefined | Project>(
+    undefined,
+  );
 
-  const handleProjectSelect = (p: Project) => {
-    setCurrentProject(p);
+  const handleProjectSelect = (p: Project) =>
     navigate({ to: `/workspaces/${workspace?.id}/projects/${p.id}` });
-  };
 
   const handleDeleteProject = async (id: string) => {
     if (!workspace) return;
@@ -79,21 +82,26 @@ export default () => {
   return {
     projects,
     ref,
-    currentProject,
     projectToBeDeleted,
     editProject,
+    duplicateProject,
     showError,
     buttonDisabled,
     openProjectAddDialog,
+    openProjectDuplicateDialog,
     currentPage,
     totalPages,
     isFetching,
+    isDuplicating,
     currentOrder,
     orderDirections,
     setOpenProjectAddDialog,
+    setOpenProjectDuplicateDialog,
     setEditProject,
+    setDuplicateProject,
     setProjectToBeDeleted,
     setCurrentPage,
+    handleProjectDuplication,
     handleProjectSelect,
     handleDeleteProject,
     handleUpdateValue,

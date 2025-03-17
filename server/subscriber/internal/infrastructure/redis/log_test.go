@@ -17,13 +17,25 @@ type mockRedisClient struct {
 	mock.Mock
 }
 
+func (m *mockRedisClient) LPush(ctx context.Context, key string, values ...interface{}) *redis.IntCmd {
+	args := m.Called(ctx, key, values)
+	cmd := redis.NewIntCmd(ctx)
+	cmd.SetErr(args.Error(0))
+	return cmd
+}
+
+func (m *mockRedisClient) Expire(ctx context.Context, key string, expiration time.Duration) *redis.BoolCmd {
+	args := m.Called(ctx, key, expiration)
+	cmd := redis.NewBoolCmd(ctx)
+	cmd.SetErr(args.Error(0))
+	return cmd
+}
+
 func (m *mockRedisClient) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd {
 	args := m.Called(ctx, key, value, expiration)
-
-	err, _ := args.Get(0).(error)
-	statusCmd := redis.NewStatusCmd(ctx)
-	statusCmd.SetErr(err)
-	return statusCmd
+	cmd := redis.NewStatusCmd(ctx)
+	cmd.SetErr(args.Error(0))
+	return cmd
 }
 
 func TestRedisStorage_SaveLogToRedis(t *testing.T) {
