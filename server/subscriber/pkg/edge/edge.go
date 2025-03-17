@@ -28,6 +28,7 @@ type UpdatedEdge struct {
 
 type EdgeExecution struct {
 	ID                  string     `bson:"id"`
+	EdgeID              string     `bson:"edgeId"`
 	Status              Status     `bson:"status"`
 	StartedAt           *time.Time `bson:"startedAt,omitempty"`
 	CompletedAt         *time.Time `bson:"completedAt,omitempty"`
@@ -38,6 +39,8 @@ type EdgeExecution struct {
 type JobStatus string
 
 const (
+	JobStatusUnknown   JobStatus = "UNKNOWN"
+	JobStatusCancelled JobStatus = "CANCELLED"
 	JobStatusPending   JobStatus = "PENDING"
 	JobStatusRunning   JobStatus = "RUNNING"
 	JobStatusCompleted JobStatus = "COMPLETED"

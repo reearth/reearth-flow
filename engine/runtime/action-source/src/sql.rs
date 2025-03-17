@@ -107,7 +107,6 @@ impl Source for SqlReader {
             .map_err(|e| {
                 crate::errors::SourceError::SqlReader(format!("Failed to evaluate: {}", e))
             })?;
-        println!("database_url: {}", database_url);
         let sql = scope
             .eval::<String>(self.param.sql.to_string().as_str())
             .map_err(|e| {

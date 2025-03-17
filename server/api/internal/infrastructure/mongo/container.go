@@ -32,6 +32,7 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 		AuthRequest:   authserver.NewMongo(client.WithCollection("authRequest")),
 		Config:        NewConfig(db.Collection("config"), lock),
 		Deployment:    NewDeployment(client),
+		EdgeExecution: NewEdgeExecution(client),
 		Job:           NewJob(client),
 		Workflow:      NewWorkflow(client),
 		Parameter:     NewParameter(client),
@@ -68,6 +69,7 @@ func Init(r *repo.Container) error {
 		func() error { return r.AuthRequest.(*authserver.Mongo).Init(ctx) },
 		func() error { return r.Workflow.(*Workflow).Init(ctx) },
 		func() error { return r.Deployment.(*DeploymentAdapter).Deployment.Init(ctx) },
+		func() error { return r.EdgeExecution.(*EdgeExecution).Init(ctx) },
 		func() error { return r.Job.(*Job).Init(ctx) },
 		func() error { return r.Parameter.(*Parameter).Init(ctx) },
 		func() error { return r.Permittable.(*accountmongo.Permittable).Init(ctx) }, // TODO: Delete this once the permission check migration is complete.

@@ -193,11 +193,20 @@ impl WasmRuntimeExecutor {
     ) -> super::errors::Result<()> {
         let mut feature = ctx.feature.clone();
 
-        let json_input = self.serialize_attributes(&feature.attributes)?;
+        let json_input = self.serialize_attributes(
+            &feature
+                .attributes
+                .iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<HashMap<_, _>>(),
+        )?;
         let output = self.execute_wasm_module(&json_input)?;
         let updated_attributes = self.parse_wasm_output(&output)?;
 
-        feature.attributes = updated_attributes;
+        feature.attributes = updated_attributes
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect();
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }

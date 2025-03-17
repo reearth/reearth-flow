@@ -24,7 +24,7 @@ var (
 type Container struct {
 	Asset         Asset
 	Deployment    Deployment
-	Edge          EdgeExecution
+	EdgeExecution EdgeExecution
 	Job           Job
 	Log           Log
 	Parameter     Parameter

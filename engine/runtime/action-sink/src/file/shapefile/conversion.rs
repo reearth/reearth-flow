@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
 use reearth_flow_geometry::types::{multi_polygon::MultiPolygon3D, polygon::Polygon3D};
 use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryType, GeometryValue};
 use shapefile::{
@@ -72,7 +73,7 @@ fn polygon_to_shape_rings(poly: &Polygon3D<f64>) -> Vec<shapefile::PolygonRing<s
 }
 
 pub(super) fn make_table_builder(
-    attributes: &HashMap<Attribute, AttributeValue>,
+    attributes: &IndexMap<Attribute, AttributeValue>,
 ) -> crate::errors::Result<(TableWriterBuilder, HashMap<String, FieldValue>)> {
     let mut builder = TableWriterBuilder::new();
     let mut defaults = HashMap::new();
@@ -118,7 +119,7 @@ pub(super) fn make_table_builder(
 }
 
 pub(super) fn attributes_to_record(
-    attributes: &HashMap<Attribute, AttributeValue>,
+    attributes: &IndexMap<Attribute, AttributeValue>,
     fields_default: &HashMap<String, FieldValue>,
 ) -> Record {
     let mut record = Record::default();

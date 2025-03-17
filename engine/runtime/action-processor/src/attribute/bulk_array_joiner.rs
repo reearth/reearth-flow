@@ -100,9 +100,7 @@ impl Processor for AttributeBulkArrayJoiner {
             .attributes
             .iter()
             .filter(|(key, _)| !self.ignore_attributes.contains(key))
-            .filter(|(key, _)| {
-                matches!(feature.attributes.get(key), Some(AttributeValue::Array(_)))
-            })
+            .filter(|(key, _)| matches!(feature.get(key), Some(AttributeValue::Array(_))))
         {
             let AttributeValue::Array(value) = value else {
                 continue;
@@ -148,6 +146,7 @@ impl Processor for AttributeBulkArrayJoiner {
 // Gnerate test code
 mod test {
     use crate::tests::utils::create_default_execute_context;
+    use indexmap::IndexMap;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_types::Feature;
 
@@ -162,7 +161,7 @@ mod test {
         )]
         .into_iter()
         .collect();
-        let attributes: HashMap<Attribute, AttributeValue> = vec![(
+        let attributes: IndexMap<Attribute, AttributeValue> = vec![(
             Attribute::new("test"),
             AttributeValue::Array(vec![AttributeValue::Map(flattener)]),
         )]
@@ -193,7 +192,7 @@ mod test {
     fn test_attribute_single_array_joiner() {
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
-        let attributes: HashMap<Attribute, AttributeValue> = vec![(
+        let attributes: IndexMap<Attribute, AttributeValue> = vec![(
             Attribute::new("test"),
             AttributeValue::Array(vec![AttributeValue::String("fugafuga".to_string())]),
         )]
@@ -225,7 +224,7 @@ mod test {
     fn test_attribute_multi_array_joiner() {
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop);
-        let attributes: HashMap<Attribute, AttributeValue> = vec![(
+        let attributes: IndexMap<Attribute, AttributeValue> = vec![(
             Attribute::new("test"),
             AttributeValue::Array(vec![
                 AttributeValue::String("hogehoge".to_string()),

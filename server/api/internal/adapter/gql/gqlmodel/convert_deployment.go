@@ -75,10 +75,13 @@ func ToEdgeExecution(e *edge.EdgeExecution) *EdgeExecution {
 	}
 
 	return &EdgeExecution{
-		ID:                  e.ID(),
+		ID:                  ID(e.ID()),
+		EdgeID:              e.EdgeID(),
+		JobID:               ID(e.JobID().String()),
 		Status:              ToEdgeStatus(e.Status()),
 		StartedAt:           e.StartedAt(),
 		CompletedAt:         e.CompletedAt(),
+		FeatureID:           (*ID)(e.FeatureID()),
 		IntermediateDataURL: e.IntermediateDataURL(),
 	}
 }

@@ -16,6 +16,7 @@ type Loaders struct {
 	usecases   interfaces.Container
 	Asset      *AssetLoader
 	Deployment *DeploymentLoader
+	Edge       *EdgeExLoader
 	Job        *JobLoader
 	Log        *LogLoader
 	Project    *ProjectLoader

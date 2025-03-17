@@ -11,16 +11,6 @@ type Job implements Node {
   workspace: Workspace
   workspaceId: ID!
   logs(since: DateTime!): [Log]
-  edgeExecutions: [EdgeExecution!]
-}
-
-type EdgeExecution {
-  id: String!
-  status: EdgeStatus!
-  startedAt: DateTime
-  completedAt: DateTime
-  featureId: ID
-  intermediateDataUrl: String
 }
 
 enum JobStatus {
@@ -29,12 +19,6 @@ enum JobStatus {
   FAILED
   PENDING
   RUNNING
-}
-
-enum EdgeStatus {
-  IN_PROGRESS
-  COMPLETED
-  FAILED
 }
 
 # InputType
@@ -58,14 +42,12 @@ type JobConnection {
 # Subscripton Types
 
 extend type Subscription {
-  edgeStatus(jobId: ID!, edgeId: String!): EdgeStatus!
   jobStatus(jobId: ID!): JobStatus!
 }
 
 # Query and Mutation
 
 extend type Query {
-  edgeExecution(id: ID!, edgeId: String!): EdgeExecution!
   jobs(workspaceId: ID!, pagination: PageBasedPagination!): JobConnection!
   job(id: ID!): Job
 }

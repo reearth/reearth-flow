@@ -16,6 +16,7 @@ const (
 
 type EdgeExecution struct {
 	id                  string
+	edgeID              string
 	jobID               id.JobID
 	workflowID          string
 	startedAt           *time.Time
@@ -27,6 +28,7 @@ type EdgeExecution struct {
 
 func NewEdgeExecution(
 	id string,
+	edgeID string,
 	jobID id.JobID,
 	workflowID string,
 	status Status,
@@ -37,6 +39,7 @@ func NewEdgeExecution(
 ) *EdgeExecution {
 	return &EdgeExecution{
 		id:                  id,
+		edgeID:              edgeID,
 		jobID:               jobID,
 		workflowID:          workflowID,
 		status:              status,
@@ -49,6 +52,10 @@ func NewEdgeExecution(
 
 func (e *EdgeExecution) ID() string {
 	return e.id
+}
+
+func (e *EdgeExecution) EdgeID() string {
+	return e.edgeID
 }
 
 func (e *EdgeExecution) JobID() id.JobID {

@@ -19,7 +19,7 @@ func (r *subscriptionResolver) EdgeStatus(ctx context.Context, jobID gqlmodel.ID
 		return nil, err
 	}
 
-	edgeExCh, err := usecases(ctx).Edge.SubscribeToEdge(ctx, jid, edgeId)
+	edgeExCh, err := usecases(ctx).EdgeExecution.SubscribeToEdge(ctx, jid, edgeId)
 	if err != nil {
 		return nil, err
 	}
@@ -28,7 +28,7 @@ func (r *subscriptionResolver) EdgeStatus(ctx context.Context, jobID gqlmodel.ID
 
 	go func() {
 		defer close(resultCh)
-		defer usecases(ctx).Edge.UnsubscribeFromEdge(jid, string(edgeId), edgeExCh)
+		defer usecases(ctx).EdgeExecution.UnsubscribeFromEdge(jid, string(edgeId), edgeExCh)
 
 		for {
 			select {

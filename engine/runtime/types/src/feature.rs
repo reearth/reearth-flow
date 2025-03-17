@@ -5,6 +5,7 @@ use std::{
     sync::Arc,
 };
 
+use indexmap::IndexMap;
 use nutype::nutype;
 use reearth_flow_common::{str, xml::XmlXpathValue};
 use reearth_flow_eval_expr::{engine::Engine, scope::Scope};
@@ -37,7 +38,7 @@ pub struct MetadataKey(String);
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Feature {
     pub id: uuid::Uuid,
-    pub attributes: HashMap<Attribute, AttributeValue>,
+    pub attributes: IndexMap<Attribute, AttributeValue>,
     pub metadata: Metadata,
     pub geometry: Geometry,
 }
@@ -62,12 +63,12 @@ impl PartialEq for Feature {
 
 impl Eq for Feature {}
 
-impl From<HashMap<String, AttributeValue>> for Feature {
-    fn from(v: HashMap<String, AttributeValue>) -> Self {
+impl From<IndexMap<String, AttributeValue>> for Feature {
+    fn from(v: IndexMap<String, AttributeValue>) -> Self {
         let attributes = v
             .iter()
             .map(|(k, v)| (Attribute::new(k.to_string()), v.clone()))
-            .collect::<HashMap<_, _>>();
+            .collect::<IndexMap<_, _>>();
         Self {
             id: uuid::Uuid::new_v4(),
             attributes,
@@ -83,8 +84,8 @@ impl Hash for Feature {
     }
 }
 
-impl From<HashMap<Attribute, AttributeValue>> for Feature {
-    fn from(v: HashMap<Attribute, AttributeValue>) -> Self {
+impl From<IndexMap<Attribute, AttributeValue>> for Feature {
+    fn from(v: IndexMap<Attribute, AttributeValue>) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes: v,
@@ -100,7 +101,7 @@ impl From<Geometry> for Feature {
             id: uuid::Uuid::new_v4(),
             geometry: v,
             metadata: Default::default(),
-            attributes: HashMap::new(),
+            attributes: IndexMap::new(),
         }
     }
 }
@@ -120,7 +121,7 @@ impl From<AttributeValue> for Feature {
         let attributes = attributes
             .iter()
             .map(|(k, v)| (Attribute::new(k.to_string()), v.clone()))
-            .collect::<HashMap<_, _>>();
+            .collect::<IndexMap<_, _>>();
         Self {
             id: uuid::Uuid::new_v4(),
             attributes,
@@ -206,7 +207,7 @@ impl From<serde_json::Value> for Feature {
                     AttributeValue::from(v.clone()),
                 )
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<IndexMap<_, _>>();
         let id = if let Some(serde_json::Value::String(id)) = v.get(&"id".to_string()) {
             uuid::Uuid::parse_str(id).unwrap_or_else(|_| uuid::Uuid::new_v4())
         } else {
@@ -294,7 +295,7 @@ impl TryFrom<sqlx::any::AnyRow> for Feature {
                 };
                 Ok::<(Attribute, AttributeValue), Self::Error>(result)
             })
-            .collect::<Result<HashMap<_, _>, _>>()?;
+            .collect::<Result<IndexMap<_, _>, _>>()?;
         Ok(Self::from(attributes))
     }
 }
@@ -331,7 +332,7 @@ impl Feature {
     pub fn new() -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
-            attributes: HashMap::new(),
+            attributes: IndexMap::new(),
             metadata: Metadata::new(),
             geometry: Geometry::new(),
         }
@@ -339,7 +340,7 @@ impl Feature {
 
     pub fn new_with_id_and_attributes(
         id: uuid::Uuid,
-        attributes: HashMap<Attribute, AttributeValue>,
+        attributes: IndexMap<Attribute, AttributeValue>,
     ) -> Self {
         Self {
             id,
@@ -349,7 +350,7 @@ impl Feature {
         }
     }
 
-    pub fn new_with_attributes(attributes: HashMap<Attribute, AttributeValue>) -> Self {
+    pub fn new_with_attributes(attributes: IndexMap<Attribute, AttributeValue>) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes,
@@ -359,7 +360,7 @@ impl Feature {
     }
 
     pub fn new_with_attributes_and_geometry(
-        attributes: HashMap<Attribute, AttributeValue>,
+        attributes: IndexMap<Attribute, AttributeValue>,
         geometry: Geometry,
         metadata: Metadata,
     ) -> Self {
@@ -375,7 +376,7 @@ impl Feature {
         self.id = uuid::Uuid::new_v4();
     }
 
-    pub fn with_attributes(&self, attributes: HashMap<Attribute, AttributeValue>) -> Self {
+    pub fn with_attributes(&self, attributes: IndexMap<Attribute, AttributeValue>) -> Self {
         Self {
             id: self.id,
             attributes,
@@ -384,7 +385,7 @@ impl Feature {
         }
     }
 
-    pub fn into_with_attributes(self, attributes: HashMap<Attribute, AttributeValue>) -> Self {
+    pub fn into_with_attributes(self, attributes: IndexMap<Attribute, AttributeValue>) -> Self {
         Self {
             id: self.id,
             attributes,
@@ -438,7 +439,8 @@ impl Feature {
     }
 
     pub fn remove<T: AsRef<str> + std::fmt::Display>(&mut self, key: &T) -> Option<AttributeValue> {
-        self.attributes.remove(&Attribute::new(key.to_string()))
+        self.attributes
+            .swap_remove(&Attribute::new(key.to_string()))
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&Attribute, &AttributeValue)> {

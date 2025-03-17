@@ -43,32 +43,6 @@ impl BroadcastPool {
         pool
     }
 
-    // pub fn with_buffer_capacity(
-    //     store: Arc<GcsStore>,
-    //     redis_store: Option<Arc<RedisStore>>,
-    //     buffer_capacity: usize,
-    // ) -> Self {
-    //     let pool = Self {
-    //         store,
-    //         redis_store,
-    //         groups: DashMap::new(),
-    //         buffer_capacity,
-    //         docs_in_creation: DashSet::new(),
-    //         last_cleanup: Arc::new(std::sync::Mutex::new(std::time::Instant::now())),
-    //     };
-
-    //     let pool_clone = pool.clone();
-    //     tokio::spawn(async move {
-    //         let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(300));
-    //         loop {
-    //             interval.tick().await;
-    //             pool_clone.cleanup_empty_groups().await;
-    //         }
-    //     });
-
-    //     pool
-    // }
-
     pub fn get_store(&self) -> Arc<GcsStore> {
         self.store.clone()
     }

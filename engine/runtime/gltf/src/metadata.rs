@@ -134,8 +134,6 @@ struct Class {
 impl From<&FeatureTypeDef> for Class {
     fn from(feature_def: &FeatureTypeDef) -> Self {
         let mut properties = IndexMap::new();
-        // id
-        properties.insert("id".to_string(), Property::new(PropertyType::String, false));
         // attributes
         for (name, attr) in &feature_def.attributes {
             properties.insert(name.to_string(), Property::from(attr));
@@ -152,29 +150,20 @@ impl Class {
         &mut self,
         attributes: &HashMap<String, AttributeValue>,
     ) -> crate::errors::Result<usize> {
-        // Encode id
-        if let Some(id) = attributes.get("gmlId") {
-            if let Some(prop) = self.properties.get_mut("id") {
-                encode_value(id, prop);
-                prop.used = true;
-            }
-        }
-
         // Encode attributes
-        for (attr_name, value) in attributes
-            .iter()
-            .filter(|(_, v)| v.convertible_nusamai_type_ref())
-        {
-            let Some(prop) = self.properties.get_mut(&attr_name.to_string()) else {
+        for key in &self.properties.keys().cloned().collect::<Vec<_>>() {
+            let Some(prop) = self.properties.get_mut(&key.to_string()) else {
+                continue;
+            };
+            let Some(value) = attributes.get(key) else {
                 continue;
             };
             encode_value(value, prop);
             prop.used = true;
         }
-
         // Fill in the default values for the properties that don't occur in the input
         for (key, prop) in &mut self.properties {
-            if attributes.contains_key(key) || (key == "id" && attributes.get("gmlId").is_some()) {
+            if attributes.contains_key(key) {
                 continue;
             }
 
@@ -218,8 +207,8 @@ impl Class {
         ext_structural_metadata::Class,
         ext_structural_metadata::PropertyTable,
     ) {
-        let mut class_properties = HashMap::new();
-        let mut pt_properties: HashMap<String, PropertyTableProperty> = Default::default();
+        let mut class_properties = IndexMap::new();
+        let mut pt_properties: IndexMap<String, PropertyTableProperty> = Default::default();
 
         for (name, prop) in self.properties {
             // Skip unused properties
