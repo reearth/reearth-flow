@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
-name: "three-dimension-planarity-rotator-workflow"
+name: "three-dimension-rotator-workflow"
 entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
 with:
   geojson: !include ./files/3d_prism.geojson.txt
@@ -19,9 +19,17 @@ graphs:
             env.get("geojson")
 
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
-        name: ThreeDimensionPlanarityRotator
+        name: ThreeDimensionRotator
         type: action
-        action: ThreeDimensionPlanarityRotator
+        action: ThreeDimensionRotator
+        with:
+          angleDegree: "1.0"
+          originX: "139.7586"
+          originY: "35.6435"
+          originZ: "50.0"
+          directionX: "1.0"
+          directionY: "0.0"
+          directionZ: "0.0"
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906e
         name: GeoJsonWriter
@@ -29,7 +37,7 @@ graphs:
         action: GeoJsonWriter
         with:
           output: |
-            file::join_path(env.get("outputPath"), "a001-7-three-dimension-planarity-rotator.geojson")
+            file::join_path(env.get("outputPath"), "a001-7-three-dimension-rotator.geojson")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

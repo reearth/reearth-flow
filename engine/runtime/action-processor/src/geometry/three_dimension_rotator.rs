@@ -58,7 +58,7 @@ impl ProcessorFactory for ThreeDimensionRotatorFactory {
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::LineOnLineOverlayerFactory(format!(
+                GeometryProcessorError::ThreeDimensionRotatorFactory(format!(
                     "Failed to deserialize `with` parameter: {}",
                     e
                 ))
