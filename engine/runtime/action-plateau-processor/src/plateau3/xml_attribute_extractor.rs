@@ -1,5 +1,6 @@
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
+use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use reearth_flow_common::{
     uri::Uri,
@@ -270,7 +271,7 @@ impl TryFrom<FilePathResponse> for Feature {
                 .into_iter()
                 .map(|(k, v)| (Attribute::new(k), AttributeValue::from(v)))
                 .collect(),
-            _ => HashMap::new(),
+            _ => IndexMap::new(),
         };
         Ok(Feature::new_with_attributes(attributes))
     }
@@ -328,7 +329,7 @@ impl TryFrom<FeatureResponse> for Feature {
                 .into_iter()
                 .map(|(k, v)| (Attribute::new(k), AttributeValue::from(v)))
                 .collect(),
-            _ => HashMap::new(),
+            _ => IndexMap::new(),
         };
         Ok(Feature::new_with_attributes(attributes))
     }
@@ -373,7 +374,7 @@ impl TryFrom<SummaryResponse> for Feature {
                 .into_iter()
                 .map(|(k, v)| (Attribute::new(k), AttributeValue::from(v)))
                 .collect(),
-            _ => HashMap::new(),
+            _ => IndexMap::new(),
         };
         Ok(Feature::new_with_attributes(attributes))
     }
@@ -570,7 +571,7 @@ impl Processor for XmlAttributeExtractor {
             let mut part_features = Vec::<(Uuid, String)>::new();
             let mut total_lod = LodCount::new();
             let mut row_map =
-                HashMap::<Uuid, (HashMap<Attribute, AttributeValue>, Attributes)>::new();
+                HashMap::<Uuid, (IndexMap<Attribute, AttributeValue>, Attributes)>::new();
             let first = value
                 .first()
                 .ok_or(PlateauProcessorError::XmlAttributeExtractor(
@@ -839,7 +840,7 @@ impl Processor for XmlAttributeExtractor {
 
 fn create_feature_response(
     city_gml_path: &Uri,
-    feature: &HashMap<Attribute, AttributeValue>,
+    feature: &IndexMap<Attribute, AttributeValue>,
 ) -> FeatureResponse {
     FeatureResponse {
         gml_id: feature
@@ -1045,7 +1046,7 @@ fn create_file_path_response(
 fn ancestor_attributes(
     xml_parent_id: String,
     xml_id_to_feature_and_attribute: &HashMap<String, (Uuid, Attributes)>,
-    rows_map: &HashMap<Uuid, (HashMap<Attribute, AttributeValue>, Attributes)>,
+    rows_map: &HashMap<Uuid, (IndexMap<Attribute, AttributeValue>, Attributes)>,
 ) -> super::errors::Result<Vec<Attributes>> {
     let mut result = Vec::new();
     let (row_id, attr) = match xml_id_to_feature_and_attribute.get(xml_parent_id.as_str()) {

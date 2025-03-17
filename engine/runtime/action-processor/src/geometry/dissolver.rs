@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::{
     algorithm::bool_ops::BooleanOps, types::multi_polygon::MultiPolygon2D,
@@ -210,9 +211,9 @@ impl Dissolver {
                         let value = last_feature.attributes.get(attr).cloned()?;
                         Some((attr.clone(), value))
                     })
-                    .collect::<HashMap<_, _>>();
+                    .collect::<IndexMap<_, _>>();
             } else {
-                feature.attributes = HashMap::new();
+                feature.attributes = IndexMap::new();
             }
             feature.geometry.value = GeometryValue::FlowGeometry2D(multi_polygon_2d.into());
             Some(feature)

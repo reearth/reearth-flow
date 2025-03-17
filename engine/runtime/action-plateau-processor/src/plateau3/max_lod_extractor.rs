@@ -116,7 +116,7 @@ impl Processor for MaxLodExtractor {
         let mut attributes = feature.attributes.clone();
 
         for (k, _) in feature.attributes.iter() {
-            attributes.remove(k);
+            attributes.swap_remove(k);
         }
 
         attributes.insert(attribute_code, AttributeValue::String(code.to_string()));

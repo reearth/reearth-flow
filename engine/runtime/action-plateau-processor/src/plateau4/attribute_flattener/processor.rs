@@ -151,12 +151,12 @@ impl Processor for AttributeFlattener {
             if (key.to_string().starts_with("uro:") || key.to_string().starts_with("bldg:"))
                 && key.to_string().ends_with("_type")
             {
-                attributes.remove(key);
+                attributes.swap_remove(key);
             }
             if ["gen:genericAttribute", "uro:buildingDisasterRiskAttribute"]
                 .contains(&key.to_string().as_str())
             {
-                attributes.remove(key);
+                attributes.swap_remove(key);
             }
         }
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
@@ -165,11 +165,6 @@ impl Processor for AttributeFlattener {
 
     fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         let mut feature = Feature::new();
-        feature.metadata = Metadata {
-            feature_id: None,
-            feature_type: Some("bldg:Building".to_string()),
-            lod: None,
-        };
         for (key, value) in BASE_SCHEMA_KEYS.clone().into_iter() {
             feature.attributes.insert(Attribute::new(key), value);
         }
@@ -207,6 +202,11 @@ impl Processor for AttributeFlattener {
                 );
             }
         }
+        feature.metadata = Metadata {
+            feature_id: None,
+            feature_type: Some("bldg:Building".to_string()),
+            lod: None,
+        };
         fw.send(ExecutorContext::new_with_node_context_feature_and_port(
             &ctx,
             feature,

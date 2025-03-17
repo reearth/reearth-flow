@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reearth_flow_geometry::{
@@ -371,7 +372,7 @@ impl OverlayedFeatures {
 
     fn from_midpolygons(
         midpolygons: Vec<MiddlePolygon>,
-        base_attributes: Vec<HashMap<Attribute, AttributeValue>>,
+        base_attributes: Vec<IndexMap<Attribute, AttributeValue>>,
         group_by: &Option<Vec<Attribute>>,
     ) -> Self {
         let mut area = Vec::new();
@@ -389,9 +390,9 @@ impl OverlayedFeatures {
                                 let value = last_feature.get(attr).cloned()?;
                                 Some((attr.clone(), value))
                             })
-                            .collect::<HashMap<_, _>>();
+                            .collect::<IndexMap<_, _>>();
                     } else {
-                        feature.attributes = HashMap::new();
+                        feature.attributes = IndexMap::new();
                     }
 
                     feature.geometry.value =

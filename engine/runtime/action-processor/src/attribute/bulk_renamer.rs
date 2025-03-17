@@ -138,7 +138,7 @@ impl Processor for BulkAttributeRenamer {
         let attributes_to_remove = self.rename_attributes(&mut feature, attributes_to_rename)?;
 
         for attr in attributes_to_remove {
-            feature.attributes.remove(&attr);
+            feature.remove(&attr);
         }
 
         fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
@@ -181,7 +181,7 @@ impl BulkAttributeRenamer {
             if let Some(value) = feature.attributes.get(&attr) {
                 let new_name = self.get_new_name(&attr.inner())?;
                 if new_name.is_empty() {
-                    feature.attributes.remove(&attr);
+                    feature.remove(&attr);
                 } else {
                     let new_attr = Attribute::new(new_name);
                     feature.attributes.insert(new_attr, value.clone());
