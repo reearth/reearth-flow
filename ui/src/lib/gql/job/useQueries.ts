@@ -69,7 +69,7 @@ export const useQueries = () => {
       queryKey: [JobQueryKeys.GetEdgeExecution, jobId, edgeId],
       queryFn: async () => {
         const data = await graphQLContext?.GetEdgeExecution({
-          id: jobId ?? "",
+          jobId: jobId ?? "",
           edgeId: edgeId ?? "",
         });
         if (!data?.edgeExecution) return;

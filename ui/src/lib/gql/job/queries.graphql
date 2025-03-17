@@ -18,8 +18,8 @@ query GetJob($id: ID!) {
   }
 }
 
-query GetEdgeExecution($id: ID!, $edgeId: String!) {
-  edgeExecution(id: $id, edgeId: $edgeId) {
+query GetEdgeExecution($jobId: ID!, $edgeId: String!) {
+  edgeExecution(jobId: $jobId, edgeId: $edgeId) {
     ...EdgeExecution
   }
 }

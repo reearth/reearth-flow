@@ -65,7 +65,10 @@ export const toEdgeExecution = (
   edge: EdgeExecutionFragment,
 ): EdgeExecution => ({
   id: edge.id,
+  jobId: edge.jobId,
+  edgeId: edge.edgeId,
   status: toEdgeStatus(edge.status),
+  createdAt: edge.createdAt,
   startedAt: edge.startedAt,
   completedAt: edge.completedAt,
   featureId: edge.featureId ?? undefined,
