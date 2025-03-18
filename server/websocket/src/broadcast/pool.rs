@@ -10,6 +10,7 @@ use std::sync::Arc;
 use yrs::sync::Awareness;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
+const DEFAULT_DOC_ID: &str = "01jpjfpw0qtw17kbrcdbgefakg";
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
     store: Arc<GcsStore>,
@@ -105,17 +106,37 @@ impl BroadcastPool {
 
             {
                 let mut txn = doc.transact_mut();
+                let mut loaded = false;
+
                 match self.store.load_doc(doc_id, &mut txn).await {
-                    Ok(loaded) => {
-                        if !loaded {
+                    Ok(true) => {
+                        loaded = true;
+                    }
+                    Ok(false) => match self.store.load_doc(DEFAULT_DOC_ID, &mut txn).await {
+                        Ok(true) => {
+                            tracing::debug!("Loaded default document '{}'", DEFAULT_DOC_ID);
+                            loaded = true;
+                        }
+                        Ok(false) => {
                             need_initial_save = true;
                         }
-                    }
-
+                        Err(e) => {
+                            tracing::warn!(
+                                "Failed to load default document '{}': {}",
+                                DEFAULT_DOC_ID,
+                                e
+                            );
+                            need_initial_save = true;
+                        }
+                    },
                     Err(e) => {
                         tracing::error!("Failed to load document '{}': {}", doc_id, e);
                         return Err(e);
                     }
+                }
+
+                if !loaded {
+                    need_initial_save = true;
                 }
             }
 
@@ -196,37 +217,12 @@ impl BroadcastPool {
         }
     }
 
-    pub async fn remove_connection(&self, doc_id: &str, instance_id: &str) {
+    pub async fn remove_connection(&self, doc_id: &str) {
         if let Some(group) = self.groups.get(doc_id) {
             let group_clone = group.clone();
             let remaining = group.decrement_connections();
 
             if remaining == 0 && group_clone.connection_count() == 0 {
-                if let Some(redis_store) = &self.redis_store {
-                    let key = format!("doc:instance:{}", doc_id);
-                    match redis_store.release_doc_instance(doc_id, instance_id).await {
-                        Ok(_) => {
-                            tracing::info!(
-                                "Released document instance registration for '{}'",
-                                doc_id
-                            );
-                        }
-                        Err(e) => {
-                            tracing::warn!(
-                                "Failed to release document instance, setting short TTL: {}",
-                                e
-                            );
-                            if let Err(e) = redis_store.expire(&key, 5).await {
-                                tracing::warn!(
-                                    "Failed to set short TTL for document '{}': {}",
-                                    doc_id,
-                                    e
-                                );
-                            }
-                        }
-                    }
-                }
-
                 if let Err(e) = group_clone.shutdown().await {
                     tracing::warn!(
                         "Failed to shutdown broadcast group for document '{}': {}",
@@ -235,6 +231,28 @@ impl BroadcastPool {
                     );
                 }
                 self.groups.remove(doc_id);
+
+                if let Some(redis_store) = &self.redis_store {
+                    let redis_store_clone = redis_store.clone();
+                    let doc_id_clone = doc_id.to_string();
+
+                    tokio::spawn(async move {
+                        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+
+                        if let Err(e) = redis_store_clone.delete_stream(&doc_id_clone).await {
+                            tracing::warn!(
+                                "Failed to delete Redis stream for '{}': {}",
+                                doc_id_clone,
+                                e
+                            );
+                        } else {
+                            tracing::info!(
+                                "Successfully deleted Redis stream for '{}'",
+                                doc_id_clone
+                            );
+                        }
+                    });
+                }
             }
         }
     }

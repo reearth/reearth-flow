@@ -11,7 +11,6 @@ type EdgeExecutionDocument struct {
 	ID                  string     `bson:"id"`
 	EdgeID              string     `bson:"edgeId"`
 	JobID               string     `bson:"jobId"`
-	WorkflowID          string     `bson:"workflowId"`
 	Status              string     `bson:"status"`
 	StartedAt           *time.Time `bson:"startedAt,omitempty"`
 	CompletedAt         *time.Time `bson:"completedAt,omitempty"`
@@ -22,7 +21,7 @@ type EdgeExecutionDocument struct {
 type EdgeExecutionConsumer = Consumer[*EdgeExecutionDocument, *edge.EdgeExecution]
 
 func NewEdgeExecutionConsumer() *EdgeExecutionConsumer {
-	return NewConsumer[*EdgeExecutionDocument, *edge.EdgeExecution](func(a *edge.EdgeExecution) bool {
+	return NewConsumer[*EdgeExecutionDocument](func(a *edge.EdgeExecution) bool {
 		return true
 	})
 }
@@ -41,7 +40,6 @@ func (d *EdgeExecutionDocument) Model() (*edge.EdgeExecution, error) {
 		ID(d.ID).
 		EdgeID(d.EdgeID).
 		JobID(jobID).
-		WorkflowID(d.WorkflowID). // Assuming the document has a WorkflowID field
 		Status(edge.Status(d.Status)).
 		StartedAt(d.StartedAt).
 		CompletedAt(d.CompletedAt).

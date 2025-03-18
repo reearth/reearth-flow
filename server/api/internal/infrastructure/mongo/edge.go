@@ -23,7 +23,7 @@ type EdgeExecution struct {
 
 func NewEdgeExecution(client *mongox.Client) repo.EdgeExecution {
 	return &EdgeExecution{
-		client: client.WithCollection("edge_executions"),
+		client: client.WithCollection("edgeExecutions"),
 	}
 }
 

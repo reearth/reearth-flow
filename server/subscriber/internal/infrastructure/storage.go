@@ -36,14 +36,18 @@ func NewEdgeStorageImpl(r *redis.RedisStorage, m *mongo.MongoStorage) gateway.Ed
 	}
 }
 
+func (s *edgeStorageImpl) ConstructIntermediateDataURL(jobID, edgeID string) string {
+	return s.mongo.ConstructIntermediateDataURL(jobID, edgeID)
+}
+
+func (s *edgeStorageImpl) FindEdgeExecution(ctx context.Context, jobID string, edgeID string) (*edge.EdgeExecution, error) {
+	return s.mongo.FindEdgeExecution(ctx, jobID, edgeID)
+}
+
 func (s *edgeStorageImpl) SaveToRedis(ctx context.Context, event *edge.PassThroughEvent) error {
 	return s.redis.SaveEdgeEventToRedis(ctx, event)
 }
 
 func (s *edgeStorageImpl) UpdateEdgeStatusInMongo(ctx context.Context, jobID string, edge *edge.EdgeExecution) error {
 	return s.mongo.UpdateEdgeStatusInMongo(ctx, jobID, edge)
-}
-
-func (s *edgeStorageImpl) ConstructIntermediateDataURL(jobID, edgeID string) string {
-	return s.mongo.ConstructIntermediateDataURL(jobID, edgeID)
 }

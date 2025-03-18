@@ -45,8 +45,6 @@ pub struct BroadcastGroup {
     redis_consumer_name: Option<String>,
     redis_group_name: Option<String>,
     shutdown_complete: AtomicBool,
-    update_batch_buffer: Arc<Mutex<Vec<Vec<u8>>>>,
-    batch_sender_task: Option<JoinHandle<()>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -124,8 +122,6 @@ impl BroadcastGroup {
         let sink = sender.clone();
 
         let (_storage_tx, storage_rx) = tokio::sync::mpsc::unbounded_channel();
-        let update_batch_buffer = Arc::new(Mutex::new(Vec::with_capacity(10)));
-        let update_batch_buffer_clone = update_batch_buffer.clone();
 
         let doc_sub = {
             lock.doc_mut()
@@ -138,14 +134,6 @@ impl BroadcastGroup {
                     if let Err(_e) = sink.send(msg) {
                         tracing::debug!("broadcast channel closed");
                     }
-
-                    let update_clone = u.update.clone();
-                    let batch_buffer = update_batch_buffer_clone.clone();
-
-                    tokio::spawn(async move {
-                        let mut batch = batch_buffer.lock().await;
-                        batch.push(update_clone.clone());
-                    });
                 })
                 .map_err(|e| anyhow!("Failed to observe document updates: {}", e))?
         };
@@ -204,8 +192,6 @@ impl BroadcastGroup {
             redis_consumer_name: None,
             redis_group_name: None,
             shutdown_complete: AtomicBool::new(false),
-            update_batch_buffer,
-            batch_sender_task: None,
         };
 
         Ok(result)
@@ -235,38 +221,6 @@ impl BroadcastGroup {
 
         if let Some(redis_store) = redis_store.clone() {
             group.redis_store = Some(redis_store.clone());
-
-            let doc_name_for_batch = doc_name.clone();
-            let update_buffer = group.update_batch_buffer.clone();
-            let redis_store_for_batch = redis_store.clone();
-            let batch_sender_task = tokio::spawn(async move {
-                let mut interval = tokio::time::interval(tokio::time::Duration::from_millis(10));
-                loop {
-                    interval.tick().await;
-                    let updates_to_send = {
-                        let mut buffer = update_buffer.lock().await;
-                        if buffer.is_empty() {
-                            continue;
-                        }
-                        let updates = buffer.clone();
-                        buffer.clear();
-                        updates
-                    };
-
-                    if !updates_to_send.is_empty() {
-                        let updates_as_slices: Vec<&[u8]> =
-                            updates_to_send.iter().map(|v| v.as_slice()).collect();
-
-                        if let Err(e) = redis_store_for_batch
-                            .publish_batch_updates(&doc_name_for_batch, &updates_as_slices)
-                            .await
-                        {
-                            tracing::error!("Failed to batch publish updates to Redis: {}", e);
-                        }
-                    }
-                }
-            });
-            group.batch_sender_task = Some(batch_sender_task);
 
             let consumer_name = format!("instance-{}", rand::random::<u32>());
             let consumer_name_clone = consumer_name.clone();
@@ -329,19 +283,6 @@ impl BroadcastGroup {
             group.redis_subscriber_task = Some(redis_subscriber_task);
             group.redis_consumer_name = Some(consumer_name);
             group.redis_group_name = Some(group_name);
-
-            let doc_name_clone = doc_name.clone();
-            let redis_store_clone = redis_store.clone();
-
-            tokio::spawn(async move {
-                let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(3600));
-                loop {
-                    interval.tick().await;
-                    if let Err(e) = redis_store_clone.optimize_stream(&doc_name_clone).await {
-                        tracing::warn!("Failed to optimize Redis stream: {}", e);
-                    }
-                }
-            });
         }
 
         group.storage = Some(store);
@@ -592,29 +533,8 @@ impl BroadcastGroup {
         self.shutdown_complete
             .store(true, std::sync::atomic::Ordering::SeqCst);
 
-        if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
-            let final_updates = {
-                let mut buffer = self.update_batch_buffer.lock().await;
-                if !buffer.is_empty() {
-                    let updates = buffer.clone();
-                    buffer.clear();
-                    updates
-                } else {
-                    Vec::new()
-                }
-            };
-
-            if !final_updates.is_empty() {
-                let updates_as_slices: Vec<&[u8]> =
-                    final_updates.iter().map(|v| v.as_slice()).collect();
-
-                if let Err(e) = redis_store
-                    .publish_batch_updates(doc_name, &updates_as_slices)
-                    .await
-                {
-                    tracing::warn!("Failed to send final batch updates during shutdown: {}", e);
-                }
-            }
+        if let Some(task) = &self.redis_subscriber_task {
+            task.abort();
         }
 
         if let (Some(redis_store), Some(doc_name), Some(consumer_name), Some(group_name)) = (
@@ -671,10 +591,6 @@ impl Drop for BroadcastGroup {
 
         if let Some(sub) = self.awareness_sub.take() {
             drop(sub);
-        }
-
-        if let Some(task) = self.batch_sender_task.take() {
-            task.abort();
         }
 
         if let Some(task) = self.redis_subscriber_task.take() {
