@@ -19,6 +19,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@flow/components";
+import { useT } from "@flow/lib/i18n";
 import {
   isValidConnection,
   CustomConnectionLine,
@@ -31,7 +32,6 @@ import type { ActionNodeType, Edge, Node } from "@flow/types";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
-import { useT } from "@flow/lib/i18n";
 
 const gridSize = 30;
 
@@ -230,13 +230,18 @@ const Canvas: React.FC<Props> = ({
             top: selectionMenuPosition.y,
             left: selectionMenuPosition.x,
           }}>
-          <div className="min-w-[160px] rounded-md border bg-card p-1 text-popover-foreground shadow-md">
-            <div className="flex cursor-pointer items-center justify-between gap-4 rounded-sm px-2 py-1.5 text-xs hover:bg-accent">
+          <div className="min-w-[160px] select-none rounded-md border bg-card p-1 text-popover-foreground shadow-md">
+            <div
+              className="flex items-center justify-between gap-4 rounded-sm px-2 py-1.5 text-xs hover:bg-accent"
+              onClick={() => {
+                closeSelectionMenu();
+              }}>
               <p>{t("Copy Selected Nodes")}</p>
               <Copy weight="light" />
             </div>
+            <div className="-mx-1 my-1 h-px bg-border" />
             <div
-              className="flex cursor-pointer items-center justify-between gap-4 rounded-sm px-2 py-1.5 text-xs text-destructive hover:bg-accent"
+              className="flex items-center justify-between gap-4 rounded-sm px-2 py-1.5 text-xs text-destructive hover:bg-accent"
               onClick={() => {
                 onNodesChange?.(
                   selectedNodes.map((id) => ({ id, type: "remove" })),
