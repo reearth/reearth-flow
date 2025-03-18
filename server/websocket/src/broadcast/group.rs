@@ -63,7 +63,14 @@ unsafe impl Sync for BroadcastGroup {}
 
 impl BroadcastGroup {
     pub async fn increment_connections(&self) -> Result<()> {
-        let _ = self.connections.fetch_add(1, Ordering::Relaxed);
+        let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
+        let new_count = prev_count + 1;
+
+        tracing::info!(
+            "Connection count increased: {} -> {}",
+            prev_count,
+            new_count
+        );
 
         if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
             if let Err(e) = redis_store.increment_doc_connections(doc_name).await {
@@ -76,6 +83,13 @@ impl BroadcastGroup {
 
     pub fn decrement_connections(&self) -> usize {
         let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
+        let new_count = prev_count - 1;
+
+        tracing::debug!(
+            "Connection count decreased: {} -> {}",
+            prev_count,
+            new_count
+        );
 
         if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
             let doc_name_clone = doc_name.clone();
@@ -129,7 +143,7 @@ impl BroadcastGroup {
             });
         }
 
-        prev_count
+        new_count
     }
 
     pub fn connection_count(&self) -> usize {
@@ -391,6 +405,18 @@ impl BroadcastGroup {
         <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
+        let doc_id = self
+            .doc_name
+            .clone()
+            .unwrap_or_else(|| "unknown".to_string());
+        let current_count = self.connection_count();
+
+        tracing::info!(
+            "Creating new subscription for doc '{}', current count: {}",
+            doc_id,
+            current_count
+        );
+
         if let Some(token) = user_token {
             let awareness = self.awareness().clone();
             let client_id = rand::random::<u64>();
@@ -417,10 +443,21 @@ impl BroadcastGroup {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         let self_clone = self.clone();
+        let doc_id_clone = self
+            .doc_name
+            .clone()
+            .unwrap_or_else(|| "unknown".to_string());
 
         tokio::spawn(async move {
             if let Err(e) = self_clone.increment_connections().await {
                 tracing::error!("Failed to increment connections: {}", e);
+            } else {
+                let new_count = self_clone.connection_count();
+                tracing::info!(
+                    "New connection count for doc '{}': {}",
+                    doc_id_clone,
+                    new_count
+                );
             }
             let _ = tx.send(());
         });
@@ -683,6 +720,15 @@ impl BroadcastGroup {
         }
 
         Ok(())
+    }
+
+    pub fn get_connection_info(&self) -> (usize, Option<String>, Option<String>) {
+        let count = self.connections.load(Ordering::Relaxed);
+        (
+            count,
+            self.doc_name.clone(),
+            self.redis_consumer_name.clone(),
+        )
     }
 }
 

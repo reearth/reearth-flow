@@ -742,6 +742,11 @@ impl RedisStore {
                 .query_async(&mut *conn)
                 .await?;
 
+            tracing::info!(
+                "Redis: Incremented connections for doc '{}' to {}",
+                doc_id,
+                count
+            );
             return Ok(count);
         }
 
@@ -766,6 +771,11 @@ impl RedisStore {
             );
 
             let count: i64 = script.key(&key).invoke_async(&mut *conn).await?;
+            tracing::info!(
+                "Redis: Decremented connections for doc '{}' to {}",
+                doc_id,
+                count
+            );
 
             return Ok(count);
         }
@@ -778,8 +788,14 @@ impl RedisStore {
 
         if let Ok(mut conn) = self.pool.get().await {
             let count: Option<i64> = redis::cmd("GET").arg(&key).query_async(&mut *conn).await?;
+            let count_value = count.unwrap_or(0);
+            tracing::debug!(
+                "Redis: Current connections for doc '{}': {}",
+                doc_id,
+                count_value
+            );
 
-            return Ok(count.unwrap_or(0));
+            return Ok(count_value);
         }
 
         Err(anyhow::anyhow!("Failed to get Redis connection"))
@@ -830,5 +846,26 @@ impl RedisStore {
         }
 
         Ok(false)
+    }
+
+    pub async fn check_stream_exists(&self, doc_id: &str) -> Result<bool, anyhow::Error> {
+        let stream_key = format!("yjs:stream:{}", doc_id);
+
+        if let Ok(mut conn) = self.pool.get().await {
+            let exists: bool = redis::cmd("EXISTS")
+                .arg(&stream_key)
+                .query_async(&mut *conn)
+                .await?;
+
+            if exists {
+                tracing::debug!("Redis stream '{}' exists", stream_key);
+            } else {
+                tracing::debug!("Redis stream '{}' does not exist", stream_key);
+            }
+
+            return Ok(exists);
+        }
+
+        Err(anyhow::anyhow!("Failed to get Redis connection"))
     }
 }
