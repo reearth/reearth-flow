@@ -285,7 +285,7 @@ impl BroadcastGroup {
                             &doc_name_for_sub,
                             &group_name_clone,
                             &consumer_name_clone,
-                            15,
+                            20,
                         )
                         .await
                     {
