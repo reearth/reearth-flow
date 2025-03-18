@@ -69,9 +69,10 @@ impl RotateQuery3D {
         let diff_from = from_point - origin.unwrap_or(Point3D::new(0.0, 0.0, 0.0));
         let diff_to = to_point - origin.unwrap_or(Point3D::new(0.0, 0.0, 0.0));
 
-        let (from_x, from_y) =
-            coordinate_diff_to_meter(diff_from.x(), diff_from.y(), from_point.y());
-        let (to_x, to_y) = coordinate_diff_to_meter(diff_to.x(), diff_to.y(), to_point.y());
+        let mid_lat = (from_point.y() + to_point.y()) / 2.0;
+
+        let (from_x, from_y) = coordinate_diff_to_meter(diff_from.x(), diff_from.y(), mid_lat);
+        let (to_x, to_y) = coordinate_diff_to_meter(diff_to.x(), diff_to.y(), mid_lat);
 
         let from = Point3D::new(from_x, from_y, diff_from.z());
         let to = Point3D::new(to_x, to_y, diff_to.z());

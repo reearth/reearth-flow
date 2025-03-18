@@ -287,7 +287,7 @@ fn project_point_to_elevation(
     let offset_meter_x = height * light_dir[0] / light_dir[2];
     let offset_meter_y = height * light_dir[1] / light_dir[2];
     let (offset_lng, offset_lat) =
-        meter_to_coordinate_diff(offset_meter_x, offset_meter_y, point.y);
+        meter_to_coordinate_diff(offset_meter_x, offset_meter_y, point.y + offset_meter_y);
 
     Coordinate::new__(point.x + offset_lng, point.y + offset_lat, elevation)
 }
