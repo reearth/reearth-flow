@@ -33,8 +33,12 @@ export const useJob = () => {
     };
   };
 
-  const useGetEdgeExecution = (jobId?: string, edgeId?: string) => {
-    const { data, ...rest } = useGetEdgeExecutionQuery(jobId, edgeId);
+  const useGetEdgeExecution = (
+    jobId?: string,
+    edgeId?: string,
+    disabled?: boolean,
+  ) => {
+    const { data, ...rest } = useGetEdgeExecutionQuery(jobId, edgeId, disabled);
     return {
       edgeExecution: data,
       ...rest,

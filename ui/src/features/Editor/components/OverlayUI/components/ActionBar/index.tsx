@@ -89,7 +89,12 @@ const ActionBar: React.FC<Props> = ({
             className="rounded-none"
             tooltipText={t("Clear debug run and results")}
             tooltipOffset={tooltipOffset}
-            disabled={!debugJob}
+            disabled={
+              !debugJob ||
+              !jobStatus ||
+              jobStatus === "running" ||
+              jobStatus === "queued"
+            }
             icon={<Broom weight="thin" />}
             onClick={handleDebugRunReset}
           />

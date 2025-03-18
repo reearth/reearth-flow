@@ -64,7 +64,11 @@ export const useQueries = () => {
       enabled: !!jobId,
     });
 
-  const useGetEdgeExecutionQuery = (jobId?: string, edgeId?: string) =>
+  const useGetEdgeExecutionQuery = (
+    jobId?: string,
+    edgeId?: string,
+    disabled?: boolean,
+  ) =>
     useQuery({
       queryKey: [JobQueryKeys.GetEdgeExecution, jobId, edgeId],
       queryFn: async () => {
@@ -75,7 +79,7 @@ export const useQueries = () => {
         if (!data?.edgeExecution) return;
         return toEdgeExecution(data.edgeExecution);
       },
-      enabled: !!jobId && !!edgeId,
+      enabled: !disabled && !!jobId && !!edgeId,
     });
 
   const cancelJobMutation = useMutation({

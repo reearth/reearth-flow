@@ -6,11 +6,26 @@ import {
   RealTimeLogsSubscription,
 } from "@flow/lib/gql/__gen__/graphql";
 import { toJobStatus, toLog } from "@flow/lib/gql/convert";
+import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useSubscriptionSetup } from "@flow/lib/gql/subscriptions/useSubscriptionSetup";
-import { Log } from "@flow/types";
+import { useIndexedDB } from "@flow/lib/indexedDB";
+import { JobStatus, Log } from "@flow/types";
 
-export default (accessToken?: string, jobId?: string) => {
+export default (accessToken?: string, jobId?: string, projectId?: string) => {
   const processedLogIds = useRef(new Set<string>());
+
+  const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
+
+  const debugRun = useMemo(
+    () => debugRunState?.jobs?.find((job) => job.projectId === projectId),
+    [debugRunState, projectId],
+  );
+
+  useEffect(() => {
+    if (!jobId && processedLogIds.current.size > 0) {
+      processedLogIds.current.clear();
+    }
+  }, [jobId]);
 
   const variables = useMemo(() => ({ jobId }), [jobId]);
 
@@ -61,7 +76,7 @@ export default (accessToken?: string, jobId?: string) => {
     variables,
     jobId,
     jobStatusDataFormatter,
-    !jobId,
+    !jobId || debugRun?.status === "completed" || debugRun?.status === "failed",
   );
   useSubscriptionSetup<RealTimeLogsSubscription, Log[]>(
     "GetSubscribedLogs",
@@ -72,9 +87,29 @@ export default (accessToken?: string, jobId?: string) => {
     !jobId,
   );
 
+  const { data: realTimeJobStatus } = useSubscription(
+    "GetSubscribedJobStatus",
+    jobId,
+    !jobId || debugRun?.status === "completed" || debugRun?.status === "failed",
+  );
+
   useEffect(() => {
-    if (!jobId && processedLogIds.current.size > 0) {
-      processedLogIds.current.clear();
+    if (!projectId) return;
+
+    if (debugRun?.status !== realTimeJobStatus) {
+      updateValue((prevState) => {
+        const jobs = prevState.jobs.map((job) => {
+          if (job.projectId === projectId) {
+            return {
+              ...job,
+              status: realTimeJobStatus as any as JobStatus, // This type assertion can be removed if useIndexedDB's updateValue's types get improved
+            };
+          }
+          return job;
+        });
+
+        return { jobs };
+      });
     }
-  }, [jobId]);
+  }, [realTimeJobStatus, debugRun, projectId, updateValue]);
 };

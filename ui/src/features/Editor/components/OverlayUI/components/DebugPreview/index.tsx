@@ -34,7 +34,7 @@ const DebugPreview: React.FC = () => {
     minimized,
     selectedOutputData,
     fileType,
-    debugJob,
+    debugJobState,
     isLoadingData,
     handleExpand,
     handleMinimize,
@@ -42,7 +42,7 @@ const DebugPreview: React.FC = () => {
     handleSelectedDataChange,
   } = useHooks();
 
-  return debugJob && dataURLs ? (
+  return debugJobState && dataURLs ? (
     <Tabs
       className={`pointer-events-auto w-[45vw] min-w-[700px] rounded border bg-secondary transition-all ${minimized ? "h-[36px]" : expanded ? "h-[90vh] w-[90vw]" : "h-[500px]"}`}
       defaultValue="data-viewer">

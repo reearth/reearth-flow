@@ -1,32 +1,18 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 
-import { useAuth } from "@flow/lib/auth";
-import { OnEdgeStatusChangeSubscription } from "@flow/lib/gql/__gen__/graphql";
-import { toEdgeStatus } from "@flow/lib/gql/convert";
 import { useJob } from "@flow/lib/gql/job";
-import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
-import { useSubscriptionSetup } from "@flow/lib/gql/subscriptions/useSubscriptionSetup";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { DebugRunState, useCurrentProject } from "@flow/stores";
+
+import useEdgeStatusSubscription from "./useEdgeStatusSubscription";
 
 export default ({ id, selected }: { id: string; selected?: boolean }) => {
   const [currentProject] = useCurrentProject();
 
-  const { getAccessToken } = useAuth();
-  const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    if (!accessToken) {
-      (async () => {
-        const token = await getAccessToken();
-        setAccessToken(token);
-      })();
-    }
-  }, [accessToken, getAccessToken]);
-
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
 
   const { useGetJob } = useJob();
+
   const debugJobState = useMemo(
     () =>
       debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
@@ -34,53 +20,93 @@ export default ({ id, selected }: { id: string; selected?: boolean }) => {
   );
   const { job: debugRun } = useGetJob(debugJobState?.jobId);
 
+  const { useGetEdgeExecution } = useJob();
+
+  const { edgeExecution, refetch } = useGetEdgeExecution(
+    debugJobState?.jobId,
+    id,
+  );
+
   const intermediateDataUrl = useMemo(
     () =>
-      debugRun?.status === "completed" &&
-      debugRun?.edgeExecutions?.find((edge) => edge.id === id)
+      edgeExecution?.intermediateDataUrl ||
+      debugJobState?.edgeExecutions?.find((ee) => ee.edgeId === id)
         ?.intermediateDataUrl,
-    [debugRun, id],
+    [debugJobState?.edgeExecutions, edgeExecution?.intermediateDataUrl, id],
   );
 
-  const subscriptionVariables = useMemo(
-    () => ({ jobId: debugJobState?.jobId, edgeId: id }),
-    [debugJobState?.jobId, id],
-  );
-
-  const subscriptionDataFormatter = useCallback(
-    (data: OnEdgeStatusChangeSubscription) => {
-      return toEdgeStatus(data.edgeStatus);
-    },
-    [],
-  );
-
-  useSubscriptionSetup<OnEdgeStatusChangeSubscription>(
-    "GetSubscribedEdgeStatus",
-    accessToken,
-    subscriptionVariables,
+  const { realTimeEdgeStatus } = useEdgeStatusSubscription({
     id,
-    subscriptionDataFormatter,
-    !id || !debugRun,
-  );
-
-  const { data: realTimeEdgeStatus } = useSubscription(
-    "GetSubscribedEdgeStatus",
-    id,
-    !id || !debugRun,
-  );
+    debugJobState,
+    debugRun,
+  });
 
   const edgeStatus = useMemo(() => {
-    if (debugRun?.edgeExecutions) {
-      const edge = debugRun.edgeExecutions.find(
-        (edgeExecution) => edgeExecution.id === id,
+    if (debugJobState?.edgeExecutions) {
+      const edge = debugJobState.edgeExecutions.find(
+        (edgeExecution) => edgeExecution.edgeId === id,
       );
-      return edge?.status;
+
+      if (edge) {
+        return edge?.status;
+      }
     }
     return realTimeEdgeStatus;
-  }, [debugRun, realTimeEdgeStatus, id]);
+  }, [debugJobState, realTimeEdgeStatus, id]);
 
-  const handleIntermediateDataSet = useCallback(() => {
-    if (!selected) return;
+  useEffect(() => {
+    if (
+      (edgeStatus === "completed" || edgeStatus === "failed") &&
+      (!edgeExecution || edgeExecution?.status !== edgeStatus)
+    ) {
+      refetch();
+    }
+  }, [edgeStatus, edgeExecution, refetch]);
+
+  useEffect(() => {
+    if (
+      edgeExecution &&
+      debugRunState &&
+      !debugJobState?.edgeExecutions?.find(
+        (ee) =>
+          ee.id === edgeExecution.id && edgeExecution.status === ee.status,
+      )
+    ) {
+      (async () =>
+        await updateValue((prevState) => {
+          const alreadyExists = prevState.jobs.some((job) =>
+            job.edgeExecutions?.some((ee) => ee.id === edgeExecution.id),
+          );
+
+          if (alreadyExists) {
+            return prevState;
+          }
+          return {
+            ...prevState,
+            jobs: prevState.jobs.map((job) =>
+              job.projectId === currentProject?.id
+                ? {
+                    ...job,
+                    edgeExecutions: [
+                      ...(job.edgeExecutions ?? []),
+                      edgeExecution,
+                    ],
+                  }
+                : job,
+            ),
+          };
+        }))();
+    }
+  }, [
+    edgeExecution,
+    debugJobState,
+    debugRunState,
+    currentProject,
+    updateValue,
+  ]);
+
+  const handleIntermediateDataSet = useCallback(async () => {
+    if (!selected || !intermediateDataUrl) return;
     const newDebugRunState: DebugRunState = {
       ...debugRunState,
       jobs:
@@ -90,19 +116,21 @@ export default ({ id, selected }: { id: string; selected?: boolean }) => {
                 ...job,
                 selectedIntermediateData: {
                   edgeId: id,
-                  url: "/7571eea0-eabf-4ff7-b978-e5965d882409.jsonl", //TODO: replace with actual intermediate data
+                  url: intermediateDataUrl,
                 },
               }
             : job,
         ) ?? [],
     };
-    updateValue(newDebugRunState);
-  }, [selected, debugRunState, currentProject, id, updateValue]);
-
-  const { useGetEdgeExecution } = useJob();
-
-  const { edgeExecution } = useGetEdgeExecution(debugJobState?.jobId, id);
-  console.log("edgeExecution", edgeExecution);
+    await updateValue(newDebugRunState);
+  }, [
+    selected,
+    intermediateDataUrl,
+    debugRunState,
+    currentProject,
+    id,
+    updateValue,
+  ]);
 
   return {
     edgeStatus,

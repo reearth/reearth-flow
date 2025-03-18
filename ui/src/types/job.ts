@@ -41,7 +41,6 @@ export type Job = {
   completedAt: string;
   outputURLs?: string[];
   logsURL?: string;
-  edgeExecutions?: EdgeExecution[];
 };
 
 export type CancelJob = {

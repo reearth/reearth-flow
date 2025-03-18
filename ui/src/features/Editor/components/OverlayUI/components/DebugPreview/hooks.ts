@@ -17,7 +17,7 @@ export default () => {
 
   const { value: debugRunState } = useIndexedDB("debugRun");
 
-  const debugJob = useMemo(
+  const debugJobState = useMemo(
     () =>
       debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
     [debugRunState, currentProject],
@@ -25,11 +25,33 @@ export default () => {
 
   const { useGetJob } = useJob();
 
-  const outputURLs = useGetJob(debugJob?.jobId ?? "").job?.outputURLs;
+  const { job: debugJob, refetch } = useGetJob(debugJobState?.jobId ?? "");
+
+  const outputURLs = useMemo(() => debugJob?.outputURLs, [debugJob]);
+
+  useEffect(() => {
+    if (
+      !outputURLs &&
+      (debugJobState?.status === "completed" ||
+        debugJobState?.status === "failed" ||
+        debugJobState?.status === "cancelled")
+    ) {
+      // TODO: once backend is fixed, remove this timeout @KaWaite
+      const timer = setTimeout(async () => {
+        try {
+          await refetch();
+        } catch (error) {
+          console.error("Error during refetch:", error);
+        }
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [debugJobState?.status, outputURLs, refetch]);
 
   const intermediateDataURL = useMemo(
-    () => debugJob?.selectedIntermediateData?.url,
-    [debugJob],
+    () => debugJobState?.selectedIntermediateData?.url,
+    [debugJobState],
   );
 
   const dataURLs = useMemo(() => {
@@ -101,7 +123,7 @@ export default () => {
     minimized,
     selectedOutputData,
     fileType,
-    debugJob,
+    debugJobState,
     isLoadingData,
     handleExpand,
     handleMinimize,
