@@ -2,7 +2,7 @@ use crate::storage::gcs::GcsStore;
 use crate::storage::kv::DocOps;
 use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
-use anyhow::anyhow;
+
 use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
 use rand;
@@ -159,18 +159,16 @@ impl BroadcastGroup {
         let (_storage_tx, storage_rx) = tokio::sync::mpsc::unbounded_channel();
 
         let doc_sub = {
-            lock.doc_mut()
-                .observe_update_v1(move |_txn, u| {
-                    let mut encoder = EncoderV1::new();
-                    encoder.write_var(MSG_SYNC);
-                    encoder.write_var(MSG_SYNC_UPDATE);
-                    encoder.write_buf(&u.update);
-                    let msg = encoder.to_vec();
-                    if let Err(_e) = sink.send(msg) {
-                        tracing::debug!("broadcast channel closed");
-                    }
-                })
-                .map_err(|e| anyhow!("Failed to observe document updates: {}", e))?
+            lock.doc_mut().observe_update_v1(move |_txn, u| {
+                let mut encoder = EncoderV1::new();
+                encoder.write_var(MSG_SYNC);
+                encoder.write_var(MSG_SYNC_UPDATE);
+                encoder.write_buf(&u.update);
+                let msg = encoder.to_vec();
+                if let Err(_e) = sink.send(msg) {
+                    tracing::debug!("broadcast channel closed");
+                }
+            })?
         };
 
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
@@ -278,6 +276,8 @@ impl BroadcastGroup {
 
                 let mut consecutive_errors = 0;
                 let max_consecutive_errors = 5;
+                let mut total_errors = 0;
+                let max_total_errors = 10;
 
                 loop {
                     match redis_store_for_sub
@@ -310,17 +310,16 @@ impl BroadcastGroup {
                             }
                         }
                         Err(e) => {
-                            if e.to_string().contains("NOGROUP") {
-                                tracing::warn!("Redis stream or group no longer exists, stopping subscriber: {}", e);
-                                return;
-                            }
-
                             tracing::error!("Error reading from Redis Stream: {}", e);
 
                             consecutive_errors += 1;
-                            if consecutive_errors >= max_consecutive_errors {
+                            total_errors += 1;
+                            if consecutive_errors >= max_consecutive_errors
+                                || total_errors >= max_total_errors
+                            {
                                 tracing::warn!(
-                                    "Too many consecutive Redis errors, stopping subscriber"
+                                    "Too many Redis errors ({} total, {} consecutive), stopping subscriber",
+                                    total_errors, consecutive_errors
                                 );
                                 return;
                             }
@@ -637,7 +636,7 @@ impl BroadcastGroup {
             {
                 Ok(pending) => {
                     if !pending.is_empty() {
-                        tracing::info!(
+                        tracing::debug!(
                             "Acknowledging {} pending messages for '{}'",
                             pending.len(),
                             doc_name
