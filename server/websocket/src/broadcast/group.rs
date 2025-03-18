@@ -285,26 +285,37 @@ impl BroadcastGroup {
                             &doc_name_for_sub,
                             &group_name_clone,
                             &consumer_name_clone,
-                            15,
+                            25,
                         )
                         .await
                     {
                         Ok(updates) => {
                             consecutive_errors = 0;
                             if !updates.is_empty() {
+                                let decoded_updates: Vec<_> = updates
+                                    .iter()
+                                    .map(|update| (update.clone(), Update::decode_v1(update)))
+                                    .collect();
+
+                                for (update, _) in &decoded_updates {
+                                    if sender_for_sub.send(update.clone()).is_err() {
+                                        tracing::warn!("Failed to broadcast Redis update");
+                                    }
+                                }
+
                                 let awareness = awareness_for_sub.write().await;
                                 let mut txn = awareness.doc().transact_mut();
 
-                                for update in &updates {
-                                    if let Ok(decoded) = Update::decode_v1(update) {
-                                        if let Err(e) = txn.apply_update(decoded) {
+                                for (_, decoded) in decoded_updates {
+                                    if let Ok(update) = decoded {
+                                        if let Err(e) = txn.apply_update(update) {
                                             tracing::warn!(
                                                 "Failed to apply update from Redis: {}",
                                                 e
                                             );
-                                        } else {
-                                            let _ = sender_for_sub.send(update.clone());
                                         }
+                                    } else if let Err(e) = decoded {
+                                        tracing::warn!("Failed to decode update from Redis: {}", e);
                                     }
                                 }
                             }
