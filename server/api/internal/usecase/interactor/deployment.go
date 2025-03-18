@@ -268,21 +268,14 @@ func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) (
 		return err
 	}
 
-	versions, err := i.deploymentRepo.FindVersions(ctx, dep.Workspace(), dep.Project())
-	if err != nil {
-		return err
-	}
-
-	for _, version := range versions {
-		if url, _ := url.Parse(version.WorkflowURL()); url != nil {
-			if err := i.file.RemoveWorkflow(ctx, url); err != nil {
-				return err
-			}
-		}
-
-		if err := i.deploymentRepo.Remove(ctx, version.ID()); err != nil {
+	if url, _ := url.Parse(dep.WorkflowURL()); url != nil {
+		if err := i.file.RemoveWorkflow(ctx, url); err != nil {
 			return err
 		}
+	}
+
+	if err := i.deploymentRepo.Remove(ctx, deploymentID); err != nil {
+		return err
 	}
 
 	tx.Commit()
