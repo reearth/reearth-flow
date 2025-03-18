@@ -17,12 +17,8 @@ use crate::plateau4::errors::PlateauProcessorError;
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
 static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
     vec![
-        ("meshcode".to_string(), AttributeValue::default_string()),
-        ("feature_type".to_string(), AttributeValue::default_string()),
-        ("city_code".to_string(), AttributeValue::default_string()),
-        ("city_name".to_string(), AttributeValue::default_string()),
-        ("gml_id".to_string(), AttributeValue::default_string()),
         ("_lod".to_string(), AttributeValue::default_string()),
+        ("_lod_type".to_string(), AttributeValue::default_string()),
         ("_x".to_string(), AttributeValue::default_float()),
         ("_y".to_string(), AttributeValue::default_float()),
         ("_xmin".to_string(), AttributeValue::default_float()),
@@ -31,6 +27,11 @@ static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
         ("_ymax".to_string(), AttributeValue::default_float()),
         ("_zmin".to_string(), AttributeValue::default_float()),
         ("_zmax".to_string(), AttributeValue::default_float()),
+        ("meshcode".to_string(), AttributeValue::default_string()),
+        ("feature_type".to_string(), AttributeValue::default_string()),
+        ("city_code".to_string(), AttributeValue::default_string()),
+        ("city_name".to_string(), AttributeValue::default_string()),
+        ("gml_id".to_string(), AttributeValue::default_string()),
     ]
 });
 
