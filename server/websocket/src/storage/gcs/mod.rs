@@ -479,34 +479,55 @@ impl KVStore for GcsStore {
 
         all_objects.sort_by(|a, b| a.name.cmp(&b.name));
 
-        let results = join_all(all_objects.iter().map(|obj| {
-            let bucket = self.bucket.clone();
-            let object = obj.name.clone();
-            async move {
-                let request = GetObjectRequest {
-                    bucket,
-                    object,
-                    ..Default::default()
-                };
-                self.client
-                    .download_object(&request, &Range::default())
-                    .await
+        const BATCH_SIZE: usize = 20;
+
+        let mut all_values = Vec::with_capacity(all_objects.len());
+
+        for chunk in all_objects.chunks(BATCH_SIZE) {
+            let chunk_futures = chunk.iter().map(|obj| {
+                let bucket = self.bucket.clone();
+                let object = obj.name.clone();
+                async move {
+                    let request = GetObjectRequest {
+                        bucket,
+                        object,
+                        ..Default::default()
+                    };
+                    (
+                        obj.name.clone(),
+                        self.client
+                            .download_object(&request, &Range::default())
+                            .await,
+                    )
+                }
+            });
+
+            let batch_results = join_all(chunk_futures).await;
+
+            let mut result_map = std::collections::HashMap::new();
+            for (name, result) in batch_results {
+                if let Ok(data) = result {
+                    result_map.insert(name, Some(data));
+                } else {
+                    result_map.insert(name, None);
+                }
             }
-        }))
-        .await;
+
+            for obj in chunk {
+                all_values.push(result_map.remove(&obj.name).unwrap_or(None));
+            }
+        }
 
         debug!(
-            "Got range from GCS storage - from: {:?}, to: {:?}, count: {}",
+            "Got range from GCS storage using batched download - from: {:?}, to: {:?}, count: {}",
             from,
             to,
             all_objects.len()
         );
 
-        let values = results.into_iter().map(|r| r.ok()).collect();
-
         Ok(GcsRange {
             objects: all_objects,
-            values,
+            values: all_values,
             current: 0,
         })
     }
