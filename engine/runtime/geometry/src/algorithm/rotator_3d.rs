@@ -73,7 +73,7 @@ impl Rotator3D {
         Self::from_vectors(from, to)
     }
 
-    fn rotate(&self, point: Point3D<f64>, origin: Option<Point3D<f64>>) -> Point3D<f64> {
+    pub fn rotate(&self, point: Point3D<f64>, origin: Option<Point3D<f64>>) -> Point3D<f64> {
         let origin = origin
             .map(|p| nalgebra::Vector3::new(p.x(), p.y(), p.z()))
             .unwrap_or(nalgebra::Vector3::new(0.0, 0.0, 0.0));
@@ -85,7 +85,7 @@ impl Rotator3D {
         Point3D::new(rotated_point.x, rotated_point.y, rotated_point.z)
     }
 
-    fn rotate_coordinates(
+    pub fn rotate_coordinates(
         &self,
         coords: Coordinate3D<f64>,
         origin: Option<Coordinate3D<f64>>,

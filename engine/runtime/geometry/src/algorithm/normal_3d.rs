@@ -1,6 +1,8 @@
 use nalgebra::Vector3;
 
-use crate::types::point::Point3D;
+use crate::types::{coordinate::Coordinate3D, point::Point3D};
+
+use super::geo_distance_converter::coordinate_diff_to_meter;
 
 pub fn compute_normal_3d(
     a: Point3D<f64>,
@@ -30,6 +32,27 @@ pub fn compute_normal_3d(
     };
 
     Some(result)
+}
+
+pub fn compute_normal_3d_from_coords(
+    a: Coordinate3D<f64>,
+    b: Coordinate3D<f64>,
+    c: Coordinate3D<f64>,
+    origin: Coordinate3D<f64>,
+    normalize: bool,
+) -> Option<Point3D<f64>> {
+    let (a_x, a_y) =
+        coordinate_diff_to_meter(a.x - origin.x, a.y - origin.y, (a.y + origin.y) / 2.0);
+    let (b_x, b_y) =
+        coordinate_diff_to_meter(b.x - origin.x, b.y - origin.y, (b.y + origin.y) / 2.0);
+    let (c_x, c_y) =
+        coordinate_diff_to_meter(c.x - origin.x, c.y - origin.y, (c.y + origin.y) / 2.0);
+
+    let a = Point3D::new(a_x, a_y, a.z);
+    let b = Point3D::new(b_x, b_y, b.z);
+    let c = Point3D::new(c_x, c_y, c.z);
+
+    compute_normal_3d(a, b, c, normalize)
 }
 
 #[cfg(test)]
