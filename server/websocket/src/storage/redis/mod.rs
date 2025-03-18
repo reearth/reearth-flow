@@ -644,4 +644,191 @@ impl RedisStore {
         }
         Ok(())
     }
+
+    pub async fn delete_consumer(
+        &self,
+        doc_id: &str,
+        group_name: &str,
+        consumer_name: &str,
+    ) -> Result<i64, anyhow::Error> {
+        let stream_key = format!("yjs:stream:{}", doc_id);
+        if let Ok(mut conn) = self.pool.get().await {
+            let exists: bool = redis::cmd("EXISTS")
+                .arg(&stream_key)
+                .query_async(&mut *conn)
+                .await?;
+
+            if !exists {
+                return Ok(0);
+            }
+
+            let result: i64 = redis::cmd("XGROUP")
+                .arg("DELCONSUMER")
+                .arg(&stream_key)
+                .arg(group_name)
+                .arg(consumer_name)
+                .query_async(&mut *conn)
+                .await?;
+
+            return Ok(result);
+        }
+
+        Err(anyhow::anyhow!("Failed to get Redis connection"))
+    }
+
+    pub async fn acquire_doc_lock(
+        &self,
+        doc_id: &str,
+        instance_id: &str,
+    ) -> Result<bool, anyhow::Error> {
+        let lock_key = format!("lock:doc:{}", doc_id);
+        let ttl = 10;
+
+        if let Ok(mut conn) = self.pool.get().await {
+            let result: Option<String> = redis::cmd("SET")
+                .arg(&lock_key)
+                .arg(instance_id)
+                .arg("NX")
+                .arg("EX")
+                .arg(ttl)
+                .query_async(&mut *conn)
+                .await?;
+
+            return Ok(result.is_some());
+        }
+
+        Ok(false)
+    }
+
+    pub async fn release_doc_lock(
+        &self,
+        doc_id: &str,
+        instance_id: &str,
+    ) -> Result<bool, anyhow::Error> {
+        let lock_key = format!("lock:doc:{}", doc_id);
+
+        if let Ok(mut conn) = self.pool.get().await {
+            let script = redis::Script::new(
+                r#"
+                if redis.call('get', KEYS[1]) == ARGV[1] then
+                    return redis.call('del', KEYS[1])
+                else
+                    return 0
+                end
+            "#,
+            );
+
+            let result: i32 = script
+                .key(&lock_key)
+                .arg(instance_id)
+                .invoke_async(&mut *conn)
+                .await?;
+
+            return Ok(result == 1);
+        }
+
+        Ok(false)
+    }
+
+    pub async fn increment_doc_connections(&self, doc_id: &str) -> Result<i64, anyhow::Error> {
+        let key = format!("connections:doc:{}", doc_id);
+
+        if let Ok(mut conn) = self.pool.get().await {
+            let count: i64 = redis::cmd("INCR").arg(&key).query_async(&mut *conn).await?;
+
+            let _: () = redis::cmd("EXPIRE")
+                .arg(&key)
+                .arg(86400)
+                .query_async(&mut *conn)
+                .await?;
+
+            return Ok(count);
+        }
+
+        Err(anyhow::anyhow!("Failed to get Redis connection"))
+    }
+
+    pub async fn decrement_doc_connections(&self, doc_id: &str) -> Result<i64, anyhow::Error> {
+        let key = format!("connections:doc:{}", doc_id);
+
+        if let Ok(mut conn) = self.pool.get().await {
+            let script = redis::Script::new(
+                r#"
+                local current = redis.call('get', KEYS[1])
+                if current and tonumber(current) > 0 then
+                    return redis.call('decr', KEYS[1])
+                elseif current then
+                    return 0
+                else
+                    return 0
+                end
+            "#,
+            );
+
+            let count: i64 = script.key(&key).invoke_async(&mut *conn).await?;
+
+            return Ok(count);
+        }
+
+        Err(anyhow::anyhow!("Failed to get Redis connection"))
+    }
+
+    pub async fn get_doc_connections(&self, doc_id: &str) -> Result<i64, anyhow::Error> {
+        let key = format!("connections:doc:{}", doc_id);
+
+        if let Ok(mut conn) = self.pool.get().await {
+            let count: Option<i64> = redis::cmd("GET").arg(&key).query_async(&mut *conn).await?;
+
+            return Ok(count.unwrap_or(0));
+        }
+
+        Err(anyhow::anyhow!("Failed to get Redis connection"))
+    }
+
+    pub async fn safe_delete_stream(
+        &self,
+        doc_id: &str,
+        instance_id: &str,
+    ) -> Result<bool, anyhow::Error> {
+        if self.acquire_doc_lock(doc_id, instance_id).await? {
+            let connections = self.get_doc_connections(doc_id).await?;
+
+            if connections <= 0 {
+                let stream_key = format!("yjs:stream:{}", doc_id);
+                if let Ok(mut conn) = self.pool.get().await {
+                    let exists: bool = redis::cmd("EXISTS")
+                        .arg(&stream_key)
+                        .query_async(&mut *conn)
+                        .await?;
+
+                    if exists {
+                        let _: () = redis::cmd("DEL")
+                            .arg(&stream_key)
+                            .query_async(&mut *conn)
+                            .await?;
+
+                        tracing::info!("Safely deleted Redis stream for '{}'", doc_id);
+                    }
+                }
+
+                let _ = self.release_doc_lock(doc_id, instance_id).await;
+                return Ok(true);
+            }
+
+            tracing::info!(
+                "Not deleting Redis stream for '{}' as there are still {} connections",
+                doc_id,
+                connections
+            );
+
+            let _ = self.release_doc_lock(doc_id, instance_id).await;
+        } else {
+            tracing::debug!(
+                "Could not acquire lock for doc '{}', skipping deletion attempt",
+                doc_id
+            );
+        }
+
+        Ok(false)
+    }
 }
