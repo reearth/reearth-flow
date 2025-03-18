@@ -99,64 +99,59 @@ func (m *MongoStorage) UpdateEdgeStatusInMongo(ctx context.Context, jobID string
 		}
 	}()
 
-	existingExec, _ := m.FindEdgeExecution(txCtx, jobID, edgeExec.EdgeID)
-
 	intermediateDataURL := m.ConstructIntermediateDataURL(jobID, edgeExec.EdgeID)
+	if intermediateDataURL != "" {
+		edgeExec.IntermediateDataURL = intermediateDataURL
+	}
 
-	if existingExec != nil {
-		update := bson.M{
-			"status":    string(edgeExec.Status),
-			"updatedAt": time.Now(),
+	doc := bson.M{
+		"id":        edgeExec.ID,
+		"edgeId":    edgeExec.EdgeID,
+		"jobId":     jobID,
+		"status":    string(edgeExec.Status),
+		"updatedAt": time.Now(),
+	}
+
+	if edgeExec.FeatureID != nil {
+		doc["featureId"] = *edgeExec.FeatureID
+	}
+
+	if edgeExec.StartedAt != nil {
+		doc["startedAt"] = edgeExec.StartedAt
+	}
+
+	if edgeExec.CompletedAt != nil {
+		doc["completedAt"] = edgeExec.CompletedAt
+	}
+
+	if edgeExec.IntermediateDataURL != "" {
+		doc["intermediateDataUrl"] = edgeExec.IntermediateDataURL
+	}
+
+	filter := bson.M{
+		"jobId":  jobID,
+		"edgeId": edgeExec.EdgeID,
+	}
+
+	var existing bson.M
+	err = m.client.FindOne(txCtx, filter, &BSONConsumer{Result: &existing})
+
+	if err == nil && existing != nil {
+
+		if createdAt, ok := existing["createdAt"]; ok && createdAt != nil {
+			doc["createdAt"] = createdAt
 		}
 
-		if edgeExec.FeatureID != nil {
-			update["featureId"] = edgeExec.FeatureID
-		}
-
-		if edgeExec.StartedAt != nil {
-			update["startedAt"] = edgeExec.StartedAt
-		}
-
-		if edgeExec.CompletedAt != nil {
-			update["completedAt"] = edgeExec.CompletedAt
-		}
-
-		if intermediateDataURL != "" {
-			update["intermediateDataUrl"] = intermediateDataURL
-		}
-
-		compositeID := fmt.Sprintf("%s:%s", jobID, existingExec.ID)
-		err = m.client.SetOne(txCtx, compositeID, update)
+		compositeID := fmt.Sprintf("%s:%s", jobID, edgeExec.ID)
+		err = m.client.SetOne(txCtx, compositeID, doc)
 		if err != nil {
 			return fmt.Errorf("failed to update edge execution: %w", err)
 		}
 	} else {
-		edgeDoc := bson.M{
-			"id":        edgeExec.ID,
-			"edgeId":    edgeExec.EdgeID,
-			"jobId":     jobID,
-			"status":    string(edgeExec.Status),
-			"createdAt": time.Now(),
-		}
-
-		if edgeExec.StartedAt != nil {
-			edgeDoc["startedAt"] = edgeExec.StartedAt
-		}
-
-		if edgeExec.CompletedAt != nil {
-			edgeDoc["completedAt"] = edgeExec.CompletedAt
-		}
-
-		if edgeExec.FeatureID != nil {
-			edgeDoc["featureId"] = edgeExec.FeatureID
-		}
-
-		if intermediateDataURL != "" {
-			edgeDoc["intermediateDataUrl"] = intermediateDataURL
-		}
+		doc["createdAt"] = time.Now()
 
 		compositeID := fmt.Sprintf("%s:%s", jobID, edgeExec.ID)
-		err = m.client.SaveOne(txCtx, compositeID, edgeDoc)
+		err = m.client.SaveOne(txCtx, compositeID, doc)
 		if err != nil {
 			return fmt.Errorf("failed to save edge execution: %w", err)
 		}
