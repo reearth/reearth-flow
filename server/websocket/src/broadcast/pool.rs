@@ -23,25 +23,14 @@ pub struct BroadcastPool {
 
 impl BroadcastPool {
     pub fn new(store: Arc<GcsStore>, redis_store: Option<Arc<RedisStore>>) -> Self {
-        let pool = Self {
+        Self {
             store,
             redis_store,
             groups: DashMap::new(),
             buffer_capacity: 256,
             docs_in_creation: DashSet::new(),
             last_cleanup: Arc::new(std::sync::Mutex::new(std::time::Instant::now())),
-        };
-
-        let pool_clone = pool.clone();
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(3600));
-            loop {
-                interval.tick().await;
-                pool_clone.cleanup_empty_groups().await;
-            }
-        });
-
-        pool
+        }
     }
 
     pub fn get_store(&self) -> Arc<GcsStore> {
