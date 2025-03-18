@@ -7,14 +7,17 @@ use crate::{
 
 /// A query to rotate a point in 3D space.
 #[derive(Debug, Clone)]
-pub struct Rotator3D {
+pub struct RotateQuery3D {
     pub angle_degrees: f64,
     pub direction: Point3D<f64>,
     rotation: nalgebra::Rotation3<f64>,
 }
 
-impl Rotator3D {
-    /// Creates a new `Rotator3D` which rotates a vector from `from` to `to`.
+impl RotateQuery3D {
+    /// Creates a new `RotateQuery3D` which rotates a vector from `from` to `to`.
+    ///
+    /// e.g. (0.0, 0.0, 1.0) -> (1.0, 0.0, 0.0)
+    ///
     /// This returns `None` if any of the vectors is a zero vector.
     /// Note that if two vectors are same or opposite, the rotation angle will be 0.
     pub fn from_vectors_geometry(from: Point3D<f64>, to: Point3D<f64>) -> Option<Self> {
@@ -57,17 +60,18 @@ impl Rotator3D {
         })
     }
 
+    /// Creates a new `RotateQuery3D` which rotates a vector from `origin -> from` to `origin -> to`.
     pub fn from_vectors(
-        from_coords: Point3D<f64>,
-        to_coords: Point3D<f64>,
+        from_point: Point3D<f64>,
+        to_point: Point3D<f64>,
         origin: Option<Point3D<f64>>,
     ) -> Option<Self> {
-        let diff_from = from_coords - origin.unwrap_or(Point3D::new(0.0, 0.0, 0.0));
-        let diff_to = to_coords - origin.unwrap_or(Point3D::new(0.0, 0.0, 0.0));
+        let diff_from = from_point - origin.unwrap_or(Point3D::new(0.0, 0.0, 0.0));
+        let diff_to = to_point - origin.unwrap_or(Point3D::new(0.0, 0.0, 0.0));
 
         let (from_x, from_y) =
-            coordinate_diff_to_meter(diff_from.x(), diff_from.y(), from_coords.y());
-        let (to_x, to_y) = coordinate_diff_to_meter(diff_to.x(), diff_to.y(), to_coords.y());
+            coordinate_diff_to_meter(diff_from.x(), diff_from.y(), from_point.y());
+        let (to_x, to_y) = coordinate_diff_to_meter(diff_to.x(), diff_to.y(), to_point.y());
 
         let from = Point3D::new(from_x, from_y, diff_from.z());
         let to = Point3D::new(to_x, to_y, diff_to.z());
@@ -75,6 +79,7 @@ impl Rotator3D {
         Self::from_vectors_geometry(from, to)
     }
 
+    /// Creates a new `RotateQuery3D` which rotates a vector around the given `angle_degrees` and `direction`.
     pub fn from_angle_and_direction(angle_degrees: f64, direction: Point3D<f64>) -> Option<Self> {
         let direction_v = nalgebra::Vector3::new(direction.x(), direction.y(), direction.z());
         let rotation = nalgebra::Rotation3::from_axis_angle(
@@ -89,11 +94,9 @@ impl Rotator3D {
         })
     }
 
-    pub fn rotate_geometry(
-        &self,
-        point: Point3D<f64>,
-        origin: Option<Point3D<f64>>,
-    ) -> Point3D<f64> {
+    /// Rotates a point in 3D space.
+    #[allow(dead_code)]
+    fn rotate_geometry(&self, point: Point3D<f64>, origin: Option<Point3D<f64>>) -> Point3D<f64> {
         let origin = origin
             .map(|p| nalgebra::Vector3::new(p.x(), p.y(), p.z()))
             .unwrap_or(nalgebra::Vector3::new(0.0, 0.0, 0.0));
@@ -105,22 +108,26 @@ impl Rotator3D {
         Point3D::new(rotated_point.x, rotated_point.y, rotated_point.z)
     }
 
-    pub fn rotate(&self, coords: Point3D<f64>, origin: Option<Point3D<f64>>) -> Point3D<f64> {
+    /// Rotates a point in 3D space. This method is used for coordinate system.
+    pub fn rotate(&self, point: Point3D<f64>, origin: Option<Point3D<f64>>) -> Point3D<f64> {
         let origin = origin
             .map(|p| nalgebra::Vector3::new(p.x(), p.y(), p.z()))
             .unwrap_or(nalgebra::Vector3::new(0.0, 0.0, 0.0));
 
-        let diff_coords = Point3D::new(
-            coords.x() - origin.x,
-            coords.y() - origin.y,
-            coords.z() - origin.z,
+        let diff_point = Point3D::new(
+            point.x() - origin.x,
+            point.y() - origin.y,
+            point.z() - origin.z,
         );
-        let (x, y) = coordinate_diff_to_meter(diff_coords.x(), diff_coords.y(), coords.y());
 
-        let point = nalgebra::Point3::new(x, y, diff_coords.z());
+        let mid_lat = (point.y() + origin.y) / 2.0;
+
+        let (x, y) = coordinate_diff_to_meter(diff_point.x(), diff_point.y(), mid_lat);
+
+        let point = nalgebra::Point3::new(x, y, diff_point.z());
         let rotated_point = self.rotation * point;
 
-        let (dlng, dlat) = meter_to_coordinate_diff(rotated_point.x, rotated_point.y, coords.y());
+        let (dlng, dlat) = meter_to_coordinate_diff(rotated_point.x, rotated_point.y, mid_lat);
 
         Point3D::new(dlng + origin.x, dlat + origin.y, rotated_point.z + origin.z)
     }
@@ -145,7 +152,7 @@ mod tests {
         let from = Point3D::new(0.0, 0.0, 1.0);
         let to = Point3D::new(0.0, 0.0, -1.0);
         assert_eq!(
-            Rotator3D::from_vectors_geometry(from, to)
+            RotateQuery3D::from_vectors_geometry(from, to)
                 .unwrap()
                 .angle_degrees,
             0.0
@@ -157,7 +164,7 @@ mod tests {
         let from = Point3D::new(0.0, 0.0, 1.0);
         let to = Point3D::new(1.0, 0.0, 0.0);
 
-        let rotation_query = Rotator3D::from_vectors_geometry(from, to).unwrap();
+        let rotation_query = RotateQuery3D::from_vectors_geometry(from, to).unwrap();
 
         let point = Point3D::new(0.0, 0.0, 1.0);
         let rotated = rotation_query.rotate_geometry(point, None);
@@ -186,7 +193,7 @@ mod tests {
         let from = Point3D::new(0.0, 0.0, 1.0);
         let to = Point3D::new(1.0, 1.0, 1.0);
 
-        let rotation_query = Rotator3D::from_vectors_geometry(from, to).unwrap();
+        let rotation_query = RotateQuery3D::from_vectors_geometry(from, to).unwrap();
 
         let point = Point3D::new(0.0, 0.0, 1.0);
         let rotated = rotation_query.rotate_geometry(point, None);
@@ -202,7 +209,7 @@ mod tests {
         let from = Point3D::new(0.0, 0.0, 1.0);
         let to = Point3D::new(-1.0, 1.0, 0.0);
 
-        let rotation_query = Rotator3D::from_vectors_geometry(from, to).unwrap();
+        let rotation_query = RotateQuery3D::from_vectors_geometry(from, to).unwrap();
 
         let point_from = Point3D::new(139.6917, 35.6895, 200.0f64.sqrt());
         let point_origin = Point3D::new(139.6917, 35.6895, 0.0);
@@ -215,7 +222,7 @@ mod tests {
         assert_relative_eq!(rotated_point.z(), point_target.z(), epsilon = 1e-2);
 
         let rotation_query =
-            Rotator3D::from_vectors(point_from, point_target, Some(point_origin)).unwrap();
+            RotateQuery3D::from_vectors(point_from, point_target, Some(point_origin)).unwrap();
         let rotated_point = rotation_query.rotate(point_from, Some(point_origin));
 
         assert_relative_eq!(rotated_point.x(), point_target.x(), epsilon = 1e-2);

@@ -2,8 +2,8 @@ use std::collections::HashMap;
 
 use reearth_flow_geometry::algorithm::centroid::Centroid;
 use reearth_flow_geometry::algorithm::normal_3d::compute_normal_3d_from_coords;
+use reearth_flow_geometry::algorithm::rotate::query::RotateQuery3D;
 use reearth_flow_geometry::algorithm::rotate::rotate_3d::Rotate3D;
-use reearth_flow_geometry::algorithm::rotate::rotator_3d::Rotator3D;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_geometry::types::multi_point::{MultiPoint2D, MultiPoint3D};
 use reearth_flow_geometry::types::multi_polygon::{MultiPolygon2D, MultiPolygon3D};
@@ -204,9 +204,9 @@ fn rotate_polygon_to_2d(polygon: &Polygon3D<f64>) -> Option<Polygon2D<f64>> {
     )?;
     let to_vector = Point3D::new(0.0, 0.0, 1.0);
 
-    let rotator = Rotator3D::from_vectors_geometry(from_vector, to_vector)?;
+    let rotate_query = RotateQuery3D::from_vectors_geometry(from_vector, to_vector)?;
 
-    let polygon = polygon.rotate_3d(rotator, Some(centoroid));
+    let polygon = polygon.rotate_3d(rotate_query, Some(centoroid));
 
     Some(polygon.into())
 }
