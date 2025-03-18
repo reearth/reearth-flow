@@ -56,7 +56,7 @@ impl RedisStore {
 
         let builder = Pool::builder()
             .max_size(config.max_connections.unwrap_or(1024))
-            .min_idle(config.min_idle.or(Some(20)))
+            .min_idle(config.min_idle.or(Some(40)))
             .connection_timeout(Duration::from_secs(config.connection_timeout.unwrap_or(5)))
             .idle_timeout(Some(Duration::from_secs(500)))
             .max_lifetime(Some(Duration::from_secs(7200)));

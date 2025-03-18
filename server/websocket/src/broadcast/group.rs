@@ -721,15 +721,6 @@ impl BroadcastGroup {
 
         Ok(())
     }
-
-    pub fn get_connection_info(&self) -> (usize, Option<String>, Option<String>) {
-        let count = self.connections.load(Ordering::Relaxed);
-        (
-            count,
-            self.doc_name.clone(),
-            self.redis_consumer_name.clone(),
-        )
-    }
 }
 
 impl Drop for BroadcastGroup {

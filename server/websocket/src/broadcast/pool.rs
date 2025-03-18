@@ -11,6 +11,7 @@ use yrs::sync::Awareness;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 const DEFAULT_DOC_ID: &str = "01jpjfpw0qtw17kbrcdbgefakg";
+
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
     store: Arc<GcsStore>,
