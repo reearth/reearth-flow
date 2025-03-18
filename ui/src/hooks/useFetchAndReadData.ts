@@ -11,7 +11,7 @@ type Props = {
 
 export default ({ dataUrl = "" }: Props) => {
   const prevDataUrl = useRef<string | null>(null);
-  const [fileContent, setFileContent] = useState<string | null>(null);
+  const [fileContent, setFileContent] = useState<any | null>(null);
   const [fileType, setFileType] = useState<SupportedDataTypes | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);

@@ -11,3 +11,7 @@ subscription RealTimeLogs($jobId: ID!) {
     message
   }
 }
+
+subscription OnEdgeStatusChange($jobId: ID!, $edgeId: String!) {
+  edgeStatus(jobId: $jobId, edgeId: $edgeId)
+}

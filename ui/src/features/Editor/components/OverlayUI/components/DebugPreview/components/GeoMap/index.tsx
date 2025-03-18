@@ -3,7 +3,7 @@ import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
 type Props = {
   className?: string;
-  fileContent: string | null;
+  fileContent: any | null;
   fileType: SupportedDataTypes | null;
 };
 

@@ -38,8 +38,9 @@ const BottomBar: React.FC<Props> = ({
         onWorkflowChange={onWorkflowChange}
         onWorkflowRename={onWorkflowRename}
       />
-      <div className="flex items-center justify-center gap-3 self-center border-l bg-secondary px-2">
-        <p className="text-xs font-light">{t("Status: ")}</p>
+      <div className="flex items-center justify-center gap-2 self-center border-l bg-secondary px-2">
+        <p className="text-xs font-light">{t("Debug Status: ")}</p>
+        <p className="text-xs font-thin">{jobStatus ?? t("idle")}</p>
         <div
           className={`${
             jobStatus === "completed"
