@@ -1,6 +1,9 @@
 use std::{collections::HashMap, sync::Arc};
 
-use reearth_flow_geometry::{algorithm::rotate_3d::Rotate3D, types::point::Point3D};
+use reearth_flow_geometry::{
+    algorithm::{rotate_3d::Rotate3D, rotator_3d::Rotator3D},
+    types::point::Point3D,
+};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -154,11 +157,19 @@ impl Processor for ThreeDimensionRotator {
         let geometry = &feature.geometry;
         let geometry = match &geometry.value {
             GeometryValue::FlowGeometry3D(geos) => {
-                let rotate = geos.rotate_3d(
+                let rotator = if let Some(rotator) = Rotator3D::from_angle_and_direction(
                     angle_degree,
-                    Some(Point3D::new_(origin_x, origin_y, origin_z)),
                     Point3D::new_(direction_x, direction_y, direction_z),
-                );
+                ) {
+                    rotator
+                } else {
+                    return Err(GeometryProcessorError::ThreeDimensionRotator(
+                        "Failed to create rotator".to_string(),
+                    )
+                    .into());
+                };
+                let rotate =
+                    geos.rotate_3d(rotator, Some(Point3D::new_(origin_x, origin_y, origin_z)));
                 let mut geometry = geometry.clone();
                 geometry.value = GeometryValue::FlowGeometry3D(rotate);
                 geometry
