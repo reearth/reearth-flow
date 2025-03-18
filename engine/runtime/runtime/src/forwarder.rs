@@ -109,7 +109,7 @@ impl ChannelManager {
                             feature_id,
                             edge_id: edge_id_clone,
                         });
-                        
+
                         self.runtime.block_on(async move {
                             let result = writer.write(&feature).await;
                             let node = node_handle.clone();
