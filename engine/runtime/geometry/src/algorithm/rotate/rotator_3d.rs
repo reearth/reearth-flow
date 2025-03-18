@@ -58,16 +58,16 @@ impl Rotator3D {
     }
 
     pub fn from_vectors(
-        from_point: Point3D<f64>,
-        to_point: Point3D<f64>,
+        from_coords: Point3D<f64>,
+        to_coords: Point3D<f64>,
         origin: Option<Point3D<f64>>,
     ) -> Option<Self> {
-        let diff_from = from_point - origin.unwrap_or(Point3D::new(0.0, 0.0, 0.0));
-        let diff_to = to_point - origin.unwrap_or(Point3D::new(0.0, 0.0, 0.0));
+        let diff_from = from_coords - origin.unwrap_or(Point3D::new(0.0, 0.0, 0.0));
+        let diff_to = to_coords - origin.unwrap_or(Point3D::new(0.0, 0.0, 0.0));
 
         let (from_x, from_y) =
-            coordinate_diff_to_meter(diff_from.x(), diff_from.y(), from_point.y());
-        let (to_x, to_y) = coordinate_diff_to_meter(diff_to.x(), diff_to.y(), to_point.y());
+            coordinate_diff_to_meter(diff_from.x(), diff_from.y(), from_coords.y());
+        let (to_x, to_y) = coordinate_diff_to_meter(diff_to.x(), diff_to.y(), to_coords.y());
 
         let from = Point3D::new(from_x, from_y, diff_from.z());
         let to = Point3D::new(to_x, to_y, diff_to.z());
@@ -75,23 +75,25 @@ impl Rotator3D {
         Self::from_vectors_geometry(from, to)
     }
 
-    pub fn from_axis_angle(axis: Point3D<f64>, angle_degrees: f64) -> Self {
-        let angle_degrees = angle_degrees.to_radians();
-        let direction = nalgebra::Vector3::new(axis.x(), axis.y(), axis.z());
+    pub fn from_angle_and_direction(angle_degrees: f64, direction: Point3D<f64>) -> Option<Self> {
+        let direction_v = nalgebra::Vector3::new(direction.x(), direction.y(), direction.z());
         let rotation = nalgebra::Rotation3::from_axis_angle(
-            &nalgebra::Unit::new_normalize(direction),
-            angle_degrees,
+            &nalgebra::Unit::new_normalize(direction_v),
+            angle_degrees.to_radians(),
         );
 
-        Self {
-            angle_degrees: angle_degrees.to_degrees(),
-            direction: Point3D::new(direction.x, direction.y, direction.z),
+        Some(Self {
+            angle_degrees,
+            direction,
             rotation,
-        }
+        })
     }
 
-    #[allow(dead_code)]
-    fn rotate_geometry(&self, point: Point3D<f64>, origin: Option<Point3D<f64>>) -> Point3D<f64> {
+    pub fn rotate_geometry(
+        &self,
+        point: Point3D<f64>,
+        origin: Option<Point3D<f64>>,
+    ) -> Point3D<f64> {
         let origin = origin
             .map(|p| nalgebra::Vector3::new(p.x(), p.y(), p.z()))
             .unwrap_or(nalgebra::Vector3::new(0.0, 0.0, 0.0));
@@ -103,24 +105,24 @@ impl Rotator3D {
         Point3D::new(rotated_point.x, rotated_point.y, rotated_point.z)
     }
 
-    pub fn rotate(&self, point: Point3D<f64>, origin: Option<Point3D<f64>>) -> Point3D<f64> {
+    pub fn rotate(&self, coords: Point3D<f64>, origin: Option<Point3D<f64>>) -> Point3D<f64> {
         let origin = origin
-            .map(|p| Point3D::new(p.x(), p.y(), p.z()))
-            .unwrap_or(Point3D::new(0.0, 0.0, 0.0));
+            .map(|p| nalgebra::Vector3::new(p.x(), p.y(), p.z()))
+            .unwrap_or(nalgebra::Vector3::new(0.0, 0.0, 0.0));
 
-        let diff_point = point - origin;
-        let (x, y) = coordinate_diff_to_meter(diff_point.x(), diff_point.y(), point.y());
+        let diff_coords = Point3D::new(
+            coords.x() - origin.x,
+            coords.y() - origin.y,
+            coords.z() - origin.z,
+        );
+        let (x, y) = coordinate_diff_to_meter(diff_coords.x(), diff_coords.y(), coords.y());
 
-        let point = nalgebra::Point3::new(x, y, diff_point.z());
+        let point = nalgebra::Point3::new(x, y, diff_coords.z());
         let rotated_point = self.rotation * point;
 
-        let (dlng, dlat) = meter_to_coordinate_diff(rotated_point.x, rotated_point.y, point.y);
+        let (dlng, dlat) = meter_to_coordinate_diff(rotated_point.x, rotated_point.y, coords.y());
 
-        Point3D::new(
-            dlng + origin.x(),
-            dlat + origin.y(),
-            rotated_point.z + origin.z(),
-        )
+        Point3D::new(dlng + origin.x, dlat + origin.y, rotated_point.z + origin.z)
     }
 }
 

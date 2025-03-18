@@ -157,10 +157,17 @@ impl Processor for ThreeDimensionRotator {
         let geometry = &feature.geometry;
         let geometry = match &geometry.value {
             GeometryValue::FlowGeometry3D(geos) => {
-                let rotator = Rotator3D::from_axis_angle(
-                    Point3D::new_(direction_x, direction_y, direction_z),
+                let rotator = if let Some(rotator) = Rotator3D::from_angle_and_direction(
                     angle_degree,
-                );
+                    Point3D::new_(direction_x, direction_y, direction_z),
+                ) {
+                    rotator
+                } else {
+                    return Err(GeometryProcessorError::ThreeDimensionRotator(
+                        "Failed to create rotator".to_string(),
+                    )
+                    .into());
+                };
                 let rotate =
                     geos.rotate_3d(rotator, Some(Point3D::new_(origin_x, origin_y, origin_z)));
                 let mut geometry = geometry.clone();

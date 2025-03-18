@@ -4,9 +4,7 @@ use reearth_flow_geometry::algorithm::centroid::Centroid;
 use reearth_flow_geometry::algorithm::normal_3d::compute_normal_3d_from_coords;
 use reearth_flow_geometry::algorithm::rotate::rotate_3d::Rotate3D;
 use reearth_flow_geometry::algorithm::rotate::rotator_3d::Rotator3D;
-use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
-use reearth_flow_geometry::types::line_string::LineString2D;
 use reearth_flow_geometry::types::multi_point::{MultiPoint2D, MultiPoint3D};
 use reearth_flow_geometry::types::multi_polygon::{MultiPolygon2D, MultiPolygon3D};
 use reearth_flow_geometry::types::no_value::NoValue;
@@ -32,7 +30,7 @@ impl ProcessorFactory for ThreeDimensionPlanarityRotatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Divides the input geometry into Japanese standard (1km) mesh grid."
+        "Rotates a three Dimension geometry to horizontal."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -208,27 +206,7 @@ fn rotate_polygon_to_2d(polygon: &Polygon3D<f64>) -> Option<Polygon2D<f64>> {
 
     let rotator = Rotator3D::from_vectors_geometry(from_vector, to_vector)?;
 
-    let rotated = polygon.rotate_3d(rotator, Some(centoroid.into()));
+    let polygon = polygon.rotate_3d(rotator, Some(centoroid));
 
-    let exterior_2d = rotated
-        .exterior()
-        .coords()
-        .map(|coord| Coordinate2D::new_(coord.x, coord.y))
-        .collect::<Vec<_>>();
-
-    let interiors_2d = rotated
-        .interiors()
-        .iter()
-        .map(|line_string| {
-            line_string
-                .coords()
-                .map(|coord| Coordinate2D::new_(coord.x, coord.y))
-                .collect::<Vec<_>>()
-        })
-        .collect::<Vec<_>>();
-
-    Some(Polygon2D::new(
-        LineString2D::new(exterior_2d),
-        interiors_2d.into_iter().map(LineString2D::new).collect(),
-    ))
+    Some(polygon.into())
 }
