@@ -188,7 +188,6 @@ pub fn slice_to_tiles<E>(
                                 sliced_feature.polygon_material_ids.push(mat_idx as u32);
                             });
                         } else {
-                            // slicing disabled
                             let (z, x, y) = zxy_from_lng_lat(zoom, lng_center, lat_center);
                             let sliced_feature =
                                 sliced_tiles

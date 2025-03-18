@@ -46,7 +46,7 @@ type ProjectDocument struct {
 type ProjectConsumer = Consumer[*ProjectDocument, *project.Project]
 
 func NewProjectConsumer(workspaces []accountdomain.WorkspaceID) *ProjectConsumer {
-	return NewConsumer[*ProjectDocument, *project.Project](func(a *project.Project) bool {
+	return NewConsumer[*ProjectDocument](func(a *project.Project) bool {
 		return workspaces == nil || slices.Contains(workspaces, a.Workspace())
 	})
 }

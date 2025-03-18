@@ -5,6 +5,7 @@ use std::sync::Arc;
 use std::vec;
 
 use bytes::Bytes;
+use indexmap::IndexMap;
 use itertools::Itertools;
 use nusamai_czml::{
     CzmlBoolean, CzmlPolygon, Packet, PositionList, PositionListOfLists,
@@ -196,7 +197,7 @@ impl Sink for CzmlWriter {
     }
 }
 
-fn map_to_html_table(map: &HashMap<Attribute, AttributeValue>) -> String {
+fn map_to_html_table(map: &IndexMap<Attribute, AttributeValue>) -> String {
     let mut html = String::new();
     html.push_str("<table>");
     for (key, value) in map {

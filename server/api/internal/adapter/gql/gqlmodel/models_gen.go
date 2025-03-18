@@ -166,6 +166,21 @@ type DeploymentPayload struct {
 	Deployment *Deployment `json:"deployment"`
 }
 
+type EdgeExecution struct {
+	ID                  ID         `json:"id"`
+	EdgeID              string     `json:"edgeId"`
+	JobID               ID         `json:"jobId"`
+	Status              EdgeStatus `json:"status"`
+	CreatedAt           *time.Time `json:"createdAt,omitempty"`
+	StartedAt           *time.Time `json:"startedAt,omitempty"`
+	CompletedAt         *time.Time `json:"completedAt,omitempty"`
+	FeatureID           *ID        `json:"featureId,omitempty"`
+	IntermediateDataURL *string    `json:"intermediateDataUrl,omitempty"`
+}
+
+func (EdgeExecution) IsNode()        {}
+func (this EdgeExecution) GetID() ID { return this.ID }
+
 type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
 }
@@ -549,6 +564,49 @@ func (e *AssetSortType) UnmarshalGQL(v interface{}) error {
 }
 
 func (e AssetSortType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type EdgeStatus string
+
+const (
+	EdgeStatusInProgress EdgeStatus = "IN_PROGRESS"
+	EdgeStatusCompleted  EdgeStatus = "COMPLETED"
+	EdgeStatusFailed     EdgeStatus = "FAILED"
+)
+
+var AllEdgeStatus = []EdgeStatus{
+	EdgeStatusInProgress,
+	EdgeStatusCompleted,
+	EdgeStatusFailed,
+}
+
+func (e EdgeStatus) IsValid() bool {
+	switch e {
+	case EdgeStatusInProgress, EdgeStatusCompleted, EdgeStatusFailed:
+		return true
+	}
+	return false
+}
+
+func (e EdgeStatus) String() string {
+	return string(e)
+}
+
+func (e *EdgeStatus) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = EdgeStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid EdgeStatus", str)
+	}
+	return nil
+}
+
+func (e EdgeStatus) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

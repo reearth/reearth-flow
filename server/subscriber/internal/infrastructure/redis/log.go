@@ -6,21 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	domainLog "github.com/reearth/reearth-flow/subscriber/pkg/log"
 )
-
-type RedisClient interface {
-	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd
-}
-
-type RedisStorage struct {
-	client RedisClient
-}
-
-func NewRedisStorage(client RedisClient) *RedisStorage {
-	return &RedisStorage{client: client}
-}
 
 func (r *RedisStorage) SaveLogToRedis(ctx context.Context, event *domainLog.LogEvent) error {
 	const layoutWithMillis = "2006-01-02T15:04:05.000000Z"

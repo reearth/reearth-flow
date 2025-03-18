@@ -1,4 +1,5 @@
 use bytes::Bytes;
+use indexmap::IndexMap;
 use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
 use reearth_flow_types::{AttributeValue, Feature};
 use tokio::sync::mpsc::Sender;
@@ -15,10 +16,15 @@ pub(crate) async fn read_json(
     match features {
         AttributeValue::Array(features) => {
             for feature in features {
-                let AttributeValue::Map(feature) = feature else {
+                let AttributeValue::Map(attributes) = feature else {
                     continue;
                 };
-                let feature = Feature::from(feature);
+                let feature = Feature::from(
+                    attributes
+                        .iter()
+                        .map(|(k, v)| (k.clone(), v.clone()))
+                        .collect::<IndexMap<_, _>>(),
+                );
                 sender
                     .send((
                         DEFAULT_PORT.clone(),

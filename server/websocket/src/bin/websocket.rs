@@ -42,17 +42,14 @@ async fn main() {
     let store = Arc::new(store);
     tracing::info!("GCS store initialized");
 
-    let redis_store = {
-        let mut redis_store = RedisStore::new(Some(config.redis.clone()));
-        match redis_store.init().await {
-            Ok(_) => {
-                tracing::info!("Redis store initialized");
-                Some(Arc::new(redis_store))
-            }
-            Err(e) => {
-                error!("Failed to initialize Redis store: {}", e);
-                None
-            }
+    let redis_store = match RedisStore::new(Some(config.redis.clone())).await {
+        Ok(redis_store) => {
+            tracing::info!("Redis store initialized");
+            Some(Arc::new(redis_store))
+        }
+        Err(e) => {
+            error!("Failed to initialize Redis store: {}", e);
+            None
         }
     };
 

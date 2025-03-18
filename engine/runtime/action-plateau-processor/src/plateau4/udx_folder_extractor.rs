@@ -5,6 +5,7 @@ use std::{
     sync::Arc,
 };
 
+use indexmap::IndexMap;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -43,7 +44,7 @@ struct Schema {
     dir_schemas: String,
 }
 
-impl From<Schema> for HashMap<Attribute, AttributeValue> {
+impl From<Schema> for IndexMap<Attribute, AttributeValue> {
     fn from(value: Schema) -> Self {
         serde_json::to_value(value)
             .unwrap()
@@ -167,7 +168,7 @@ impl Processor for UDXFolderExtractor {
         } else {
             REJECTED_PORT.clone()
         };
-        let mut attributes: HashMap<Attribute, AttributeValue> = res.into();
+        let mut attributes: IndexMap<Attribute, AttributeValue> = res.into();
         attributes.extend(feature.attributes.clone());
         let feature = Feature {
             attributes,

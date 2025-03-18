@@ -1,7 +1,7 @@
-use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
 
+use indexmap::IndexMap;
 use reearth_flow_types::Attribute;
 use rust_xlsxwriter::{Format, FormatAlign, FormatUnderline, Formula, Url, Workbook, Worksheet};
 
@@ -129,7 +129,7 @@ fn write_cell_formatting(
     row: usize,
     col: usize,
     key: String,
-    row_data: &HashMap<Attribute, AttributeValue>,
+    row_data: &IndexMap<Attribute, AttributeValue>,
 ) -> Result<(), crate::errors::SinkError> {
     if let Some(AttributeValue::String(formatting_str)) =
         row_data.get(&Attribute::new(format!("{}.formatting", key)))
@@ -148,7 +148,7 @@ fn write_cell_formula(
     row: usize,
     col: usize,
     key: String,
-    row_data: &HashMap<Attribute, AttributeValue>,
+    row_data: &IndexMap<Attribute, AttributeValue>,
 ) -> Result<(), crate::errors::SinkError> {
     if let Some(AttributeValue::String(formula_str)) =
         row_data.get(&Attribute::new(format!("{}.formula", key)))
@@ -166,7 +166,7 @@ fn write_cell_hyperlink(
     row: usize,
     col: usize,
     key: String,
-    row_data: &HashMap<Attribute, AttributeValue>,
+    row_data: &IndexMap<Attribute, AttributeValue>,
 ) -> Result<(), crate::errors::SinkError> {
     if let Some(AttributeValue::String(hyperlink_str)) =
         row_data.get(&Attribute::new(format!("{}.hyperlink", key)))

@@ -60,11 +60,9 @@ impl Config {
             warn!("No .env file found, using environment variables");
         }
 
-        // Load Redis configuration
         if let Ok(url) = env::var("REEARTH_FLOW_REDIS_URL") {
             builder = builder.redis_url(url);
         }
-        // Load GCS configuration
         if let Ok(bucket) = env::var("REEARTH_FLOW_GCS_BUCKET_NAME") {
             builder = builder.gcs_bucket(bucket);
         }
@@ -72,7 +70,6 @@ impl Config {
             builder = builder.gcs_endpoint(Some(endpoint));
         }
 
-        // Load Auth configuration
         #[cfg(feature = "auth")]
         {
             if let Ok(url) = env::var("REEARTH_FLOW_THRIFT_AUTH_URL") {
@@ -80,7 +77,6 @@ impl Config {
             }
         }
 
-        // Load App configuration
         if let Ok(env_val) = env::var("REEARTH_FLOW_APP_ENV") {
             builder = builder.app_env(env_val);
         }
@@ -88,7 +84,6 @@ impl Config {
             builder = builder.app_origins(origins);
         }
 
-        // Load port configurations
         if let Ok(ws_port) = env::var("REEARTH_FLOW_WS_PORT") {
             builder = builder.ws_port(ws_port);
         }
@@ -98,7 +93,6 @@ impl Config {
 
         let config = builder.build();
 
-        // Update logging to include ports
         info!("Final configuration:");
         info!("Redis: {:?}", config.redis);
         info!("GCS: {:?}", config.gcs);
@@ -187,6 +181,9 @@ impl ConfigBuilder {
                     .redis_url
                     .unwrap_or_else(|| DEFAULT_REDIS_URL.to_string()),
                 ttl: self.redis_ttl.unwrap_or(DEFAULT_REDIS_TTL),
+                max_connections: Some(1024),
+                min_idle: Some(10),
+                connection_timeout: Some(5),
             },
             gcs: GcsConfig {
                 bucket_name: self
