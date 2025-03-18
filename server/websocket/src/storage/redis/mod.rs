@@ -61,10 +61,7 @@ impl RedisStore {
             .idle_timeout(Some(Duration::from_secs(500)))
             .max_lifetime(Some(Duration::from_secs(7200)));
 
-        let pool = builder
-            .build(manager)
-            .await
-            .map_err(|e| redis::RedisError::from(std::io::Error::other(e)))?;
+        let pool = builder.build(manager).await?;
 
         Ok(Arc::new(pool))
     }
