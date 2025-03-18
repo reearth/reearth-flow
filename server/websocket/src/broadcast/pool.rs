@@ -6,6 +6,7 @@ use crate::AwarenessRef;
 use anyhow::Result;
 use dashmap::DashMap;
 use dashmap::DashSet;
+use rand;
 use std::sync::Arc;
 use yrs::sync::Awareness;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
@@ -45,7 +46,53 @@ impl BroadcastPool {
         if let Some(group) = self.groups.get(doc_id) {
             let group_clone = group.clone();
             drop(group);
-            return Ok(group_clone);
+
+            if let (Some(redis_store), Some(group_name), Some(doc_name)) = (
+                group_clone.get_redis_store(),
+                group_clone.get_redis_group_name(),
+                group_clone.get_doc_name(),
+            ) {
+                let stream_key = format!("yjs:stream:{}", doc_name);
+
+                let mut valid = false;
+                if let Ok(mut conn) = redis_store.get_pool().get().await {
+                    let exists: bool = redis::cmd("EXISTS")
+                        .arg(&stream_key)
+                        .query_async(&mut *conn)
+                        .await
+                        .unwrap_or(false);
+
+                    if exists {
+                        let result: Result<Vec<String>, redis::RedisError> = redis::cmd("XINFO")
+                            .arg("GROUPS")
+                            .arg(&stream_key)
+                            .query_async(&mut *conn)
+                            .await;
+
+                        if let Ok(groups) = result {
+                            for i in (0..groups.len()).step_by(8) {
+                                if i + 1 < groups.len()
+                                    && groups[i] == "name"
+                                    && groups[i + 1] == group_name
+                                {
+                                    valid = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if valid {
+                    tracing::debug!("Retrieved existing valid broadcast group for '{}'", doc_id);
+                    return Ok(group_clone);
+                } else {
+                    tracing::warn!("Found cached broadcast group for '{}' but Redis resources are invalid, recreating", doc_id);
+                    self.groups.remove(doc_id);
+                }
+            } else {
+                return Ok(group_clone);
+            }
         }
 
         if !self.docs_in_creation.insert(doc_id.to_string()) {
@@ -212,6 +259,8 @@ impl BroadcastPool {
             let remaining = group.decrement_connections();
 
             if remaining == 0 && group_clone.connection_count() == 0 {
+                self.groups.remove(doc_id);
+
                 if let Err(e) = group_clone.shutdown().await {
                     tracing::warn!(
                         "Failed to shutdown broadcast group for document '{}': {}",
@@ -219,26 +268,36 @@ impl BroadcastPool {
                         e
                     );
                 }
-                self.groups.remove(doc_id);
 
                 if let Some(redis_store) = &self.redis_store {
                     let redis_store_clone = redis_store.clone();
                     let doc_id_clone = doc_id.to_string();
+                    let instance_id = format!("instance-{}", rand::random::<u64>());
 
                     tokio::spawn(async move {
                         tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
 
-                        if let Err(e) = redis_store_clone.delete_stream(&doc_id_clone).await {
-                            tracing::warn!(
-                                "Failed to delete Redis stream for '{}': {}",
-                                doc_id_clone,
-                                e
-                            );
-                        } else {
-                            tracing::info!(
-                                "Successfully deleted Redis stream for '{}'",
-                                doc_id_clone
-                            );
+                        match redis_store_clone
+                            .safe_delete_stream(&doc_id_clone, &instance_id)
+                            .await
+                        {
+                            Ok(deleted) => {
+                                if deleted {
+                                    tracing::info!(
+                                        "Successfully deleted Redis stream for '{}'",
+                                        doc_id_clone
+                                    );
+                                } else {
+                                    tracing::info!("Did not delete Redis stream for '{}' as it may still be in use", doc_id_clone);
+                                }
+                            }
+                            Err(e) => {
+                                tracing::warn!(
+                                    "Error during safe Redis stream deletion for '{}': {}",
+                                    doc_id_clone,
+                                    e
+                                );
+                            }
                         }
                     });
                 }
