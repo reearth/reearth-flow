@@ -137,21 +137,18 @@ func (m *MongoStorage) UpdateEdgeStatusInMongo(ctx context.Context, jobID string
 	err = m.client.FindOne(txCtx, filter, &BSONConsumer{Result: &existing})
 
 	if err == nil && existing != nil {
-
 		if createdAt, ok := existing["createdAt"]; ok && createdAt != nil {
 			doc["createdAt"] = createdAt
 		}
 
-		compositeID := fmt.Sprintf("%s:%s", jobID, edgeExec.ID)
-		err = m.client.SetOne(txCtx, compositeID, doc)
+		err = m.client.SetOne(txCtx, edgeExec.ID, doc)
 		if err != nil {
 			return fmt.Errorf("failed to update edge execution: %w", err)
 		}
 	} else {
 		doc["createdAt"] = time.Now()
 
-		compositeID := fmt.Sprintf("%s:%s", jobID, edgeExec.ID)
-		err = m.client.SaveOne(txCtx, compositeID, doc)
+		err = m.client.SaveOne(txCtx, edgeExec.ID, doc)
 		if err != nil {
 			return fmt.Errorf("failed to save edge execution: %w", err)
 		}
