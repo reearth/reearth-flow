@@ -103,6 +103,13 @@ impl ChannelManager {
                         let feature = ctx.feature.clone();
                         let event_hub = self.event_hub.clone();
                         let node_handle = self.owner.clone();
+
+                        let edge_id_clone = edge_id.clone();
+                        self.event_hub.send(Event::EdgePassThrough {
+                            feature_id,
+                            edge_id: edge_id_clone,
+                        });
+
                         self.runtime.block_on(async move {
                             let result = writer.write(&feature).await;
                             let node = node_handle.clone();
@@ -112,11 +119,12 @@ impl ChannelManager {
                                     node,
                                     format!("Failed to write feature: {e}"),
                                 );
+                            } else {
+                                event_hub.send(Event::EdgeCompleted {
+                                    feature_id,
+                                    edge_id,
+                                });
                             }
-                        });
-                        self.event_hub.send(Event::EdgePassThrough {
-                            feature_id,
-                            edge_id,
                         });
                     }
                 }
