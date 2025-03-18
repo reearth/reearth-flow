@@ -255,18 +255,28 @@ impl BroadcastPool {
 
     pub async fn remove_connection(&self, doc_id: &str) {
         if let Some(group) = self.groups.get(doc_id) {
-            let group_clone = group.clone();
             let remaining = group.decrement_connections();
+            tracing::info!("Remaining connections: {}", remaining);
+            tracing::info!("Group connection count: {}", group.connection_count());
 
-            if remaining == 0 && group_clone.connection_count() == 0 {
-                self.groups.remove(doc_id);
+            if remaining == 1 && group.connection_count() == 0 {
+                tracing::info!("Removing broadcast group for document '{}'", doc_id);
 
+                let group_clone = group.clone();
+                drop(group);
+
+                tracing::info!("Shutting down broadcast group");
                 if let Err(e) = group_clone.shutdown().await {
-                    tracing::warn!(
-                        "Failed to shutdown broadcast group for document '{}': {}",
-                        doc_id,
-                        e
-                    );
+                    tracing::warn!("Failed to shutdown: {}", e);
+                }
+
+                if let Some(task) = &group_clone.redis_subscriber_task {
+                    task.abort();
+                }
+                group_clone.awareness_updater.abort();
+
+                if let Some((_, _)) = self.groups.remove(doc_id) {
+                    tracing::info!("Group removed for document '{}'", doc_id);
                 }
 
                 if let Some(redis_store) = &self.redis_store {
