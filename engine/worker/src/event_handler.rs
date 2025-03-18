@@ -116,6 +116,25 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                     tracing::error!("Failed to publish edge pass through event: {}", e);
                 }
             }
+            reearth_flow_runtime::event::Event::EdgeCompleted {
+                edge_id,
+                feature_id,
+            } => {
+                let edge_completed_event = EdgePassThroughEvent {
+                    workflow_id: self.workflow_id,
+                    job_id: self.job_id,
+                    status: EventStatus::Completed,
+                    timestamp: chrono::Utc::now(),
+                    updated_edges: vec![UpdatedEdge {
+                        id: edge_id.to_string(),
+                        status: EventStatus::Completed,
+                        feature_id: Some(*feature_id),
+                    }],
+                };
+                if let Err(e) = self.publisher.publish(edge_completed_event).await {
+                    tracing::error!("Failed to publish edge completed event: {}", e);
+                }
+            }
             _ => {}
         }
     }
