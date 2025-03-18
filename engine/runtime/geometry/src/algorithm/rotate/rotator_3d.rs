@@ -1,8 +1,9 @@
 use nalgebra::Vector3;
 
-use crate::types::point::Point3D;
-
-use super::geo_distance_converter::{coordinate_diff_to_meter, meter_to_coordinate_diff};
+use crate::{
+    algorithm::geo_distance_converter::{coordinate_diff_to_meter, meter_to_coordinate_diff},
+    types::point::Point3D,
+};
 
 /// A query to rotate a point in 3D space.
 #[derive(Debug, Clone)]

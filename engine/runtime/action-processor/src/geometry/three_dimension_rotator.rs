@@ -1,7 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
 use reearth_flow_geometry::{
-    algorithm::{rotate_3d::Rotate3D, rotator_3d::Rotator3D},
+    algorithm::rotate::{rotate_3d::Rotate3D, rotator_3d::Rotator3D},
     types::point::Point3D,
 };
 use reearth_flow_runtime::{

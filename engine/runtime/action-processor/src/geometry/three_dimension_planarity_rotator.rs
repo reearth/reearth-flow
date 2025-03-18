@@ -2,11 +2,9 @@ use std::collections::HashMap;
 
 use reearth_flow_geometry::algorithm::centroid::Centroid;
 use reearth_flow_geometry::algorithm::normal_3d::compute_normal_3d_from_coords;
-use reearth_flow_geometry::algorithm::rotate_3d::Rotate3D;
-use reearth_flow_geometry::algorithm::rotator_3d::Rotator3D;
-use reearth_flow_geometry::types::coordinate::Coordinate2D;
+use reearth_flow_geometry::algorithm::rotate::rotate_3d::Rotate3D;
+use reearth_flow_geometry::algorithm::rotate::rotator_3d::Rotator3D;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
-use reearth_flow_geometry::types::line_string::LineString2D;
 use reearth_flow_geometry::types::multi_point::{MultiPoint2D, MultiPoint3D};
 use reearth_flow_geometry::types::multi_polygon::{MultiPolygon2D, MultiPolygon3D};
 use reearth_flow_geometry::types::no_value::NoValue;
@@ -207,25 +205,6 @@ fn rotate_polygon_to_2d(polygon: &Polygon3D<f64>) -> Option<Polygon2D<f64>> {
     let to_vector = Point3D::new(0.0, 0.0, 1.0);
 
     let rotator = Rotator3D::from_vectors_geometry(from_vector, to_vector)?;
-
-    // let exterior_2d = exterior_coords
-    //     .iter()
-    //     .map(|coord| rotator.rotate(*coord, Some(centoroid.into())))
-    //     .map(|coord| Coordinate2D::new_(coord.x, coord.y))
-    //     .collect::<Vec<_>>();
-
-    // let interiors_2d = polygon
-    //     .interiors()
-    //     .iter()
-    //     .map(|line_string| {
-    //         let coords = line_string.coords().cloned().collect::<Vec<_>>();
-    //         coords
-    //             .iter()
-    //             .map(|coord| rotator.rotate(*coord, Some(centoroid.into())))
-    //             .map(|coord| Coordinate2D::new_(coord.x, coord.y))
-    //             .collect::<Vec<_>>()
-    //     })
-    //     .collect::<Vec<_>>();
 
     let polygon = polygon.rotate_3d(rotator, Some(centoroid.into()));
 
