@@ -327,43 +327,6 @@ pub fn are_points_coplanar(
     }
 }
 
-pub(crate) fn rotate_3d_custom_axis(
-    points: Vec<nalgebra::Point3<f64>>,
-    angle_degrees: f64,
-    origin: Option<Point3D<f64>>,
-    direction: Point3D<f64>,
-) -> Vec<nalgebra::Point3<f64>> {
-    // Origin of rotation
-    let angle_degrees = angle_degrees.to_radians();
-    let origin = origin.map(|p| nalgebra::Vector3::new(p.x(), p.y(), p.z()));
-
-    // Rotational axis vector
-    let direction = nalgebra::Vector3::new(direction.x(), direction.y(), direction.z()).normalize();
-
-    // Create a rotation matrix around the rotation axis.
-    let rotation = nalgebra::Rotation3::from_axis_angle(
-        &nalgebra::Unit::new_normalize(direction),
-        angle_degrees,
-    );
-
-    points
-        .iter()
-        .map(|point| {
-            let translated_point = if let Some(origin) = origin {
-                point.coords - origin
-            } else {
-                point.coords
-            };
-            let rotated_point = if let Some(origin) = origin {
-                rotation * translated_point + origin
-            } else {
-                rotation * translated_point
-            };
-            nalgebra::Point3::from(rotated_point)
-        })
-        .collect()
-}
-
 pub fn remove_redundant_vertices<Z: CoordFloat>(
     line_string: &LineString<f64, Z>,
     tolerance: f64,

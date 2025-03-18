@@ -206,7 +206,7 @@ fn rotate_polygon_to_2d(polygon: &Polygon3D<f64>) -> Option<Polygon2D<f64>> {
 
     let rotator = Rotator3D::from_vectors_geometry(from_vector, to_vector)?;
 
-    let polygon = polygon.rotate_3d(rotator, Some(centoroid.into()));
+    let polygon = polygon.rotate_3d(rotator, Some(centoroid));
 
     Some(polygon.into())
 }
