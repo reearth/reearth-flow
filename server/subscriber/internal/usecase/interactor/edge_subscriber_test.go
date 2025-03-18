@@ -16,6 +16,10 @@ type mockEdgeStorage struct {
 	mock.Mock
 }
 
+func (m *mockEdgeStorage) FindEdgeExecution(ctx context.Context, jobID string, edgeID string) (*edge.EdgeExecution, error) {
+	panic("unimplemented")
+}
+
 func (m *mockEdgeStorage) SaveToRedis(ctx context.Context, event *edge.PassThroughEvent) error {
 	args := m.Called(ctx, event)
 	return args.Error(0)

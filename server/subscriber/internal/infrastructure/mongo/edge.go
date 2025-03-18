@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/url"
 	"path"
 	"time"
 
+	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure/mongo/mongodoc"
 	"github.com/reearth/reearth-flow/subscriber/pkg/edge"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/usecasex"
@@ -34,6 +34,24 @@ func NewMongoStorage(client *mongox.Client, gcsBucket, baseURL string) *MongoSto
 	}
 }
 
+func (m *MongoStorage) FindEdgeExecution(ctx context.Context, jobID string, edgeID string) (*edge.EdgeExecution, error) {
+	filter := bson.M{
+		"jobId":  jobID,
+		"edgeId": edgeID,
+	}
+
+	c := mongodoc.NewEdgeExecutionConsumer()
+	if err := m.client.FindOne(ctx, filter, c); err != nil {
+		return nil, err
+	}
+
+	if len(c.Result) == 0 {
+		return nil, nil
+	}
+
+	return c.Result[0], nil
+}
+
 func (m *MongoStorage) UpdateEdgeStatusInMongo(ctx context.Context, jobID string, edgeExec *edge.EdgeExecution) error {
 	if edgeExec == nil {
 		return fmt.Errorf("edge execution is nil")
@@ -47,48 +65,69 @@ func (m *MongoStorage) UpdateEdgeStatusInMongo(ctx context.Context, jobID string
 	txCtx := tx.Context()
 
 	defer func() {
-		if err := tx.End(txCtx); err != nil {
-			log.Printf("ERROR: Transaction end failed: %v", err)
-		}
+		_ = tx.End(txCtx)
 	}()
 
-	intermediateDataURL := m.ConstructIntermediateDataURL(jobID, edgeExec.EdgeID)
+	existingExec, _ := m.FindEdgeExecution(txCtx, jobID, edgeExec.EdgeID)
 
-	edgeDoc := bson.M{
-		"id":        edgeExec.ID,
-		"edgeId":    edgeExec.EdgeID,
-		"jobId":     jobID,
-		"status":    string(edgeExec.Status),
-		"createdAt": time.Now(),
-	}
+	if existingExec != nil {
+		update := bson.M{
+			"status":    string(edgeExec.Status),
+			"updatedAt": time.Now(),
+		}
 
-	if edgeExec.StartedAt != nil {
-		edgeDoc["startedAt"] = edgeExec.StartedAt
-	}
+		if edgeExec.FeatureID != nil {
+			update["featureId"] = edgeExec.FeatureID
+		}
 
-	if edgeExec.CompletedAt != nil {
-		edgeDoc["completedAt"] = edgeExec.CompletedAt
-	}
+		if edgeExec.StartedAt != nil {
+			update["startedAt"] = edgeExec.StartedAt
+		}
 
-	if edgeExec.FeatureID != nil {
-		edgeDoc["featureId"] = edgeExec.FeatureID
-	}
+		if edgeExec.CompletedAt != nil {
+			update["completedAt"] = edgeExec.CompletedAt
+		}
 
-	if intermediateDataURL != "" {
-		edgeDoc["intermediateDataUrl"] = intermediateDataURL
-	}
+		if edgeExec.IntermediateDataURL != "" {
+			update["intermediateDataUrl"] = edgeExec.IntermediateDataURL
+		}
 
-	compositeID := fmt.Sprintf("%s:%s", jobID, edgeExec.ID)
+		if err := m.client.SetOne(txCtx, existingExec.ID, update); err != nil {
+			return fmt.Errorf("failed to update edge execution: %w", err)
+		}
+	} else {
+		now := time.Now()
+		doc := bson.M{
+			"id":        edgeExec.ID,
+			"edgeId":    edgeExec.EdgeID,
+			"jobId":     jobID,
+			"status":    string(edgeExec.Status),
+			"createdAt": now,
+			"updatedAt": now,
+		}
 
-	err = m.client.SaveOne(txCtx, compositeID, edgeDoc)
-	if err != nil {
-		return fmt.Errorf("failed to save edge execution: %w", err)
+		if edgeExec.FeatureID != nil {
+			doc["featureId"] = edgeExec.FeatureID
+		}
+
+		if edgeExec.StartedAt != nil {
+			doc["startedAt"] = edgeExec.StartedAt
+		}
+
+		if edgeExec.CompletedAt != nil {
+			doc["completedAt"] = edgeExec.CompletedAt
+		}
+
+		if edgeExec.IntermediateDataURL != "" {
+			doc["intermediateDataUrl"] = edgeExec.IntermediateDataURL
+		}
+
+		if err := m.client.SaveOne(txCtx, edgeExec.ID, doc); err != nil {
+			return fmt.Errorf("failed to save edge execution: %w", err)
+		}
 	}
 
 	tx.Commit()
-
-	tx.Commit()
-	log.Printf("DEBUG: Transaction committed successfully")
 
 	return nil
 }
