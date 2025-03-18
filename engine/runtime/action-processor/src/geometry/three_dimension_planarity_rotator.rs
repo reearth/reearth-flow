@@ -30,7 +30,7 @@ impl ProcessorFactory for ThreeDimensionPlanarityRotatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Divides the input geometry into Japanese standard (1km) mesh grid."
+        "Rotates a three Dimension geometry to horizontal."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
