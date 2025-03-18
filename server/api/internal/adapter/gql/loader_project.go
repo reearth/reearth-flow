@@ -2,7 +2,6 @@ package gql
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqldataloader"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
@@ -45,14 +44,8 @@ func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.I
 		return nil, err
 	}
 
-	fmt.Printf("DEBUG: Received pagination params: page=%d, pageSize=%d, orderBy=%v, orderDir=%v\n",
-		pagination.Page, pagination.PageSize, pagination.OrderBy, pagination.OrderDir)
-
 	// Convert pagination parameters using ToPageBasedPagination
 	paginationParam := gqlmodel.ToPageBasedPagination(pagination)
-
-	fmt.Printf("DEBUG: Converted pagination params: page=%d, pageSize=%d\n",
-		paginationParam.Page.Page, paginationParam.Page.PageSize)
 
 	// Use the pagination param for the usecase call
 	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam)
@@ -73,11 +66,6 @@ func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.I
 	if pageInfo.TotalPages == nil {
 		tp := (int(pi.TotalCount) + pagination.PageSize - 1) / pagination.PageSize
 		pageInfo.TotalPages = &tp
-	}
-
-	fmt.Printf("DEBUG: Returning %d nodes\n", len(nodes))
-	for _, n := range nodes {
-		fmt.Printf("DEBUG: Node name=%s\n", n.Name)
 	}
 
 	return &gqlmodel.ProjectConnection{

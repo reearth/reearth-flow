@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
 use reearth_flow_geometry::algorithm::convex_hull::ConvexHull;
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::geometry_collection::GeometryCollection;
@@ -188,9 +189,9 @@ impl ConvexHullAccumulator {
                     let value = last_feature.attributes.get(attr).cloned()?;
                     Some((attr.clone(), value))
                 })
-                .collect::<HashMap<_, _>>();
+                .collect::<IndexMap<_, _>>();
         } else {
-            feature.attributes = HashMap::new();
+            feature.attributes = IndexMap::new();
         }
         feature.geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(convex_hull));
         feature

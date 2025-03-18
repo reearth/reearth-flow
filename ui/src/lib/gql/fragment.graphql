@@ -58,10 +58,36 @@ fragment Job on Job {
   # }
 }
 
+fragment ProjectDocument on ProjectDocument {
+  id
+  timestamp
+  updates
+  version
+}
+
+fragment ProjectSnapshot on ProjectSnapshot {
+  timestamp
+  updates
+  version
+}
+
 fragment Log on Log {
   jobId
   nodeId
   timestamp
   logLevel
   message
+}
+
+fragment ProjectDocument on ProjectDocument {
+  id
+  timestamp
+  updates
+  version
+}
+
+fragment ProjectSnapshot on ProjectSnapshot {
+  timestamp
+  updates
+  version
 }

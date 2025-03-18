@@ -21,6 +21,29 @@ use time::OffsetDateTime;
 use tracing::debug;
 use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 
+fn find_common_prefix(a: &str, b: &str) -> String {
+    let min_len = std::cmp::min(a.len(), b.len());
+    let mut common_len = 0;
+
+    for i in 0..min_len {
+        if a.chars().nth(i) == b.chars().nth(i) {
+            common_len += 1;
+        } else {
+            break;
+        }
+    }
+
+    if common_len == 0 {
+        if !a.is_empty() {
+            a.chars().take(1).collect()
+        } else {
+            String::new()
+        }
+    } else {
+        a.chars().take(common_len).collect()
+    }
+}
+
 /// Type wrapper around GCS Client struct. Used to extend GCS with [DocOps]
 /// methods used for convenience when working with Yrs documents.
 pub struct GcsStore {
@@ -144,7 +167,7 @@ impl GcsStore {
             }
         }
 
-        updates.sort_unstable_by_key(|info| info.clock);
+        updates.sort_unstable_by_key(|info| std::cmp::Reverse(info.clock));
 
         Ok(updates)
     }
@@ -164,26 +187,40 @@ impl GcsStore {
             .collect::<Vec<_>>();
         let prefix_str = hex::encode(&prefix_bytes);
 
-        // List objects with the specified prefix
-        let request = ListObjectsRequest {
-            bucket: self.bucket.clone(),
-            prefix: Some(prefix_str),
-            ..Default::default()
-        };
+        let mut all_objects = Vec::new();
+        let mut page_token = None;
 
-        let objects = self
-            .client
-            .list_objects(&request)
-            .await?
-            .items
-            .unwrap_or_default();
+        loop {
+            let request = ListObjectsRequest {
+                bucket: self.bucket.clone(),
+                prefix: Some(prefix_str.clone()),
+                page_token: page_token.clone(),
+                ..Default::default()
+            };
+
+            let response = self.client.list_objects(&request).await?;
+            let items = response.items.unwrap_or_default();
+            all_objects.extend(items);
+
+            if let Some(token) = response.next_page_token {
+                page_token = Some(token);
+            } else {
+                break;
+            }
+        }
+
+        debug!(
+            "Found {} objects for rollback for doc: {}",
+            all_objects.len(),
+            doc_id
+        );
 
         // Create a new document
         let doc = Doc::new();
         let mut txn = doc.transact_mut();
 
         // Download and apply updates up to target_clock
-        for obj in objects {
+        for obj in all_objects {
             // Extract clock from object name
             let key_bytes = hex::decode(&obj.name)
                 .map_err(|e| anyhow::anyhow!("Failed to decode hex: {}", e))?;
@@ -212,6 +249,7 @@ impl GcsStore {
                 .await
             {
                 if let Ok(update) = Update::decode_v1(&data) {
+                    debug!("Applying update with clock: {} for doc: {}", clock, doc_id);
                     let _ = txn.apply_update(update);
                 }
             }
@@ -219,6 +257,60 @@ impl GcsStore {
 
         drop(txn);
         Ok(doc)
+    }
+
+    pub async fn get_latest_update_metadata(
+        &self,
+        doc_id: &str,
+    ) -> Result<Option<(u32, OffsetDateTime)>, anyhow::Error> {
+        let oid = match get_oid(self, doc_id.as_bytes()).await? {
+            Some(oid) => oid,
+            None => return Ok(None),
+        };
+
+        let prefix_bytes = [V1, KEYSPACE_DOC]
+            .iter()
+            .chain(&oid.to_be_bytes())
+            .chain(&[SUB_UPDATE])
+            .copied()
+            .collect::<Vec<_>>();
+        let prefix_str = hex::encode(&prefix_bytes);
+
+        let request = ListObjectsRequest {
+            bucket: self.bucket.clone(),
+            prefix: Some(prefix_str),
+            ..Default::default()
+        };
+
+        let objects = self
+            .client
+            .list_objects(&request)
+            .await?
+            .items
+            .unwrap_or_default();
+
+        if objects.is_empty() {
+            return Ok(None);
+        }
+
+        let mut latest_clock = 0u32;
+        let mut latest_timestamp = OffsetDateTime::now_utc();
+
+        for obj in objects {
+            if let Ok(key_bytes) = hex::decode(&obj.name) {
+                if key_bytes.len() >= 12 {
+                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+                    let clock = u32::from_be_bytes(clock_bytes);
+
+                    if clock > latest_clock {
+                        latest_clock = clock;
+                        latest_timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
+                    }
+                }
+            }
+        }
+
+        Ok(Some((latest_clock, latest_timestamp)))
     }
 }
 
@@ -291,38 +383,56 @@ impl KVStore for GcsStore {
     }
 
     async fn remove_range(&self, from: &[u8], to: &[u8]) -> Result<(), Self::Error> {
-        let request = ListObjectsRequest {
-            bucket: self.bucket.clone(),
-            ..Default::default()
-        };
-
-        let objects = self
-            .client
-            .list_objects(&request)
-            .await?
-            .items
-            .unwrap_or_default();
-
         let from_hex = hex::encode(from);
         let to_hex = hex::encode(to);
 
-        let delete_futures = objects
-            .into_iter()
-            .filter(|obj| {
+        let common_prefix = find_common_prefix(&from_hex, &to_hex);
+        debug!(
+            "Remove range from: {:?} to: {:?} with prefix: {}",
+            from_hex, to_hex, common_prefix
+        );
+
+        let mut all_objects = Vec::new();
+        let mut page_token = None;
+
+        loop {
+            let request = ListObjectsRequest {
+                bucket: self.bucket.clone(),
+                prefix: Some(common_prefix.clone()),
+                page_token: page_token.clone(),
+                ..Default::default()
+            };
+
+            let response = self.client.list_objects(&request).await?;
+            let items = response.items.unwrap_or_default();
+
+            let filtered_items = items.into_iter().filter(|obj| {
                 obj.name.as_str() >= from_hex.as_str() && obj.name.as_str() <= to_hex.as_str()
-            })
-            .map(|obj| {
-                let bucket = self.bucket.clone();
-                async move {
-                    let delete_request = DeleteObjectRequest {
-                        bucket,
-                        object: obj.name.clone(),
-                        ..Default::default()
-                    };
-                    debug!("Deleting object: {}", obj.name);
-                    self.client.delete_object(&delete_request).await
-                }
             });
+
+            all_objects.extend(filtered_items);
+
+            if let Some(token) = response.next_page_token {
+                page_token = Some(token);
+            } else {
+                break;
+            }
+        }
+
+        debug!("Removing {} objects in range", all_objects.len());
+
+        let delete_futures = all_objects.into_iter().map(|obj| {
+            let bucket = self.bucket.clone();
+            async move {
+                let delete_request = DeleteObjectRequest {
+                    bucket,
+                    object: obj.name.clone(),
+                    ..Default::default()
+                };
+                debug!("Deleting object: {}", obj.name);
+                self.client.delete_object(&delete_request).await
+            }
+        });
 
         let _results = join_all(delete_futures).await;
 
@@ -330,28 +440,46 @@ impl KVStore for GcsStore {
     }
 
     async fn iter_range(&self, from: &[u8], to: &[u8]) -> Result<Self::Cursor, Self::Error> {
-        let request = ListObjectsRequest {
-            bucket: self.bucket.clone(),
-            ..Default::default()
-        };
-
-        let response = self.client.list_objects(&request).await?;
         let from_hex = hex::encode(from);
         let to_hex = hex::encode(to);
 
-        let mut objects: Vec<_> = response
-            .items
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|obj| {
+        let common_prefix = find_common_prefix(&from_hex, &to_hex);
+        debug!(
+            "Range query from: {:?} to: {:?} with prefix: {}",
+            from_hex, to_hex, common_prefix
+        );
+
+        let mut all_objects = Vec::new();
+        let mut page_token = None;
+
+        loop {
+            let request = ListObjectsRequest {
+                bucket: self.bucket.clone(),
+                prefix: Some(common_prefix.clone()),
+                page_token: page_token.clone(),
+                ..Default::default()
+            };
+
+            let response = self.client.list_objects(&request).await?;
+            let items = response.items.unwrap_or_default();
+
+            let filtered_items = items.into_iter().filter(|obj| {
                 debug!("Checking object: {:?}", obj.name.as_str());
                 obj.name.as_str() >= from_hex.as_str() && obj.name.as_str() <= to_hex.as_str()
-            })
-            .collect();
+            });
 
-        objects.sort_by(|a, b| a.name.cmp(&b.name));
+            all_objects.extend(filtered_items);
 
-        let results = join_all(objects.iter().map(|obj| {
+            if let Some(token) = response.next_page_token {
+                page_token = Some(token);
+            } else {
+                break;
+            }
+        }
+
+        all_objects.sort_by(|a, b| a.name.cmp(&b.name));
+
+        let results = join_all(all_objects.iter().map(|obj| {
             let bucket = self.bucket.clone();
             let object = obj.name.clone();
             async move {
@@ -368,14 +496,16 @@ impl KVStore for GcsStore {
         .await;
 
         debug!(
-            "Got range from GCS storage - from: {:?}, to: {:?}, data: {:?}",
-            from, to, results
+            "Got range from GCS storage - from: {:?}, to: {:?}, count: {}",
+            from,
+            to,
+            all_objects.len()
         );
 
         let values = results.into_iter().map(|r| r.ok()).collect();
 
         Ok(GcsRange {
-            objects,
+            objects: all_objects,
             values,
             current: 0,
         })
@@ -383,26 +513,47 @@ impl KVStore for GcsStore {
 
     async fn peek_back(&self, key: &[u8]) -> Result<Option<Self::Entry>, Self::Error> {
         let key_hex = hex::encode(key);
-        let request = ListObjectsRequest {
-            bucket: self.bucket.clone(),
-            ..Default::default()
+        debug!(
+            "Peeking back in GCS storage - key: {:?}, hex: {}",
+            key, key_hex
+        );
+
+        let prefix = if key_hex.len() > 2 {
+            key_hex.chars().take(2).collect::<String>()
+        } else {
+            key_hex.clone()
         };
 
-        debug!("Peeking back in GCS storage - key: {:?}", key);
+        let mut all_objects = Vec::new();
+        let mut page_token = None;
 
-        let mut objects: Vec<_> = self
-            .client
-            .list_objects(&request)
-            .await?
-            .items
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|obj| obj.name.as_str() < key_hex.as_str())
-            .collect();
+        loop {
+            let request = ListObjectsRequest {
+                bucket: self.bucket.clone(),
+                prefix: Some(prefix.clone()),
+                page_token: page_token.clone(),
+                ..Default::default()
+            };
 
-        objects.sort_by(|a, b| a.name.cmp(&b.name));
+            let response = self.client.list_objects(&request).await?;
+            let items = response.items.unwrap_or_default();
 
-        if let Some(obj) = objects.pop() {
+            let filtered_items = items
+                .into_iter()
+                .filter(|obj| obj.name.as_str() < key_hex.as_str());
+
+            all_objects.extend(filtered_items);
+
+            if let Some(token) = response.next_page_token {
+                page_token = Some(token);
+            } else {
+                break;
+            }
+        }
+
+        all_objects.sort_by(|a, b| a.name.cmp(&b.name));
+
+        if let Some(obj) = all_objects.pop() {
             let get_request = GetObjectRequest {
                 bucket: self.bucket.clone(),
                 object: obj.name.clone(),
@@ -414,11 +565,14 @@ impl KVStore for GcsStore {
                 .download_object(&get_request, &Range::default())
                 .await?;
 
+            debug!("Found peek_back object: {}", obj.name);
+
             Ok(Some(GcsEntry {
                 key: hex::decode(&obj.name).unwrap_or_default(),
                 value,
             }))
         } else {
+            debug!("No objects found for peek_back with key: {:?}", key);
             Ok(None)
         }
     }

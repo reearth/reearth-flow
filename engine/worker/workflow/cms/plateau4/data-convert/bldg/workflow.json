@@ -339,6 +339,20 @@
           "action": "PLATEAU4.AttributeFlattener"
         },
         {
+          "id": "dc85a21b-4356-4a29-a862-270029071234",
+          "name": "BoundsExtractor",
+          "type": "action",
+          "action": "BoundsExtractor",
+          "with": {
+            "xmin": "_xmin",
+            "ymin": "_ymin",
+            "xmax": "_xmax",
+            "ymax": "_ymax",
+            "zmin": "_zmin",
+            "zmax": "_zmax"
+          }
+        },
+        {
           "id": "8b05f9d4-1cb2-4071-a1da-c968431bc0ec",
           "name": "VerticalReprojector",
           "type": "action",
@@ -358,6 +372,21 @@
                 "attribute": "meshcode",
                 "method": "create",
                 "value": "file::extract_filename_without_ext(env.get(\"__value\")[\"path\"]).split(\"_\")[0]\n"
+              },
+              {
+                "attribute": "_lod",
+                "method": "create",
+                "value": "env.get(\"__lod\")\n"
+              },
+              {
+                "attribute": "_x",
+                "method": "create",
+                "value": "(env.get(\"__value\")[\"_xmin\"] + env.get(\"__value\")[\"_xmax\"]) * 0.5\n"
+              },
+              {
+                "attribute": "_y",
+                "method": "create",
+                "value": "(env.get(\"__value\")[\"_ymin\"] + env.get(\"__value\")[\"_ymax\"]) * 0.5\n"
               },
               {
                 "attribute": "type",
@@ -616,8 +645,15 @@
           "toPort": "default"
         },
         {
-          "id": "bfeb12b1-c8d5-4d13-928d-bf2b01672af9",
+          "id": "eeb85110-2cb8-4196-bb94-6d44c0395fb6",
           "from": "5daabfc0-2bda-4f8d-b206-d7a388469f7a",
+          "to": "dc85a21b-4356-4a29-a862-270029071234",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "bfeb12b1-c8d5-4d13-928d-bf2b01672af9",
+          "from": "dc85a21b-4356-4a29-a862-270029071234",
           "to": "8b05f9d4-1cb2-4071-a1da-c968431bc0ec",
           "fromPort": "default",
           "toPort": "default"

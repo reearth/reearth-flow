@@ -9,23 +9,23 @@ import (
 	domainLog "github.com/reearth/reearth-flow/subscriber/pkg/log"
 )
 
-type Subscriber struct {
+type LogSubscriber struct {
 	sub     Subscription
 	useCase interactor.LogSubscriberUseCase
 }
 
-func NewSubscriber(subscription Subscription, useCase interactor.LogSubscriberUseCase) *Subscriber {
-	return &Subscriber{
+func NewLogSubscriber(subscription Subscription, useCase interactor.LogSubscriberUseCase) *LogSubscriber {
+	return &LogSubscriber{
 		sub:     subscription,
 		useCase: useCase,
 	}
 }
 
-func (s *Subscriber) StartListening(ctx context.Context) error {
+func (s *LogSubscriber) StartListening(ctx context.Context) error {
 	return s.sub.Receive(ctx, func(ctx context.Context, m Message) {
 		defer func() {
 			if r := recover(); r != nil {
-				log.Printf("[Subscriber] panic recovered: %v", r)
+				log.Printf("[LogSubscriber] panic recovered: %v", r)
 			}
 		}()
 

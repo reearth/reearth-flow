@@ -63,6 +63,10 @@ impl AttributeValue {
         Self::Number(Number::from(0))
     }
 
+    pub fn default_float() -> Self {
+        Self::Number(Number::from_f64(0.0f64).unwrap())
+    }
+
     pub fn default_string() -> Self {
         Self::String("".to_owned())
     }

@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
 use reearth_flow_types::{Attribute, AttributeValue};
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct Flattener {
-    pub(super) risk_to_attribute_definitions: HashMap<String, HashMap<String, AttributeValue>>,
+    pub(super) risk_to_attribute_definitions: HashMap<String, IndexMap<String, AttributeValue>>,
 }
 
 impl Flattener {

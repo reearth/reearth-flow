@@ -16,6 +16,7 @@ type Container struct {
 	AuthRequest   authserver.RequestRepo
 	Config        Config
 	Deployment    Deployment
+	EdgeExecution EdgeExecution
 	Job           Job
 	Lock          Lock
 	Parameter     Parameter
@@ -49,6 +50,7 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 		AuthRequest:   c.AuthRequest,
 		Config:        c.Config,
 		Deployment:    c.Deployment.Filtered(workspace),
+		EdgeExecution: c.EdgeExecution,
 		Job:           c.Job.Filtered(workspace),
 		Lock:          c.Lock,
 		Workflow:      c.Workflow.Filtered(workspace),

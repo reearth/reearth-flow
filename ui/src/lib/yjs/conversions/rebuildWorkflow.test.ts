@@ -10,7 +10,7 @@ import { yWorkflowConstructor } from "./yWorkflowConstructor";
 describe("rebuildWorkflow", () => {
   test("should rebuild a workflow from a YWorkflow", () => {
     const yDoc = new Y.Doc();
-    const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+    const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
     const id = "workflow-1";
     const name = "My Workflow";
 
@@ -62,7 +62,7 @@ describe("rebuildWorkflow", () => {
 
     const yWorkflow = yWorkflowConstructor(id, name, nodes, edges);
 
-    yWorkflows.push([yWorkflow]);
+    yWorkflows.set(id, yWorkflow);
 
     const workflow = rebuildWorkflow(yWorkflow);
 
