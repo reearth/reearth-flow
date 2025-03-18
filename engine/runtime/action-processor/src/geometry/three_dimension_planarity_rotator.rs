@@ -4,12 +4,10 @@ use reearth_flow_geometry::algorithm::centroid::Centroid;
 use reearth_flow_geometry::algorithm::normal_3d::compute_normal_3d_from_coords;
 use reearth_flow_geometry::algorithm::rotate::query::RotateQuery3D;
 use reearth_flow_geometry::algorithm::rotate::rotate_3d::Rotate3D;
-use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
-use reearth_flow_geometry::types::multi_point::{MultiPoint2D, MultiPoint3D};
-use reearth_flow_geometry::types::multi_polygon::{MultiPolygon2D, MultiPolygon3D};
-use reearth_flow_geometry::types::no_value::NoValue;
-use reearth_flow_geometry::types::point::{Point2D, Point3D};
-use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
+use reearth_flow_geometry::types::geometry::Geometry3D;
+use reearth_flow_geometry::types::line_string::LineString3D;
+use reearth_flow_geometry::types::point::Point3D;
+use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -18,7 +16,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Feature, GeometryValue};
+use reearth_flow_types::GeometryValue;
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
@@ -30,7 +28,7 @@ impl ProcessorFactory for ThreeDimensionPlanarityRotatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Rotates a three Dimension geometry to horizontal."
+        "Rotates a single or a set of 2D geometries in 3D space to align them horizontally."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -80,12 +78,20 @@ impl Processor for ThreeDimensionPlanarityRotator {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             }
             GeometryValue::FlowGeometry3D(geometry) => {
-                if let Some(rotated_feature) = self.rotate_to_horizontal(feature, geometry) {
-                    println!("Rotated geometry to horizontal.");
-                    fw.send(ctx.new_with_feature_and_port(rotated_feature, DEFAULT_PORT.clone()));
-                } else {
-                    println!("Failed to rotate geometry to horizontal.");
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                for rotated_geometry in rotate_geometry(geometry) {
+                    match rotated_geometry {
+                        RotatedGeometry::Success(rotated_geometry) => {
+                            let mut feature = feature.clone();
+                            feature.geometry.value =
+                                GeometryValue::FlowGeometry3D(rotated_geometry);
+                            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                        }
+                        RotatedGeometry::Failure(geometry) => {
+                            let mut feature = feature.clone();
+                            feature.geometry.value = GeometryValue::FlowGeometry3D(geometry);
+                            fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
+                        }
+                    }
                 }
             }
             _ => {
@@ -104,109 +110,99 @@ impl Processor for ThreeDimensionPlanarityRotator {
     }
 }
 
-impl ThreeDimensionPlanarityRotator {
-    fn rotate_to_horizontal(
-        &self,
-        feature: &Feature,
-        geometry: &Geometry3D<f64>,
-    ) -> Option<Feature> {
-        match geometry {
-            Geometry3D::Point(point) => self.process_point(feature, point),
-            Geometry3D::MultiPoint(multi_point) => self.process_multi_point(feature, multi_point),
-            // Geometry3D::LineString(line_string) => self.process_line_string(feature, line_string),
-            // Geometry3D::MultiLineString(multi_line_string) => {
-            //     self.process_multi_line_string(feature, multi_line_string)
-            // }
-            Geometry3D::Polygon(polygon) => self.process_polygon(feature, polygon),
-            Geometry3D::MultiPolygon(multi_polygon) => {
-                self.process_multi_polygon(feature, multi_polygon)
-            }
-            _ => None,
+enum RotatedGeometry {
+    Success(Geometry3D<f64>),
+    Failure(Geometry3D<f64>),
+}
+
+impl RotatedGeometry {
+    fn from_original(geometry: Geometry3D<f64>) -> Self {
+        match rotate_single_geometry(&geometry) {
+            Some(rotated_geometry) => RotatedGeometry::Success(rotated_geometry),
+            None => RotatedGeometry::Failure(geometry),
         }
-    }
-
-    fn process_point(&self, feature: &Feature, point: &Point3D<f64>) -> Option<Feature> {
-        let point_2d = Point2D::new(point.x(), point.y(), NoValue);
-        let mut new_feature = feature.clone();
-        new_feature.geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Point(point_2d));
-        Some(new_feature)
-    }
-
-    fn process_multi_point(
-        &self,
-        feature: &Feature,
-        multi_point: &MultiPoint3D<f64>,
-    ) -> Option<Feature> {
-        let points_2d = multi_point
-            .0
-            .iter()
-            .map(|point| Point2D::new(point.x(), point.y(), NoValue))
-            .collect();
-
-        let multi_point_2d = MultiPoint2D::new(points_2d);
-        let mut new_feature = feature.clone();
-        new_feature.geometry.value =
-            GeometryValue::FlowGeometry2D(Geometry2D::MultiPoint(multi_point_2d));
-        Some(new_feature)
-    }
-
-    fn process_polygon(&self, feature: &Feature, polygon: &Polygon3D<f64>) -> Option<Feature> {
-        let polygon_2d = rotate_polygon_to_2d(polygon)?;
-        let mut new_feature = feature.clone();
-        new_feature.geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon_2d));
-        Some(new_feature)
-    }
-
-    fn process_multi_polygon(
-        &self,
-        feature: &Feature,
-        multi_polygon: &MultiPolygon3D<f64>,
-    ) -> Option<Feature> {
-        if multi_polygon.0.is_empty() {
-            return None;
-        }
-
-        let polygons_2d = multi_polygon
-            .0
-            .iter()
-            .filter_map(rotate_polygon_to_2d)
-            .collect::<Vec<_>>();
-
-        if polygons_2d.is_empty() {
-            return None;
-        }
-
-        let multi_polygon_2d = MultiPolygon2D::new(polygons_2d);
-        let mut new_feature = feature.clone();
-        new_feature.geometry.value =
-            GeometryValue::FlowGeometry2D(Geometry2D::MultiPolygon(multi_polygon_2d));
-        Some(new_feature)
     }
 }
 
-fn rotate_polygon_to_2d(polygon: &Polygon3D<f64>) -> Option<Polygon2D<f64>> {
-    let exterior_coords = polygon.exterior().coords().cloned().collect::<Vec<_>>();
-    if exterior_coords.is_empty() {
-        return None;
+fn rotate_geometry(geometry: &Geometry3D<f64>) -> Vec<RotatedGeometry> {
+    match geometry {
+        Geometry3D::Point(_) => vec![RotatedGeometry::from_original(geometry.clone())],
+        Geometry3D::Line(_) => vec![RotatedGeometry::from_original(geometry.clone())],
+        Geometry3D::LineString(_) => vec![RotatedGeometry::from_original(geometry.clone())],
+        Geometry3D::Polygon(_) => vec![RotatedGeometry::from_original(geometry.clone())],
+        Geometry3D::Rect(_) => vec![RotatedGeometry::from_original(geometry.clone())],
+        Geometry3D::Triangle(_) => vec![RotatedGeometry::from_original(geometry.clone())],
+        Geometry3D::Solid(solid) => solid
+            .all_faces()
+            .iter()
+            .map(|f| {
+                let coords = LineString3D::from(f.0.clone());
+                let geometry = Geometry3D::Polygon(Polygon3D::new(coords, vec![]));
+                RotatedGeometry::from_original(geometry)
+            })
+            .collect(),
+        Geometry3D::MultiPoint(multi_point) => multi_point
+            .iter()
+            .map(|point| RotatedGeometry::from_original(Geometry3D::Point(*point)))
+            .collect(),
+        Geometry3D::MultiPolygon(multi_polygon) => multi_polygon
+            .iter()
+            .map(|polygon| RotatedGeometry::from_original(Geometry3D::Polygon(polygon.clone())))
+            .collect(),
+        Geometry3D::MultiLineString(multi_line_string) => multi_line_string
+            .iter()
+            .map(|line_string| {
+                RotatedGeometry::from_original(Geometry3D::LineString(line_string.clone()))
+            })
+            .collect(),
+        Geometry3D::GeometryCollection(geometry_collection) => geometry_collection
+            .iter()
+            .flat_map(rotate_geometry)
+            .collect(),
     }
-    if exterior_coords.len() < 3 {
+}
+
+fn rotate_single_geometry(geometry: &Geometry3D<f64>) -> Option<Geometry3D<f64>> {
+    let centoroid = geometry.centroid()?;
+    let surface_coords = match geometry {
+        Geometry3D::Point(point) => vec![point.0],
+        Geometry3D::Line(line) => vec![line.start, line.end],
+        Geometry3D::LineString(line_string) => line_string.coords().cloned().collect(),
+        Geometry3D::Polygon(polygon) => polygon.exterior().coords().cloned().collect(),
+        Geometry3D::Rect(rect) => rect.to_polygon().exterior().coords().cloned().collect(),
+        Geometry3D::Triangle(triangle) => triangle
+            .to_polygon()
+            .exterior()
+            .into_iter()
+            .cloned()
+            .collect(),
+        // other geometries has multiple surfaces
+        Geometry3D::Solid(_) => return None,
+        Geometry3D::MultiPoint(_) => return None,
+        Geometry3D::MultiPolygon(_) => return None,
+        Geometry3D::MultiLineString(_) => return None,
+        Geometry3D::GeometryCollection(_) => return None,
+    };
+
+    let surface_points = surface_coords
+        .into_iter()
+        .map(Into::into)
+        .collect::<Vec<Point3D<f64>>>();
+
+    if surface_points.len() < 2 {
         return None;
     }
 
-    let centoroid = polygon.centroid()?;
+    let from_vector = if surface_points.len() == 2 {
+        let vector = surface_points[0] - surface_points[1];
+        Point3D::new(vector.y(), -vector.x(), vector.z())
+    } else {
+        compute_normal_3d_from_coords(surface_points, centoroid, true, 1e-2)?
+    };
 
-    let from_vector = compute_normal_3d_from_coords(
-        exterior_coords[0],
-        exterior_coords[1],
-        exterior_coords[2],
-        centoroid.into(),
-        true,
-    )?;
     let to_vector = Point3D::new(0.0, 0.0, 1.0);
 
     let rotate_query = RotateQuery3D::from_vectors_geometry(from_vector, to_vector)?;
 
-    let polygon = polygon.rotate_3d(rotate_query, Some(centoroid));
-
-    Some(polygon.into())
+    Some(geometry.rotate_3d(rotate_query, Some(centoroid)))
 }

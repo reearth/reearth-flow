@@ -1,9 +1,10 @@
 use nalgebra::Vector3;
 
-use crate::types::{coordinate::Coordinate3D, point::Point3D};
+use crate::types::point::Point3D;
 
 use super::geo_distance_converter::coordinate_diff_to_meter;
 
+/// Compute the normal vector of a plane defined by three points in 3D space.
 pub fn compute_normal_3d(
     a: Point3D<f64>,
     b: Point3D<f64>,
@@ -34,31 +35,119 @@ pub fn compute_normal_3d(
     Some(result)
 }
 
+/// Check if a set of points are on the same plane defined by a normal vector.
+fn are_points_on_same_normal_plane(
+    normal: Point3D<f64>,
+    points: &[Point3D<f64>],
+    epsilon: f64,
+) -> bool {
+    if points.len() <= 1 {
+        return true;
+    }
+
+    let normal_vec = Vector3::new(normal.x(), normal.y(), normal.z());
+
+    let first_point = Vector3::new(points[0].x(), points[0].y(), points[0].z());
+    let reference_dot = normal_vec.dot(&first_point);
+
+    for point in &points[1..] {
+        let point_vec = Vector3::new(point.x(), point.y(), point.z());
+        let dot_product = normal_vec.dot(&point_vec);
+
+        if (dot_product - reference_dot).abs() > epsilon {
+            return false;
+        }
+    }
+
+    true
+}
+
+/// Compute the normal vector of a plane defined by three points in 3D space.
 pub fn compute_normal_3d_from_coords(
-    a: Coordinate3D<f64>,
-    b: Coordinate3D<f64>,
-    c: Coordinate3D<f64>,
-    origin: Coordinate3D<f64>,
+    points: Vec<Point3D<f64>>,
+    origin: Point3D<f64>,
     normalize: bool,
+    epsilon: f64,
 ) -> Option<Point3D<f64>> {
-    let (a_x, a_y) =
-        coordinate_diff_to_meter(a.x - origin.x, a.y - origin.y, (a.y + origin.y) / 2.0);
-    let (b_x, b_y) =
-        coordinate_diff_to_meter(b.x - origin.x, b.y - origin.y, (b.y + origin.y) / 2.0);
-    let (c_x, c_y) =
-        coordinate_diff_to_meter(c.x - origin.x, c.y - origin.y, (c.y + origin.y) / 2.0);
+    if points.len() < 3 {
+        return None;
+    }
 
-    let a = Point3D::new(a_x, a_y, a.z);
-    let b = Point3D::new(b_x, b_y, b.z);
-    let c = Point3D::new(c_x, c_y, c.z);
+    let points_geometry = points
+        .iter()
+        .map(|p| {
+            let (x, y) = coordinate_diff_to_meter(
+                p.x() - origin.x(),
+                p.y() - origin.y(),
+                (p.y() + origin.y()) / 2.0,
+            );
 
-    compute_normal_3d(a, b, c, normalize)
+            Point3D::new(x, y, p.z())
+        })
+        .collect::<Vec<Point3D<f64>>>();
+
+    let a = points_geometry[0];
+    let b = points_geometry[1];
+    let c = points_geometry[2];
+
+    let normal = compute_normal_3d(a, b, c, normalize)?;
+
+    if are_points_on_same_normal_plane(normal, &points_geometry, epsilon) {
+        Some(normal)
+    } else {
+        None
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use approx::assert_relative_eq;
+
+    #[test]
+    fn test_are_points_on_same_normal_plane_xy_plane() {
+        let normal = Point3D::new(0.0, 0.0, 1.0);
+        let points = vec![
+            Point3D::new(0.0, 0.0, 5.0),
+            Point3D::new(1.0, 0.0, 5.0),
+            Point3D::new(0.0, 1.0, 5.0),
+            Point3D::new(1.0, 1.0, 5.0),
+        ];
+        assert!(are_points_on_same_normal_plane(normal, &points, 1e-10));
+
+        let normal = Point3D::new(0.0, 0.0, -1.0);
+        assert!(are_points_on_same_normal_plane(normal, &points, 1e-10));
+
+        let normal = Point3D::new(0.0, 1.0, 0.0);
+        assert!(!are_points_on_same_normal_plane(normal, &points, 1e-10));
+    }
+
+    #[test]
+    fn test_are_points_on_same_normal_plane_different_planes() {
+        let normal = Point3D::new(0.0, 0.0, 1.0);
+        let points = vec![
+            Point3D::new(0.0, 0.0, 5.0),
+            Point3D::new(1.0, 0.0, 5.0),
+            Point3D::new(0.0, 1.0, 6.0),
+            Point3D::new(1.0, 1.0, 5.0),
+        ];
+
+        assert!(!are_points_on_same_normal_plane(normal, &points, 1e-10));
+    }
+
+    #[test]
+    fn test_are_points_on_same_normal_plane_arbitrary_normal() {
+        let normal = Point3D::new(1.0, 1.0, 1.0);
+
+        let points = vec![
+            Point3D::new(0.0, 0.0, 0.0),
+            Point3D::new(1.0, -1.0, 0.0),
+            Point3D::new(1.0, 0.0, -1.0),
+            Point3D::new(0.0, 1.0, -1.0),
+        ];
+
+        assert!(are_points_on_same_normal_plane(normal, &points, 1e-10));
+    }
 
     #[test]
     fn test_compute_normal_3d_basic() {
