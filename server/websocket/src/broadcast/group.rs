@@ -2,7 +2,7 @@ use crate::storage::gcs::GcsStore;
 use crate::storage::kv::DocOps;
 use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
-use anyhow::anyhow;
+
 use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
 use rand;
@@ -33,7 +33,7 @@ pub struct BroadcastGroup {
     connections: Arc<AtomicUsize>,
     awareness_ref: AwarenessRef,
     sender: Sender<Vec<u8>>,
-    awareness_updater: JoinHandle<()>,
+    pub awareness_updater: JoinHandle<()>,
     doc_sub: Option<yrs::Subscription>,
     awareness_sub: Option<yrs::Subscription>,
     storage: Option<Arc<GcsStore>>,
@@ -41,7 +41,7 @@ pub struct BroadcastGroup {
     doc_name: Option<String>,
     redis_ttl: Option<usize>,
     storage_rx: Option<tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>>,
-    redis_subscriber_task: Option<JoinHandle<()>>,
+    pub redis_subscriber_task: Option<JoinHandle<()>>,
     redis_consumer_name: Option<String>,
     redis_group_name: Option<String>,
     shutdown_complete: AtomicBool,
@@ -63,7 +63,14 @@ unsafe impl Sync for BroadcastGroup {}
 
 impl BroadcastGroup {
     pub async fn increment_connections(&self) -> Result<()> {
-        let _ = self.connections.fetch_add(1, Ordering::Relaxed);
+        let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
+        let new_count = prev_count + 1;
+
+        tracing::info!(
+            "Connection count increased: {} -> {}",
+            prev_count,
+            new_count
+        );
 
         if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
             if let Err(e) = redis_store.increment_doc_connections(doc_name).await {
@@ -76,6 +83,13 @@ impl BroadcastGroup {
 
     pub fn decrement_connections(&self) -> usize {
         let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
+        let new_count = prev_count - 1;
+
+        tracing::debug!(
+            "Connection count decreased: {} -> {}",
+            prev_count,
+            new_count
+        );
 
         if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
             let doc_name_clone = doc_name.clone();
@@ -129,7 +143,7 @@ impl BroadcastGroup {
             });
         }
 
-        prev_count
+        new_count
     }
 
     pub fn connection_count(&self) -> usize {
@@ -145,18 +159,16 @@ impl BroadcastGroup {
         let (_storage_tx, storage_rx) = tokio::sync::mpsc::unbounded_channel();
 
         let doc_sub = {
-            lock.doc_mut()
-                .observe_update_v1(move |_txn, u| {
-                    let mut encoder = EncoderV1::new();
-                    encoder.write_var(MSG_SYNC);
-                    encoder.write_var(MSG_SYNC_UPDATE);
-                    encoder.write_buf(&u.update);
-                    let msg = encoder.to_vec();
-                    if let Err(_e) = sink.send(msg) {
-                        tracing::debug!("broadcast channel closed");
-                    }
-                })
-                .map_err(|e| anyhow!("Failed to observe document updates: {}", e))?
+            lock.doc_mut().observe_update_v1(move |_txn, u| {
+                let mut encoder = EncoderV1::new();
+                encoder.write_var(MSG_SYNC);
+                encoder.write_var(MSG_SYNC_UPDATE);
+                encoder.write_buf(&u.update);
+                let msg = encoder.to_vec();
+                if let Err(_e) = sink.send(msg) {
+                    tracing::debug!("broadcast channel closed");
+                }
+            })?
         };
 
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
@@ -264,6 +276,8 @@ impl BroadcastGroup {
 
                 let mut consecutive_errors = 0;
                 let max_consecutive_errors = 5;
+                let mut total_errors = 0;
+                let max_total_errors = 10;
 
                 loop {
                     match redis_store_for_sub
@@ -296,17 +310,16 @@ impl BroadcastGroup {
                             }
                         }
                         Err(e) => {
-                            if e.to_string().contains("NOGROUP") {
-                                tracing::warn!("Redis stream or group no longer exists, stopping subscriber: {}", e);
-                                return;
-                            }
-
                             tracing::error!("Error reading from Redis Stream: {}", e);
 
                             consecutive_errors += 1;
-                            if consecutive_errors >= max_consecutive_errors {
+                            total_errors += 1;
+                            if consecutive_errors >= max_consecutive_errors
+                                || total_errors >= max_total_errors
+                            {
                                 tracing::warn!(
-                                    "Too many consecutive Redis errors, stopping subscriber"
+                                    "Too many Redis errors ({} total, {} consecutive), stopping subscriber",
+                                    total_errors, consecutive_errors
                                 );
                                 return;
                             }
@@ -391,6 +404,18 @@ impl BroadcastGroup {
         <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
+        let doc_id = self
+            .doc_name
+            .clone()
+            .unwrap_or_else(|| "unknown".to_string());
+        let current_count = self.connection_count();
+
+        tracing::info!(
+            "Creating new subscription for doc '{}', current count: {}",
+            doc_id,
+            current_count
+        );
+
         if let Some(token) = user_token {
             let awareness = self.awareness().clone();
             let client_id = rand::random::<u64>();
@@ -417,10 +442,21 @@ impl BroadcastGroup {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         let self_clone = self.clone();
+        let doc_id_clone = self
+            .doc_name
+            .clone()
+            .unwrap_or_else(|| "unknown".to_string());
 
         tokio::spawn(async move {
             if let Err(e) = self_clone.increment_connections().await {
                 tracing::error!("Failed to increment connections: {}", e);
+            } else {
+                let new_count = self_clone.connection_count();
+                tracing::info!(
+                    "New connection count for doc '{}': {}",
+                    doc_id_clone,
+                    new_count
+                );
             }
             let _ = tx.send(());
         });
@@ -600,7 +636,7 @@ impl BroadcastGroup {
             {
                 Ok(pending) => {
                     if !pending.is_empty() {
-                        tracing::info!(
+                        tracing::debug!(
                             "Acknowledging {} pending messages for '{}'",
                             pending.len(),
                             doc_name
