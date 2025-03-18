@@ -233,7 +233,7 @@ impl RedisStore {
     ) -> Result<Vec<(String, Vec<u8>)>, anyhow::Error> {
         let stream_key = format!("yjs:stream:{}", doc_id);
         if let Ok(mut conn) = self.pool.get().await {
-            let effective_count = count.max(50);
+            let effective_count = count.max(30);
 
             let result: RedisStreamResults = redis::cmd("XREADGROUP")
                 .arg("GROUP")
@@ -570,64 +570,72 @@ impl RedisStore {
         count: usize,
     ) -> Result<Vec<Vec<u8>>, anyhow::Error> {
         let stream_key = format!("yjs:stream:{}", doc_id);
-        if let Ok(mut conn) = self.pool.get().await {
-            let script = redis::Script::new(
-                r#"
-                local stream_key = KEYS[1]
-                local group_name = ARGV[1]
-                local consumer_name = ARGV[2]
-                local count = tonumber(ARGV[3])
+
+        let conn_result =
+            tokio::time::timeout(std::time::Duration::from_millis(200), self.pool.get()).await;
+
+        let mut conn = match conn_result {
+            Ok(Ok(conn)) => conn,
+            Ok(Err(e)) => return Err(anyhow::anyhow!("Failed to get Redis connection: {}", e)),
+            Err(_) => return Err(anyhow::anyhow!("Timeout getting Redis connection")),
+        };
+
+        let script = redis::Script::new(
+            r#"
+            local stream_key = KEYS[1]
+            local group_name = ARGV[1]
+            local consumer_name = ARGV[2]
+            local count = tonumber(ARGV[3])
+            
+            local result = redis.call('XREADGROUP', 'GROUP', group_name, consumer_name, 'COUNT', count, 'STREAMS', stream_key, '>')
+            if not result or #result == 0 then return {} end
+            
+            local messages = result[1][2]
+            if not messages or #messages == 0 then return {} end
+            
+            local updates = {}
+            local ids_to_ack = {}
+            local n_messages = #messages
+            
+            for i = 1, n_messages do
+                local message = messages[i]
+                ids_to_ack[i] = message[1]
                 
-                -- Read messages
-                local result = redis.call('XREADGROUP', 'GROUP', group_name, consumer_name, 'COUNT', count, 'STREAMS', stream_key, '>')
-                
-                -- Check if result is a table and has content
-                if type(result) ~= 'table' then
-                    return {}
-                end
-                
-                if #result == 0 then
-                    return {}
-                end
-                
-                local messages = result[1][2]
-                local updates = {}
-                local ids_to_ack = {}
-                
-                -- Extract updates and IDs to acknowledge
-                for i, message in ipairs(messages) do
-                    local id = message[1]
-                    table.insert(ids_to_ack, id)
-                    
-                    local fields = message[2]
-                    for j = 1, #fields, 2 do
-                        if fields[j] == "update" then
-                            table.insert(updates, fields[j+1])
-                        end
+                local fields = message[2]
+                local n_fields = #fields
+                for j = 1, n_fields, 2 do
+                    if fields[j] == "update" then
+                        updates[#updates + 1] = fields[j+1]
+                        break
                     end
                 end
-                
-                -- Acknowledge messages
-                if #ids_to_ack > 0 then
-                    redis.call('XACK', stream_key, group_name, unpack(ids_to_ack))
-                end
-                
-                return updates
+            end
+            
+            if n_messages > 0 then
+                redis.call('XACK', stream_key, group_name, unpack(ids_to_ack))
+            end
+            
+            return updates
             "#,
-            );
+        );
 
-            let effective_count = count.max(50);
-            let updates: Vec<Vec<u8>> = script
+        let effective_count = count.max(25);
+
+        let script_result = tokio::time::timeout(
+            std::time::Duration::from_millis(500),
+            script
                 .key(stream_key)
                 .arg(group_name)
                 .arg(consumer_name)
                 .arg(effective_count)
-                .invoke_async(&mut *conn)
-                .await?;
+                .invoke_async(&mut *conn),
+        )
+        .await;
 
-            Ok(updates)
-        } else {
-            Err(anyhow::anyhow!("Failed to get Redis connection"))
+        match script_result {
+            Ok(Ok(updates)) => Ok(updates),
+            Ok(Err(e)) => Err(anyhow::anyhow!("Redis script error: {}", e)),
+            Err(_) => Err(anyhow::anyhow!("Timeout executing Redis script")),
         }
     }
 
