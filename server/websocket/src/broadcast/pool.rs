@@ -127,7 +127,7 @@ impl BroadcastPool {
                 let awareness_guard = awareness_clone.read().await;
                 let doc = awareness_guard.doc();
                 let txn = doc.transact();
-                let update = txn.encode_state_as_update_v1(&StateVector::default());
+                let update = txn.encode_diff_v1(&StateVector::default());
 
                 if let Err(e) = store_clone.push_update(&doc_id_clone, &update).await {
                     tracing::error!(

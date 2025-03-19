@@ -127,7 +127,7 @@ impl BroadcastGroup {
                 let gcs_state = gcs_txn.state_vector();
 
                 let awareness_txn = awareness_doc.transact();
-                let update = awareness_txn.encode_state_as_update_v1(&gcs_state);
+                let update = awareness_txn.encode_diff_v1(&gcs_state);
                 Self::handle_gcs_update(update, &doc_name_clone, &store_clone).await;
 
                 shutdown_flag_clone.store(true, std::sync::atomic::Ordering::SeqCst);
@@ -722,7 +722,7 @@ impl BroadcastGroup {
             let gcs_state = gcs_txn.state_vector();
 
             let awareness_txn = awareness_doc.transact();
-            let update = awareness_txn.encode_state_as_update_v1(&gcs_state);
+            let update = awareness_txn.encode_diff_v1(&gcs_state);
 
             if let Err(e) = store.push_update(doc_name, &update).await {
                 tracing::warn!("Failed to save final document state: {}", e);
