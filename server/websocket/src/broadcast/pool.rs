@@ -4,6 +4,7 @@ use crate::storage::kv::DocOps;
 use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
 use anyhow::{Error, Result};
+use bytes;
 use dashmap::DashMap;
 use deadpool::managed::{self, Manager, Metrics, Pool, RecycleResult};
 use std::sync::Arc;
@@ -159,8 +160,9 @@ impl BroadcastGroupManager {
                 let doc = awareness_guard.doc();
                 let txn = doc.transact();
                 let update = txn.encode_diff_v1(&StateVector::default());
+                let update_bytes = bytes::Bytes::from(update);
 
-                if let Err(e) = store_clone.push_update(&doc_id_clone, &update).await {
+                if let Err(e) = store_clone.push_update(&doc_id_clone, &update_bytes).await {
                     tracing::error!(
                         "Failed to save initial awareness state for document '{}' after 2s: {}",
                         doc_id_clone,

@@ -128,7 +128,8 @@ impl BroadcastGroup {
 
                 let awareness_txn = awareness_doc.transact();
                 let update = awareness_txn.encode_diff_v1(&gcs_state);
-                Self::handle_gcs_update(update, &doc_name_clone, &store_clone).await;
+                let update_bytes = Bytes::from(update);
+                Self::handle_gcs_update(update_bytes, &doc_name_clone, &store_clone).await;
 
                 shutdown_flag_clone.store(true, std::sync::atomic::Ordering::SeqCst);
             });
@@ -360,7 +361,7 @@ impl BroadcastGroup {
         }
     }
 
-    async fn handle_gcs_update(update: Vec<u8>, doc_name: &str, store: &Arc<GcsStore>) {
+    async fn handle_gcs_update(update: Bytes, doc_name: &str, store: &Arc<GcsStore>) {
         if let Err(e) = store.push_update(doc_name, &update).await {
             tracing::error!("Failed to store update for document '{}': {}", doc_name, e);
         }
