@@ -99,7 +99,7 @@ impl Stream for WarpStream {
             Poll::Ready(None) => Poll::Ready(None),
             Poll::Ready(Some(res)) => match res {
                 Ok(msg) => match msg {
-                    Message::Binary(data) => Poll::Ready(Some(Ok(Bytes::from(data)))),
+                    Message::Binary(data) => Poll::Ready(Some(Ok(data))),
                     Message::Ping(_) | Message::Pong(_) | Message::Text(_) => {
                         cx.waker().wake_by_ref();
                         Poll::Pending
