@@ -197,33 +197,33 @@ impl Manager for BroadcastGroupManager {
                     ));
                 }
 
-                // Handle Redis stream cleanup if needed
-                if let Some(redis_store) = redis_store {
-                    let redis_store_clone = Arc::clone(&redis_store);
-                    let doc_id_clone = doc_id.clone();
-                    let instance_id = format!("instance-{}", rand::random::<u64>());
+                let redis_store_clone = Arc::clone(&redis_store);
+                let doc_id_clone = doc_id.clone();
+                let instance_id = format!("instance-{}", rand::random::<u64>());
 
-                    match redis_store_clone
-                        .safe_delete_stream(&doc_id_clone, &instance_id)
-                        .await
-                    {
-                        Ok(deleted) => {
-                            if deleted {
-                                tracing::info!(
-                                    "Successfully deleted Redis stream for '{}'",
-                                    doc_id_clone
-                                );
-                            } else {
-                                tracing::info!("Did not delete Redis stream for '{}' as it may still be in use", doc_id_clone);
-                            }
-                        }
-                        Err(e) => {
-                            tracing::warn!(
-                                "Error during safe Redis stream deletion for '{}': {}",
-                                doc_id_clone,
-                                e
+                match redis_store_clone
+                    .safe_delete_stream(&doc_id_clone, &instance_id)
+                    .await
+                {
+                    Ok(deleted) => {
+                        if deleted {
+                            tracing::info!(
+                                "Successfully deleted Redis stream for '{}'",
+                                doc_id_clone
+                            );
+                        } else {
+                            tracing::info!(
+                                "Did not delete Redis stream for '{}' as it may still be in use",
+                                doc_id_clone
                             );
                         }
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Error during safe Redis stream deletion for '{}': {}",
+                            doc_id_clone,
+                            e
+                        );
                     }
                 }
 
@@ -245,7 +245,7 @@ pub struct BroadcastPool {
 }
 
 impl BroadcastPool {
-    pub fn new(store: Arc<GcsStore>, redis_store: Option<Arc<RedisStore>>) -> Self {
+    pub fn new(store: Arc<GcsStore>, redis_store: Arc<RedisStore>) -> Self {
         let manager = BroadcastGroupManager::new(store.clone(), redis_store.clone());
         let pool = Pool::builder(manager)
             .max_size(100) // Adjust as needed
@@ -261,7 +261,7 @@ impl BroadcastPool {
         self.pool.manager().store.clone()
     }
 
-    pub fn get_redis_store(&self) -> Option<Arc<RedisStore>> {
+    pub fn get_redis_store(&self) -> Arc<RedisStore> {
         self.pool.manager().redis_store.clone()
     }
 
