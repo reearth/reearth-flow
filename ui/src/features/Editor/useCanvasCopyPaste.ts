@@ -1,4 +1,4 @@
-import { addEdge } from "@xyflow/react";
+import { addEdge, EdgeChange } from "@xyflow/react";
 import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
@@ -13,6 +13,7 @@ export default ({
   handleNodesAdd,
   handleNodesChange,
   handleEdgesAdd,
+  handleEdgesChange,
 }: {
   nodes: Node[];
   edges: Edge[];
@@ -25,32 +26,12 @@ export default ({
   handleNodesAdd: (newNodes: Node[]) => void;
   handleNodesChange: (changes: NodeChange[]) => void;
   handleEdgesAdd: (newEdges: Edge[]) => void;
+  handleEdgesChange: (changes: EdgeChange[]) => void;
 }) => {
-  const { copy, paste } = useCopyPaste();
+  const { copy, cut, paste } = useCopyPaste();
 
-  const handleCopy = useCallback(async () => {
-    const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
-      nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
-      edges: edges.filter((e) => e.selected),
-    };
-    if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
-    await copy(selected);
-  }, [nodes, edges, copy]);
-
-  const handlePaste = useCallback(async () => {
-    const { nodeIds: pnid, edges: pastedEdges } = (await paste()) || {
-      nodeIds: [],
-      edges: [],
-    };
-
-    const pastedNodes = nodes.filter((n) => pnid.includes(n.id));
-    console.log(pastedNodes);
-
-    const newEdgeCreation = (
-      pe: Edge[],
-      oldNodes: Node[],
-      newNodes: Node[],
-    ): Edge[] => {
+  const newEdgeCreation = useCallback(
+    (pe: Edge[], oldNodes: Node[], newNodes: Node[]): Edge[] => {
       let newEdges: Edge[] = [];
       for (const e of pe) {
         const sourceNode =
@@ -72,11 +53,12 @@ export default ({
         );
       }
       return newEdges;
-    };
-
-    const newNodeCreation = (pn: Node[]): Node[] => {
+    },
+    [],
+  );
+  const newNodeCreation = useCallback(
+    (pn: Node[]): Node[] => {
       const newNodes: Node[] = [];
-
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
 
       for (const n of pn) {
@@ -84,6 +66,7 @@ export default ({
         const newPosition = n.parentId
           ? { x: n.position.x, y: n.position.y }
           : { x: n.position.x + 40, y: n.position.y + 20 };
+
         const newNode: Node = {
           ...n,
           id: generateUUID(),
@@ -98,6 +81,7 @@ export default ({
           parentIdMapArray.push({ prevId: n.id, newId: newNode.id });
         } else if (newNode.type === "subworkflow") {
           const subworkflowId = generateUUID();
+
           const subworkflowNodes = (rawWorkflows.find(
             (w) => w.id === n.data.subworkflowId,
           )?.nodes ?? []) as Node[];
@@ -139,17 +123,85 @@ export default ({
       });
 
       return reBatchedNodes;
+    },
+    [rawWorkflows, handleWorkflowUpdate, newEdgeCreation],
+  );
+
+  const handleCopy = useCallback(async () => {
+    const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
+      nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
+      edges: edges.filter((e) => e.selected),
     };
 
-    const newNodes = newNodeCreation(pastedNodes);
-    const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
+    const selectedNodes = nodes.filter((n) => selected.nodeIds.includes(n.id));
+    if (selectedNodes.some((n) => n.type === "reader")) return;
+
+    if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
+    const copiedNodes = nodes.filter((n) => selected.nodeIds.includes(n.id));
+
+    const newNodes = newNodeCreation(copiedNodes);
+    const newEdges = newEdgeCreation(selected.edges, copiedNodes, newNodes);
+
+    await copy({ edges: newEdges, nodes: newNodes });
+  }, [nodes, edges, newNodeCreation, newEdgeCreation, copy]);
+
+  const handleCut = useCallback(async () => {
+    const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
+      nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
+      edges: edges.filter((e) => e.selected),
+    };
+
+    const selectedNodes = nodes.filter((n) => selected?.nodeIds.includes(n.id));
+    if (selectedNodes.some((n) => n.type === "reader")) return;
+
+    if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
+
+    const cutNodes = nodes.filter((n) => selected.nodeIds.includes(n.id));
+
+    const newNodes = newNodeCreation(cutNodes);
+    const newEdges = newEdgeCreation(selected.edges, cutNodes, newNodes);
+
+    await cut({
+      nodes: newNodes,
+      edges: newEdges,
+    });
+
+    const nodesToRemove = cutNodes.map((n) => n.id);
+    const edgesToRemove = edges.filter(
+      (edge) =>
+        nodesToRemove.includes(edge.source) ||
+        nodesToRemove.includes(edge.target),
+    );
+
+    handleNodesChange(nodesToRemove.map((id) => ({ id, type: "remove" })));
+    handleEdgesChange(edgesToRemove.map((e) => ({ id: e.id, type: "remove" })));
+  }, [
+    nodes,
+    edges,
+    cut,
+    newNodeCreation,
+    newEdgeCreation,
+    handleNodesChange,
+    handleEdgesChange,
+  ]);
+
+  const handlePaste = useCallback(async () => {
+    const { edges: pastedEdges, nodes: pastedNodes } = (await paste()) || {
+      nodes: [],
+      edges: [],
+    };
 
     // Copy new nodes and edges. Since they are selected now,
     // if the user pastes again, the new nodes and edges will
     // be what is pasted with an appropriate offset position.
     copy({
-      nodeIds: newNodes.map((n) => n.id),
-      edges: newEdges,
+      nodeIds: pastedNodes.map((n: Node) => n.id),
+      edges: pastedEdges,
+    });
+
+    cut({
+      nodeIds: pastedNodes.map((n: Node) => n.id),
+      edges: edges,
     });
 
     // deselect all previously selected nodes
@@ -161,15 +213,15 @@ export default ({
 
     handleNodesChange(nodeChanges);
 
-    handleNodesAdd([...newNodes]);
+    handleNodesAdd([...pastedNodes]);
 
-    handleEdgesAdd(newEdges);
+    handleEdgesAdd(pastedEdges);
   }, [
     nodes,
-    rawWorkflows,
+    edges,
     copy,
+    cut,
     paste,
-    handleWorkflowUpdate,
     handleNodesAdd,
     handleNodesChange,
     handleEdgesAdd,
@@ -177,6 +229,7 @@ export default ({
 
   return {
     handleCopy,
+    handleCut,
     handlePaste,
   };
 };

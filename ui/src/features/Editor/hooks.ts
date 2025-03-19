@@ -167,7 +167,7 @@ export default ({
     [],
   );
 
-  const { handleCopy, handlePaste } = useCanvasCopyPaste({
+  const { handleCopy, handleCut, handlePaste } = useCanvasCopyPaste({
     nodes,
     edges,
     rawWorkflows,
@@ -175,6 +175,7 @@ export default ({
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
     handleEdgesAdd: handleYEdgesAdd,
+    handleEdgesChange: handleYEdgesChange,
   });
 
   const {
@@ -251,6 +252,10 @@ export default ({
     {
       keyBinding: { key: "c", commandKey: true },
       callback: handleCopy,
+    },
+    {
+      keyBinding: { key: "x", commandKey: true },
+      callback: handleCut,
     },
     {
       keyBinding: { key: "v", commandKey: true },
