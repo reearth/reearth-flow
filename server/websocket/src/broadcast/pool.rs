@@ -40,27 +40,33 @@ impl BroadcastGroupManager {
     async fn create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         let doc_id_string = doc_id.to_string();
 
-        if let Some(group) = self.doc_to_id_map.get(&doc_id_string) {
-            if let (Some(redis_store), Some(doc_name)) =
-                (group.get_redis_store(), group.get_doc_name())
-            {
-                let valid = match redis_store.check_stream_exists(&doc_name).await {
-                    Ok(exists) => exists,
-                    Err(e) => {
-                        tracing::warn!("Error checking Redis stream: {}", e);
-                        false
-                    }
-                };
+        match self.doc_to_id_map.entry(doc_id_string.clone()) {
+            dashmap::mapref::entry::Entry::Occupied(entry) => {
+                let group_clone = entry.get().clone();
+                drop(entry);
 
-                if !valid {
-                    tracing::warn!("Found cached broadcast group for '{}' but Redis stream does not exist, recreating", doc_id);
-                    self.doc_to_id_map.remove(&doc_id_string);
+                if let (Some(redis_store), Some(doc_name)) =
+                    (group_clone.get_redis_store(), group_clone.get_doc_name())
+                {
+                    let valid = match redis_store.check_stream_exists(&doc_name).await {
+                        Ok(exists) => exists,
+                        Err(e) => {
+                            tracing::warn!("Error checking Redis stream: {}", e);
+                            false
+                        }
+                    };
+
+                    if !valid {
+                        tracing::warn!("Found cached broadcast group for '{}' but Redis stream does not exist, recreating", doc_id);
+                        self.doc_to_id_map.remove(&doc_id_string);
+                    } else {
+                        return Ok(group_clone);
+                    }
                 } else {
-                    return Ok(group.clone());
+                    return Ok(group_clone);
                 }
-            } else {
-                return Ok(group.clone());
             }
+            dashmap::mapref::entry::Entry::Vacant(_) => {}
         }
 
         let mut need_initial_save = false;
@@ -178,9 +184,16 @@ impl BroadcastGroupManager {
             .await?,
         );
 
-        self.doc_to_id_map.insert(doc_id_string, Arc::clone(&group));
-
-        Ok(group)
+        match self.doc_to_id_map.entry(doc_id_string) {
+            dashmap::mapref::entry::Entry::Occupied(entry) => {
+                let existing_group = entry.get().clone();
+                Ok(existing_group)
+            }
+            dashmap::mapref::entry::Entry::Vacant(entry) => {
+                let new_group = entry.insert(Arc::clone(&group)).clone();
+                Ok(new_group)
+            }
+        }
     }
 }
 
