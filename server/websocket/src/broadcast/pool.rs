@@ -195,7 +195,7 @@ impl BroadcastPool {
 
     pub async fn remove_connection(&self, doc_id: &str) {
         if let Some(group) = self.groups.get(doc_id) {
-            let new_count = group.decrement_connections();
+            let new_count = group.decrement_connections().await;
             tracing::info!("Document '{}' remaining connections: {}", doc_id, new_count);
 
             if new_count == 0 {
@@ -223,32 +223,28 @@ impl BroadcastPool {
                     let doc_id_clone = doc_id.to_string();
                     let instance_id = format!("instance-{}", rand::random::<u64>());
 
-                    tokio::spawn(async move {
-                        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-
-                        match redis_store_clone
-                            .safe_delete_stream(&doc_id_clone, &instance_id)
-                            .await
-                        {
-                            Ok(deleted) => {
-                                if deleted {
-                                    tracing::info!(
-                                        "Successfully deleted Redis stream for '{}'",
-                                        doc_id_clone
-                                    );
-                                } else {
-                                    tracing::info!("Did not delete Redis stream for '{}' as it may still be in use", doc_id_clone);
-                                }
-                            }
-                            Err(e) => {
-                                tracing::warn!(
-                                    "Error during safe Redis stream deletion for '{}': {}",
-                                    doc_id_clone,
-                                    e
+                    match redis_store_clone
+                        .safe_delete_stream(&doc_id_clone, &instance_id)
+                        .await
+                    {
+                        Ok(deleted) => {
+                            if deleted {
+                                tracing::info!(
+                                    "Successfully deleted Redis stream for '{}'",
+                                    doc_id_clone
                                 );
+                            } else {
+                                tracing::info!("Did not delete Redis stream for '{}' as it may still be in use", doc_id_clone);
                             }
                         }
-                    });
+                        Err(e) => {
+                            tracing::warn!(
+                                "Error during safe Redis stream deletion for '{}': {}",
+                                doc_id_clone,
+                                e
+                            );
+                        }
+                    }
                 }
             }
         }

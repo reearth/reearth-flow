@@ -81,7 +81,7 @@ impl BroadcastGroup {
         Ok(())
     }
 
-    pub fn decrement_connections(&self) -> usize {
+    pub async fn decrement_connections(&self) -> usize {
         let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
         let new_count = prev_count - 1;
 
@@ -92,17 +92,12 @@ impl BroadcastGroup {
         );
 
         if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
-            let doc_name_clone = doc_name.clone();
-            let redis_store_clone = redis_store.clone();
-
-            tokio::spawn(async move {
-                if let Err(e) = redis_store_clone
-                    .decrement_doc_connections(&doc_name_clone)
-                    .await
-                {
+            match redis_store.decrement_doc_connections(doc_name).await {
+                Ok(_) => {}
+                Err(e) => {
                     tracing::warn!("Failed to decrement Redis global connection count: {}", e);
                 }
-            });
+            }
         }
 
         if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
