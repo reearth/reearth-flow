@@ -188,7 +188,7 @@ impl Manager for BroadcastGroupManager {
                     "Group has no connections".into(),
                 ));
             }
-
+            tracing::info!("Recycling broadcast group for document '{}'", doc_id);
             Ok(())
         }
     }

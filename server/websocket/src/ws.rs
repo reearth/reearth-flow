@@ -1,4 +1,3 @@
-use crate::broadcast::group::BroadcastGroup;
 use crate::conn::Connection;
 use axum::extract::ws::{Message, WebSocket};
 use axum::{
