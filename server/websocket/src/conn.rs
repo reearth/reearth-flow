@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use std::future::Future;
 use std::marker::PhantomData;
@@ -22,8 +23,8 @@ pub struct Connection<Sink, Stream> {
 
 impl<Sink, Stream, E> Connection<Sink, Stream>
 where
-    Sink: SinkExt<Vec<u8>, Error = E> + Send + Sync + Unpin + 'static,
-    Stream: StreamExt<Item = Result<Vec<u8>, E>> + Send + Sync + Unpin + 'static,
+    Sink: SinkExt<Bytes, Error = E> + Send + Sync + Unpin + 'static,
+    Stream: StreamExt<Item = Result<Bytes, E>> + Send + Sync + Unpin + 'static,
     E: std::error::Error + Into<Error> + Send + Sync + 'static,
 {
     pub async fn new(

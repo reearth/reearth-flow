@@ -4,6 +4,7 @@ use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
 
 use anyhow::Result;
+use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use rand;
 
@@ -32,7 +33,7 @@ pub struct BroadcastConfig {
 pub struct BroadcastGroup {
     connections: Arc<AtomicUsize>,
     awareness_ref: AwarenessRef,
-    sender: Sender<Vec<u8>>,
+    sender: Sender<Bytes>,
     pub awareness_updater: JoinHandle<()>,
     doc_sub: Option<yrs::Subscription>,
     awareness_sub: Option<yrs::Subscription>,
@@ -40,7 +41,7 @@ pub struct BroadcastGroup {
     redis_store: Option<Arc<RedisStore>>,
     doc_name: Option<String>,
     redis_ttl: Option<usize>,
-    storage_rx: Option<tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>>,
+    storage_rx: Option<tokio::sync::mpsc::UnboundedReceiver<Bytes>>,
     pub redis_subscriber_task: Option<JoinHandle<()>>,
     redis_consumer_name: Option<String>,
     redis_group_name: Option<String>,
@@ -163,7 +164,7 @@ impl BroadcastGroup {
                 encoder.write_var(MSG_SYNC);
                 encoder.write_var(MSG_SYNC_UPDATE);
                 encoder.write_buf(&u.update);
-                let msg = encoder.to_vec();
+                let msg = Bytes::from(encoder.to_vec());
                 if let Err(_e) = sink.send(msg) {
                     tracing::debug!("broadcast channel closed");
                 }
@@ -198,7 +199,8 @@ impl BroadcastGroup {
                 if let Some(awareness) = awareness_c.upgrade() {
                     let awareness = awareness.read().await;
                     if let Ok(update) = awareness.update_with_clients(changed_clients) {
-                        if sink.send(Message::Awareness(update).encode_v1()).is_err() {
+                        let msg_bytes = Bytes::from(Message::Awareness(update).encode_v1());
+                        if sink.send(msg_bytes).is_err() {
                             tracing::warn!("couldn't broadcast awareness update");
                         }
                     }
@@ -380,7 +382,7 @@ impl BroadcastGroup {
         self.doc_name.clone()
     }
 
-    pub fn broadcast(&self, msg: Vec<u8>) -> Result<(), SendError<Vec<u8>>> {
+    pub fn broadcast(&self, msg: Bytes) -> Result<(), SendError<Bytes>> {
         self.sender.send(msg)?;
         Ok(())
     }
@@ -392,9 +394,9 @@ impl BroadcastGroup {
         user_token: Option<String>,
     ) -> Subscription
     where
-        Sink: SinkExt<Vec<u8>> + Send + Sync + Unpin + 'static,
-        Stream: StreamExt<Item = Result<Vec<u8>, E>> + Send + Sync + Unpin + 'static,
-        <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
+        Sink: SinkExt<Bytes> + Send + Sync + Unpin + 'static,
+        Stream: StreamExt<Item = Result<Bytes, E>> + Send + Sync + Unpin + 'static,
+        <Sink as futures_util::Sink<Bytes>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
         let doc_id = self
@@ -457,9 +459,9 @@ impl BroadcastGroup {
         protocol: P,
     ) -> Subscription
     where
-        Sink: SinkExt<Vec<u8>> + Send + Sync + Unpin + 'static,
-        Stream: StreamExt<Item = Result<Vec<u8>, E>> + Send + Sync + Unpin + 'static,
-        <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
+        Sink: SinkExt<Bytes> + Send + Sync + Unpin + 'static,
+        Stream: StreamExt<Item = Result<Bytes, E>> + Send + Sync + Unpin + 'static,
+        <Sink as futures_util::Sink<Bytes>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
         P: Protocol + Send + Sync + 'static,
     {
@@ -512,7 +514,7 @@ impl BroadcastGroup {
                     {
                         Ok(Some(reply)) => {
                             let mut sink_lock = sink.lock().await;
-                            if let Err(e) = sink_lock.send(reply.encode_v1()).await {
+                            if let Err(e) = sink_lock.send(Bytes::from(reply.encode_v1())).await {
                                 tracing::warn!("Failed to send reply: {}", e);
                             }
                         }

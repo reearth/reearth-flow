@@ -55,6 +55,7 @@ uuid = {version = "1.16.0", features = ["v4"]}
 base64 = "0.22.1"
 deadpool = "0.12.2"
 deadpool-redis = "0.20.0"
+bytes = "1.10.1"
 
 [dev-dependencies]
 tokio-tungstenite = "0.26.2"

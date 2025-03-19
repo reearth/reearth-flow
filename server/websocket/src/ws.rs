@@ -4,6 +4,7 @@ use axum::{
     extract::{Path, State, WebSocketUpgrade},
     response::Response,
 };
+use bytes::Bytes;
 
 #[cfg(feature = "auth")]
 use axum::extract::Query;
@@ -38,7 +39,7 @@ impl From<WarpSink> for SplitSink<WebSocket, Message> {
     }
 }
 
-impl futures_util::Sink<Vec<u8>> for WarpSink {
+impl futures_util::Sink<Bytes> for WarpSink {
     type Error = Error;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -49,8 +50,8 @@ impl futures_util::Sink<Vec<u8>> for WarpSink {
         }
     }
 
-    fn start_send(mut self: Pin<&mut Self>, item: Vec<u8>) -> Result<(), Self::Error> {
-        if let Err(e) = Pin::new(&mut self.0).start_send(Message::Binary(item.into())) {
+    fn start_send(mut self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {
+        if let Err(e) = Pin::new(&mut self.0).start_send(Message::Binary(item)) {
             Err(Error::Other(e.into()))
         } else {
             Ok(())
@@ -90,7 +91,7 @@ impl From<WarpStream> for SplitStream<WebSocket> {
 }
 
 impl Stream for WarpStream {
-    type Item = Result<Vec<u8>, Error>;
+    type Item = Result<Bytes, Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match Pin::new(&mut self.0).poll_next(cx) {
@@ -98,7 +99,7 @@ impl Stream for WarpStream {
             Poll::Ready(None) => Poll::Ready(None),
             Poll::Ready(Some(res)) => match res {
                 Ok(msg) => match msg {
-                    Message::Binary(data) => Poll::Ready(Some(Ok(data.to_vec()))),
+                    Message::Binary(data) => Poll::Ready(Some(Ok(Bytes::from(data)))),
                     Message::Ping(_) | Message::Pong(_) | Message::Text(_) => {
                         cx.waker().wake_by_ref();
                         Poll::Pending
