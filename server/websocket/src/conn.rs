@@ -12,8 +12,6 @@ use crate::group::{BroadcastGroup, Subscription};
 
 type CompletionFuture = Pin<Box<dyn Future<Output = Result<(), Error>> + Send>>;
 
-/// Connection handler over a pair of message streams, which implements a Yjs/Yrs awareness and
-/// update exchange protocol.
 pub struct Connection<Sink, Stream> {
     broadcast_sub: Option<Subscription>,
     completion_future: Option<CompletionFuture>,
@@ -28,8 +26,7 @@ where
     Stream: StreamExt<Item = Result<Vec<u8>, E>> + Send + Sync + Unpin + 'static,
     E: std::error::Error + Into<Error> + Send + Sync + 'static,
 {
-    /// Creates a new connection using a BroadcastGroup with user information
-    pub async fn with_broadcast_group_and_user(
+    pub async fn new(
         broadcast_group: Arc<BroadcastGroup>,
         sink: Sink,
         stream: Stream,

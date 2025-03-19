@@ -175,7 +175,7 @@ async fn handle_socket(
 ) {
     let (sender, receiver) = socket.split();
 
-    let conn = crate::conn::Connection::with_broadcast_group_and_user(
+    let conn = crate::conn::Connection::new(
         bcast.clone(),
         WarpSink(sender),
         WarpStream(receiver),

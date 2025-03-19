@@ -73,8 +73,10 @@ impl BroadcastGroup {
         );
 
         if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
-            if let Err(e) = redis_store.increment_doc_connections(doc_name).await {
-                tracing::warn!("Failed to increment Redis global connection count: {}", e);
+            if prev_count == 0 {
+                if let Err(e) = redis_store.increment_doc_connections(doc_name).await {
+                    tracing::warn!("Failed to increment Redis global connection count: {}", e);
+                }
             }
         }
 
@@ -92,10 +94,12 @@ impl BroadcastGroup {
         );
 
         if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
-            match redis_store.decrement_doc_connections(doc_name).await {
-                Ok(_) => {}
-                Err(e) => {
-                    tracing::warn!("Failed to decrement Redis global connection count: {}", e);
+            if new_count == 0 {
+                match redis_store.decrement_doc_connections(doc_name).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        tracing::warn!("Failed to decrement Redis global connection count: {}", e);
+                    }
                 }
             }
         }
