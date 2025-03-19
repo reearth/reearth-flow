@@ -85,7 +85,7 @@ impl BroadcastGroup {
         let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
         let new_count = prev_count - 1;
 
-        tracing::debug!(
+        tracing::info!(
             "Connection count decreased: {} -> {}",
             prev_count,
             new_count
@@ -381,17 +381,7 @@ impl BroadcastGroup {
         Ok(())
     }
 
-    pub fn subscribe<Sink, Stream, E>(&self, sink: Arc<Mutex<Sink>>, stream: Stream) -> Subscription
-    where
-        Sink: SinkExt<Vec<u8>> + Send + Sync + Unpin + 'static,
-        Stream: StreamExt<Item = Result<Vec<u8>, E>> + Send + Sync + Unpin + 'static,
-        <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
-        E: std::error::Error + Send + Sync + 'static,
-    {
-        self.subscribe_with(sink, stream, DefaultProtocol)
-    }
-
-    pub fn subscribe_with_user<Sink, Stream, E>(
+    pub fn subscribe<Sink, Stream, E>(
         self: Arc<Self>,
         sink: Arc<Mutex<Sink>>,
         stream: Stream,
@@ -437,7 +427,7 @@ impl BroadcastGroup {
             });
         }
 
-        let subscription = self.subscribe_with(sink, stream, DefaultProtocol);
+        let subscription = self.listen(sink, stream, DefaultProtocol);
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         let self_clone = self.clone();
@@ -467,7 +457,7 @@ impl BroadcastGroup {
         }
     }
 
-    pub fn subscribe_with<Sink, Stream, E, P>(
+    pub fn listen<Sink, Stream, E, P>(
         &self,
         sink: Arc<Mutex<Sink>>,
         mut stream: Stream,
@@ -620,37 +610,19 @@ impl BroadcastGroup {
             task.abort();
         }
 
+        self.awareness_updater.abort();
+
         if let (Some(redis_store), Some(doc_name), Some(consumer_name), Some(group_name)) = (
             &self.redis_store,
             &self.doc_name,
             &self.redis_consumer_name,
             &self.redis_group_name,
         ) {
-            match redis_store
-                .read_pending_messages(doc_name, group_name, consumer_name, 100)
-                .await
-            {
-                Ok(pending) => {
-                    if !pending.is_empty() {
-                        tracing::debug!(
-                            "Acknowledging {} pending messages for '{}'",
-                            pending.len(),
-                            doc_name
-                        );
-                        for (msg_id, _) in pending {
-                            let _ = redis_store.ack_message(doc_name, group_name, &msg_id).await;
-                        }
-                    }
-                }
-                Err(e) => {
-                    tracing::warn!("Error reading pending messages: {}", e);
-                }
-            }
-
             let redis_store_clone = redis_store.clone();
             let doc_name_clone = doc_name.clone();
             let group_name_clone = group_name.clone();
             let consumer_name_clone = consumer_name.clone();
+            let instance_id = format!("instance-{}", rand::random::<u64>());
 
             tokio::spawn(async move {
                 match redis_store_clone
@@ -689,29 +661,34 @@ impl BroadcastGroup {
                     }
                 }
 
+                match redis_store_clone
+                    .safe_delete_stream(&doc_name_clone, &instance_id)
+                    .await
+                {
+                    Ok(deleted) => {
+                        if deleted {
+                            tracing::info!(
+                                "Successfully deleted Redis stream for '{}'",
+                                doc_name_clone
+                            );
+                        } else {
+                            tracing::info!(
+                                "Did not delete Redis stream for '{}' as it may still be in use",
+                                doc_name_clone
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Error during safe Redis stream deletion for '{}': {}",
+                            doc_name_clone,
+                            e
+                        );
+                    }
+                }
+
                 tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
             });
-        }
-
-        if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
-            let awareness = self.awareness_ref.read().await;
-            let awareness_doc = awareness.doc();
-
-            let gcs_doc = Doc::new();
-            let mut gcs_txn = gcs_doc.transact_mut();
-
-            if let Err(e) = store.load_doc(doc_name, &mut gcs_txn).await {
-                tracing::warn!("Failed to load document state for final save: {}", e);
-            }
-
-            let gcs_state = gcs_txn.state_vector();
-
-            let awareness_txn = awareness_doc.transact();
-            let update = awareness_txn.encode_diff_v1(&gcs_state);
-
-            if let Err(e) = store.push_update(doc_name, &update).await {
-                tracing::warn!("Failed to save final document state: {}", e);
-            }
         }
 
         Ok(())
@@ -730,52 +707,6 @@ impl Drop for BroadcastGroup {
 
         if let Some(task) = self.redis_subscriber_task.take() {
             task.abort();
-
-            if let (Some(redis_store), Some(doc_name), Some(consumer_name), Some(group_name)) = (
-                &self.redis_store,
-                &self.doc_name,
-                &self.redis_consumer_name,
-                &self.redis_group_name,
-            ) {
-                let rs = redis_store.clone();
-                let dn = doc_name.clone();
-                let cn = consumer_name.clone();
-                let gn = group_name.clone();
-
-                tokio::spawn(async move {
-                    match rs.read_pending_messages(&dn, &gn, &cn, 100).await {
-                        Ok(pending) => {
-                            if !pending.is_empty() {
-                                tracing::debug!(
-                                    "Drop: Acknowledging {} pending messages",
-                                    pending.len()
-                                );
-                                for (msg_id, _) in pending {
-                                    let _ = rs.ack_message(&dn, &gn, &msg_id).await;
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            tracing::warn!("Error reading pending messages during drop: {}", e);
-                        }
-                    }
-
-                    match rs.delete_consumer(&dn, &gn, &cn).await {
-                        Ok(n) => {
-                            if n > 0 {
-                                tracing::debug!(
-                                    "Drop: Successfully deleted consumer '{}' from group '{}'",
-                                    cn,
-                                    gn
-                                );
-                            }
-                        }
-                        Err(e) => {
-                            tracing::warn!("Drop: Failed to delete consumer: {}", e);
-                        }
-                    }
-                });
-            }
         }
 
         self.awareness_updater.abort();

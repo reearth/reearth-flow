@@ -24,22 +24,6 @@ use crate::AuthQuery;
 #[repr(transparent)]
 pub struct WarpConn(Connection<WarpSink, WarpStream>);
 
-impl WarpConn {
-    pub fn new(broadcast_group: Arc<BroadcastGroup>, socket: WebSocket) -> Self {
-        let (sink, stream) = socket.split();
-        let conn = Connection::new(broadcast_group, WarpSink(sink), WarpStream(stream));
-        WarpConn(conn)
-    }
-}
-
-impl core::future::Future for WarpConn {
-    type Output = Result<(), Error>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Pin::new(&mut self.0).poll(cx)
-    }
-}
-
 #[derive(Debug)]
 pub struct WarpSink(SplitSink<WebSocket, Message>);
 
@@ -165,39 +149,6 @@ pub async fn ws_handler(
             }
         }
     }
-
-    // if let Some(redis_store) = state.pool.get_redis_store() {
-    //     match redis_store.get_doc_instance(&doc_id).await {
-    //         Ok(Some(instance_id)) if instance_id != state.instance_id => {
-    //             tracing::debug!(
-    //                 "Document {} is already being handled by instance {}",
-    //                 doc_id,
-    //                 instance_id
-    //             );
-
-    //             // return ws.on_upgrade(move |mut socket| async move {
-    //             //     let close_frame = axum::extract::ws::CloseFrame {
-    //             //         code: 1012,
-    //             //         reason: format!("instance:{}", instance_id).into(),
-    //             //     };
-
-    //             //     let _ = socket.send(Message::Close(Some(close_frame))).await;
-    //             // });
-    //             tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-    //         }
-    //         Ok(_) => {
-    //             if let Err(e) = redis_store
-    //                 .register_doc_instance(&doc_id, &state.instance_id, 2)
-    //                 .await
-    //             {
-    //                 tracing::warn!("Failed to register instance for document {}: {}", doc_id, e);
-    //             }
-    //         }
-    //         Err(e) => {
-    //             tracing::warn!("Failed to check document instance: {}", e);
-    //         }
-    //     }
-    // }
 
     let bcast = match state.pool.get_group(&doc_id).await {
         Ok(group) => group,

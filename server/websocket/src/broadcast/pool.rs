@@ -6,7 +6,6 @@ use crate::AwarenessRef;
 use anyhow::{Error, Result};
 use dashmap::DashMap;
 use deadpool::managed::{self, Manager, Metrics, Pool, RecycleResult};
-use rand;
 use std::sync::Arc;
 use std::time::Duration;
 use yrs::sync::Awareness;
@@ -14,16 +13,12 @@ use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 const DEFAULT_DOC_ID: &str = "01jpjfpw0qtw17kbrcdbgefakg";
 
-/// Context object that holds a BroadcastGroup and its associated document ID.
-/// Used by the deadpool to manage these objects.
 #[derive(Debug)]
 pub struct BroadcastGroupContext {
     doc_id: String,
     group: Arc<BroadcastGroup>,
 }
 
-/// Manager for BroadcastGroup objects that uses deadpool for pooling.
-/// This creates and recycles BroadcastGroup instances based on document IDs.
 #[derive(Debug)]
 pub struct BroadcastGroupManager {
     store: Arc<GcsStore>,
@@ -42,13 +37,9 @@ impl BroadcastGroupManager {
         }
     }
 
-    /// Creates a new BroadcastGroup for a specific document ID.
-    /// If a group for this document already exists and is valid, returns it.
-    /// Otherwise, creates a new group, potentially loading from storage.
     async fn create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         let doc_id_string = doc_id.to_string();
 
-        // Check if group is already in our map
         if let Some(group) = self.doc_to_id_map.get(&doc_id_string) {
             if let (Some(redis_store), Some(doc_name)) =
                 (group.get_redis_store(), group.get_doc_name())
@@ -152,7 +143,6 @@ impl BroadcastGroupManager {
             .await?,
         );
 
-        // Store reference in our map for future lookups
         self.doc_to_id_map.insert(doc_id_string, Arc::clone(&group));
 
         Ok(group)
@@ -164,7 +154,6 @@ impl Manager for BroadcastGroupManager {
     type Error = Error;
 
     async fn create(&self) -> Result<Self::Type, Self::Error> {
-        // Create a new group for the default document
         let group = self.create_group(DEFAULT_DOC_ID).await?;
 
         Ok(BroadcastGroupContext {
@@ -179,7 +168,6 @@ impl Manager for BroadcastGroupManager {
         _metrics: &Metrics,
     ) -> impl std::future::Future<Output = RecycleResult<Self::Error>> + Send {
         let doc_to_id_map = self.doc_to_id_map.clone();
-        let redis_store = self.redis_store.clone();
         let group = obj.group.clone();
         let doc_id = obj.doc_id.clone();
 
@@ -187,7 +175,6 @@ impl Manager for BroadcastGroupManager {
             if group.connection_count() == 0 {
                 tracing::info!("Recycling empty broadcast group for document '{}'", doc_id);
 
-                // Remove from our map
                 doc_to_id_map.remove(&doc_id);
 
                 if let Err(e) = group.shutdown().await {
@@ -195,36 +182,6 @@ impl Manager for BroadcastGroupManager {
                     return Err(managed::RecycleError::Message(
                         format!("Failed to shutdown: {}", e).into(),
                     ));
-                }
-
-                let redis_store_clone = Arc::clone(&redis_store);
-                let doc_id_clone = doc_id.clone();
-                let instance_id = format!("instance-{}", rand::random::<u64>());
-
-                match redis_store_clone
-                    .safe_delete_stream(&doc_id_clone, &instance_id)
-                    .await
-                {
-                    Ok(deleted) => {
-                        if deleted {
-                            tracing::info!(
-                                "Successfully deleted Redis stream for '{}'",
-                                doc_id_clone
-                            );
-                        } else {
-                            tracing::info!(
-                                "Did not delete Redis stream for '{}' as it may still be in use",
-                                doc_id_clone
-                            );
-                        }
-                    }
-                    Err(e) => {
-                        tracing::warn!(
-                            "Error during safe Redis stream deletion for '{}': {}",
-                            doc_id_clone,
-                            e
-                        );
-                    }
                 }
 
                 return Err(managed::RecycleError::Message(
@@ -237,8 +194,6 @@ impl Manager for BroadcastGroupManager {
     }
 }
 
-/// BroadcastPool that manages a pool of BroadcastGroup objects
-/// using deadpool's connection pooling.
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
     pool: Pool<BroadcastGroupManager>,
@@ -248,8 +203,8 @@ impl BroadcastPool {
     pub fn new(store: Arc<GcsStore>, redis_store: Arc<RedisStore>) -> Self {
         let manager = BroadcastGroupManager::new(store.clone(), redis_store.clone());
         let pool = Pool::builder(manager)
-            .max_size(100) // Adjust as needed
-            .wait_timeout(Some(Duration::from_secs(30))) // Wait up to 30 seconds for a connection
+            .max_size(100)
+            .wait_timeout(Some(Duration::from_secs(30)))
             .runtime(deadpool::Runtime::Tokio1)
             .build()
             .unwrap();

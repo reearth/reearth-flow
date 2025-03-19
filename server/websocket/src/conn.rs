@@ -36,7 +36,7 @@ where
         user_token: Option<String>,
     ) -> Self {
         let sink = Arc::new(Mutex::new(sink));
-        let broadcast_sub = Some(broadcast_group.clone().subscribe_with_user(
+        let broadcast_sub = Some(broadcast_group.clone().subscribe(
             sink,
             stream,
             user_token.clone(),
@@ -46,38 +46,6 @@ where
             broadcast_sub,
             completion_future: None,
             user_token,
-            _sink: PhantomData,
-            _stream: PhantomData,
-        }
-    }
-
-    /// Creates a new connection using a BroadcastGroup
-    pub async fn with_broadcast_group(
-        broadcast_group: Arc<BroadcastGroup>,
-        sink: Sink,
-        stream: Stream,
-    ) -> Self {
-        let sink = Arc::new(Mutex::new(sink));
-        let broadcast_sub = Some(broadcast_group.subscribe(sink, stream));
-
-        Connection {
-            broadcast_sub,
-            completion_future: None,
-            user_token: None,
-            _sink: PhantomData,
-            _stream: PhantomData,
-        }
-    }
-
-    /// Creates a new connection with default protocol
-    pub fn new(broadcast_group: Arc<BroadcastGroup>, sink: Sink, stream: Stream) -> Self {
-        let sink = Arc::new(Mutex::new(sink));
-        let broadcast_sub = Some(broadcast_group.subscribe(sink, stream));
-
-        Connection {
-            broadcast_sub,
-            completion_future: None,
-            user_token: None,
             _sink: PhantomData,
             _stream: PhantomData,
         }
