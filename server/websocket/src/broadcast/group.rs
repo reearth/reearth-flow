@@ -285,7 +285,7 @@ impl BroadcastGroup {
                             &doc_name_for_sub,
                             &group_name_clone,
                             &consumer_name_clone,
-                            25,
+                            15,
                         )
                         .await
                     {
@@ -761,7 +761,7 @@ impl Drop for BroadcastGroup {
                     match rs.read_pending_messages(&dn, &gn, &cn, 100).await {
                         Ok(pending) => {
                             if !pending.is_empty() {
-                                tracing::info!(
+                                tracing::debug!(
                                     "Drop: Acknowledging {} pending messages",
                                     pending.len()
                                 );
@@ -778,7 +778,7 @@ impl Drop for BroadcastGroup {
                     match rs.delete_consumer(&dn, &gn, &cn).await {
                         Ok(n) => {
                             if n > 0 {
-                                tracing::info!(
+                                tracing::debug!(
                                     "Drop: Successfully deleted consumer '{}' from group '{}'",
                                     cn,
                                     gn

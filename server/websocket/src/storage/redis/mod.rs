@@ -571,13 +571,14 @@ impl RedisStore {
     ) -> Result<Vec<Vec<u8>>, anyhow::Error> {
         let stream_key = format!("yjs:stream:{}", doc_id);
 
-        if let Ok(mut conn) = self.pool.get().await {
-            let script = redis::Script::new(
-                r#"
-                local stream_key = KEYS[1]
-                local group_name = ARGV[1]
-                local consumer_name = ARGV[2]
-                local count = tonumber(ARGV[3])
+        let mut conn = self.pool.get().await?;
+
+        let script = redis::Script::new(
+            r#"
+            local stream_key = KEYS[1]
+            local group_name = ARGV[1]
+            local consumer_name = ARGV[2]
+            local count = tonumber(ARGV[3])
                 
                 local result = redis.call('XREADGROUP', 'GROUP', group_name, consumer_name, 'COUNT', count, 'STREAMS', stream_key, '>')
                 if not result or #result == 0 then return {} end
@@ -609,22 +610,17 @@ impl RedisStore {
                 
                 return updates
                 "#,
-            );
+        );
 
-            let effective_count = count.max(25);
+        let updates = script
+            .key(stream_key)
+            .arg(group_name)
+            .arg(consumer_name)
+            .arg(count)
+            .invoke_async(&mut *conn)
+            .await?;
 
-            let updates = script
-                .key(stream_key)
-                .arg(group_name)
-                .arg(consumer_name)
-                .arg(effective_count)
-                .invoke_async(&mut *conn)
-                .await?;
-
-            Ok(updates)
-        } else {
-            Err(anyhow::anyhow!("Failed to get Redis connection"))
-        }
+        Ok(updates)
     }
 
     pub async fn delete_stream(&self, doc_id: &str) -> Result<(), anyhow::Error> {
