@@ -16,7 +16,7 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use yrs::sync::Error;
 
-use crate::{pool::BroadcastPool, AppState};
+use crate::AppState;
 
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
@@ -161,16 +161,13 @@ pub async fn ws_handler(
         }
     };
 
-    ws.on_upgrade(move |socket| {
-        handle_socket(socket, bcast, doc_id, state.pool.clone(), user_token)
-    })
+    ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, user_token))
 }
 
 async fn handle_socket(
     socket: axum::extract::ws::WebSocket,
     bcast: Arc<crate::BroadcastGroup>,
     doc_id: String,
-    _pool: Arc<BroadcastPool>,
     user_token: Option<String>,
 ) {
     let (sender, receiver) = socket.split();
