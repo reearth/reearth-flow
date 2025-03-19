@@ -27,17 +27,17 @@ impl BroadcastPool {
             store,
             redis_store,
             groups: DashMap::new(),
-            buffer_capacity: 256,
+            buffer_capacity: 128,
             last_cleanup: Arc::new(std::sync::Mutex::new(std::time::Instant::now())),
         }
     }
 
     pub fn get_store(&self) -> Arc<GcsStore> {
-        self.store.clone()
+        Arc::clone(&self.store)
     }
 
     pub fn get_redis_store(&self) -> Option<Arc<RedisStore>> {
-        self.redis_store.clone()
+        self.redis_store.as_ref().map(Arc::clone)
     }
 
     pub async fn get_or_create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
@@ -118,8 +118,8 @@ impl BroadcastPool {
 
         if need_initial_save {
             let doc_id_clone = doc_id_string.clone();
-            let store_clone = self.store.clone();
-            let awareness_clone = awareness.clone();
+            let store_clone = Arc::clone(&self.store);
+            let awareness_clone = Arc::clone(&awareness);
 
             tokio::spawn(async move {
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
@@ -143,7 +143,7 @@ impl BroadcastPool {
             BroadcastGroup::with_storage(
                 awareness,
                 self.buffer_capacity,
-                self.store.clone(),
+                Arc::clone(&self.store),
                 self.redis_store.clone(),
                 BroadcastConfig {
                     storage_enabled: true,
@@ -159,7 +159,7 @@ impl BroadcastPool {
                 Ok(existing_group)
             }
             dashmap::mapref::entry::Entry::Vacant(entry) => {
-                let new_group = entry.insert(group.clone()).clone();
+                let new_group = entry.insert(Arc::clone(&group)).clone();
                 Ok(new_group)
             }
         }
@@ -201,7 +201,7 @@ impl BroadcastPool {
             if new_count == 0 {
                 tracing::info!("Removing broadcast group for document '{}'", doc_id);
 
-                let group_clone = group.clone();
+                let group_clone = Arc::clone(&group);
                 drop(group);
 
                 tracing::info!("Shutting down broadcast group");
@@ -219,7 +219,7 @@ impl BroadcastPool {
                 }
 
                 if let Some(redis_store) = &self.redis_store {
-                    let redis_store_clone = redis_store.clone();
+                    let redis_store_clone = Arc::clone(redis_store);
                     let doc_id_clone = doc_id.to_string();
                     let instance_id = format!("instance-{}", rand::random::<u64>());
 

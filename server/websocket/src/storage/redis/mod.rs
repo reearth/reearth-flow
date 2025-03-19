@@ -731,7 +731,7 @@ impl RedisStore {
                 .query_async(&mut *conn)
                 .await?;
 
-            tracing::info!(
+            tracing::debug!(
                 "Redis: Incremented connections for doc '{}' to {}",
                 doc_id,
                 count
