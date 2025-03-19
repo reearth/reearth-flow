@@ -1,5 +1,6 @@
-use bb8::Pool;
-use bb8_redis::RedisConnectionManager;
+use deadpool::managed::Pool;
+use deadpool::Runtime;
+use deadpool_redis::{Connection, Manager};
 use redis::AsyncCommands;
 use std::sync::Arc;
 use std::time::Duration;
@@ -20,7 +21,7 @@ pub struct RedisConfig {
     pub connection_timeout: Option<u64>,
 }
 
-pub type RedisPool = Pool<RedisConnectionManager>;
+pub type RedisPool = Pool<Manager, Connection>;
 
 #[derive(Debug, Clone)]
 pub struct RedisStore {
@@ -29,14 +30,11 @@ pub struct RedisStore {
 }
 
 impl RedisStore {
-    pub async fn new(config: Option<RedisConfig>) -> Result<Self, redis::RedisError> {
+    pub async fn new(config: Option<RedisConfig>) -> Result<Self, anyhow::Error> {
         let pool = if let Some(config) = &config {
             Self::init_redis_connection(config).await?
         } else {
-            return Err(redis::RedisError::from(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "Redis configuration is missing",
-            )));
+            return Err(anyhow::anyhow!("Redis configuration is missing"));
         };
         Ok(Self { pool, config })
     }
@@ -51,17 +49,20 @@ impl RedisStore {
 
     pub async fn init_redis_connection(
         config: &RedisConfig,
-    ) -> Result<Arc<RedisPool>, redis::RedisError> {
-        let manager = RedisConnectionManager::new(config.url.clone())?;
+    ) -> Result<Arc<RedisPool>, anyhow::Error> {
+        let manager = Manager::new(config.url.clone())?;
 
-        let builder = Pool::builder()
-            .max_size(config.max_connections.unwrap_or(2048))
-            .min_idle(config.min_idle.or(Some(64)))
-            .connection_timeout(Duration::from_secs(config.connection_timeout.unwrap_or(5)))
-            .idle_timeout(Some(Duration::from_secs(500)))
-            .max_lifetime(Some(Duration::from_secs(7200)));
-
-        let pool = builder.build(manager).await?;
+        let pool = Pool::builder(manager)
+            .max_size(config.max_connections.unwrap_or(2048) as usize)
+            .wait_timeout(Some(Duration::from_secs(
+                config.connection_timeout.unwrap_or(5),
+            )))
+            .create_timeout(Some(Duration::from_secs(
+                config.connection_timeout.unwrap_or(5),
+            )))
+            .recycle_timeout(Some(Duration::from_secs(500)))
+            .runtime(Runtime::Tokio1)
+            .build()?;
 
         Ok(Arc::new(pool))
     }
