@@ -435,21 +435,10 @@ impl BroadcastGroup {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         let self_clone = self.clone();
-        let doc_id_clone = self
-            .doc_name
-            .clone()
-            .unwrap_or_else(|| "unknown".to_string());
 
         tokio::spawn(async move {
             if let Err(e) = self_clone.increment_connections().await {
                 tracing::error!("Failed to increment connections: {}", e);
-            } else {
-                let new_count = self_clone.connection_count();
-                tracing::info!(
-                    "New connection count for doc '{}': {}",
-                    doc_id_clone,
-                    new_count
-                );
             }
             let _ = tx.send(());
         });
