@@ -10,5 +10,5 @@
   "documentationUrl": "${FLOW_DOCUMENTATION_URL}",
   "tosUrl": "${FLOW_TOS_URL}",
   "version": "${FLOW_VERSION}",
-  "websocket": "${FLOW_WEBSOCKET}",
+  "websocket": "${FLOW_WEBSOCKET}"
 }
