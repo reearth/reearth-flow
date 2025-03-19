@@ -7,9 +7,8 @@ use tracing::{info, warn};
 
 use crate::{storage::gcs::GcsConfig, storage::redis::RedisConfig};
 
-// Default configuration constants
 const DEFAULT_REDIS_URL: &str = "redis://127.0.0.1:6379";
-const DEFAULT_REDIS_TTL: u64 = 86400;
+const DEFAULT_REDIS_TTL: u64 = 43200;
 const DEFAULT_GCS_BUCKET: &str = "yrs-dev";
 #[cfg(feature = "auth")]
 const DEFAULT_AUTH_URL: &str = "http://localhost:8080";
