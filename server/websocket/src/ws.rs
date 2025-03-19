@@ -187,8 +187,6 @@ async fn handle_socket(
         tracing::error!("WebSocket connection error: {}", e);
     }
 
-    // Directly decrement connections on the broadcast group
-    // This will allow deadpool to recycle the object when connection count reaches 0
     let _ = bcast.decrement_connections().await;
     tracing::debug!("Connection decreased for document '{}'", doc_id);
 }

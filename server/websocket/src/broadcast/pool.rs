@@ -222,18 +222,10 @@ impl BroadcastPool {
 
     pub async fn get_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         if let Some(group) = self.pool.manager().doc_to_id_map.get(doc_id) {
-            if let Err(e) = group.increment_connections().await {
-                tracing::warn!("Failed to increment connections for '{}': {}", doc_id, e);
-            }
             return Ok(group.clone());
         }
 
         let group = self.pool.manager().create_group(doc_id).await?;
-
-        if let Err(e) = group.increment_connections().await {
-            tracing::warn!("Failed to increment connections for '{}': {}", doc_id, e);
-        }
-
         Ok(group)
     }
 }
