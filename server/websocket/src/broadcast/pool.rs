@@ -16,7 +16,6 @@ const DEFAULT_DOC_ID: &str = "01jpjfpw0qtw17kbrcdbgefakg";
 
 #[derive(Debug)]
 pub struct BroadcastGroupContext {
-    doc_id: String,
     group: Arc<BroadcastGroup>,
 }
 
@@ -192,10 +191,7 @@ impl Manager for BroadcastGroupManager {
     async fn create(&self) -> Result<Self::Type, Self::Error> {
         let group = self.create_group(DEFAULT_DOC_ID).await?;
 
-        Ok(BroadcastGroupContext {
-            doc_id: DEFAULT_DOC_ID.to_string(),
-            group,
-        })
+        Ok(BroadcastGroupContext { group })
     }
 
     fn recycle(
@@ -205,10 +201,10 @@ impl Manager for BroadcastGroupManager {
     ) -> impl std::future::Future<Output = RecycleResult<Self::Error>> + Send {
         let doc_to_id_map = self.doc_to_id_map.clone();
         let group = obj.group.clone();
-        let doc_id = obj.doc_id.clone();
 
         async move {
             if group.connection_count() == 0 {
+                let doc_id = group.get_doc_name().unwrap_or_default();
                 tracing::info!("Recycling empty broadcast group for document '{}'", doc_id);
 
                 doc_to_id_map.remove(&doc_id);
@@ -224,6 +220,7 @@ impl Manager for BroadcastGroupManager {
                     "Group has no connections".into(),
                 ));
             }
+            let doc_id = group.get_doc_name().unwrap_or_default();
             tracing::info!("Recycling broadcast group for document '{}'", doc_id);
             Ok(())
         }
