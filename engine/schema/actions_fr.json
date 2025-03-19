@@ -2740,6 +2740,23 @@
       ]
     },
     {
+      "name": "JPStandardGridAccumulator",
+      "type": "processor",
+      "description": "Divides the input geometry into Japanese standard (1km) mesh grid.",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "LineOnLineOverlayer",
       "type": "processor",
       "description": "Les points d'intersection deviennent des entités ponctuelles pouvant contenir la liste combinée des attributs des lignes d'origine intersectées.",
