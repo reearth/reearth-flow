@@ -858,4 +858,41 @@ impl RedisStore {
 
         Err(anyhow::anyhow!("Failed to get Redis connection"))
     }
+
+    pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<Vec<Vec<u8>>, anyhow::Error> {
+        let stream_key = format!("yjs:stream:{}", doc_id);
+
+        if let Ok(mut conn) = self.pool.get().await {
+            let exists: bool = redis::cmd("EXISTS")
+                .arg(&stream_key)
+                .query_async(&mut *conn)
+                .await?;
+
+            if !exists {
+                return Ok(Vec::new());
+            }
+
+            type RawStreamEntry = (String, Vec<(String, Vec<u8>)>);
+            let result: Vec<RawStreamEntry> = redis::cmd("XRANGE")
+                .arg(&stream_key)
+                .arg("-")
+                .arg("+")
+                .query_async(&mut *conn)
+                .await?;
+
+            let mut updates = Vec::new();
+
+            for (_, fields) in result {
+                for (field_name, field_value) in fields {
+                    if field_name == "update" {
+                        updates.push(field_value);
+                    }
+                }
+            }
+
+            return Ok(updates);
+        }
+
+        Err(anyhow::anyhow!("Failed to get Redis connection"))
+    }
 }

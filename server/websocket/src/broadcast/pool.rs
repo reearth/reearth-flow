@@ -9,7 +9,8 @@ use deadpool::managed::{self, Manager, Metrics, Pool, RecycleResult};
 use std::sync::Arc;
 use std::time::Duration;
 use yrs::sync::Awareness;
-use yrs::{Doc, ReadTxn, StateVector, Transact};
+use yrs::updates::decoder::Decode;
+use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
 const DEFAULT_DOC_ID: &str = "01jpjfpw0qtw17kbrcdbgefakg";
 
@@ -105,6 +106,41 @@ impl BroadcastGroupManager {
 
             Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
         };
+
+        match self.redis_store.read_all_stream_data(doc_id).await {
+            Ok(updates) if !updates.is_empty() => {
+                tracing::info!(
+                    "Applying {} updates from Redis stream for document '{}'",
+                    updates.len(),
+                    doc_id
+                );
+                let awareness_guard = awareness.write().await;
+                let mut txn = awareness_guard.doc().transact_mut();
+
+                for update_data in &updates {
+                    match Update::decode_v1(update_data) {
+                        Ok(update) => {
+                            if let Err(e) = txn.apply_update(update) {
+                                tracing::warn!("Failed to apply update from Redis: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!("Failed to decode update from Redis: {}", e);
+                        }
+                    }
+                }
+            }
+            Ok(_) => {
+                tracing::debug!("No updates found in Redis stream for document '{}'", doc_id);
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to read updates from Redis stream for document '{}': {}",
+                    doc_id,
+                    e
+                );
+            }
+        }
 
         if need_initial_save {
             let doc_id_clone = doc_id_string.clone();
