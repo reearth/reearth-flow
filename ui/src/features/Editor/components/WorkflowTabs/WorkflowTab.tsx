@@ -33,7 +33,7 @@ const WorkflowTab: React.FC<Props> = ({
 
   return (
     <div
-      className={`relative flex h-4/5 w-[150px] shrink-0 items-center justify-center rounded ${currentWorkflowId === id ? "bg-node-entrance/70 hover:bg-node-entrance/80" : "bg-node-entrance/20 hover:bg-node-entrance/30"} group cursor-pointer`}
+      className={`relative flex h-4/5 w-[150px] shrink-0 items-center justify-center rounded transition-colors ${currentWorkflowId === id ? "bg-node-entrance/60" : "bg-node-entrance/30 hover:bg-node-entrance/60"} group cursor-pointer`}
       onClick={() => onWorkflowChange(id)}
       onDoubleClick={() => onDoubleClick?.(id, name)}
       key={id}>

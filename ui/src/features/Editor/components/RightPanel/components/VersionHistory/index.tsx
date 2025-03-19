@@ -1,32 +1,43 @@
-import { useState } from "react";
+import { Doc } from "yjs";
 
-import { ScrollArea } from "@flow/components";
+import {
+  LoadingSkeleton,
+  LoadingSplashscreen,
+  ScrollArea,
+} from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { VersionHistory } from "@flow/mock_data/versionHistoryData";
+import type { Project } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
+import useHooks from "./hooks";
 import { Version } from "./Version";
 import { VersionHistoryChangeDialog } from "./VersionHistoryChangeDialog";
 
 type Props = {
-  versionHistory: VersionHistory[];
+  project?: Project;
+  yDoc: Doc | null;
 };
 
-const VersionHistoryList: React.FC<Props> = ({ versionHistory }) => {
+const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
   const t = useT();
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(
-    null,
+  const {
+    history,
+    isFetching,
+    isReverting,
+    selectedProjectSnapshotVersion,
+    latestProjectSnapshotVersion,
+    setSelectedProjectSnapshotVersion,
+    openVersionChangeDialog,
+    setOpenVersionChangeDialog,
+    onRollbackProject,
+  } = useHooks({ projectId: project?.id ?? "", yDoc });
+
+  const previousVersions = history?.filter(
+    (version) => version.version !== latestProjectSnapshotVersion?.version,
   );
 
-  const [selectedVersion, setSelectedVersion] = useState<string | null>(null);
-
-  const [openVersionChangeDialog, setOpenVersionChangeDialog] = useState(false);
-
-  const currentVersion = versionHistory.length > 0 ? versionHistory[0] : null;
-  const olderVersions = versionHistory.slice(1);
-  const handleVersionClick = (id: string, version: string) => {
-    setSelectedVersionId(id);
-    setSelectedVersion(version);
+  const handleVersionClick = (version: number) => {
+    setSelectedProjectSnapshotVersion(version);
   };
 
   const handleDoubleClick = () => {
@@ -36,42 +47,50 @@ const VersionHistoryList: React.FC<Props> = ({ versionHistory }) => {
   return (
     <div className="flex h-full flex-col overflow-auto">
       <ScrollArea>
-        {currentVersion && (
+        {latestProjectSnapshotVersion && (
           <div className="flex items-center justify-between rounded bg-primary p-1 px-4">
             <div>
               <p className="text-sm font-light">{t("Current Version")}</p>
               <p className="flex-[2] text-xs font-thin">
-                {formatDate(currentVersion.createdAt)}
+                {formatDate(latestProjectSnapshotVersion.timestamp)}
               </p>
             </div>
             <p className="rounded border bg-logo/30 p-1 text-xs font-thin">
               <span className="font-light">
                 {" "}
                 {t("Version ")}
-                {currentVersion.version}
+                {latestProjectSnapshotVersion.version}
               </span>
             </p>
           </div>
         )}
-        <div className="flex flex-col overflow-auto">
-          {olderVersions.map((history) => (
-            <Version
-              key={history.id}
-              version={history}
-              isSelected={history.id === selectedVersionId}
-              onClick={() => handleVersionClick(history.id, history.version)}
-              onDoubleClick={handleDoubleClick}
-            />
-          ))}
-          <div className="pb-8" />
-        </div>
+        {isFetching ? (
+          <LoadingSkeleton className="h-[75vh] pt-12" />
+        ) : previousVersions && previousVersions.length > 0 ? (
+          <div className="flex flex-col overflow-auto">
+            {previousVersions?.map((version) => (
+              <Version
+                // key={version}
+                version={version}
+                isSelected={version.version === selectedProjectSnapshotVersion}
+                onClick={() => handleVersionClick(version.version)}
+                onDoubleClick={handleDoubleClick}
+              />
+            ))}
+            <div className="pb-8" />
+          </div>
+        ) : null}
       </ScrollArea>
-      {openVersionChangeDialog && selectedVersion && (
-        <VersionHistoryChangeDialog
-          selectedVersion={selectedVersion}
-          onDialogClose={() => setOpenVersionChangeDialog(false)}
-        />
-      )}
+      {openVersionChangeDialog &&
+        selectedProjectSnapshotVersion &&
+        !isReverting && (
+          <VersionHistoryChangeDialog
+            selectedProjectSnapshotVersion={selectedProjectSnapshotVersion}
+            onDialogClose={() => setOpenVersionChangeDialog(false)}
+            onRollbackProject={onRollbackProject}
+          />
+        )}
+      {isReverting && <LoadingSplashscreen />}
     </div>
   );
 };

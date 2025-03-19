@@ -2,7 +2,7 @@ import { addEdge, EdgeChange } from "@xyflow/react";
 import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
-import type { Edge, Node, NodeChange } from "@flow/types";
+import type { Edge, Node, NodeChange, Workflow } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
 export default ({
@@ -17,7 +17,7 @@ export default ({
 }: {
   nodes: Node[];
   edges: Edge[];
-  rawWorkflows: Record<string, string | Node[] | Edge[]>[];
+  rawWorkflows: Workflow[];
   handleWorkflowUpdate: (
     workflowId: string,
     nodes?: Node[],

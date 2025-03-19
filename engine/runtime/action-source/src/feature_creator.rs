@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use indexmap::IndexMap;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -104,7 +105,7 @@ impl Source for FeatureCreator {
                 let attributes = new_value
                     .iter()
                     .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
-                    .collect::<HashMap<Attribute, AttributeValue>>();
+                    .collect::<IndexMap<Attribute, AttributeValue>>();
                 let feature = Feature::from(attributes);
                 sender
                     .send((
@@ -127,7 +128,7 @@ impl Source for FeatureCreator {
                     let attributes = new_value
                         .iter()
                         .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
-                        .collect::<HashMap<Attribute, AttributeValue>>();
+                        .collect::<IndexMap<Attribute, AttributeValue>>();
                     let feature = Feature::from(attributes);
                     sender
                         .send((

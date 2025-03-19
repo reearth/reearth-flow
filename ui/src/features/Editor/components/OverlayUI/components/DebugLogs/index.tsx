@@ -13,21 +13,27 @@ const DebugLogs: React.FC = () => {
 
   return debugJobId ? (
     <div
-      className={`pointer-events-auto w-[45vw] min-w-[700px] cursor-pointer rounded border bg-secondary transition-all ${minimized ? "h-[36px]" : expanded ? "h-full" : "h-[300px]"}`}>
+      className={`pointer-events-auto w-[45vw] min-w-[700px] cursor-pointer rounded border bg-secondary transition-all ${minimized ? "h-[36px]" : expanded ? "h-[90vh]" : "h-[350px]"}`}>
       <div className="flex items-center p-1" onClick={handleExpand}>
         <div className="flex flex-1 items-center justify-center gap-2">
           <Terminal />
-          <p className="text-sm">{t("Workflow Logs")}</p>
+          <p className="text-sm font-thin">{t("Workflow Logs")}</p>
         </div>
         <div className="flex items-center gap-2">
           <div
             className="rounded p-1 hover:bg-primary"
             onClick={handleMinimize}>
-            <Minus />
+            {minimized ? <CaretUp weight="light" /> : <Minus weight="light" />}
           </div>
-          <div className="rounded p-1 hover:bg-primary">
-            {expanded && !minimized ? <CaretDown /> : <CaretUp />}
-          </div>
+          {!minimized && (
+            <div className="rounded p-1 hover:bg-primary">
+              {expanded ? (
+                <CaretDown weight="light" />
+              ) : (
+                <CaretUp weight="light" />
+              )}
+            </div>
+          )}
         </div>
       </div>
       <div className="h-[calc(100%-32px)] overflow-scroll pt-1">

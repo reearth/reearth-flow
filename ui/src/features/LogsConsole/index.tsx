@@ -3,11 +3,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { LogsTable } from "@flow/components/LogsTable";
 import { useJob } from "@flow/lib/gql/job";
-import { useLogs } from "@flow/lib/gql/realTimeLogs/useSubscriptions";
+import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import type { Log } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
-import { parseJSONL } from "@flow/utils/parseJsonL";
+import { parseJSONL } from "@flow/utils/jsonl";
 
 type LogsConsoleProps = {
   jobId: string;
@@ -42,11 +42,7 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
 
   const debugJob = useGetJob(jobId).job;
 
-  const {
-    data: liveLogs,
-    isSubscribedRef: isSubscribed,
-    stopSubscription,
-  } = useLogs(jobId);
+  const { data: liveLogs } = useSubscription("GetSubscribedLogs", jobId);
 
   const logs = useMemo(() => urlLogs || liveLogs || [], [liveLogs, urlLogs]);
 
@@ -97,21 +93,17 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
 
   useEffect(() => {
     if (debugJob?.logsURL && !urlLogs) {
-      getLogsFromUrl();
+      (async () => {
+        await getLogsFromUrl();
+      })();
     }
   }, [debugJob?.logsURL, urlLogs, getLogsFromUrl]);
-
-  useEffect(() => {
-    if (urlLogs) {
-      stopSubscription();
-    }
-  }, [urlLogs, stopSubscription]);
 
   return (
     <LogsTable
       columns={columns}
       data={logs}
-      isFetching={(!!isSubscribed && !logs.length) || isFetchingLogsUrl}
+      isFetching={!logs.length || isFetchingLogsUrl}
       selectColumns
       showFiltering
     />

@@ -26,6 +26,10 @@ pub enum Event {
         node: NodeHandle,
         name: String,
     },
+    EdgeCompleted {
+        feature_id: uuid::Uuid,
+        edge_id: EdgeId,
+    },
     EdgePassThrough {
         feature_id: uuid::Uuid,
         edge_id: EdgeId,

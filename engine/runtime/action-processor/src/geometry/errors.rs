@@ -103,6 +103,14 @@ pub(super) enum GeometryProcessorError {
     OffsetterFactory(String),
     #[error("Offsetter error: {0}")]
     Offsetter(String),
+    #[error("SurfaceFootprintReplacer Factory error: {0}")]
+    SurfaceFootprintReplacerFactory(String),
+    #[error("SurfaceFootprintReplacer error: {0}")]
+    SurfaceFootprintReplacer(String),
+    #[error("BoundsExtractor Factory error: {0}")]
+    BoundsExtractorFactory(String),
+    #[error("BoundsExtractor error: {0}")]
+    BoundsExtractor(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;

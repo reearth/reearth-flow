@@ -24,6 +24,7 @@ home.workspace = true
 image.workspace = true
 jsonpath_lib.workspace = true
 libxml.workspace = true
+once_cell.workspace = true
 parking_lot.workspace = true
 rayon.workspace = true
 serde.workspace = true

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Array as YArray, UndoManager as YUndoManager } from "yjs";
+import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import Canvas from "@flow/features/Canvas";
 import { YWorkflow } from "@flow/lib/yjs/types";
@@ -15,19 +15,22 @@ import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
 
 type Props = {
-  yWorkflows: YArray<YWorkflow>;
+  yWorkflows: YMap<YWorkflow>;
   undoManager: YUndoManager | null;
   undoTrackerActionWrapper: (callback: () => void) => void;
+  yDoc: Doc | null;
 };
 
 export default function Editor({
   yWorkflows,
   undoManager,
   undoTrackerActionWrapper,
+  yDoc,
 }: Props) {
   const {
     currentWorkflowId,
     openWorkflows,
+    currentProject,
     nodes,
     edges,
     // lockedNodeIds,
@@ -126,8 +129,6 @@ export default function Editor({
             <BottomBar
               currentWorkflowId={currentWorkflowId}
               openWorkflows={openWorkflows}
-              isOpen={openPanel === "bottom" && !locallyLockedNode}
-              onOpen={handlePanelOpen}
               onWorkflowClose={handleWorkflowClose}
               onWorkflowChange={handleWorkflowChange}
               onWorkflowRename={handleWorkflowRename}
@@ -136,6 +137,8 @@ export default function Editor({
           <RightPanel
             contentType={rightPanelContent}
             onClose={() => handleRightPanelOpen(undefined)}
+            project={currentProject}
+            yDoc={yDoc}
           />
           <ParamsPanel
             selected={locallyLockedNode}

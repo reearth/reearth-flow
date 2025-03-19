@@ -3,8 +3,11 @@ import type {
   ProjectFragment,
   JobFragment,
   JobStatus as GraphqlJobStatus,
+  EdgeStatus as GraphqlEdgeStatus,
   TriggerFragment,
   LogFragment,
+  ProjectSnapshotFragment,
+  ProjectDocumentFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import {
   Log,
@@ -13,8 +16,14 @@ import {
   type JobStatus,
   type Project,
   type Trigger,
+  type ProjectSnapshot,
+  type ProjectDocument,
+  EdgeStatus,
+  EdgeExecution,
 } from "@flow/types";
 import { formatDate } from "@flow/utils";
+
+import { EdgeExecutionFragment } from "./__gen__/graphql";
 
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
@@ -52,6 +61,20 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   description: trigger.description ?? undefined,
 });
 
+export const toEdgeExecution = (
+  edge: EdgeExecutionFragment,
+): EdgeExecution => ({
+  id: edge.id,
+  jobId: edge.jobId,
+  edgeId: edge.edgeId,
+  status: toEdgeStatus(edge.status),
+  createdAt: edge.createdAt,
+  startedAt: edge.startedAt,
+  completedAt: edge.completedAt,
+  featureId: edge.featureId ?? undefined,
+  intermediateDataUrl: edge.intermediateDataUrl ?? undefined,
+});
+
 export const toJob = (job: JobFragment): Job => ({
   id: job.id,
   deploymentId: job.deployment?.id,
@@ -72,6 +95,23 @@ export const toLog = (log: LogFragment): Log => ({
   message: log.message,
 });
 
+export const toProjectSnapShot = (
+  projectSnapshot: ProjectSnapshotFragment,
+): ProjectSnapshot => ({
+  timestamp: projectSnapshot.timestamp,
+  version: projectSnapshot.version,
+  updates: projectSnapshot.updates,
+});
+
+export const toProjectDocument = (
+  projectDocument: ProjectDocumentFragment,
+): ProjectDocument => ({
+  id: projectDocument.id,
+  timestamp: projectDocument.timestamp,
+  version: projectDocument.version,
+  updates: projectDocument.updates,
+});
+
 export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
   switch (status) {
     case "RUNNING":
@@ -85,5 +125,20 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
     case "PENDING":
     default:
       return "queued";
+  }
+};
+
+export const toEdgeStatus = (
+  status: GraphqlEdgeStatus,
+): EdgeStatus | undefined => {
+  switch (status) {
+    case "IN_PROGRESS":
+      return "inProgress";
+    case "COMPLETED":
+      return "completed";
+    case "FAILED":
+      return "failed";
+    default:
+      return undefined;
   }
 };

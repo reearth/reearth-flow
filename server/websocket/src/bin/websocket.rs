@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use tracing::error;
+use uuid::Uuid;
 use websocket::{
     conf::Config, pool::BroadcastPool, server::start_server, storage::gcs::GcsStore,
     storage::redis::RedisStore, AppState,
@@ -41,22 +42,22 @@ async fn main() {
     let store = Arc::new(store);
     tracing::info!("GCS store initialized");
 
-    let redis_store = {
-        let mut redis_store = RedisStore::new(Some(config.redis.clone()));
-        match redis_store.init().await {
-            Ok(_) => {
-                tracing::info!("Redis store initialized");
-                Some(Arc::new(redis_store))
-            }
-            Err(e) => {
-                error!("Failed to initialize Redis store: {}", e);
-                None
-            }
+    let redis_store = match RedisStore::new(Some(config.redis.clone())).await {
+        Ok(redis_store) => {
+            tracing::info!("Redis store initialized");
+            Some(Arc::new(redis_store))
+        }
+        Err(e) => {
+            error!("Failed to initialize Redis store: {}", e);
+            None
         }
     };
 
     let pool = Arc::new(BroadcastPool::new(store, redis_store));
     tracing::info!("Broadcast pool initialized");
+
+    let instance_id = Uuid::new_v4().to_string();
+    tracing::info!("Generated instance ID: {}", instance_id);
 
     let state = Arc::new({
         #[cfg(feature = "auth")]
@@ -69,11 +70,15 @@ async fn main() {
                 }
             };
             tracing::info!("Auth service initialized");
-            AppState { pool, auth }
+            AppState {
+                pool,
+                auth,
+                instance_id,
+            }
         }
         #[cfg(not(feature = "auth"))]
         {
-            AppState { pool }
+            AppState { pool, instance_id }
         }
     });
 

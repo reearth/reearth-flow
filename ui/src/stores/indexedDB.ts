@@ -1,3 +1,5 @@
+import { EdgeExecution, JobStatus } from "@flow/types";
+
 export type GeneralState = {
   clipboard: any | undefined;
 };
@@ -5,6 +7,12 @@ export type GeneralState = {
 export type JobState = {
   projectId: string;
   jobId: string;
+  status: JobStatus;
+  edgeExecutions?: EdgeExecution[];
+  selectedIntermediateData?: {
+    edgeId: string;
+    url: string;
+  };
 };
 
 export type DebugRunState = {

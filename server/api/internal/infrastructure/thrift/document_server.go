@@ -8,7 +8,6 @@ import (
 	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/websocket"
 	"github.com/reearth/reearth-flow/api/proto"
-	"github.com/reearth/reearthx/log"
 )
 
 type DocumentServiceHandler struct {
@@ -22,11 +21,8 @@ func NewDocumentServiceHandler(client *websocket.Client) *DocumentServiceHandler
 }
 
 func (h *DocumentServiceHandler) GetLatest(ctx context.Context, request *proto.GetLatestRequest) (*proto.GetLatestResponse, error) {
-	log.Infof("Handling GetLatest request for doc_id: %s", request.DocID)
-
 	doc, err := h.client.GetLatest(ctx, request.DocID)
 	if err != nil {
-		log.Errorf("Failed to get latest document: %v", err)
 		return nil, err
 	}
 
@@ -50,11 +46,8 @@ func (h *DocumentServiceHandler) GetLatest(ctx context.Context, request *proto.G
 }
 
 func (h *DocumentServiceHandler) GetHistory(ctx context.Context, request *proto.GetHistoryRequest) (*proto.GetHistoryResponse, error) {
-	log.Infof("Handling GetHistory request for doc_id: %s", request.DocID)
-
 	history, err := h.client.GetHistory(ctx, request.DocID)
 	if err != nil {
-		log.Errorf("Failed to get document history: %v", err)
 		return nil, err
 	}
 
@@ -82,11 +75,8 @@ func (h *DocumentServiceHandler) GetHistory(ctx context.Context, request *proto.
 }
 
 func (h *DocumentServiceHandler) Rollback(ctx context.Context, request *proto.RollbackRequest) (*proto.RollbackResponse, error) {
-	log.Infof("Handling Rollback request for doc_id: %s to version: %d", request.DocID, request.Version)
-
 	doc, err := h.client.Rollback(ctx, request.DocID, int(request.Version))
 	if err != nil {
-		log.Errorf("Failed to rollback document: %v", err)
 		return nil, err
 	}
 

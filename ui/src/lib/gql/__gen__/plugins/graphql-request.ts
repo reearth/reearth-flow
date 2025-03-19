@@ -186,6 +186,25 @@ export type DeploymentPayload = {
   deployment: Deployment;
 };
 
+export type EdgeExecution = Node & {
+  __typename?: 'EdgeExecution';
+  completedAt?: Maybe<Scalars['DateTime']['output']>;
+  createdAt?: Maybe<Scalars['DateTime']['output']>;
+  edgeId: Scalars['String']['output'];
+  featureId?: Maybe<Scalars['ID']['output']>;
+  id: Scalars['ID']['output'];
+  intermediateDataUrl?: Maybe<Scalars['String']['output']>;
+  jobId: Scalars['ID']['output'];
+  startedAt?: Maybe<Scalars['DateTime']['output']>;
+  status: EdgeStatus;
+};
+
+export enum EdgeStatus {
+  Completed = 'COMPLETED',
+  Failed = 'FAILED',
+  InProgress = 'IN_PROGRESS'
+}
+
 export enum EventSourceType {
   ApiDriven = 'API_DRIVEN',
   TimeDriven = 'TIME_DRIVEN'
@@ -597,6 +616,7 @@ export type Query = {
   deploymentHead?: Maybe<Deployment>;
   deploymentVersions: Array<Deployment>;
   deployments: DeploymentConnection;
+  edgeExecution?: Maybe<EdgeExecution>;
   job?: Maybe<Job>;
   jobs: JobConnection;
   latestProjectSnapshot?: Maybe<ProjectDocument>;
@@ -639,6 +659,12 @@ export type QueryDeploymentVersionsArgs = {
 export type QueryDeploymentsArgs = {
   pagination: PageBasedPagination;
   workspaceId: Scalars['ID']['input'];
+};
+
+
+export type QueryEdgeExecutionArgs = {
+  edgeId: Scalars['String']['input'];
+  jobId: Scalars['ID']['input'];
 };
 
 
@@ -777,8 +803,15 @@ export type SignupPayload = {
 
 export type Subscription = {
   __typename?: 'Subscription';
+  edgeStatus: EdgeStatus;
   jobStatus: JobStatus;
   logs?: Maybe<Log>;
+};
+
+
+export type SubscriptionEdgeStatusArgs = {
+  edgeId: Scalars['String']['input'];
+  jobId: Scalars['ID']['input'];
 };
 
 
@@ -963,7 +996,7 @@ export type ExecuteDeploymentMutationVariables = Exact<{
 }>;
 
 
-export type ExecuteDeploymentMutation = { __typename?: 'Mutation', executeDeployment?: { __typename?: 'JobPayload', job: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } } | null };
+export type ExecuteDeploymentMutation = { __typename?: 'Mutation', executeDeployment?: { __typename?: 'JobPayload', job: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, debug?: boolean | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } } | null };
 
 export type GetDeploymentsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
@@ -980,13 +1013,41 @@ export type GetDeploymentHeadQueryVariables = Exact<{
 
 export type GetDeploymentHeadQuery = { __typename?: 'Query', deploymentHead?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
+export type GetLatestProjectSnapshotQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+}>;
+
+
+export type GetLatestProjectSnapshotQuery = { __typename?: 'Query', latestProjectSnapshot?: { __typename?: 'ProjectDocument', id: string, timestamp: any, updates: Array<number>, version: number } | null };
+
+export type GetProjectHistoryQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+}>;
+
+
+export type GetProjectHistoryQuery = { __typename?: 'Query', projectHistory: Array<{ __typename?: 'ProjectSnapshot', timestamp: any, updates: Array<number>, version: number }> };
+
+export type RollbackProjectMutationVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  version: Scalars['Int']['input'];
+}>;
+
+
+export type RollbackProjectMutation = { __typename?: 'Mutation', rollbackProject?: { __typename?: 'ProjectDocument', id: string, timestamp: any, updates: Array<number>, version: number } | null };
+
 export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
 export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
 
 export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } };
 
-export type JobFragment = { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null };
+export type EdgeExecutionFragment = { __typename?: 'EdgeExecution', id: string, edgeId: string, jobId: string, status: EdgeStatus, createdAt?: any | null, startedAt?: any | null, completedAt?: any | null, featureId?: string | null, intermediateDataUrl?: string | null };
+
+export type JobFragment = { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, debug?: boolean | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null };
+
+export type ProjectDocumentFragment = { __typename?: 'ProjectDocument', id: string, timestamp: any, updates: Array<number>, version: number };
+
+export type ProjectSnapshotFragment = { __typename?: 'ProjectSnapshot', timestamp: any, updates: Array<number>, version: number };
 
 export type LogFragment = { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string };
 
@@ -996,21 +1057,29 @@ export type GetJobsQueryVariables = Exact<{
 }>;
 
 
-export type GetJobsQuery = { __typename?: 'Query', jobs: { __typename?: 'JobConnection', totalCount: number, nodes: Array<{ __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
+export type GetJobsQuery = { __typename?: 'Query', jobs: { __typename?: 'JobConnection', totalCount: number, nodes: Array<{ __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, debug?: boolean | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
 
 export type GetJobQueryVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
 
 
-export type GetJobQuery = { __typename?: 'Query', job?: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } | null };
+export type GetJobQuery = { __typename?: 'Query', job?: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, debug?: boolean | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } | null };
+
+export type GetEdgeExecutionQueryVariables = Exact<{
+  jobId: Scalars['ID']['input'];
+  edgeId: Scalars['String']['input'];
+}>;
+
+
+export type GetEdgeExecutionQuery = { __typename?: 'Query', edgeExecution?: { __typename?: 'EdgeExecution', id: string, edgeId: string, jobId: string, status: EdgeStatus, createdAt?: any | null, startedAt?: any | null, completedAt?: any | null, featureId?: string | null, intermediateDataUrl?: string | null } | null };
 
 export type CancelJobMutationVariables = Exact<{
   input: CancelJobInput;
 }>;
 
 
-export type CancelJobMutation = { __typename?: 'Mutation', cancelJob: { __typename?: 'CancelJobPayload', job?: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } | null } };
+export type CancelJobMutation = { __typename?: 'Mutation', cancelJob: { __typename?: 'CancelJobPayload', job?: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, debug?: boolean | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } | null } };
 
 export type CreateProjectMutationVariables = Exact<{
   input: CreateProjectInput;
@@ -1032,7 +1101,7 @@ export type GetProjectByIdQueryVariables = Exact<{
 }>;
 
 
-export type GetProjectByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | { __typename: 'ProjectDocument' } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace' } | null };
+export type GetProjectByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'EdgeExecution' } | { __typename: 'Job' } | { __typename: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null } | { __typename: 'ProjectDocument' } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace' } | null };
 
 export type UpdateProjectMutationVariables = Exact<{
   input: UpdateProjectInput;
@@ -1053,7 +1122,7 @@ export type RunProjectMutationVariables = Exact<{
 }>;
 
 
-export type RunProjectMutation = { __typename?: 'Mutation', runProject?: { __typename?: 'RunProjectPayload', job: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } } | null };
+export type RunProjectMutation = { __typename?: 'Mutation', runProject?: { __typename?: 'RunProjectPayload', job: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, debug?: boolean | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } } | null };
 
 export type GetSharedProjectQueryVariables = Exact<{
   token: Scalars['String']['input'];
@@ -1096,6 +1165,14 @@ export type RealTimeLogsSubscriptionVariables = Exact<{
 
 
 export type RealTimeLogsSubscription = { __typename?: 'Subscription', logs?: { __typename?: 'Log', jobId: string, nodeId?: string | null, timestamp: any, logLevel: LogLevel, message: string } | null };
+
+export type OnEdgeStatusChangeSubscriptionVariables = Exact<{
+  jobId: Scalars['ID']['input'];
+  edgeId: Scalars['String']['input'];
+}>;
+
+
+export type OnEdgeStatusChangeSubscription = { __typename?: 'Subscription', edgeStatus: EdgeStatus };
 
 export type CreateTriggerMutationVariables = Exact<{
   input: CreateTriggerInput;
@@ -1164,7 +1241,7 @@ export type GetWorkspaceByIdQueryVariables = Exact<{
 }>;
 
 
-export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'Job' } | { __typename: 'Project' } | { __typename: 'ProjectDocument' } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> } | null };
+export type GetWorkspaceByIdQuery = { __typename?: 'Query', node?: { __typename: 'Asset' } | { __typename: 'Deployment' } | { __typename: 'EdgeExecution' } | { __typename: 'Job' } | { __typename: 'Project' } | { __typename: 'ProjectDocument' } | { __typename: 'Trigger' } | { __typename: 'User' } | { __typename: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> } | null };
 
 export type UpdateWorkspaceMutationVariables = Exact<{
   input: UpdateWorkspaceInput;
@@ -1247,6 +1324,19 @@ export const TriggerFragmentDoc = gql`
   description
 }
     ${DeploymentFragmentDoc}`;
+export const EdgeExecutionFragmentDoc = gql`
+    fragment EdgeExecution on EdgeExecution {
+  id
+  edgeId
+  jobId
+  status
+  createdAt
+  startedAt
+  completedAt
+  featureId
+  intermediateDataUrl
+}
+    `;
 export const JobFragmentDoc = gql`
     fragment Job on Job {
   id
@@ -1256,10 +1346,26 @@ export const JobFragmentDoc = gql`
   completedAt
   logsURL
   outputURLs
+  debug
   deployment {
     id
     description
   }
+}
+    `;
+export const ProjectDocumentFragmentDoc = gql`
+    fragment ProjectDocument on ProjectDocument {
+  id
+  timestamp
+  updates
+  version
+}
+    `;
+export const ProjectSnapshotFragmentDoc = gql`
+    fragment ProjectSnapshot on ProjectSnapshot {
+  timestamp
+  updates
+  version
 }
     `;
 export const LogFragmentDoc = gql`
@@ -1343,6 +1449,35 @@ export const GetDeploymentHeadDocument = gql`
   }
 }
     ${DeploymentFragmentDoc}`;
+export const GetLatestProjectSnapshotDocument = gql`
+    query GetLatestProjectSnapshot($projectId: ID!) {
+  latestProjectSnapshot(projectId: $projectId) {
+    id
+    timestamp
+    updates
+    version
+  }
+}
+    `;
+export const GetProjectHistoryDocument = gql`
+    query GetProjectHistory($projectId: ID!) {
+  projectHistory(projectId: $projectId) {
+    timestamp
+    updates
+    version
+  }
+}
+    `;
+export const RollbackProjectDocument = gql`
+    mutation RollbackProject($projectId: ID!, $version: Int!) {
+  rollbackProject(projectId: $projectId, version: $version) {
+    id
+    timestamp
+    updates
+    version
+  }
+}
+    `;
 export const GetJobsDocument = gql`
     query GetJobs($workspaceId: ID!, $pagination: PageBasedPagination!) {
   jobs(workspaceId: $workspaceId, pagination: $pagination) {
@@ -1365,6 +1500,13 @@ export const GetJobDocument = gql`
   }
 }
     ${JobFragmentDoc}`;
+export const GetEdgeExecutionDocument = gql`
+    query GetEdgeExecution($jobId: ID!, $edgeId: String!) {
+  edgeExecution(jobId: $jobId, edgeId: $edgeId) {
+    ...EdgeExecution
+  }
+}
+    ${EdgeExecutionFragmentDoc}`;
 export const CancelJobDocument = gql`
     mutation CancelJob($input: CancelJobInput!) {
   cancelJob(input: $input) {
@@ -1477,6 +1619,11 @@ export const RealTimeLogsDocument = gql`
     logLevel
     message
   }
+}
+    `;
+export const OnEdgeStatusChangeDocument = gql`
+    subscription OnEdgeStatusChange($jobId: ID!, $edgeId: String!) {
+  edgeStatus(jobId: $jobId, edgeId: $edgeId)
 }
     `;
 export const CreateTriggerDocument = gql`
@@ -1641,11 +1788,23 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     GetDeploymentHead(variables: GetDeploymentHeadQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetDeploymentHeadQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetDeploymentHeadQuery>(GetDeploymentHeadDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetDeploymentHead', 'query', variables);
     },
+    GetLatestProjectSnapshot(variables: GetLatestProjectSnapshotQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetLatestProjectSnapshotQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetLatestProjectSnapshotQuery>(GetLatestProjectSnapshotDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetLatestProjectSnapshot', 'query', variables);
+    },
+    GetProjectHistory(variables: GetProjectHistoryQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetProjectHistoryQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectHistoryQuery>(GetProjectHistoryDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetProjectHistory', 'query', variables);
+    },
+    RollbackProject(variables: RollbackProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RollbackProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<RollbackProjectMutation>(RollbackProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RollbackProject', 'mutation', variables);
+    },
     GetJobs(variables: GetJobsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetJobsQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetJobsQuery>(GetJobsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetJobs', 'query', variables);
     },
     GetJob(variables: GetJobQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetJobQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetJobQuery>(GetJobDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetJob', 'query', variables);
+    },
+    GetEdgeExecution(variables: GetEdgeExecutionQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetEdgeExecutionQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetEdgeExecutionQuery>(GetEdgeExecutionDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetEdgeExecution', 'query', variables);
     },
     CancelJob(variables: CancelJobMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CancelJobMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CancelJobMutation>(CancelJobDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CancelJob', 'mutation', variables);
@@ -1685,6 +1844,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     RealTimeLogs(variables: RealTimeLogsSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RealTimeLogsSubscription> {
       return withWrapper((wrappedRequestHeaders) => client.request<RealTimeLogsSubscription>(RealTimeLogsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RealTimeLogs', 'subscription', variables);
+    },
+    OnEdgeStatusChange(variables: OnEdgeStatusChangeSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<OnEdgeStatusChangeSubscription> {
+      return withWrapper((wrappedRequestHeaders) => client.request<OnEdgeStatusChangeSubscription>(OnEdgeStatusChangeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'OnEdgeStatusChange', 'subscription', variables);
     },
     CreateTrigger(variables: CreateTriggerMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateTriggerMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateTriggerMutation>(CreateTriggerDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateTrigger', 'mutation', variables);

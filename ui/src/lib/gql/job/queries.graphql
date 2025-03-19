@@ -18,6 +18,12 @@ query GetJob($id: ID!) {
   }
 }
 
+query GetEdgeExecution($jobId: ID!, $edgeId: String!) {
+  edgeExecution(jobId: $jobId, edgeId: $edgeId) {
+    ...EdgeExecution
+  }
+}
+
 mutation CancelJob($input: CancelJobInput!) {
   cancelJob(input: $input) {
     job {

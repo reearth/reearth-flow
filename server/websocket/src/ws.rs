@@ -21,8 +21,6 @@ use crate::{pool::BroadcastPool, AppState};
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
 
-/// Connection Wrapper over a [WebSocket], which implements a Yjs/Yrs awareness and update exchange
-/// protocol.
 #[repr(transparent)]
 pub struct WarpConn(Connection<WarpSink, WarpStream>);
 
@@ -144,7 +142,6 @@ pub async fn ws_handler(
     #[cfg(not(feature = "auth"))]
     let user_token: Option<String> = None;
 
-    // Verify token
     #[cfg(feature = "auth")]
     {
         let authorized = state.auth.verify_token(&query.token).await;
@@ -169,6 +166,39 @@ pub async fn ws_handler(
         }
     }
 
+    // if let Some(redis_store) = state.pool.get_redis_store() {
+    //     match redis_store.get_doc_instance(&doc_id).await {
+    //         Ok(Some(instance_id)) if instance_id != state.instance_id => {
+    //             tracing::debug!(
+    //                 "Document {} is already being handled by instance {}",
+    //                 doc_id,
+    //                 instance_id
+    //             );
+
+    //             // return ws.on_upgrade(move |mut socket| async move {
+    //             //     let close_frame = axum::extract::ws::CloseFrame {
+    //             //         code: 1012,
+    //             //         reason: format!("instance:{}", instance_id).into(),
+    //             //     };
+
+    //             //     let _ = socket.send(Message::Close(Some(close_frame))).await;
+    //             // });
+    //             tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+    //         }
+    //         Ok(_) => {
+    //             if let Err(e) = redis_store
+    //                 .register_doc_instance(&doc_id, &state.instance_id, 2)
+    //                 .await
+    //             {
+    //                 tracing::warn!("Failed to register instance for document {}: {}", doc_id, e);
+    //             }
+    //         }
+    //         Err(e) => {
+    //             tracing::warn!("Failed to check document instance: {}", e);
+    //         }
+    //     }
+    // }
+
     let bcast = match state.pool.get_or_create_group(&doc_id).await {
         Ok(group) => group,
         Err(e) => {
@@ -192,8 +222,6 @@ async fn handle_socket(
     pool: Arc<BroadcastPool>,
     user_token: Option<String>,
 ) {
-    bcast.increment_connections();
-
     let (sender, receiver) = socket.split();
 
     let conn = crate::conn::Connection::with_broadcast_group_and_user(
@@ -204,7 +232,8 @@ async fn handle_socket(
     )
     .await;
 
-    if let Err(e) = conn.await {
+    let result = conn.await;
+    if let Err(e) = result {
         tracing::error!("WebSocket connection error: {}", e);
     }
     pool.remove_connection(&doc_id).await;

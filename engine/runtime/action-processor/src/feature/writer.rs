@@ -3,6 +3,7 @@ mod json;
 
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 
+use indexmap::IndexMap;
 use reearth_flow_common::{csv::Delimiter, uri::Uri};
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -222,7 +223,7 @@ impl Processor for FeatureWriter {
 
     fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         for (output, features) in &self.buffer {
-            let feature: Feature = HashMap::<Attribute, AttributeValue>::from([
+            let feature: Feature = IndexMap::<Attribute, AttributeValue>::from([
                 (
                     Attribute::new("filePath".to_string()),
                     AttributeValue::String(output.path().to_str().unwrap_or_default().to_string()),
