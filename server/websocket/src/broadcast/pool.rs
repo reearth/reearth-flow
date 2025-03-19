@@ -3,74 +3,73 @@ use crate::storage::gcs::GcsStore;
 use crate::storage::kv::DocOps;
 use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
-use anyhow::Result;
+use anyhow::{Error, Result};
 use dashmap::DashMap;
+use deadpool::managed::{self, Manager, Metrics, Pool, RecycleResult};
 use rand;
 use std::sync::Arc;
+use std::time::Duration;
 use yrs::sync::Awareness;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 const DEFAULT_DOC_ID: &str = "01jpjfpw0qtw17kbrcdbgefakg";
 
-#[derive(Clone, Debug)]
-pub struct BroadcastPool {
-    store: Arc<GcsStore>,
-    redis_store: Option<Arc<RedisStore>>,
-    groups: DashMap<String, Arc<BroadcastGroup>>,
-    buffer_capacity: usize,
-    last_cleanup: Arc<std::sync::Mutex<std::time::Instant>>,
+/// Context object that holds a BroadcastGroup and its associated document ID.
+/// Used by the deadpool to manage these objects.
+#[derive(Debug)]
+pub struct BroadcastGroupContext {
+    doc_id: String,
+    group: Arc<BroadcastGroup>,
 }
 
-impl BroadcastPool {
-    pub fn new(store: Arc<GcsStore>, redis_store: Option<Arc<RedisStore>>) -> Self {
+/// Manager for BroadcastGroup objects that uses deadpool for pooling.
+/// This creates and recycles BroadcastGroup instances based on document IDs.
+#[derive(Debug)]
+pub struct BroadcastGroupManager {
+    store: Arc<GcsStore>,
+    redis_store: Arc<RedisStore>,
+    buffer_capacity: usize,
+    doc_to_id_map: Arc<DashMap<String, Arc<BroadcastGroup>>>,
+}
+
+impl BroadcastGroupManager {
+    pub fn new(store: Arc<GcsStore>, redis_store: Arc<RedisStore>) -> Self {
         Self {
             store,
             redis_store,
-            groups: DashMap::new(),
             buffer_capacity: 128,
-            last_cleanup: Arc::new(std::sync::Mutex::new(std::time::Instant::now())),
+            doc_to_id_map: Arc::new(DashMap::new()),
         }
     }
 
-    pub fn get_store(&self) -> Arc<GcsStore> {
-        Arc::clone(&self.store)
-    }
-
-    pub fn get_redis_store(&self) -> Option<Arc<RedisStore>> {
-        self.redis_store.as_ref().map(Arc::clone)
-    }
-
-    pub async fn get_or_create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
+    /// Creates a new BroadcastGroup for a specific document ID.
+    /// If a group for this document already exists and is valid, returns it.
+    /// Otherwise, creates a new group, potentially loading from storage.
+    async fn create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         let doc_id_string = doc_id.to_string();
 
-        match self.groups.entry(doc_id_string.clone()) {
-            dashmap::mapref::entry::Entry::Occupied(entry) => {
-                let group_clone = entry.get().clone();
-                drop(entry);
-
-                if let (Some(redis_store), Some(doc_name)) =
-                    (group_clone.get_redis_store(), group_clone.get_doc_name())
-                {
-                    let valid = match redis_store.check_stream_exists(&doc_name).await {
-                        Ok(exists) => exists,
-                        Err(e) => {
-                            tracing::warn!("Error checking Redis stream: {}", e);
-                            false
-                        }
-                    };
-
-                    if !valid {
-                        tracing::warn!("Found cached broadcast group for '{}' but Redis stream does not exist, recreating", doc_id);
-
-                        self.groups.remove(&doc_id_string);
-                    } else {
-                        return Ok(group_clone);
+        // Check if group is already in our map
+        if let Some(group) = self.doc_to_id_map.get(&doc_id_string) {
+            if let (Some(redis_store), Some(doc_name)) =
+                (group.get_redis_store(), group.get_doc_name())
+            {
+                let valid = match redis_store.check_stream_exists(&doc_name).await {
+                    Ok(exists) => exists,
+                    Err(e) => {
+                        tracing::warn!("Error checking Redis stream: {}", e);
+                        false
                     }
+                };
+
+                if !valid {
+                    tracing::warn!("Found cached broadcast group for '{}' but Redis stream does not exist, recreating", doc_id);
+                    self.doc_to_id_map.remove(&doc_id_string);
                 } else {
-                    return Ok(group_clone);
+                    return Ok(group.clone());
                 }
+            } else {
+                return Ok(group.clone());
             }
-            dashmap::mapref::entry::Entry::Vacant(_) => {}
         }
 
         let mut need_initial_save = false;
@@ -153,74 +152,55 @@ impl BroadcastPool {
             .await?,
         );
 
-        match self.groups.entry(doc_id_string) {
-            dashmap::mapref::entry::Entry::Occupied(entry) => {
-                let existing_group = entry.get().clone();
-                Ok(existing_group)
-            }
-            dashmap::mapref::entry::Entry::Vacant(entry) => {
-                let new_group = entry.insert(Arc::clone(&group)).clone();
-                Ok(new_group)
-            }
-        }
+        // Store reference in our map for future lookups
+        self.doc_to_id_map.insert(doc_id_string, Arc::clone(&group));
+
+        Ok(group)
+    }
+}
+
+impl Manager for BroadcastGroupManager {
+    type Type = BroadcastGroupContext;
+    type Error = Error;
+
+    async fn create(&self) -> Result<Self::Type, Self::Error> {
+        // Create a new group for the default document
+        let group = self.create_group(DEFAULT_DOC_ID).await?;
+
+        Ok(BroadcastGroupContext {
+            doc_id: DEFAULT_DOC_ID.to_string(),
+            group,
+        })
     }
 
-    pub async fn cleanup_empty_groups(&self) {
-        {
-            let mut last_cleanup = self.last_cleanup.lock().unwrap();
-            let now = std::time::Instant::now();
-            if now.duration_since(*last_cleanup).as_secs() < 60 {
-                return;
-            }
-            *last_cleanup = now;
-        }
+    fn recycle(
+        &self,
+        obj: &mut Self::Type,
+        _metrics: &Metrics,
+    ) -> impl std::future::Future<Output = RecycleResult<Self::Error>> + Send {
+        let doc_to_id_map = self.doc_to_id_map.clone();
+        let redis_store = self.redis_store.clone();
+        let group = obj.group.clone();
+        let doc_id = obj.doc_id.clone();
 
-        let mut groups_to_remove = Vec::new();
+        async move {
+            if group.connection_count() == 0 {
+                tracing::info!("Recycling empty broadcast group for document '{}'", doc_id);
 
-        for entry in self.groups.iter() {
-            let count = entry.value().connection_count();
-            if count == 0 {
-                groups_to_remove.push(entry.key().clone());
-            }
-        }
+                // Remove from our map
+                doc_to_id_map.remove(&doc_id);
 
-        for doc_id in groups_to_remove {
-            if let Some((_, group)) = self.groups.remove(&doc_id) {
                 if let Err(e) = group.shutdown().await {
                     tracing::warn!("Error shutting down empty group for '{}': {}", doc_id, e);
-                }
-            }
-        }
-    }
-
-    pub async fn remove_connection(&self, doc_id: &str) {
-        if let Some(group) = self.groups.get(doc_id) {
-            let new_count = group.decrement_connections().await;
-            tracing::info!("Document '{}' remaining connections: {}", doc_id, new_count);
-
-            if new_count == 0 {
-                tracing::info!("Removing broadcast group for document '{}'", doc_id);
-
-                let group_clone = Arc::clone(&group);
-                drop(group);
-
-                tracing::info!("Shutting down broadcast group");
-                if let Err(e) = group_clone.shutdown().await {
-                    tracing::warn!("Failed to shutdown: {}", e);
+                    return Err(managed::RecycleError::Message(
+                        format!("Failed to shutdown: {}", e).into(),
+                    ));
                 }
 
-                if let Some(task) = &group_clone.redis_subscriber_task {
-                    task.abort();
-                }
-                group_clone.awareness_updater.abort();
-
-                if let Some((_, _)) = self.groups.remove(doc_id) {
-                    tracing::info!("Group removed for document '{}'", doc_id);
-                }
-
-                if let Some(redis_store) = &self.redis_store {
-                    let redis_store_clone = Arc::clone(redis_store);
-                    let doc_id_clone = doc_id.to_string();
+                // Handle Redis stream cleanup if needed
+                if let Some(redis_store) = redis_store {
+                    let redis_store_clone = Arc::clone(&redis_store);
+                    let doc_id_clone = doc_id.clone();
                     let instance_id = format!("instance-{}", rand::random::<u64>());
 
                     match redis_store_clone
@@ -246,7 +226,59 @@ impl BroadcastPool {
                         }
                     }
                 }
+
+                return Err(managed::RecycleError::Message(
+                    "Group has no connections".into(),
+                ));
             }
+
+            Ok(())
         }
+    }
+}
+
+/// BroadcastPool that manages a pool of BroadcastGroup objects
+/// using deadpool's connection pooling.
+#[derive(Clone, Debug)]
+pub struct BroadcastPool {
+    pool: Pool<BroadcastGroupManager>,
+}
+
+impl BroadcastPool {
+    pub fn new(store: Arc<GcsStore>, redis_store: Option<Arc<RedisStore>>) -> Self {
+        let manager = BroadcastGroupManager::new(store.clone(), redis_store.clone());
+        let pool = Pool::builder(manager)
+            .max_size(100) // Adjust as needed
+            .wait_timeout(Some(Duration::from_secs(30))) // Wait up to 30 seconds for a connection
+            .runtime(deadpool::Runtime::Tokio1)
+            .build()
+            .unwrap();
+
+        Self { pool }
+    }
+
+    pub fn get_store(&self) -> Arc<GcsStore> {
+        self.pool.manager().store.clone()
+    }
+
+    pub fn get_redis_store(&self) -> Option<Arc<RedisStore>> {
+        self.pool.manager().redis_store.clone()
+    }
+
+    pub async fn get_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
+        if let Some(group) = self.pool.manager().doc_to_id_map.get(doc_id) {
+            if let Err(e) = group.increment_connections().await {
+                tracing::warn!("Failed to increment connections for '{}': {}", doc_id, e);
+            }
+            return Ok(group.clone());
+        }
+
+        let group = self.pool.manager().create_group(doc_id).await?;
+
+        if let Err(e) = group.increment_connections().await {
+            tracing::warn!("Failed to increment connections for '{}': {}", doc_id, e);
+        }
+
+        Ok(group)
     }
 }

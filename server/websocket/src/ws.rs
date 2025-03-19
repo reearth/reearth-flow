@@ -199,7 +199,7 @@ pub async fn ws_handler(
     //     }
     // }
 
-    let bcast = match state.pool.get_or_create_group(&doc_id).await {
+    let bcast = match state.pool.get_group(&doc_id).await {
         Ok(group) => group,
         Err(e) => {
             tracing::error!("Failed to get or create group for {}: {}", doc_id, e);
@@ -219,7 +219,7 @@ async fn handle_socket(
     socket: axum::extract::ws::WebSocket,
     bcast: Arc<crate::BroadcastGroup>,
     doc_id: String,
-    pool: Arc<BroadcastPool>,
+    _pool: Arc<BroadcastPool>,
     user_token: Option<String>,
 ) {
     let (sender, receiver) = socket.split();
@@ -236,7 +236,11 @@ async fn handle_socket(
     if let Err(e) = result {
         tracing::error!("WebSocket connection error: {}", e);
     }
-    pool.remove_connection(&doc_id).await;
+
+    // Directly decrement connections on the broadcast group
+    // This will allow deadpool to recycle the object when connection count reaches 0
+    let _ = bcast.decrement_connections().await;
+    tracing::debug!("Connection decreased for document '{}'", doc_id);
 }
 
 fn normalize_doc_id(doc_id: &str) -> String {
