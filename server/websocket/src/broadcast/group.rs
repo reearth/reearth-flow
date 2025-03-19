@@ -506,7 +506,6 @@ impl BroadcastGroup {
             let awareness = self.awareness().clone();
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
-            let gcs_store = self.storage.clone();
 
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
@@ -532,7 +531,6 @@ impl BroadcastGroup {
                         msg,
                         redis_store.as_ref(),
                         doc_name.as_ref(),
-                        gcs_store.as_ref(),
                     )
                     .await
                     {
@@ -563,7 +561,6 @@ impl BroadcastGroup {
         msg: Message,
         redis_store: Option<&Arc<RedisStore>>,
         doc_name: Option<&String>,
-        _gcs_store: Option<&Arc<GcsStore>>,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
