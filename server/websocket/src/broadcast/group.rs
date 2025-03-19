@@ -81,7 +81,7 @@ impl BroadcastGroup {
         Ok(())
     }
 
-    pub fn decrement_connections(&self) -> usize {
+    pub async fn decrement_connections(&self) -> usize {
         let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
         let new_count = prev_count - 1;
 
@@ -92,17 +92,12 @@ impl BroadcastGroup {
         );
 
         if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
-            let doc_name_clone = doc_name.clone();
-            let redis_store_clone = redis_store.clone();
-
-            tokio::spawn(async move {
-                if let Err(e) = redis_store_clone
-                    .decrement_doc_connections(&doc_name_clone)
-                    .await
-                {
+            match redis_store.decrement_doc_connections(doc_name).await {
+                Ok(_) => {}
+                Err(e) => {
                     tracing::warn!("Failed to decrement Redis global connection count: {}", e);
                 }
-            });
+            }
         }
 
         if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
@@ -127,7 +122,7 @@ impl BroadcastGroup {
                 let gcs_state = gcs_txn.state_vector();
 
                 let awareness_txn = awareness_doc.transact();
-                let update = awareness_txn.encode_state_as_update_v1(&gcs_state);
+                let update = awareness_txn.encode_diff_v1(&gcs_state);
                 Self::handle_gcs_update(update, &doc_name_clone, &store_clone).await;
 
                 shutdown_flag_clone.store(true, std::sync::atomic::Ordering::SeqCst);
@@ -285,7 +280,7 @@ impl BroadcastGroup {
                             &doc_name_for_sub,
                             &group_name_clone,
                             &consumer_name_clone,
-                            25,
+                            15,
                         )
                         .await
                     {
@@ -722,7 +717,7 @@ impl BroadcastGroup {
             let gcs_state = gcs_txn.state_vector();
 
             let awareness_txn = awareness_doc.transact();
-            let update = awareness_txn.encode_state_as_update_v1(&gcs_state);
+            let update = awareness_txn.encode_diff_v1(&gcs_state);
 
             if let Err(e) = store.push_update(doc_name, &update).await {
                 tracing::warn!("Failed to save final document state: {}", e);
@@ -761,7 +756,7 @@ impl Drop for BroadcastGroup {
                     match rs.read_pending_messages(&dn, &gn, &cn, 100).await {
                         Ok(pending) => {
                             if !pending.is_empty() {
-                                tracing::info!(
+                                tracing::debug!(
                                     "Drop: Acknowledging {} pending messages",
                                     pending.len()
                                 );
@@ -778,7 +773,7 @@ impl Drop for BroadcastGroup {
                     match rs.delete_consumer(&dn, &gn, &cn).await {
                         Ok(n) => {
                             if n > 0 {
-                                tracing::info!(
+                                tracing::debug!(
                                     "Drop: Successfully deleted consumer '{}' from group '{}'",
                                     cn,
                                     gn
