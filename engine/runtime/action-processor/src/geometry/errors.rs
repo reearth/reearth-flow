@@ -3,6 +3,10 @@ use thiserror::Error;
 #[allow(dead_code)]
 #[derive(Error, Debug)]
 pub(super) enum GeometryProcessorError {
+    #[error("ThreeDimensionPlanarityRotator Factory error: {0}")]
+    ThreeDimensionPlanarityRotatorFactory(String),
+    #[error("ThreeDimensionPlanarityRotator error: {0}")]
+    ThreeDimensionPlanarityRotator(String),
     #[error("Extruder Factory error: {0}")]
     ExtruderFactory(String),
     #[error("Extruder error: {0}")]
