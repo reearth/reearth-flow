@@ -204,10 +204,41 @@ impl BroadcastPool {
         let manager = BroadcastGroupManager::new(store.clone(), redis_store.clone());
         let pool = Pool::builder(manager)
             .max_size(100)
-            .wait_timeout(Some(Duration::from_secs(30)))
+            .wait_timeout(Some(Duration::from_secs(5)))
             .runtime(deadpool::Runtime::Tokio1)
+            .recycle_timeout(Some(Duration::from_secs(5)))
             .build()
             .unwrap();
+
+        let doc_to_id_map = pool.manager().doc_to_id_map.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(Duration::from_secs(5));
+            loop {
+                interval.tick().await;
+
+                let mut empty_groups = vec![];
+                for entry in doc_to_id_map.iter() {
+                    let doc_id = entry.key().clone();
+                    let group = entry.value().clone();
+
+                    if group.connection_count() == 0 {
+                        empty_groups.push((doc_id, group));
+                    }
+                }
+
+                for (doc_id, group) in empty_groups {
+                    tracing::info!(
+                        "Cleaning up empty broadcast group for document '{}'",
+                        doc_id
+                    );
+                    doc_to_id_map.remove(&doc_id);
+
+                    if let Err(e) = group.shutdown().await {
+                        tracing::warn!("Error shutting down empty group for '{}': {}", doc_id, e);
+                    }
+                }
+            }
+        });
 
         Self { pool }
     }

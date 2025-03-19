@@ -641,7 +641,7 @@ impl BroadcastGroup {
                         );
                     }
                     Ok(0) => {
-                        tracing::debug!(
+                        tracing::info!(
                             "Consumer '{}' not found in group '{}'",
                             consumer_name_clone,
                             group_name_clone
