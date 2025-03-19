@@ -245,6 +245,25 @@ func (r *Deployment) Update(ctx context.Context, param interfaces.UpdateDeployme
 }
 
 func (r *Deployment) Delete(ctx context.Context, id id.DeploymentID) error {
+	dep, err := r.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	if dep.Project() != nil {
+		versions, err := r.FindVersions(ctx, dep.Workspace(), dep.Project())
+		if err != nil {
+			return err
+		}
+
+		for _, version := range versions {
+			if err := r.Remove(ctx, version.ID()); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
 	return r.Remove(ctx, id)
 }
 
