@@ -101,6 +101,15 @@ impl GcsStore {
         Self { client, bucket }
     }
 
+    pub async fn push_update(
+        &self,
+        doc_id: &str,
+        update: &bytes::Bytes,
+    ) -> Result<u32, store::error::Error> {
+        use super::kv::DocOps;
+        DocOps::push_update(self, doc_id, update).await
+    }
+
     pub async fn get_updates(&self, doc_id: &str) -> Result<Vec<UpdateInfo>, anyhow::Error> {
         // Get the OID for this document
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
