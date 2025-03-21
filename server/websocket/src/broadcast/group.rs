@@ -106,42 +106,31 @@ impl BroadcastGroup {
         }
 
         if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
-            let store_clone = store.clone();
-            let doc_name_clone = doc_name.clone();
-            let awareness = self.awareness_ref.clone();
-            let shutdown_flag = Arc::new(AtomicBool::new(false));
-            let shutdown_flag_clone = shutdown_flag.clone();
+            if new_count == 0 {
+                let store_clone = store.clone();
+                let doc_name_clone = doc_name.clone();
+                let awareness = self.awareness_ref.clone();
 
-            tokio::spawn(async move {
-                let awareness = awareness.write().await;
-                let awareness_doc = awareness.doc();
-                let _awareness_state = awareness_doc.transact().state_vector();
+                tokio::spawn(async move {
+                    let awareness = awareness.write().await;
+                    let awareness_doc = awareness.doc();
+                    let _awareness_state = awareness_doc.transact().state_vector();
 
-                let gcs_doc = Doc::new();
-                let mut gcs_txn = gcs_doc.transact_mut();
+                    let gcs_doc = Doc::new();
+                    let mut gcs_txn = gcs_doc.transact_mut();
 
-                if let Err(e) = store_clone.load_doc(&doc_name_clone, &mut gcs_txn).await {
-                    tracing::warn!("Failed to load current state from GCS: {}", e);
-                }
-
-                let gcs_state = gcs_txn.state_vector();
-
-                let awareness_txn = awareness_doc.transact();
-                let update = awareness_txn.encode_diff_v1(&gcs_state);
-                let update_bytes = Bytes::from(update);
-                Self::handle_gcs_update(update_bytes, &doc_name_clone, &store_clone).await;
-
-                shutdown_flag_clone.store(true, std::sync::atomic::Ordering::SeqCst);
-            });
-
-            tokio::spawn(async move {
-                for _ in 0..10 {
-                    if shutdown_flag.load(std::sync::atomic::Ordering::SeqCst) {
-                        break;
+                    if let Err(e) = store_clone.load_doc(&doc_name_clone, &mut gcs_txn).await {
+                        tracing::warn!("Failed to load current state from GCS: {}", e);
                     }
-                    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-                }
-            });
+
+                    let gcs_state = gcs_txn.state_vector();
+
+                    let awareness_txn = awareness_doc.transact();
+                    let update = awareness_txn.encode_diff_v1(&gcs_state);
+                    let update_bytes = Bytes::from(update);
+                    Self::handle_gcs_update(update_bytes, &doc_name_clone, &store_clone).await;
+                });
+            }
         }
 
         new_count
