@@ -46,6 +46,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
         {edgeStatus === "failed" ? (
           <X
             className="nodrag nopan absolute size-[20px] origin-center rounded-full border border-destructive bg-primary fill-destructive p-1"
+            weight="bold"
             style={{
               pointerEvents: "all",
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
@@ -66,7 +67,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
       {edgeStatus === "completed" && (
         <path
           d={edgePath}
-          stroke="#00ff00"
+          stroke="#00a340"
           strokeWidth="1"
           fill="none"
           markerEnd="url(#arrow)"
@@ -77,31 +78,31 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
           <path
             d={edgePath}
             stroke="#27272A"
-            strokeWidth="2"
-            strokeDasharray="20,20"
+            strokeDasharray="10,10"
             fill="none">
             <animate
               attributeName="stroke-dashoffset"
               from="40"
               to="0"
-              dur="1s"
+              dur="3s"
               repeatCount="indefinite"
             />
           </path>
           <g>
-            <circle className="opacity-25" r="8" fill="#ffffff">
+            <circle className="opacity-25" r="6" fill="#ffffff">
               <animateMotion
-                dur="5s"
+                dur="6s"
                 repeatCount="indefinite"
                 path={edgePath}
               />
             </circle>
             <circle
+              className="opacity-75"
               style={{ filter: `drop-shadow(3px 3px 5px #471a27)` }}
               r="3"
               fill="#bbffff">
               <animateMotion
-                dur="5s"
+                dur="6s"
                 repeatCount="indefinite"
                 path={edgePath}
               />
@@ -110,13 +111,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
         </>
       )}
       {edgeStatus === "failed" && (
-        <path
-          d={edgePath}
-          stroke="#ff0000"
-          strokeWidth="1"
-          fill="none"
-          markerEnd="url(#arrow)"
-        />
+        <path d={edgePath} stroke="#fc4444" strokeWidth="1" fill="none" />
       )}
     </>
   );

@@ -55,8 +55,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     customName,
     inputs,
     outputs,
-    status,
-    metaProps,
+    // metaProps,
     borderColor,
     selectedColor,
     selectedBackgroundColor,
@@ -68,7 +67,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
         <div className="rounded-sm bg-secondary">
           <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
             <div
-              className={`flex w-4 justify-center rounded-l-sm border-y border-l ${status === "failed" ? "border-destructive" : selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className} `}>
+              className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className} `}>
               {type === "reader" ? (
                 <Database className={typeIconClasses} />
               ) : type === "writer" ? (
@@ -80,18 +79,13 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
               ) : null}
             </div>
             <div
-              className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${status === "failed" ? "border-destructive" : selected ? selectedColor : borderColor}`}>
+              className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? selectedColor : borderColor}`}>
               <p className="self-center truncate text-xs dark:font-light">
                 {data.customizations?.customName || customName || officialName}
               </p>
-              {status === "succeeded" ? (
-                <div className="self-center">
-                  <Eye />
-                </div>
-              ) : null}
-              <div
+              {/* <div
                 className={`size-[8px] shrink-0 self-center rounded ${metaProps.style}`}
-              />
+              /> */}
             </div>
           </div>
           <Handles nodeType={type} inputs={inputs} outputs={outputs} />

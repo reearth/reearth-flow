@@ -22,7 +22,10 @@ export default ({
   undoManager: Y.UndoManager | null;
   setSelectedNodeIds: Dispatch<SetStateAction<string[]>>;
   setSelectedEdgeIds: Dispatch<SetStateAction<string[]>>;
-  undoTrackerActionWrapper: (callback: () => void) => void;
+  undoTrackerActionWrapper: (
+    callback: () => void,
+    originPrepend?: string,
+  ) => void;
 }) => {
   const rawWorkflows = Array.from(yWorkflows.entries()).map(([_, yw]) =>
     rebuildWorkflow(yw),
@@ -58,7 +61,7 @@ export default ({
   });
 
   const { canRedo, canUndo, handleYWorkflowRedo, handleYWorkflowUndo } =
-    useYHistory({ undoManager });
+    useYHistory({ undoManager, undoTrackerActionWrapper });
 
   const { handleYLayoutChange } = useYLayout({
     yWorkflows,
