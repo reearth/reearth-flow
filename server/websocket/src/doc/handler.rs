@@ -11,7 +11,9 @@ use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 use crate::doc::types::{Document, HistoryItem};
-use crate::doc::types::{DocumentResponse, HistoryResponse, RollbackRequest};
+use crate::doc::types::{
+    DocumentResponse, HistoryMetadataResponse, HistoryResponse, RollbackRequest,
+};
 use crate::storage::kv::DocOps;
 use crate::AppState;
 
@@ -206,6 +208,60 @@ impl DocumentHandler {
                     StatusCode::NOT_FOUND
                 } else if err.to_string().contains("version") {
                     StatusCode::BAD_REQUEST
+                } else {
+                    StatusCode::INTERNAL_SERVER_ERROR
+                };
+
+                (status_code, format!("Error: {}", err)).into_response()
+            }
+        }
+    }
+
+    pub async fn get_history_metadata(
+        Path(doc_id): Path<String>,
+        State(state): State<Arc<AppState>>,
+    ) -> Response {
+        debug!(
+            "Handling GetHistoryMetadata request for document: {}",
+            doc_id
+        );
+
+        let storage = state.pool.get_store();
+        let doc_id_clone = doc_id.clone();
+        let result = tokio::task::block_in_place(move || {
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .unwrap();
+
+            rt.block_on(async move {
+                let metadata = storage.get_updates_metadata(&doc_id_clone).await?;
+                Ok::<_, anyhow::Error>(metadata)
+            })
+        });
+
+        match result {
+            Ok(metadata) => {
+                let history: Vec<HistoryMetadataResponse> = metadata
+                    .into_iter()
+                    .map(|(clock, timestamp)| HistoryMetadataResponse {
+                        version: clock as u64,
+                        timestamp: chrono::DateTime::from_timestamp(timestamp.unix_timestamp(), 0)
+                            .unwrap_or(Utc::now())
+                            .to_rfc3339(),
+                    })
+                    .collect();
+
+                Json(history).into_response()
+            }
+            Err(err) => {
+                error!(
+                    "Failed to get history metadata for document {}: {}",
+                    doc_id, err
+                );
+
+                let status_code = if err.to_string().contains("not found") {
+                    StatusCode::NOT_FOUND
                 } else {
                     StatusCode::INTERNAL_SERVER_ERROR
                 };

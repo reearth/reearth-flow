@@ -45,3 +45,9 @@ pub struct HistoryResponse {
     pub version: u64,
     pub timestamp: String,
 }
+
+#[derive(serde::Serialize)]
+pub struct HistoryMetadataResponse {
+    pub version: u64,
+    pub timestamp: String,
+}

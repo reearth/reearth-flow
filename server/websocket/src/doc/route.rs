@@ -15,6 +15,10 @@ pub fn document_routes() -> Router<Arc<AppState>> {
             get(DocumentHandler::get_history),
         )
         .route(
+            "/document/{doc_id}/history/metadata",
+            get(DocumentHandler::get_history_metadata),
+        )
+        .route(
             "/document/{doc_id}/rollback",
             post(DocumentHandler::rollback),
         )

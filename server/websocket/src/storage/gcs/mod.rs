@@ -347,6 +347,69 @@ impl GcsStore {
 
         Ok(Some((latest_clock, latest_timestamp)))
     }
+
+    pub async fn get_updates_metadata(
+        &self,
+        doc_id: &str,
+    ) -> Result<Vec<(u32, OffsetDateTime)>, anyhow::Error> {
+        let oid = match get_oid(self, doc_id.as_bytes()).await? {
+            Some(oid) => oid,
+            None => return Ok(Vec::new()),
+        };
+
+        let prefix_bytes = [V1, KEYSPACE_DOC]
+            .iter()
+            .chain(&oid.to_be_bytes())
+            .chain(&[SUB_UPDATE])
+            .copied()
+            .collect::<Vec<_>>();
+        let prefix_str = hex::encode(&prefix_bytes);
+
+        let mut all_objects = Vec::new();
+        let mut page_token = None;
+
+        loop {
+            let request = ListObjectsRequest {
+                bucket: self.bucket.clone(),
+                prefix: Some(prefix_str.clone()),
+                page_token: page_token.clone(),
+                ..Default::default()
+            };
+
+            let response = self.client.list_objects(&request).await?;
+            let items = response.items.unwrap_or_default();
+            all_objects.extend(items);
+
+            if let Some(token) = response.next_page_token {
+                page_token = Some(token);
+            } else {
+                break;
+            }
+        }
+
+        debug!(
+            "Found {} update objects for doc: {}",
+            all_objects.len(),
+            doc_id
+        );
+
+        let mut metadata = Vec::new();
+        for obj in all_objects {
+            if let Ok(key_bytes) = hex::decode(&obj.name) {
+                if key_bytes.len() >= 12 {
+                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+                    let clock = u32::from_be_bytes(clock_bytes);
+                    let timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
+
+                    metadata.push((clock, timestamp));
+                }
+            }
+        }
+
+        metadata.sort_by_key(|(clock, _)| std::cmp::Reverse(*clock));
+
+        Ok(metadata)
+    }
 }
 
 impl DocOps<'_> for GcsStore {}
