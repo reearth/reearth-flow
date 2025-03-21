@@ -150,6 +150,49 @@ func (c *Client) GetHistory(ctx context.Context, docID string) ([]*websocket.His
 	return history, nil
 }
 
+func (c *Client) GetHistoryMetadata(ctx context.Context, docID string) ([]*websocket.HistoryMetadata, error) {
+	url := fmt.Sprintf("%s/api/document/%s/history/metadata", c.config.ServerURL, docID)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get document history metadata: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
+	}
+
+	var historyResp []struct {
+		Version   uint64 `json:"version"`
+		Timestamp string `json:"timestamp"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&historyResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	metadata := make([]*websocket.HistoryMetadata, len(historyResp))
+	for i, item := range historyResp {
+		timestamp, err := time.Parse(time.RFC3339, item.Timestamp)
+		if err != nil {
+			log.Warnf("failed to parse timestamp: %v, using current time", err)
+			timestamp = time.Now()
+		}
+
+		metadata[i] = &websocket.HistoryMetadata{
+			Version:   int(item.Version),
+			Timestamp: timestamp,
+		}
+	}
+
+	return metadata, nil
+}
+
 func (c *Client) Rollback(ctx context.Context, id string, version int) (*websocket.Document, error) {
 	url := fmt.Sprintf("%s/api/document/%s/rollback", c.config.ServerURL, id)
 

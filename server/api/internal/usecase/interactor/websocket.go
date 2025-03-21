@@ -54,6 +54,14 @@ func GetHistory(ctx context.Context, id string) ([]*ws.History, error) {
 	return client.GetHistory(ctx, id)
 }
 
+func GetHistoryMetadata(ctx context.Context, id string) ([]*ws.HistoryMetadata, error) {
+	client := getDefaultWebsocketClient()
+	if client == nil {
+		return nil, fmt.Errorf("websocket client is not initialized")
+	}
+	return client.GetHistoryMetadata(ctx, id)
+}
+
 func Rollback(ctx context.Context, id string, version int) (*ws.Document, error) {
 	client := getDefaultWebsocketClient()
 	if client == nil {
