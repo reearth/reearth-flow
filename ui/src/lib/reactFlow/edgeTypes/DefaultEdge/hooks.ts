@@ -59,7 +59,9 @@ export default ({ id, selected }: { id: string; selected?: boolean }) => {
       (edgeStatus === "completed" || edgeStatus === "failed") &&
       (!edgeExecution || edgeExecution?.status !== edgeStatus)
     ) {
-      refetch();
+      (async () => {
+        await refetch();
+      })();
     }
   }, [edgeStatus, edgeExecution, refetch]);
 

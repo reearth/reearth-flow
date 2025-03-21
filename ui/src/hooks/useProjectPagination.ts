@@ -37,7 +37,9 @@ export default ({ workspace }: { workspace?: Workspace }) => {
   };
 
   useEffect(() => {
-    refetch();
+    (async () => {
+      await refetch();
+    })();
   }, [currentPage, currentOrder, refetch]);
 
   return {
