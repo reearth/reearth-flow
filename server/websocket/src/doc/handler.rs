@@ -15,11 +15,9 @@ use crate::doc::types::{DocumentResponse, HistoryResponse, RollbackRequest};
 use crate::storage::kv::DocOps;
 use crate::AppState;
 
-/// 处理文档相关请求的处理器
 pub struct DocumentHandler;
 
 impl DocumentHandler {
-    /// 获取最新版本的文档
     pub async fn get_latest(
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
@@ -94,7 +92,6 @@ impl DocumentHandler {
         }
     }
 
-    /// 获取文档的历史版本
     pub async fn get_history(
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
@@ -156,7 +153,6 @@ impl DocumentHandler {
         }
     }
 
-    /// 将文档回滚到指定版本
     pub async fn rollback(
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
