@@ -1,57 +1,34 @@
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
 use chrono::Utc;
 use std::sync::Arc;
-use thrift::server::TProcessor;
-use thrift::{ApplicationError, ApplicationErrorKind};
 use tracing::{debug, error, info};
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
-use crate::storage::gcs::GcsStore;
-use crate::storage::kv::DocOps;
-use crate::thrift::document::{
-    Document as ThriftDocument, DocumentServiceSyncHandler, DocumentServiceSyncProcessor,
-    GetHistoryRequest, GetHistoryResponse, GetLatestRequest, GetLatestResponse, History,
-    RollbackRequest, RollbackResponse,
-};
-
 use crate::doc::types::{Document, HistoryItem};
+use crate::doc::types::{DocumentResponse, HistoryResponse, RollbackRequest};
+use crate::storage::kv::DocOps;
+use crate::AppState;
 
-pub struct DocumentHandler {
-    storage: Arc<GcsStore>,
-}
+/// 处理文档相关请求的处理器
+pub struct DocumentHandler;
 
 impl DocumentHandler {
-    pub fn new(storage: Arc<GcsStore>) -> Self {
-        Self { storage }
-    }
+    /// 获取最新版本的文档
+    pub async fn get_latest(
+        Path(doc_id): Path<String>,
+        State(state): State<Arc<AppState>>,
+    ) -> Response {
+        debug!("Handling GetLatest request for document: {}", doc_id);
 
-    pub fn processor(self) -> impl TProcessor {
-        DocumentServiceSyncProcessor::new(self)
-    }
-}
-
-impl DocumentServiceSyncHandler for DocumentHandler {
-    fn handle_get_latest(&self, request: GetLatestRequest) -> thrift::Result<GetLatestResponse> {
-        let doc_id_display = request.doc_id.as_deref().unwrap_or("");
-        debug!(
-            "Handling GetLatest request for document: {}",
-            doc_id_display
-        );
-
-        let doc_id = match &request.doc_id {
-            Some(id) => id.clone(),
-            None => {
-                return Err(thrift::Error::Application(ApplicationError::new(
-                    ApplicationErrorKind::Unknown,
-                    "Document ID is required".to_string(),
-                )))
-            }
-        };
-
-        let storage = self.storage.clone();
-        let doc_id_clone = doc_id.clone();
-
+        let storage = state.pool.get_store();
         let doc = Doc::new();
+        let doc_id_clone = doc_id.clone();
 
         let result = tokio::task::block_in_place(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
@@ -72,7 +49,7 @@ impl DocumentServiceSyncHandler for DocumentHandler {
 
                         let metadata = storage.get_latest_update_metadata(&doc_id_clone).await?;
 
-                        let latest_clock = metadata.map(|(clock, _)| clock as i32).unwrap_or(0);
+                        let latest_clock = metadata.map(|(clock, _)| clock).unwrap_or(0);
                         let timestamp = if let Some((_, ts)) = metadata {
                             chrono::DateTime::from_timestamp(ts.unix_timestamp(), 0)
                                 .unwrap_or(Utc::now())
@@ -96,50 +73,36 @@ impl DocumentServiceSyncHandler for DocumentHandler {
         });
 
         match result {
-            Ok(doc) => {
-                let updates_as_i32: Vec<i32> = doc.updates.iter().map(|&b| b as i32).collect();
-
-                let document = ThriftDocument {
-                    id: Some(doc.id),
-                    updates: Some(updates_as_i32),
-                    version: Some(doc.version as i32),
-                    timestamp: Some(doc.timestamp.to_rfc3339()),
-                };
-
-                Ok(GetLatestResponse {
-                    document: Some(document),
-                })
-            }
+            Ok(doc) => Json(DocumentResponse {
+                id: doc.id,
+                updates: doc.updates,
+                version: doc.version,
+                timestamp: doc.timestamp.to_rfc3339(),
+            })
+            .into_response(),
             Err(err) => {
                 error!("Failed to get document {}: {}", doc_id, err);
-                Err(thrift::Error::Application(ApplicationError::new(
-                    ApplicationErrorKind::Unknown,
-                    format!("Failed to get document: {}", err),
-                )))
+
+                let status_code = if err.to_string().contains("not found") {
+                    StatusCode::NOT_FOUND
+                } else {
+                    StatusCode::INTERNAL_SERVER_ERROR
+                };
+
+                (status_code, format!("Error: {}", err)).into_response()
             }
         }
     }
 
-    fn handle_get_history(&self, request: GetHistoryRequest) -> thrift::Result<GetHistoryResponse> {
-        let doc_id_display = request.doc_id.as_deref().unwrap_or("");
-        debug!(
-            "Handling GetHistory request for document: {}",
-            doc_id_display
-        );
+    /// 获取文档的历史版本
+    pub async fn get_history(
+        Path(doc_id): Path<String>,
+        State(state): State<Arc<AppState>>,
+    ) -> Response {
+        debug!("Handling GetHistory request for document: {}", doc_id);
 
-        let doc_id = match &request.doc_id {
-            Some(id) => id.clone(),
-            None => {
-                return Err(thrift::Error::Application(ApplicationError::new(
-                    ApplicationErrorKind::Unknown,
-                    "Document ID is required".to_string(),
-                )))
-            }
-        };
-
-        let storage = self.storage.clone();
+        let storage = state.pool.get_store();
         let doc_id_clone = doc_id.clone();
-
         let result = tokio::task::block_in_place(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -168,59 +131,45 @@ impl DocumentServiceSyncHandler for DocumentHandler {
 
         match result {
             Ok(history_items) => {
-                let history = history_items
+                let history: Vec<HistoryResponse> = history_items
                     .into_iter()
-                    .map(|item| {
-                        let updates_as_i32: Vec<i32> =
-                            item.updates.iter().map(|&b| b as i32).collect();
-
-                        History {
-                            version: Some(item.version as i32),
-                            updates: Some(updates_as_i32),
-                            timestamp: Some(item.timestamp.to_rfc3339()),
-                        }
+                    .map(|item| HistoryResponse {
+                        updates: item.updates,
+                        version: item.version,
+                        timestamp: item.timestamp.to_rfc3339(),
                     })
                     .collect();
 
-                Ok(GetHistoryResponse {
-                    history: Some(history),
-                })
+                Json(history).into_response()
             }
             Err(err) => {
                 error!("Failed to get history for document {}: {}", doc_id, err);
-                Err(thrift::Error::Application(ApplicationError::new(
-                    ApplicationErrorKind::Unknown,
-                    format!("Failed to get document history: {}", err),
-                )))
+
+                let status_code = if err.to_string().contains("not found") {
+                    StatusCode::NOT_FOUND
+                } else {
+                    StatusCode::INTERNAL_SERVER_ERROR
+                };
+
+                (status_code, format!("Error: {}", err)).into_response()
             }
         }
     }
 
-    fn handle_rollback(&self, request: RollbackRequest) -> thrift::Result<RollbackResponse> {
-        let doc_id = match &request.doc_id {
-            Some(id) => id.clone(),
-            None => {
-                return Err(thrift::Error::Application(ApplicationError::new(
-                    ApplicationErrorKind::Unknown,
-                    "Document ID is required".to_string(),
-                )))
-            }
-        };
+    /// 将文档回滚到指定版本
+    pub async fn rollback(
+        Path(doc_id): Path<String>,
+        State(state): State<Arc<AppState>>,
+        Json(request): Json<RollbackRequest>,
+    ) -> Response {
+        info!(
+            "Rolling back document {} to version {}",
+            doc_id, request.version
+        );
 
-        let version = match request.version {
-            Some(v) => v as u64,
-            None => {
-                return Err(thrift::Error::Application(ApplicationError::new(
-                    ApplicationErrorKind::Unknown,
-                    "Version is required".to_string(),
-                )))
-            }
-        };
-
-        info!("Rolling back document {} to version {}", doc_id, version);
-
-        let storage = self.storage.clone();
+        let storage = state.pool.get_store();
         let doc_id_clone = doc_id.clone();
+        let version = request.version;
 
         let rollback_result = tokio::task::block_in_place(move || {
             let rt = tokio::runtime::Builder::new_current_thread()
@@ -244,29 +193,28 @@ impl DocumentServiceSyncHandler for DocumentHandler {
         });
 
         match rollback_result {
-            Ok(doc) => {
-                let updates_as_i32: Vec<i32> = doc.updates.iter().map(|&b| b as i32).collect();
-
-                let document = ThriftDocument {
-                    id: Some(doc.id),
-                    updates: Some(updates_as_i32),
-                    version: Some(doc.version as i32),
-                    timestamp: Some(doc.timestamp.to_rfc3339()),
-                };
-
-                Ok(RollbackResponse {
-                    document: Some(document),
-                })
-            }
+            Ok(doc) => Json(DocumentResponse {
+                id: doc.id,
+                updates: doc.updates,
+                version: doc.version,
+                timestamp: doc.timestamp.to_rfc3339(),
+            })
+            .into_response(),
             Err(err) => {
                 error!(
                     "Failed to rollback document {} to version {}: {}",
                     doc_id, version, err
                 );
-                Err(thrift::Error::Application(ApplicationError::new(
-                    ApplicationErrorKind::Unknown,
-                    format!("Failed to rollback document: {}", err),
-                )))
+
+                let status_code = if err.to_string().contains("not found") {
+                    StatusCode::NOT_FOUND
+                } else if err.to_string().contains("version") {
+                    StatusCode::BAD_REQUEST
+                } else {
+                    StatusCode::INTERNAL_SERVER_ERROR
+                };
+
+                (status_code, format!("Error: {}", err)).into_response()
             }
         }
     }
