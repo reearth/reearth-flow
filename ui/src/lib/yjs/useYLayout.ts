@@ -14,7 +14,10 @@ export default ({
 }: {
   yWorkflows?: Y.Map<YWorkflow>;
   rawWorkflows: Workflow[];
-  undoTrackerActionWrapper: (callback: () => void) => void;
+  undoTrackerActionWrapper: (
+    callback: () => void,
+    originPrepend?: string,
+  ) => void;
 }) => {
   const handleYLayoutChange = useCallback(
     (algorithm: Algorithm, direction: Direction, _spacing: number) => {

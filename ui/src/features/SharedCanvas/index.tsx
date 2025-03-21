@@ -15,7 +15,10 @@ import useHooks from "./hooks";
 type Props = {
   yWorkflows: YMap<YWorkflow>;
   project?: Project;
-  undoTrackerActionWrapper: (callback: () => void) => void;
+  undoTrackerActionWrapper: (
+    callback: () => void,
+    originPrepend?: string,
+  ) => void;
 };
 
 const SharedCanvas: React.FC<Props> = ({

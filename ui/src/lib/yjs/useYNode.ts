@@ -20,7 +20,10 @@ export default ({
   yWorkflows: Y.Map<YWorkflow>;
   rawWorkflows: Workflow[];
   setSelectedNodeIds: Dispatch<SetStateAction<string[]>>;
-  undoTrackerActionWrapper: (callback: () => void) => void;
+  undoTrackerActionWrapper: (
+    callback: () => void,
+    originPrepend?: string,
+  ) => void;
   handleYWorkflowRemove?: (workflowId: string) => void;
 }) => {
   const handleYNodesAdd = useCallback(

@@ -17,7 +17,10 @@ import useHooks from "./hooks";
 type Props = {
   yWorkflows: YMap<YWorkflow>;
   undoManager: YUndoManager | null;
-  undoTrackerActionWrapper: (callback: () => void) => void;
+  undoTrackerActionWrapper: (
+    callback: () => void,
+    originPrepend?: string,
+  ) => void;
   yDoc: Doc | null;
 };
 
