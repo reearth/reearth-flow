@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -61,7 +62,12 @@ func (h *AuthHandler) VerifyAPI(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Failed to decode request: %v", err), http.StatusBadRequest)
 		return
 	}
-	defer r.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Printf("failed to close body: %v", err)
+		}
+	}(r.Body)
 
 	authorized, err := h.VerifyToken(r.Context(), req.Token)
 	if err != nil {

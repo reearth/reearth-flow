@@ -70,7 +70,12 @@ func (c *Client) GetLatest(ctx context.Context, docID string) (*websocket.Docume
 	if err != nil {
 		return nil, fmt.Errorf("failed to get latest document: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -115,7 +120,12 @@ func (c *Client) GetHistory(ctx context.Context, docID string) ([]*websocket.His
 	if err != nil {
 		return nil, fmt.Errorf("failed to get document history: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -161,7 +171,12 @@ func (c *Client) GetHistoryMetadata(ctx context.Context, docID string) ([]*webso
 	if err != nil {
 		return nil, fmt.Errorf("failed to get document history metadata: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -216,7 +231,12 @@ func (c *Client) Rollback(ctx context.Context, id string, version int) (*websock
 	if err != nil {
 		return nil, fmt.Errorf("failed to rollback document: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
