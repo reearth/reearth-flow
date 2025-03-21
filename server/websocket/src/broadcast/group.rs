@@ -4,6 +4,7 @@ use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
 
 use anyhow::Result;
+use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use rand;
 
@@ -32,7 +33,7 @@ pub struct BroadcastConfig {
 pub struct BroadcastGroup {
     connections: Arc<AtomicUsize>,
     awareness_ref: AwarenessRef,
-    sender: Sender<Vec<u8>>,
+    sender: Sender<Bytes>,
     pub awareness_updater: JoinHandle<()>,
     doc_sub: Option<yrs::Subscription>,
     awareness_sub: Option<yrs::Subscription>,
@@ -40,7 +41,7 @@ pub struct BroadcastGroup {
     redis_store: Option<Arc<RedisStore>>,
     doc_name: Option<String>,
     redis_ttl: Option<usize>,
-    storage_rx: Option<tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>>,
+    storage_rx: Option<tokio::sync::mpsc::UnboundedReceiver<Bytes>>,
     pub redis_subscriber_task: Option<JoinHandle<()>>,
     redis_consumer_name: Option<String>,
     redis_group_name: Option<String>,
@@ -73,36 +74,35 @@ impl BroadcastGroup {
         );
 
         if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
-            if let Err(e) = redis_store.increment_doc_connections(doc_name).await {
-                tracing::warn!("Failed to increment Redis global connection count: {}", e);
+            if prev_count == 0 {
+                if let Err(e) = redis_store.increment_doc_connections(doc_name).await {
+                    tracing::warn!("Failed to increment Redis global connection count: {}", e);
+                }
             }
         }
 
         Ok(())
     }
 
-    pub fn decrement_connections(&self) -> usize {
+    pub async fn decrement_connections(&self) -> usize {
         let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
         let new_count = prev_count - 1;
 
-        tracing::debug!(
+        tracing::info!(
             "Connection count decreased: {} -> {}",
             prev_count,
             new_count
         );
 
         if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
-            let doc_name_clone = doc_name.clone();
-            let redis_store_clone = redis_store.clone();
-
-            tokio::spawn(async move {
-                if let Err(e) = redis_store_clone
-                    .decrement_doc_connections(&doc_name_clone)
-                    .await
-                {
-                    tracing::warn!("Failed to decrement Redis global connection count: {}", e);
+            if new_count == 0 {
+                match redis_store.decrement_doc_connections(doc_name).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        tracing::warn!("Failed to decrement Redis global connection count: {}", e);
+                    }
                 }
-            });
+            }
         }
 
         if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
@@ -127,8 +127,9 @@ impl BroadcastGroup {
                 let gcs_state = gcs_txn.state_vector();
 
                 let awareness_txn = awareness_doc.transact();
-                let update = awareness_txn.encode_state_as_update_v1(&gcs_state);
-                Self::handle_gcs_update(update, &doc_name_clone, &store_clone).await;
+                let update = awareness_txn.encode_diff_v1(&gcs_state);
+                let update_bytes = Bytes::from(update);
+                Self::handle_gcs_update(update_bytes, &doc_name_clone, &store_clone).await;
 
                 shutdown_flag_clone.store(true, std::sync::atomic::Ordering::SeqCst);
             });
@@ -164,7 +165,7 @@ impl BroadcastGroup {
                 encoder.write_var(MSG_SYNC);
                 encoder.write_var(MSG_SYNC_UPDATE);
                 encoder.write_buf(&u.update);
-                let msg = encoder.to_vec();
+                let msg = Bytes::from(encoder.to_vec());
                 if let Err(_e) = sink.send(msg) {
                     tracing::debug!("broadcast channel closed");
                 }
@@ -199,7 +200,8 @@ impl BroadcastGroup {
                 if let Some(awareness) = awareness_c.upgrade() {
                     let awareness = awareness.read().await;
                     if let Ok(update) = awareness.update_with_clients(changed_clients) {
-                        if sink.send(Message::Awareness(update).encode_v1()).is_err() {
+                        let msg_bytes = Bytes::from(Message::Awareness(update).encode_v1());
+                        if sink.send(msg_bytes).is_err() {
                             tracing::warn!("couldn't broadcast awareness update");
                         }
                     }
@@ -234,7 +236,7 @@ impl BroadcastGroup {
         awareness: AwarenessRef,
         buffer_capacity: usize,
         store: Arc<GcsStore>,
-        redis_store: Option<Arc<RedisStore>>,
+        redis_store: Arc<RedisStore>,
         config: BroadcastConfig,
     ) -> Result<Self> {
         if !config.storage_enabled {
@@ -245,108 +247,101 @@ impl BroadcastGroup {
 
         let doc_name = config.doc_name.clone().unwrap_or_default();
 
-        let redis_ttl = redis_store
-            .as_ref()
-            .and_then(|rs| rs.get_config())
-            .map(|c| c.ttl as usize);
+        let redis_ttl = redis_store.get_config().map(|c| c.ttl as usize);
 
         Self::load_from_storage(&store, &doc_name, &group.awareness_ref).await;
 
-        if let Some(redis_store) = redis_store.clone() {
-            group.redis_store = Some(redis_store.clone());
+        let redis_store_clone = redis_store.clone();
+        group.redis_store = Some(redis_store_clone);
 
-            let consumer_name = format!("instance-{}", rand::random::<u32>());
-            let consumer_name_clone = consumer_name.clone();
-            let awareness_for_sub = group.awareness_ref.clone();
-            let sender_for_sub = group.sender.clone();
-            let doc_name_for_sub = doc_name.clone();
-            let redis_store_for_sub = redis_store.clone();
+        let consumer_name = format!("instance-{}", rand::random::<u32>());
+        let consumer_name_clone = consumer_name.clone();
+        let awareness_for_sub = group.awareness_ref.clone();
+        let sender_for_sub = group.sender.clone();
+        let doc_name_for_sub = doc_name.clone();
+        let redis_store_for_sub = redis_store.clone();
 
-            let group_name = format!("yjs-group-{}", consumer_name);
-            let group_name_clone = group_name.clone();
+        let group_name = format!("yjs-group-{}", consumer_name);
+        let group_name_clone = group_name.clone();
 
-            let redis_subscriber_task = tokio::spawn(async move {
-                if let Err(e) = redis_store_for_sub
-                    .create_consumer_group(&doc_name_for_sub, &group_name_clone)
+        let redis_subscriber_task = tokio::spawn(async move {
+            if let Err(e) = redis_store_for_sub
+                .create_consumer_group(&doc_name_for_sub, &group_name_clone)
+                .await
+            {
+                tracing::error!("Failed to create Redis consumer group: {}", e);
+                return;
+            }
+
+            let mut consecutive_errors = 0;
+            let max_consecutive_errors = 5;
+            let mut total_errors = 0;
+            let max_total_errors = 10;
+
+            loop {
+                match redis_store_for_sub
+                    .read_and_ack_with_lua(
+                        &doc_name_for_sub,
+                        &group_name_clone,
+                        &consumer_name_clone,
+                        13,
+                    )
                     .await
                 {
-                    tracing::error!("Failed to create Redis consumer group: {}", e);
-                    return;
-                }
+                    Ok(updates) => {
+                        consecutive_errors = 0;
+                        if !updates.is_empty() {
+                            let decoded_updates: Vec<_> = updates
+                                .iter()
+                                .map(|update| (update.clone(), Update::decode_v1(update)))
+                                .collect();
 
-                let mut consecutive_errors = 0;
-                let max_consecutive_errors = 5;
-                let mut total_errors = 0;
-                let max_total_errors = 10;
-
-                loop {
-                    match redis_store_for_sub
-                        .read_and_ack_with_lua(
-                            &doc_name_for_sub,
-                            &group_name_clone,
-                            &consumer_name_clone,
-                            25,
-                        )
-                        .await
-                    {
-                        Ok(updates) => {
-                            consecutive_errors = 0;
-                            if !updates.is_empty() {
-                                let decoded_updates: Vec<_> = updates
-                                    .iter()
-                                    .map(|update| (update.clone(), Update::decode_v1(update)))
-                                    .collect();
-
-                                for (update, _) in &decoded_updates {
-                                    if sender_for_sub.send(update.clone()).is_err() {
-                                        tracing::warn!("Failed to broadcast Redis update");
-                                    }
-                                }
-
-                                let awareness = awareness_for_sub.write().await;
-                                let mut txn = awareness.doc().transact_mut();
-
-                                for (_, decoded) in decoded_updates {
-                                    if let Ok(update) = decoded {
-                                        if let Err(e) = txn.apply_update(update) {
-                                            tracing::warn!(
-                                                "Failed to apply update from Redis: {}",
-                                                e
-                                            );
-                                        }
-                                    } else if let Err(e) = decoded {
-                                        tracing::warn!("Failed to decode update from Redis: {}", e);
-                                    }
+                            for (update, _) in &decoded_updates {
+                                if sender_for_sub.send(update.clone()).is_err() {
+                                    tracing::warn!("Failed to broadcast Redis update");
                                 }
                             }
-                        }
-                        Err(e) => {
-                            tracing::error!("Error reading from Redis Stream: {}", e);
 
-                            consecutive_errors += 1;
-                            total_errors += 1;
-                            if consecutive_errors >= max_consecutive_errors
-                                || total_errors >= max_total_errors
-                            {
-                                tracing::warn!(
-                                    "Too many Redis errors ({} total, {} consecutive), stopping subscriber",
-                                    total_errors, consecutive_errors
-                                );
-                                return;
+                            let awareness = awareness_for_sub.write().await;
+                            let mut txn = awareness.doc().transact_mut();
+
+                            for (_, decoded) in decoded_updates {
+                                if let Ok(update) = decoded {
+                                    if let Err(e) = txn.apply_update(update) {
+                                        tracing::warn!("Failed to apply update from Redis: {}", e);
+                                    }
+                                } else if let Err(e) = decoded {
+                                    tracing::warn!("Failed to decode update from Redis: {}", e);
+                                }
                             }
-
-                            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                         }
                     }
+                    Err(e) => {
+                        tracing::error!("Error reading from Redis Stream: {}", e);
 
-                    tokio::task::yield_now().await;
+                        consecutive_errors += 1;
+                        total_errors += 1;
+                        if consecutive_errors >= max_consecutive_errors
+                            || total_errors >= max_total_errors
+                        {
+                            tracing::warn!(
+                                "Too many Redis errors ({} total, {} consecutive), stopping subscriber",
+                                total_errors, consecutive_errors
+                            );
+                            return;
+                        }
+
+                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+                    }
                 }
-            });
 
-            group.redis_subscriber_task = Some(redis_subscriber_task);
-            group.redis_consumer_name = Some(consumer_name);
-            group.redis_group_name = Some(group_name);
-        }
+                tokio::task::yield_now().await;
+            }
+        });
+
+        group.redis_subscriber_task = Some(redis_subscriber_task);
+        group.redis_consumer_name = Some(consumer_name);
+        group.redis_group_name = Some(group_name);
 
         group.storage = Some(store);
         group.doc_name = Some(doc_name.clone());
@@ -366,7 +361,7 @@ impl BroadcastGroup {
         }
     }
 
-    async fn handle_gcs_update(update: Vec<u8>, doc_name: &str, store: &Arc<GcsStore>) {
+    async fn handle_gcs_update(update: Bytes, doc_name: &str, store: &Arc<GcsStore>) {
         if let Err(e) = store.push_update(doc_name, &update).await {
             tracing::error!("Failed to store update for document '{}': {}", doc_name, e);
         }
@@ -388,31 +383,21 @@ impl BroadcastGroup {
         self.doc_name.clone()
     }
 
-    pub fn broadcast(&self, msg: Vec<u8>) -> Result<(), SendError<Vec<u8>>> {
+    pub fn broadcast(&self, msg: Bytes) -> Result<(), SendError<Bytes>> {
         self.sender.send(msg)?;
         Ok(())
     }
 
-    pub fn subscribe<Sink, Stream, E>(&self, sink: Arc<Mutex<Sink>>, stream: Stream) -> Subscription
-    where
-        Sink: SinkExt<Vec<u8>> + Send + Sync + Unpin + 'static,
-        Stream: StreamExt<Item = Result<Vec<u8>, E>> + Send + Sync + Unpin + 'static,
-        <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
-        E: std::error::Error + Send + Sync + 'static,
-    {
-        self.subscribe_with(sink, stream, DefaultProtocol)
-    }
-
-    pub fn subscribe_with_user<Sink, Stream, E>(
+    pub fn subscribe<Sink, Stream, E>(
         self: Arc<Self>,
         sink: Arc<Mutex<Sink>>,
         stream: Stream,
         user_token: Option<String>,
     ) -> Subscription
     where
-        Sink: SinkExt<Vec<u8>> + Send + Sync + Unpin + 'static,
-        Stream: StreamExt<Item = Result<Vec<u8>, E>> + Send + Sync + Unpin + 'static,
-        <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
+        Sink: SinkExt<Bytes> + Send + Sync + Unpin + 'static,
+        Stream: StreamExt<Item = Result<Bytes, E>> + Send + Sync + Unpin + 'static,
+        <Sink as futures_util::Sink<Bytes>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
         let doc_id = self
@@ -449,25 +434,14 @@ impl BroadcastGroup {
             });
         }
 
-        let subscription = self.subscribe_with(sink, stream, DefaultProtocol);
+        let subscription = self.listen(sink, stream, DefaultProtocol);
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         let self_clone = self.clone();
-        let doc_id_clone = self
-            .doc_name
-            .clone()
-            .unwrap_or_else(|| "unknown".to_string());
 
         tokio::spawn(async move {
             if let Err(e) = self_clone.increment_connections().await {
                 tracing::error!("Failed to increment connections: {}", e);
-            } else {
-                let new_count = self_clone.connection_count();
-                tracing::info!(
-                    "New connection count for doc '{}': {}",
-                    doc_id_clone,
-                    new_count
-                );
             }
             let _ = tx.send(());
         });
@@ -479,16 +453,16 @@ impl BroadcastGroup {
         }
     }
 
-    pub fn subscribe_with<Sink, Stream, E, P>(
+    pub fn listen<Sink, Stream, E, P>(
         &self,
         sink: Arc<Mutex<Sink>>,
         mut stream: Stream,
         protocol: P,
     ) -> Subscription
     where
-        Sink: SinkExt<Vec<u8>> + Send + Sync + Unpin + 'static,
-        Stream: StreamExt<Item = Result<Vec<u8>, E>> + Send + Sync + Unpin + 'static,
-        <Sink as futures_util::Sink<Vec<u8>>>::Error: std::error::Error + Send + Sync,
+        Sink: SinkExt<Bytes> + Send + Sync + Unpin + 'static,
+        Stream: StreamExt<Item = Result<Bytes, E>> + Send + Sync + Unpin + 'static,
+        <Sink as futures_util::Sink<Bytes>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
         P: Protocol + Send + Sync + 'static,
     {
@@ -511,7 +485,6 @@ impl BroadcastGroup {
             let awareness = self.awareness().clone();
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
-            let gcs_store = self.storage.clone();
 
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
@@ -537,13 +510,12 @@ impl BroadcastGroup {
                         msg,
                         redis_store.as_ref(),
                         doc_name.as_ref(),
-                        gcs_store.as_ref(),
                     )
                     .await
                     {
                         Ok(Some(reply)) => {
                             let mut sink_lock = sink.lock().await;
-                            if let Err(e) = sink_lock.send(reply.encode_v1()).await {
+                            if let Err(e) = sink_lock.send(Bytes::from(reply.encode_v1())).await {
                                 tracing::warn!("Failed to send reply: {}", e);
                             }
                         }
@@ -568,7 +540,6 @@ impl BroadcastGroup {
         msg: Message,
         redis_store: Option<&Arc<RedisStore>>,
         doc_name: Option<&String>,
-        _gcs_store: Option<&Arc<GcsStore>>,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
@@ -635,37 +606,19 @@ impl BroadcastGroup {
             task.abort();
         }
 
+        self.awareness_updater.abort();
+
         if let (Some(redis_store), Some(doc_name), Some(consumer_name), Some(group_name)) = (
             &self.redis_store,
             &self.doc_name,
             &self.redis_consumer_name,
             &self.redis_group_name,
         ) {
-            match redis_store
-                .read_pending_messages(doc_name, group_name, consumer_name, 100)
-                .await
-            {
-                Ok(pending) => {
-                    if !pending.is_empty() {
-                        tracing::debug!(
-                            "Acknowledging {} pending messages for '{}'",
-                            pending.len(),
-                            doc_name
-                        );
-                        for (msg_id, _) in pending {
-                            let _ = redis_store.ack_message(doc_name, group_name, &msg_id).await;
-                        }
-                    }
-                }
-                Err(e) => {
-                    tracing::warn!("Error reading pending messages: {}", e);
-                }
-            }
-
             let redis_store_clone = redis_store.clone();
             let doc_name_clone = doc_name.clone();
             let group_name_clone = group_name.clone();
             let consumer_name_clone = consumer_name.clone();
+            let instance_id = format!("instance-{}", rand::random::<u64>());
 
             tokio::spawn(async move {
                 match redis_store_clone
@@ -680,7 +633,7 @@ impl BroadcastGroup {
                         );
                     }
                     Ok(0) => {
-                        tracing::debug!(
+                        tracing::info!(
                             "Consumer '{}' not found in group '{}'",
                             consumer_name_clone,
                             group_name_clone
@@ -704,29 +657,34 @@ impl BroadcastGroup {
                     }
                 }
 
+                match redis_store_clone
+                    .safe_delete_stream(&doc_name_clone, &instance_id)
+                    .await
+                {
+                    Ok(deleted) => {
+                        if deleted {
+                            tracing::info!(
+                                "Successfully deleted Redis stream for '{}'",
+                                doc_name_clone
+                            );
+                        } else {
+                            tracing::info!(
+                                "Did not delete Redis stream for '{}' as it may still be in use",
+                                doc_name_clone
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            "Error during safe Redis stream deletion for '{}': {}",
+                            doc_name_clone,
+                            e
+                        );
+                    }
+                }
+
                 tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
             });
-        }
-
-        if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
-            let awareness = self.awareness_ref.read().await;
-            let awareness_doc = awareness.doc();
-
-            let gcs_doc = Doc::new();
-            let mut gcs_txn = gcs_doc.transact_mut();
-
-            if let Err(e) = store.load_doc(doc_name, &mut gcs_txn).await {
-                tracing::warn!("Failed to load document state for final save: {}", e);
-            }
-
-            let gcs_state = gcs_txn.state_vector();
-
-            let awareness_txn = awareness_doc.transact();
-            let update = awareness_txn.encode_state_as_update_v1(&gcs_state);
-
-            if let Err(e) = store.push_update(doc_name, &update).await {
-                tracing::warn!("Failed to save final document state: {}", e);
-            }
         }
 
         Ok(())
@@ -745,52 +703,6 @@ impl Drop for BroadcastGroup {
 
         if let Some(task) = self.redis_subscriber_task.take() {
             task.abort();
-
-            if let (Some(redis_store), Some(doc_name), Some(consumer_name), Some(group_name)) = (
-                &self.redis_store,
-                &self.doc_name,
-                &self.redis_consumer_name,
-                &self.redis_group_name,
-            ) {
-                let rs = redis_store.clone();
-                let dn = doc_name.clone();
-                let cn = consumer_name.clone();
-                let gn = group_name.clone();
-
-                tokio::spawn(async move {
-                    match rs.read_pending_messages(&dn, &gn, &cn, 100).await {
-                        Ok(pending) => {
-                            if !pending.is_empty() {
-                                tracing::info!(
-                                    "Drop: Acknowledging {} pending messages",
-                                    pending.len()
-                                );
-                                for (msg_id, _) in pending {
-                                    let _ = rs.ack_message(&dn, &gn, &msg_id).await;
-                                }
-                            }
-                        }
-                        Err(e) => {
-                            tracing::warn!("Error reading pending messages during drop: {}", e);
-                        }
-                    }
-
-                    match rs.delete_consumer(&dn, &gn, &cn).await {
-                        Ok(n) => {
-                            if n > 0 {
-                                tracing::info!(
-                                    "Drop: Successfully deleted consumer '{}' from group '{}'",
-                                    cn,
-                                    gn
-                                );
-                            }
-                        }
-                        Err(e) => {
-                            tracing::warn!("Drop: Failed to delete consumer: {}", e);
-                        }
-                    }
-                });
-            }
         }
 
         self.awareness_updater.abort();

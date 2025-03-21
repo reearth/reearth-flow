@@ -1,11 +1,12 @@
 use axum::{
     body::Body,
-    extract::{Path, Query, State, WebSocketUpgrade},
+    extract::{Path, State, WebSocketUpgrade},
     http::{Response, StatusCode},
     response::IntoResponse,
     routing::{get, post},
     Router,
 };
+
 use google_cloud_storage::{
     client::Client,
     http::buckets::insert::{BucketCreationConfig, InsertBucketRequest},
@@ -22,6 +23,8 @@ use tracing::{debug, error, info};
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
 use crate::{doc::DocumentHandler, AppState};
+#[cfg(feature = "auth")]
+use axum::extract::Query;
 
 #[derive(Clone)]
 struct ServerState {

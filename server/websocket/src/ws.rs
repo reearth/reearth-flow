@@ -1,10 +1,10 @@
-use crate::broadcast::group::BroadcastGroup;
 use crate::conn::Connection;
 use axum::extract::ws::{Message, WebSocket};
 use axum::{
     extract::{Path, State, WebSocketUpgrade},
     response::Response,
 };
+use bytes::Bytes;
 
 #[cfg(feature = "auth")]
 use axum::extract::Query;
@@ -16,29 +16,13 @@ use std::sync::Arc;
 use std::task::{Context, Poll};
 use yrs::sync::Error;
 
-use crate::{pool::BroadcastPool, AppState};
+use crate::AppState;
 
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
 
 #[repr(transparent)]
 pub struct WarpConn(Connection<WarpSink, WarpStream>);
-
-impl WarpConn {
-    pub fn new(broadcast_group: Arc<BroadcastGroup>, socket: WebSocket) -> Self {
-        let (sink, stream) = socket.split();
-        let conn = Connection::new(broadcast_group, WarpSink(sink), WarpStream(stream));
-        WarpConn(conn)
-    }
-}
-
-impl core::future::Future for WarpConn {
-    type Output = Result<(), Error>;
-
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
-        Pin::new(&mut self.0).poll(cx)
-    }
-}
 
 #[derive(Debug)]
 pub struct WarpSink(SplitSink<WebSocket, Message>);
@@ -55,7 +39,7 @@ impl From<WarpSink> for SplitSink<WebSocket, Message> {
     }
 }
 
-impl futures_util::Sink<Vec<u8>> for WarpSink {
+impl futures_util::Sink<Bytes> for WarpSink {
     type Error = Error;
 
     fn poll_ready(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
@@ -66,8 +50,8 @@ impl futures_util::Sink<Vec<u8>> for WarpSink {
         }
     }
 
-    fn start_send(mut self: Pin<&mut Self>, item: Vec<u8>) -> Result<(), Self::Error> {
-        if let Err(e) = Pin::new(&mut self.0).start_send(Message::Binary(item.into())) {
+    fn start_send(mut self: Pin<&mut Self>, item: Bytes) -> Result<(), Self::Error> {
+        if let Err(e) = Pin::new(&mut self.0).start_send(Message::Binary(item)) {
             Err(Error::Other(e.into()))
         } else {
             Ok(())
@@ -107,7 +91,7 @@ impl From<WarpStream> for SplitStream<WebSocket> {
 }
 
 impl Stream for WarpStream {
-    type Item = Result<Vec<u8>, Error>;
+    type Item = Result<Bytes, Error>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match Pin::new(&mut self.0).poll_next(cx) {
@@ -115,7 +99,7 @@ impl Stream for WarpStream {
             Poll::Ready(None) => Poll::Ready(None),
             Poll::Ready(Some(res)) => match res {
                 Ok(msg) => match msg {
-                    Message::Binary(data) => Poll::Ready(Some(Ok(data.to_vec()))),
+                    Message::Binary(data) => Poll::Ready(Some(Ok(data))),
                     Message::Ping(_) | Message::Pong(_) | Message::Text(_) => {
                         cx.waker().wake_by_ref();
                         Poll::Pending
@@ -166,40 +150,7 @@ pub async fn ws_handler(
         }
     }
 
-    // if let Some(redis_store) = state.pool.get_redis_store() {
-    //     match redis_store.get_doc_instance(&doc_id).await {
-    //         Ok(Some(instance_id)) if instance_id != state.instance_id => {
-    //             tracing::debug!(
-    //                 "Document {} is already being handled by instance {}",
-    //                 doc_id,
-    //                 instance_id
-    //             );
-
-    //             // return ws.on_upgrade(move |mut socket| async move {
-    //             //     let close_frame = axum::extract::ws::CloseFrame {
-    //             //         code: 1012,
-    //             //         reason: format!("instance:{}", instance_id).into(),
-    //             //     };
-
-    //             //     let _ = socket.send(Message::Close(Some(close_frame))).await;
-    //             // });
-    //             tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
-    //         }
-    //         Ok(_) => {
-    //             if let Err(e) = redis_store
-    //                 .register_doc_instance(&doc_id, &state.instance_id, 2)
-    //                 .await
-    //             {
-    //                 tracing::warn!("Failed to register instance for document {}: {}", doc_id, e);
-    //             }
-    //         }
-    //         Err(e) => {
-    //             tracing::warn!("Failed to check document instance: {}", e);
-    //         }
-    //     }
-    // }
-
-    let bcast = match state.pool.get_or_create_group(&doc_id).await {
+    let bcast = match state.pool.get_group(&doc_id).await {
         Ok(group) => group,
         Err(e) => {
             tracing::error!("Failed to get or create group for {}: {}", doc_id, e);
@@ -210,21 +161,18 @@ pub async fn ws_handler(
         }
     };
 
-    ws.on_upgrade(move |socket| {
-        handle_socket(socket, bcast, doc_id, state.pool.clone(), user_token)
-    })
+    ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, user_token))
 }
 
 async fn handle_socket(
     socket: axum::extract::ws::WebSocket,
     bcast: Arc<crate::BroadcastGroup>,
     doc_id: String,
-    pool: Arc<BroadcastPool>,
     user_token: Option<String>,
 ) {
     let (sender, receiver) = socket.split();
 
-    let conn = crate::conn::Connection::with_broadcast_group_and_user(
+    let conn = crate::conn::Connection::new(
         bcast.clone(),
         WarpSink(sender),
         WarpStream(receiver),
@@ -236,7 +184,9 @@ async fn handle_socket(
     if let Err(e) = result {
         tracing::error!("WebSocket connection error: {}", e);
     }
-    pool.remove_connection(&doc_id).await;
+
+    let _ = bcast.decrement_connections().await;
+    tracing::debug!("Connection decreased for document '{}'", doc_id);
 }
 
 fn normalize_doc_id(doc_id: &str) -> String {

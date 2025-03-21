@@ -1,10 +1,12 @@
-use bb8::Pool;
-use bb8_redis::RedisConnectionManager;
+use bytes::Bytes;
+use deadpool::managed::Pool;
+use deadpool::Runtime;
+use deadpool_redis::{Connection, Manager};
 use redis::AsyncCommands;
 use std::sync::Arc;
 use std::time::Duration;
 
-type RedisField = (String, Vec<u8>);
+type RedisField = (String, Bytes);
 type RedisFields = Vec<RedisField>;
 type RedisStreamMessage = (String, RedisFields);
 type RedisStreamMessages = Vec<RedisStreamMessage>;
@@ -20,7 +22,7 @@ pub struct RedisConfig {
     pub connection_timeout: Option<u64>,
 }
 
-pub type RedisPool = Pool<RedisConnectionManager>;
+pub type RedisPool = Pool<Manager, Connection>;
 
 #[derive(Debug, Clone)]
 pub struct RedisStore {
@@ -29,14 +31,11 @@ pub struct RedisStore {
 }
 
 impl RedisStore {
-    pub async fn new(config: Option<RedisConfig>) -> Result<Self, redis::RedisError> {
+    pub async fn new(config: Option<RedisConfig>) -> Result<Self, anyhow::Error> {
         let pool = if let Some(config) = &config {
             Self::init_redis_connection(config).await?
         } else {
-            return Err(redis::RedisError::from(std::io::Error::new(
-                std::io::ErrorKind::NotFound,
-                "Redis configuration is missing",
-            )));
+            return Err(anyhow::anyhow!("Redis configuration is missing"));
         };
         Ok(Self { pool, config })
     }
@@ -51,17 +50,20 @@ impl RedisStore {
 
     pub async fn init_redis_connection(
         config: &RedisConfig,
-    ) -> Result<Arc<RedisPool>, redis::RedisError> {
-        let manager = RedisConnectionManager::new(config.url.clone())?;
+    ) -> Result<Arc<RedisPool>, anyhow::Error> {
+        let manager = Manager::new(config.url.clone())?;
 
-        let builder = Pool::builder()
-            .max_size(config.max_connections.unwrap_or(2048))
-            .min_idle(config.min_idle.or(Some(64)))
-            .connection_timeout(Duration::from_secs(config.connection_timeout.unwrap_or(5)))
-            .idle_timeout(Some(Duration::from_secs(500)))
-            .max_lifetime(Some(Duration::from_secs(7200)));
-
-        let pool = builder.build(manager).await?;
+        let pool = Pool::builder(manager)
+            .max_size(config.max_connections.unwrap_or(2048) as usize)
+            .wait_timeout(Some(Duration::from_secs(
+                config.connection_timeout.unwrap_or(5),
+            )))
+            .create_timeout(Some(Duration::from_secs(
+                config.connection_timeout.unwrap_or(5),
+            )))
+            .recycle_timeout(Some(Duration::from_secs(500)))
+            .runtime(Runtime::Tokio1)
+            .build()?;
 
         Ok(Arc::new(pool))
     }
@@ -161,7 +163,7 @@ impl RedisStore {
         consumer_name: &str,
         count: usize,
         block_ms: usize,
-    ) -> Result<Vec<(String, Vec<u8>)>, anyhow::Error> {
+    ) -> Result<Vec<(String, Bytes)>, anyhow::Error> {
         let stream_key = format!("yjs:stream:{}", doc_id);
         if let Ok(mut conn) = self.pool.get().await {
             let result: RedisStreamResults = redis::cmd("XREADGROUP")
@@ -230,7 +232,7 @@ impl RedisStore {
         group_name: &str,
         consumer_name: &str,
         count: usize,
-    ) -> Result<Vec<(String, Vec<u8>)>, anyhow::Error> {
+    ) -> Result<Vec<(String, Bytes)>, anyhow::Error> {
         let stream_key = format!("yjs:stream:{}", doc_id);
         if let Ok(mut conn) = self.pool.get().await {
             let effective_count = count.max(30);
@@ -287,7 +289,7 @@ impl RedisStore {
         consumer_name: &str,
         count: usize,
         block_ms: usize,
-    ) -> Result<Vec<(String, Vec<u8>)>, anyhow::Error> {
+    ) -> Result<Vec<(String, Bytes)>, anyhow::Error> {
         let stream_key = format!("yjs:stream:{}", doc_id);
         if let Ok(mut conn) = self.pool.get().await {
             let result: RedisStreamResults = redis::cmd("XREADGROUP")
@@ -365,7 +367,7 @@ impl RedisStore {
         group_name: &str,
         consumer_name: &str,
         count: usize,
-    ) -> Result<Vec<(String, Vec<u8>)>, anyhow::Error> {
+    ) -> Result<Vec<(String, Bytes)>, anyhow::Error> {
         let stream_key = format!("yjs:stream:{}", doc_id);
         if let Ok(mut conn) = self.pool.get().await {
             let result: RedisStreamResults = redis::cmd("XREADGROUP")
@@ -568,16 +570,17 @@ impl RedisStore {
         group_name: &str,
         consumer_name: &str,
         count: usize,
-    ) -> Result<Vec<Vec<u8>>, anyhow::Error> {
+    ) -> Result<Vec<Bytes>, anyhow::Error> {
         let stream_key = format!("yjs:stream:{}", doc_id);
 
-        if let Ok(mut conn) = self.pool.get().await {
-            let script = redis::Script::new(
-                r#"
-                local stream_key = KEYS[1]
-                local group_name = ARGV[1]
-                local consumer_name = ARGV[2]
-                local count = tonumber(ARGV[3])
+        let mut conn = self.pool.get().await?;
+
+        let script = redis::Script::new(
+            r#"
+            local stream_key = KEYS[1]
+            local group_name = ARGV[1]
+            local consumer_name = ARGV[2]
+            local count = tonumber(ARGV[3])
                 
                 local result = redis.call('XREADGROUP', 'GROUP', group_name, consumer_name, 'COUNT', count, 'STREAMS', stream_key, '>')
                 if not result or #result == 0 then return {} end
@@ -609,22 +612,17 @@ impl RedisStore {
                 
                 return updates
                 "#,
-            );
+        );
 
-            let effective_count = count.max(25);
+        let updates = script
+            .key(stream_key)
+            .arg(group_name)
+            .arg(consumer_name)
+            .arg(count)
+            .invoke_async(&mut *conn)
+            .await?;
 
-            let updates = script
-                .key(stream_key)
-                .arg(group_name)
-                .arg(consumer_name)
-                .arg(effective_count)
-                .invoke_async(&mut *conn)
-                .await?;
-
-            Ok(updates)
-        } else {
-            Err(anyhow::anyhow!("Failed to get Redis connection"))
-        }
+        Ok(updates)
     }
 
     pub async fn delete_stream(&self, doc_id: &str) -> Result<(), anyhow::Error> {
@@ -735,7 +733,7 @@ impl RedisStore {
                 .query_async(&mut *conn)
                 .await?;
 
-            tracing::info!(
+            tracing::debug!(
                 "Redis: Incremented connections for doc '{}' to {}",
                 doc_id,
                 count
@@ -857,6 +855,43 @@ impl RedisStore {
             }
 
             return Ok(exists);
+        }
+
+        Err(anyhow::anyhow!("Failed to get Redis connection"))
+    }
+
+    pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<Vec<Bytes>, anyhow::Error> {
+        let stream_key = format!("yjs:stream:{}", doc_id);
+
+        if let Ok(mut conn) = self.pool.get().await {
+            let exists: bool = redis::cmd("EXISTS")
+                .arg(&stream_key)
+                .query_async(&mut *conn)
+                .await?;
+
+            if !exists {
+                return Ok(Vec::new());
+            }
+
+            type RawStreamEntry = (String, Vec<(String, Bytes)>);
+            let result: Vec<RawStreamEntry> = redis::cmd("XRANGE")
+                .arg(&stream_key)
+                .arg("-")
+                .arg("+")
+                .query_async(&mut *conn)
+                .await?;
+
+            let mut updates = Vec::new();
+
+            for (_, fields) in result {
+                for (field_name, field_value) in fields {
+                    if field_name == "update" {
+                        updates.push(field_value);
+                    }
+                }
+            }
+
+            return Ok(updates);
         }
 
         Err(anyhow::anyhow!("Failed to get Redis connection"))
