@@ -54,7 +54,7 @@ pub async fn start_server(state: Arc<AppState>, port: &str) -> Result<(), anyhow
     };
 
     let ws_router = Router::new()
-        .route("/:doc_id", get(ws_handler))
+        .route("/{doc_id}", get(ws_handler))
         .with_state(server_state);
 
     let app = Router::new()
