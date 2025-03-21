@@ -96,10 +96,37 @@ impl BroadcastGroup {
 
         if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
             if new_count == 0 {
-                match redis_store.decrement_doc_connections(doc_name).await {
-                    Ok(_) => {}
+                let lock_id = format!("gcs:lock:{}", doc_name);
+                let instance_id = format!("instance-{}", rand::random::<u64>());
+
+                match redis_store.acquire_doc_lock(&lock_id, &instance_id).await {
+                    Ok(true) => match redis_store.decrement_doc_connections(doc_name).await {
+                        Ok(_) => {
+                            if let Err(e) =
+                                redis_store.release_doc_lock(&lock_id, &instance_id).await
+                            {
+                                tracing::warn!("Failed to release Redis lock: {}", e);
+                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "Failed to decrement Redis global connection count: {}",
+                                e
+                            );
+                            if let Err(e) =
+                                redis_store.release_doc_lock(&lock_id, &instance_id).await
+                            {
+                                tracing::warn!("Failed to release Redis lock: {}", e);
+                            }
+                        }
+                    },
+                    Ok(false) => {
+                        tracing::warn!(
+                            "Could not acquire Redis lock for decrementing connection count"
+                        );
+                    }
                     Err(e) => {
-                        tracing::warn!("Failed to decrement Redis global connection count: {}", e);
+                        tracing::warn!("Error acquiring Redis lock: {}", e);
                     }
                 }
             }
