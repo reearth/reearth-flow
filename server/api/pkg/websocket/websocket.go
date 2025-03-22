@@ -14,3 +14,8 @@ type History struct {
 	Version   int
 	Timestamp time.Time
 }
+
+type HistoryMetadata struct {
+	Version   int
+	Timestamp time.Time
+}

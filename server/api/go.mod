@@ -7,7 +7,6 @@ require (
 	cloud.google.com/go/storage v1.43.0
 	github.com/99designs/gqlgen v0.17.46
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.23.0
-	github.com/apache/thrift v0.21.0
 	github.com/avast/retry-go/v4 v4.6.0
 	github.com/gavv/httpexpect/v2 v2.16.0
 	github.com/go-redis/redismock/v9 v9.2.0

@@ -725,13 +725,15 @@ impl RedisStore {
         let key = format!("connections:doc:{}", doc_id);
 
         if let Ok(mut conn) = self.pool.get().await {
-            let count: i64 = redis::cmd("INCR").arg(&key).query_async(&mut *conn).await?;
+            let script = redis::Script::new(
+                r#"
+                local count = redis.call('incr', KEYS[1])
+                redis.call('expire', KEYS[1], ARGV[1])
+                return count
+                "#,
+            );
 
-            let _: () = redis::cmd("EXPIRE")
-                .arg(&key)
-                .arg(86400)
-                .query_async(&mut *conn)
-                .await?;
+            let count: i64 = script.key(&key).arg(86400).invoke_async(&mut *conn).await?;
 
             tracing::debug!(
                 "Redis: Incremented connections for doc '{}' to {}",
