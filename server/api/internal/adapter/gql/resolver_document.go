@@ -39,6 +39,23 @@ func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.I
 	return nodes, nil
 }
 
+func (r *queryResolver) ProjectHistoryMetadata(ctx context.Context, projectId gqlmodel.ID) ([]*gqlmodel.ProjectSnapshotMetadata, error) {
+	metadata, err := interactor.GetHistoryMetadata(ctx, string(projectId))
+	if err != nil {
+		return nil, err
+	}
+
+	nodes := make([]*gqlmodel.ProjectSnapshotMetadata, len(metadata))
+	for i, m := range metadata {
+		nodes[i] = &gqlmodel.ProjectSnapshotMetadata{
+			Version:   m.Version,
+			Timestamp: m.Timestamp,
+		}
+	}
+
+	return nodes, nil
+}
+
 func (r *mutationResolver) RollbackProject(ctx context.Context, projectId gqlmodel.ID, version int) (*gqlmodel.ProjectDocument, error) {
 	doc, err := interactor.Rollback(ctx, string(projectId), version)
 	if err != nil {

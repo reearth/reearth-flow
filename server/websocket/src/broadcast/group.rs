@@ -97,52 +97,10 @@ impl BroadcastGroup {
 
         if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
             if new_count == 0 {
-                match redis_store.decrement_doc_connections(doc_name).await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        tracing::warn!("Failed to decrement Redis global connection count: {}", e);
-                    }
+                if let Err(e) = redis_store.decrement_doc_connections(doc_name).await {
+                    tracing::warn!("Failed to decrement Redis global connection count: {}", e);
                 }
             }
-        }
-
-        if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
-            let store_clone = store.clone();
-            let doc_name_clone = doc_name.clone();
-            let awareness = self.awareness_ref.clone();
-            let shutdown_flag = Arc::new(AtomicBool::new(false));
-            let shutdown_flag_clone = shutdown_flag.clone();
-
-            tokio::spawn(async move {
-                let awareness = awareness.write().await;
-                let awareness_doc = awareness.doc();
-                let _awareness_state = awareness_doc.transact().state_vector();
-
-                let gcs_doc = Doc::new();
-                let mut gcs_txn = gcs_doc.transact_mut();
-
-                if let Err(e) = store_clone.load_doc(&doc_name_clone, &mut gcs_txn).await {
-                    tracing::warn!("Failed to load current state from GCS: {}", e);
-                }
-
-                let gcs_state = gcs_txn.state_vector();
-
-                let awareness_txn = awareness_doc.transact();
-                let update = awareness_txn.encode_diff_v1(&gcs_state);
-                let update_bytes = Bytes::from(update);
-                Self::handle_gcs_update(update_bytes, &doc_name_clone, &store_clone).await;
-
-                shutdown_flag_clone.store(true, std::sync::atomic::Ordering::SeqCst);
-            });
-
-            tokio::spawn(async move {
-                for _ in 0..10 {
-                    if shutdown_flag.load(std::sync::atomic::Ordering::SeqCst) {
-                        break;
-                    }
-                    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-                }
-            });
         }
 
         new_count
@@ -631,6 +589,93 @@ impl BroadcastGroup {
     pub async fn shutdown(&self) -> Result<()> {
         self.shutdown_complete
             .store(true, std::sync::atomic::Ordering::SeqCst);
+
+        if self.connection_count() == 0 {
+            if let (Some(store), Some(doc_name)) = (&self.storage, &self.doc_name) {
+                let store_clone = store.clone();
+                let doc_name_clone = doc_name.clone();
+                let awareness = self.awareness_ref.clone();
+                let redis_store_clone = self.redis_store.clone();
+
+                let should_save = if let Some(redis) = &redis_store_clone {
+                    match redis.get_doc_connections(&doc_name_clone).await {
+                        Ok(connections) => {
+                            if connections <= 0 {
+                                tracing::info!("All instances disconnected from '{}', proceeding with GCS save", doc_name_clone);
+                                true
+                            } else {
+                                tracing::debug!(
+                                    "Other instances still connected to '{}', skipping GCS save",
+                                    doc_name_clone
+                                );
+                                false
+                            }
+                        }
+                        Err(e) => {
+                            tracing::warn!("Failed to get Redis connection count: {}", e);
+                            true
+                        }
+                    }
+                } else {
+                    true
+                };
+
+                if should_save {
+                    let lock_acquired = if let Some(redis) = &redis_store_clone {
+                        let lock_id = format!("gcs:lock:{}", doc_name_clone);
+                        let instance_id = format!("instance-{}", rand::random::<u64>());
+
+                        match redis.acquire_doc_lock(&lock_id, &instance_id).await {
+                            Ok(true) => {
+                                tracing::debug!(
+                                    "Acquired lock for GCS operations on {}",
+                                    doc_name_clone
+                                );
+                                Some((redis.clone(), lock_id, instance_id))
+                            }
+                            Ok(false) => {
+                                tracing::warn!(
+                                    "Could not acquire lock for GCS operations, skipping update"
+                                );
+                                None
+                            }
+                            Err(e) => {
+                                tracing::warn!("Error acquiring lock for GCS operations: {}", e);
+                                None
+                            }
+                        }
+                    } else {
+                        None
+                    };
+
+                    if lock_acquired.is_some() || redis_store_clone.is_none() {
+                        let awareness = awareness.write().await;
+                        let awareness_doc = awareness.doc();
+                        let _awareness_state = awareness_doc.transact().state_vector();
+
+                        let gcs_doc = Doc::new();
+                        let mut gcs_txn = gcs_doc.transact_mut();
+
+                        if let Err(e) = store_clone.load_doc(&doc_name_clone, &mut gcs_txn).await {
+                            tracing::warn!("Failed to load current state from GCS: {}", e);
+                        }
+
+                        let gcs_state = gcs_txn.state_vector();
+
+                        let awareness_txn = awareness_doc.transact();
+                        let update = awareness_txn.encode_diff_v1(&gcs_state);
+                        let update_bytes = Bytes::from(update);
+                        Self::handle_gcs_update(update_bytes, &doc_name_clone, &store_clone).await;
+                    }
+
+                    if let Some((redis, lock_id, instance_id)) = lock_acquired {
+                        if let Err(e) = redis.release_doc_lock(&lock_id, &instance_id).await {
+                            tracing::warn!("Failed to release GCS lock: {}", e);
+                        }
+                    }
+                }
+            }
+        }
 
         if let Some(task) = &self.redis_subscriber_task {
             task.abort();
