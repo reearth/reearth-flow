@@ -32,5 +32,7 @@ type File interface {
 	ReadArtifact(context.Context, string) (io.ReadCloser, error)
 	ListJobArtifacts(context.Context, string) ([]string, error)
 	GetJobLogURL(string) string
+	GetJobWorkerLogURL(string) string
 	CheckJobLogExists(context.Context, string) (bool, error)
+	CheckJobWorkerLogExists(context.Context, string) (bool, error)
 }
