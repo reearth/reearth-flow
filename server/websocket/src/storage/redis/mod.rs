@@ -733,11 +733,7 @@ impl RedisStore {
                 "#,
             );
 
-            let count: i64 = script
-                .key(&key)
-                .arg(60) // 1 minute TTL
-                .invoke_async(&mut *conn)
-                .await?;
+            let count: i64 = script.key(&key).arg(60).invoke_async(&mut *conn).await?;
 
             tracing::debug!(
                 "Redis: Incremented connections for doc '{}' to {}",
