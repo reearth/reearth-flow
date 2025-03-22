@@ -5,7 +5,9 @@ import {
   GearFine,
   Graph,
   Lightning,
+  Table,
   Trash,
+  X,
 } from "@phosphor-icons/react";
 import { NodeProps } from "@xyflow/react";
 import { memo, useCallback } from "react";
@@ -55,7 +57,8 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     customName,
     inputs,
     outputs,
-    // metaProps,
+    status,
+    intermediateDataUrl,
     borderColor,
     selectedColor,
     selectedBackgroundColor,
@@ -64,10 +67,11 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   return (
     <ContextMenu>
       <ContextMenuTrigger>
-        <div className="rounded-sm bg-secondary">
+        <div
+          className={`rounded-sm bg-secondary ${status === "running" ? "active-node-status-shadow" : status === "pending" ? "queued-node-status-shadow" : ""}`}>
           <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
             <div
-              className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className} `}>
+              className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
               {type === "reader" ? (
                 <Database className={typeIconClasses} />
               ) : type === "writer" ? (
@@ -79,13 +83,14 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
               ) : null}
             </div>
             <div
-              className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? selectedColor : borderColor}`}>
+              className={`flex flex-1 items-center justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? selectedColor : borderColor}`}>
               <p className="self-center truncate text-xs dark:font-light">
                 {data.customizations?.customName || customName || officialName}
               </p>
-              {/* <div
-                className={`size-[8px] shrink-0 self-center rounded ${metaProps.style}`}
-              /> */}
+              {status === "failed" && <X className="size-4 text-destructive" />}
+              {status === "succeeded" && intermediateDataUrl && (
+                <Table className="size-4 text-success" />
+              )}
             </div>
           </div>
           <Handles nodeType={type} inputs={inputs} outputs={outputs} />
