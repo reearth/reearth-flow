@@ -8,9 +8,7 @@ RUN apk add --update --no-cache \
     build-base \
     curl \
     pkgconfig \
-    thrift
-
-WORKDIR /reearth-flow
+    WORKDIR /reearth-flow
 
 COPY server/api/go.mod server/api/go.sum server/api/main.go /reearth-flow/
 RUN go mod download
