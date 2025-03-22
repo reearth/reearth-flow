@@ -282,11 +282,11 @@ impl BroadcastGroup {
 
             loop {
                 match redis_store_for_sub
-                    .read_and_ack_with_lua(
+                    .read_and_ack(
                         &doc_name_for_sub,
                         &group_name_clone,
                         &consumer_name_clone,
-                        13,
+                        14,
                     )
                     .await
                 {

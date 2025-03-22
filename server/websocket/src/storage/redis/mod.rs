@@ -508,7 +508,7 @@ impl RedisStore {
         Ok(None)
     }
 
-    pub async fn read_and_ack_with_lua(
+    pub async fn read_and_ack(
         &self,
         doc_id: &str,
         group_name: &str,
