@@ -179,7 +179,7 @@ impl DocumentHandler {
                 let doc = storage.rollback_to(&doc_id_clone, version as u32).await?;
 
                 let read_txn = doc.transact();
-                let state = read_txn.encode_diff_v1(&StateVector::default());
+                let state = read_txn.encode_state_as_update_v1(&StateVector::default());
 
                 Ok::<_, anyhow::Error>(Document {
                     id: doc_id_clone,
