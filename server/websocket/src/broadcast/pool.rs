@@ -33,7 +33,7 @@ impl BroadcastGroupManager {
         Self {
             store,
             redis_store,
-            buffer_capacity: 128,
+            buffer_capacity: 256,
             doc_to_id_map: Arc::new(DashMap::new()),
         }
     }
