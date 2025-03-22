@@ -8,9 +8,7 @@ RUN apk add --update --no-cache \
     build-base \
     curl \
     pkgconfig \
-    thrift
-
-WORKDIR /reearth-flow
+    WORKDIR /reearth-flow
 
 COPY server/api/go.mod server/api/go.sum server/api/main.go /reearth-flow/
 RUN go mod download
@@ -18,7 +16,6 @@ RUN go mod download
 COPY server/api/cmd/ /reearth-flow/cmd/
 COPY server/api/pkg/ /reearth-flow/pkg/
 COPY server/api/internal/ /reearth-flow/internal/
-COPY server/api/proto/ /reearth-flow/proto/
 
 RUN go build -tags "${TAG}" "-ldflags=-X main.version=${VERSION} -s -w -buildid=" -trimpath ./cmd/reearth-flow
 

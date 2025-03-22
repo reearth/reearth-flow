@@ -42,7 +42,7 @@ async fn main() {
     let store = Arc::new(store);
     tracing::info!("GCS store initialized");
 
-    let redis_store = match RedisStore::new(Some(config.redis.clone())).await {
+    let redis_store = match RedisStore::new(config.redis.clone()).await {
         Ok(redis_store) => {
             tracing::info!("Redis store initialized");
             Some(Arc::new(redis_store))
