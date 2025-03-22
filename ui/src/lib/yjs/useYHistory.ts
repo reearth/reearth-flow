@@ -1,7 +1,18 @@
 import { useCallback, useMemo } from "react";
 import { UndoManager } from "yjs";
 
-export default ({ undoManager }: { undoManager: UndoManager | null }) => {
+// const historyClientPrepend = "undo-redo-operation";
+
+export default ({
+  undoManager,
+  // undoTrackerActionWrapper,
+}: {
+  undoManager: UndoManager | null;
+  undoTrackerActionWrapper: (
+    callback: () => void,
+    originPrepend?: string,
+  ) => void;
+}) => {
   const canUndo = useMemo(() => {
     const stackLength = undoManager?.undoStack?.length ?? 0;
     return stackLength > 0;
@@ -15,14 +26,38 @@ export default ({ undoManager }: { undoManager: UndoManager | null }) => {
   const handleYWorkflowUndo = useCallback(() => {
     const stackLength = undoManager?.undoStack?.length ?? 0;
     if (stackLength > 0) {
-      undoManager?.undo();
+      try {
+        // undoTrackerActionWrapper(() => {
+        undoManager?.undo();
+        // }, historyClientPrepend);
+      } catch (e) {
+        console.error("Undo operation failed: ", e);
+
+        undoManager?.undoStack.splice(undoManager?.undoStack.length - 1, 1);
+
+        if (undoManager?.undoStack.length) {
+          setTimeout(handleYWorkflowUndo, 0);
+        }
+      }
     }
   }, [undoManager]);
 
   const handleYWorkflowRedo = useCallback(() => {
     const stackLength = undoManager?.redoStack?.length ?? 0;
     if (stackLength > 0) {
-      undoManager?.redo();
+      try {
+        // undoTrackerActionWrapper(() => {
+        undoManager?.redo();
+        // }, historyClientPrepend);
+      } catch (e) {
+        console.error("Redo operation failed: ", e);
+
+        undoManager?.redoStack.splice(undoManager?.redoStack.length - 1, 1);
+
+        if (undoManager?.redoStack.length) {
+          setTimeout(handleYWorkflowRedo, 0);
+        }
+      }
     }
   }, [undoManager]);
 
