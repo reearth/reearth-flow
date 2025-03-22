@@ -1,10 +1,8 @@
 use bytes::Bytes;
-use deadpool::managed::Pool;
 use deadpool::Runtime;
-use deadpool_redis::{Connection, Manager};
+use deadpool_redis::{Config, Pool};
 use redis::AsyncCommands;
 use std::sync::Arc;
-use std::time::Duration;
 
 type RedisField = (String, Bytes);
 type RedisFields = Vec<RedisField>;
@@ -22,21 +20,19 @@ pub struct RedisConfig {
     pub connection_timeout: Option<u64>,
 }
 
-pub type RedisPool = Pool<Manager, Connection>;
+pub type RedisPool = Pool;
 
 #[derive(Debug, Clone)]
 pub struct RedisStore {
     pool: Arc<RedisPool>,
-    config: Option<RedisConfig>,
+    config: RedisConfig,
 }
 
 impl RedisStore {
-    pub async fn new(config: Option<RedisConfig>) -> Result<Self, anyhow::Error> {
-        let pool = if let Some(config) = &config {
-            Self::init_redis_connection(config).await?
-        } else {
-            return Err(anyhow::anyhow!("Redis configuration is missing"));
-        };
+    pub async fn new(config: RedisConfig) -> Result<Self, anyhow::Error> {
+        let cfg = Config::from_url(&config.url);
+        let pool = cfg.create_pool(Some(Runtime::Tokio1))?;
+        let pool = Arc::new(pool);
         Ok(Self { pool, config })
     }
 
@@ -44,28 +40,8 @@ impl RedisStore {
         self.pool.clone()
     }
 
-    pub fn get_config(&self) -> Option<RedisConfig> {
+    pub fn get_config(&self) -> RedisConfig {
         self.config.clone()
-    }
-
-    pub async fn init_redis_connection(
-        config: &RedisConfig,
-    ) -> Result<Arc<RedisPool>, anyhow::Error> {
-        let manager = Manager::new(config.url.clone())?;
-
-        let pool = Pool::builder(manager)
-            .max_size(config.max_connections.unwrap_or(2048) as usize)
-            .wait_timeout(Some(Duration::from_secs(
-                config.connection_timeout.unwrap_or(5),
-            )))
-            .create_timeout(Some(Duration::from_secs(
-                config.connection_timeout.unwrap_or(5),
-            )))
-            .recycle_timeout(Some(Duration::from_secs(500)))
-            .runtime(Runtime::Tokio1)
-            .build()?;
-
-        Ok(Arc::new(pool))
     }
 
     pub async fn publish_update(&self, doc_id: &str, update: &[u8]) -> Result<(), anyhow::Error> {
@@ -80,9 +56,7 @@ impl RedisStore {
                 .arg("*")
                 .arg(fields);
 
-            if let Some(config) = &self.config {
-                pipe.cmd("EXPIRE").arg(&stream_key).arg(config.ttl);
-            }
+            pipe.cmd("EXPIRE").arg(&stream_key).arg(self.config.ttl);
 
             let _: () = pipe.query_async(&mut *conn).await?;
         }
@@ -100,7 +74,7 @@ impl RedisStore {
 
         let stream_key = format!("yjs:stream:{}", doc_id);
         if let Ok(mut conn) = self.pool.get().await {
-            let ttl = self.config.as_ref().map(|c| c.ttl).unwrap_or(3600);
+            let ttl = self.config.ttl;
 
             let mut pipe = redis::pipe();
 

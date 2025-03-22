@@ -207,7 +207,7 @@ impl BroadcastGroup {
 
         let doc_name = config.doc_name.clone().unwrap_or_default();
 
-        let redis_ttl = redis_store.get_config().map(|c| c.ttl as usize);
+        let redis_ttl = Some(redis_store.get_config().ttl as usize);
 
         Self::load_from_storage(&store, &doc_name, &group.awareness_ref).await;
 

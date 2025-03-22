@@ -6,7 +6,7 @@ use crate::AwarenessRef;
 use anyhow::{Error, Result};
 use bytes;
 use dashmap::DashMap;
-use deadpool::managed::{self, Manager, Metrics, Pool, RecycleResult};
+use deadpool::managed::{self, Manager, Metrics, RecycleResult};
 use std::sync::Arc;
 use std::time::Duration;
 use yrs::sync::Awareness;
