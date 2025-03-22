@@ -46,6 +46,7 @@ pub struct BroadcastGroup {
     redis_consumer_name: Option<String>,
     redis_group_name: Option<String>,
     shutdown_complete: AtomicBool,
+    pub heartbeat_task: Option<JoinHandle<()>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -227,6 +228,7 @@ impl BroadcastGroup {
             redis_consumer_name: None,
             redis_group_name: None,
             shutdown_complete: AtomicBool::new(false),
+            heartbeat_task: None,
         };
 
         Ok(result)
@@ -348,6 +350,34 @@ impl BroadcastGroup {
         group.redis_ttl = redis_ttl;
 
         group.storage_rx = None;
+
+        if let Some(redis_store) = &group.redis_store {
+            let redis_store_clone = redis_store.clone();
+            let doc_name_clone = doc_name.clone();
+            let shutdown_flag = Arc::new(AtomicBool::new(false));
+            let shutdown_flag_clone = shutdown_flag.clone();
+
+            let heartbeat_task = tokio::spawn(async move {
+                let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(50));
+
+                while !shutdown_flag_clone.load(Ordering::Relaxed) {
+                    interval.tick().await;
+
+                    if let Err(e) = redis_store_clone
+                        .refresh_doc_connections(&doc_name_clone)
+                        .await
+                    {
+                        tracing::warn!("Failed to refresh doc connections TTL: {}", e);
+                    } else {
+                        tracing::debug!("Refreshed TTL for doc connections '{}'", doc_name_clone);
+                    }
+                }
+
+                tracing::debug!("Heartbeat task for '{}' stopped", doc_name_clone);
+            });
+
+            group.heartbeat_task = Some(heartbeat_task);
+        }
 
         Ok(group)
     }
@@ -606,6 +636,10 @@ impl BroadcastGroup {
             task.abort();
         }
 
+        if let Some(task) = &self.heartbeat_task {
+            task.abort();
+        }
+
         self.awareness_updater.abort();
 
         if let (Some(redis_store), Some(doc_name), Some(consumer_name), Some(group_name)) = (
@@ -702,6 +736,10 @@ impl Drop for BroadcastGroup {
         }
 
         if let Some(task) = self.redis_subscriber_task.take() {
+            task.abort();
+        }
+
+        if let Some(task) = self.heartbeat_task.take() {
             task.abort();
         }
 

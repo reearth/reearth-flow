@@ -725,12 +725,18 @@ impl RedisStore {
         let key = format!("connections:doc:{}", doc_id);
 
         if let Ok(mut conn) = self.pool.get().await {
-            let count: i64 = redis::cmd("INCR").arg(&key).query_async(&mut *conn).await?;
+            let script = redis::Script::new(
+                r#"
+                local count = redis.call('INCR', KEYS[1])
+                redis.call('EXPIRE', KEYS[1], ARGV[1])
+                return count
+                "#,
+            );
 
-            let _: () = redis::cmd("EXPIRE")
-                .arg(&key)
-                .arg(86400)
-                .query_async(&mut *conn)
+            let count: i64 = script
+                .key(&key)
+                .arg(60) // 1 minute TTL
+                .invoke_async(&mut *conn)
                 .await?;
 
             tracing::debug!(
@@ -739,6 +745,28 @@ impl RedisStore {
                 count
             );
             return Ok(count);
+        }
+
+        Err(anyhow::anyhow!("Failed to get Redis connection"))
+    }
+
+    pub async fn refresh_doc_connections(&self, doc_id: &str) -> Result<(), anyhow::Error> {
+        let key = format!("connections:doc:{}", doc_id);
+
+        if let Ok(mut conn) = self.pool.get().await {
+            let script = redis::Script::new(
+                r#"
+                if redis.call('EXISTS', KEYS[1]) == 1 then
+                    return redis.call('EXPIRE', KEYS[1], ARGV[1])
+                end
+                return 0
+                "#,
+            );
+
+            let _: i64 = script.key(&key).arg(60).invoke_async(&mut *conn).await?;
+
+            tracing::debug!("Redis: Refreshed TTL for doc connections '{}'", doc_id);
+            return Ok(());
         }
 
         Err(anyhow::anyhow!("Failed to get Redis connection"))
@@ -892,6 +920,164 @@ impl RedisStore {
             }
 
             return Ok(updates);
+        }
+
+        Err(anyhow::anyhow!("Failed to get Redis connection"))
+    }
+
+    pub async fn set_heartbeat(&self, doc_id: &str, client_id: &str) -> Result<(), anyhow::Error> {
+        let key = format!("heartbeat:{}:{}", doc_id, client_id);
+
+        if let Ok(mut conn) = self.pool.get().await {
+            let ttl = 60; // 1 minute TTL for heartbeat
+
+            let _: () = redis::cmd("SET")
+                .arg(&key)
+                .arg("1")
+                .arg("EX")
+                .arg(ttl)
+                .query_async(&mut *conn)
+                .await?;
+
+            return Ok(());
+        }
+
+        Err(anyhow::anyhow!("Failed to get Redis connection"))
+    }
+
+    pub async fn check_heartbeat(
+        &self,
+        doc_id: &str,
+        client_id: &str,
+    ) -> Result<bool, anyhow::Error> {
+        let key = format!("heartbeat:{}:{}", doc_id, client_id);
+
+        if let Ok(mut conn) = self.pool.get().await {
+            let exists: bool = redis::cmd("EXISTS")
+                .arg(&key)
+                .query_async(&mut *conn)
+                .await?;
+
+            return Ok(exists);
+        }
+
+        Err(anyhow::anyhow!("Failed to get Redis connection"))
+    }
+
+    pub async fn cleanup_stale_clients(&self, doc_id: &str) -> Result<Vec<String>, anyhow::Error> {
+        let pattern = format!("heartbeat:{}:*", doc_id);
+        let connections_key = format!("connections:doc:{}", doc_id);
+
+        if let Ok(mut conn) = self.pool.get().await {
+            // Get all heartbeat keys for this doc
+            let keys: Vec<String> = redis::cmd("KEYS")
+                .arg(&pattern)
+                .query_async(&mut *conn)
+                .await?;
+
+            // Extract client IDs from keys
+            let client_ids: Vec<String> = keys
+                .iter()
+                .filter_map(|key| {
+                    let parts: Vec<&str> = key.split(':').collect();
+                    if parts.len() >= 3 {
+                        Some(parts[2].to_string())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            // Run a script that adjusts the connection count based on actual heartbeats
+            let script = redis::Script::new(
+                r#"
+                local connection_key = KEYS[1]
+                local heartbeat_count = #ARGV
+                
+                -- Set the connection count to match heartbeat count
+                redis.call('SET', connection_key, heartbeat_count)
+                
+                -- Set expiry if count > 0
+                if heartbeat_count > 0 then
+                    redis.call('EXPIRE', connection_key, 86400)
+                end
+                
+                return heartbeat_count
+                "#,
+            );
+
+            let _: i64 = script
+                .key(&connections_key)
+                .arg(&client_ids)
+                .invoke_async(&mut *conn)
+                .await?;
+
+            return Ok(client_ids);
+        }
+
+        Err(anyhow::anyhow!("Failed to get Redis connection"))
+    }
+
+    pub async fn update_doc_connections_from_heartbeats(
+        &self,
+        doc_id: &str,
+    ) -> Result<i64, anyhow::Error> {
+        let pattern = format!("heartbeat:{}:*", doc_id);
+        let connections_key = format!("connections:doc:{}", doc_id);
+
+        if let Ok(mut conn) = self.pool.get().await {
+            // Get all heartbeat keys for this doc
+            let keys: Vec<String> = redis::cmd("KEYS")
+                .arg(&pattern)
+                .query_async(&mut *conn)
+                .await?;
+
+            // Extract client IDs from keys
+            let client_ids: Vec<String> = keys
+                .iter()
+                .filter_map(|key| {
+                    let parts: Vec<&str> = key.split(':').collect();
+                    if parts.len() >= 3 {
+                        Some(parts[2].to_string())
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+
+            let heartbeat_count = client_ids.len() as i64;
+
+            // Set the connection count to match the number of active heartbeats
+            let script = redis::Script::new(
+                r#"
+                local connection_key = KEYS[1]
+                local heartbeat_count = tonumber(ARGV[1])
+                
+                -- Set the connection count to match heartbeat count
+                redis.call('SET', connection_key, heartbeat_count)
+                
+                -- Set expiry if count > 0
+                if heartbeat_count > 0 then
+                    redis.call('EXPIRE', connection_key, 86400)
+                end
+                
+                return heartbeat_count
+                "#,
+            );
+
+            let count: i64 = script
+                .key(&connections_key)
+                .arg(heartbeat_count)
+                .invoke_async(&mut *conn)
+                .await?;
+
+            tracing::debug!(
+                "Redis: Updated connections for doc '{}' to {} based on heartbeats",
+                doc_id,
+                count
+            );
+
+            return Ok(count);
         }
 
         Err(anyhow::anyhow!("Failed to get Redis connection"))
