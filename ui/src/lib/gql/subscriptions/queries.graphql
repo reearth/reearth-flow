@@ -12,6 +12,11 @@ subscription RealTimeLogs($jobId: ID!) {
   }
 }
 
+#  TODO: Delete
 subscription OnEdgeStatusChange($jobId: ID!, $edgeId: String!) {
   edgeStatus(jobId: $jobId, edgeId: $edgeId)
+}
+
+subscription OnNodeStatusChange($jobId: ID!, $nodeId: String!) {
+  nodeStatus(jobId: $jobId, nodeId: $nodeId)
 }

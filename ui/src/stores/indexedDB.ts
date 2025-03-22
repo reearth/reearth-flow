@@ -1,18 +1,28 @@
-import { EdgeExecution, JobStatus } from "@flow/types";
+import { EdgeExecution, JobStatus, NodeExecution } from "@flow/types";
 
 export type GeneralState = {
   clipboard: any | undefined;
+};
+
+// TODO: delete and rename NewSelectedIntermediateData to SelectedIntermediateData
+export type SelectedIntermediateData = {
+  edgeId: string;
+  url: string;
+};
+
+export type NewSelectedIntermediateData = {
+  nodeId: string;
+  url: string;
 };
 
 export type JobState = {
   projectId: string;
   jobId: string;
   status: JobStatus;
-  edgeExecutions?: EdgeExecution[];
-  selectedIntermediateData?: {
-    edgeId: string;
-    url: string;
-  };
+  edgeExecutions?: EdgeExecution[]; // TODO: delete
+  nodeExecutions?: NodeExecution[];
+  selectedIntermediateData?: SelectedIntermediateData; // TODO: delete
+  newSelectedIntermediateData?: NewSelectedIntermediateData;
 };
 
 export type DebugRunState = {

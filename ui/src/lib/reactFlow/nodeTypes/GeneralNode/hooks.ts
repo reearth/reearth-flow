@@ -6,7 +6,15 @@ import { isDefined } from "@flow/utils";
 import { getNodeColors } from "./nodeColors";
 import useNodeStatus from "./useNodeStatus";
 
-export default ({ data, type }: { data: NodeData; type: string }) => {
+export default ({
+  id,
+  data,
+  type,
+}: {
+  id: string;
+  data: NodeData;
+  type: string;
+}) => {
   const {
     officialName,
     customName,
@@ -14,7 +22,7 @@ export default ({ data, type }: { data: NodeData; type: string }) => {
     outputs: defaultOutputs,
   } = data;
 
-  const { nodeExecution } = useNodeStatus();
+  const { nodeExecution } = useNodeStatus({ id });
 
   const { status, intermediateDataUrl } =
     useMemo(() => nodeExecution, [nodeExecution]) ?? {};

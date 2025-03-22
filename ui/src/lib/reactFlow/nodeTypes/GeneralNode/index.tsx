@@ -62,7 +62,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     borderColor,
     selectedColor,
     selectedBackgroundColor,
-  } = useHooks({ data, type });
+  } = useHooks({ id, data, type });
 
   return (
     <ContextMenu>

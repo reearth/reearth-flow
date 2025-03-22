@@ -1,9 +1,10 @@
 import type { ApiResponse } from "./api";
 
-export type NodeStatus = "pending" | "running" | "succeeded" | "failed";
+export type NodeStatus = "inProgress" | "completed" | "failed";
 
 export type EdgeStatus = "inProgress" | "completed" | "failed";
 
+// TODO: delete
 export type EdgeExecution = {
   id: string;
   edgeId: string;
@@ -17,7 +18,9 @@ export type EdgeExecution = {
 };
 
 export type NodeExecution = {
+  id: string;
   nodeId: string;
+  jobId: string;
   status: NodeStatus;
   startedAt?: string;
   completedAt?: string;
