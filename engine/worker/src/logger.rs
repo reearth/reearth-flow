@@ -1,6 +1,5 @@
 use std::{
     env,
-    fs::OpenOptions,
     io::{self, Write},
     sync::RwLock,
 };
@@ -8,7 +7,7 @@ use std::{
 use crate::errors::Error;
 use once_cell::sync::Lazy;
 use tracing::Level;
-use tracing_appender::non_blocking::NonBlocking;
+use tracing_appender::non_blocking::{NonBlocking, WorkerGuard};
 use tracing_subscriber::fmt::time::UtcTime;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
@@ -21,6 +20,7 @@ static ENABLE_JSON_LOG: Lazy<bool> = Lazy::new(|| {
 });
 
 static WORKER_FILE_WRITER: Lazy<RwLock<Option<NonBlocking>>> = Lazy::new(|| RwLock::new(None));
+static WORKER_FILE_GUARD: Lazy<RwLock<Option<WorkerGuard>>> = Lazy::new(|| RwLock::new(None));
 
 #[derive(Clone)]
 struct DynamicFileWriter;
@@ -108,11 +108,15 @@ pub fn enable_file_logging(job_id: uuid::Uuid) -> crate::errors::Result<()> {
         .append(true)
         .open(&log_path)
         .map_err(Error::init)?;
-    let (non_blocking, _guard) = tracing_appender::non_blocking(file);
+    let (non_blocking, guard) = tracing_appender::non_blocking(file);
 
     {
         let mut writer_guard = WORKER_FILE_WRITER.write().unwrap();
         writer_guard.replace(non_blocking);
+    }
+    {
+        let mut guard_lock = WORKER_FILE_GUARD.write().unwrap();
+        guard_lock.replace(guard);
     }
 
     tracing::info!("File logging enabled: {}", log_path.to_string_lossy());
