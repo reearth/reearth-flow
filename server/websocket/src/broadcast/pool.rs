@@ -20,7 +20,7 @@ pub struct BroadcastGroupContext {
     group: Arc<BroadcastGroup>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BroadcastGroupManager {
     store: Arc<GcsStore>,
     redis_store: Arc<RedisStore>,
@@ -244,21 +244,14 @@ impl Manager for BroadcastGroupManager {
 
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
-    pool: Pool<BroadcastGroupManager>,
+    manager: BroadcastGroupManager,
 }
 
 impl BroadcastPool {
     pub fn new(store: Arc<GcsStore>, redis_store: Arc<RedisStore>) -> Self {
         let manager = BroadcastGroupManager::new(store.clone(), redis_store.clone());
-        let pool = Pool::builder(manager)
-            .max_size(100)
-            .wait_timeout(Some(Duration::from_secs(5)))
-            .runtime(deadpool::Runtime::Tokio1)
-            .recycle_timeout(Some(Duration::from_secs(5)))
-            .build()
-            .unwrap();
 
-        let doc_to_id_map = pool.manager().doc_to_id_map.clone();
+        let doc_to_id_map = manager.doc_to_id_map.clone();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(10));
             loop {
@@ -288,23 +281,23 @@ impl BroadcastPool {
             }
         });
 
-        Self { pool }
+        Self { manager }
     }
 
     pub fn get_store(&self) -> Arc<GcsStore> {
-        self.pool.manager().store.clone()
+        self.manager.store.clone()
     }
 
     pub fn get_redis_store(&self) -> Arc<RedisStore> {
-        self.pool.manager().redis_store.clone()
+        self.manager.redis_store.clone()
     }
 
     pub async fn get_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
-        if let Some(group) = self.pool.manager().doc_to_id_map.get(doc_id) {
+        if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
             return Ok(group.clone());
         }
 
-        let group = self.pool.manager().create_group(doc_id).await?;
+        let group = self.manager.create_group(doc_id).await?;
         Ok(group)
     }
 }
