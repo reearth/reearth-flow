@@ -41,6 +41,10 @@ func (f *fileRepo) GetJobLogURL(jobID string) string {
 	return fmt.Sprintf("file://%s/job-%s.log", metadataDir, jobID)
 }
 
+func (f *fileRepo) GetJobWorkerLogURL(jobID string) string {
+	return fmt.Sprintf("file://%s/job-%s-worker.log", metadataDir, jobID)
+}
+
 func (f *fileRepo) ListJobArtifacts(ctx context.Context, jobID string) ([]string, error) {
 	artifactsPath := filepath.Join(metadataDir, fmt.Sprintf("job-%s-artifacts", jobID))
 	files, err := afero.ReadDir(f.fs, artifactsPath)
@@ -186,6 +190,15 @@ func (f *fileRepo) RemoveWorkflow(ctx context.Context, u *url.URL) error {
 		return gateway.ErrInvalidFile
 	}
 	return f.delete(ctx, filepath.Join(workflowsDir, filepath.Base(p)))
+}
+
+func (f *fileRepo) CheckJobWorkerLogExists(ctx context.Context, jobID string) (bool, error) {
+	logPath := filepath.Join(metadataDir, fmt.Sprintf("job-%s-worker.log", jobID))
+	exists, err := afero.Exists(f.fs, logPath)
+	if err != nil {
+		return false, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	return exists, nil
 }
 
 // helpers

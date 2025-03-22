@@ -213,6 +213,56 @@ func TestGetWorkflowFileURL(t *testing.T) {
 	assert.Equal(t, e, getFileURL(b, "xxx.yyy"))
 }
 
+func TestFile_GetJobLogURL(t *testing.T) {
+	f, _ := NewFile(mockFs(), "", "")
+
+	url := f.GetJobLogURL("job123")
+	assert.Equal(t, "file://metadata/job-job123.log", url)
+}
+
+func TestFile_GetJobWorkerLogURL(t *testing.T) {
+	f, _ := NewFile(mockFs(), "", "")
+
+	url := f.GetJobWorkerLogURL("job123")
+	assert.Equal(t, "file://metadata/job-job123-worker.log", url)
+}
+
+func TestFile_CheckJobLogExists(t *testing.T) {
+	fs := mockFs()
+	f, _ := NewFile(fs, "", "")
+
+	_ = fs.MkdirAll("metadata", 0755)
+	flog, _ := fs.Create(filepath.Join("metadata", "job-exists.log"))
+	_, _ = flog.WriteString("log content")
+	_ = flog.Close()
+
+	exists, err := f.CheckJobLogExists(context.Background(), "exists")
+	assert.NoError(t, err)
+	assert.True(t, exists)
+
+	exists, err = f.CheckJobLogExists(context.Background(), "notexists")
+	assert.NoError(t, err)
+	assert.False(t, exists)
+}
+
+func TestFile_CheckJobWorkerLogExists(t *testing.T) {
+	fs := mockFs()
+	f, _ := NewFile(fs, "", "")
+
+	_ = fs.MkdirAll("metadata", 0755)
+	flog, _ := fs.Create(filepath.Join("metadata", "job-exists-worker.log"))
+	_, _ = flog.WriteString("worker log content")
+	_ = flog.Close()
+
+	exists, err := f.CheckJobWorkerLogExists(context.Background(), "exists")
+	assert.NoError(t, err)
+	assert.True(t, exists)
+
+	exists, err = f.CheckJobWorkerLogExists(context.Background(), "notexists")
+	assert.NoError(t, err)
+	assert.False(t, exists)
+}
+
 func mockFs() afero.Fs {
 	files := map[string]string{
 		filepath.Join("assets", "xxx.txt"):    "hello",

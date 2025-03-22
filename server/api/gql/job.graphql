@@ -5,6 +5,7 @@ type Job implements Node {
   debug: Boolean
   id: ID!
   logsURL: String
+  workerLogsURL: String
   outputURLs: [String!]
   startedAt: DateTime!
   status: JobStatus!
