@@ -13,6 +13,7 @@ use crate::{
     asset::download_asset,
     event_handler::{EventHandler, NodeFailureHandler},
     factory::ALL_ACTION_FACTORIES,
+    logger::enable_file_logging,
     pubsub::{backend::PubSubBackend, publisher::Publisher},
     types::{
         job_complete_event::{JobCompleteEvent, JobResult},
@@ -143,7 +144,7 @@ impl RunWorkerCommand {
         tracing::info!("Starting worker");
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
         let (workflow, state, logger_factory, meta) = self.prepare(&storage_resolver).await?;
-
+        enable_file_logging(meta.job_id)?;
         let pubsub = PubSubBackend::try_from(self.pubsub_backend.as_str())
             .await
             .map_err(crate::errors::Error::init)?;
