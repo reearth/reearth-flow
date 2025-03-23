@@ -1,7 +1,7 @@
 type NodeExecution implements Node {
   id: ID!
-  nodeId: String!
   jobId: ID!
+  nodeId: ID!
   status: NodeStatus!
   createdAt: DateTime
   startedAt: DateTime

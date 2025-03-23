@@ -21,9 +21,9 @@ func ToNodeExecution(e *graph.NodeExecution) *NodeExecution {
 	}
 
 	return &NodeExecution{
-		ID:    ID(e.ID().String()),
-		JobID: ID(e.JobID().String()),
-
+		ID:          ID(e.ID().String()),
+		JobID:       ID(e.JobID().String()),
+		NodeID:      ID(e.NodeID().String()),
 		Status:      ToNodeStatus(e.Status()),
 		StartedAt:   e.StartedAt(),
 		CompletedAt: e.CompletedAt(),

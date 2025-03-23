@@ -243,8 +243,8 @@ type Mutation struct {
 
 type NodeExecution struct {
 	ID          ID         `json:"id"`
-	NodeID      string     `json:"nodeId"`
 	JobID       ID         `json:"jobId"`
+	NodeID      ID         `json:"nodeId"`
 	Status      NodeStatus `json:"status"`
 	CreatedAt   *time.Time `json:"createdAt,omitempty"`
 	StartedAt   *time.Time `json:"startedAt,omitempty"`

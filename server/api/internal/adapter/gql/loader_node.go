@@ -16,16 +16,16 @@ func NewNodeExLoader(usecase interfaces.NodeExecution) *NodeExLoader {
 	return &NodeExLoader{usecase: usecase}
 }
 
-func (c *NodeExLoader) FindByJobNodeID(ctx context.Context, jobID gqlmodel.ID, edgeId string) (*gqlmodel.NodeExecution, error) {
+func (c *NodeExLoader) FindByJobNodeID(ctx context.Context, jobID gqlmodel.ID, nodeId string) (*gqlmodel.NodeExecution, error) {
 	jId, err := id.JobIDFrom(string(jobID))
 	if err != nil {
 		return nil, err
 	}
 
-	edgeEx, err := c.usecase.FindByJobNodeID(ctx, jId, edgeId)
+	nodeEx, err := c.usecase.FindByJobNodeID(ctx, jId, nodeId)
 	if err != nil {
 		return nil, err
 	}
 
-	return gqlmodel.ToNodeExecution(edgeEx), nil
+	return gqlmodel.ToNodeExecution(nodeEx), nil
 }
