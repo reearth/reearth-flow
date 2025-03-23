@@ -1,6 +1,7 @@
 use bytes::Bytes;
 use deadpool::Runtime;
 use deadpool_redis::{Config, Pool};
+use rand;
 use redis::AsyncCommands;
 use std::sync::Arc;
 
@@ -639,76 +640,74 @@ impl RedisStore {
         Ok(false)
     }
 
-    pub async fn increment_doc_connections(&self, doc_id: &str) -> Result<i64, anyhow::Error> {
-        let key = format!("connections:doc:{}", doc_id);
+    pub async fn update_instance_heartbeat(
+        &self,
+        doc_id: &str,
+        instance_id: &str,
+    ) -> Result<(), anyhow::Error> {
+        let key = format!("doc:instances:{}", doc_id);
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
 
         if let Ok(mut conn) = self.pool.get().await {
-            let script = redis::Script::new(
-                r#"
-                local count = redis.call('INCR', KEYS[1])
-                redis.call('EXPIRE', KEYS[1], ARGV[1])
-                return count
-                "#,
-            );
+            let _: () = redis::cmd("HSET")
+                .arg(&key)
+                .arg(instance_id)
+                .arg(timestamp)
+                .query_async(&mut *conn)
+                .await?;
 
-            let count: i64 = script.key(&key).arg(60).invoke_async(&mut *conn).await?;
+            let _: () = redis::cmd("EXPIRE")
+                .arg(&key)
+                .arg(120)
+                .query_async(&mut *conn)
+                .await?;
 
-            tracing::debug!(
-                "Redis: Incremented connections for doc '{}' to {}",
-                doc_id,
-                count
-            );
-            return Ok(count);
-        }
-
-        Err(anyhow::anyhow!("Failed to get Redis connection"))
-    }
-
-    pub async fn refresh_doc_connections(&self, doc_id: &str) -> Result<(), anyhow::Error> {
-        let key = format!("connections:doc:{}", doc_id);
-
-        if let Ok(mut conn) = self.pool.get().await {
-            let script = redis::Script::new(
-                r#"
-                if redis.call('EXISTS', KEYS[1]) == 1 then
-                    return redis.call('EXPIRE', KEYS[1], ARGV[1])
-                end
-                return 0
-                "#,
-            );
-
-            let _: i64 = script.key(&key).arg(60).invoke_async(&mut *conn).await?;
-
-            tracing::debug!("Redis: Refreshed TTL for doc connections '{}'", doc_id);
             return Ok(());
         }
 
         Err(anyhow::anyhow!("Failed to get Redis connection"))
     }
 
-    pub async fn decrement_doc_connections(&self, doc_id: &str) -> Result<i64, anyhow::Error> {
-        let key = format!("connections:doc:{}", doc_id);
+    pub async fn get_active_instances(
+        &self,
+        doc_id: &str,
+        timeout_secs: u64,
+    ) -> Result<i64, anyhow::Error> {
+        let key = format!("doc:instances:{}", doc_id);
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
 
         if let Ok(mut conn) = self.pool.get().await {
             let script = redis::Script::new(
                 r#"
-                local current = redis.call('get', KEYS[1])
-                if current and tonumber(current) > 0 then
-                    return redis.call('decr', KEYS[1])
-                elseif current then
-                    return 0
-                else
-                    return 0
+                local active_count = 0
+                local instances = redis.call('HGETALL', KEYS[1])
+                local now = tonumber(ARGV[1])
+                local timeout = tonumber(ARGV[2])
+                
+                for i = 1, #instances, 2 do
+                    local instance_id = instances[i]
+                    local last_seen = tonumber(instances[i+1])
+                    if now - last_seen < timeout then
+                        active_count = active_count + 1
+                    end
                 end
+                
+                return active_count
             "#,
             );
 
-            let count: i64 = script.key(&key).invoke_async(&mut *conn).await?;
-            tracing::info!(
-                "Redis: Decremented connections for doc '{}' to {}",
-                doc_id,
-                count
-            );
+            let count: i64 = script
+                .key(&key)
+                .arg(now)
+                .arg(timeout_secs)
+                .invoke_async(&mut *conn)
+                .await?;
 
             return Ok(count);
         }
@@ -716,19 +715,29 @@ impl RedisStore {
         Err(anyhow::anyhow!("Failed to get Redis connection"))
     }
 
-    pub async fn get_doc_connections(&self, doc_id: &str) -> Result<i64, anyhow::Error> {
-        let key = format!("connections:doc:{}", doc_id);
+    pub async fn remove_instance_heartbeat(
+        &self,
+        doc_id: &str,
+        instance_id: &str,
+    ) -> Result<bool, anyhow::Error> {
+        let key = format!("doc:instances:{}", doc_id);
 
         if let Ok(mut conn) = self.pool.get().await {
-            let count: Option<i64> = redis::cmd("GET").arg(&key).query_async(&mut *conn).await?;
-            let count_value = count.unwrap_or(0);
-            tracing::debug!(
-                "Redis: Current connections for doc '{}': {}",
-                doc_id,
-                count_value
-            );
+            let _: () = redis::cmd("HDEL")
+                .arg(&key)
+                .arg(instance_id)
+                .query_async(&mut *conn)
+                .await?;
 
-            return Ok(count_value);
+            let count: i64 = redis::cmd("HLEN").arg(&key).query_async(&mut *conn).await?;
+
+            if count == 0 {
+                let _: () = redis::cmd("DEL").arg(&key).query_async(&mut *conn).await?;
+
+                return Ok(true);
+            }
+
+            return Ok(false);
         }
 
         Err(anyhow::anyhow!("Failed to get Redis connection"))
@@ -740,7 +749,7 @@ impl RedisStore {
         instance_id: &str,
     ) -> Result<bool, anyhow::Error> {
         if self.acquire_doc_lock(doc_id, instance_id).await? {
-            let connections = self.get_doc_connections(doc_id).await?;
+            let connections = self.get_active_instances(doc_id, 60).await?;
 
             if connections <= 0 {
                 let stream_key = format!("yjs:stream:{}", doc_id);
@@ -760,6 +769,7 @@ impl RedisStore {
                     }
                 }
 
+                let _ = self.remove_instance_heartbeat(doc_id, instance_id).await?;
                 let _ = self.release_doc_lock(doc_id, instance_id).await;
                 return Ok(true);
             }

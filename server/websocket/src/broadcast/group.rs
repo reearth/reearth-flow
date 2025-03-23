@@ -47,6 +47,7 @@ pub struct BroadcastGroup {
     redis_group_name: Option<String>,
     shutdown_complete: AtomicBool,
     pub heartbeat_task: Option<JoinHandle<()>>,
+    instance_id: String,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -74,14 +75,6 @@ impl BroadcastGroup {
             new_count
         );
 
-        if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
-            if prev_count == 0 {
-                if let Err(e) = redis_store.increment_doc_connections(doc_name).await {
-                    tracing::warn!("Failed to increment Redis global connection count: {}", e);
-                }
-            }
-        }
-
         Ok(())
     }
 
@@ -94,14 +87,6 @@ impl BroadcastGroup {
             prev_count,
             new_count
         );
-
-        if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
-            if new_count == 0 {
-                if let Err(e) = redis_store.decrement_doc_connections(doc_name).await {
-                    tracing::warn!("Failed to decrement Redis global connection count: {}", e);
-                }
-            }
-        }
 
         new_count
     }
@@ -170,6 +155,8 @@ impl BroadcastGroup {
             }
         });
 
+        let instance_id = format!("instance-{}", rand::random::<u64>());
+
         let result = Self {
             connections: Arc::new(AtomicUsize::new(0)),
             awareness_ref: awareness,
@@ -187,6 +174,7 @@ impl BroadcastGroup {
             redis_group_name: None,
             shutdown_complete: AtomicBool::new(false),
             heartbeat_task: None,
+            instance_id,
         };
 
         Ok(result)
@@ -314,6 +302,7 @@ impl BroadcastGroup {
             let doc_name_clone = doc_name.clone();
             let shutdown_flag = Arc::new(AtomicBool::new(false));
             let shutdown_flag_clone = shutdown_flag.clone();
+            let instance_id = group.instance_id.clone();
 
             let heartbeat_task = tokio::spawn(async move {
                 let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(50));
@@ -322,12 +311,16 @@ impl BroadcastGroup {
                     interval.tick().await;
 
                     if let Err(e) = redis_store_clone
-                        .refresh_doc_connections(&doc_name_clone)
+                        .update_instance_heartbeat(&doc_name_clone, &instance_id)
                         .await
                     {
-                        tracing::warn!("Failed to refresh doc connections TTL: {}", e);
+                        tracing::warn!("Failed to update instance heartbeat: {}", e);
                     } else {
-                        tracing::debug!("Refreshed TTL for doc connections '{}'", doc_name_clone);
+                        tracing::debug!(
+                            "Updated heartbeat for doc '{}' instance {}",
+                            doc_name_clone,
+                            instance_id
+                        );
                     }
                 }
 
@@ -598,7 +591,7 @@ impl BroadcastGroup {
                 let redis_store_clone = self.redis_store.clone();
 
                 let should_save = if let Some(redis) = &redis_store_clone {
-                    match redis.get_doc_connections(&doc_name_clone).await {
+                    match redis.get_active_instances(&doc_name_clone, 60).await {
                         Ok(connections) => {
                             if connections <= 0 {
                                 tracing::info!("All instances disconnected from '{}', proceeding with GCS save", doc_name_clone);
@@ -697,7 +690,7 @@ impl BroadcastGroup {
             let doc_name_clone = doc_name.clone();
             let group_name_clone = group_name.clone();
             let consumer_name_clone = consumer_name.clone();
-            let instance_id = format!("instance-{}", rand::random::<u64>());
+            let instance_id = self.instance_id.clone();
 
             tokio::spawn(async move {
                 match redis_store_clone
@@ -760,6 +753,15 @@ impl BroadcastGroup {
                             e
                         );
                     }
+                }
+
+                if let Err(e) = redis_store_clone
+                    .remove_instance_heartbeat(&doc_name_clone, &instance_id)
+                    .await
+                {
+                    tracing::warn!("Failed to remove instance heartbeat: {}", e);
+                } else {
+                    tracing::debug!("Removed heartbeat for instance {}", instance_id);
                 }
 
                 tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
