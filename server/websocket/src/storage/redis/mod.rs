@@ -1,7 +1,6 @@
 use bytes::Bytes;
 use deadpool::Runtime;
 use deadpool_redis::{Config, Pool};
-use rand;
 use redis::AsyncCommands;
 use std::sync::Arc;
 
@@ -652,17 +651,19 @@ impl RedisStore {
             .as_secs();
 
         if let Ok(mut conn) = self.pool.get().await {
-            let _: () = redis::cmd("HSET")
-                .arg(&key)
+            let script = redis::Script::new(
+                r#"
+                redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+                return redis.call('EXPIRE', KEYS[1], ARGV[3])
+                "#,
+            );
+
+            let _: () = script
+                .key(&key)
                 .arg(instance_id)
                 .arg(timestamp)
-                .query_async(&mut *conn)
-                .await?;
-
-            let _: () = redis::cmd("EXPIRE")
-                .arg(&key)
                 .arg(120)
-                .query_async(&mut *conn)
+                .invoke_async(&mut *conn)
                 .await?;
 
             return Ok(());
@@ -723,21 +724,26 @@ impl RedisStore {
         let key = format!("doc:instances:{}", doc_id);
 
         if let Ok(mut conn) = self.pool.get().await {
-            let _: () = redis::cmd("HDEL")
-                .arg(&key)
+            let script = redis::Script::new(
+                r#"
+                redis.call('HDEL', KEYS[1], ARGV[1])
+                local count = redis.call('HLEN', KEYS[1])
+                if count == 0 then
+                    redis.call('DEL', KEYS[1])
+                    return 1
+                else
+                    return 0
+                end
+                "#,
+            );
+
+            let is_empty: i32 = script
+                .key(&key)
                 .arg(instance_id)
-                .query_async(&mut *conn)
+                .invoke_async(&mut *conn)
                 .await?;
 
-            let count: i64 = redis::cmd("HLEN").arg(&key).query_async(&mut *conn).await?;
-
-            if count == 0 {
-                let _: () = redis::cmd("DEL").arg(&key).query_async(&mut *conn).await?;
-
-                return Ok(true);
-            }
-
-            return Ok(false);
+            return Ok(is_empty == 1);
         }
 
         Err(anyhow::anyhow!("Failed to get Redis connection"))
@@ -769,7 +775,6 @@ impl RedisStore {
                     }
                 }
 
-                let _ = self.remove_instance_heartbeat(doc_id, instance_id).await?;
                 let _ = self.release_doc_lock(doc_id, instance_id).await;
                 return Ok(true);
             }

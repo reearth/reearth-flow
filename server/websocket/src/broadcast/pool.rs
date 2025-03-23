@@ -253,7 +253,7 @@ impl BroadcastPool {
 
         let doc_to_id_map = manager.doc_to_id_map.clone();
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(10));
+            let mut interval = tokio::time::interval(Duration::from_secs(3));
             loop {
                 interval.tick().await;
 

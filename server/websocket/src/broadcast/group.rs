@@ -305,7 +305,7 @@ impl BroadcastGroup {
             let instance_id = group.instance_id.clone();
 
             let heartbeat_task = tokio::spawn(async move {
-                let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(50));
+                let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(56));
 
                 while !shutdown_flag_clone.load(Ordering::Relaxed) {
                     interval.tick().await;
@@ -589,7 +589,22 @@ impl BroadcastGroup {
                 let doc_name_clone = doc_name.clone();
                 let awareness = self.awareness_ref.clone();
                 let redis_store_clone = self.redis_store.clone();
-
+                if let Some(redis) = &redis_store_clone {
+                    if let Err(e) = redis
+                        .remove_instance_heartbeat(&doc_name_clone, &self.instance_id)
+                        .await
+                    {
+                        tracing::warn!(
+                            "Failed to remove instance heartbeat before checking connections: {}",
+                            e
+                        );
+                    } else {
+                        tracing::debug!(
+                            "Removed heartbeat for instance {} before checking connections",
+                            self.instance_id
+                        );
+                    }
+                }
                 let should_save = if let Some(redis) = &redis_store_clone {
                     match redis.get_active_instances(&doc_name_clone, 60).await {
                         Ok(connections) => {
@@ -680,55 +695,12 @@ impl BroadcastGroup {
 
         self.awareness_updater.abort();
 
-        if let (Some(redis_store), Some(doc_name), Some(consumer_name), Some(group_name)) = (
-            &self.redis_store,
-            &self.doc_name,
-            &self.redis_consumer_name,
-            &self.redis_group_name,
-        ) {
+        if let (Some(redis_store), Some(doc_name)) = (&self.redis_store, &self.doc_name) {
             let redis_store_clone = redis_store.clone();
             let doc_name_clone = doc_name.clone();
-            let group_name_clone = group_name.clone();
-            let consumer_name_clone = consumer_name.clone();
             let instance_id = self.instance_id.clone();
 
             tokio::spawn(async move {
-                match redis_store_clone
-                    .delete_consumer(&doc_name_clone, &group_name_clone, &consumer_name_clone)
-                    .await
-                {
-                    Ok(1) => {
-                        tracing::info!(
-                            "Successfully deleted consumer '{}' from group '{}'",
-                            consumer_name_clone,
-                            group_name_clone
-                        );
-                    }
-                    Ok(0) => {
-                        tracing::info!(
-                            "Consumer '{}' not found in group '{}'",
-                            consumer_name_clone,
-                            group_name_clone
-                        );
-                    }
-                    Ok(n) => {
-                        tracing::info!(
-                            "Deleted {} pending messages for consumer '{}' in group '{}'",
-                            n,
-                            consumer_name_clone,
-                            group_name_clone
-                        );
-                    }
-                    Err(e) => {
-                        tracing::warn!(
-                            "Failed to delete consumer '{}' from group '{}': {}",
-                            consumer_name_clone,
-                            group_name_clone,
-                            e
-                        );
-                    }
-                }
-
                 match redis_store_clone
                     .safe_delete_stream(&doc_name_clone, &instance_id)
                     .await
@@ -753,15 +725,6 @@ impl BroadcastGroup {
                             e
                         );
                     }
-                }
-
-                if let Err(e) = redis_store_clone
-                    .remove_instance_heartbeat(&doc_name_clone, &instance_id)
-                    .await
-                {
-                    tracing::warn!("Failed to remove instance heartbeat: {}", e);
-                } else {
-                    tracing::debug!("Removed heartbeat for instance {}", instance_id);
                 }
 
                 tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
