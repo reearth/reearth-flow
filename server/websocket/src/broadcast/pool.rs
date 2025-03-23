@@ -6,7 +6,8 @@ use crate::AwarenessRef;
 use anyhow::{Error, Result};
 use bytes;
 use dashmap::DashMap;
-use deadpool::managed::{self, Manager, Metrics, Pool, RecycleResult};
+use deadpool::managed::{self, Manager, Metrics, RecycleResult};
+use rand;
 use std::sync::Arc;
 use std::time::Duration;
 use yrs::sync::Awareness;
@@ -20,7 +21,7 @@ pub struct BroadcastGroupContext {
     group: Arc<BroadcastGroup>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BroadcastGroupManager {
     store: Arc<GcsStore>,
     redis_store: Arc<RedisStore>,
@@ -33,7 +34,7 @@ impl BroadcastGroupManager {
         Self {
             store,
             redis_store,
-            buffer_capacity: 128,
+            buffer_capacity: 256,
             doc_to_id_map: Arc::new(DashMap::new()),
         }
     }
@@ -244,23 +245,16 @@ impl Manager for BroadcastGroupManager {
 
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
-    pool: Pool<BroadcastGroupManager>,
+    manager: BroadcastGroupManager,
 }
 
 impl BroadcastPool {
     pub fn new(store: Arc<GcsStore>, redis_store: Arc<RedisStore>) -> Self {
         let manager = BroadcastGroupManager::new(store.clone(), redis_store.clone());
-        let pool = Pool::builder(manager)
-            .max_size(100)
-            .wait_timeout(Some(Duration::from_secs(5)))
-            .runtime(deadpool::Runtime::Tokio1)
-            .recycle_timeout(Some(Duration::from_secs(5)))
-            .build()
-            .unwrap();
 
-        let doc_to_id_map = pool.manager().doc_to_id_map.clone();
+        let doc_to_id_map = manager.doc_to_id_map.clone();
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(5));
+            let mut interval = tokio::time::interval(Duration::from_secs(3));
             loop {
                 interval.tick().await;
 
@@ -288,23 +282,153 @@ impl BroadcastPool {
             }
         });
 
-        Self { pool }
+        Self { manager }
     }
 
     pub fn get_store(&self) -> Arc<GcsStore> {
-        self.pool.manager().store.clone()
+        self.manager.store.clone()
     }
 
     pub fn get_redis_store(&self) -> Arc<RedisStore> {
-        self.pool.manager().redis_store.clone()
+        self.manager.redis_store.clone()
     }
 
     pub async fn get_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
-        if let Some(group) = self.pool.manager().doc_to_id_map.get(doc_id) {
+        if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
             return Ok(group.clone());
         }
 
-        let group = self.pool.manager().create_group(doc_id).await?;
+        let group = self.manager.create_group(doc_id).await?;
         Ok(group)
+    }
+
+    pub async fn flush_to_gcs(&self, doc_id: &str) -> Result<()> {
+        let broadcast_group = match self.manager.doc_to_id_map.get(doc_id) {
+            Some(group) => Some(group.clone()),
+            None => {
+                return Ok(());
+            }
+        };
+
+        if let Some(group) = broadcast_group {
+            let store = self.get_store();
+            let doc_name = group.get_doc_name().unwrap_or_else(|| doc_id.to_string());
+
+            let active_connections = if let Some(redis) = group.get_redis_store() {
+                match redis.get_active_instances(&doc_name, 60).await {
+                    Ok(count) => count,
+                    Err(e) => {
+                        tracing::warn!("Failed to get active instances for '{}': {}", doc_id, e);
+                        0
+                    }
+                }
+            } else {
+                group.connection_count() as i64
+            };
+
+            if active_connections > 0 {
+                let temp_doc = Doc::new();
+                let mut temp_txn = temp_doc.transact_mut();
+
+                if let Err(e) = store.load_doc(&doc_name, &mut temp_txn).await {
+                    tracing::warn!("Failed to load current GCS state for '{}': {}", doc_id, e);
+                }
+
+                let gcs_state = temp_txn.state_vector();
+                drop(temp_txn);
+
+                if let Some(redis) = group.get_redis_store() {
+                    match redis.read_all_stream_data(&doc_name).await {
+                        Ok(updates) if !updates.is_empty() => {
+                            tracing::info!(
+                                "Found {} updates in Redis stream for '{}', applying before GCS flush",
+                                updates.len(),
+                                doc_id
+                            );
+                            let awareness = group.awareness().write().await;
+                            let mut txn = awareness.doc().transact_mut();
+
+                            for update_data in &updates {
+                                match Update::decode_v1(update_data) {
+                                    Ok(update) => {
+                                        if let Err(e) = txn.apply_update(update) {
+                                            tracing::warn!("Failed to apply Redis update: {}", e);
+                                        }
+                                    }
+                                    Err(e) => {
+                                        tracing::warn!("Failed to decode Redis update: {}", e);
+                                    }
+                                }
+                            }
+                            drop(txn);
+                            drop(awareness);
+                        }
+                        Ok(_) => {
+                            tracing::debug!("No Redis updates found for document '{}'", doc_id);
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "Failed to read updates from Redis stream for document '{}': {}",
+                                doc_id,
+                                e
+                            );
+                        }
+                    }
+                }
+
+                let lock_acquired = if let Some(redis) = group.get_redis_store() {
+                    let lock_id = format!("gcs:lock:{}", doc_name);
+                    let instance_id = format!("sync-{}", rand::random::<u64>());
+
+                    match redis.acquire_doc_lock(&lock_id, &instance_id).await {
+                        Ok(true) => {
+                            tracing::debug!(
+                                "Acquired lock for GCS flush operation on {}",
+                                doc_name
+                            );
+                            Some((redis.clone(), lock_id, instance_id))
+                        }
+                        Ok(false) => {
+                            tracing::warn!("Could not acquire lock for GCS flush operation");
+                            None
+                        }
+                        Err(e) => {
+                            tracing::warn!("Error acquiring lock for GCS flush operation: {}", e);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                };
+
+                if lock_acquired.is_some() || group.get_redis_store().is_none() {
+                    let awareness = group.awareness().read().await;
+                    let awareness_doc = awareness.doc();
+                    let awareness_txn = awareness_doc.transact();
+
+                    let update = awareness_txn.encode_diff_v1(&gcs_state);
+
+                    if !update.is_empty() {
+                        let update_bytes = bytes::Bytes::from(update);
+                        if let Err(e) = store.push_update(&doc_name, &update_bytes).await {
+                            tracing::error!(
+                                "Failed to flush websocket changes to GCS for '{}': {}",
+                                doc_id,
+                                e
+                            );
+                            return Err(anyhow::anyhow!("Failed to flush changes to GCS: {}", e));
+                        }
+                    }
+
+                    if let Some((redis, lock_id, instance_id)) = lock_acquired {
+                        if let Err(e) = redis.release_doc_lock(&lock_id, &instance_id).await {
+                            tracing::warn!("Failed to release GCS lock: {}", e);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok(())
     }
 }

@@ -133,15 +133,10 @@ type ComplexityRoot struct {
 	}
 
 	EdgeExecution struct {
-		CompletedAt         func(childComplexity int) int
-		CreatedAt           func(childComplexity int) int
 		EdgeID              func(childComplexity int) int
-		FeatureID           func(childComplexity int) int
 		ID                  func(childComplexity int) int
 		IntermediateDataURL func(childComplexity int) int
 		JobID               func(childComplexity int) int
-		StartedAt           func(childComplexity int) int
-		Status              func(childComplexity int) int
 	}
 
 	Job struct {
@@ -222,6 +217,16 @@ type ComplexityRoot struct {
 		UpdateWorkspace           func(childComplexity int, input gqlmodel.UpdateWorkspaceInput) int
 	}
 
+	NodeExecution struct {
+		CompletedAt func(childComplexity int) int
+		CreatedAt   func(childComplexity int) int
+		ID          func(childComplexity int) int
+		JobID       func(childComplexity int) int
+		NodeID      func(childComplexity int) int
+		StartedAt   func(childComplexity int) int
+		Status      func(childComplexity int) int
+	}
+
 	PageInfo struct {
 		CurrentPage func(childComplexity int) int
 		TotalCount  func(childComplexity int) int
@@ -286,25 +291,32 @@ type ComplexityRoot struct {
 		Version   func(childComplexity int) int
 	}
 
+	ProjectSnapshotMetadata struct {
+		Timestamp func(childComplexity int) int
+		Version   func(childComplexity int) int
+	}
+
 	Query struct {
-		Assets                func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
-		DeploymentByVersion   func(childComplexity int, input gqlmodel.GetByVersionInput) int
-		DeploymentHead        func(childComplexity int, input gqlmodel.GetHeadInput) int
-		DeploymentVersions    func(childComplexity int, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) int
-		Deployments           func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
-		EdgeExecution         func(childComplexity int, jobID gqlmodel.ID, edgeID string) int
-		Job                   func(childComplexity int, id gqlmodel.ID) int
-		Jobs                  func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
-		LatestProjectSnapshot func(childComplexity int, projectID gqlmodel.ID) int
-		Me                    func(childComplexity int) int
-		Node                  func(childComplexity int, id gqlmodel.ID, typeArg gqlmodel.NodeType) int
-		Nodes                 func(childComplexity int, id []gqlmodel.ID, typeArg gqlmodel.NodeType) int
-		ProjectHistory        func(childComplexity int, projectID gqlmodel.ID) int
-		ProjectSharingInfo    func(childComplexity int, projectID gqlmodel.ID) int
-		Projects              func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) int
-		SearchUser            func(childComplexity int, nameOrEmail string) int
-		SharedProject         func(childComplexity int, token string) int
-		Triggers              func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		Assets                 func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
+		DeploymentByVersion    func(childComplexity int, input gqlmodel.GetByVersionInput) int
+		DeploymentHead         func(childComplexity int, input gqlmodel.GetHeadInput) int
+		DeploymentVersions     func(childComplexity int, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) int
+		Deployments            func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		EdgeExecution          func(childComplexity int, jobID gqlmodel.ID, edgeID string) int
+		Job                    func(childComplexity int, id gqlmodel.ID) int
+		Jobs                   func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
+		LatestProjectSnapshot  func(childComplexity int, projectID gqlmodel.ID) int
+		Me                     func(childComplexity int) int
+		Node                   func(childComplexity int, id gqlmodel.ID, typeArg gqlmodel.NodeType) int
+		NodeExecution          func(childComplexity int, jobID gqlmodel.ID, nodeID string) int
+		Nodes                  func(childComplexity int, id []gqlmodel.ID, typeArg gqlmodel.NodeType) int
+		ProjectHistory         func(childComplexity int, projectID gqlmodel.ID) int
+		ProjectHistoryMetadata func(childComplexity int, projectID gqlmodel.ID) int
+		ProjectSharingInfo     func(childComplexity int, projectID gqlmodel.ID) int
+		Projects               func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) int
+		SearchUser             func(childComplexity int, nameOrEmail string) int
+		SharedProject          func(childComplexity int, token string) int
+		Triggers               func(childComplexity int, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
 	}
 
 	RemoveAssetPayload struct {
@@ -334,9 +346,9 @@ type ComplexityRoot struct {
 	}
 
 	Subscription struct {
-		EdgeStatus func(childComplexity int, jobID gqlmodel.ID, edgeID string) int
 		JobStatus  func(childComplexity int, jobID gqlmodel.ID) int
 		Logs       func(childComplexity int, jobID gqlmodel.ID) int
+		NodeStatus func(childComplexity int, jobID gqlmodel.ID, nodeID string) int
 	}
 
 	Trigger struct {
@@ -469,9 +481,11 @@ type QueryResolver interface {
 	DeploymentVersions(ctx context.Context, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) ([]*gqlmodel.Deployment, error)
 	LatestProjectSnapshot(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectDocument, error)
 	ProjectHistory(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.ProjectSnapshot, error)
+	ProjectHistoryMetadata(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.ProjectSnapshotMetadata, error)
 	EdgeExecution(ctx context.Context, jobID gqlmodel.ID, edgeID string) (*gqlmodel.EdgeExecution, error)
 	Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
+	NodeExecution(ctx context.Context, jobID gqlmodel.ID, nodeID string) (*gqlmodel.NodeExecution, error)
 	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
 	SharedProject(ctx context.Context, token string) (*gqlmodel.SharedProjectPayload, error)
 	ProjectSharingInfo(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectSharingInfoPayload, error)
@@ -480,9 +494,9 @@ type QueryResolver interface {
 	SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error)
 }
 type SubscriptionResolver interface {
-	EdgeStatus(ctx context.Context, jobID gqlmodel.ID, edgeID string) (<-chan gqlmodel.EdgeStatus, error)
 	JobStatus(ctx context.Context, jobID gqlmodel.ID) (<-chan gqlmodel.JobStatus, error)
 	Logs(ctx context.Context, jobID gqlmodel.ID) (<-chan *gqlmodel.Log, error)
+	NodeStatus(ctx context.Context, jobID gqlmodel.ID, nodeID string) (<-chan gqlmodel.NodeStatus, error)
 }
 type TriggerResolver interface {
 	Workspace(ctx context.Context, obj *gqlmodel.Trigger) (*gqlmodel.Workspace, error)
@@ -761,33 +775,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.DeploymentPayload.Deployment(childComplexity), true
 
-	case "EdgeExecution.completedAt":
-		if e.complexity.EdgeExecution.CompletedAt == nil {
-			break
-		}
-
-		return e.complexity.EdgeExecution.CompletedAt(childComplexity), true
-
-	case "EdgeExecution.createdAt":
-		if e.complexity.EdgeExecution.CreatedAt == nil {
-			break
-		}
-
-		return e.complexity.EdgeExecution.CreatedAt(childComplexity), true
-
 	case "EdgeExecution.edgeId":
 		if e.complexity.EdgeExecution.EdgeID == nil {
 			break
 		}
 
 		return e.complexity.EdgeExecution.EdgeID(childComplexity), true
-
-	case "EdgeExecution.featureId":
-		if e.complexity.EdgeExecution.FeatureID == nil {
-			break
-		}
-
-		return e.complexity.EdgeExecution.FeatureID(childComplexity), true
 
 	case "EdgeExecution.id":
 		if e.complexity.EdgeExecution.ID == nil {
@@ -809,20 +802,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.EdgeExecution.JobID(childComplexity), true
-
-	case "EdgeExecution.startedAt":
-		if e.complexity.EdgeExecution.StartedAt == nil {
-			break
-		}
-
-		return e.complexity.EdgeExecution.StartedAt(childComplexity), true
-
-	case "EdgeExecution.status":
-		if e.complexity.EdgeExecution.Status == nil {
-			break
-		}
-
-		return e.complexity.EdgeExecution.Status(childComplexity), true
 
 	case "Job.completedAt":
 		if e.complexity.Job.CompletedAt == nil {
@@ -1404,6 +1383,55 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.UpdateWorkspace(childComplexity, args["input"].(gqlmodel.UpdateWorkspaceInput)), true
 
+	case "NodeExecution.completedAt":
+		if e.complexity.NodeExecution.CompletedAt == nil {
+			break
+		}
+
+		return e.complexity.NodeExecution.CompletedAt(childComplexity), true
+
+	case "NodeExecution.createdAt":
+		if e.complexity.NodeExecution.CreatedAt == nil {
+			break
+		}
+
+		return e.complexity.NodeExecution.CreatedAt(childComplexity), true
+
+	case "NodeExecution.id":
+		if e.complexity.NodeExecution.ID == nil {
+			break
+		}
+
+		return e.complexity.NodeExecution.ID(childComplexity), true
+
+	case "NodeExecution.jobId":
+		if e.complexity.NodeExecution.JobID == nil {
+			break
+		}
+
+		return e.complexity.NodeExecution.JobID(childComplexity), true
+
+	case "NodeExecution.nodeId":
+		if e.complexity.NodeExecution.NodeID == nil {
+			break
+		}
+
+		return e.complexity.NodeExecution.NodeID(childComplexity), true
+
+	case "NodeExecution.startedAt":
+		if e.complexity.NodeExecution.StartedAt == nil {
+			break
+		}
+
+		return e.complexity.NodeExecution.StartedAt(childComplexity), true
+
+	case "NodeExecution.status":
+		if e.complexity.NodeExecution.Status == nil {
+			break
+		}
+
+		return e.complexity.NodeExecution.Status(childComplexity), true
+
 	case "PageInfo.currentPage":
 		if e.complexity.PageInfo.CurrentPage == nil {
 			break
@@ -1684,6 +1712,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.ProjectSnapshot.Version(childComplexity), true
 
+	case "ProjectSnapshotMetadata.timestamp":
+		if e.complexity.ProjectSnapshotMetadata.Timestamp == nil {
+			break
+		}
+
+		return e.complexity.ProjectSnapshotMetadata.Timestamp(childComplexity), true
+
+	case "ProjectSnapshotMetadata.version":
+		if e.complexity.ProjectSnapshotMetadata.Version == nil {
+			break
+		}
+
+		return e.complexity.ProjectSnapshotMetadata.Version(childComplexity), true
+
 	case "Query.assets":
 		if e.complexity.Query.Assets == nil {
 			break
@@ -1811,6 +1853,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Node(childComplexity, args["id"].(gqlmodel.ID), args["type"].(gqlmodel.NodeType)), true
 
+	case "Query.nodeExecution":
+		if e.complexity.Query.NodeExecution == nil {
+			break
+		}
+
+		args, err := ec.field_Query_nodeExecution_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.NodeExecution(childComplexity, args["jobId"].(gqlmodel.ID), args["nodeId"].(string)), true
+
 	case "Query.nodes":
 		if e.complexity.Query.Nodes == nil {
 			break
@@ -1834,6 +1888,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.ProjectHistory(childComplexity, args["projectId"].(gqlmodel.ID)), true
+
+	case "Query.projectHistoryMetadata":
+		if e.complexity.Query.ProjectHistoryMetadata == nil {
+			break
+		}
+
+		args, err := ec.field_Query_projectHistoryMetadata_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.ProjectHistoryMetadata(childComplexity, args["projectId"].(gqlmodel.ID)), true
 
 	case "Query.projectSharingInfo":
 		if e.complexity.Query.ProjectSharingInfo == nil {
@@ -1951,18 +2017,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.SignupPayload.Workspace(childComplexity), true
 
-	case "Subscription.edgeStatus":
-		if e.complexity.Subscription.EdgeStatus == nil {
-			break
-		}
-
-		args, err := ec.field_Subscription_edgeStatus_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Subscription.EdgeStatus(childComplexity, args["jobId"].(gqlmodel.ID), args["edgeId"].(string)), true
-
 	case "Subscription.jobStatus":
 		if e.complexity.Subscription.JobStatus == nil {
 			break
@@ -1986,6 +2040,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Subscription.Logs(childComplexity, args["jobId"].(gqlmodel.ID)), true
+
+	case "Subscription.nodeStatus":
+		if e.complexity.Subscription.NodeStatus == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_nodeStatus_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.NodeStatus(childComplexity, args["jobId"].(gqlmodel.ID), args["nodeId"].(string)), true
 
 	case "Trigger.authToken":
 		if e.complexity.Trigger.AuthToken == nil {
@@ -2608,11 +2674,18 @@ type ProjectSnapshot {
   version: Int!
 }
 
+# Project Snapshot Metadata (without updates data)
+type ProjectSnapshotMetadata {
+  timestamp: DateTime!
+  version: Int!
+}
+
 # Query
 
 extend type Query {
   latestProjectSnapshot(projectId: ID!): ProjectDocument
   projectHistory(projectId: ID!): [ProjectSnapshot!]!
+  projectHistoryMetadata(projectId: ID!): [ProjectSnapshotMetadata!]!
 }
 
 # Mutation
@@ -2625,22 +2698,7 @@ extend type Mutation {
   id: ID!
   edgeId: String!
   jobId: ID!
-  status: EdgeStatus!
-  createdAt: DateTime
-  startedAt: DateTime
-  completedAt: DateTime
-  featureId: ID
   intermediateDataUrl: String
-}
-
-enum EdgeStatus {
-  IN_PROGRESS
-  COMPLETED
-  FAILED
-}
-
-extend type Subscription {
-  edgeStatus(jobId: ID!, edgeId: String!): EdgeStatus!
 }
 
 extend type Query {
@@ -2723,6 +2781,32 @@ type Log {
 
 extend type Subscription {
   logs(jobId: ID!): Log
+}
+`, BuiltIn: false},
+	{Name: "../../../gql/node.graphql", Input: `type NodeExecution implements Node {
+  id: ID!
+  jobId: ID!
+  nodeId: ID!
+  status: NodeStatus!
+  createdAt: DateTime
+  startedAt: DateTime
+  completedAt: DateTime
+}
+
+enum NodeStatus {
+  PENDING
+  STARTING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+extend type Subscription {
+  nodeStatus(jobId: ID!, nodeId: String!): NodeStatus!
+}
+
+extend type Query {
+  nodeExecution(jobId: ID!, nodeId: String!): NodeExecution
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/parameter.graphql", Input: `type Parameter {
@@ -3908,6 +3992,30 @@ func (ec *executionContext) field_Query_latestProjectSnapshot_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_nodeExecution_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.ID
+	if tmp, ok := rawArgs["jobId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jobId"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["jobId"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["nodeId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nodeId"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["nodeId"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_node_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -3953,6 +4061,21 @@ func (ec *executionContext) field_Query_nodes_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["type"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_projectHistoryMetadata_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.ID
+	if tmp, ok := rawArgs["projectId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
 	return args, nil
 }
 
@@ -4073,30 +4196,6 @@ func (ec *executionContext) field_Query_triggers_args(ctx context.Context, rawAr
 	return args, nil
 }
 
-func (ec *executionContext) field_Subscription_edgeStatus_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 gqlmodel.ID
-	if tmp, ok := rawArgs["jobId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jobId"))
-		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["jobId"] = arg0
-	var arg1 string
-	if tmp, ok := rawArgs["edgeId"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("edgeId"))
-		arg1, err = ec.unmarshalNString2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["edgeId"] = arg1
-	return args, nil
-}
-
 func (ec *executionContext) field_Subscription_jobStatus_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -4124,6 +4223,30 @@ func (ec *executionContext) field_Subscription_logs_args(ctx context.Context, ra
 		}
 	}
 	args["jobId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Subscription_nodeStatus_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.ID
+	if tmp, ok := rawArgs["jobId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("jobId"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["jobId"] = arg0
+	var arg1 string
+	if tmp, ok := rawArgs["nodeId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("nodeId"))
+		arg1, err = ec.unmarshalNString2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["nodeId"] = arg1
 	return args, nil
 }
 
@@ -6064,214 +6187,6 @@ func (ec *executionContext) _EdgeExecution_jobId(ctx context.Context, field grap
 }
 
 func (ec *executionContext) fieldContext_EdgeExecution_jobId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "EdgeExecution",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _EdgeExecution_status(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EdgeExecution) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_EdgeExecution_status(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.Status, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.(gqlmodel.EdgeStatus)
-	fc.Result = res
-	return ec.marshalNEdgeStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEdgeStatus(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_EdgeExecution_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "EdgeExecution",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type EdgeStatus does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _EdgeExecution_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EdgeExecution) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_EdgeExecution_createdAt(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CreatedAt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*time.Time)
-	fc.Result = res
-	return ec.marshalODateTime2ᚖtimeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_EdgeExecution_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "EdgeExecution",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DateTime does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _EdgeExecution_startedAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EdgeExecution) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_EdgeExecution_startedAt(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.StartedAt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*time.Time)
-	fc.Result = res
-	return ec.marshalODateTime2ᚖtimeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_EdgeExecution_startedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "EdgeExecution",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DateTime does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _EdgeExecution_completedAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EdgeExecution) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_EdgeExecution_completedAt(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.CompletedAt, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*time.Time)
-	fc.Result = res
-	return ec.marshalODateTime2ᚖtimeᚐTime(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_EdgeExecution_completedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "EdgeExecution",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DateTime does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _EdgeExecution_featureId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.EdgeExecution) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_EdgeExecution_featureId(ctx, field)
-	if err != nil {
-		return graphql.Null
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return obj.FeatureID, nil
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		return graphql.Null
-	}
-	res := resTmp.(*gqlmodel.ID)
-	fc.Result = res
-	return ec.marshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) fieldContext_EdgeExecution_featureId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "EdgeExecution",
 		Field:      field,
@@ -9579,6 +9494,305 @@ func (ec *executionContext) fieldContext_Mutation_updateMemberOfWorkspace(ctx co
 	return fc, nil
 }
 
+func (ec *executionContext) _NodeExecution_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NodeExecution_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NodeExecution_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NodeExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NodeExecution_jobId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NodeExecution_jobId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.JobID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NodeExecution_jobId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NodeExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NodeExecution_nodeId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NodeExecution_nodeId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.NodeID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NodeExecution_nodeId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NodeExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NodeExecution_status(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NodeExecution_status(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Status, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.NodeStatus)
+	fc.Result = res
+	return ec.marshalNNodeStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeStatus(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NodeExecution_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NodeExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type NodeStatus does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NodeExecution_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NodeExecution_createdAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CreatedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalODateTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NodeExecution_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NodeExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NodeExecution_startedAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NodeExecution_startedAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.StartedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalODateTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NodeExecution_startedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NodeExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NodeExecution_completedAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_NodeExecution_completedAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.CompletedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalODateTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_NodeExecution_completedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NodeExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PageInfo_totalCount(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.PageInfo) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PageInfo_totalCount(ctx, field)
 	if err != nil {
@@ -11453,6 +11667,94 @@ func (ec *executionContext) fieldContext_ProjectSnapshot_version(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _ProjectSnapshotMetadata_timestamp(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectSnapshotMetadata) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectSnapshotMetadata_timestamp(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Timestamp, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNDateTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectSnapshotMetadata_timestamp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectSnapshotMetadata",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectSnapshotMetadata_version(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectSnapshotMetadata) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ProjectSnapshotMetadata_version(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Version, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int)
+	fc.Result = res
+	return ec.marshalNInt2int(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ProjectSnapshotMetadata_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectSnapshotMetadata",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_node(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_node(ctx, field)
 	if err != nil {
@@ -12048,6 +12350,67 @@ func (ec *executionContext) fieldContext_Query_projectHistory(ctx context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_projectHistoryMetadata(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_projectHistoryMetadata(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().ProjectHistoryMetadata(rctx, fc.Args["projectId"].(gqlmodel.ID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlmodel.ProjectSnapshotMetadata)
+	fc.Result = res
+	return ec.marshalNProjectSnapshotMetadata2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshotMetadataᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_projectHistoryMetadata(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "timestamp":
+				return ec.fieldContext_ProjectSnapshotMetadata_timestamp(ctx, field)
+			case "version":
+				return ec.fieldContext_ProjectSnapshotMetadata_version(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProjectSnapshotMetadata", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_projectHistoryMetadata_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_edgeExecution(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_edgeExecution(ctx, field)
 	if err != nil {
@@ -12090,16 +12453,6 @@ func (ec *executionContext) fieldContext_Query_edgeExecution(ctx context.Context
 				return ec.fieldContext_EdgeExecution_edgeId(ctx, field)
 			case "jobId":
 				return ec.fieldContext_EdgeExecution_jobId(ctx, field)
-			case "status":
-				return ec.fieldContext_EdgeExecution_status(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_EdgeExecution_createdAt(ctx, field)
-			case "startedAt":
-				return ec.fieldContext_EdgeExecution_startedAt(ctx, field)
-			case "completedAt":
-				return ec.fieldContext_EdgeExecution_completedAt(ctx, field)
-			case "featureId":
-				return ec.fieldContext_EdgeExecution_featureId(ctx, field)
 			case "intermediateDataUrl":
 				return ec.fieldContext_EdgeExecution_intermediateDataUrl(ctx, field)
 			}
@@ -12255,6 +12608,74 @@ func (ec *executionContext) fieldContext_Query_job(ctx context.Context, field gr
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_job_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_nodeExecution(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_nodeExecution(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().NodeExecution(rctx, fc.Args["jobId"].(gqlmodel.ID), fc.Args["nodeId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.NodeExecution)
+	fc.Result = res
+	return ec.marshalONodeExecution2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeExecution(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_nodeExecution(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_NodeExecution_id(ctx, field)
+			case "jobId":
+				return ec.fieldContext_NodeExecution_jobId(ctx, field)
+			case "nodeId":
+				return ec.fieldContext_NodeExecution_nodeId(ctx, field)
+			case "status":
+				return ec.fieldContext_NodeExecution_status(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_NodeExecution_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_NodeExecution_startedAt(ctx, field)
+			case "completedAt":
+				return ec.fieldContext_NodeExecution_completedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NodeExecution", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_nodeExecution_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -13205,75 +13626,6 @@ func (ec *executionContext) fieldContext_SignupPayload_workspace(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _Subscription_edgeStatus(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
-	fc, err := ec.fieldContext_Subscription_edgeStatus(ctx, field)
-	if err != nil {
-		return nil
-	}
-	ctx = graphql.WithFieldContext(ctx, fc)
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = nil
-		}
-	}()
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Subscription().EdgeStatus(rctx, fc.Args["jobId"].(gqlmodel.ID), fc.Args["edgeId"].(string))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return nil
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return nil
-	}
-	return func(ctx context.Context) graphql.Marshaler {
-		select {
-		case res, ok := <-resTmp.(<-chan gqlmodel.EdgeStatus):
-			if !ok {
-				return nil
-			}
-			return graphql.WriterFunc(func(w io.Writer) {
-				w.Write([]byte{'{'})
-				graphql.MarshalString(field.Alias).MarshalGQL(w)
-				w.Write([]byte{':'})
-				ec.marshalNEdgeStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEdgeStatus(ctx, field.Selections, res).MarshalGQL(w)
-				w.Write([]byte{'}'})
-			})
-		case <-ctx.Done():
-			return nil
-		}
-	}
-}
-
-func (ec *executionContext) fieldContext_Subscription_edgeStatus(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Subscription",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type EdgeStatus does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Subscription_edgeStatus_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Subscription_jobStatus(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
 	fc, err := ec.fieldContext_Subscription_jobStatus(ctx, field)
 	if err != nil {
@@ -13415,6 +13767,75 @@ func (ec *executionContext) fieldContext_Subscription_logs(ctx context.Context, 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Subscription_logs_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_nodeStatus(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_nodeStatus(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().NodeStatus(rctx, fc.Args["jobId"].(gqlmodel.ID), fc.Args["nodeId"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan gqlmodel.NodeStatus):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNNodeStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeStatus(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_nodeStatus(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type NodeStatus does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_nodeStatus_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -18112,6 +18533,13 @@ func (ec *executionContext) _Node(ctx context.Context, sel ast.SelectionSet, obj
 			return graphql.Null
 		}
 		return ec._Job(ctx, sel, obj)
+	case gqlmodel.NodeExecution:
+		return ec._NodeExecution(ctx, sel, &obj)
+	case *gqlmodel.NodeExecution:
+		if obj == nil {
+			return graphql.Null
+		}
+		return ec._NodeExecution(ctx, sel, obj)
 	case gqlmodel.Project:
 		return ec._Project(ctx, sel, &obj)
 	case *gqlmodel.Project:
@@ -18836,19 +19264,6 @@ func (ec *executionContext) _EdgeExecution(ctx context.Context, sel ast.Selectio
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "status":
-			out.Values[i] = ec._EdgeExecution_status(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "createdAt":
-			out.Values[i] = ec._EdgeExecution_createdAt(ctx, field, obj)
-		case "startedAt":
-			out.Values[i] = ec._EdgeExecution_startedAt(ctx, field, obj)
-		case "completedAt":
-			out.Values[i] = ec._EdgeExecution_completedAt(ctx, field, obj)
-		case "featureId":
-			out.Values[i] = ec._EdgeExecution_featureId(ctx, field, obj)
 		case "intermediateDataUrl":
 			out.Values[i] = ec._EdgeExecution_intermediateDataUrl(ctx, field, obj)
 		default:
@@ -19507,6 +19922,66 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 	return out
 }
 
+var nodeExecutionImplementors = []string{"NodeExecution", "Node"}
+
+func (ec *executionContext) _NodeExecution(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.NodeExecution) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, nodeExecutionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("NodeExecution")
+		case "id":
+			out.Values[i] = ec._NodeExecution_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "jobId":
+			out.Values[i] = ec._NodeExecution_jobId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "nodeId":
+			out.Values[i] = ec._NodeExecution_nodeId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._NodeExecution_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._NodeExecution_createdAt(ctx, field, obj)
+		case "startedAt":
+			out.Values[i] = ec._NodeExecution_startedAt(ctx, field, obj)
+		case "completedAt":
+			out.Values[i] = ec._NodeExecution_completedAt(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var pageInfoImplementors = []string{"PageInfo"}
 
 func (ec *executionContext) _PageInfo(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.PageInfo) graphql.Marshaler {
@@ -20085,6 +20560,50 @@ func (ec *executionContext) _ProjectSnapshot(ctx context.Context, sel ast.Select
 	return out
 }
 
+var projectSnapshotMetadataImplementors = []string{"ProjectSnapshotMetadata"}
+
+func (ec *executionContext) _ProjectSnapshotMetadata(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.ProjectSnapshotMetadata) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, projectSnapshotMetadataImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProjectSnapshotMetadata")
+		case "timestamp":
+			out.Values[i] = ec._ProjectSnapshotMetadata_timestamp(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "version":
+			out.Values[i] = ec._ProjectSnapshotMetadata_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var queryImplementors = []string{"Query"}
 
 func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -20290,6 +20809,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "projectHistoryMetadata":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_projectHistoryMetadata(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "edgeExecution":
 			field := field
 
@@ -20341,6 +20882,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_job(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "nodeExecution":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_nodeExecution(ctx, field)
 				return res
 			}
 
@@ -20764,12 +21324,12 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 	}
 
 	switch fields[0].Name {
-	case "edgeStatus":
-		return ec._Subscription_edgeStatus(ctx, fields[0])
 	case "jobStatus":
 		return ec._Subscription_jobStatus(ctx, fields[0])
 	case "logs":
 		return ec._Subscription_logs(ctx, fields[0])
+	case "nodeStatus":
+		return ec._Subscription_nodeStatus(ctx, fields[0])
 	default:
 		panic("unknown field " + strconv.Quote(fields[0].Name))
 	}
@@ -22001,16 +22561,6 @@ func (ec *executionContext) marshalNDeploymentConnection2ᚖgithubᚗcomᚋreear
 	return ec._DeploymentConnection(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNEdgeStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEdgeStatus(ctx context.Context, v interface{}) (gqlmodel.EdgeStatus, error) {
-	var res gqlmodel.EdgeStatus
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNEdgeStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEdgeStatus(ctx context.Context, sel ast.SelectionSet, v gqlmodel.EdgeStatus) graphql.Marshaler {
-	return v
-}
-
 func (ec *executionContext) unmarshalNEventSourceType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEventSourceType(ctx context.Context, v interface{}) (gqlmodel.EventSourceType, error) {
 	var res gqlmodel.EventSourceType
 	err := res.UnmarshalGQL(v)
@@ -22291,6 +22841,16 @@ func (ec *executionContext) marshalNNode2ᚕgithubᚗcomᚋreearthᚋreearthᚑf
 	return ret
 }
 
+func (ec *executionContext) unmarshalNNodeStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeStatus(ctx context.Context, v interface{}) (gqlmodel.NodeStatus, error) {
+	var res gqlmodel.NodeStatus
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNNodeStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeStatus(ctx context.Context, sel ast.SelectionSet, v gqlmodel.NodeStatus) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNNodeType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeType(ctx context.Context, v interface{}) (gqlmodel.NodeType, error) {
 	var res gqlmodel.NodeType
 	err := res.UnmarshalGQL(v)
@@ -22512,6 +23072,60 @@ func (ec *executionContext) marshalNProjectSnapshot2ᚖgithubᚗcomᚋreearthᚋ
 		return graphql.Null
 	}
 	return ec._ProjectSnapshot(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNProjectSnapshotMetadata2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshotMetadataᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.ProjectSnapshotMetadata) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNProjectSnapshotMetadata2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshotMetadata(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNProjectSnapshotMetadata2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshotMetadata(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.ProjectSnapshotMetadata) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ProjectSnapshotMetadata(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNRemoveAssetInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRemoveAssetInput(ctx context.Context, v interface{}) (gqlmodel.RemoveAssetInput, error) {
@@ -23409,6 +24023,13 @@ func (ec *executionContext) marshalONode2githubᚗcomᚋreearthᚋreearthᚑflow
 		return graphql.Null
 	}
 	return ec._Node(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalONodeExecution2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeExecution(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.NodeExecution) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._NodeExecution(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOOrderDirection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐOrderDirection(ctx context.Context, v interface{}) (*gqlmodel.OrderDirection, error) {

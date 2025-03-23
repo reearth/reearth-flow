@@ -126,6 +126,14 @@ pub enum NodeKind {
     Sink(Box<dyn SinkFactory>),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NodeStatus {
+    Starting,
+    Processing,
+    Completed,
+    Failed,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct NodeHandle {
     pub id: NodeId,

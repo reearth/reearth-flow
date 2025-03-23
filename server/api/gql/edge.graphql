@@ -2,22 +2,7 @@ type EdgeExecution implements Node {
   id: ID!
   edgeId: String!
   jobId: ID!
-  status: EdgeStatus!
-  createdAt: DateTime
-  startedAt: DateTime
-  completedAt: DateTime
-  featureId: ID
   intermediateDataUrl: String
-}
-
-enum EdgeStatus {
-  IN_PROGRESS
-  COMPLETED
-  FAILED
-}
-
-extend type Subscription {
-  edgeStatus(jobId: ID!, edgeId: String!): EdgeStatus!
 }
 
 extend type Query {
