@@ -3,22 +3,22 @@ package subscription
 import (
 	"sync"
 
-	"github.com/reearth/reearth-flow/api/pkg/edge"
+	"github.com/reearth/reearth-flow/api/pkg/graph"
 )
 
-type EdgeManager struct {
+type NodeManager struct {
 	mu          sync.RWMutex
-	subscribers map[string][]chan *edge.EdgeExecution
+	subscribers map[string][]chan *graph.NodeExecution
 }
 
-func NewEdgeManager() *EdgeManager {
-	return &EdgeManager{
-		subscribers: make(map[string][]chan *edge.EdgeExecution),
+func NewNodeManager() *NodeManager {
+	return &NodeManager{
+		subscribers: make(map[string][]chan *graph.NodeExecution),
 	}
 }
 
-func (m *EdgeManager) Subscribe(key string) chan *edge.EdgeExecution {
-	ch := make(chan *edge.EdgeExecution, 50)
+func (m *NodeManager) Subscribe(key string) chan *graph.NodeExecution {
+	ch := make(chan *graph.NodeExecution, 50)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -26,7 +26,7 @@ func (m *EdgeManager) Subscribe(key string) chan *edge.EdgeExecution {
 	return ch
 }
 
-func (m *EdgeManager) Unsubscribe(key string, ch chan *edge.EdgeExecution) {
+func (m *NodeManager) Unsubscribe(key string, ch chan *graph.NodeExecution) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -44,7 +44,7 @@ func (m *EdgeManager) Unsubscribe(key string, ch chan *edge.EdgeExecution) {
 	}
 }
 
-func (m *EdgeManager) Notify(key string, edges []*edge.EdgeExecution) {
+func (m *NodeManager) Notify(key string, edges []*graph.NodeExecution) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -59,15 +59,15 @@ func (m *EdgeManager) Notify(key string, edges []*edge.EdgeExecution) {
 	}
 }
 
-func (m *EdgeManager) NotifySingle(key string, e *edge.EdgeExecution) {
+func (m *NodeManager) NotifySingle(key string, e *graph.NodeExecution) {
 	if e == nil {
 		return
 	}
 
-	m.Notify(key, []*edge.EdgeExecution{e})
+	m.Notify(key, []*graph.NodeExecution{e})
 }
 
-func (m *EdgeManager) CountSubscribers(key string) int {
+func (m *NodeManager) CountSubscribers(key string) int {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 

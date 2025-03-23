@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/reearth/reearth-flow/api/pkg/edge"
+	"github.com/reearth/reearth-flow/api/pkg/graph"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/mongox/mongotest"
@@ -30,14 +30,13 @@ func TestEdgeExecution_FindByJobEdgeID(t *testing.T) {
 			"id":        execID1,
 			"edgeId":    edgeID1,
 			"jobId":     jobID1.String(),
-			"status":    string(edge.StatusInProgress),
 			"startedAt": now,
 		},
 		bson.M{
 			"id":        execID2,
 			"edgeId":    edgeID2,
 			"jobId":     jobID2.String(),
-			"status":    string(edge.StatusCompleted),
+			"status":    string(graph.StatusCompleted),
 			"startedAt": now,
 			"endedAt":   now.Add(5 * time.Minute),
 		},
@@ -53,7 +52,6 @@ func TestEdgeExecution_FindByJobEdgeID(t *testing.T) {
 		assert.Equal(t, execID1, got.ID())
 		assert.Equal(t, edgeID1, got.EdgeID())
 		assert.Equal(t, jobID1, got.JobID())
-		assert.Equal(t, edge.StatusInProgress, got.Status())
 	})
 
 	t.Run("find another existing edge execution", func(t *testing.T) {
@@ -64,7 +62,6 @@ func TestEdgeExecution_FindByJobEdgeID(t *testing.T) {
 		assert.Equal(t, execID2, got.ID())
 		assert.Equal(t, edgeID2, got.EdgeID())
 		assert.Equal(t, jobID2, got.JobID())
-		assert.Equal(t, edge.StatusCompleted, got.Status())
 	})
 
 	t.Run("non-existent job ID", func(t *testing.T) {

@@ -7,51 +7,55 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/reearth/reearth-flow/api/pkg/edge"
+	"github.com/reearth/reearth-flow/api/pkg/graph"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	reearth_log "github.com/reearth/reearthx/log"
 )
 
-type EdgeEntry struct {
-	ID                  string     `json:"id"`
-	EdgeID              string     `json:"edgeId"`
-	WorkflowID          string     `json:"workflowId"`
-	JobID               string     `json:"jobId"`
-	Status              string     `json:"status"`
-	Timestamp           time.Time  `json:"timestamp"`
-	StartedAt           *time.Time `json:"startedAt,omitempty"`
-	CompletedAt         *time.Time `json:"completedAt,omitempty"`
-	FeatureID           *string    `json:"featureId,omitempty"`
-	IntermediateDataURL string     `json:"intermediateDataUrl,omitempty"`
+type NodeEntry struct {
+	ID          string     `json:"id"`
+	WorkflowID  string     `json:"workflowId"`
+	JobID       string     `json:"jobId"`
+	NodeID      string     `json:"nodeId"`
+	Status      string     `json:"status"`
+	StartedAt   *time.Time `json:"startedAt,omitempty"`
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+	FeatureID   *string    `json:"featureId,omitempty"`
+	Timestamp   time.Time  `json:"timestamp"`
 }
 
-func (e *EdgeEntry) ToDomain() (*edge.EdgeExecution, error) {
-	jid, err := id.JobIDFrom(e.JobID)
+func (e *NodeEntry) ToDomain() (*graph.NodeExecution, error) {
+	jId, err := id.JobIDFrom(e.JobID)
 	if err != nil {
 		return nil, err
 	}
 
-	return edge.NewEdgeExecution(
-		e.ID,
-		e.EdgeID,
-		jid,
-		e.WorkflowID,
-		edge.Status(e.Status),
-		e.StartedAt,
-		e.CompletedAt,
-		e.FeatureID,
-		&e.IntermediateDataURL,
+	nEId, err := id.NodeExecutionIDFrom(e.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	nId, err := id.NodeIDFrom(e.NodeID)
+	if err != nil {
+		return nil, err
+	}
+
+	return graph.NewNodeExecution(
+		nEId,
+		jId,
+		nId,
+		graph.Status(e.Status),
 	), nil
 }
 
-func (r *redisLog) GetEdgeExecutions(
+func (r *redisLog) GetNodeExecutions(
 	ctx context.Context,
 	jobID id.JobID,
-) ([]*edge.EdgeExecution, error) {
-	// pattern: edge:{jobID}:*
-	pattern := fmt.Sprintf("edge:%s:*", jobID.String())
+) ([]*graph.NodeExecution, error) {
+	// pattern: node:{jobID}:*
+	pattern := fmt.Sprintf("node:%s:*", jobID.String())
 	var cursor uint64
-	var result []*edge.EdgeExecution
+	var result []*graph.NodeExecution
 
 	for {
 		keys, newCursor, err := r.client.Scan(ctx, cursor, pattern, 100).Result()
@@ -67,19 +71,19 @@ func (r *redisLog) GetEdgeExecutions(
 				return nil, fmt.Errorf("failed to get redis value for key=%s: %w", key, err)
 			}
 
-			var entry EdgeEntry
+			var entry NodeEntry
 			if err := json.Unmarshal([]byte(val), &entry); err != nil {
-				reearth_log.Warnfc(ctx, "redis: failed to unmarshal edge entry: %s", val)
+				reearth_log.Warnfc(ctx, "redis: failed to unmarshal node entry: %s", val)
 				continue
 			}
 
-			domainEdge, err := entry.ToDomain()
+			domainNode, err := entry.ToDomain()
 			if err != nil {
-				reearth_log.Warnfc(ctx, "redis: failed to convert edge entry to domain: %v", err)
+				reearth_log.Warnfc(ctx, "redis: failed to convert node entry to domain: %v", err)
 				continue
 			}
 
-			result = append(result, domainEdge)
+			result = append(result, domainNode)
 		}
 
 		cursor = newCursor
@@ -91,30 +95,30 @@ func (r *redisLog) GetEdgeExecutions(
 	return result, nil
 }
 
-func (r *redisLog) GetEdgeExecution(
+func (r *redisLog) GetNodeExecution(
 	ctx context.Context,
 	jobID id.JobID,
-	edgeID string,
-) (*edge.EdgeExecution, error) {
-	// key: edge:{jobID}:{edgeID}
-	key := fmt.Sprintf("edge:%s:%s", jobID.String(), edgeID)
+	nodeID string,
+) (*graph.NodeExecution, error) {
+	// key: node:{jobID}:{nodeID}
+	key := fmt.Sprintf("node:%s:%s", jobID.String(), nodeID)
 
 	val, err := r.client.Get(ctx, key).Result()
 	if err == redis.Nil {
-		return nil, fmt.Errorf("edge execution not found: %s", key)
+		return nil, fmt.Errorf("node execution not found: %s", key)
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get redis value for key=%s: %w", key, err)
 	}
 
-	var entry EdgeEntry
+	var entry NodeEntry
 	if err := json.Unmarshal([]byte(val), &entry); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal edge entry: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal node entry: %w", err)
 	}
 
-	domainEdge, err := entry.ToDomain()
+	domainNode, err := entry.ToDomain()
 	if err != nil {
-		return nil, fmt.Errorf("failed to convert edge entry to domain: %w", err)
+		return nil, fmt.Errorf("failed to convert node entry to domain: %w", err)
 	}
 
-	return domainEdge, nil
+	return domainNode, nil
 }

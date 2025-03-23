@@ -1,0 +1,25 @@
+type NodeExecution implements Node {
+  id: ID!
+  nodeId: String!
+  jobId: ID!
+  status: NodeStatus!
+  createdAt: DateTime
+  startedAt: DateTime
+  completedAt: DateTime
+}
+
+enum NodeStatus {
+  PENDING
+  STARTING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+extend type Subscription {
+  nodeStatus(jobId: ID!, nodeId: String!): NodeStatus!
+}
+
+extend type Query {
+  nodeExecution(jobId: ID!, nodeId: String!): NodeExecution
+}

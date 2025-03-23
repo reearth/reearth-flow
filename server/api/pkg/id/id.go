@@ -6,6 +6,8 @@ type (
 	Asset         struct{}
 	AuthRequest   struct{}
 	Deployment    struct{}
+	EdgeExecution struct{}
+	NodeExecution struct{}
 	Parameter     struct{}
 	Project       struct{}
 	ProjectAccess struct{}
@@ -18,6 +20,8 @@ type (
 func (Asset) Type() string         { return "asset" }
 func (AuthRequest) Type() string   { return "authRequest" }
 func (Deployment) Type() string    { return "deployment" }
+func (EdgeExecution) Type() string { return "edgeExecution" }
+func (NodeExecution) Type() string { return "nodeExecution" }
 func (Parameter) Type() string     { return "parameter" }
 func (Project) Type() string       { return "project" }
 func (ProjectAccess) Type() string { return "projectAccess" }
@@ -30,6 +34,8 @@ type (
 	AssetID         = idx.ID[Asset]
 	AuthRequestID   = idx.ID[AuthRequest]
 	DeploymentID    = idx.ID[Deployment]
+	EdgeExecutionID = idx.ID[EdgeExecution]
+	NodeExecutionID = idx.ID[NodeExecution]
 	ParameterID     = idx.ID[Parameter]
 	ProjectID       = idx.ID[Project]
 	ProjectAccessID = idx.ID[ProjectAccess]
@@ -43,6 +49,8 @@ var (
 	NewAssetID         = idx.New[Asset]
 	NewAuthRequestID   = idx.New[AuthRequest]
 	NewDeploymentID    = idx.New[Deployment]
+	NewEdgeExecutionID = idx.New[EdgeExecution]
+	NewNodeExecutionID = idx.New[NodeExecution]
 	NewParameterID     = idx.New[Parameter]
 	NewProjectID       = idx.New[Project]
 	NewProjectAccessID = idx.New[ProjectAccess]
@@ -56,6 +64,8 @@ var (
 	MustAssetID         = idx.Must[Asset]
 	MustAuthRequestID   = idx.Must[AuthRequest]
 	MustDeploymentID    = idx.Must[Deployment]
+	MustEdgeExecutionID = idx.Must[EdgeExecution]
+	MustNodeExecutionID = idx.Must[NodeExecution]
 	MustParameterID     = idx.Must[Parameter]
 	MustProjectID       = idx.Must[Project]
 	MustProjectAccessID = idx.Must[ProjectAccess]
@@ -69,6 +79,8 @@ var (
 	AssetIDFrom         = idx.From[Asset]
 	AuthRequestIDFrom   = idx.From[AuthRequest]
 	DeploymentIDFrom    = idx.From[Deployment]
+	EdgeExecutionIDFrom = idx.From[EdgeExecution]
+	NodeExecutionIDFrom = idx.From[NodeExecution]
 	ParameterIDFrom     = idx.From[Parameter]
 	ProjectIDFrom       = idx.From[Project]
 	ProjectAccessIDFrom = idx.From[ProjectAccess]
@@ -82,6 +94,8 @@ var (
 	AssetIDFromRef         = idx.FromRef[Asset]
 	AuthRequestIDFromRef   = idx.FromRef[AuthRequest]
 	DeploymentIDFromRef    = idx.FromRef[Deployment]
+	EdgeExecutionIDFromRef = idx.FromRef[EdgeExecution]
+	NodeExecutionIDFromRef = idx.FromRef[NodeExecution]
 	ParameterIDFromRef     = idx.FromRef[Parameter]
 	ProjectIDFromRef       = idx.FromRef[Project]
 	ProjectAccessIDFromRef = idx.FromRef[ProjectAccess]
@@ -95,6 +109,8 @@ type (
 	AssetIDList         = idx.List[Asset]
 	AuthRequestIDList   = idx.List[AuthRequest]
 	DeploymentIDList    = idx.List[Deployment]
+	EdgeExecutionIDList = idx.List[EdgeExecution]
+	NodeExecutionIDList = idx.List[NodeExecution]
 	ParameterIDList     = idx.List[Parameter]
 	ProjectIDList       = idx.List[Project]
 	ProjectAccessIDList = idx.List[ProjectAccess]
@@ -107,6 +123,8 @@ var (
 	AssetIDListFrom         = idx.ListFrom[Asset]
 	AuthRequestIDListFrom   = idx.ListFrom[AuthRequest]
 	DeploymentIDListFrom    = idx.ListFrom[Deployment]
+	EdgeExecutionIDListFrom = idx.ListFrom[EdgeExecution]
+	NodeExecutionIDListFrom = idx.ListFrom[NodeExecution]
 	ParameterIDListFrom     = idx.ListFrom[Parameter]
 	ProjectIDListFrom       = idx.ListFrom[Project]
 	ProjectAccessIDListFrom = idx.ListFrom[ProjectAccess]
@@ -119,6 +137,8 @@ type (
 	AssetIDSet         = idx.Set[Asset]
 	AuthRequestIDSet   = idx.Set[AuthRequest]
 	DeploymentIDSet    = idx.Set[Deployment]
+	EdgeExecutionIDSet = idx.Set[EdgeExecution]
+	NodeExecutionIDSet = idx.Set[NodeExecution]
 	ParameterIDSet     = idx.Set[Parameter]
 	ProjectIDSet       = idx.Set[Project]
 	ProjectAccessIDSet = idx.Set[ProjectAccess]
@@ -131,6 +151,8 @@ var (
 	NewAssetIDSet         = idx.NewSet[Asset]
 	NewAuthRequestIDSet   = idx.NewSet[AuthRequest]
 	NewDeploymentIDSet    = idx.NewSet[Deployment]
+	NewEdgeExecutionIDSet = idx.NewSet[EdgeExecution]
+	NewNodeExecutionIDSet = idx.NewSet[NodeExecution]
 	NewParameterIDSet     = idx.NewSet[Parameter]
 	NewProjectIDSet       = idx.NewSet[Project]
 	NewProjectAccessIDSet = idx.NewSet[ProjectAccess]
