@@ -71,9 +71,9 @@ func main() {
 
 	// Initialize MongoDB client and edge storage if needed
 	var mongoClient *mongo.Client
-	var edgeStorage gateway.EdgeStorage
+	var edgeStorage gateway.NodeStorage
 
-	if conf.EdgeSubscriptionID != "" {
+	if conf.NodeSubscriptionID != "" {
 		mongoClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.DB).SetMonitor(otelmongo.NewMonitor()))
 		if err != nil {
 			log.Fatalf("Failed to connect to MongoDB: %v", err)
@@ -93,7 +93,7 @@ func main() {
 			conf.GCSBucket,
 			conf.AssetBaseURL,
 		)
-		edgeStorage = infrastructure.NewEdgeStorageImpl(redisStorage, mongoStorage)
+		edgeStorage = infrastructure.NewNodeStorageImpl(redisStorage, mongoStorage)
 	}
 
 	// Set up subscribers with respective subscriptions
@@ -121,26 +121,26 @@ func main() {
 	}
 
 	// Set up edge subscriber if configured
-	if conf.EdgeSubscriptionID != "" && edgeStorage != nil {
-		edgeSub := pubsubClient.Subscription(conf.EdgeSubscriptionID)
+	if conf.NodeSubscriptionID != "" && edgeStorage != nil {
+		edgeSub := pubsubClient.Subscription(conf.NodeSubscriptionID)
 		edgeSubAdapter := flow_pubsub.NewRealSubscription(edgeSub)
-		edgeSubscriberUC := interactor.NewEdgeSubscriberUseCase(edgeStorage)
-		edgeSubscriber := flow_pubsub.NewEdgeSubscriber(edgeSubAdapter, edgeSubscriberUC)
+		edgeSubscriberUC := interactor.NewNodeSubscriberUseCase(edgeStorage)
+		edgeSubscriber := flow_pubsub.NewNodeSubscriber(edgeSubAdapter, edgeSubscriberUC)
 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			log.Println("[subscriber] Starting edge subscriber...")
 			if err := edgeSubscriber.StartListening(ctx); err != nil {
-				log.Printf("[subscriber] Edge subscriber error: %v", err)
+				log.Printf("[subscriber] Node subscriber error: %v", err)
 				cancel()
 			}
-			log.Println("[subscriber] Edge subscriber stopped")
+			log.Println("[subscriber] Node subscriber stopped")
 		}()
-	} else if conf.EdgeSubscriptionID != "" {
-		log.Println("Edge storage not properly initialized, edge subscriber will not be started")
+	} else if conf.NodeSubscriptionID != "" {
+		log.Println("Node storage not properly initialized, edge subscriber will not be started")
 	} else {
-		log.Println("Edge subscription ID not provided, edge subscriber will not be started")
+		log.Println("Node subscription ID not provided, edge subscriber will not be started")
 	}
 
 	// Set up HTTP server
