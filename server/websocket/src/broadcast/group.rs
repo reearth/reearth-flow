@@ -34,19 +34,18 @@ pub struct BroadcastGroup {
     connections: Arc<AtomicUsize>,
     awareness_ref: AwarenessRef,
     sender: Sender<Bytes>,
-    pub awareness_updater: JoinHandle<()>,
+    awareness_updater: JoinHandle<()>,
     doc_sub: Option<yrs::Subscription>,
     awareness_sub: Option<yrs::Subscription>,
     storage: Option<Arc<GcsStore>>,
     redis_store: Option<Arc<RedisStore>>,
     doc_name: Option<String>,
     redis_ttl: Option<usize>,
-    storage_rx: Option<tokio::sync::mpsc::UnboundedReceiver<Bytes>>,
-    pub redis_subscriber_task: Option<JoinHandle<()>>,
+    redis_subscriber_task: Option<JoinHandle<()>>,
     redis_consumer_name: Option<String>,
     redis_group_name: Option<String>,
     shutdown_complete: AtomicBool,
-    pub heartbeat_task: Option<JoinHandle<()>>,
+    heartbeat_task: Option<JoinHandle<()>>,
     instance_id: String,
 }
 
@@ -100,8 +99,6 @@ impl BroadcastGroup {
         let awareness_c = Arc::downgrade(&awareness);
         let mut lock = awareness.write().await;
         let sink = sender.clone();
-
-        let (_storage_tx, storage_rx) = tokio::sync::mpsc::unbounded_channel();
 
         let doc_sub = {
             lock.doc_mut().observe_update_v1(move |_txn, u| {
@@ -168,7 +165,6 @@ impl BroadcastGroup {
             redis_store: None,
             doc_name: None,
             redis_ttl: None,
-            storage_rx: Some(storage_rx),
             redis_subscriber_task: None,
             redis_consumer_name: None,
             redis_group_name: None,
@@ -294,8 +290,6 @@ impl BroadcastGroup {
         group.storage = Some(store);
         group.doc_name = Some(doc_name.clone());
         group.redis_ttl = redis_ttl;
-
-        group.storage_rx = None;
 
         if let Some(redis_store) = &group.redis_store {
             let redis_store_clone = redis_store.clone();
