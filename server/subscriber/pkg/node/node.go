@@ -26,7 +26,7 @@ type NodeStatusEvent struct {
 type NodeExecution struct {
 	ID          ID         `bson:"id"`
 	JobID       string     `bson:"jobId"`
-	NodeID      string     `bson:"edgeId"`
+	NodeID      string     `bson:"nodeId"`
 	Status      Status     `bson:"status"`
 	StartedAt   *time.Time `bson:"startedAt,omitempty"`
 	CompletedAt *time.Time `bson:"completedAt,omitempty"`

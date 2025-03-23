@@ -22,7 +22,7 @@ func NewNodeSubscriber(subscription Subscription, useCase interactor.NodeSubscri
 }
 
 func (s *NodeSubscriber) StartListening(ctx context.Context) error {
-	log.Println("[NodeSubscriber] Starting to listen for edge pass through events")
+	log.Println("[NodeSubscriber] Starting to listen for node pass through events")
 
 	return s.sub.Receive(ctx, func(ctx context.Context, m Message) {
 		defer func() {
@@ -33,13 +33,13 @@ func (s *NodeSubscriber) StartListening(ctx context.Context) error {
 
 		var evt node.NodeStatusEvent
 		if err := json.Unmarshal(m.Data(), &evt); err != nil {
-			log.Printf("[NodeSubscriber] failed to unmarshal edge event: %v", err)
+			log.Printf("[NodeSubscriber] failed to unmarshal node event: %v", err)
 			m.Nack()
 			return
 		}
 
 		if err := s.useCase.ProcessNodeEvent(ctx, &evt); err != nil {
-			log.Printf("[NodeSubscriber] failed to process edge event: %v", err)
+			log.Printf("[NodeSubscriber] failed to process node event: %v", err)
 			m.Nack()
 			return
 		}

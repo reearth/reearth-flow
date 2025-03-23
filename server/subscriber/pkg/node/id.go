@@ -6,7 +6,7 @@ type (
 	NodeExecutionID struct{}
 )
 
-func (NodeExecutionID) Type() string { return "edgeExecution" }
+func (NodeExecutionID) Type() string { return "nodeExecution" }
 
 type (
 	ID = idx.ID[NodeExecutionID]
