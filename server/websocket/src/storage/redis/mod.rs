@@ -15,9 +15,6 @@ type RedisStreamResults = Vec<RedisStreamResult>;
 pub struct RedisConfig {
     pub url: String,
     pub ttl: u64,
-    pub max_connections: Option<u32>,
-    pub min_idle: Option<u32>,
-    pub connection_timeout: Option<u64>,
 }
 
 pub type RedisPool = Pool;

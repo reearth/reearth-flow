@@ -180,9 +180,6 @@ impl ConfigBuilder {
                     .redis_url
                     .unwrap_or_else(|| DEFAULT_REDIS_URL.to_string()),
                 ttl: self.redis_ttl.unwrap_or(DEFAULT_REDIS_TTL),
-                max_connections: Some(1024),
-                min_idle: Some(10),
-                connection_timeout: Some(5),
             },
             gcs: GcsConfig {
                 bucket_name: self
