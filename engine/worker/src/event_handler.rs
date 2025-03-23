@@ -2,8 +2,10 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 use reearth_flow_runtime::node::NodeHandle;
+use reearth_flow_runtime::node::NodeStatus;
 use uuid::Uuid;
 
+use crate::types::node_status_event::{NodeStatus as PublishNodeStatus, NodeStatusEvent};
 use crate::{
     pubsub::publisher::Publisher,
     types::{
@@ -133,6 +135,28 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                 };
                 if let Err(e) = self.publisher.publish(edge_completed_event).await {
                     tracing::error!("Failed to publish edge completed event: {}", e);
+                }
+            }
+            reearth_flow_runtime::event::Event::NodeStatusChanged {
+                node_handle,
+                status,
+                feature_id,
+            } => {
+                let node_status_event = NodeStatusEvent::new(
+                    self.workflow_id,
+                    self.job_id,
+                    node_handle.id.to_string(),
+                    match status {
+                        NodeStatus::Starting => PublishNodeStatus::Starting,
+                        NodeStatus::Processing => PublishNodeStatus::Processing,
+                        NodeStatus::Completed => PublishNodeStatus::Completed,
+                        NodeStatus::Failed => PublishNodeStatus::Failed,
+                    },
+                    *feature_id,
+                );
+
+                if let Err(e) = self.publisher.publish(node_status_event).await {
+                    tracing::error!("Failed to publish node status event: {}", e);
                 }
             }
             _ => {}

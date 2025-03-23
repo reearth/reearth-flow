@@ -331,6 +331,11 @@ type ProjectSnapshot struct {
 	Version   int       `json:"version"`
 }
 
+type ProjectSnapshotMetadata struct {
+	Timestamp time.Time `json:"timestamp"`
+	Version   int       `json:"version"`
+}
+
 type Query struct {
 }
 

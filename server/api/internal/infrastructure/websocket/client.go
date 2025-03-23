@@ -1,13 +1,15 @@
 package websocket
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"time"
 
-	"github.com/apache/thrift/lib/go/thrift"
 	"github.com/reearth/reearth-flow/api/pkg/websocket"
-	"github.com/reearth/reearth-flow/api/proto"
 	"github.com/reearth/reearthx/log"
 )
 
@@ -16,9 +18,26 @@ type Config struct {
 }
 
 type Client struct {
-	config         Config
-	documentClient *proto.DocumentServiceClient
-	transport      thrift.TTransport
+	config Config
+	client *http.Client
+}
+
+type documentResponse struct {
+	ID        string `json:"id"`
+	Updates   []byte `json:"updates"`
+	Version   uint64 `json:"version"`
+	Timestamp string `json:"timestamp"`
+}
+
+type historyResponse struct {
+	Updates   []byte `json:"updates"`
+	Version   uint64 `json:"version"`
+	Timestamp string `json:"timestamp"`
+}
+
+type rollbackRequest struct {
+	DocID   string `json:"doc_id"`
+	Version uint64 `json:"version"`
 }
 
 func NewClient(config Config) (*Client, error) {
@@ -26,64 +45,63 @@ func NewClient(config Config) (*Client, error) {
 		config.ServerURL = "http://localhost:8000"
 	}
 
-	docEndpoint := config.ServerURL + "/doc"
-	trans, err := thrift.NewTHttpClient(docEndpoint)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Thrift HTTP client: %w", err)
+	client := &http.Client{
+		Timeout: 30 * time.Second,
 	}
 
-	cfg := &thrift.TConfiguration{}
-	framedTransport := thrift.NewTFramedTransportConf(trans, cfg)
-
-	protocolFactory := thrift.NewTBinaryProtocolFactoryConf(cfg)
-
-	documentClient := proto.NewDocumentServiceClientFactory(framedTransport, protocolFactory)
-
-	return &Client{config: config,
-		documentClient: documentClient,
-		transport:      framedTransport,
+	return &Client{
+		config: config,
+		client: client,
 	}, nil
 }
 
 func (c *Client) Close() error {
-	return c.transport.Close()
+	return nil
 }
 
 func (c *Client) GetLatest(ctx context.Context, docID string) (*websocket.Document, error) {
-	if !c.transport.IsOpen() {
-		if err := c.transport.Open(); err != nil {
-			return nil, fmt.Errorf("failed to open transport: %w", err)
-		}
+	url := fmt.Sprintf("%s/api/document/%s", c.config.ServerURL, docID)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	request := &proto.GetLatestRequest{
-		DocID: docID,
-	}
-
-	response, err := c.documentClient.GetLatest(ctx, request)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get latest document: %w", err)
 	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
 
-	if response == nil || response.Document == nil {
-		return nil, fmt.Errorf("received empty response")
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
 	}
 
-	updates := make([]int, len(response.Document.Updates))
-	for i, update := range response.Document.Updates {
+	var docResp documentResponse
+	if err := json.NewDecoder(resp.Body).Decode(&docResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	updates := make([]int, len(docResp.Updates))
+	for i, update := range docResp.Updates {
 		updates[i] = int(update)
 	}
 
-	timestamp, err := time.Parse(time.RFC3339, response.Document.Timestamp)
+	timestamp, err := time.Parse(time.RFC3339, docResp.Timestamp)
 	if err != nil {
 		log.Warnf("failed to parse timestamp: %v, using current time", err)
 		timestamp = time.Now()
 	}
 
 	doc := &websocket.Document{
-		ID:        response.Document.ID,
+		ID:        docResp.ID,
 		Updates:   updates,
-		Version:   int(response.Document.Version),
+		Version:   int(docResp.Version),
 		Timestamp: timestamp,
 	}
 
@@ -92,41 +110,49 @@ func (c *Client) GetLatest(ctx context.Context, docID string) (*websocket.Docume
 }
 
 func (c *Client) GetHistory(ctx context.Context, docID string) ([]*websocket.History, error) {
-	if !c.transport.IsOpen() {
-		if err := c.transport.Open(); err != nil {
-			return nil, fmt.Errorf("failed to open transport: %w", err)
-		}
+	url := fmt.Sprintf("%s/api/document/%s/history", c.config.ServerURL, docID)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	request := &proto.GetHistoryRequest{
-		DocID: docID,
-	}
-
-	response, err := c.documentClient.GetHistory(ctx, request)
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get document history: %w", err)
 	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
 
-	if response == nil || response.History == nil {
-		return nil, fmt.Errorf("received empty response")
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
 	}
 
-	history := make([]*websocket.History, len(response.History))
-	for i, version := range response.History {
-		timestamp, err := time.Parse(time.RFC3339, version.Timestamp)
+	var historyResp []historyResponse
+	if err := json.NewDecoder(resp.Body).Decode(&historyResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	history := make([]*websocket.History, len(historyResp))
+	for i, item := range historyResp {
+		timestamp, err := time.Parse(time.RFC3339, item.Timestamp)
 		if err != nil {
 			log.Warnf("failed to parse timestamp: %v, using current time", err)
 			timestamp = time.Now()
 		}
 
-		updates := make([]int, len(version.Updates))
-		for j, update := range version.Updates {
+		updates := make([]int, len(item.Updates))
+		for j, update := range item.Updates {
 			updates[j] = int(update)
 		}
 
 		history[i] = &websocket.History{
 			Updates:   updates,
-			Version:   int(version.Version),
+			Version:   int(item.Version),
 			Timestamp: timestamp,
 		}
 	}
@@ -134,42 +160,109 @@ func (c *Client) GetHistory(ctx context.Context, docID string) ([]*websocket.His
 	return history, nil
 }
 
-func (c *Client) Rollback(ctx context.Context, id string, version int) (*websocket.Document, error) {
-	if !c.transport.IsOpen() {
-		if err := c.transport.Open(); err != nil {
-			return nil, fmt.Errorf("failed to open transport: %w", err)
+func (c *Client) GetHistoryMetadata(ctx context.Context, docID string) ([]*websocket.HistoryMetadata, error) {
+	url := fmt.Sprintf("%s/api/document/%s/history/metadata", c.config.ServerURL, docID)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get document history metadata: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
+	}
+
+	var historyResp []struct {
+		Version   uint64 `json:"version"`
+		Timestamp string `json:"timestamp"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&historyResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	metadata := make([]*websocket.HistoryMetadata, len(historyResp))
+	for i, item := range historyResp {
+		timestamp, err := time.Parse(time.RFC3339, item.Timestamp)
+		if err != nil {
+			log.Warnf("failed to parse timestamp: %v, using current time", err)
+			timestamp = time.Now()
+		}
+
+		metadata[i] = &websocket.HistoryMetadata{
+			Version:   int(item.Version),
+			Timestamp: timestamp,
 		}
 	}
 
-	request := &proto.RollbackRequest{
+	return metadata, nil
+}
+
+func (c *Client) Rollback(ctx context.Context, id string, version int) (*websocket.Document, error) {
+	url := fmt.Sprintf("%s/api/document/%s/rollback", c.config.ServerURL, id)
+
+	rollbackReq := rollbackRequest{
 		DocID:   id,
-		Version: int32(version),
+		Version: uint64(version),
 	}
 
-	response, err := c.documentClient.Rollback(ctx, request)
+	reqBody, err := json.Marshal(rollbackReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, io.NopCloser(bytes.NewReader(reqBody)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to rollback document: %w", err)
 	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
 
-	if response == nil || response.Document == nil {
-		return nil, fmt.Errorf("received empty response")
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
 	}
 
-	updates := make([]int, len(response.Document.Updates))
-	for i, update := range response.Document.Updates {
+	var docResp documentResponse
+	if err := json.NewDecoder(resp.Body).Decode(&docResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	updates := make([]int, len(docResp.Updates))
+	for i, update := range docResp.Updates {
 		updates[i] = int(update)
 	}
 
-	timestamp, err := time.Parse(time.RFC3339, response.Document.Timestamp)
+	timestamp, err := time.Parse(time.RFC3339, docResp.Timestamp)
 	if err != nil {
 		log.Warnf("failed to parse timestamp: %v, using current time", err)
 		timestamp = time.Now()
 	}
 
 	return &websocket.Document{
-		ID:        response.Document.ID,
+		ID:        docResp.ID,
 		Updates:   updates,
-		Version:   int(response.Document.Version),
+		Version:   int(docResp.Version),
 		Timestamp: timestamp,
 	}, nil
 }
