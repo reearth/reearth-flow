@@ -26,9 +26,10 @@ type BatchConfig struct {
 	ComputeMemoryMib                int
 	ImageURI                        string
 	MachineType                     string
+	PubSubEdgePassThroughEventTopic string
 	PubSubLogStreamTopic            string
 	PubSubJobCompleteTopic          string
-	PubSubEdgePassThroughEventTopic string
+	PubSubNodeStatusTopic           string
 	ProjectID                       string
 	Region                          string
 	SAEmail                         string
@@ -126,6 +127,7 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 				"FLOW_WORKER_EDGE_PASS_THROUGH_EVENT_TOPIC": b.config.PubSubEdgePassThroughEventTopic,
 				"FLOW_WORKER_LOG_STREAM_TOPIC":              b.config.PubSubLogStreamTopic,
 				"FLOW_WORKER_JOB_COMPLETE_TOPIC":            b.config.PubSubJobCompleteTopic,
+				"FLOW_WORKER_NODE_STATUS_TOPIC":             b.config.PubSubNodeStatusTopic,
 			},
 		},
 	}

@@ -87,6 +87,7 @@ type (
 		Worker_PubSubEdgePassThroughEventTopic string   `envconfig:"WORKER_PUBSUB_EDGE_PASS_THROUGH_EVENT_TOPIC" default:"flow-edge-pass-through" pp:",omitempty"`
 		Worker_PubSubJobCompleteTopic          string   `envconfig:"WORKER_PUBSUB_JOB_COMPLETE_TOPIC" default:"flow-job-complete" pp:",omitempty"`
 		Worker_PubSubLogStreamTopic            string   `envconfig:"WORKER_PUBSUB_LOG_STREAM_TOPIC" default:"flow-log-stream" pp:",omitempty"`
+		Worker_PubSubNodeStatusTopic           string   `envconfig:"WORKER_PUBSUB_NODE_STATUS_TOPIC" default:"flow-node-status" pp:",omitempty"`
 		Worker_TaskCount                       string   `envconfig:"WORKER_TASK_COUNT" default:"1" pp:",omitempty"`
 
 		// websocket
