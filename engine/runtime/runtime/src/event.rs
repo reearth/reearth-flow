@@ -6,7 +6,7 @@ use tokio::sync::{
 };
 use tracing::{error, info, Level, Span};
 
-use crate::node::{EdgeId, NodeHandle};
+use crate::node::{EdgeId, NodeHandle, NodeStatus};
 
 #[derive(Debug, Clone)]
 pub enum Event {
@@ -39,6 +39,11 @@ pub enum Event {
         span: Option<Span>,
         node_handle: Option<NodeHandle>,
         message: String,
+    },
+    NodeStatusChanged {
+        node_handle: NodeHandle,
+        status: NodeStatus,
+        feature_id: Option<uuid::Uuid>,
     },
 }
 
