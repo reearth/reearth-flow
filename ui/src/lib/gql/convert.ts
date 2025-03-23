@@ -3,7 +3,7 @@ import type {
   ProjectFragment,
   JobFragment,
   JobStatus as GraphqlJobStatus,
-  EdgeStatus as GraphqlEdgeStatus,
+  NodeStatus as GraphqlNodeStatus,
   TriggerFragment,
   LogFragment,
   ProjectSnapshotFragment,
@@ -18,12 +18,16 @@ import {
   type Trigger,
   type ProjectSnapshot,
   type ProjectDocument,
-  EdgeStatus,
   EdgeExecution,
+  NodeExecution,
+  NodeStatus,
 } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
-import { EdgeExecutionFragment } from "./__gen__/graphql";
+import {
+  EdgeExecutionFragment,
+  NodeExecutionFragment,
+} from "./__gen__/graphql";
 
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
@@ -67,12 +71,20 @@ export const toEdgeExecution = (
   id: edge.id,
   jobId: edge.jobId,
   edgeId: edge.edgeId,
-  status: toEdgeStatus(edge.status),
-  createdAt: edge.createdAt,
-  startedAt: edge.startedAt,
-  completedAt: edge.completedAt,
-  featureId: edge.featureId ?? undefined,
   intermediateDataUrl: edge.intermediateDataUrl ?? undefined,
+});
+
+export const toNodeExecution = (
+  node: NodeExecutionFragment,
+): NodeExecution => ({
+  id: node.id,
+  jobId: node.jobId,
+  nodeId: node.edgeId,
+  status: toNodeStatus(node.status),
+  startedAt: node.startedAt,
+  completedAt: node.completedAt,
+  // featureId: node.featureId ?? undefined,
+  intermediateDataUrl: node.intermediateDataUrl ?? undefined,
 });
 
 export const toJob = (job: JobFragment): Job => ({
@@ -128,9 +140,9 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
   }
 };
 
-export const toEdgeStatus = (
-  status: GraphqlEdgeStatus,
-): EdgeStatus | undefined => {
+export const toNodeStatus = (
+  status: GraphqlNodeStatus,
+): NodeStatus | undefined => {
   switch (status) {
     case "IN_PROGRESS":
       return "inProgress";

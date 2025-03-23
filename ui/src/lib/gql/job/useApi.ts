@@ -10,6 +10,7 @@ export const useJob = () => {
     useGetJobsQuery,
     useGetJobQuery,
     useGetEdgeExecutionQuery,
+    useGetNodeExecutionQuery,
     cancelJobMutation,
   } = useQueries();
   const { toast } = useToast();
@@ -45,6 +46,18 @@ export const useJob = () => {
     };
   };
 
+  const useGetNodeExecution = (
+    jobId?: string,
+    nodeId?: string,
+    disabled?: boolean,
+  ) => {
+    const { data, ...rest } = useGetNodeExecutionQuery(jobId, nodeId, disabled);
+    return {
+      nodeExecution: data,
+      ...rest,
+    };
+  };
+
   const useJobCancel = async (jobId: string): Promise<CancelJob> => {
     const { mutateAsync, ...rest } = cancelJobMutation;
     try {
@@ -71,5 +84,6 @@ export const useJob = () => {
     useGetJobs,
     useJobCancel,
     useGetEdgeExecution,
+    useGetNodeExecution,
   };
 };

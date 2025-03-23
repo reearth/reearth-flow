@@ -1,4 +1,4 @@
-import { Table, X } from "@phosphor-icons/react";
+import { X } from "@phosphor-icons/react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -20,7 +20,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
   targetX,
   targetY,
   targetPosition,
-  selected,
+  source,
   // markerEnd,
   // ...props
 }) => {
@@ -33,17 +33,15 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
     targetPosition,
   });
 
-  const { edgeStatus, intermediateDataUrl, handleIntermediateDataSet } =
-    useHooks({
-      id,
-      selected,
-    });
+  const { sourceNodeStatus } = useHooks({
+    source,
+  });
 
   return (
     <>
       <BaseEdge id={id} path={edgePath} />
       <EdgeLabelRenderer>
-        {edgeStatus === "failed" ? (
+        {sourceNodeStatus === "failed" ? (
           <X
             className="nodrag nopan absolute size-[20px] origin-center rounded-full border border-destructive bg-primary fill-destructive p-1"
             weight="bold"
@@ -52,19 +50,9 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             }}
           />
-        ) : edgeStatus === "completed" && intermediateDataUrl ? (
-          <Table
-            className="nodrag nopan absolute size-[30px] origin-center rounded-full border border-white bg-primary p-1 transition-[height,width] hover:size-[50px]"
-            style={{
-              pointerEvents: "all",
-              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
-            }}
-            weight="bold"
-            onDoubleClick={handleIntermediateDataSet}
-          />
         ) : null}
       </EdgeLabelRenderer>
-      {edgeStatus === "completed" && (
+      {sourceNodeStatus === "completed" && (
         <path
           d={edgePath}
           stroke="#00a340"
@@ -73,7 +61,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
           markerEnd="url(#arrow)"
         />
       )}
-      {edgeStatus === "inProgress" && (
+      {sourceNodeStatus === "inProgress" && (
         <>
           <path
             d={edgePath}
@@ -110,7 +98,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
           </g>
         </>
       )}
-      {edgeStatus === "failed" && (
+      {sourceNodeStatus === "failed" && (
         <path d={edgePath} stroke="#fc4444" strokeWidth="1" fill="none" />
       )}
     </>

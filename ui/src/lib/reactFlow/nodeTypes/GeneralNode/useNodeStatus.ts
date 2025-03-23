@@ -116,7 +116,7 @@ export default ({ id }: { id: string }) => {
           job.projectId === currentProject?.id
             ? {
                 ...job,
-                newSelectedIntermediateData: {
+                selectedIntermediateData: {
                   nodeId: id,
                   url: intermediateDataUrl,
                 },

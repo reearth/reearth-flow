@@ -68,7 +68,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     <ContextMenu>
       <ContextMenuTrigger>
         <div
-          className={`rounded-sm bg-secondary ${status === "running" ? "active-node-status-shadow" : status === "pending" ? "queued-node-status-shadow" : ""}`}>
+          className={`rounded-sm bg-secondary ${status === "inProgress" ? "active-node-status-shadow" : status === "pending" ? "queued-node-status-shadow" : ""}`}>
           <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
             <div
               className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
@@ -88,7 +88,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
                 {data.customizations?.customName || customName || officialName}
               </p>
               {status === "failed" && <X className="size-4 text-destructive" />}
-              {status === "succeeded" && intermediateDataUrl && (
+              {status === "completed" && intermediateDataUrl && (
                 <Table className="size-4 text-success" />
               )}
             </div>
