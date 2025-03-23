@@ -10,17 +10,18 @@ import (
 )
 
 type JobDocument struct {
-	ID           string     `bson:"id"`
-	Debug        *bool      `bson:"debug"`
-	DeploymentID string     `bson:"deploymentid"`
-	WorkspaceID  string     `bson:"workspaceid"`
-	GCPJobID     string     `bson:"gcpjobid"`
-	LogsURL      string     `bson:"logsurl"`
-	Status       string     `bson:"status"`
-	StartedAt    time.Time  `bson:"startedat"`
-	CompletedAt  *time.Time `bson:"completedat"`
-	MetadataURL  string     `bson:"metadataurl"`
-	OutputURLs   []string   `bson:"outputurls"`
+	ID            string     `bson:"id"`
+	Debug         *bool      `bson:"debug"`
+	DeploymentID  string     `bson:"deploymentid"`
+	WorkspaceID   string     `bson:"workspaceid"`
+	GCPJobID      string     `bson:"gcpjobid"`
+	LogsURL       string     `bson:"logsurl"`
+	WorkerLogsURL string     `bson:"workerlogsurl"`
+	Status        string     `bson:"status"`
+	StartedAt     time.Time  `bson:"startedat"`
+	CompletedAt   *time.Time `bson:"completedat"`
+	MetadataURL   string     `bson:"metadataurl"`
+	OutputURLs    []string   `bson:"outputurls"`
 }
 
 type JobConsumer = Consumer[*JobDocument, *job.Job]
@@ -40,17 +41,18 @@ func NewJob(j *job.Job) (*JobDocument, string) {
 	jid := j.ID().String()
 
 	doc := &JobDocument{
-		ID:           jid,
-		Debug:        j.Debug(),
-		DeploymentID: j.Deployment().String(),
-		WorkspaceID:  j.Workspace().String(),
-		GCPJobID:     j.GCPJobID(),
-		LogsURL:      j.LogsURL(),
-		Status:       string(j.Status()),
-		StartedAt:    j.StartedAt(),
-		CompletedAt:  j.CompletedAt(),
-		MetadataURL:  j.MetadataURL(),
-		OutputURLs:   j.OutputURLs(),
+		ID:            jid,
+		Debug:         j.Debug(),
+		DeploymentID:  j.Deployment().String(),
+		WorkspaceID:   j.Workspace().String(),
+		GCPJobID:      j.GCPJobID(),
+		LogsURL:       j.LogsURL(),
+		WorkerLogsURL: j.WorkerLogsURL(),
+		Status:        string(j.Status()),
+		StartedAt:     j.StartedAt(),
+		CompletedAt:   j.CompletedAt(),
+		MetadataURL:   j.MetadataURL(),
+		OutputURLs:    j.OutputURLs(),
 	}
 
 	return doc, jid
@@ -86,7 +88,8 @@ func (d *JobDocument) Model() (*job.Job, error) {
 		MetadataURL(d.MetadataURL).
 		GCPJobID(d.GCPJobID).
 		OutputURLs(d.OutputURLs).
-		LogsURL(d.LogsURL)
+		LogsURL(d.LogsURL).
+		WorkerLogsURL(d.WorkerLogsURL)
 
 	if d.CompletedAt != nil {
 		j = j.CompletedAt(d.CompletedAt)
