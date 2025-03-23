@@ -142,21 +142,50 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                 status,
                 feature_id,
             } => {
+                tracing::info!(
+                    "SENDING NODE STATUS EVENT: node_id={}, status={:?}, feature_id={:?}",
+                    node_handle.id,
+                    status,
+                    feature_id
+                );
+                
+                let publish_status = match status {
+                    NodeStatus::Starting => PublishNodeStatus::Starting,
+                    NodeStatus::Processing => PublishNodeStatus::Processing,
+                    NodeStatus::Completed => {
+                        tracing::info!("Node completed: {}", node_handle.id);
+                        PublishNodeStatus::Completed
+                    },
+                    NodeStatus::Failed => {
+                        tracing::warn!("Node failed: {}", node_handle.id);
+                        PublishNodeStatus::Failed
+                    },
+                };
+                
                 let node_status_event = NodeStatusEvent::new(
                     self.workflow_id,
                     self.job_id,
                     node_handle.id.to_string(),
-                    match status {
-                        NodeStatus::Starting => PublishNodeStatus::Starting,
-                        NodeStatus::Processing => PublishNodeStatus::Processing,
-                        NodeStatus::Completed => PublishNodeStatus::Completed,
-                        NodeStatus::Failed => PublishNodeStatus::Failed,
-                    },
+                    publish_status,
                     *feature_id,
                 );
-
-                if let Err(e) = self.publisher.publish(node_status_event).await {
-                    tracing::error!("Failed to publish node status event: {}", e);
+                
+                match self.publisher.publish(node_status_event).await {
+                    Ok(_) => {
+                        tracing::info!(
+                            "Successfully published node status: node_id={}, status={:?}",
+                            node_handle.id,
+                            status
+                        );
+                    },
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to publish node status event for node_id={}, status={:?}: {}",
+                            node_handle.id,
+                            status,
+                            e
+                        );
+                    }
                 }
             }
             _ => {}
@@ -164,6 +193,8 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
     }
 
     async fn on_shutdown(&self) {
+        tracing::info!("EventHandler shutting down. Closing publisher...");
         self.publisher.shutdown().await;
+        tracing::info!("Publisher shutdown complete");
     }
 }
