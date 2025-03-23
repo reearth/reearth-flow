@@ -26,6 +26,10 @@ impl DocumentHandler {
     ) -> Response {
         debug!("Handling GetLatest request for document: {}", doc_id);
 
+        if let Err(e) = state.pool.flush_to_gcs(&doc_id).await {
+            error!("Failed to flush websocket changes for '{}': {}", doc_id, e);
+        }
+
         let storage = state.pool.get_store();
         let doc = Doc::new();
         let doc_id_clone = doc_id.clone();
