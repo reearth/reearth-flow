@@ -182,14 +182,16 @@ impl DagExecutorJoinHandle {
             if self.join_handles.is_empty() {
                 // All threads have completed, add a delay before returning
                 if let Ok(handle) = Handle::try_current() {
-                    tracing::info!("Workflow complete, waiting for final events to be published...");
-                    
+                    tracing::info!(
+                        "Workflow complete, waiting for final events to be published..."
+                    );
+
                     // Simple delay approach - block for 500ms to let events publish
                     handle.block_on(self.event_hub.simple_flush(500));
-                    
+
                     tracing::info!("Proceeding with workflow termination");
                 }
-                
+
                 return Ok(());
             }
         }
