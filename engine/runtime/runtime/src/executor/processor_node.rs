@@ -29,6 +29,14 @@ use crate::{
 use super::receiver_loop::init_select;
 use super::{execution_dag::ExecutionDag, receiver_loop::ReceiverLoop};
 
+static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
+    env::var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .map(Duration::from_millis)
+        .unwrap_or(Duration::from_millis(500))
+});
+
 static SLOW_ACTION_THRESHOLD: Lazy<Duration> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_SLOW_ACTION_THRESHOLD")
         .ok()
@@ -215,7 +223,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         "Waiting for final status to propagate for processor node {}",
                         self.node_handle.id
                     );
-                    std::thread::sleep(std::time::Duration::from_millis(300));
+                    std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
 
                     let terminate_result = self.on_terminate(NodeContext::new(
                         self.expr_engine.clone(),
@@ -236,7 +244,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
 
                     return terminate_result;
                 }
-                std::thread::sleep(Duration::from_millis(100));
+                std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
                 continue;
             }
             let index = sel.ready();
