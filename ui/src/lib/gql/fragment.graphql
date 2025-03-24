@@ -51,13 +51,6 @@ fragment NodeExecution on NodeExecution {
   completedAt
 }
 
-fragment EdgeExecution on EdgeExecution {
-  id
-  edgeId
-  jobId
-  intermediateDataUrl
-}
-
 fragment Job on Job {
   id
   workspaceId

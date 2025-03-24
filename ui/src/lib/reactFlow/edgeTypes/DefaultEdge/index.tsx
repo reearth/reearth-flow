@@ -1,4 +1,4 @@
-import { X } from "@phosphor-icons/react";
+import { X, Table } from "@phosphor-icons/react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -6,7 +6,6 @@ import {
   getBezierPath,
 } from "@xyflow/react";
 
-import { Table } from "@flow/components";
 import { Edge } from "@flow/types";
 
 import useHooks from "./hooks";
@@ -22,6 +21,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
   targetY,
   targetPosition,
   source,
+  selected,
   // markerEnd,
   // ...props
 }) => {
@@ -34,9 +34,15 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
     targetPosition,
   });
 
-  const { sourceNodeStatus, intermediateDataUrl } = useHooks({
+  const {
+    sourceNodeStatus,
+    intermediateDataIsSet,
+    hasIntermediateData,
+    handleIntermediateDataSet,
+  } = useHooks({
     id,
     source,
+    selected,
   });
 
   return (
@@ -53,8 +59,15 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
             }}
           />
         )}
-        {sourceNodeStatus === "completed" && intermediateDataUrl && (
-          <Table className="size-4 text-success" />
+        {hasIntermediateData && (
+          <Table
+            className={`nodrag nopan absolute size-[25px] origin-center rounded-full border bg-primary p-1 transition-[height,width] hover:size-[40px] hover:fill-success  ${intermediateDataIsSet ? "size-[35px] border-success bg-success fill-white hover:fill-white" : selected ? "border-success fill-success" : "border-slate-400/80 fill-success/80"}`}
+            style={{
+              pointerEvents: "all",
+              transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
+            }}
+            onDoubleClick={handleIntermediateDataSet}
+          />
         )}
       </EdgeLabelRenderer>
       {sourceNodeStatus === "completed" && (

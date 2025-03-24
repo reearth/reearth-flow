@@ -18,16 +18,12 @@ import {
   type Trigger,
   type ProjectSnapshot,
   type ProjectDocument,
-  EdgeExecution,
   NodeExecution,
   NodeStatus,
 } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
-import {
-  EdgeExecutionFragment,
-  NodeExecutionFragment,
-} from "./__gen__/graphql";
+import { NodeExecutionFragment } from "./__gen__/graphql";
 
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
@@ -63,15 +59,6 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   authToken: trigger.authToken ?? undefined,
   timeInterval: trigger.timeInterval ?? undefined,
   description: trigger.description ?? undefined,
-});
-
-export const toEdgeExecution = (
-  edge: EdgeExecutionFragment,
-): EdgeExecution => ({
-  id: edge.id,
-  jobId: edge.jobId,
-  edgeId: edge.edgeId,
-  intermediateDataUrl: edge.intermediateDataUrl ?? undefined,
 });
 
 export const toNodeExecution = (

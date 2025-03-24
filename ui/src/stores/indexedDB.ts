@@ -1,4 +1,4 @@
-import { EdgeExecution, JobStatus, NodeExecution } from "@flow/types";
+import { JobStatus, NodeExecution } from "@flow/types";
 
 export type GeneralState = {
   clipboard: any | undefined;
@@ -14,7 +14,6 @@ export type JobState = {
   jobId: string;
   status: JobStatus;
   nodeExecutions?: NodeExecution[];
-  edgeExecutions?: EdgeExecution[];
   selectedIntermediateData?: SelectedIntermediateData;
 };
 

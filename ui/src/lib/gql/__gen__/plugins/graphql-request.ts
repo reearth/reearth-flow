@@ -1070,8 +1070,6 @@ export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: a
 
 export type NodeExecutionFragment = { __typename?: 'NodeExecution', id: string, nodeId: string, jobId: string, status: NodeStatus, createdAt?: any | null, startedAt?: any | null, completedAt?: any | null };
 
-export type EdgeExecutionFragment = { __typename?: 'EdgeExecution', id: string, edgeId: string, jobId: string, intermediateDataUrl?: string | null };
-
 export type JobFragment = { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, debug?: boolean | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null };
 
 export type ProjectDocumentFragment = { __typename?: 'ProjectDocument', id: string, timestamp: any, updates: Array<number>, version: number };
@@ -1094,14 +1092,6 @@ export type GetJobQueryVariables = Exact<{
 
 
 export type GetJobQuery = { __typename?: 'Query', job?: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, debug?: boolean | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } | null };
-
-export type GetEdgeExecutionQueryVariables = Exact<{
-  jobId: Scalars['ID']['input'];
-  edgeId: Scalars['String']['input'];
-}>;
-
-
-export type GetEdgeExecutionQuery = { __typename?: 'Query', edgeExecution?: { __typename?: 'EdgeExecution', id: string, edgeId: string, jobId: string, intermediateDataUrl?: string | null } | null };
 
 export type GetNodeExecutionQueryVariables = Exact<{
   jobId: Scalars['ID']['input'];
@@ -1372,14 +1362,6 @@ export const NodeExecutionFragmentDoc = gql`
   completedAt
 }
     `;
-export const EdgeExecutionFragmentDoc = gql`
-    fragment EdgeExecution on EdgeExecution {
-  id
-  edgeId
-  jobId
-  intermediateDataUrl
-}
-    `;
 export const JobFragmentDoc = gql`
     fragment Job on Job {
   id
@@ -1543,13 +1525,6 @@ export const GetJobDocument = gql`
   }
 }
     ${JobFragmentDoc}`;
-export const GetEdgeExecutionDocument = gql`
-    query GetEdgeExecution($jobId: ID!, $edgeId: String!) {
-  edgeExecution(jobId: $jobId, edgeId: $edgeId) {
-    ...EdgeExecution
-  }
-}
-    ${EdgeExecutionFragmentDoc}`;
 export const GetNodeExecutionDocument = gql`
     query GetNodeExecution($jobId: ID!, $nodeId: String!) {
   nodeExecution(jobId: $jobId, nodeId: $nodeId) {
@@ -1852,9 +1827,6 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     GetJob(variables: GetJobQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetJobQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetJobQuery>(GetJobDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetJob', 'query', variables);
-    },
-    GetEdgeExecution(variables: GetEdgeExecutionQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetEdgeExecutionQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetEdgeExecutionQuery>(GetEdgeExecutionDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetEdgeExecution', 'query', variables);
     },
     GetNodeExecution(variables: GetNodeExecutionQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetNodeExecutionQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetNodeExecutionQuery>(GetNodeExecutionDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetNodeExecution', 'query', variables);

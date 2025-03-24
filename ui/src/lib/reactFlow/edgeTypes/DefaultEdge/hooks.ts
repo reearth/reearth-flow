@@ -1,12 +1,21 @@
 import { useNodes } from "@xyflow/react";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { useJob } from "@flow/lib/gql/job";
+import { config } from "@flow/config";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { useCurrentProject } from "@flow/stores";
+import { DebugRunState, useCurrentProject } from "@flow/stores";
 
-export default ({ id, source }: { id: string; source: string }) => {
+export default ({
+  id,
+  source,
+  selected,
+}: {
+  id: string;
+  source: string;
+  selected?: boolean;
+}) => {
   const [currentProject] = useCurrentProject();
+  const { api } = config();
 
   const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
 
@@ -16,72 +25,57 @@ export default ({ id, source }: { id: string; source: string }) => {
     [debugRunState, currentProject],
   );
 
-  const { useGetEdgeExecution } = useJob();
+  const [hasIntermediateData, setHasIntermediateData] = useState(false);
 
-  const { edgeExecution, refetch } = useGetEdgeExecution(
-    debugJobState?.jobId,
-    id,
+  const intermediateDataIsSet = useMemo(
+    () => debugJobState?.selectedIntermediateData?.edgeId === id,
+    [debugJobState?.selectedIntermediateData?.edgeId, id],
   );
 
-  console.log("Edgeexecution", edgeExecution); // TODO: delete
-  const intermediateDataUrl = useMemo(
-    () =>
-      edgeExecution?.intermediateDataUrl ||
-      debugJobState?.edgeExecutions?.find((ee) => ee.edgeId === id)
-        ?.intermediateDataUrl,
-    [debugJobState?.edgeExecutions, edgeExecution?.intermediateDataUrl, id],
-  );
+  const intermediateDataUrl = useMemo(() => {
+    if (api && debugJobState?.jobId) {
+      return `${api}/artifacts/${debugJobState.jobId}/feature-store/${id}.jsonl`;
+    }
+    return undefined;
+  }, [api, debugJobState?.jobId, id]);
 
   useEffect(() => {
-    if (
-      (debugJobState?.status === "completed" ||
-        debugJobState?.status === "cancelled" ||
-        debugJobState?.status === "failed") &&
-      !edgeExecution
-    ) {
+    if (!hasIntermediateData && debugJobState?.jobId && intermediateDataUrl) {
       (async () => {
-        const ee = await refetch();
-        console.log("refetched edge execution", ee); // TODO: delete
+        const response = await fetch(intermediateDataUrl, { method: "HEAD" });
+        if (response.ok) {
+          setHasIntermediateData(true);
+        } else {
+          setHasIntermediateData(false);
+        }
       })();
     }
-  }, [debugJobState?.status, edgeExecution, refetch]);
+  }, [hasIntermediateData, debugJobState?.jobId, intermediateDataUrl, id]);
 
-  useEffect(() => {
-    if (
-      edgeExecution &&
-      debugRunState &&
-      !debugJobState?.edgeExecutions?.find((ee) => ee.id === edgeExecution.id)
-    ) {
-      (async () =>
-        await updateValue((prevState) => {
-          const alreadyExists = prevState.jobs.some((job) =>
-            job.edgeExecutions?.some((ee) => ee.id === edgeExecution.id),
-          );
-
-          if (alreadyExists) {
-            return prevState;
-          }
-          return {
-            ...prevState,
-            jobs: prevState.jobs.map((job) =>
-              job.projectId === currentProject?.id
-                ? {
-                    ...job,
-                    edgeExecutions: [
-                      ...(job.edgeExecutions ?? []),
-                      edgeExecution,
-                    ],
-                  }
-                : job,
-            ),
-          };
-        }))();
-    }
+  const handleIntermediateDataSet = useCallback(async () => {
+    if (!selected || !intermediateDataUrl) return;
+    const newDebugRunState: DebugRunState = {
+      ...debugRunState,
+      jobs:
+        debugRunState?.jobs?.map((job) =>
+          job.projectId === currentProject?.id
+            ? {
+                ...job,
+                selectedIntermediateData: {
+                  edgeId: id,
+                  url: intermediateDataUrl,
+                },
+              }
+            : job,
+        ) ?? [],
+    };
+    await updateValue(newDebugRunState);
   }, [
-    edgeExecution,
-    debugJobState,
+    selected,
+    intermediateDataUrl,
     debugRunState,
     currentProject,
+    id,
     updateValue,
   ]);
 
@@ -98,6 +92,8 @@ export default ({ id, source }: { id: string; source: string }) => {
 
   return {
     sourceNodeStatus,
-    intermediateDataUrl,
+    intermediateDataIsSet,
+    hasIntermediateData,
+    handleIntermediateDataSet,
   };
 };

@@ -9,7 +9,6 @@ export const useJob = () => {
   const {
     useGetJobsQuery,
     useGetJobQuery,
-    useGetEdgeExecutionQuery,
     useGetNodeExecutionQuery,
     cancelJobMutation,
   } = useQueries();
@@ -30,18 +29,6 @@ export const useJob = () => {
     const { data, ...rest } = useGetJobQuery(jobId);
     return {
       job: data,
-      ...rest,
-    };
-  };
-
-  const useGetEdgeExecution = (
-    jobId?: string,
-    edgeId?: string,
-    disabled?: boolean,
-  ) => {
-    const { data, ...rest } = useGetEdgeExecutionQuery(jobId, edgeId, disabled);
-    return {
-      edgeExecution: data,
       ...rest,
     };
   };
@@ -83,7 +70,6 @@ export const useJob = () => {
     useGetJob,
     useGetJobs,
     useJobCancel,
-    useGetEdgeExecution,
     useGetNodeExecution,
   };
 };

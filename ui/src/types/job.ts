@@ -7,13 +7,6 @@ export type NodeStatus =
   | "completed"
   | "failed";
 
-export type EdgeExecution = {
-  id: string;
-  edgeId: string;
-  jobId: string;
-  intermediateDataUrl?: string;
-};
-
 export type NodeExecution = {
   id: string;
   nodeId: string;
