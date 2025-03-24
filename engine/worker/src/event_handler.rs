@@ -148,20 +148,20 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                     status,
                     feature_id
                 );
-                
+
                 let publish_status = match status {
                     NodeStatus::Starting => PublishNodeStatus::Starting,
                     NodeStatus::Processing => PublishNodeStatus::Processing,
                     NodeStatus::Completed => {
                         tracing::info!("Node completed: {}", node_handle.id);
                         PublishNodeStatus::Completed
-                    },
+                    }
                     NodeStatus::Failed => {
                         tracing::warn!("Node failed: {}", node_handle.id);
                         PublishNodeStatus::Failed
-                    },
+                    }
                 };
-                
+
                 let node_status_event = NodeStatusEvent::new(
                     self.workflow_id,
                     self.job_id,
@@ -169,7 +169,7 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                     publish_status,
                     *feature_id,
                 );
-                
+
                 match self.publisher.publish(node_status_event).await {
                     Ok(_) => {
                         tracing::info!(
@@ -177,7 +177,7 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                             node_handle.id,
                             status
                         );
-                    },
+                    }
                     Err(e) => {
                         tracing::error!(
                             "Failed to publish node status event for node_id={}, status={:?}: {}",
