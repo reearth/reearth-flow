@@ -40,11 +40,7 @@ func (u *nodeSubscriberUseCase) ProcessNodeEvent(ctx context.Context, event *nod
 	log.Printf("DEBUG: Successfully saved node event to Redis for JobID: %s, NodeID: %s", event.JobID, event.NodeID)
 
 	if event.Status == node.StatusCompleted || event.Status == node.StatusFailed {
-		nodeExecID, err := node.FromID(event.NodeID)
-		if err != nil {
-			log.Printf("ERROR: Failed to convert NodeID to NodeExecutionID: %v", err)
-			return fmt.Errorf("failed to convert NodeID to NodeExecutionID: %w", err)
-		}
+		nodeExecID := fmt.Sprintf("%s-%s", event.JobID, event.NodeID)
 
 		nodeExec := &node.NodeExecution{
 			ID:     nodeExecID,

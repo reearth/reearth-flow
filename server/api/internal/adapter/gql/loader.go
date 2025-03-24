@@ -16,7 +16,6 @@ type Loaders struct {
 	usecases   interfaces.Container
 	Asset      *AssetLoader
 	Deployment *DeploymentLoader
-	Edge       *EdgeExLoader
 	Job        *JobLoader
 	Log        *LogLoader
 	Node       *NodeExLoader
@@ -44,7 +43,6 @@ func NewLoaders(usecases *interfaces.Container) *Loaders {
 		usecases:   *usecases,
 		Asset:      NewAssetLoader(usecases.Asset),
 		Deployment: NewDeploymentLoader(usecases.Deployment),
-		Edge:       NewEdgeExLoader(usecases.EdgeExecution),
 		Job:        NewJobLoader(usecases.Job),
 		Log:        NewLogLoader(usecases.Log),
 		Node:       NewNodeExLoader(usecases.NodeExecution),

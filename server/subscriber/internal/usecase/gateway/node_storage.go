@@ -7,7 +7,6 @@ import (
 )
 
 type NodeStorage interface {
-	FindNodeExecution(ctx context.Context, jobID string, nodeID string) (*node.NodeExecution, error)
 	SaveToRedis(ctx context.Context, event *node.NodeStatusEvent) error
 	SaveToMongo(ctx context.Context, jobID string, nodeExecution *node.NodeExecution) error
 }
