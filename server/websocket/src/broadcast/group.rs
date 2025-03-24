@@ -216,15 +216,11 @@ impl BroadcastGroup {
             let max_consecutive_errors = 5;
             let mut total_errors = 0;
             let max_total_errors = 10;
+            let stream_key = format!("yjs:stream:{}", doc_name_for_sub);
 
             loop {
                 match redis_store_for_sub
-                    .read_and_ack(
-                        &doc_name_for_sub,
-                        &group_name_clone,
-                        &consumer_name_clone,
-                        15,
-                    )
+                    .read_and_ack(&stream_key, &group_name_clone, &consumer_name_clone, 15)
                     .await
                 {
                     Ok(updates) => {

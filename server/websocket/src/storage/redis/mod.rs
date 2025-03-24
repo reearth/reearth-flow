@@ -481,12 +481,11 @@ impl RedisStore {
 
     pub async fn read_and_ack(
         &self,
-        doc_id: &str,
+        stream_key: &str,
         group_name: &str,
         consumer_name: &str,
         count: usize,
     ) -> Result<Vec<Bytes>, anyhow::Error> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
         let mut conn = self.pool.get().await?;
         let block_ms = 1000;
 
@@ -499,7 +498,7 @@ impl RedisStore {
             .arg("BLOCK")
             .arg(block_ms)
             .arg("STREAMS")
-            .arg(&stream_key)
+            .arg(stream_key)
             .arg(">")
             .query_async(&mut *conn)
             .await?;
@@ -532,7 +531,7 @@ impl RedisStore {
             let script = redis::Script::new(lua_script);
 
             let mut cmd = script.prepare_invoke();
-            cmd.key(&stream_key);
+            cmd.key(stream_key);
             cmd.arg(group_name);
 
             for msg_id in &message_ids {
