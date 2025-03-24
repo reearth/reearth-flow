@@ -170,6 +170,84 @@ impl GcsStore {
         Ok(updates)
     }
 
+    pub async fn get_updates_by_version(
+        &self,
+        doc_id: &str,
+        version: u32,
+    ) -> Result<Vec<UpdateInfo>, anyhow::Error> {
+        let oid = match get_oid(self, doc_id.as_bytes()).await? {
+            Some(oid) => oid,
+            None => return Ok(Vec::new()),
+        };
+
+        let prefix_bytes = [V1, KEYSPACE_DOC]
+            .iter()
+            .chain(&oid.to_be_bytes())
+            .chain(&[SUB_UPDATE])
+            .copied()
+            .collect::<Vec<_>>();
+        let prefix_str = hex::encode(&prefix_bytes);
+
+        let request = ListObjectsRequest {
+            bucket: self.bucket.clone(),
+            prefix: Some(prefix_str),
+            ..Default::default()
+        };
+
+        let objects = self
+            .client
+            .list_objects(&request)
+            .await?
+            .items
+            .unwrap_or_default();
+
+        let mut updates = Vec::new();
+        for obj in objects {
+            if let Ok(key_bytes) = hex::decode(&obj.name) {
+                if key_bytes.len() >= 12 {
+                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+                    let clock = u32::from_be_bytes(clock_bytes);
+
+                    if clock != version {
+                        continue;
+                    }
+
+                    let request = GetObjectRequest {
+                        bucket: self.bucket.clone(),
+                        object: obj.name.clone(),
+                        ..Default::default()
+                    };
+
+                    if let Ok(data) = self
+                        .client
+                        .download_object(&request, &Range::default())
+                        .await
+                    {
+                        if let Ok(update) = Update::decode_v1(&data) {
+                            let timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
+
+                            updates.push(UpdateInfo {
+                                clock,
+                                timestamp,
+                                update,
+                            });
+                        }
+                    } else {
+                        tracing::error!("Failed to download update from {}", obj.name);
+                    }
+                }
+            }
+        }
+
+        debug!(
+            "Found {} updates for doc: {} with version: {}",
+            updates.len(),
+            doc_id,
+            version
+        );
+        Ok(updates)
+    }
+
     pub async fn rollback_to(&self, doc_id: &str, target_clock: u32) -> anyhow::Result<Doc> {
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
