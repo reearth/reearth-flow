@@ -42,10 +42,9 @@ func (c *BSONConsumer) Consume(raw bson.Raw) error {
 	return bson.Unmarshal(raw, c.Result)
 }
 
-func (m *MongoStorage) FindNodeExecution(ctx context.Context, jobID string, nodeID string) (*node.NodeExecution, error) {
+func (m *MongoStorage) FindByID(ctx context.Context, id string) (*node.NodeExecution, error) {
 	filter := bson.M{
-		"jobId":  jobID,
-		"nodeId": nodeID,
+		"id": id,
 	}
 
 	c := mongodoc.NewNodeExecutionConsumer()
@@ -75,7 +74,7 @@ func (m *MongoStorage) SaveNodeExecutionToMongo(ctx context.Context, jobID strin
 	log.Printf("DEBUG: Saving node execution to MongoDB for jobID=%s, nodeID=%s, status=%s",
 		jobID, nodeExec.NodeID, nodeExec.Status)
 
-	existingNode, err := m.FindNodeExecution(ctx, jobID, nodeExec.NodeID)
+	existingNode, err := m.FindByID(ctx, nodeExec.ID)
 	if err != nil {
 		log.Printf("ERROR: Error checking for existing node execution: %v", err)
 		return fmt.Errorf("error checking for existing node execution: %w", err)

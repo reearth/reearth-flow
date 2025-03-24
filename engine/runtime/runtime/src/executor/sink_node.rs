@@ -118,6 +118,8 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         let span = self.span.clone();
         let mut sel = init_select(&receivers);
 
+        // Log and emit Starting status
+        tracing::info!("Sink node {} is starting", self.node_handle.id);
         self.event_hub.send(Event::NodeStatusChanged {
             node_handle: self.node_handle.clone(),
             status: NodeStatus::Starting,
@@ -135,6 +137,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             .map_err(ExecutionError::Sink);
 
         if init_result.is_err() {
+            tracing::error!("Sink node {} initialization failed", self.node_handle.id);
             self.event_hub.send(Event::NodeStatusChanged {
                 node_handle: self.node_handle.clone(),
                 status: NodeStatus::Failed,
@@ -143,6 +146,8 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             return init_result;
         }
 
+        // Log and emit Processing status
+        tracing::info!("Sink node {} is processing", self.node_handle.id);
         self.event_hub.send(Event::NodeStatusChanged {
             node_handle: self.node_handle.clone(),
             status: NodeStatus::Processing,
@@ -167,6 +172,11 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                     if result.is_err() {
                         // Track failure but don't emit per-feature status
                         has_failed = true;
+                        tracing::warn!(
+                            "Sink node {} processing failed for feature {:?}",
+                            self.node_handle.id,
+                            ctx.feature.id
+                        );
                     }
 
                     // Propagate the result
@@ -188,22 +198,37 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
 
                         // Set final status based on overall success/failure
                         let final_status = if has_failed {
+                            tracing::warn!(
+                                "Sink node {} final status is Failed",
+                                self.node_handle.id
+                            );
                             NodeStatus::Failed
                         } else {
+                            tracing::info!(
+                                "Sink node {} final status is Completed",
+                                self.node_handle.id
+                            );
                             NodeStatus::Completed
                         };
 
+                        // Make sure to emit status event before any terminate code
+                        // that might fail or cause shutdown
                         self.event_hub.send(Event::NodeStatusChanged {
                             node_handle: self.node_handle.clone(),
                             status: final_status,
                             feature_id: None,
                         });
 
+                        // Make sure the status event has time to propagate
+                        // Consider adding a small delay here if needed
+                        // std::thread::sleep(std::time::Duration::from_millis(100));
+
                         // Terminate the sink
                         let terminate_result = self.on_terminate(ctx);
 
                         // If termination failed and we hadn't already marked as failed
                         if terminate_result.is_err() && !has_failed {
+                            tracing::error!("Sink node {} termination failed", self.node_handle.id);
                             self.event_hub.send(Event::NodeStatusChanged {
                                 node_handle: self.node_handle.clone(),
                                 status: NodeStatus::Failed,

@@ -47,14 +47,8 @@ func (r *RedisStorage) SaveNodeEventToRedis(ctx context.Context, event *node.Nod
 	nodeKey := fmt.Sprintf("node:%s:%s", event.JobID, event.NodeID)
 	log.Printf("DEBUG: Setting individual node key: %s", nodeKey)
 
-	nodeExecID, err := node.FromID(event.NodeID)
-	if err != nil {
-		log.Printf("ERROR: Failed to convert NodeID to NodeExecutionID: %v", err)
-		return fmt.Errorf("failed to convert NodeID to NodeExecutionID: %w", err)
-	}
-
 	nodeData := map[string]interface{}{
-		"id":         nodeExecID.String(),
+		"id":         event.NodeID,
 		"nodeId":     event.NodeID,
 		"status":     event.Status,
 		"timestamp":  event.Timestamp,
