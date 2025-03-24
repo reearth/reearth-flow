@@ -40,15 +40,19 @@ export default ({
   }, [api, debugJobState?.jobId, id]);
 
   useEffect(() => {
-    if (!hasIntermediateData && debugJobState?.jobId && intermediateDataUrl) {
-      (async () => {
-        const response = await fetch(intermediateDataUrl, { method: "HEAD" });
-        if (response.ok) {
-          setHasIntermediateData(true);
-        } else {
-          setHasIntermediateData(false);
-        }
-      })();
+    if (intermediateDataUrl) {
+      if (!hasIntermediateData && debugJobState?.jobId) {
+        (async () => {
+          const response = await fetch(intermediateDataUrl, { method: "HEAD" });
+          if (response.ok) {
+            setHasIntermediateData(true);
+          } else {
+            setHasIntermediateData(false);
+          }
+        })();
+      }
+    } else {
+      setHasIntermediateData(false);
     }
   }, [hasIntermediateData, debugJobState?.jobId, intermediateDataUrl, id]);
 
