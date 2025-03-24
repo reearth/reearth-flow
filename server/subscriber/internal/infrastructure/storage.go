@@ -36,10 +36,6 @@ func NewNodeStorageImpl(r *redis.RedisStorage, m *mongo.MongoStorage) gateway.No
 	}
 }
 
-func (s *nodeStorageImpl) FindNodeExecution(ctx context.Context, jobID string, nodeID string) (*node.NodeExecution, error) {
-	return s.mongo.FindNodeExecution(ctx, jobID, nodeID)
-}
-
 func (s *nodeStorageImpl) SaveToMongo(ctx context.Context, jobID string, nodeExecution *node.NodeExecution) error {
 	return s.mongo.SaveNodeExecutionToMongo(ctx, jobID, nodeExecution)
 }

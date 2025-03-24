@@ -2,19 +2,6 @@ package gqlmodel
 
 import "github.com/reearth/reearth-flow/api/pkg/graph"
 
-func ToEdgeExecution(e *graph.EdgeExecution) *EdgeExecution {
-	if e == nil {
-		return nil
-	}
-
-	return &EdgeExecution{
-		ID:                  ID(e.ID().String()),
-		EdgeID:              e.EdgeID(),
-		JobID:               ID(e.JobID().String()),
-		IntermediateDataURL: e.IntermediateDataURL(),
-	}
-}
-
 func ToNodeExecution(e *graph.NodeExecution) *NodeExecution {
 	if e == nil {
 		return nil

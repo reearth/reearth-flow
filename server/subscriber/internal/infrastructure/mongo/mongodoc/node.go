@@ -18,7 +18,7 @@ type NodeExecutionDocument struct {
 
 func NewNodeExecution(n *node.NodeExecution) NodeExecutionDocument {
 	return NodeExecutionDocument{
-		ID:          n.ID.String(),
+		ID:          n.ID,
 		JobID:       n.JobID,
 		NodeID:      n.NodeID,
 		Status:      string(n.Status),
@@ -47,13 +47,8 @@ func (c *NodeExecutionConsumer) Consume(raw bson.Raw) error {
 		return err
 	}
 
-	id, err := node.FromID(doc.ID)
-	if err != nil {
-		return err
-	}
-
 	c.Result = append(c.Result, &node.NodeExecution{
-		ID:          id,
+		ID:          doc.ID,
 		JobID:       doc.JobID,
 		NodeID:      doc.NodeID,
 		Status:      node.Status(doc.Status),

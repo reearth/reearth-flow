@@ -166,16 +166,6 @@ type DeploymentPayload struct {
 	Deployment *Deployment `json:"deployment"`
 }
 
-type EdgeExecution struct {
-	ID                  ID      `json:"id"`
-	EdgeID              string  `json:"edgeId"`
-	JobID               ID      `json:"jobId"`
-	IntermediateDataURL *string `json:"intermediateDataUrl,omitempty"`
-}
-
-func (EdgeExecution) IsNode()        {}
-func (this EdgeExecution) GetID() ID { return this.ID }
-
 type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
 }
