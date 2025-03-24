@@ -174,10 +174,10 @@ impl GcsStore {
         &self,
         doc_id: &str,
         version: u32,
-    ) -> Result<Vec<UpdateInfo>, anyhow::Error> {
+    ) -> Result<Option<UpdateInfo>, anyhow::Error> {
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
-            None => return Ok(Vec::new()),
+            None => return Ok(None),
         };
 
         let prefix_bytes = [V1, KEYSPACE_DOC]
@@ -201,51 +201,41 @@ impl GcsStore {
             .items
             .unwrap_or_default();
 
-        let mut updates = Vec::new();
         for obj in objects {
             if let Ok(key_bytes) = hex::decode(&obj.name) {
                 if key_bytes.len() >= 12 {
                     let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
                     let clock = u32::from_be_bytes(clock_bytes);
 
-                    if clock != version {
-                        continue;
-                    }
+                    if clock == version {
+                        let request = GetObjectRequest {
+                            bucket: self.bucket.clone(),
+                            object: obj.name.clone(),
+                            ..Default::default()
+                        };
 
-                    let request = GetObjectRequest {
-                        bucket: self.bucket.clone(),
-                        object: obj.name.clone(),
-                        ..Default::default()
-                    };
-
-                    if let Ok(data) = self
-                        .client
-                        .download_object(&request, &Range::default())
-                        .await
-                    {
-                        if let Ok(update) = Update::decode_v1(&data) {
-                            let timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
-
-                            updates.push(UpdateInfo {
-                                clock,
-                                timestamp,
-                                update,
-                            });
+                        if let Ok(data) = self
+                            .client
+                            .download_object(&request, &Range::default())
+                            .await
+                        {
+                            if let Ok(update) = Update::decode_v1(&data) {
+                                let timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
+                                return Ok(Some(UpdateInfo {
+                                    clock,
+                                    timestamp,
+                                    update,
+                                }));
+                            }
+                        } else {
+                            tracing::error!("Failed to download update from {}", obj.name);
                         }
-                    } else {
-                        tracing::error!("Failed to download update from {}", obj.name);
                     }
                 }
             }
         }
 
-        debug!(
-            "Found {} updates for doc: {} with version: {}",
-            updates.len(),
-            doc_id,
-            version
-        );
-        Ok(updates)
+        Ok(None)
     }
 
     pub async fn rollback_to(&self, doc_id: &str, target_clock: u32) -> anyhow::Result<Doc> {

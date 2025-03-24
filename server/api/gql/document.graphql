@@ -23,7 +23,7 @@ type ProjectSnapshotMetadata {
 
 extend type Query {
   latestProjectSnapshot(projectId: ID!): ProjectDocument
-  projectSnapshot(projectId: ID!, version: Int!): [ProjectSnapshot!]!
+  projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
   projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
 }
 

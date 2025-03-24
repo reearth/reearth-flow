@@ -54,7 +54,7 @@ func GetHistory(ctx context.Context, id string) ([]*ws.History, error) {
 	return client.GetHistory(ctx, id)
 }
 
-func GetHistoryByVersion(ctx context.Context, id string, version int) ([]*ws.History, error) {
+func GetHistoryByVersion(ctx context.Context, id string, version int) (*ws.History, error) {
 	client := getDefaultWebsocketClient()
 	if client == nil {
 		return nil, fmt.Errorf("websocket client is not initialized")

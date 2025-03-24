@@ -474,7 +474,7 @@ type QueryResolver interface {
 	DeploymentHead(ctx context.Context, input gqlmodel.GetHeadInput) (*gqlmodel.Deployment, error)
 	DeploymentVersions(ctx context.Context, workspaceID gqlmodel.ID, projectID *gqlmodel.ID) ([]*gqlmodel.Deployment, error)
 	LatestProjectSnapshot(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectDocument, error)
-	ProjectSnapshot(ctx context.Context, projectID gqlmodel.ID, version int) ([]*gqlmodel.ProjectSnapshot, error)
+	ProjectSnapshot(ctx context.Context, projectID gqlmodel.ID, version int) (*gqlmodel.ProjectSnapshot, error)
 	ProjectHistory(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.ProjectSnapshotMetadata, error)
 	Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
@@ -2649,7 +2649,7 @@ type ProjectSnapshotMetadata {
 
 extend type Query {
   latestProjectSnapshot(projectId: ID!): ProjectDocument
-  projectSnapshot(projectId: ID!, version: Int!): [ProjectSnapshot!]!
+  projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
   projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
 }
 
@@ -12147,9 +12147,9 @@ func (ec *executionContext) _Query_projectSnapshot(ctx context.Context, field gr
 		}
 		return graphql.Null
 	}
-	res := resTmp.([]*gqlmodel.ProjectSnapshot)
+	res := resTmp.(*gqlmodel.ProjectSnapshot)
 	fc.Result = res
-	return ec.marshalNProjectSnapshot2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshotᚄ(ctx, field.Selections, res)
+	return ec.marshalNProjectSnapshot2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshot(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_projectSnapshot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -22719,48 +22719,8 @@ func (ec *executionContext) marshalNProjectSharingInfoPayload2ᚖgithubᚗcomᚋ
 	return ec._ProjectSharingInfoPayload(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNProjectSnapshot2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshotᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.ProjectSnapshot) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
-	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNProjectSnapshot2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshot(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
-
-	}
-	wg.Wait()
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
+func (ec *executionContext) marshalNProjectSnapshot2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshot(ctx context.Context, sel ast.SelectionSet, v gqlmodel.ProjectSnapshot) graphql.Marshaler {
+	return ec._ProjectSnapshot(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNProjectSnapshot2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectSnapshot(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.ProjectSnapshot) graphql.Marshaler {

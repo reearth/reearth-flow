@@ -262,37 +262,36 @@ impl DocumentHandler {
         let version_u32 = version as u32;
 
         let result = async {
-            let updates = storage.get_updates_by_version(&doc_id, version_u32).await?;
+            let update_info = storage.get_updates_by_version(&doc_id, version_u32).await?;
 
-            let history_items: Vec<HistoryItem> = updates
-                .iter()
-                .map(|update_info| HistoryItem {
-                    version: update_info.clock as u64,
-                    updates: update_info.update.encode_v1(),
-                    timestamp: chrono::DateTime::from_timestamp(
-                        update_info.timestamp.unix_timestamp(),
-                        0,
-                    )
-                    .unwrap_or(Utc::now()),
-                })
-                .collect();
+            match update_info {
+                Some(info) => {
+                    let item = HistoryItem {
+                        version: info.clock as u64,
+                        updates: info.update.encode_v1(),
+                        timestamp: chrono::DateTime::from_timestamp(
+                            info.timestamp.unix_timestamp(),
+                            0,
+                        )
+                        .unwrap_or(Utc::now()),
+                    };
 
-            Ok::<_, anyhow::Error>(history_items)
+                    Ok::<_, anyhow::Error>(item)
+                }
+                None => Err(anyhow::anyhow!("History version not found")),
+            }
         }
         .await;
 
         match result {
-            Ok(history_items) => {
-                let history: Vec<HistoryResponse> = history_items
-                    .into_iter()
-                    .map(|item| HistoryResponse {
-                        updates: item.updates,
-                        version: item.version,
-                        timestamp: item.timestamp.to_rfc3339(),
-                    })
-                    .collect();
+            Ok(item) => {
+                let response = HistoryResponse {
+                    updates: item.updates,
+                    version: item.version,
+                    timestamp: item.timestamp.to_rfc3339(),
+                };
 
-                Json(history).into_response()
+                Json(response).into_response()
             }
             Err(err) => {
                 error!(
