@@ -487,59 +487,64 @@ impl RedisStore {
         count: usize,
     ) -> Result<Vec<Bytes>, anyhow::Error> {
         let stream_key = format!("yjs:stream:{}", doc_id);
-
+    
         let mut conn = self.pool.get().await?;
-
+        
+        let block_ms = 2000;
+    
         let script = redis::Script::new(
             r#"
             local stream_key = KEYS[1]
             local group_name = ARGV[1]
             local consumer_name = ARGV[2]
             local count = tonumber(ARGV[3])
+            local block_ms = tonumber(ARGV[4])
                 
-                local result = redis.call('XREADGROUP', 'GROUP', group_name, consumer_name, 'COUNT', count, 'STREAMS', stream_key, '>')
-                if not result or #result == 0 then return {} end
+            local result = redis.call('XREADGROUP', 'GROUP', group_name, consumer_name, 'COUNT', count, 'BLOCK', block_ms, 'STREAMS', stream_key, '>')
+            if not result or #result == 0 then return {} end
+            
+            local messages = result[1][2]
+            if not messages or #messages == 0 then return {} end
+            
+            local updates = {}
+            local ids_to_ack = {}
+            local n_messages = #messages
+            
+            for i = 1, n_messages do
+                local message = messages[i]
+                ids_to_ack[i] = message[1]
                 
-                local messages = result[1][2]
-                if not messages or #messages == 0 then return {} end
-                
-                local updates = {}
-                local ids_to_ack = {}
-                local n_messages = #messages
-                
-                for i = 1, n_messages do
-                    local message = messages[i]
-                    ids_to_ack[i] = message[1]
-                    
-                    local fields = message[2]
-                    local n_fields = #fields
-                    for j = 1, n_fields, 2 do
-                        if fields[j] == "update" then
-                            updates[#updates + 1] = fields[j+1]
-                            break
-                        end
+                local fields = message[2]
+                local n_fields = #fields
+                for j = 1, n_fields, 2 do
+                    if fields[j] == "update" then
+                        updates[#updates + 1] = fields[j+1]
+                        break
                     end
                 end
-                
-                if n_messages > 0 then
-                    redis.call('XACK', stream_key, group_name, unpack(ids_to_ack))
-                end
-                
-                return updates
-                "#,
+            end
+            
+            if n_messages > 0 then
+                redis.call('XACK', stream_key, group_name, unpack(ids_to_ack))
+            end
+            
+            return updates
+            "#,
         );
-
+    
         let updates = script
             .key(stream_key)
             .arg(group_name)
             .arg(consumer_name)
             .arg(count)
+            .arg(block_ms)
             .invoke_async(&mut *conn)
             .await?;
-
+    
         Ok(updates)
     }
 
+      
     pub async fn delete_stream(&self, doc_id: &str) -> Result<(), anyhow::Error> {
         let stream_key = format!("yjs:stream:{}", doc_id);
         if let Ok(mut conn) = self.pool.get().await {
