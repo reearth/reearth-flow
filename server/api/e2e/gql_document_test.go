@@ -211,6 +211,25 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 					return
 				}
 				return
+			} else if isFlushProjectToGcsMutation(gqlRequest.Query) {
+				projectID, ok := getProjectIDFromVariables(gqlRequest.Variables)
+				if !ok || projectID != docPId.String() {
+					http.Error(w, "Invalid project ID", http.StatusBadRequest)
+					return
+				}
+
+				resp := map[string]any{
+					"data": map[string]any{
+						"flushProjectToGcs": true,
+					},
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				if err := json.NewEncoder(w).Encode(resp); err != nil {
+					http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
+					return
+				}
+				return
 			}
 		}
 
@@ -232,6 +251,10 @@ func isProjectSnapshotQuery(query string) bool {
 
 func isRollbackProjectMutation(query string) bool {
 	return strings.Contains(query, "rollbackProject")
+}
+
+func isFlushProjectToGcsMutation(query string) bool {
+	return strings.Contains(query, "flushProjectToGcs")
 }
 
 func getProjectIDFromVariables(vars map[string]any) (string, bool) {
@@ -289,6 +312,8 @@ func TestDocumentOperations(t *testing.T) {
 	testProjectHistory(t, testClient, docPId.String())
 
 	testRollbackProject(t, testClient, docPId.String(), 1)
+
+	testFlushProjectToGcs(t, testClient, docPId.String())
 }
 
 func testLatestProjectSnapshot(t *testing.T, e *httpexpect.Expect, projectId string) {
@@ -477,69 +502,6 @@ func testProjectHistory(t *testing.T, e *httpexpect.Expect, projectId string) {
 	}
 }
 
-func testProjectHistoryMetadata(t *testing.T, e *httpexpect.Expect, projectId string) {
-	query := `query($projectId: ID!) {
-		projectHistoryMetadata(projectId: $projectId) {
-			version
-			timestamp
-		}
-	}`
-
-	variables := fmt.Sprintf(`{
-		"projectId": "%s"
-	}`, projectId)
-
-	var variablesMap map[string]any
-	err := json.Unmarshal([]byte(variables), &variablesMap)
-	assert.NoError(t, err)
-
-	request := GraphQLRequest{
-		Query:     query,
-		Variables: variablesMap,
-	}
-	jsonData, err := json.Marshal(request)
-	assert.NoError(t, err)
-
-	resp := e.POST("/api/graphql").
-		WithHeader("authorization", "Bearer test").
-		WithHeader("Content-Type", "application/json").
-		WithHeader("X-Reearth-Debug-User", docUId.String()).
-		WithBytes(jsonData).
-		Expect().Status(http.StatusOK)
-
-	var result struct {
-		Data struct {
-			ProjectHistoryMetadata []struct {
-				Version   int       `json:"version"`
-				Timestamp time.Time `json:"timestamp"`
-			} `json:"projectHistoryMetadata"`
-		} `json:"data"`
-		Errors []map[string]interface{} `json:"errors"`
-	}
-
-	err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
-	assert.NoError(t, err)
-
-	if len(result.Errors) > 0 {
-		t.Fatalf("GraphQL errors: %v", result.Errors)
-	}
-
-	metadata := result.Data.ProjectHistoryMetadata
-	assert.NotNil(t, metadata, "metadata should not be nil")
-	assert.Equal(t, 3, len(metadata), "should return 3 metadata records")
-
-	if len(metadata) >= 3 {
-		assert.Equal(t, 1, metadata[0].Version)
-		assert.WithinDuration(t, time.Date(2023, 1, 15, 9, 0, 0, 0, time.UTC), metadata[0].Timestamp, time.Second)
-
-		assert.Equal(t, 2, metadata[1].Version)
-		assert.WithinDuration(t, time.Date(2023, 1, 20, 14, 0, 0, 0, time.UTC), metadata[1].Timestamp, time.Second)
-
-		assert.Equal(t, 3, metadata[2].Version)
-		assert.WithinDuration(t, time.Date(2023, 2, 1, 10, 0, 0, 0, time.UTC), metadata[2].Timestamp, time.Second)
-	}
-}
-
 func testRollbackProject(t *testing.T, e *httpexpect.Expect, projectId string, version int) {
 	query := `mutation($projectId: ID!, $version: Int!) {
 		rollbackProject(projectId: $projectId, version: $version) {
@@ -600,4 +562,48 @@ func testRollbackProject(t *testing.T, e *httpexpect.Expect, projectId string, v
 		assert.Equal(t, rollbackResults[version].Updates, rollback.Updates)
 		assert.NotZero(t, rollback.Timestamp)
 	}
+}
+
+func testFlushProjectToGcs(t *testing.T, e *httpexpect.Expect, projectId string) {
+	query := `mutation($projectId: ID!) {
+		flushProjectToGcs(projectId: $projectId)
+	}`
+
+	variables := fmt.Sprintf(`{
+		"projectId": "%s"
+	}`, projectId)
+
+	var variablesMap map[string]any
+	err := json.Unmarshal([]byte(variables), &variablesMap)
+	assert.NoError(t, err)
+
+	request := GraphQLRequest{
+		Query:     query,
+		Variables: variablesMap,
+	}
+	jsonData, err := json.Marshal(request)
+	assert.NoError(t, err)
+
+	resp := e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", docUId.String()).
+		WithBytes(jsonData).
+		Expect().Status(http.StatusOK)
+
+	var result struct {
+		Data struct {
+			FlushProjectToGcs bool `json:"flushProjectToGcs"`
+		} `json:"data"`
+		Errors []map[string]interface{} `json:"errors"`
+	}
+
+	err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+	assert.NoError(t, err)
+
+	if len(result.Errors) > 0 {
+		t.Fatalf("GraphQL errors: %v", result.Errors)
+	}
+
+	assert.True(t, result.Data.FlushProjectToGcs, "flush result should be true")
 }
