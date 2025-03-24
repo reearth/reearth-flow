@@ -41,19 +41,22 @@ impl RedisStore {
         self.config.clone()
     }
 
-    pub async fn publish_update(&self, doc_id: &str, update: &[u8]) -> Result<(), anyhow::Error> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
+    pub async fn publish_update(
+        &self,
+        stream_key: &str,
+        update: &[u8],
+    ) -> Result<(), anyhow::Error> {
         if let Ok(mut conn) = self.pool.get().await {
             let mut pipe = redis::pipe();
 
             let fields = &[("update", update)];
             pipe.cmd("XADD")
-                .arg(&stream_key)
+                .arg(stream_key)
                 .arg("NOMKSTREAM")
                 .arg("*")
                 .arg(fields);
 
-            pipe.cmd("EXPIRE").arg(&stream_key).arg(self.config.ttl);
+            pipe.cmd("EXPIRE").arg(stream_key).arg(self.config.ttl);
 
             let _: () = pipe.query_async(&mut *conn).await?;
         }

@@ -447,6 +447,7 @@ impl BroadcastGroup {
             let awareness = self.awareness().clone();
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
+            let stream_key = format!("yjs:stream:{}", doc_name.clone().unwrap_or_default());
 
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
@@ -472,6 +473,7 @@ impl BroadcastGroup {
                         msg,
                         &redis_store,
                         doc_name.as_ref(),
+                        stream_key.clone(),
                     )
                     .await
                     {
@@ -502,12 +504,12 @@ impl BroadcastGroup {
         msg: Message,
         redis_store: &Arc<RedisStore>,
         doc_name: Option<&String>,
+        stream_key: String,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
-                if let Some(doc_name) = doc_name {
+                if doc_name.is_some() {
                     let rs = redis_store.clone();
-                    let dn = doc_name.clone();
                     let update_bytes = match &msg {
                         SyncMessage::Update(update) => update.clone(),
                         SyncMessage::SyncStep2(update) => update.clone(),
@@ -516,7 +518,7 @@ impl BroadcastGroup {
 
                     if !update_bytes.is_empty() {
                         tokio::spawn(async move {
-                            if let Err(e) = rs.publish_update(&dn, &update_bytes).await {
+                            if let Err(e) = rs.publish_update(&stream_key, &update_bytes).await {
                                 tracing::error!("Redis Stream update failed: {}", e);
                             }
                         });
