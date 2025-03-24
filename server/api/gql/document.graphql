@@ -23,8 +23,8 @@ type ProjectSnapshotMetadata {
 
 extend type Query {
   latestProjectSnapshot(projectId: ID!): ProjectDocument
-  projectHistory(projectId: ID!): [ProjectSnapshot!]!
-  projectHistoryMetadata(projectId: ID!): [ProjectSnapshotMetadata!]!
+  projectSnapshot(projectId: ID!, version: Int!): [ProjectSnapshot!]!
+  projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
 }
 
 # Mutation

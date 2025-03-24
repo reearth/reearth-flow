@@ -32,49 +32,42 @@ impl DocumentHandler {
 
         let storage = state.pool.get_store();
         let doc = Doc::new();
-        let doc_id_clone = doc_id.clone();
 
-        let result = tokio::task::block_in_place(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
+        let result = async {
+            let mut txn = doc.transact_mut();
+            let load_result = storage.load_doc(&doc_id, &mut txn).await;
 
-            rt.block_on(async move {
-                let mut txn = doc.transact_mut();
-                let load_result = storage.load_doc(&doc_id_clone, &mut txn).await;
+            match load_result {
+                Ok(true) => {
+                    drop(txn);
+                    let read_txn = doc.transact();
+                    let state = read_txn.encode_diff_v1(&StateVector::default());
+                    drop(read_txn);
 
-                match load_result {
-                    Ok(true) => {
-                        drop(txn);
-                        let read_txn = doc.transact();
-                        let state = read_txn.encode_diff_v1(&StateVector::default());
-                        drop(read_txn);
+                    let metadata = storage.get_latest_update_metadata(&doc_id).await?;
 
-                        let metadata = storage.get_latest_update_metadata(&doc_id_clone).await?;
+                    let latest_clock = metadata.map(|(clock, _)| clock).unwrap_or(0);
+                    let timestamp = if let Some((_, ts)) = metadata {
+                        chrono::DateTime::from_timestamp(ts.unix_timestamp(), 0)
+                            .unwrap_or(Utc::now())
+                    } else {
+                        Utc::now()
+                    };
 
-                        let latest_clock = metadata.map(|(clock, _)| clock).unwrap_or(0);
-                        let timestamp = if let Some((_, ts)) = metadata {
-                            chrono::DateTime::from_timestamp(ts.unix_timestamp(), 0)
-                                .unwrap_or(Utc::now())
-                        } else {
-                            Utc::now()
-                        };
+                    let document = Document {
+                        id: doc_id.clone(),
+                        version: latest_clock as u64,
+                        timestamp,
+                        updates: state,
+                    };
 
-                        let document = Document {
-                            id: doc_id_clone,
-                            version: latest_clock as u64,
-                            timestamp,
-                            updates: state,
-                        };
-
-                        Ok::<_, anyhow::Error>(document)
-                    }
-                    Ok(false) => Err(anyhow::anyhow!("Document not found: {}", doc_id_clone)),
-                    Err(e) => Err(anyhow::anyhow!("Failed to load document: {}", e)),
+                    Ok::<_, anyhow::Error>(document)
                 }
-            })
-        });
+                Ok(false) => Err(anyhow::anyhow!("Document not found: {}", doc_id)),
+                Err(e) => Err(anyhow::anyhow!("Failed to load document: {}", e)),
+            }
+        }
+        .await;
 
         match result {
             Ok(doc) => Json(DocumentResponse {
@@ -105,32 +98,26 @@ impl DocumentHandler {
         debug!("Handling GetHistory request for document: {}", doc_id);
 
         let storage = state.pool.get_store();
-        let doc_id_clone = doc_id.clone();
-        let result = tokio::task::block_in_place(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
 
-            rt.block_on(async move {
-                let updates = storage.get_updates(&doc_id_clone).await?;
+        let result = async {
+            let updates = storage.get_updates(&doc_id).await?;
 
-                let history_items: Vec<HistoryItem> = updates
-                    .iter()
-                    .map(|update_info| HistoryItem {
-                        version: update_info.clock as u64,
-                        updates: update_info.update.encode_v1(),
-                        timestamp: chrono::DateTime::from_timestamp(
-                            update_info.timestamp.unix_timestamp(),
-                            0,
-                        )
-                        .unwrap_or(Utc::now()),
-                    })
-                    .collect();
+            let history_items: Vec<HistoryItem> = updates
+                .iter()
+                .map(|update_info| HistoryItem {
+                    version: update_info.clock as u64,
+                    updates: update_info.update.encode_v1(),
+                    timestamp: chrono::DateTime::from_timestamp(
+                        update_info.timestamp.unix_timestamp(),
+                        0,
+                    )
+                    .unwrap_or(Utc::now()),
+                })
+                .collect();
 
-                Ok::<_, anyhow::Error>(history_items)
-            })
-        });
+            Ok::<_, anyhow::Error>(history_items)
+        }
+        .await;
 
         match result {
             Ok(history_items) => {
@@ -170,29 +157,22 @@ impl DocumentHandler {
         );
 
         let storage = state.pool.get_store();
-        let doc_id_clone = doc_id.clone();
         let version = request.version;
 
-        let rollback_result = tokio::task::block_in_place(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
+        let rollback_result = async {
+            let doc = storage.rollback_to(&doc_id, version as u32).await?;
 
-            rt.block_on(async move {
-                let doc = storage.rollback_to(&doc_id_clone, version as u32).await?;
+            let read_txn = doc.transact();
+            let state = read_txn.encode_state_as_update_v1(&StateVector::default());
 
-                let read_txn = doc.transact();
-                let state = read_txn.encode_state_as_update_v1(&StateVector::default());
-
-                Ok::<_, anyhow::Error>(Document {
-                    id: doc_id_clone,
-                    version,
-                    timestamp: Utc::now(),
-                    updates: state,
-                })
+            Ok::<_, anyhow::Error>(Document {
+                id: doc_id.clone(),
+                version,
+                timestamp: Utc::now(),
+                updates: state,
             })
-        });
+        }
+        .await;
 
         match rollback_result {
             Ok(doc) => Json(DocumentResponse {
@@ -231,18 +211,12 @@ impl DocumentHandler {
         );
 
         let storage = state.pool.get_store();
-        let doc_id_clone = doc_id.clone();
-        let result = tokio::task::block_in_place(move || {
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .unwrap();
 
-            rt.block_on(async move {
-                let metadata = storage.get_updates_metadata(&doc_id_clone).await?;
-                Ok::<_, anyhow::Error>(metadata)
-            })
-        });
+        let result = async {
+            let metadata = storage.get_updates_metadata(&doc_id).await?;
+            Ok::<_, anyhow::Error>(metadata)
+        }
+        .await;
 
         match result {
             Ok(metadata) => {
@@ -262,6 +236,68 @@ impl DocumentHandler {
                 error!(
                     "Failed to get history metadata for document {}: {}",
                     doc_id, err
+                );
+
+                let status_code = if err.to_string().contains("not found") {
+                    StatusCode::NOT_FOUND
+                } else {
+                    StatusCode::INTERNAL_SERVER_ERROR
+                };
+
+                (status_code, format!("Error: {}", err)).into_response()
+            }
+        }
+    }
+
+    pub async fn get_history_by_version(
+        Path((doc_id, version)): Path<(String, u64)>,
+        State(state): State<Arc<AppState>>,
+    ) -> Response {
+        debug!(
+            "Handling GetHistoryByVersion request for document: {} version: {}",
+            doc_id, version
+        );
+
+        let storage = state.pool.get_store();
+        let version_u32 = version as u32;
+
+        let result = async {
+            let updates = storage.get_updates_by_version(&doc_id, version_u32).await?;
+
+            let history_items: Vec<HistoryItem> = updates
+                .iter()
+                .map(|update_info| HistoryItem {
+                    version: update_info.clock as u64,
+                    updates: update_info.update.encode_v1(),
+                    timestamp: chrono::DateTime::from_timestamp(
+                        update_info.timestamp.unix_timestamp(),
+                        0,
+                    )
+                    .unwrap_or(Utc::now()),
+                })
+                .collect();
+
+            Ok::<_, anyhow::Error>(history_items)
+        }
+        .await;
+
+        match result {
+            Ok(history_items) => {
+                let history: Vec<HistoryResponse> = history_items
+                    .into_iter()
+                    .map(|item| HistoryResponse {
+                        updates: item.updates,
+                        version: item.version,
+                        timestamp: item.timestamp.to_rfc3339(),
+                    })
+                    .collect();
+
+                Json(history).into_response()
+            }
+            Err(err) => {
+                error!(
+                    "Failed to get history for document {} version {}: {}",
+                    doc_id, version, err
                 );
 
                 let status_code = if err.to_string().contains("not found") {

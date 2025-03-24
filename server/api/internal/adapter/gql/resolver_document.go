@@ -21,25 +21,28 @@ func (r *queryResolver) LatestProjectSnapshot(ctx context.Context, projectId gql
 	}, nil
 }
 
-func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.ID) ([]*gqlmodel.ProjectSnapshot, error) {
+func (r *queryResolver) ProjectSnapshot(ctx context.Context, projectId gqlmodel.ID, version int) ([]*gqlmodel.ProjectSnapshot, error) {
 	history, err := interactor.GetHistory(ctx, string(projectId))
 	if err != nil {
 		return nil, err
 	}
 
-	nodes := make([]*gqlmodel.ProjectSnapshot, len(history))
-	for i, h := range history {
-		nodes[i] = &gqlmodel.ProjectSnapshot{
-			Updates:   h.Updates,
-			Version:   h.Version,
-			Timestamp: h.Timestamp,
+	var filteredHistory []*gqlmodel.ProjectSnapshot
+	for _, h := range history {
+		if h.Version == version {
+			filteredHistory = append(filteredHistory, &gqlmodel.ProjectSnapshot{
+				Updates:   h.Updates,
+				Version:   h.Version,
+				Timestamp: h.Timestamp,
+			})
+			break
 		}
 	}
 
-	return nodes, nil
+	return filteredHistory, nil
 }
 
-func (r *queryResolver) ProjectHistoryMetadata(ctx context.Context, projectId gqlmodel.ID) ([]*gqlmodel.ProjectSnapshotMetadata, error) {
+func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.ID) ([]*gqlmodel.ProjectSnapshotMetadata, error) {
 	metadata, err := interactor.GetHistoryMetadata(ctx, string(projectId))
 	if err != nil {
 		return nil, err
