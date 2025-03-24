@@ -147,17 +147,18 @@ export FLOW_VAR_targetPackages='["bldg", "fld"]'
 
 ### Runtime Environment Variables
 
-| Name                                 | Description                                                        | Default |
-| ------------------------------------ | ------------------------------------------------------------------ | ------- |
-| FLOW_RUNTIME_ACTION_LOG_DISABLE      | Whether to disable the Action log                                  | false   |
-| FLOW_RUNTIME_CHANNEL_BUFFER_SIZE     | Buffer size for channels exchanged by worker threads               | 256     |
-| FLOW_RUNTIME_EVENT_HUB_CAPACITY      | Capacity size of event hub channels                                | 8192    |
-| FLOW_RUNTIME_THREAD_POOL_SIZE        | Worker thread pool size                                            | 30      |
-| FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD | Sink node flush threadshold size                                   | 512     |
-| FLOW_RUNTIME_ASYNC_WORKER_NUM        | Tokio Worker number                                                | cpu num |
-| FLOW_RUNTIME_FEATURE_WRITER_DISABLE  | Whether to disable the ability to export data to the feature store | false   |
-| FLOW_RUNTIME_SLOW_ACTION_THRESHOLD   | Threshold for writing slow action logs(ms)                         | 300     |
-| FLOW_RUNTIME_WORKING_DIRECTORY       | working directory                                                  | mac: $HOMELibrary/Caches/<project_path>, linux: $HOME/.cache/<project_path>  |
+| Name                                          | Description                                                        | Default |
+| --------------------------------------------- | ------------------------------------------------------------------ | ------- |
+| FLOW_RUNTIME_ACTION_LOG_DISABLE               | Whether to disable the Action log                                  | false   |
+| FLOW_RUNTIME_CHANNEL_BUFFER_SIZE              | Buffer size for channels exchanged by worker threads               | 256     |
+| FLOW_RUNTIME_EVENT_HUB_CAPACITY               | Capacity size of event hub channels                                | 8192    |
+| FLOW_RUNTIME_THREAD_POOL_SIZE                 | Worker thread pool size                                            | 30      |
+| FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD          | Sink node flush threadshold size                                   | 512     |
+| FLOW_RUNTIME_ASYNC_WORKER_NUM                 | Tokio Worker number                                                | cpu num |
+| FLOW_RUNTIME_FEATURE_WRITER_DISABLE           | Whether to disable the ability to export data to the feature store | false   |
+| FLOW_RUNTIME_SLOW_ACTION_THRESHOLD            | Threshold for writing slow action logs(ms)                         | 300     |
+| FLOW_RUNTIME_WORKING_DIRECTORY                | working directory                                                  | mac: $HOMELibrary/Caches/<project_path>, linux: $HOME/.cache/<project_path>  |
+| FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS | Delay (ms) to ensure node status events propagate                  | 500     |
 
 ## Usage
 
