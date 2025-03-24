@@ -164,23 +164,17 @@
 }
 
 .active-node-status {
-  animation:
-    cycleActiveColors 3s infinite,
-    linear;
+  animation: cycleActiveColors 3s infinite linear;
   /* pulse 1.5s infinite; */
 }
 
 .active-node-status-shadow {
-  animation:
-    cycleActiveColorsShadow 3s infinite,
-    linear;
+  animation: cycleActiveColorsShadow 3s infinite linear;
   /* pulse 1.5s infinite; */
 }
 
 .active-node-status-border {
-  animation:
-    cycleActiveColorsBorder 3s infinite,
-    linear;
+  animation: cycleActiveColorsBorder 3s infinite linear;
   /* pulse 1.5s infinite; */
 }
 
@@ -230,15 +224,11 @@
 }
 
 .queued-node-status-shadow {
-  animation:
-    cycleColorsShadow 3s infinite,
-    linear;
+  animation: cycleColorsShadow 3s infinite linear;
 }
 
 .queued-node-status-border {
-  animation:
-    cycleColorsBorder 3s infinite,
-    linear;
+  animation: cycleColorsBorder 3s infinite linear;
 }
 
 /* Animation for queued node END */
