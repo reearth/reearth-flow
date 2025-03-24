@@ -516,9 +516,6 @@ impl KVStore for GcsStore {
 
     async fn upsert(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error> {
         let key_hex = hex::encode(key);
-        debug!("Writing to GCS storage - key: {:?}, hex: {}", key, key_hex);
-        debug!("Value length: {} bytes", value.len());
-
         let upload_type = UploadType::Simple(Media::new(key_hex.clone()));
         self.client
             .upload_object(
