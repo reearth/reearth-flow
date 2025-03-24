@@ -141,6 +141,34 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 				}
 				return
 
+			} else if isProjectHistoryMetadataQuery(gqlRequest.Query) {
+				projectID, ok := getProjectIDFromVariables(gqlRequest.Variables)
+				if !ok || projectID != docPId.String() {
+					http.Error(w, "Invalid project ID", http.StatusBadRequest)
+					return
+				}
+
+				metadataResp := make([]map[string]any, len(history))
+				for i, h := range history {
+					metadataResp[i] = map[string]any{
+						"version":   h.Version,
+						"timestamp": h.Timestamp,
+					}
+				}
+
+				resp := map[string]any{
+					"data": map[string]any{
+						"projectHistoryMetadata": metadataResp,
+					},
+				}
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				if err := json.NewEncoder(w).Encode(resp); err != nil {
+					http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
+					return
+				}
+				return
+
 			} else if isRollbackProjectMutation(gqlRequest.Query) {
 				projectID, version, ok := getProjectIDAndVersionFromVariables(gqlRequest.Variables)
 				if !ok || projectID != docPId.String() {
@@ -183,7 +211,11 @@ func isLatestProjectSnapshotQuery(query string) bool {
 }
 
 func isProjectHistoryQuery(query string) bool {
-	return strings.Contains(query, "projectHistory")
+	return strings.Contains(query, "projectHistory") && !strings.Contains(query, "projectHistoryMetadata")
+}
+
+func isProjectHistoryMetadataQuery(query string) bool {
+	return strings.Contains(query, "projectHistoryMetadata")
 }
 
 func isRollbackProjectMutation(query string) bool {
@@ -241,6 +273,8 @@ func TestDocumentOperations(t *testing.T) {
 	testLatestProjectSnapshot(t, testClient, docPId.String())
 
 	testProjectHistory(t, testClient, docPId.String())
+
+	testProjectHistoryMetadata(t, testClient, docPId.String())
 
 	testRollbackProject(t, testClient, docPId.String(), 1)
 }
@@ -371,6 +405,69 @@ func testProjectHistory(t *testing.T, e *httpexpect.Expect, projectId string) {
 		assert.Equal(t, 3, history[2].Version)
 		assert.Equal(t, []int{1, 2, 3, 4, 5}, history[2].Updates)
 		assert.WithinDuration(t, time.Date(2023, 2, 1, 10, 0, 0, 0, time.UTC), history[2].Timestamp, time.Second)
+	}
+}
+
+func testProjectHistoryMetadata(t *testing.T, e *httpexpect.Expect, projectId string) {
+	query := `query($projectId: ID!) {
+		projectHistoryMetadata(projectId: $projectId) {
+			version
+			timestamp
+		}
+	}`
+
+	variables := fmt.Sprintf(`{
+		"projectId": "%s"
+	}`, projectId)
+
+	var variablesMap map[string]any
+	err := json.Unmarshal([]byte(variables), &variablesMap)
+	assert.NoError(t, err)
+
+	request := GraphQLRequest{
+		Query:     query,
+		Variables: variablesMap,
+	}
+	jsonData, err := json.Marshal(request)
+	assert.NoError(t, err)
+
+	resp := e.POST("/api/graphql").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithHeader("X-Reearth-Debug-User", docUId.String()).
+		WithBytes(jsonData).
+		Expect().Status(http.StatusOK)
+
+	var result struct {
+		Data struct {
+			ProjectHistoryMetadata []struct {
+				Version   int       `json:"version"`
+				Timestamp time.Time `json:"timestamp"`
+			} `json:"projectHistoryMetadata"`
+		} `json:"data"`
+		Errors []map[string]interface{} `json:"errors"`
+	}
+
+	err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
+	assert.NoError(t, err)
+
+	if len(result.Errors) > 0 {
+		t.Fatalf("GraphQL errors: %v", result.Errors)
+	}
+
+	metadata := result.Data.ProjectHistoryMetadata
+	assert.NotNil(t, metadata, "metadata should not be nil")
+	assert.Equal(t, 3, len(metadata), "should return 3 metadata records")
+
+	if len(metadata) >= 3 {
+		assert.Equal(t, 1, metadata[0].Version)
+		assert.WithinDuration(t, time.Date(2023, 1, 15, 9, 0, 0, 0, time.UTC), metadata[0].Timestamp, time.Second)
+
+		assert.Equal(t, 2, metadata[1].Version)
+		assert.WithinDuration(t, time.Date(2023, 1, 20, 14, 0, 0, 0, time.UTC), metadata[1].Timestamp, time.Second)
+
+		assert.Equal(t, 3, metadata[2].Version)
+		assert.WithinDuration(t, time.Date(2023, 2, 1, 10, 0, 0, 0, time.UTC), metadata[2].Timestamp, time.Second)
 	}
 }
 

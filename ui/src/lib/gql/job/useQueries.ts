@@ -8,12 +8,13 @@ import {
 import { isDefined } from "@flow/utils";
 
 import { CancelJobInput } from "../__gen__/graphql";
-import { toJob } from "../convert";
+import { toEdgeExecution, toJob } from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum JobQueryKeys {
   GetJobs = "getJobs",
   GetJob = "getJob",
+  GetEdgeExecution = "getEdgeExecution",
 }
 
 export const JOBS_FETCH_RATE = 15;
@@ -21,6 +22,7 @@ export const JOBS_FETCH_RATE = 15;
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
+
   const useGetJobsQuery = (
     workspaceId?: string,
     paginationOptions?: PaginationOptions,
@@ -50,14 +52,34 @@ export const useQueries = () => {
       },
       enabled: !!workspaceId,
     });
-  const useGetJobQuery = (jobId: string) =>
+
+  const useGetJobQuery = (jobId?: string) =>
     useQuery({
       queryKey: [JobQueryKeys.GetJob, jobId],
       queryFn: async () => {
-        const data = await graphQLContext?.GetJob({ id: jobId });
+        const data = await graphQLContext?.GetJob({ id: jobId ?? "" });
         if (!data?.job) return;
         return toJob(data.job);
       },
+      enabled: !!jobId,
+    });
+
+  const useGetEdgeExecutionQuery = (
+    jobId?: string,
+    edgeId?: string,
+    disabled?: boolean,
+  ) =>
+    useQuery({
+      queryKey: [JobQueryKeys.GetEdgeExecution, jobId, edgeId],
+      queryFn: async () => {
+        const data = await graphQLContext?.GetEdgeExecution({
+          jobId: jobId ?? "",
+          edgeId: edgeId ?? "",
+        });
+        if (!data?.edgeExecution) return;
+        return toEdgeExecution(data.edgeExecution);
+      },
+      enabled: !disabled && !!jobId && !!edgeId,
     });
 
   const cancelJobMutation = useMutation({
@@ -85,6 +107,7 @@ export const useQueries = () => {
   return {
     useGetJobsQuery,
     useGetJobQuery,
+    useGetEdgeExecutionQuery,
     cancelJobMutation,
   };
 };

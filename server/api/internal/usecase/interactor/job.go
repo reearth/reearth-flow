@@ -160,6 +160,8 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 		return err
 	}
 
+	log.Infof("starting monitoring for job ID %s with workspace %s", j.ID(), j.Workspace())
+
 	monitorCtx, cancel := context.WithCancel(context.Background())
 
 	i.monitor.Register(j.ID().String(), &monitor.Config{
@@ -211,19 +213,39 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 	}
 
 	newStatus := job.Status(status)
-	if j.Status() != newStatus {
-		log.Infof("job status changed from %s to %s for job ID %s", j.Status(), newStatus, j.ID())
+	statusChanged := j.Status() != newStatus
+
+	if status == gateway.JobStatusCompleted || status == gateway.JobStatusFailed {
+		if statusChanged {
+			log.Infof("job status changing to terminal state %s from %s for job ID %s",
+				newStatus, j.Status(), j.ID())
+
+			if err := i.updateJobStatus(ctx, j, newStatus); err != nil {
+				return err
+			}
+
+			if err := i.handleJobCompletion(ctx, j); err != nil {
+				log.Errorfc(ctx, "job: completion handling failed: %v", err)
+			}
+
+			i.monitor.Remove(j.ID().String())
+		} else {
+			if len(j.OutputURLs()) == 0 {
+				log.Infof("job already in terminal state %s but has no outputs, checking artifacts for job ID %s",
+					j.Status(), j.ID())
+
+				if err := i.handleJobCompletion(ctx, j); err != nil {
+					log.Errorfc(ctx, "job: completion handling failed: %v", err)
+				}
+			}
+		}
+	} else if statusChanged {
+		log.Infof("job status changing from %s to %s for job ID %s",
+			j.Status(), newStatus, j.ID())
 
 		if err := i.updateJobStatus(ctx, j, newStatus); err != nil {
 			return err
 		}
-	}
-
-	if status == gateway.JobStatusCompleted || status == gateway.JobStatusFailed {
-		if err := i.handleJobCompletion(ctx, j); err != nil {
-			log.Errorfc(ctx, "job: completion handling failed: %v", err)
-		}
-		i.monitor.Remove(j.ID().String())
 	}
 
 	return nil
@@ -264,11 +286,25 @@ func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 	}
 
 	jobID := j.ID().String()
+	log.Infof("handling job completion for ID %s with status %s", jobID, j.Status())
 
 	config := i.monitor.Get(jobID)
 
-	if err := i.updateJobArtifacts(ctx, j); err != nil {
-		log.Errorfc(ctx, "job: failed to update artifacts for jobID=%s: %v", jobID, err)
+	var artifactErr error
+	for retries := 0; retries < 3; retries++ {
+		if retries > 0 {
+			log.Infof("retry %d: updating artifacts for job ID %s", retries, jobID)
+			time.Sleep(2 * time.Second)
+		}
+
+		artifactErr = i.updateJobArtifacts(ctx, j)
+		if artifactErr == nil && len(j.OutputURLs()) > 0 {
+			break
+		}
+	}
+
+	if artifactErr != nil {
+		log.Errorfc(ctx, "job: failed to update artifacts after retries for jobID=%s: %v", jobID, artifactErr)
 	}
 
 	if err := i.saveJobState(ctx, j); err != nil {

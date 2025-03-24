@@ -23,7 +23,7 @@ const defaultCesiumProps: Partial<ViewerProps> = {
 };
 
 type Props = {
-  fileContent: string | null;
+  fileContent: any | null;
   fileType: SupportedDataTypes | null;
 };
 

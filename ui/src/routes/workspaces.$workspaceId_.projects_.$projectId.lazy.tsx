@@ -84,7 +84,7 @@ const EditorComponent = () => {
     [debugRunState, currentProject],
   );
 
-  useJobSubscriptionsSetup(accessToken, currentDebugJobId);
+  useJobSubscriptionsSetup(accessToken, currentDebugJobId, currentProject?.id);
 
   const {
     yWorkflows,

@@ -2,7 +2,7 @@ import { memo, useEffect, useState } from "react";
 import { GeoJsonDataSource, useCesium } from "resium";
 
 type Props = {
-  geoJsonData: string | null;
+  geoJsonData: any | null;
 };
 
 const GeoJsonData: React.FC<Props> = ({ geoJsonData }) => {

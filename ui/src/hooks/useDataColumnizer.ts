@@ -70,6 +70,15 @@ export default ({
                   simplifyPolygonCoordinates(feature.geometry),
                 ];
               }
+              if (
+                geometry === "coordinates" &&
+                feature.geometry.type === "LineString"
+              ) {
+                return [
+                  `geometry${geometry}`,
+                  JSON.stringify(feature.geometry?.[geometry] || null),
+                ];
+              }
               return [
                 `geometry${geometry}`,
                 JSON.stringify(feature.geometry?.[geometry] || null),

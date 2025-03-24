@@ -1,7 +1,3 @@
-//! **yrs-gcs** is a persistence layer allowing to store [Yrs](https://docs.rs/yrs/latest/yrs/index.html)
-//! documents and providing convenient utility functions to work with them, using Google Cloud Storage for
-//! persistent backend.
-
 pub use super::kv as store;
 use super::kv::keys::{KEYSPACE_DOC, SUB_UPDATE, V1};
 use super::kv::{get_oid, DocOps, KVEntry, KVStore};
@@ -44,8 +40,6 @@ fn find_common_prefix(a: &str, b: &str) -> String {
     }
 }
 
-/// Type wrapper around GCS Client struct. Used to extend GCS with [DocOps]
-/// methods used for convenience when working with Yrs documents.
 pub struct GcsStore {
     #[allow(dead_code)]
     pub client: Client,
@@ -101,14 +95,21 @@ impl GcsStore {
         Self { client, bucket }
     }
 
+    pub async fn push_update(
+        &self,
+        doc_id: &str,
+        update: &bytes::Bytes,
+    ) -> Result<u32, store::error::Error> {
+        use super::kv::DocOps;
+        DocOps::push_update(self, doc_id, update).await
+    }
+
     pub async fn get_updates(&self, doc_id: &str) -> Result<Vec<UpdateInfo>, anyhow::Error> {
-        // Get the OID for this document
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => return Ok(Vec::new()),
         };
 
-        // Create prefix that matches all updates for this OID
         let prefix_bytes = [V1, KEYSPACE_DOC]
             .iter()
             .chain(&oid.to_be_bytes())
@@ -117,7 +118,6 @@ impl GcsStore {
             .collect::<Vec<_>>();
         let prefix_str = hex::encode(&prefix_bytes);
 
-        // List objects with the specified prefix
         let request = ListObjectsRequest {
             bucket: self.bucket.clone(),
             prefix: Some(prefix_str),
@@ -145,13 +145,11 @@ impl GcsStore {
                 .await
             {
                 if let Ok(update) = Update::decode_v1(&data) {
-                    // Extract clock from object name
                     if let Ok(key_bytes) = hex::decode(&obj.name) {
                         if key_bytes.len() >= 12 {
                             let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
                             let clock = u32::from_be_bytes(clock_bytes);
 
-                            // Get timestamp from object metadata or use current time
                             let timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
 
                             updates.push(UpdateInfo {
@@ -173,7 +171,6 @@ impl GcsStore {
     }
 
     pub async fn rollback_to(&self, doc_id: &str, target_clock: u32) -> anyhow::Result<Doc> {
-        // Get the OID for this document
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => anyhow::bail!("Document not found"),
@@ -215,13 +212,8 @@ impl GcsStore {
             doc_id
         );
 
-        // Create a new document
-        let doc = Doc::new();
-        let mut txn = doc.transact_mut();
-
-        // Download and apply updates up to target_clock
+        let mut filtered_objects = Vec::new();
         for obj in all_objects {
-            // Extract clock from object name
             let key_bytes = hex::decode(&obj.name)
                 .map_err(|e| anyhow::anyhow!("Failed to decode hex: {}", e))?;
 
@@ -232,26 +224,69 @@ impl GcsStore {
             let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
             let clock = u32::from_be_bytes(clock_bytes);
 
-            if clock > target_clock {
-                continue;
+            if clock <= target_clock {
+                filtered_objects.push((obj, clock));
             }
+        }
 
-            // Download and apply update
-            let request = GetObjectRequest {
-                bucket: self.bucket.clone(),
-                object: obj.name,
-                ..Default::default()
-            };
+        filtered_objects.sort_by_key(|(_, clock)| *clock);
 
-            if let Ok(data) = self
-                .client
-                .download_object(&request, &Range::default())
-                .await
-            {
-                if let Ok(update) = Update::decode_v1(&data) {
-                    debug!("Applying update with clock: {} for doc: {}", clock, doc_id);
-                    let _ = txn.apply_update(update);
+        debug!(
+            "Applying {} updates for rollback to clock {} for doc: {}",
+            filtered_objects.len(),
+            target_clock,
+            doc_id
+        );
+
+        const BATCH_SIZE: usize = 20;
+        let doc = Doc::new();
+        let mut txn = doc.transact_mut();
+
+        for chunk in filtered_objects.chunks(BATCH_SIZE) {
+            let chunk_futures = chunk.iter().map(|(obj, clock)| {
+                let bucket = self.bucket.clone();
+                let object = obj.name.clone();
+                let doc_id = doc_id.to_string();
+                let clock = *clock;
+
+                async move {
+                    let request = GetObjectRequest {
+                        bucket,
+                        object: object.clone(),
+                        ..Default::default()
+                    };
+
+                    match self
+                        .client
+                        .download_object(&request, &Range::default())
+                        .await
+                    {
+                        Ok(data) => {
+                            if let Ok(update) = Update::decode_v1(&data) {
+                                debug!(
+                                    "Downloaded update with clock: {} for doc: {}",
+                                    clock, doc_id
+                                );
+                                Some((clock, update))
+                            } else {
+                                debug!("Failed to decode update from object: {}", object);
+                                None
+                            }
+                        }
+                        Err(e) => {
+                            debug!("Failed to download object {}: {:?}", object, e);
+                            None
+                        }
+                    }
                 }
+            });
+
+            let batch_results = join_all(chunk_futures).await;
+
+            for result in batch_results.into_iter().flatten() {
+                let (clock, update) = result;
+                debug!("Applying update with clock: {} for doc: {}", clock, doc_id);
+                let _ = txn.apply_update(update);
             }
         }
 
@@ -312,6 +347,69 @@ impl GcsStore {
 
         Ok(Some((latest_clock, latest_timestamp)))
     }
+
+    pub async fn get_updates_metadata(
+        &self,
+        doc_id: &str,
+    ) -> Result<Vec<(u32, OffsetDateTime)>, anyhow::Error> {
+        let oid = match get_oid(self, doc_id.as_bytes()).await? {
+            Some(oid) => oid,
+            None => return Ok(Vec::new()),
+        };
+
+        let prefix_bytes = [V1, KEYSPACE_DOC]
+            .iter()
+            .chain(&oid.to_be_bytes())
+            .chain(&[SUB_UPDATE])
+            .copied()
+            .collect::<Vec<_>>();
+        let prefix_str = hex::encode(&prefix_bytes);
+
+        let mut all_objects = Vec::new();
+        let mut page_token = None;
+
+        loop {
+            let request = ListObjectsRequest {
+                bucket: self.bucket.clone(),
+                prefix: Some(prefix_str.clone()),
+                page_token: page_token.clone(),
+                ..Default::default()
+            };
+
+            let response = self.client.list_objects(&request).await?;
+            let items = response.items.unwrap_or_default();
+            all_objects.extend(items);
+
+            if let Some(token) = response.next_page_token {
+                page_token = Some(token);
+            } else {
+                break;
+            }
+        }
+
+        debug!(
+            "Found {} update objects for doc: {}",
+            all_objects.len(),
+            doc_id
+        );
+
+        let mut metadata = Vec::new();
+        for obj in all_objects {
+            if let Ok(key_bytes) = hex::decode(&obj.name) {
+                if key_bytes.len() >= 12 {
+                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+                    let clock = u32::from_be_bytes(clock_bytes);
+                    let timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
+
+                    metadata.push((clock, timestamp));
+                }
+            }
+        }
+
+        metadata.sort_by_key(|(clock, _)| std::cmp::Reverse(*clock));
+
+        Ok(metadata)
+    }
 }
 
 impl DocOps<'_> for GcsStore {}
@@ -344,7 +442,6 @@ impl KVStore for GcsStore {
                 debug!("Value: {:?}", data);
                 Ok(Some(data))
             }
-            // 404 is returned when the object is not found
             Err(_) => Ok(None),
         }
     }
@@ -479,34 +576,55 @@ impl KVStore for GcsStore {
 
         all_objects.sort_by(|a, b| a.name.cmp(&b.name));
 
-        let results = join_all(all_objects.iter().map(|obj| {
-            let bucket = self.bucket.clone();
-            let object = obj.name.clone();
-            async move {
-                let request = GetObjectRequest {
-                    bucket,
-                    object,
-                    ..Default::default()
-                };
-                self.client
-                    .download_object(&request, &Range::default())
-                    .await
+        const BATCH_SIZE: usize = 20;
+
+        let mut all_values = Vec::with_capacity(all_objects.len());
+
+        for chunk in all_objects.chunks(BATCH_SIZE) {
+            let chunk_futures = chunk.iter().map(|obj| {
+                let bucket = self.bucket.clone();
+                let object = obj.name.clone();
+                async move {
+                    let request = GetObjectRequest {
+                        bucket,
+                        object,
+                        ..Default::default()
+                    };
+                    (
+                        obj.name.clone(),
+                        self.client
+                            .download_object(&request, &Range::default())
+                            .await,
+                    )
+                }
+            });
+
+            let batch_results = join_all(chunk_futures).await;
+
+            let mut result_map = std::collections::HashMap::new();
+            for (name, result) in batch_results {
+                if let Ok(data) = result {
+                    result_map.insert(name, Some(data));
+                } else {
+                    result_map.insert(name, None);
+                }
             }
-        }))
-        .await;
+
+            for obj in chunk {
+                all_values.push(result_map.remove(&obj.name).unwrap_or(None));
+            }
+        }
 
         debug!(
-            "Got range from GCS storage - from: {:?}, to: {:?}, count: {}",
+            "Got range from GCS storage using batched download - from: {:?}, to: {:?}, count: {}",
             from,
             to,
             all_objects.len()
         );
 
-        let values = results.into_iter().map(|r| r.ok()).collect();
-
         Ok(GcsRange {
             objects: all_objects,
-            values,
+            values: all_values,
             current: 0,
         })
     }

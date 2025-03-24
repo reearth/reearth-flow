@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
@@ -84,8 +84,15 @@ export default ({
 
   const yWorkflows = yDocState?.getMap<YWorkflow>("workflows");
 
-  const undoTrackerActionWrapper = (callback: () => void) =>
-    yDocState?.transact(callback, yDocState.clientID);
+  const undoTrackerActionWrapper = (
+    callback: () => void,
+    originPrepend?: string,
+  ) => {
+    const origin = originPrepend
+      ? `${originPrepend}-${yDocState?.clientID}`
+      : yDocState?.clientID;
+    yDocState?.transact(callback, origin);
+  };
 
   useEffect(() => {
     if (yWorkflows) {
@@ -97,9 +104,42 @@ export default ({
 
       return () => {
         manager.destroy(); // Clean up UndoManager on component unmount
+        setUndoManager(null);
       };
     }
   }, [yWorkflows, currentUserClientId]);
+
+  const observedMapsRef = useRef(new WeakSet());
+
+  function recursivelyTrackSharedType(sharedType?: Y.Map<any>): void {
+    if (!sharedType) return;
+    if (observedMapsRef.current.has(sharedType)) return;
+    observedMapsRef.current.add(sharedType);
+
+    undoManager?.addToScope([sharedType]);
+
+    if (sharedType instanceof Y.Map) {
+      sharedType.forEach((value: any) => {
+        if (value instanceof Y.Map) {
+          recursivelyTrackSharedType(value);
+        }
+      });
+
+      sharedType.observe((event: Y.YMapEvent<any>) => {
+        event.changes.keys.forEach((change: any, key: string) => {
+          if (change.action === "add" || change.action === "update") {
+            const newValue: any = sharedType.get(key);
+            if (newValue instanceof Y.Map) {
+              recursivelyTrackSharedType(newValue);
+            }
+          }
+        });
+      });
+    }
+  }
+
+  // Start the recursive tracking
+  recursivelyTrackSharedType(yWorkflows);
 
   return {
     yWorkflows,

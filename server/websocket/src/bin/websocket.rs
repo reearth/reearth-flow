@@ -42,7 +42,7 @@ async fn main() {
     let store = Arc::new(store);
     tracing::info!("GCS store initialized");
 
-    let redis_store = match RedisStore::new(Some(config.redis.clone())).await {
+    let redis_store = match RedisStore::new(config.redis.clone()).await {
         Ok(redis_store) => {
             tracing::info!("Redis store initialized");
             Some(Arc::new(redis_store))
@@ -53,7 +53,14 @@ async fn main() {
         }
     };
 
-    let pool = Arc::new(BroadcastPool::new(store, redis_store));
+    let pool = Arc::new(match redis_store {
+        Some(rs) => BroadcastPool::new(store, rs),
+        None => {
+            error!("Cannot proceed without Redis store");
+            std::process::exit(1);
+        }
+    });
+
     tracing::info!("Broadcast pool initialized");
 
     let instance_id = Uuid::new_v4().to_string();

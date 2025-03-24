@@ -27,7 +27,10 @@ export default ({
 }: {
   yWorkflows: YMap<YWorkflow>;
   currentWorkflowId: string;
-  undoTrackerActionWrapper: (callback: () => void) => void;
+  undoTrackerActionWrapper: (
+    callback: () => void,
+    originPrepend?: string,
+  ) => void;
 }) => {
   const t = useT();
   const { api } = config();

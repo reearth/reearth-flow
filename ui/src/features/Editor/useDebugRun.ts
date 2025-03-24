@@ -47,12 +47,20 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
       ) {
         jobs = debugRunState.jobs.map((job) => {
           if (job.projectId === currentProject.id && data.job) {
-            return { projectId: currentProject.id, jobId: data.job.id };
+            return {
+              projectId: currentProject.id,
+              jobId: data.job.id,
+              status: data.job.status,
+            };
           }
           return job;
         });
       } else {
-        jobs.push({ projectId: currentProject.id, jobId: data.job.id });
+        jobs.push({
+          projectId: currentProject.id,
+          jobId: data.job.id,
+          status: data.job.status,
+        });
       }
       await updateValue({ jobs });
 
@@ -78,7 +86,7 @@ export default ({ rawWorkflows }: { rawWorkflows: Workflow[] }) => {
       const jobs: JobState[] =
         debugRunState?.jobs?.filter((j) => j.projectId !== currentProject.id) ||
         [];
-      updateValue({ jobs });
+      await updateValue({ jobs });
     }
   }, [currentProject?.id, debugRunState?.jobs, updateValue, useJobCancel]);
 

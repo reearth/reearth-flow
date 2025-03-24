@@ -3,6 +3,7 @@ import type {
   ProjectFragment,
   JobFragment,
   JobStatus as GraphqlJobStatus,
+  EdgeStatus as GraphqlEdgeStatus,
   TriggerFragment,
   LogFragment,
   ProjectSnapshotFragment,
@@ -17,8 +18,12 @@ import {
   type Trigger,
   type ProjectSnapshot,
   type ProjectDocument,
+  EdgeStatus,
+  EdgeExecution,
 } from "@flow/types";
 import { formatDate } from "@flow/utils";
+
+import { EdgeExecutionFragment } from "./__gen__/graphql";
 
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
@@ -54,6 +59,20 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   authToken: trigger.authToken ?? undefined,
   timeInterval: trigger.timeInterval ?? undefined,
   description: trigger.description ?? undefined,
+});
+
+export const toEdgeExecution = (
+  edge: EdgeExecutionFragment,
+): EdgeExecution => ({
+  id: edge.id,
+  jobId: edge.jobId,
+  edgeId: edge.edgeId,
+  status: toEdgeStatus(edge.status),
+  createdAt: edge.createdAt,
+  startedAt: edge.startedAt,
+  completedAt: edge.completedAt,
+  featureId: edge.featureId ?? undefined,
+  intermediateDataUrl: edge.intermediateDataUrl ?? undefined,
 });
 
 export const toJob = (job: JobFragment): Job => ({
@@ -106,5 +125,20 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
     case "PENDING":
     default:
       return "queued";
+  }
+};
+
+export const toEdgeStatus = (
+  status: GraphqlEdgeStatus,
+): EdgeStatus | undefined => {
+  switch (status) {
+    case "IN_PROGRESS":
+      return "inProgress";
+    case "COMPLETED":
+      return "completed";
+    case "FAILED":
+      return "failed";
+    default:
+      return undefined;
   }
 };
