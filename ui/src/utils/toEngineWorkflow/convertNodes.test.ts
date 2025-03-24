@@ -35,7 +35,7 @@ describe("convertNodes", () => {
         id: "1",
         type: "subworkflow",
         position: { x: 22, y: 22 },
-        data: { officialName: "Subworkflow 1" },
+        data: { officialName: "Subworkflow 1", subworkflowId: "01" },
       },
       {
         id: "2",
@@ -46,7 +46,7 @@ describe("convertNodes", () => {
     ];
 
     const expected: EngineReadyNode[] = [
-      { id: "1", name: "Subworkflow 1", type: "subGraph", subGraphId: "1" },
+      { id: "1", name: "Subworkflow 1", type: "subGraph", subGraphId: "01" },
       {
         id: "2",
         name: "Normal Node",
