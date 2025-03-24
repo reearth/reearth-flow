@@ -246,7 +246,7 @@ impl BroadcastGroup {
 
                             for (update, _) in &decoded_updates {
                                 if sender_for_sub.send(update.clone()).is_err() {
-                                    tracing::warn!("Failed to broadcast Redis update");
+                                    tracing::debug!("Failed to broadcast Redis update");
                                 }
                             }
 
