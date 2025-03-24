@@ -58,9 +58,6 @@ impl std::fmt::Debug for BroadcastGroup {
     }
 }
 
-unsafe impl Send for BroadcastGroup {}
-unsafe impl Sync for BroadcastGroup {}
-
 impl BroadcastGroup {
     pub async fn increment_connections(&self) -> Result<()> {
         let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
