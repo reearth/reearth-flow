@@ -63,7 +63,7 @@ impl BroadcastGroup {
         let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
         let new_count = prev_count + 1;
 
-        tracing::info!(
+        tracing::debug!(
             "Connection count increased: {} -> {}",
             prev_count,
             new_count
@@ -76,7 +76,7 @@ impl BroadcastGroup {
         let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
         let new_count = prev_count - 1;
 
-        tracing::info!(
+        tracing::debug!(
             "Connection count decreased: {} -> {}",
             prev_count,
             new_count

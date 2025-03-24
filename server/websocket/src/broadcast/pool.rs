@@ -114,38 +114,18 @@ impl BroadcastGroupManager {
             Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
         };
 
-        match self.redis_store.read_all_stream_data(doc_id).await {
-            Ok(updates) if !updates.is_empty() => {
-                tracing::info!(
-                    "Applying {} updates from Redis stream for document '{}'",
-                    updates.len(),
-                    doc_id
-                );
+        if let Ok(updates) = self.redis_store.read_all_stream_data(doc_id).await {
+            if !updates.is_empty() {
                 let awareness_guard = awareness.write().await;
                 let mut txn = awareness_guard.doc().transact_mut();
 
                 for update_data in &updates {
-                    match Update::decode_v1(update_data) {
-                        Ok(update) => {
-                            if let Err(e) = txn.apply_update(update) {
-                                tracing::warn!("Failed to apply update from Redis: {}", e);
-                            }
-                        }
-                        Err(e) => {
-                            tracing::warn!("Failed to decode update from Redis: {}", e);
+                    if let Ok(update) = Update::decode_v1(update_data) {
+                        if let Err(e) = txn.apply_update(update) {
+                            tracing::warn!("Failed to apply update from Redis: {}", e);
                         }
                     }
                 }
-            }
-            Ok(_) => {
-                tracing::debug!("No updates found in Redis stream for document '{}'", doc_id);
-            }
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to read updates from Redis stream for document '{}': {}",
-                    doc_id,
-                    e
-                );
             }
         }
 
