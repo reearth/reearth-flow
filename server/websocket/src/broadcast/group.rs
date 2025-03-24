@@ -223,7 +223,7 @@ impl BroadcastGroup {
                         &doc_name_for_sub,
                         &group_name_clone,
                         &consumer_name_clone,
-                        14,
+                        15,
                     )
                     .await
                 {
@@ -249,8 +249,6 @@ impl BroadcastGroup {
                                     if let Err(e) = txn.apply_update(update) {
                                         tracing::warn!("Failed to apply update from Redis: {}", e);
                                     }
-                                } else if let Err(e) = decoded {
-                                    tracing::warn!("Failed to decode update from Redis: {}", e);
                                 }
                             }
                         }
