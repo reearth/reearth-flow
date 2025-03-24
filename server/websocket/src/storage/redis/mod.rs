@@ -539,7 +539,7 @@ impl RedisStore {
             .await?;
         Ok(updates)
     }
-      
+
     pub async fn delete_stream(&self, doc_id: &str) -> Result<(), anyhow::Error> {
         let stream_key = format!("yjs:stream:{}", doc_id);
         if let Ok(mut conn) = self.pool.get().await {
