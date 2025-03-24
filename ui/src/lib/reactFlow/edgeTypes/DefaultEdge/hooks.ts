@@ -41,7 +41,13 @@ export default ({
 
   useEffect(() => {
     if (intermediateDataUrl) {
-      if (!hasIntermediateData && debugJobState?.jobId) {
+      if (
+        !hasIntermediateData &&
+        debugJobState?.jobId &&
+        (debugJobState.status === "completed" ||
+          debugJobState?.status === "cancelled" ||
+          debugJobState?.status === "failed")
+      ) {
         (async () => {
           const response = await fetch(intermediateDataUrl, { method: "HEAD" });
           if (response.ok) {
@@ -54,7 +60,13 @@ export default ({
     } else {
       setHasIntermediateData(false);
     }
-  }, [hasIntermediateData, debugJobState?.jobId, intermediateDataUrl, id]);
+  }, [
+    hasIntermediateData,
+    debugJobState?.jobId,
+    debugJobState?.status,
+    intermediateDataUrl,
+    id,
+  ]);
 
   const handleIntermediateDataSet = useCallback(async () => {
     if (!selected || !intermediateDataUrl) return;

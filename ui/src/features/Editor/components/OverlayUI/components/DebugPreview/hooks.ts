@@ -36,16 +36,13 @@ export default () => {
         debugJobState?.status === "failed" ||
         debugJobState?.status === "cancelled")
     ) {
-      // TODO: once backend is fixed, remove this timeout @KaWaite
-      const timer = setTimeout(async () => {
+      (async () => {
         try {
           await refetch();
         } catch (error) {
           console.error("Error during refetch:", error);
         }
-      }, 5000);
-
-      return () => clearTimeout(timer);
+      })();
     }
   }, [debugJobState?.status, outputURLs, refetch]);
 
@@ -81,6 +78,7 @@ export default () => {
     if (intermediateDataURL !== prevIntermediateDataUrl.current) {
       setSelectedDataURL(intermediateDataURL);
       prevIntermediateDataUrl.current = intermediateDataURL;
+      setMinimized(false);
     } else if (
       (dataURLs?.length && !selectedDataURL) ||
       (selectedDataURL && !dataURLs?.find((u) => u.key === selectedDataURL))
