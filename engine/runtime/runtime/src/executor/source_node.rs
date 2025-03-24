@@ -195,7 +195,10 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                     feature_id: None,
                                 });
 
-                                tracing::info!("Waiting for failed status to propagate for source node {}", self.sources[index].channel_manager.owner().id);
+                                tracing::info!(
+                                    "Waiting for failed status to propagate for source node {}",
+                                    self.sources[index].channel_manager.owner().id
+                                );
                                 std::thread::sleep(std::time::Duration::from_millis(300));
 
                                 return Err(ExecutionError::Source(e));
