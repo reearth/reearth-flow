@@ -487,7 +487,6 @@ impl RedisStore {
         count: usize,
     ) -> Result<Vec<Bytes>, anyhow::Error> {
         let stream_key = format!("yjs:stream:{}", doc_id);
-
         let mut conn = self.pool.get().await?;
         let block_ms = 2000;
         let script = redis::Script::new(
@@ -538,7 +537,6 @@ impl RedisStore {
             .arg(block_ms)
             .invoke_async(&mut *conn)
             .await?;
-            
         Ok(updates)
     }
       
