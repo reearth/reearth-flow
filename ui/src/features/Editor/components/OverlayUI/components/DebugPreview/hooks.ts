@@ -89,6 +89,7 @@ export default () => {
 
   const handleSelectedDataChange = (url: string) => {
     setSelectedDataURL(url);
+    setMinimized(false);
   };
 
   const {
