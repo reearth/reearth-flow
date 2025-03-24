@@ -44,7 +44,6 @@ export default ({
     };
 
     const pastedNodes = nodes.filter((n) => pnid.includes(n.id));
-    console.log(pastedNodes);
 
     const newEdgeCreation = (
       pe: Edge[],
