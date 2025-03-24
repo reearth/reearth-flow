@@ -217,10 +217,23 @@ impl BroadcastGroup {
             let mut total_errors = 0;
             let max_total_errors = 10;
             let stream_key = format!("yjs:stream:{}", doc_name_for_sub);
+            let mut conn = match redis_store_for_sub.get_pool().get().await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    tracing::error!("Failed to get Redis connection: {}", e);
+                    return;
+                }
+            };
 
             loop {
                 match redis_store_for_sub
-                    .read_and_ack(&stream_key, &group_name_clone, &consumer_name_clone, 15)
+                    .read_and_ack(
+                        &mut conn,
+                        &stream_key,
+                        &group_name_clone,
+                        &consumer_name_clone,
+                        15,
+                    )
                     .await
                 {
                     Ok(updates) => {

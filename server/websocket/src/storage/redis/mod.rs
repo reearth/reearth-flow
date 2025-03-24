@@ -481,12 +481,12 @@ impl RedisStore {
 
     pub async fn read_and_ack(
         &self,
+        conn: &mut deadpool_redis::Connection,
         stream_key: &str,
         group_name: &str,
         consumer_name: &str,
         count: usize,
     ) -> Result<Vec<Bytes>, anyhow::Error> {
-        let mut conn = self.pool.get().await?;
         let block_ms = 1500;
 
         let result: RedisStreamResults = redis::cmd("XREADGROUP")
