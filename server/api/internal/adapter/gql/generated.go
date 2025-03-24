@@ -191,6 +191,7 @@ type ComplexityRoot struct {
 		DeleteTrigger             func(childComplexity int, triggerID gqlmodel.ID) int
 		DeleteWorkspace           func(childComplexity int, input gqlmodel.DeleteWorkspaceInput) int
 		ExecuteDeployment         func(childComplexity int, input gqlmodel.ExecuteDeploymentInput) int
+		FlushProjectToGcs         func(childComplexity int, projectID gqlmodel.ID) int
 		RemoveAsset               func(childComplexity int, input gqlmodel.RemoveAssetInput) int
 		RemoveMemberFromWorkspace func(childComplexity int, input gqlmodel.RemoveMemberFromWorkspaceInput) int
 		RemoveMyAuth              func(childComplexity int, input gqlmodel.RemoveMyAuthInput) int
@@ -428,6 +429,7 @@ type MutationResolver interface {
 	DeleteDeployment(ctx context.Context, input gqlmodel.DeleteDeploymentInput) (*gqlmodel.DeleteDeploymentPayload, error)
 	ExecuteDeployment(ctx context.Context, input gqlmodel.ExecuteDeploymentInput) (*gqlmodel.JobPayload, error)
 	RollbackProject(ctx context.Context, projectID gqlmodel.ID, version int) (*gqlmodel.ProjectDocument, error)
+	FlushProjectToGcs(ctx context.Context, projectID gqlmodel.ID) (*bool, error)
 	CancelJob(ctx context.Context, input gqlmodel.CancelJobInput) (*gqlmodel.CancelJobPayload, error)
 	DeclareParameter(ctx context.Context, projectID gqlmodel.ID, input gqlmodel.DeclareParameterInput) (*gqlmodel.Parameter, error)
 	UpdateParameterValue(ctx context.Context, paramID gqlmodel.ID, input gqlmodel.UpdateParameterValueInput) (*gqlmodel.Parameter, error)
@@ -1141,6 +1143,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.ExecuteDeployment(childComplexity, args["input"].(gqlmodel.ExecuteDeploymentInput)), true
+
+	case "Mutation.flushProjectToGcs":
+		if e.complexity.Mutation.FlushProjectToGcs == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_flushProjectToGcs_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.FlushProjectToGcs(childComplexity, args["projectId"].(gqlmodel.ID)), true
 
 	case "Mutation.removeAsset":
 		if e.complexity.Mutation.RemoveAsset == nil {
@@ -2643,6 +2657,7 @@ extend type Query {
 
 extend type Mutation {
   rollbackProject(projectId: ID!, version: Int!): ProjectDocument
+  flushProjectToGcs(projectId: ID!): Boolean
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/job.graphql", Input: `type Job implements Node {
@@ -3434,6 +3449,21 @@ func (ec *executionContext) field_Mutation_executeDeployment_args(ctx context.Co
 		}
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_flushProjectToGcs_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.ID
+	if tmp, ok := rawArgs["projectId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
 	return args, nil
 }
 
@@ -7784,6 +7814,58 @@ func (ec *executionContext) fieldContext_Mutation_rollbackProject(ctx context.Co
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_rollbackProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_flushProjectToGcs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_flushProjectToGcs(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().FlushProjectToGcs(rctx, fc.Args["projectId"].(gqlmodel.ID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*bool)
+	fc.Result = res
+	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_flushProjectToGcs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_flushProjectToGcs_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -19410,6 +19492,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "rollbackProject":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_rollbackProject(ctx, field)
+			})
+		case "flushProjectToGcs":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_flushProjectToGcs(ctx, field)
 			})
 		case "cancelJob":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {

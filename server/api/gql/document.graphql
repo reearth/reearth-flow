@@ -31,4 +31,5 @@ extend type Query {
 
 extend type Mutation {
   rollbackProject(projectId: ID!, version: Int!): ProjectDocument
+  flushProjectToGcs(projectId: ID!): Boolean
 }

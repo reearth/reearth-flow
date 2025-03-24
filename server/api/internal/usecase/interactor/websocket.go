@@ -77,3 +77,11 @@ func Rollback(ctx context.Context, id string, version int) (*ws.Document, error)
 	}
 	return client.Rollback(ctx, id, version)
 }
+
+func FlushToGCS(ctx context.Context, id string) error {
+	client := getDefaultWebsocketClient()
+	if client == nil {
+		return fmt.Errorf("websocket client is not initialized")
+	}
+	return client.FlushToGCS(ctx, id)
+}
