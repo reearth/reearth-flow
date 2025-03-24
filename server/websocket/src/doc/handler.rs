@@ -6,7 +6,7 @@ use axum::{
 };
 use chrono::Utc;
 use std::sync::Arc;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
@@ -24,8 +24,6 @@ impl DocumentHandler {
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
     ) -> Response {
-        debug!("Handling GetLatest request for document: {}", doc_id);
-
         if let Err(e) = state.pool.flush_to_gcs(&doc_id).await {
             error!("Failed to flush websocket changes for '{}': {}", doc_id, e);
         }
@@ -95,8 +93,6 @@ impl DocumentHandler {
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
     ) -> Response {
-        debug!("Handling GetHistory request for document: {}", doc_id);
-
         let storage = state.pool.get_store();
 
         let result = async {
@@ -205,11 +201,6 @@ impl DocumentHandler {
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
     ) -> Response {
-        debug!(
-            "Handling GetHistoryMetadata request for document: {}",
-            doc_id
-        );
-
         let storage = state.pool.get_store();
 
         let result = async {
@@ -253,11 +244,6 @@ impl DocumentHandler {
         Path((doc_id, version)): Path<(String, u64)>,
         State(state): State<Arc<AppState>>,
     ) -> Response {
-        debug!(
-            "Handling GetHistoryByVersion request for document: {} version: {}",
-            doc_id, version
-        );
-
         let storage = state.pool.get_store();
         let version_u32 = version as u32;
 
@@ -314,8 +300,6 @@ impl DocumentHandler {
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
     ) -> Response {
-        info!("Manually flushing document {} to GCS", doc_id);
-
         match state.pool.flush_to_gcs(&doc_id).await {
             Ok(_) => StatusCode::OK.into_response(),
             Err(err) => {

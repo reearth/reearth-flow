@@ -368,10 +368,7 @@ impl BroadcastGroup {
         <Sink as futures_util::Sink<Bytes>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
-        let doc_id = self
-            .doc_name
-            .clone()
-            .unwrap_or_else(|| "unknown".to_string());
+        let doc_id = self.doc_name.clone().unwrap_or_default();
         let current_count = self.connection_count();
 
         tracing::info!(
