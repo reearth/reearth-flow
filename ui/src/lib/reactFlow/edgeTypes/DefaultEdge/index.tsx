@@ -1,4 +1,4 @@
-import { X, Table } from "@phosphor-icons/react";
+import { Table } from "@phosphor-icons/react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -20,7 +20,6 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
   targetX,
   targetY,
   targetPosition,
-  source,
   selected,
   // markerEnd,
   // ...props
@@ -35,13 +34,13 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
   });
 
   const {
-    sourceNodeStatus,
+    // sourceNodeStatus,
     intermediateDataIsSet,
     hasIntermediateData,
     handleIntermediateDataSet,
   } = useHooks({
     id,
-    source,
+    // source,
     selected,
   });
 
@@ -49,7 +48,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
     <>
       <BaseEdge id={id} path={edgePath} />
       <EdgeLabelRenderer>
-        {sourceNodeStatus === "failed" && (
+        {/* {sourceNodeStatus === "failed" && (
           <X
             className="nodrag nopan absolute size-[20px] origin-center rounded-full border border-destructive bg-primary fill-destructive p-1"
             weight="bold"
@@ -58,7 +57,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             }}
           />
-        )}
+        )} */}
         {hasIntermediateData && (
           <Table
             className={`nodrag nopan absolute size-[25px] origin-center rounded-full border bg-primary p-1 transition-[height,width] hover:size-[40px] hover:fill-success  ${intermediateDataIsSet ? "size-[35px] border-success bg-success fill-white hover:fill-white" : selected ? "border-success fill-success" : "border-slate-400/80 fill-success/80"}`}
@@ -70,7 +69,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
           />
         )}
       </EdgeLabelRenderer>
-      {sourceNodeStatus === "completed" && (
+      {/* {sourceNodeStatus === "completed" && (
         <path
           d={edgePath}
           stroke="#00a340"
@@ -118,7 +117,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
       )}
       {sourceNodeStatus === "failed" && (
         <path d={edgePath} stroke="#fc4444" strokeWidth="1" fill="none" />
-      )}
+      )} */}
     </>
   );
 };

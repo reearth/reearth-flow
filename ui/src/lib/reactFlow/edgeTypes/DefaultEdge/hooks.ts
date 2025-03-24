@@ -1,4 +1,4 @@
-import { useNodes } from "@xyflow/react";
+// import { useNodes } from "@xyflow/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { config } from "@flow/config";
@@ -7,11 +7,11 @@ import { DebugRunState, useCurrentProject } from "@flow/stores";
 
 export default ({
   id,
-  source,
+  // source,
   selected,
 }: {
   id: string;
-  source: string;
+  // source: string;
   selected?: boolean;
 }) => {
   const [currentProject] = useCurrentProject();
@@ -73,17 +73,18 @@ export default ({
     const newDebugRunState: DebugRunState = {
       ...debugRunState,
       jobs:
-        debugRunState?.jobs?.map((job) =>
-          job.projectId === currentProject?.id
-            ? {
-                ...job,
-                selectedIntermediateData: {
-                  edgeId: id,
-                  url: intermediateDataUrl,
-                },
-              }
-            : job,
-        ) ?? [],
+        debugRunState?.jobs?.map((job) => {
+          const newSelectedIntermediateData =
+            job.projectId === currentProject?.id
+              ? job.selectedIntermediateData?.edgeId === id
+                ? undefined
+                : { edgeId: id, url: intermediateDataUrl }
+              : job.selectedIntermediateData;
+          return {
+            ...job,
+            selectedIntermediateData: newSelectedIntermediateData,
+          };
+        }) ?? [],
     };
     await updateValue(newDebugRunState);
   }, [
@@ -95,19 +96,19 @@ export default ({
     updateValue,
   ]);
 
-  const sourceNodeStatus = useMemo(() => {
-    if (!debugJobState?.nodeExecutions) return undefined;
-    const nodes = useNodes();
-    const sourceNode = nodes.find((node) => node.id === source);
+  // const nodes = useNodes();
+  // const sourceNodeStatus = useMemo(() => {
+  //   if (!debugJobState?.nodeExecutions) return undefined;
+  //   const sourceNode = nodes.find((node) => node.id === source);
 
-    console.log("sourceNode", sourceNode); // TODO: delete
-    return debugJobState?.nodeExecutions?.find(
-      (nodeExecution) => nodeExecution.nodeId === sourceNode?.id,
-    )?.status;
-  }, [debugJobState?.nodeExecutions, source]);
+  //   console.log("sourceNode", sourceNode); // TODO: delete
+  //   return debugJobState?.nodeExecutions?.find(
+  //     (nodeExecution) => nodeExecution.nodeId === sourceNode?.id,
+  //   )?.status;
+  // }, [debugJobState?.nodeExecutions, nodes, source]);
 
   return {
-    sourceNodeStatus,
+    // sourceNodeStatus,
     intermediateDataIsSet,
     hasIntermediateData,
     handleIntermediateDataSet,

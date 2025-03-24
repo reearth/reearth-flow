@@ -22,9 +22,7 @@ export default ({
     outputs: defaultOutputs,
   } = data;
 
-  const { nodeExecution } = useNodeStatus({ id });
-
-  const { status } = useMemo(() => nodeExecution, [nodeExecution]) ?? {};
+  const { nodeStatus } = useNodeStatus({ id });
 
   const inputs: string[] = useMemo(() => {
     if (data.params?.conditions) {
@@ -48,7 +46,7 @@ export default ({
 
   const [borderColor, selectedColor, selectedBackgroundColor] = getNodeColors(
     type,
-    status,
+    nodeStatus,
   );
 
   return {
@@ -56,8 +54,7 @@ export default ({
     customName,
     inputs,
     outputs,
-    status,
-    // intermediateDataUrl,
+    status: nodeStatus,
     borderColor,
     selectedColor,
     selectedBackgroundColor,

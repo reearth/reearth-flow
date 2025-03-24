@@ -138,7 +138,7 @@ export default ({ id }: { id: string }) => {
   // };
 
   return {
-    nodeExecution,
+    nodeStatus,
     // handleIntermediateDataSet,
   };
 };

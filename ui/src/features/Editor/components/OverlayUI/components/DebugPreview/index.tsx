@@ -71,14 +71,16 @@ const DebugPreview: React.FC = () => {
               value="data-viewer"
               onClick={handleTabChange}>
               <GridNine />
-              <p className="text-sm font-thin">{t("Table Viewer")}</p>
+              <p className="select-none text-sm font-thin">
+                {t("Table Viewer")}
+              </p>
             </TabsTrigger>
             <TabsTrigger
               className="gap-1 bg-card"
               value="3d-viewer"
               onClick={handleTabChange}>
               <Globe />
-              <p className="text-sm font-thin">{t("3D Viewer")}</p>
+              <p className="select-none text-sm font-thin">{t("3D Viewer")}</p>
             </TabsTrigger>
           </TabsList>
         </div>
