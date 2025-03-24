@@ -40,7 +40,6 @@ pub struct BroadcastGroup {
     storage: Option<Arc<GcsStore>>,
     redis_store: Option<Arc<RedisStore>>,
     doc_name: Option<String>,
-    redis_ttl: Option<usize>,
     redis_subscriber_task: Option<JoinHandle<()>>,
     redis_consumer_name: Option<String>,
     redis_group_name: Option<String>,
@@ -55,7 +54,6 @@ impl std::fmt::Debug for BroadcastGroup {
             .field("connections", &self.connections)
             .field("awareness_ref", &self.awareness_ref)
             .field("doc_name", &self.doc_name)
-            .field("redis_ttl", &self.redis_ttl)
             .finish()
     }
 }
@@ -164,7 +162,6 @@ impl BroadcastGroup {
             storage: None,
             redis_store: None,
             doc_name: None,
-            redis_ttl: None,
             redis_subscriber_task: None,
             redis_consumer_name: None,
             redis_group_name: None,
@@ -190,8 +187,6 @@ impl BroadcastGroup {
         let mut group = Self::new(awareness, buffer_capacity).await?;
 
         let doc_name = config.doc_name.clone().unwrap_or_default();
-
-        let redis_ttl = Some(redis_store.get_config().ttl as usize);
 
         Self::load_from_storage(&store, &doc_name, &group.awareness_ref).await;
 
@@ -289,7 +284,6 @@ impl BroadcastGroup {
 
         group.storage = Some(store);
         group.doc_name = Some(doc_name.clone());
-        group.redis_ttl = redis_ttl;
 
         if let Some(redis_store) = &group.redis_store {
             let redis_store_clone = redis_store.clone();
