@@ -413,10 +413,8 @@ impl BroadcastGroup {
         let subscription = self.listen(sink, stream, DefaultProtocol);
         let (tx, rx) = tokio::sync::oneshot::channel();
 
-        let self_clone = self.clone();
-
         tokio::spawn(async move {
-            if let Err(e) = self_clone.increment_connections().await {
+            if let Err(e) = self.increment_connections().await {
                 tracing::error!("Failed to increment connections: {}", e);
             }
             let _ = tx.send(());
@@ -464,7 +462,7 @@ impl BroadcastGroup {
 
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
-                    let data = match res.map_err(|e| Error::Other(Box::new(e))) {
+                    let data = match res.map_err(anyhow::Error::from) {
                         Ok(data) => data,
                         Err(e) => {
                             tracing::warn!("Error receiving message: {}", e);
