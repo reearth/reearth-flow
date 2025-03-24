@@ -143,3 +143,10 @@ func TestBuilder_Token(t *testing.T) {
 	res := tb.Token("token").MustBuild()
 	assert.Equal(t, "token", res.Token())
 }
+
+func TestBuilder_UserRoles(t *testing.T) {
+	var tb = New().NewID()
+	ur := NewUserRoleList()
+	res := tb.UserRoles(ur).MustBuild()
+	assert.Equal(t, ur, res.UserRoles())
+}
