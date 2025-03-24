@@ -489,54 +489,54 @@ impl RedisStore {
         let stream_key = format!("yjs:stream:{}", doc_id);
         let mut conn = self.pool.get().await?;
         let block_ms = 2000;
-        let script = redis::Script::new(
-            r#"
-            local stream_key = KEYS[1]
-            local group_name = ARGV[1]
-            local consumer_name = ARGV[2]
-            local count = tonumber(ARGV[3])
-            local block_ms = tonumber(ARGV[4])
-                
-            local result = redis.call('XREADGROUP', 'GROUP', group_name, consumer_name, 'COUNT', count, 'BLOCK', block_ms, 'STREAMS', stream_key, '>')
-            if not result or #result == 0 then return {} end
-            
-            local messages = result[1][2]
-            if not messages or #messages == 0 then return {} end
-            
-            local updates = {}
-            local ids_to_ack = {}
-            local n_messages = #messages
-            
-            for i = 1, n_messages do
-                local message = messages[i]
-                ids_to_ack[i] = message[1]
-                
-                local fields = message[2]
-                local n_fields = #fields
-                for j = 1, n_fields, 2 do
-                    if fields[j] == "update" then
-                        updates[#updates + 1] = fields[j+1]
-                        break
-                    end
-                end
-            end
-            
-            if n_messages > 0 then
-                redis.call('XACK', stream_key, group_name, unpack(ids_to_ack))
-            end
-            
-            return updates
-            "#,
-        );
 
-        let updates = script
-            .key(stream_key)
+        let mut pipe = redis::pipe();
+        pipe.atomic();
+
+        pipe.cmd("XREADGROUP")
+            .arg("GROUP")
             .arg(group_name)
             .arg(consumer_name)
+            .arg("COUNT")
             .arg(count)
+            .arg("BLOCK")
             .arg(block_ms)
-            .invoke_async(&mut *conn)
-            .await?;
+            .arg("STREAMS")
+            .arg(&stream_key)
+            .arg(">");
+
+        let result: Option<RedisStreamResults> = pipe.query_async(&mut *conn).await?;
+
+        let mut updates = Vec::new();
+        let mut message_ids = Vec::new();
+
+        if let Some(result) = result {
+            if !result.is_empty() && !result[0].1.is_empty() {
+                for (msg_id, fields) in &result[0].1 {
+                    message_ids.push(msg_id.clone());
+                    for (field_name, field_value) in fields {
+                        if field_name == "update" {
+                            updates.push(field_value.clone());
+                        }
+                    }
+                }
+
+                if !message_ids.is_empty() {
+                    let mut ack_pipe = redis::pipe();
+                    ack_pipe.atomic();
+
+                    let mut cmd = redis::cmd("XACK");
+                    cmd.arg(&stream_key).arg(group_name);
+                    for id in &message_ids {
+                        cmd.arg(id);
+                    }
+                    ack_pipe.add_command(cmd);
+
+                    let _: () = ack_pipe.query_async(&mut *conn).await?;
+                }
+            }
+        }
+
         Ok(updates)
     }
 
