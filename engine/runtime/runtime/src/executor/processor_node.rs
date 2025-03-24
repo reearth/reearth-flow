@@ -211,6 +211,12 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         feature_id: None,
                     });
 
+                    tracing::info!(
+                        "Waiting for final status to propagate for processor node {}",
+                        self.node_handle.id
+                    );
+                    std::thread::sleep(std::time::Duration::from_millis(300));
+
                     let terminate_result = self.on_terminate(NodeContext::new(
                         self.expr_engine.clone(),
                         self.storage_resolver.clone(),
