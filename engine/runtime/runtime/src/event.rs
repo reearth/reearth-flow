@@ -109,6 +109,10 @@ impl EventHub {
         });
     }
 
+    pub async fn simple_flush(&self, delay_ms: u64) {
+        tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+    }
+
     pub fn warn_log<T: ToString>(&self, span: Option<Span>, message: T) {
         self.send(Event::Log {
             level: Level::WARN,
