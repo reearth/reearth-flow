@@ -95,7 +95,7 @@ export const useQueries = () => {
           jobId: jobId ?? "",
           nodeId: nodeId ?? "",
         });
-        if (!data?.edgeExecution) return;
+        if (!data?.nodeExecution) return;
         return toNodeExecution(data.nodeExecution);
       },
       enabled: !disabled && !!jobId && !!nodeId,

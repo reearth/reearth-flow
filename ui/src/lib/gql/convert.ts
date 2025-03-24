@@ -79,12 +79,10 @@ export const toNodeExecution = (
 ): NodeExecution => ({
   id: node.id,
   jobId: node.jobId,
-  nodeId: node.edgeId,
+  nodeId: node.nodeId,
   status: toNodeStatus(node.status),
   startedAt: node.startedAt,
   completedAt: node.completedAt,
-  // featureId: node.featureId ?? undefined,
-  intermediateDataUrl: node.intermediateDataUrl ?? undefined,
 });
 
 export const toJob = (job: JobFragment): Job => ({
@@ -144,8 +142,12 @@ export const toNodeStatus = (
   status: GraphqlNodeStatus,
 ): NodeStatus | undefined => {
   switch (status) {
-    case "IN_PROGRESS":
-      return "inProgress";
+    case "STARTING":
+      return "starting";
+    case "PENDING":
+      return "pending";
+    case "PROCESSING":
+      return "processing";
     case "COMPLETED":
       return "completed";
     case "FAILED":

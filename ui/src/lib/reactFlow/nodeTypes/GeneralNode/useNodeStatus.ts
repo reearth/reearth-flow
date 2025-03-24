@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 
 import { useJob } from "@flow/lib/gql/job";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { DebugRunState, useCurrentProject } from "@flow/stores";
+import { useCurrentProject } from "@flow/stores";
 
 import useNodeStatusSubscription from "../useNodeStatusSubscription";
 
@@ -27,13 +27,13 @@ export default ({ id }: { id: string }) => {
     id,
   );
 
-  const intermediateDataUrl = useMemo(
-    () =>
-      nodeExecution?.intermediateDataUrl ||
-      debugJobState?.nodeExecutions?.find((ne) => ne.nodeId === id)
-        ?.intermediateDataUrl,
-    [debugJobState?.nodeExecutions, nodeExecution?.intermediateDataUrl, id],
-  );
+  // const intermediateDataUrl = useMemo(
+  //   () =>
+  //     nodeExecution?.intermediateDataUrl ||
+  //     debugJobState?.nodeExecutions?.find((ne) => ne.nodeId === id)
+  //       ?.intermediateDataUrl,
+  //   [debugJobState?.nodeExecutions, nodeExecution?.intermediateDataUrl, id],
+  // );
 
   const { realTimeNodeStatus } = useNodeStatusSubscription({
     id,
@@ -107,25 +107,25 @@ export default ({ id }: { id: string }) => {
     updateValue,
   ]);
 
-  const handleIntermediateDataSet = useCallback(async () => {
-    if (!intermediateDataUrl) return;
-    const newDebugRunState: DebugRunState = {
-      ...debugRunState,
-      jobs:
-        debugRunState?.jobs?.map((job) =>
-          job.projectId === currentProject?.id
-            ? {
-                ...job,
-                selectedIntermediateData: {
-                  nodeId: id,
-                  url: intermediateDataUrl,
-                },
-              }
-            : job,
-        ) ?? [],
-    };
-    await updateValue(newDebugRunState);
-  }, [intermediateDataUrl, debugRunState, currentProject, id, updateValue]);
+  // const handleIntermediateDataSet = useCallback(async () => {
+  //   if (!intermediateDataUrl) return;
+  //   const newDebugRunState: DebugRunState = {
+  //     ...debugRunState,
+  //     jobs:
+  //       debugRunState?.jobs?.map((job) =>
+  //         job.projectId === currentProject?.id
+  //           ? {
+  //               ...job,
+  //               selectedIntermediateData: {
+  //                 edgeId: id,
+  //                 url: intermediateDataUrl,
+  //               },
+  //             }
+  //           : job,
+  //       ) ?? [],
+  //   };
+  //   await updateValue(newDebugRunState);
+  // }, [intermediateDataUrl, debugRunState, currentProject, id, updateValue]);
 
   // const nodeExecution: NodeExecution | undefined = {
   //   id: "execution1",
@@ -139,6 +139,6 @@ export default ({ id }: { id: string }) => {
 
   return {
     nodeExecution,
-    handleIntermediateDataSet,
+    // handleIntermediateDataSet,
   };
 };

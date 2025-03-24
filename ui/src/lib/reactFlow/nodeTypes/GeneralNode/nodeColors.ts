@@ -45,9 +45,10 @@ const nodeColors = {
 };
 
 export const nodeStatusColors: Record<NodeStatus | "default", string> = {
-  succeeded: "border-success",
+  completed: "border-success",
   failed: "border-destructive",
-  running: "active-node-status-border",
+  processing: "active-node-status-border",
   pending: "queued-node-status-border",
+  starting: "queued-node-status-border",
   default: "",
 };

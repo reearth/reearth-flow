@@ -2,20 +2,18 @@ import { NodeStatus } from "@flow/types";
 
 export const getPropsFrom = (status?: NodeStatus) => {
   const style =
-    status === "succeeded"
+    status === "completed"
       ? "border-success"
       : status === "failed"
         ? "border-destructive"
-        : status === "running"
+        : status === "processing"
           ? "active-node-status-border"
           : status === "pending"
             ? "queued-node-status"
             : "";
 
-  const isAnimated = status === "running";
   return {
     style,
-    animated: isAnimated,
   };
 };
 

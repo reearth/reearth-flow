@@ -115,8 +115,27 @@
   }
 }
 
-/* Animation for active node - border */
+/* Animation for active node */
 @keyframes cycleActiveColors {
+  0% {
+    @apply bg-primary;
+  }
+  25% {
+    @apply bg-success;
+  }
+  50% {
+    @apply bg-warning;
+  }
+  75% {
+    @apply bg-destructive;
+  }
+  100% {
+    @apply bg-primary;
+  }
+}
+
+/* Animation for active node - border */
+@keyframes cycleActiveColorsBorder {
   0% {
     @apply border-primary;
   }
@@ -144,6 +163,13 @@
   }
 }
 
+.active-node-status {
+  animation:
+    cycleActiveColors 3s infinite,
+    linear
+    /* pulse 1.5s infinite; */
+}
+
 .active-node-status-shadow {
   animation:
     cycleActiveColorsShadow 3s infinite,
@@ -153,7 +179,7 @@
 
 .active-node-status-border {
   animation:
-    cycleActiveColors 3s infinite,
+    cycleActiveColorsBorder 3s infinite,
     linear
     /* pulse 1.5s infinite; */
 }
@@ -172,7 +198,20 @@
 }
 
 /* Animation for queued node */
-@keyframes cycleColors {
+@keyframes cycleColorsBorder {
+  0% {
+    @apply bg-foreground;
+  }
+  50% {
+    @apply bg-primary;
+  }
+  100% {
+    @apply bg-foreground;
+  }
+}
+
+/* Animation for queued node -border */
+@keyframes cycleColorsBorder {
   0% {
     @apply border-foreground;
   }
@@ -184,6 +223,12 @@
   }
 }
 
+.queued-node-status {
+  animation:
+    cycleColors 3s infinite,
+    pulse 1.5s infinite;
+}
+
 .queued-node-status-shadow {
   animation:
     cycleColorsShadow 3s infinite,
@@ -192,7 +237,7 @@
 
 .queued-node-status-border {
   animation:
-    cycleColors 3s infinite,
+    cycleColorsBorder 3s infinite,
     linear
 }
 

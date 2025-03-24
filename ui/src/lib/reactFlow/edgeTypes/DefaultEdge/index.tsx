@@ -6,6 +6,7 @@ import {
   getBezierPath,
 } from "@xyflow/react";
 
+import { Table } from "@flow/components";
 import { Edge } from "@flow/types";
 
 import useHooks from "./hooks";
@@ -33,7 +34,8 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
     targetPosition,
   });
 
-  const { sourceNodeStatus } = useHooks({
+  const { sourceNodeStatus, intermediateDataUrl } = useHooks({
+    id,
     source,
   });
 
@@ -41,7 +43,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
     <>
       <BaseEdge id={id} path={edgePath} />
       <EdgeLabelRenderer>
-        {sourceNodeStatus === "failed" ? (
+        {sourceNodeStatus === "failed" && (
           <X
             className="nodrag nopan absolute size-[20px] origin-center rounded-full border border-destructive bg-primary fill-destructive p-1"
             weight="bold"
@@ -50,7 +52,10 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             }}
           />
-        ) : null}
+        )}
+        {sourceNodeStatus === "completed" && intermediateDataUrl && (
+          <Table className="size-4 text-success" />
+        )}
       </EdgeLabelRenderer>
       {sourceNodeStatus === "completed" && (
         <path
@@ -61,7 +66,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
           markerEnd="url(#arrow)"
         />
       )}
-      {sourceNodeStatus === "inProgress" && (
+      {sourceNodeStatus === "processing" && (
         <>
           <path
             d={edgePath}

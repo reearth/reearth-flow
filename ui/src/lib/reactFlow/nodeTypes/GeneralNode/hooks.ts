@@ -24,8 +24,7 @@ export default ({
 
   const { nodeExecution } = useNodeStatus({ id });
 
-  const { status, intermediateDataUrl } =
-    useMemo(() => nodeExecution, [nodeExecution]) ?? {};
+  const { status } = useMemo(() => nodeExecution, [nodeExecution]) ?? {};
 
   const inputs: string[] = useMemo(() => {
     if (data.params?.conditions) {
@@ -58,7 +57,7 @@ export default ({
     inputs,
     outputs,
     status,
-    intermediateDataUrl,
+    // intermediateDataUrl,
     borderColor,
     selectedColor,
     selectedBackgroundColor,

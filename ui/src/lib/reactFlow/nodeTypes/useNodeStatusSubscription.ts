@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@flow/lib/auth";
-import { OnEdgeStatusChangeSubscription } from "@flow/lib/gql/__gen__/graphql";
+import { OnNodeStatusChangeSubscription } from "@flow/lib/gql/__gen__/graphql";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useSubscriptionSetup } from "@flow/lib/gql/subscriptions/useSubscriptionSetup";
 import { JobState } from "@flow/stores";
@@ -35,13 +35,13 @@ export default ({
 
   // TODO: Update here when generated code is available for node status
   const subscriptionDataFormatter = useCallback(
-    (data: OnEdgeStatusChangeSubscription) => {
-      return data.edgeStatus;
+    (data: OnNodeStatusChangeSubscription) => {
+      return data.nodeStatus;
     },
     [],
   );
 
-  useSubscriptionSetup<OnEdgeStatusChangeSubscription>(
+  useSubscriptionSetup<OnNodeStatusChangeSubscription>(
     "GetSubscribedNodeStatus",
     accessToken,
     subscriptionVariables,

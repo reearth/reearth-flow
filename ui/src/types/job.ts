@@ -1,6 +1,11 @@
 import type { ApiResponse } from "./api";
 
-export type NodeStatus = "inProgress" | "completed" | "failed";
+export type NodeStatus =
+  | "pending"
+  | "starting"
+  | "processing"
+  | "completed"
+  | "failed";
 
 export type EdgeExecution = {
   id: string;
@@ -16,7 +21,6 @@ export type NodeExecution = {
   status?: NodeStatus;
   startedAt?: string;
   completedAt?: string;
-  intermediateDataUrl?: string;
 };
 
 export type JobStatus =

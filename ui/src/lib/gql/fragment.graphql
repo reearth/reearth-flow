@@ -41,15 +41,20 @@ fragment Trigger on Trigger {
   description
 }
 
-fragment EdgeExecution on EdgeExecution {
+fragment NodeExecution on NodeExecution {
   id
-  edgeId
+  nodeId
   jobId
   status
   createdAt
   startedAt
   completedAt
-  featureId
+}
+
+fragment EdgeExecution on EdgeExecution {
+  id
+  edgeId
+  jobId
   intermediateDataUrl
 }
 
