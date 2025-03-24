@@ -105,6 +105,9 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                     feature_id: None,
                 });
 
+                tracing::info!("Waiting for final status to propagate for all source nodes");
+                std::thread::sleep(std::time::Duration::from_millis(300));
+
                 result
             })));
         }
@@ -134,6 +137,9 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                             feature_id: None,
                         });
                     }
+
+                    tracing::info!("Waiting for final status to propagate for all source nodes");
+                    std::thread::sleep(std::time::Duration::from_millis(300));
 
                     send_to_all_nodes(&self.sources, ExecutorOperation::Terminate { ctx })?;
                     self.event_hub.send(Event::SourceFlushed);
@@ -167,6 +173,9 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                         });
                                     }
 
+                                    tracing::info!("Waiting for final status to propagate for all source nodes");
+                                    std::thread::sleep(std::time::Duration::from_millis(300));
+
                                     send_to_all_nodes(
                                         &self.sources,
                                         ExecutorOperation::Terminate { ctx },
@@ -185,6 +194,9 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                     status: NodeStatus::Failed,
                                     feature_id: None,
                                 });
+
+                                tracing::info!("Waiting for failed status to propagate for source node {}", self.sources[index].channel_manager.owner().id);
+                                std::thread::sleep(std::time::Duration::from_millis(300));
 
                                 return Err(ExecutionError::Source(e));
                             }
