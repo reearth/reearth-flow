@@ -487,7 +487,7 @@ impl RedisStore {
         count: usize,
     ) -> Result<Vec<Bytes>, anyhow::Error> {
         let mut conn = self.pool.get().await?;
-        let block_ms = 1000;
+        let block_ms = 1500;
 
         let result: RedisStreamResults = redis::cmd("XREADGROUP")
             .arg("GROUP")
