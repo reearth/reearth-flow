@@ -531,14 +531,15 @@ impl RedisStore {
 
             let script = redis::Script::new(lua_script);
 
-            let mut all_args = vec![group_name.to_string()];
-            all_args.extend(message_ids);
+            let mut cmd = script.prepare_invoke();
+            cmd.key(&stream_key);
+            cmd.arg(group_name);
 
-            let _: i64 = script
-                .key(&stream_key)
-                .arg(all_args)
-                .invoke_async(&mut *conn)
-                .await?;
+            for msg_id in &message_ids {
+                cmd.arg(msg_id);
+            }
+
+            let _: i64 = cmd.invoke_async(&mut *conn).await?;
         }
         Ok(updates)
     }
