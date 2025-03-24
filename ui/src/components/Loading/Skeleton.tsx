@@ -1,9 +1,9 @@
+import { useT } from "@flow/lib/i18n";
 import { cn } from "@flow/lib/utils";
 
 import { FlowLogo } from "..";
 
 import "./styles.css";
-import { useT } from "@flow/lib/i18n";
 
 const Loading: React.FC<{
   show?: boolean;
