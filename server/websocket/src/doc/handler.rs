@@ -310,4 +310,19 @@ impl DocumentHandler {
             }
         }
     }
+
+    pub async fn flush_to_gcs(
+        Path(doc_id): Path<String>,
+        State(state): State<Arc<AppState>>,
+    ) -> Response {
+        info!("Manually flushing document {} to GCS", doc_id);
+
+        match state.pool.flush_to_gcs(&doc_id).await {
+            Ok(_) => StatusCode::OK.into_response(),
+            Err(err) => {
+                error!("Failed to flush document {} to GCS: {}", doc_id, err);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        }
+    }
 }

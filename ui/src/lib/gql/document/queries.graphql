@@ -23,3 +23,7 @@ mutation RollbackProject($projectId: ID!, $version: Int!) {
     version
   }
 }
+
+mutation FlushProjectToGcs($projectId: ID!) {
+  flushProjectToGcs(projectId: $projectId)
+}

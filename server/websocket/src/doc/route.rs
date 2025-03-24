@@ -26,4 +26,8 @@ pub fn document_routes() -> Router<Arc<AppState>> {
             "/document/{doc_id}/rollback",
             post(DocumentHandler::rollback),
         )
+        .route(
+            "/document/{doc_id}/flush",
+            post(DocumentHandler::flush_to_gcs),
+        )
 }
