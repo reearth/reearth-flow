@@ -487,57 +487,55 @@ impl RedisStore {
         count: usize,
     ) -> Result<Vec<Bytes>, anyhow::Error> {
         let stream_key = format!("yjs:stream:{}", doc_id);
-        let mut conn = self.pool.get().await?;
-        let block_ms = 2000;
+        if let Ok(mut conn) = self.pool.get().await {
+            let block_ms = 2000;
 
-        let mut pipe = redis::pipe();
-        pipe.atomic();
+            let result: Option<RedisStreamResults> = redis::cmd("XREADGROUP")
+                .arg("GROUP")
+                .arg(group_name)
+                .arg(consumer_name)
+                .arg("COUNT")
+                .arg(count)
+                .arg("BLOCK")
+                .arg(block_ms)
+                .arg("STREAMS")
+                .arg(&stream_key)
+                .arg(">")
+                .query_async(&mut *conn)
+                .await?;
 
-        pipe.cmd("XREADGROUP")
-            .arg("GROUP")
-            .arg(group_name)
-            .arg(consumer_name)
-            .arg("COUNT")
-            .arg(count)
-            .arg("BLOCK")
-            .arg(block_ms)
-            .arg("STREAMS")
-            .arg(&stream_key)
-            .arg(">");
+            let mut updates = Vec::new();
+            let mut message_ids = Vec::new();
 
-        let result: Option<RedisStreamResults> = pipe.query_async(&mut *conn).await?;
+            if let Some(result) = result {
+                if !result.is_empty() && !result[0].1.is_empty() {
+                    message_ids.reserve(result[0].1.len());
+                    updates.reserve(result[0].1.len());
 
-        let mut updates = Vec::new();
-        let mut message_ids = Vec::new();
+                    for (msg_id, fields) in &result[0].1 {
+                        message_ids.push(msg_id.clone());
+                        for (field_name, field_value) in fields {
+                            if field_name == "update" {
+                                updates.push(field_value.clone());
+                            }
+                        }
+                    }
 
-        if let Some(result) = result {
-            if !result.is_empty() && !result[0].1.is_empty() {
-                for (msg_id, fields) in &result[0].1 {
-                    message_ids.push(msg_id.clone());
-                    for (field_name, field_value) in fields {
-                        if field_name == "update" {
-                            updates.push(field_value.clone());
+                    if !message_ids.is_empty() {
+                        let ack_result = self
+                            .batch_ack_messages(doc_id, group_name, &message_ids)
+                            .await;
+                        if let Err(e) = ack_result {
+                            tracing::warn!("Failed to acknowledge messages: {}", e);
                         }
                     }
                 }
-
-                if !message_ids.is_empty() {
-                    let mut ack_pipe = redis::pipe();
-                    ack_pipe.atomic();
-
-                    let mut cmd = redis::cmd("XACK");
-                    cmd.arg(&stream_key).arg(group_name);
-                    for id in &message_ids {
-                        cmd.arg(id);
-                    }
-                    ack_pipe.add_command(cmd);
-
-                    let _: () = ack_pipe.query_async(&mut *conn).await?;
-                }
             }
-        }
 
-        Ok(updates)
+            Ok(updates)
+        } else {
+            Err(anyhow::anyhow!("Failed to get Redis connection"))
+        }
     }
 
     pub async fn delete_stream(&self, doc_id: &str) -> Result<(), anyhow::Error> {
