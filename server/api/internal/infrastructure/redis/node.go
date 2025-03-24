@@ -14,7 +14,6 @@ import (
 
 type NodeEntry struct {
 	ID          string     `json:"id"`
-	WorkflowID  string     `json:"workflowId"`
 	JobID       string     `json:"jobId"`
 	NodeID      string     `json:"nodeId"`
 	Status      string     `json:"status"`
@@ -22,15 +21,11 @@ type NodeEntry struct {
 	CompletedAt *time.Time `json:"completedAt,omitempty"`
 	FeatureID   *string    `json:"featureId,omitempty"`
 	Timestamp   time.Time  `json:"timestamp"`
+	WorkflowID  string     `json:"workflowId"`
 }
 
 func (e *NodeEntry) ToDomain() (*graph.NodeExecution, error) {
 	jId, err := id.JobIDFrom(e.JobID)
-	if err != nil {
-		return nil, err
-	}
-
-	nEId, err := id.NodeExecutionIDFrom(e.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +36,7 @@ func (e *NodeEntry) ToDomain() (*graph.NodeExecution, error) {
 	}
 
 	return graph.NewNodeExecution(
-		nEId,
+		e.ID,
 		jId,
 		nId,
 		graph.Status(e.Status),

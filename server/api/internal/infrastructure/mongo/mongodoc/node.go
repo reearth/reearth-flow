@@ -29,11 +29,6 @@ func (d *NodeExecutionDocument) Model() (*graph.NodeExecution, error) {
 		return nil, nil
 	}
 
-	neid, err := id.NodeExecutionIDFrom(d.ID)
-	if err != nil {
-		return nil, err
-	}
-
 	jobID, err := id.JobIDFrom(d.JobID)
 	if err != nil {
 		return nil, err
@@ -45,7 +40,7 @@ func (d *NodeExecutionDocument) Model() (*graph.NodeExecution, error) {
 	}
 
 	return graph.NewNodeExecutionBuilder().
-		ID(neid).
+		ID(d.ID).
 		JobID(jobID).
 		NodeID(nodeID).
 		Status(graph.Status(d.Status)).

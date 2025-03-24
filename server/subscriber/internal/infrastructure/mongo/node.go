@@ -65,12 +65,6 @@ func (m *MongoStorage) SaveNodeExecutionToMongo(ctx context.Context, jobID strin
 		return fmt.Errorf("node execution is nil")
 	}
 
-	if nodeExec.Status != node.StatusCompleted && nodeExec.Status != node.StatusFailed {
-		log.Printf("DEBUG: Skipping MongoDB save for non-terminal status %s for jobID=%s, nodeID=%s",
-			nodeExec.Status, jobID, nodeExec.NodeID)
-		return nil
-	}
-
 	log.Printf("DEBUG: Saving node execution to MongoDB for jobID=%s, nodeID=%s, status=%s",
 		jobID, nodeExec.NodeID, nodeExec.Status)
 

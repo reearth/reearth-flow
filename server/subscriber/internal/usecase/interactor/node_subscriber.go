@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
@@ -39,8 +40,11 @@ func (u *nodeSubscriberUseCase) ProcessNodeEvent(ctx context.Context, event *nod
 	}
 	log.Printf("DEBUG: Successfully saved node event to Redis for JobID: %s, NodeID: %s", event.JobID, event.NodeID)
 
+	upperStatus := strings.ToUpper(string(event.Status))
+	event.Status = node.Status(upperStatus)
+
 	if event.Status == node.StatusCompleted || event.Status == node.StatusFailed {
-		nodeExecID := fmt.Sprintf("%s-%s", event.JobID, event.NodeID)
+		nodeExecID := fmt.Sprintf("%s:%s", event.JobID, event.NodeID)
 
 		nodeExec := &node.NodeExecution{
 			ID:     nodeExecID,
