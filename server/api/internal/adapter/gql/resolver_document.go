@@ -22,24 +22,21 @@ func (r *queryResolver) LatestProjectSnapshot(ctx context.Context, projectId gql
 }
 
 func (r *queryResolver) ProjectSnapshot(ctx context.Context, projectId gqlmodel.ID, version int) ([]*gqlmodel.ProjectSnapshot, error) {
-	history, err := interactor.GetHistory(ctx, string(projectId))
+	history, err := interactor.GetHistoryByVersion(ctx, string(projectId), version)
 	if err != nil {
 		return nil, err
 	}
 
-	var filteredHistory []*gqlmodel.ProjectSnapshot
-	for _, h := range history {
-		if h.Version == version {
-			filteredHistory = append(filteredHistory, &gqlmodel.ProjectSnapshot{
-				Updates:   h.Updates,
-				Version:   h.Version,
-				Timestamp: h.Timestamp,
-			})
-			break
+	snapshots := make([]*gqlmodel.ProjectSnapshot, len(history))
+	for i, h := range history {
+		snapshots[i] = &gqlmodel.ProjectSnapshot{
+			Updates:   h.Updates,
+			Version:   h.Version,
+			Timestamp: h.Timestamp,
 		}
 	}
 
-	return filteredHistory, nil
+	return snapshots, nil
 }
 
 func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.ID) ([]*gqlmodel.ProjectSnapshotMetadata, error) {
