@@ -14,14 +14,6 @@ query GetProjectHistory($projectId: ID!) {
   }
 }
 
-query GetProjectSnapshot($projectId: ID!, $version: Int!) {
-  projectSnapshot(projectId: $projectId, version: $version) {
-    timestamp
-    updates
-    version
-  }
-}
-
 mutation RollbackProject($projectId: ID!, $version: Int!) {
   rollbackProject(projectId: $projectId, version: $version) {
     id

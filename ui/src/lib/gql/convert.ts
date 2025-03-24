@@ -6,20 +6,18 @@ import type {
   NodeStatus as GraphqlNodeStatus,
   TriggerFragment,
   LogFragment,
-  ProjectSnapshotFragment,
   ProjectDocumentFragment,
   NodeExecutionFragment,
   ProjectSnapshotMetadataFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
-import {
+import type {
   Log,
-  type Deployment,
-  type Job,
-  type JobStatus,
-  type Project,
-  type Trigger,
-  type ProjectSnapshot,
-  type ProjectDocument,
+  Deployment,
+  Job,
+  JobStatus,
+  Project,
+  Trigger,
+  ProjectDocument,
   NodeExecution,
   NodeStatus,
   ProjectSnapshotMeta,
@@ -98,14 +96,6 @@ export const toProjectSnapShotMeta = (
 ): ProjectSnapshotMeta => ({
   timestamp: projectSnapshot.timestamp,
   version: projectSnapshot.version,
-});
-
-export const toProjectSnapShot = (
-  projectSnapshot: ProjectSnapshotFragment,
-): ProjectSnapshot => ({
-  timestamp: projectSnapshot.timestamp,
-  version: projectSnapshot.version,
-  updates: projectSnapshot.updates,
 });
 
 export const toProjectDocument = (

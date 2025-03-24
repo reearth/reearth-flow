@@ -1046,14 +1046,6 @@ export type GetProjectHistoryQueryVariables = Exact<{
 
 export type GetProjectHistoryQuery = { __typename?: 'Query', projectHistory: Array<{ __typename?: 'ProjectSnapshotMetadata', timestamp: any, version: number }> };
 
-export type GetProjectSnapshotQueryVariables = Exact<{
-  projectId: Scalars['ID']['input'];
-  version: Scalars['Int']['input'];
-}>;
-
-
-export type GetProjectSnapshotQuery = { __typename?: 'Query', projectSnapshot: Array<{ __typename?: 'ProjectSnapshot', timestamp: any, updates: Array<number>, version: number }> };
-
 export type RollbackProjectMutationVariables = Exact<{
   projectId: Scalars['ID']['input'];
   version: Scalars['Int']['input'];
@@ -1500,15 +1492,6 @@ export const GetProjectHistoryDocument = gql`
   }
 }
     `;
-export const GetProjectSnapshotDocument = gql`
-    query GetProjectSnapshot($projectId: ID!, $version: Int!) {
-  projectSnapshot(projectId: $projectId, version: $version) {
-    timestamp
-    updates
-    version
-  }
-}
-    `;
 export const RollbackProjectDocument = gql`
     mutation RollbackProject($projectId: ID!, $version: Int!) {
   rollbackProject(projectId: $projectId, version: $version) {
@@ -1834,9 +1817,6 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     GetProjectHistory(variables: GetProjectHistoryQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetProjectHistoryQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetProjectHistoryQuery>(GetProjectHistoryDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetProjectHistory', 'query', variables);
-    },
-    GetProjectSnapshot(variables: GetProjectSnapshotQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetProjectSnapshotQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectSnapshotQuery>(GetProjectSnapshotDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetProjectSnapshot', 'query', variables);
     },
     RollbackProject(variables: RollbackProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RollbackProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<RollbackProjectMutation>(RollbackProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RollbackProject', 'mutation', variables);

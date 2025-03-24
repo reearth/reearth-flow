@@ -3,11 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ProjectSnapshotMeta } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
-import {
-  toProjectDocument,
-  toProjectSnapShot,
-  toProjectSnapShotMeta,
-} from "../convert";
+import { toProjectDocument, toProjectSnapShotMeta } from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum DocumentQueryKeys {
@@ -31,19 +27,6 @@ export const useQueries = () => {
         return toProjectDocument(data.latestProjectSnapshot);
       },
       enabled: !!projectId,
-    });
-
-  const useProjectSnapshotQuery = (projectId: string, version: number) =>
-    useQuery({
-      queryKey: [DocumentQueryKeys.GetProjectSnapshot, projectId, version],
-      queryFn: async () => {
-        const data = await graphQLContext?.GetProjectSnapshot({
-          projectId,
-          version,
-        });
-        if (!data?.projectSnapshot) return;
-        return toProjectSnapShot(data.projectSnapshot[0]); // TODO: projectSnapshot shouldn't be array
-      },
     });
 
   const useProjectHistoryQuery = (projectId: string) =>
@@ -100,7 +83,6 @@ export const useQueries = () => {
   });
 
   return {
-    useProjectSnapshotQuery,
     useLatestProjectSnapshotQuery,
     useProjectHistoryQuery,
     rollbackProjectMutation,
