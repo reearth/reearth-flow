@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use deadpool::Runtime;
-use deadpool_redis::{Config, Pool};
+use deadpool_redis::{Config, Connection, Pool};
 use redis::AsyncCommands;
 use std::sync::Arc;
 
@@ -481,7 +481,7 @@ impl RedisStore {
 
     pub async fn read_and_ack(
         &self,
-        conn: &mut deadpool_redis::Connection,
+        conn: &mut Connection,
         stream_key: &str,
         group_name: &str,
         consumer_name: &str,
