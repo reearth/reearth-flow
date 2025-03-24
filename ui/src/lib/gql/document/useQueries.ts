@@ -1,13 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { ProjectSnapshot } from "@flow/types";
+import type { ProjectSnapshotMeta } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
-import { toProjectDocument, toProjectSnapShot } from "../convert";
+import {
+  toProjectDocument,
+  toProjectSnapShot,
+  toProjectSnapShotMeta,
+} from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum DocumentQueryKeys {
   GetLatestProjectSnapshot = "getLatestProjectSnapshot",
+  GetProjectSnapshot = "getProjectSnapshot",
   GetProjectHistory = "getProjectHistory",
 }
 
@@ -28,6 +33,19 @@ export const useQueries = () => {
       enabled: !!projectId,
     });
 
+  const useProjectSnapshotQuery = (projectId: string, version: number) =>
+    useQuery({
+      queryKey: [DocumentQueryKeys.GetProjectSnapshot, projectId, version],
+      queryFn: async () => {
+        const data = await graphQLContext?.GetProjectSnapshot({
+          projectId,
+          version,
+        });
+        if (!data?.projectSnapshot) return;
+        return toProjectSnapShot(data.projectSnapshot[0]); // TODO: projectSnapshot shouldn't be array
+      },
+    });
+
   const useProjectHistoryQuery = (projectId: string) =>
     useQuery({
       queryKey: [DocumentQueryKeys.GetProjectHistory, projectId],
@@ -38,9 +56,9 @@ export const useQueries = () => {
 
         if (!data) return;
         const { projectHistory } = data;
-        const history: ProjectSnapshot[] = projectHistory
+        const history: ProjectSnapshotMeta[] = projectHistory
           .filter(isDefined)
-          .map((projectSnapshot) => toProjectSnapShot(projectSnapshot));
+          .map((projectSnapshot) => toProjectSnapShotMeta(projectSnapshot));
 
         return history;
       },
@@ -82,6 +100,7 @@ export const useQueries = () => {
   });
 
   return {
+    useProjectSnapshotQuery,
     useLatestProjectSnapshotQuery,
     useProjectHistoryQuery,
     rollbackProjectMutation,

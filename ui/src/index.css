@@ -197,8 +197,8 @@
   }
 }
 
-/* Animation for queued node */
-@keyframes cycleColorsBorder {
+/* Animation for queued node - */
+@keyframes cycleColors {
   0% {
     @apply bg-foreground;
   }

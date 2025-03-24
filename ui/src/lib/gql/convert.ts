@@ -8,6 +8,8 @@ import type {
   LogFragment,
   ProjectSnapshotFragment,
   ProjectDocumentFragment,
+  NodeExecutionFragment,
+  ProjectSnapshotMetadataFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import {
   Log,
@@ -20,10 +22,9 @@ import {
   type ProjectDocument,
   NodeExecution,
   NodeStatus,
+  ProjectSnapshotMeta,
 } from "@flow/types";
 import { formatDate } from "@flow/utils";
-
-import { NodeExecutionFragment } from "./__gen__/graphql";
 
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
@@ -90,6 +91,13 @@ export const toLog = (log: LogFragment): Log => ({
   timestamp: log.timestamp,
   status: log.logLevel,
   message: log.message,
+});
+
+export const toProjectSnapShotMeta = (
+  projectSnapshot: ProjectSnapshotMetadataFragment,
+): ProjectSnapshotMeta => ({
+  timestamp: projectSnapshot.timestamp,
+  version: projectSnapshot.version,
 });
 
 export const toProjectSnapShot = (

@@ -6,6 +6,7 @@ import { useQueries } from "./useQueries";
 
 export const useDocument = () => {
   const {
+    useProjectSnapshotQuery,
     useLatestProjectSnapshotQuery,
     useProjectHistoryQuery,
     rollbackProjectMutation,
@@ -13,6 +14,14 @@ export const useDocument = () => {
 
   const { toast } = useToast();
   const t = useT();
+
+  const useGetProjectSnapshot = (projectId: string, version: number) => {
+    const { data, ...rest } = useProjectSnapshotQuery(projectId, version);
+    return {
+      projectDocument: data,
+      ...rest,
+    };
+  };
 
   const useGetLatestProjectSnapshot = (projectId: string) => {
     const { data, ...rest } = useLatestProjectSnapshotQuery(projectId);
@@ -62,6 +71,7 @@ export const useDocument = () => {
   };
 
   return {
+    useGetProjectSnapshot,
     useGetLatestProjectSnapshot,
     useGetProjectHistory,
     useRollbackProject,

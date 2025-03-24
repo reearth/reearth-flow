@@ -73,6 +73,11 @@ fragment ProjectDocument on ProjectDocument {
   version
 }
 
+fragment ProjectSnapshotMetadata on ProjectSnapshotMetadata {
+  timestamp
+  version
+}
+
 fragment ProjectSnapshot on ProjectSnapshot {
   timestamp
   updates
