@@ -512,21 +512,35 @@ impl RedisStore {
         let mut message_ids = Vec::with_capacity(result[0].1.len());
 
         for (msg_id, fields) in result[0].1.iter() {
-            message_ids.push(msg_id.as_str());
+            message_ids.push(msg_id.clone());
             if let Some((_, update)) = fields.iter().find(|(name, _)| name == "update") {
                 updates.push(update.clone());
             }
         }
 
-        let mut pipe = redis::pipe();
-        pipe.atomic();
-        let mut cmd = redis::cmd("XACK");
-        cmd.arg(&stream_key).arg(group_name);
-        for id in message_ids {
-            cmd.arg(id);
+        if !message_ids.is_empty() {
+            let lua_script = r#"
+            local key = KEYS[1]
+            local group = ARGV[1]
+            local result = 0
+            for i=2, #ARGV do
+                result = result + redis.call('XACK', key, group, ARGV[i])
+            end
+            return result
+            "#;
+
+            let script = redis::Script::new(lua_script);
+
+            let mut cmd_args = vec![group_name.to_string()];
+            cmd_args.extend(message_ids);
+
+            let _: i64 = script
+                .key(stream_key)
+                .arg(&cmd_args[0])
+                .arg(&cmd_args[1..])
+                .invoke_async(&mut *conn)
+                .await?;
         }
-        pipe.add_command(cmd);
-        let _: () = pipe.query_async(&mut *conn).await?;
 
         Ok(updates)
     }
