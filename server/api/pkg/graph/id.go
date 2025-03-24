@@ -5,6 +5,5 @@ import (
 )
 
 type EdgeExecutionID = id.EdgeExecutionID
-type NodeExecutionID = id.NodeExecutionID
 
 var ErrInvalidID = id.ErrInvalidID

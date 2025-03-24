@@ -15,7 +15,7 @@ func NewNodeExecutionBuilder() *NodeExecutionBuilder {
 }
 
 func (b *NodeExecutionBuilder) Build() (*NodeExecution, error) {
-	if b.e.id.IsNil() {
+	if b.e.id == "" {
 		return nil, id.ErrInvalidID
 	}
 	return b.e, nil
@@ -29,7 +29,7 @@ func (b *NodeExecutionBuilder) MustBuild() *NodeExecution {
 	return r
 }
 
-func (b *NodeExecutionBuilder) ID(id NodeExecutionID) *NodeExecutionBuilder {
+func (b *NodeExecutionBuilder) ID(id string) *NodeExecutionBuilder {
 	b.e.id = id
 	return b
 }

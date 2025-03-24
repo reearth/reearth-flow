@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/reearth/reearth-flow/subscriber/pkg/node"
@@ -49,11 +50,11 @@ func (r *RedisStorage) SaveNodeEventToRedis(ctx context.Context, event *node.Nod
 
 	nodeData := map[string]interface{}{
 		"id":         event.NodeID,
+		"jobId":      event.JobID,
 		"nodeId":     event.NodeID,
-		"status":     event.Status,
+		"status":     strings.ToUpper(string(event.Status)),
 		"timestamp":  event.Timestamp,
 		"workflowId": event.WorkflowID,
-		"jobId":      event.JobID,
 	}
 
 	if event.FeatureID != nil {
