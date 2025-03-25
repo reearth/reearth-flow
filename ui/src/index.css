@@ -149,7 +149,7 @@
     background-color: theme('colors.primary.DEFAULT');
   }
   25% {
-    background-color: theme('colors.success.DEFAULT');
+    background-color: theme('colors.success');
   }
   50% {
     background-color: theme('colors.warning.DEFAULT');
