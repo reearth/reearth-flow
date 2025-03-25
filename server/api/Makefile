@@ -22,4 +22,12 @@ gql:
 gen-policies:
 	go run ./cmd/policy-generator
 
-.PHONY: lint test e2e build run-app run-db gql gen-policies
+.PHONY: lint test e2e build run-app run-db gql gen-policies all gen-thrift
+
+all: gen-thrift
+
+gen-thrift:
+	@echo "Generating Thrift code..."
+	@thrift -r --gen go:package_prefix=github.com/reearth/reearth-flow/api/ -out . thrift/document.thrift
+
+

@@ -14,9 +14,8 @@ import { ThemedForm } from "./ThemedForm";
 type SchemaFormProps = {
   schema?: RJSFSchema;
   defaultFormData?: any;
-  onChange?: (data: any) => void;
+  onChange: (data: any) => void;
   onError?: (errors: any[]) => void;
-  onSubmit: (data: any) => void;
 };
 
 const SchemaForm: React.FC<SchemaFormProps> = ({
@@ -24,7 +23,6 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
   defaultFormData,
   onChange,
   onError,
-  onSubmit,
 }) => {
   const t = useT();
   const [error, setError] = useState<string | null>(null);
@@ -36,19 +34,16 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
 
   const handleChange = (
     data: IChangeEvent<any, RJSFSchema, GenericObjectType>,
-  ) => onChange?.(data.formData);
-
-  const handleSubmit = (
-    data: IChangeEvent<any, RJSFSchema, GenericObjectType>,
-  ) => onSubmit(data.formData);
+  ) => onChange(data.formData);
 
   return schema ? (
     <ThemedForm
+      className="flex-1 overflow-scroll"
       schema={schema}
       formData={defaultFormData}
       validator={validator}
+      uiSchema={{ "ui:submitButtonOptions": { norender: true } }} // We handle submissions outside of this component
       onChange={handleChange}
-      onSubmit={handleSubmit}
       onError={handleError}
     />
   ) : error ? (

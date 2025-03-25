@@ -1,8 +1,10 @@
 export * from "./action";
 export * from "./api";
 export * from "./deployment";
+export * from "./document";
 export * from "./edge";
 export * from "./job";
+export * from "./layout";
 export * from "./log";
 export * from "./member";
 export * from "./node";
@@ -11,5 +13,6 @@ export * from "./projectVar";
 export * from "./shared";
 export * from "./shortcuts";
 export * from "./trigger";
+export * from "./document";
 export * from "./workflow";
 export * from "./workspace";

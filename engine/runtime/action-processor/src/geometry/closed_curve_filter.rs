@@ -6,20 +6,20 @@ use reearth_flow_geometry::types::geometry::Geometry3D;
 use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Feature, GeometryValue};
 use serde_json::Value;
 
-pub static CLOSED_PORT: Lazy<Port> = Lazy::new(|| Port::new("closed"));
-pub static OPEN_PORT: Lazy<Port> = Lazy::new(|| Port::new("open"));
+static CLOSED_PORT: Lazy<Port> = Lazy::new(|| Port::new("closed"));
+static OPEN_PORT: Lazy<Port> = Lazy::new(|| Port::new("open"));
 
 #[derive(Debug, Clone, Default)]
-pub struct ClosedCurveFilterFactory;
+pub(super) struct ClosedCurveFilterFactory;
 
 impl ProcessorFactory for ClosedCurveFilterFactory {
     fn name(&self) -> &str {
@@ -62,13 +62,13 @@ impl ProcessorFactory for ClosedCurveFilterFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct ClosedCurveFilter;
+struct ClosedCurveFilter;
 
 impl Processor for ClosedCurveFilter {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
@@ -93,11 +93,7 @@ impl Processor for ClosedCurveFilter {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -112,7 +108,7 @@ impl ClosedCurveFilter {
         geos: &Geometry2D,
         feature: &Feature,
         ctx: &ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) {
         match geos {
             Geometry2D::MultiLineString(line_strings) => {
@@ -135,7 +131,7 @@ impl ClosedCurveFilter {
         feature: &Feature,
         lines: Vec<LineString2D<f64>>,
         ctx: &ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) {
         let feature = feature.clone();
         if lines.iter().all(|line| line.is_closed()) {
@@ -150,7 +146,7 @@ impl ClosedCurveFilter {
         geos: &Geometry3D,
         feature: &Feature,
         ctx: &ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) {
         match geos {
             Geometry3D::MultiLineString(line_strings) => {
@@ -173,7 +169,7 @@ impl ClosedCurveFilter {
         feature: &Feature,
         lines: Vec<LineString3D<f64>>,
         ctx: &ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) {
         let feature = feature.clone();
         if lines.iter().all(|line| line.is_closed()) {

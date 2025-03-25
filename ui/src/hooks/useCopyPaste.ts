@@ -1,11 +1,25 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 
-export const useCopyPaste = <T>() => {
-  const [copiedData, setCopiedData] = useState<T | null>(null);
-  const copy = useCallback((data: T) => setCopiedData(data), []);
-  const paste = useCallback((): T | null => copiedData, [copiedData]);
+import { useIndexedDB } from "@flow/lib/indexedDB";
+import { type GeneralState } from "@flow/stores";
+
+export const useCopyPaste = () => {
+  const { value: generalState, updateValue: updateGeneralState } =
+    useIndexedDB("general");
+  const copy = useCallback(
+    async (data: GeneralState["clipboard"]) => {
+      await updateGeneralState({ clipboard: data });
+    },
+    [updateGeneralState],
+  );
+
+  const paste = useCallback(
+    async (): Promise<GeneralState["clipboard"] | null> =>
+      generalState?.clipboard || null,
+    [generalState],
+  );
+
   return {
-    copiedData,
     copy,
     paste,
   };

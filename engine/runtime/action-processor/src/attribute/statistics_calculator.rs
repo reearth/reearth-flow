@@ -2,10 +2,10 @@ use std::{collections::HashMap, sync::Arc};
 
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
@@ -18,7 +18,7 @@ use super::errors::AttributeProcessorError;
 pub static COMPLETE_PORT: Lazy<Port> = Lazy::new(|| Port::new("complete"));
 
 #[derive(Debug, Clone, Default)]
-pub struct StatisticsCalculatorFactory;
+pub(super) struct StatisticsCalculatorFactory;
 
 impl ProcessorFactory for StatisticsCalculatorFactory {
     fn name(&self) -> &str {
@@ -96,7 +96,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct StatisticsCalculator {
+struct StatisticsCalculator {
     aggregate_name: Option<Attribute>,
     aggregate_attribute: Option<Attribute>,
     calculations: Vec<CompiledCalculation>,
@@ -112,16 +112,21 @@ struct CompiledCalculation {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct StatisticsCalculatorParam {
+struct StatisticsCalculatorParam {
+    /// # Name of the attribute to aggregate by
     aggregate_name: Option<Attribute>,
+    /// # Attribute to aggregate by
     aggregate_attribute: Option<Attribute>,
+    /// # Calculations to perform
     calculations: Vec<Calculation>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Calculation {
+    /// # New attribute name
     new_attribute: Attribute,
+    /// # Calculation to perform
     expr: Expr,
 }
 
@@ -129,7 +134,7 @@ impl Processor for StatisticsCalculator {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
@@ -168,11 +173,7 @@ impl Processor for StatisticsCalculator {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         let mut features = HashMap::<String, HashMap<Attribute, i64>>::new();
         for (new_attribute, value) in &self.aggregate_buffer {
             for (attr, count) in value {

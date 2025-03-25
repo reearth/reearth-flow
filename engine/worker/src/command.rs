@@ -24,9 +24,10 @@ const WORKER_ASSET_GLOBAL_PARAMETER_VARIABLE: &str = "workerAssetPath";
 const WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE: &str = "workerArtifactPath";
 
 pub fn build_worker_command() -> Command {
-    Command::new("worker")
-        .about("Start worker.")
+    Command::new("Re:Earth Flow Worker")
+        .about("Start flow worker.")
         .long_about("Start a worker to run a workflow.")
+        .version(env!("CARGO_PKG_VERSION"))
         .arg(workflow_arg())
         .arg(asset_arg())
         .arg(worker_num_arg())
@@ -99,7 +100,9 @@ impl RunWorkerCommand {
             .ok_or(crate::errors::Error::init("No metadata path provided"))?;
         let metadata_path =
             Uri::from_str(metadata_path.as_str()).map_err(crate::errors::Error::init)?;
-        let worker_num = matches.remove_one::<usize>("worker_num").unwrap_or(100);
+        let worker_num = matches
+            .remove_one::<usize>("worker_num")
+            .unwrap_or(num_cpus::get());
         let pubsub_backend = matches
             .remove_one::<String>("pubsub_backend")
             .unwrap_or_else(|| "google".to_string());
@@ -168,7 +171,6 @@ impl RunWorkerCommand {
         let job_result = match result {
             Ok(_) => {
                 if node_failure_handler.all_success() {
-                    self.cleanup(&meta, &storage_resolver).await?;
                     JobResult::Success
                 } else {
                     tracing::error!("Failed nodes: {:?}", node_failure_handler.failed_nodes());
@@ -177,17 +179,27 @@ impl RunWorkerCommand {
             }
             Err(_) => JobResult::Failed,
         };
+        self.cleanup(&meta, &storage_resolver).await?;
         let pubsub = PubSubBackend::try_from(self.pubsub_backend.as_str())
             .await
             .map_err(crate::errors::Error::init)?;
         match pubsub {
             PubSubBackend::Google(pubsub) => pubsub
-                .publish(JobCompleteEvent::new(workflow_id, meta.job_id, job_result))
+                .publish(JobCompleteEvent::new(
+                    workflow_id,
+                    meta.job_id,
+                    job_result.clone(),
+                ))
                 .await
                 .map_err(crate::errors::Error::run),
             PubSubBackend::Noop(_) => Ok(()),
         }?;
-        tracing::info!("Job completed");
+        tracing::info!(
+            "Job completed with workflow_id: {:?}, job_id: {:?} result: {:?}",
+            workflow_id,
+            meta.job_id,
+            job_result
+        );
         Ok(())
     }
 

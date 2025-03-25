@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{Context, ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
@@ -15,15 +15,15 @@ use serde_json::Value;
 
 use super::errors::FeatureProcessorError;
 
-pub static UP_TO_LOD0: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod0"));
-pub static UP_TO_LOD1: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod1"));
-pub static UP_TO_LOD2: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod2"));
-pub static UP_TO_LOD3: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod3"));
-pub static UP_TO_LOD4: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod4"));
-pub static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
+static UP_TO_LOD0: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod0"));
+static UP_TO_LOD1: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod1"));
+static UP_TO_LOD2: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod2"));
+static UP_TO_LOD3: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod3"));
+static UP_TO_LOD4: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod4"));
+static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
 
 #[derive(Debug, Clone, Default)]
-pub(crate) struct FeatureLodFilterFactory;
+pub(super) struct FeatureLodFilterFactory;
 
 impl ProcessorFactory for FeatureLodFilterFactory {
     fn name(&self) -> &str {
@@ -93,7 +93,8 @@ impl ProcessorFactory for FeatureLodFilterFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct FeatureLodFilterParam {
+struct FeatureLodFilterParam {
+    /// # Attributes to filter by
     filter_key: Attribute,
 }
 
@@ -102,21 +103,17 @@ struct LodCount {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct FeatureLodFilter {
+struct FeatureLodFilter {
     filter_key: Attribute,
     buffer_features: HashMap<AttributeValue, Vec<Feature>>,
     max_lod: HashMap<AttributeValue, u8>,
 }
 
 impl Processor for FeatureLodFilter {
-    fn num_threads(&self) -> usize {
-        2
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let Some(lod) = feature.metadata.lod else {
@@ -130,7 +127,8 @@ impl Processor for FeatureLodFilter {
             ))
         })?;
         if !self.buffer_features.contains_key(filter_key) {
-            self.flush_buffer(ctx.as_context(), fw, filter_key);
+            self.flush_buffer(ctx.as_context(), fw);
+            self.buffer_features.clear();
         }
         let features = self.buffer_features.entry(filter_key.clone()).or_default();
         features.push(feature.clone());
@@ -143,19 +141,8 @@ impl Processor for FeatureLodFilter {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
-        for (key, features) in self.buffer_features.iter() {
-            let lod_count = LodCount {
-                max_lod: self.max_lod.get(key).cloned().unwrap_or(0),
-            };
-            for feature in features {
-                Self::routing_feature_by_lod(ctx.as_context(), fw, feature, &lod_count);
-            }
-        }
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+        self.flush_buffer(ctx.as_context(), fw);
         Ok(())
     }
 
@@ -165,40 +152,20 @@ impl Processor for FeatureLodFilter {
 }
 
 impl FeatureLodFilter {
-    fn flush_buffer(
-        &mut self,
-        ctx: Context,
-        fw: &mut dyn ProcessorChannelForwarder,
-        ignore_key: &AttributeValue,
-    ) {
-        for (key, features) in self
-            .buffer_features
-            .iter()
-            .filter(|(k, _)| *k != ignore_key)
-        {
+    fn flush_buffer(&self, ctx: Context, fw: &ProcessorChannelForwarder) {
+        for (key, features) in self.buffer_features.iter() {
             let lod_count = LodCount {
                 max_lod: self.max_lod.get(key).cloned().unwrap_or(0),
             };
-            for feature in features {
+            features.iter().for_each(|feature| {
                 Self::routing_feature_by_lod(ctx.clone(), fw, feature, &lod_count);
-            }
-        }
-
-        let keys: Vec<AttributeValue> = self
-            .buffer_features
-            .keys()
-            .filter(|k| *k != ignore_key)
-            .cloned()
-            .collect();
-        let buffer = &mut self.buffer_features;
-        for key in keys {
-            buffer.remove(&key);
+            });
         }
     }
 
     fn routing_feature_by_lod(
         ctx: Context,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
         feature: &Feature,
         lod_count: &LodCount,
     ) {

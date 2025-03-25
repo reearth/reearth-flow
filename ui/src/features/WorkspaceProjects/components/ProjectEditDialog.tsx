@@ -9,7 +9,7 @@ import {
   DialogTitle,
   Input,
   Label,
-  Textarea,
+  TextArea,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
@@ -51,7 +51,7 @@ const ProjectEditDialog: React.FC<Props> = ({
           </DialogContentSection>
           <DialogContentSection>
             <Label>{t("Project Description")}</Label>
-            <Textarea
+            <TextArea
               placeholder={t("Your project description goes here...")}
               value={editProject?.description}
               onChange={(e) => onUpdateValue("description", e.target.value)}

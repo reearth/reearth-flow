@@ -8,23 +8,23 @@ use reearth_flow_geometry::types::multi_polygon::{MultiPolygon2D, MultiPolygon3D
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Feature, Geometry, GeometryValue};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-pub static CLIPPER_PORT: Lazy<Port> = Lazy::new(|| Port::new("clipper"));
-pub static CANDIDATE_PORT: Lazy<Port> = Lazy::new(|| Port::new("candidate"));
-pub static INSIDE_PORT: Lazy<Port> = Lazy::new(|| Port::new("inside"));
-pub static OUTSIDE_PORT: Lazy<Port> = Lazy::new(|| Port::new("outside"));
+static CLIPPER_PORT: Lazy<Port> = Lazy::new(|| Port::new("clipper"));
+static CANDIDATE_PORT: Lazy<Port> = Lazy::new(|| Port::new("candidate"));
+static INSIDE_PORT: Lazy<Port> = Lazy::new(|| Port::new("inside"));
+static OUTSIDE_PORT: Lazy<Port> = Lazy::new(|| Port::new("outside"));
 
 #[derive(Debug, Clone, Default)]
-pub struct ClipperFactory;
+pub(super) struct ClipperFactory;
 
 impl ProcessorFactory for ClipperFactory {
     fn name(&self) -> &str {
@@ -70,7 +70,7 @@ impl ProcessorFactory for ClipperFactory {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Clipper {
+struct Clipper {
     clippers: Vec<Feature>,
     candidates: Vec<Feature>,
 }
@@ -79,7 +79,7 @@ impl Processor for Clipper {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
@@ -109,11 +109,7 @@ impl Processor for Clipper {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         let clip_regions2d = self
             .clippers
             .iter()
@@ -207,7 +203,7 @@ fn handle_2d_geometry(
     feature: &Feature,
     geometry: &Geometry,
     ctx: &NodeContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
 ) {
     match geos {
         Geometry2D::Polygon(poly) => {
@@ -239,7 +235,7 @@ fn forward_polygon2d(
     feature: &Feature,
     geometry: &Geometry,
     ctx: &NodeContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
 ) {
     for inside in insides {
         let mut feature = feature.clone();
@@ -271,7 +267,7 @@ fn handle_3d_geometry(
     feature: &Feature,
     geometry: &Geometry,
     ctx: &NodeContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
 ) {
     match geos {
         Geometry3D::Polygon(poly) => {
@@ -303,7 +299,7 @@ fn forward_polygon3d(
     feature: &Feature,
     geometry: &Geometry,
     ctx: &NodeContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
 ) {
     for inside in insides {
         let mut feature = feature.clone();

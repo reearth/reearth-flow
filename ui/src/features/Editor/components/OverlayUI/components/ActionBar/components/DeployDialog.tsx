@@ -22,13 +22,13 @@ type Props = {
     description: string,
     deploymentId?: string,
   ) => Promise<void>;
-  setShowDialog: (show: boolean) => void;
+  onDialogClose: () => void;
 };
 
 const DeployDialog: React.FC<Props> = ({
   allowedToDeploy,
   onWorkflowDeployment,
-  setShowDialog,
+  onDialogClose,
 }) => {
   const t = useT();
   const [currentProject] = useCurrentProject();
@@ -52,20 +52,20 @@ const DeployDialog: React.FC<Props> = ({
   const handleWorkflowDeployment = useCallback(async () => {
     await onWorkflowDeployment(description, deployment?.id);
     if (allowedToDeploy) {
-      setShowDialog(false);
+      onDialogClose();
     }
   }, [
     description,
     deployment?.id,
     allowedToDeploy,
     onWorkflowDeployment,
-    setShowDialog,
+    onDialogClose,
   ]);
 
   return (
-    <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
+    <Dialog open={true} onOpenChange={onDialogClose}>
       <DialogContent size="sm">
-        <DialogTitle>{t("Deploy project")}</DialogTitle>
+        <DialogTitle>{t("Deploy Project")}</DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex flex-row items-center">
             <Label>{t("Project to Deploy: ")}</Label>

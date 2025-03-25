@@ -1,74 +1,98 @@
-import { useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 
+import { useAuth } from "../auth";
+
 import { yWorkflowConstructor } from "./conversions";
 import type { YWorkflow } from "./types";
 
-export default ({ workflowId }: { workflowId?: string }) => {
-  const { projectId }: { projectId: string } = useParams({
-    strict: false,
-  });
+export default ({
+  workflowId,
+  projectId,
+  isProtected,
+}: {
+  workflowId?: string;
+  projectId?: string;
+  isProtected?: boolean;
+}) => {
+  const { getAccessToken } = useAuth();
 
   const [undoManager, setUndoManager] = useState<Y.UndoManager | null>(null);
 
-  const [state, setState] = useState<{
-    yDoc: Y.Doc;
-    yWorkflows: Y.Array<YWorkflow>;
-    undoTrackerActionWrapper: (callback: () => void) => void;
-  } | null>(null);
+  const [yDocState, setYDocState] = useState<Y.Doc | null>(null);
   const [isSynced, setIsSynced] = useState(false);
 
   useEffect(() => {
     const yDoc = new Y.Doc();
-    const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
-
     const { websocket } = config();
     let yWebSocketProvider: WebsocketProvider | null = null;
 
     if (workflowId && websocket && projectId) {
-      yWebSocketProvider = new WebsocketProvider(
-        websocket,
-        `${projectId}:${workflowId}`,
-        yDoc,
-      );
-
-      yWebSocketProvider.once("sync", () => {
-        if (yWorkflows.length === 0) {
-          yDoc.transact(() => {
-            const yWorkflow = yWorkflowConstructor(
-              DEFAULT_ENTRY_GRAPH_ID,
-              "Main Workflow",
-            );
-            yWorkflows.insert(0, [yWorkflow]);
-          });
+      (async () => {
+        const params: Record<string, string> = {};
+        if (isProtected) {
+          const token = await getAccessToken();
+          params.token = token;
         }
 
-        setIsSynced(true); // Mark as synced
-      });
+        yWebSocketProvider = new WebsocketProvider(
+          websocket,
+          `${projectId}:${workflowId}`,
+          yDoc,
+          {
+            params,
+          },
+        );
+
+        yWebSocketProvider.once("sync", () => {
+          const metadata = yDoc.getMap("metadata");
+          if (!metadata.get("initialized")) {
+            // Within a transaction, set the flag and perform initialization.
+            yDoc.transact(() => {
+              const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
+              // This check is only necessary to avoid duplicate workflows on older projects.
+              if (yWorkflows.get(DEFAULT_ENTRY_GRAPH_ID)) return;
+              // Only one client should set this flag.
+              if (!metadata.get("initialized")) {
+                const yWorkflow = yWorkflowConstructor(
+                  DEFAULT_ENTRY_GRAPH_ID,
+                  "Main Workflow",
+                );
+                yWorkflows.set(DEFAULT_ENTRY_GRAPH_ID, yWorkflow);
+                metadata.set("initialized", true);
+              }
+            });
+          }
+          setIsSynced(true); // Mark as synced
+        });
+      })();
     }
 
-    // Initial state setup
-    setState({
-      yDoc,
-      yWorkflows,
-      undoTrackerActionWrapper: (callback: () => void) =>
-        yDoc.transact(callback, yDoc.clientID),
-    });
+    setYDocState(yDoc);
 
     return () => {
-      setIsSynced(false); // Mark as not synced
-      yWebSocketProvider?.destroy(); // Cleanup on unmount
+      setIsSynced(false);
+      yWebSocketProvider?.destroy();
     };
-  }, [projectId, workflowId]);
+  }, [projectId, workflowId, isProtected, getAccessToken]);
 
-  const { yDoc, yWorkflows, undoTrackerActionWrapper } = state || {};
+  const currentUserClientId = yDocState?.clientID;
 
-  const currentUserClientId = yDoc?.clientID;
+  const yWorkflows = yDocState?.getMap<YWorkflow>("workflows");
+
+  const undoTrackerActionWrapper = (
+    callback: () => void,
+    originPrepend?: string,
+  ) => {
+    const origin = originPrepend
+      ? `${originPrepend}-${yDocState?.clientID}`
+      : yDocState?.clientID;
+    yDocState?.transact(callback, origin);
+  };
 
   useEffect(() => {
     if (yWorkflows) {
@@ -80,14 +104,48 @@ export default ({ workflowId }: { workflowId?: string }) => {
 
       return () => {
         manager.destroy(); // Clean up UndoManager on component unmount
+        setUndoManager(null);
       };
     }
   }, [yWorkflows, currentUserClientId]);
 
+  const observedMapsRef = useRef(new WeakSet());
+
+  function recursivelyTrackSharedType(sharedType?: Y.Map<any>): void {
+    if (!sharedType) return;
+    if (observedMapsRef.current.has(sharedType)) return;
+    observedMapsRef.current.add(sharedType);
+
+    undoManager?.addToScope([sharedType]);
+
+    if (sharedType instanceof Y.Map) {
+      sharedType.forEach((value: any) => {
+        if (value instanceof Y.Map) {
+          recursivelyTrackSharedType(value);
+        }
+      });
+
+      sharedType.observe((event: Y.YMapEvent<any>) => {
+        event.changes.keys.forEach((change: any, key: string) => {
+          if (change.action === "add" || change.action === "update") {
+            const newValue: any = sharedType.get(key);
+            if (newValue instanceof Y.Map) {
+              recursivelyTrackSharedType(newValue);
+            }
+          }
+        });
+      });
+    }
+  }
+
+  // Start the recursive tracking
+  recursivelyTrackSharedType(yWorkflows);
+
   return {
-    state,
+    yWorkflows,
     isSynced,
     undoManager,
     undoTrackerActionWrapper,
+    yDocState,
   };
 };

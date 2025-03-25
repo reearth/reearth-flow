@@ -13,7 +13,7 @@ import { ALLOWED_WORKFLOW_FILE_EXTENSIONS } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
 import { Deployment } from "@flow/types";
 
-import useHooks from "./useHooks";
+import useHooks from "./hooks";
 
 type Props = {
   selectedDeployment: Deployment;
@@ -40,21 +40,23 @@ const DeploymentEditDialog: React.FC<Props> = ({
       <DialogContent size="sm">
         <DialogTitle>{t("Edit Deployment")}</DialogTitle>
         <DialogContentWrapper>
-          <DialogContentSection className="flex flex-col">
-            <Label>{t("Workflow file: ")}</Label>
-            <Input
-              type="file"
-              accept={ALLOWED_WORKFLOW_FILE_EXTENSIONS}
-              onChange={handleWorkflowFileUpload}
-            />
-            {invalidFile && (
-              <p className="text-xs text-red-500 dark:text-red-400">
-                {t(
-                  "There is a problem with file you tried to upload. Please verify its contents and try again.",
-                )}
-              </p>
-            )}
-          </DialogContentSection>
+          {!selectedDeployment.projectName && (
+            <DialogContentSection className="flex flex-col">
+              <Label>{t("Workflow file: ")}</Label>
+              <Input
+                type="file"
+                accept={ALLOWED_WORKFLOW_FILE_EXTENSIONS}
+                onChange={handleWorkflowFileUpload}
+              />
+              {invalidFile && (
+                <p className="text-xs text-red-500 dark:text-red-400">
+                  {t(
+                    "There is a problem with file you tried to upload. Please verify its contents and try again.",
+                  )}
+                </p>
+              )}
+            </DialogContentSection>
+          )}
           <div className="border-b border-primary text-center" />
           <DialogContentSection className="flex flex-col">
             <Label>{t("Description")}</Label>

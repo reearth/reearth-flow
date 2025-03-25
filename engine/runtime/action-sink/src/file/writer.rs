@@ -80,6 +80,7 @@ impl SinkFactory for FileWriterSinkFactory {
         let params = match params {
             FileWriterParam::Csv { .. } => FileWriterCompiledParam::Csv { common_params },
             FileWriterParam::Tsv { .. } => FileWriterCompiledParam::Tsv { common_params },
+            FileWriterParam::Xml { .. } => FileWriterCompiledParam::Xml { common_params },
             FileWriterParam::Json { json_params, .. } => FileWriterCompiledParam::Json {
                 common_params,
                 json_params,
@@ -127,6 +128,10 @@ pub enum FileWriterParam {
         #[serde(flatten)]
         common_params: FileWriterCommonParam,
     },
+    Xml {
+        #[serde(flatten)]
+        common_params: FileWriterCommonParam,
+    },
     Json {
         #[serde(flatten)]
         common_params: FileWriterCommonParam,
@@ -146,6 +151,7 @@ impl FileWriterParam {
         match self {
             Self::Csv { common_params } => common_params,
             Self::Tsv { common_params } => common_params,
+            Self::Xml { common_params, .. } => common_params,
             Self::Json { common_params, .. } => common_params,
             Self::Excel { common_params, .. } => common_params,
         }
@@ -158,6 +164,9 @@ pub enum FileWriterCompiledParam {
         common_params: FileWriterCommonCompiledParam,
     },
     Tsv {
+        common_params: FileWriterCommonCompiledParam,
+    },
+    Xml {
         common_params: FileWriterCommonCompiledParam,
     },
     Json {
@@ -175,6 +184,7 @@ impl FileWriterCompiledParam {
         match self {
             Self::Csv { common_params } => common_params,
             Self::Tsv { common_params } => common_params,
+            Self::Xml { common_params, .. } => common_params,
             Self::Json { common_params, .. } => common_params,
             Self::Excel { common_params, .. } => common_params,
         }
@@ -215,6 +225,9 @@ impl Sink for FileWriter {
                 }
                 FileWriterCompiledParam::Tsv { .. } => {
                     write_csv(output, features, Delimiter::Tab, &storage_resolver)
+                }
+                FileWriterCompiledParam::Xml { .. } => {
+                    super::xml::write_xml(output, features, &storage_resolver)
                 }
                 FileWriterCompiledParam::Excel { excel_params, .. } => {
                     write_excel(output, excel_params, features, &storage_resolver)

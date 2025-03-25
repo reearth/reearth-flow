@@ -4,10 +4,10 @@ use reearth_flow_geometry::types::{
     coordinate::Coordinate, geometry::Geometry3D as FlowGeometry3D, rect::Rect,
 };
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Geometry, GeometryValue};
@@ -90,7 +90,7 @@ impl Processor for ThreeDimensionBoxReplacer {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let attributes = &ctx.feature.attributes;
         let min_x = parse_f64(attributes.get(&self.min_x))?;
@@ -111,11 +111,7 @@ impl Processor for ThreeDimensionBoxReplacer {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

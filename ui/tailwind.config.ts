@@ -59,6 +59,11 @@ const config = {
           transformer: "rgba(var(--node-transformer))",
           reader: "rgba(var(--node-reader))",
           writer: "rgba(var(--node-writer))",
+          subworkflow: "rgba(var(--node-subworkflow))",
+          "reader-selected": "rgba(var(--node-reader-selected))",
+          "writer-selected": "rgba(var(--node-writer-selected))",
+          "transformer-selected": "rgba(var(--node-transformer-selected))",
+          "subworkflow-selected": "rgba(var(--node-subworkflow-selected))",
         },
         success: "rgba(var(--success))",
       },
@@ -84,7 +89,7 @@ const config = {
     },
   },
   plugins: [require("tailwindcss-animate")], // eslint-disable-line
-  safelist: ["line-clamp-2"],
+  safelist: ["line-clamp-2", "loading-pulse"],
 } satisfies Config;
 
 export default config;

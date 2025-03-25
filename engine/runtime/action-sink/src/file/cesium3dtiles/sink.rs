@@ -2,13 +2,11 @@ use std::{
     collections::HashMap,
     io::{BufWriter, Cursor},
     str::FromStr,
-    sync::{
-        mpsc::{self, channel, Receiver},
-        Arc,
-    },
-    vec,
+    sync::Arc,
+    time, vec,
 };
 
+use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::event::{Event, EventHub};
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
@@ -23,6 +21,8 @@ use serde_json::Value as JsonValue;
 
 use crate::errors::SinkError;
 use crate::file::mvt::tileid::TileIdMethod;
+
+static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
 
 #[derive(Debug, Clone, Default)]
 pub struct Cesium3DTilesSinkFactory;
@@ -45,7 +45,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![DEFAULT_PORT.clone(), SCHEMA_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -96,6 +96,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
         let sink = Cesium3DTilesWriter {
             global_params: with,
             buffer: HashMap::new(),
+            schema: Default::default(),
             params: Cesium3DTilesWriterCompiledParam {
                 output,
                 min_zoom: params.min_zoom,
@@ -103,22 +104,19 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 attach_texture: params.attach_texture,
                 compress_output,
             },
-            join_handles: Vec::new(),
         };
         Ok(Box::new(sink))
     }
 }
 
 type BufferKey = (Uri, String, Option<Uri>); // (output, feature_type, compress_output)
-type JoinHandle = Arc<parking_lot::Mutex<Receiver<Result<(), SinkError>>>>;
 
 #[derive(Debug, Clone)]
 pub struct Cesium3DTilesWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
-    pub(super) params: Cesium3DTilesWriterCompiledParam,
     pub(super) buffer: HashMap<BufferKey, Vec<Feature>>,
-    #[allow(clippy::type_complexity)]
-    pub(super) join_handles: Vec<JoinHandle>,
+    pub(super) schema: nusamai_citygml::schema::Schema,
+    pub(super) params: Cesium3DTilesWriterCompiledParam,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -146,93 +144,85 @@ impl Sink for Cesium3DTilesWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
+        match &ctx.port {
+            port if *port == *DEFAULT_PORT => self.process_default(&ctx)?,
+            port if *port == SCHEMA_PORT.clone() => self.process_schema(&ctx)?,
+            port => {
+                return Err(SinkError::Cesium3DTilesWriter(format!(
+                    "Unknown port with: {:?}",
+                    port
+                ))
+                .into())
+            }
+        }
+        Ok(())
+    }
+
+    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
+        self.flush_buffer(ctx.as_context())?;
+        Ok(())
+    }
+}
+
+impl Cesium3DTilesWriter {
+    fn process_default(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
         let Some(feature_type) = &ctx.feature.feature_type() else {
-            return Err(
-                SinkError::Cesium3DTilesWriter("Failed to get feature type".to_string()).into(),
-            );
+            return Err(SinkError::Cesium3DTilesWriter(
+                "Failed to get feature type".to_string(),
+            ));
         };
         let geometry = &ctx.feature.geometry;
         if geometry.is_empty() {
-            return Err(SinkError::Cesium3DTilesWriter("Unsupported input".to_string()).into());
+            return Err(SinkError::Cesium3DTilesWriter(
+                "Unsupported input".to_string(),
+            ));
         };
         let geometry_value = &geometry.value;
         if !matches!(
             geometry_value,
             geometry_types::GeometryValue::CityGmlGeometry(_)
         ) {
-            return Err(SinkError::Cesium3DTilesWriter("Unsupported input".to_string()).into());
+            return Err(SinkError::Cesium3DTilesWriter(
+                "Unsupported input".to_string(),
+            ));
         }
-        let context = ctx.as_context();
-        let feature = ctx.feature;
+        let feature = &ctx.feature;
         let output = self.params.output.clone();
         let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
         let path = scope
             .eval_ast::<String>(&output)
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;
-        let output = Uri::from_str(path.as_str())?;
+        let output = Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)?;
         let compress_output = if let Some(compress_output) = &self.params.compress_output {
             let compress_output = compress_output.clone();
             let path = scope
                 .eval_ast::<String>(&compress_output)
                 .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;
-            Some(Uri::from_str(path.as_str())?)
+            Some(Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)?)
         } else {
             None
         };
-        if !self.buffer.contains_key(&(
-            output.clone(),
-            feature_type.clone(),
-            compress_output.clone(),
-        )) {
-            let result = self.flush_buffer(context)?;
-            self.buffer.clear();
-            self.join_handles.extend(result);
-        }
         let buffer = self
             .buffer
             .entry((output, feature_type.clone(), compress_output.clone()))
             .or_default();
-        buffer.push(feature);
+        buffer.push(feature.clone());
         Ok(())
     }
 
-    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let result = self.flush_buffer(ctx.as_context())?;
-        let mut join_handles = self.join_handles.clone();
-        join_handles.extend(result);
-
-        let timeout = std::time::Duration::from_secs(60 * 10);
-        let mut errors = Vec::new();
-
-        for (i, join) in join_handles.iter().enumerate() {
-            match join.lock().recv_timeout(timeout) {
-                Ok(_) => continue,
-                Err(mpsc::RecvTimeoutError::Timeout) => {
-                    errors.push(format!("Worker thread {} timed out after {:?}", i, timeout));
-                }
-                Err(mpsc::RecvTimeoutError::Disconnected) => {
-                    ctx.event_hub.warn_log(
-                        None,
-                        format!("Worker thread {} disconnected unexpectedly", i),
-                    );
-                }
-            }
-        }
-        if !errors.is_empty() {
-            return Err(SinkError::Cesium3DTilesWriter(format!(
-                "Failed to complete all worker threads: {}",
-                errors.join("; ")
-            ))
-            .into());
-        }
+    fn process_schema(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
+        let feature = &ctx.feature;
+        let typedef: nusamai_citygml::schema::TypeDef = feature.into();
+        let Some(feature_type) = &feature.feature_type() else {
+            return Err(SinkError::Cesium3DTilesWriter(
+                "Failed to get feature type".to_string(),
+            ));
+        };
+        self.schema.types.insert(feature_type.clone(), typedef);
         Ok(())
     }
-}
 
-impl Cesium3DTilesWriter {
-    #[allow(clippy::type_complexity)]
-    pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<Vec<JoinHandle>> {
-        let mut result = Vec::new();
+    pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<()> {
         let mut features = HashMap::<(Uri, Option<Uri>), Vec<(String, Vec<Feature>)>>::new();
         for ((output, feature_type, compress_output), buffer) in &self.buffer {
             features
@@ -241,10 +231,9 @@ impl Cesium3DTilesWriter {
                 .push((feature_type.clone(), buffer.clone()));
         }
         for ((output, compress_output), buffer) in &features {
-            let res = self.write(ctx.clone(), buffer, output, compress_output)?;
-            result.extend(res);
+            self.write(ctx.clone(), buffer, output, compress_output)?;
         }
-        Ok(result)
+        Ok(())
     }
 
     #[allow(clippy::type_complexity)]
@@ -254,17 +243,19 @@ impl Cesium3DTilesWriter {
         upstream: &Vec<(String, Vec<Feature>)>,
         output: &Uri,
         compress_output: &Option<Uri>,
-    ) -> crate::errors::Result<Vec<JoinHandle>> {
+    ) -> crate::errors::Result<()> {
         let tile_id_conv = TileIdMethod::Hilbert;
         let attach_texture = self.params.attach_texture.unwrap_or(false);
         let mut features = Vec::new();
-        let mut schema: nusamai_citygml::schema::Schema = Default::default();
+        let mut schema: nusamai_citygml::schema::Schema = self.schema.clone();
         for (feature_type, upstream) in upstream {
             let Some(feature) = upstream.first() else {
                 continue;
             };
-            let typedef: nusamai_citygml::schema::TypeDef = feature.into();
-            schema.types.insert(feature_type.clone(), typedef);
+            if !schema.types.contains_key(feature_type) {
+                let typedef: nusamai_citygml::schema::TypeDef = feature.into();
+                schema.types.insert(feature_type.clone(), typedef);
+            }
             features.extend(upstream.clone().into_iter());
         }
 
@@ -272,110 +263,153 @@ impl Cesium3DTilesWriter {
         let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
         let min_zoom = self.params.min_zoom;
         let max_zoom = self.params.max_zoom;
-        let gctx = ctx.clone();
 
-        let mut result = Vec::new();
-
-        let (tx, rx) = channel();
-        result.push(Arc::new(parking_lot::Mutex::new(rx)));
-        std::thread::spawn(move || {
-            let result = super::pipeline::geometry_slicing_stage(
-                &features,
-                tile_id_conv,
-                sender_sliced,
-                min_zoom,
-                max_zoom,
-                attach_texture,
-            );
-            if let Err(e) = &result {
-                gctx.event_hub.error_log(
-                    None,
-                    format!("Failed to geometry_slicing_stage with error = {:?}", e),
-                );
-                gctx.event_hub.send(Event::SinkFinishFailed {
-                    name: "geometry_slicing_stage".to_string(),
-                });
-            }
-            tx.send(result).unwrap();
-        });
-        let fctx = ctx.clone();
-        let (tx, rx) = channel();
-        result.push(Arc::new(parking_lot::Mutex::new(rx)));
-        std::thread::spawn(move || {
-            let result = super::pipeline::feature_sorting_stage(receiver_sliced, sender_sorted);
-            if let Err(e) = &result {
-                fctx.event_hub.error_log(
-                    None,
-                    format!("Failed to feature_sorting_stage with error = {:?}", e),
-                );
-                fctx.event_hub.send(Event::SinkFinishFailed {
-                    name: "feature_sorting_stage".to_string(),
-                });
-            }
-            tx.send(result).unwrap();
-        });
-        let output = output.clone();
-        let compress_output = compress_output.clone();
-        let (tx, rx) = channel();
-        result.push(Arc::new(parking_lot::Mutex::new(rx)));
-        std::thread::spawn(move || {
-            let pool = rayon::ThreadPoolBuilder::new()
-                .use_current_thread()
-                .build()
-                .unwrap();
-            pool.install(|| {
-                let result = super::pipeline::tile_writing_stage(
-                    ctx.clone(),
-                    output.clone(),
-                    receiver_sorted,
-                    tile_id_conv,
-                    &schema,
-                    None,
-                );
-                if let Err(e) = &result {
-                    let ctx = ctx.clone();
-                    ctx.event_hub.error_log(
-                        None,
-                        format!("Failed to tile_writing_stage with error = {:?}", e),
+        std::thread::scope(|s| {
+            {
+                let ctx = ctx.clone();
+                let schema = schema.clone();
+                s.spawn(move || {
+                    let now = time::Instant::now();
+                    let result = super::pipeline::geometry_slicing_stage(
+                        &features,
+                        &schema,
+                        tile_id_conv,
+                        sender_sliced,
+                        min_zoom,
+                        max_zoom,
+                        attach_texture,
                     );
-                    ctx.event_hub.send(Event::SinkFinishFailed {
-                        name: "tile_writing_stage".to_string(),
-                    });
-                }
+                    if let Err(e) = &result {
+                        ctx.event_hub.error_log(
+                            None,
+                            format!("Failed to geometry_slicing_stage with error = {:?}", e),
+                        );
+                        ctx.event_hub.send(Event::SinkFinishFailed {
+                            name: "geometry_slicing_stage".to_string(),
+                        });
+                    }
+                    ctx.event_hub.info_log(
+                        None,
+                        format!(
+                            "Finish geometry_slicing_stage. feature length = {}, elapsed = {:?}, output = {}",
+                            features.len(),
+                            now.elapsed(),
+                            output
+                        ),
+                    );
+                });
+            }
+            {
+                let ctx = ctx.clone();
+                s.spawn(move || {
+                    let now = time::Instant::now();
+                    let result =
+                        super::pipeline::feature_sorting_stage(receiver_sliced, sender_sorted);
+                    if let Err(e) = &result {
+                        ctx.event_hub.error_log(
+                            None,
+                            format!("Failed to feature_sorting_stage with error = {:?}", e),
+                        );
+                        ctx.event_hub.send(Event::SinkFinishFailed {
+                            name: "feature_sorting_stage".to_string(),
+                        });
+                    }
+                    ctx.event_hub.info_log(
+                        None,
+                        format!(
+                            "Finish feature_sorting_stage. elapsed = {:?}, output = {}",
+                            now.elapsed(),
+                            output
+                        ),
+                    );
+                });
+            }
+            {
+                let ctx = ctx.clone();
+                let schema = schema.clone();
+                s.spawn(move || {
+                    let pool = rayon::ThreadPoolBuilder::new()
+                        .use_current_thread()
+                        .build()
+                        .unwrap();
+                    pool.install(|| {
+                        let now = time::Instant::now();
+                        let result = super::pipeline::tile_writing_stage(
+                            ctx.clone(),
+                            output.clone(),
+                            receiver_sorted,
+                            tile_id_conv,
+                            &schema,
+                            None,
+                        );
+                        if let Err(e) = &result {
+                            let ctx = ctx.clone();
+                            ctx.event_hub.error_log(
+                                None,
+                                format!("Failed to tile_writing_stage with error = {:?}", e),
+                            );
+                            ctx.event_hub.send(Event::SinkFinishFailed {
+                                name: "tile_writing_stage".to_string(),
+                            });
+                        }
+                        ctx.event_hub.info_log(
+                            None,
+                            format!(
+                                "Finish tile_writing_stage. elapsed = {:?}, output = {}",
+                                now.elapsed(),
+                                output
+                            ),
+                        );
 
-                if let Some(compress_output) = compress_output {
-                    if let Ok(storage) = ctx.storage_resolver.resolve(&compress_output) {
-                        let buffer = Vec::new();
-                        let mut cursor = Cursor::new(buffer);
-                        let writer = BufWriter::new(&mut cursor);
-                        let zip_result = reearth_flow_common::zip::write(
-                            writer,
-                            output.path().as_path(),
-                            output.path().as_path(),
-                        )
-                        .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()));
-                        match zip_result {
-                            Ok(_) => {
-                                match storage
-                                    .put_sync(
-                                        compress_output.path().as_path(),
-                                        bytes::Bytes::from(cursor.into_inner()),
-                                    )
-                                    .map_err(crate::errors::SinkError::cesium3dtiles_writer)
-                                {
-                                    Ok(_) => match std::fs::remove_dir_all(output.path().as_path())
-                                    {
-                                        Ok(_) => {}
-                                        Err(e) => {
-                                            ctx.event_hub.error_log(
-                                                None,
-                                                format!(
+                        if let Some(compress_output) = compress_output {
+                            if let Ok(storage) = ctx.storage_resolver.resolve(compress_output) {
+                                let now = time::Instant::now();
+                                let buffer = Vec::new();
+                                let mut cursor = Cursor::new(buffer);
+                                let writer = BufWriter::new(&mut cursor);
+                                let zip_result = reearth_flow_common::zip::write(
+                                    writer,
+                                    output.path().as_path(),
+                                )
+                                .map_err(|e| {
+                                    crate::errors::SinkError::cesium3dtiles_writer(e.to_string())
+                                });
+                                match zip_result {
+                                    Ok(_) => {
+                                        match storage
+                                            .put_sync(
+                                                compress_output.path().as_path(),
+                                                bytes::Bytes::from(cursor.into_inner()),
+                                            )
+                                            .map_err(crate::errors::SinkError::cesium3dtiles_writer)
+                                        {
+                                            Ok(_) => {
+                                                match std::fs::remove_dir_all(
+                                                    output.path().as_path(),
+                                                ) {
+                                                    Ok(_) => {}
+                                                    Err(e) => {
+                                                        ctx.event_hub.error_log(
+                                                            None,
+                                                            format!(
                                                     "Failed to remove directory with error = {:?}",
                                                     e
                                                 ),
-                                            );
+                                                        );
+                                                    }
+                                                }
+                                            }
+                                            Err(e) => {
+                                                ctx.event_hub.error_log(
+                                                    None,
+                                                    format!(
+                                                    "Failed to write zip file with error = {:?}",
+                                                    e
+                                                ),
+                                                );
+                                            }
                                         }
-                                    },
+                                    }
                                     Err(e) => {
                                         ctx.event_hub.error_log(
                                             None,
@@ -386,19 +420,20 @@ impl Cesium3DTilesWriter {
                                         );
                                     }
                                 }
-                            }
-                            Err(e) => {
-                                ctx.event_hub.error_log(
+                                ctx.event_hub.info_log(
                                     None,
-                                    format!("Failed to write zip file with error = {:?}", e),
+                                    format!(
+                                        "Finish write zip file. elapsed = {:?}, output = {}",
+                                        now.elapsed(),
+                                        output
+                                    ),
                                 );
                             }
                         }
-                    }
-                }
-                tx.send(result).unwrap();
-            })
+                    });
+                });
+            }
         });
-        Ok(result)
+        Ok(())
     }
 }

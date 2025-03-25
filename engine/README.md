@@ -3,6 +3,7 @@
 ## Development
 
 ### Install toolchains
+
 - Rust (stable)
 
 ### Install prerequisites
@@ -17,14 +18,16 @@ cargo install cargo-watch
 On linux systems you'd need the development headers of libxml2 (e.g. `libxml2-dev` in Debian), as well as `pkg-config`.
 
 ### MacOS
+
 ```
 $ brew install libxml2 pkg-config
 $ echo $PKG_CONFIG_PATH
 ```
 
 ### Windows
-* manually install builds tools c++ and english language by visiting [BuildTools](https://visualstudio.microsoft.com/fr/thank-you-downloading-visual-studio/?sku=BuildTools&rel=16)
-* launch cmd prompt with admin privileges and execute these commands sequentially:
+
+- manually install builds tools c++ and english language by visiting [BuildTools](https://visualstudio.microsoft.com/fr/thank-you-downloading-visual-studio/?sku=BuildTools&rel=16)
+- launch cmd prompt with admin privileges and execute these commands sequentially:
 
 ```
 C:\> git clone https://github.com/microsoft/vcpkg
@@ -36,31 +39,41 @@ C:\> vcpkg integrate install
 ```
 
 ### Python 3.11 and py2wasm (Optional)
+
 This project requires `Python 3.11` and `py2wasm` for compiling Python scripts into WebAssembly (.wasm) files. If you want to use processors whose category is `WASM`, follow the steps below to install Python 3.11 and py2wasm on your operating system.
 
 #### Linux/Debian
+
 ```
 $ sudo apt update
 $ sudo apt install python3.11 python3.11-distutils python3-pip
 $ python -m pip install --upgrade pip
 $ pip install py2wasm
 ```
+
 #### MacOS
+
 ```
 $ brew install python@3.11
 $ python -m pip install --upgrade pip
 $ pip install py2wasm
 ```
+
 #### Windows
-1.	Download and install Python 3.11 from Python.org.
-2.	Ensure “Add Python to PATH” is selected during installation.
+
+1. Download and install Python 3.11 from Python.org.
+2. Ensure “Add Python to PATH” is selected during installation.
+
 ```
 $ python -m pip install --upgrade pip
 $ pip install py2wasm
 ```
+
 ## Input Variables
+
 ### Declaring an Input Variable
-``` yaml
+
+```yaml
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 id: 00caad2a-9f7d-4189-b479-153fa9ea36dc
 name: "SimpleWorkflow"
@@ -114,16 +127,18 @@ graphs:
 ```
 
 ### Variables on the Command Line
-* To specify individual variables on the command line, use the -var option when running the
 
-``` console
+- To specify individual variables on the command line, use the -var option when running the
+
+```console
 $ cargo run --package reearth-flow-cli -- run --var="cityGmlPath=file:///root/53395658_bldg_6697_op.gml"
 $ cargo run --package reearth-flow-cli -- run --var='cityGmlPath_list=["file:///root/53395658_bldg_6697_op.gml","file:///root/53395658_bldg_6698_op.gml"]' --var="addNsprefixToFeatureTypes=false"
 $ cargo run --package reearth-flow-cli -- run --var='cityGmlPath_map={"path01":"file:///root/53395658_bldg_6697_op.gml","path02":"file:///root/53395658_bldg_6698_op.gml"}'
 ```
 
 ### Environment Variables
-* As a fallback for the other ways of defining variables, Flow searches the environment of its own process for environment variables named FLOW_VAR_ followed by the name of a declared variable.
+
+- As a fallback for the other ways of defining variables, Flow searches the environment of its own process for environment variables named FLOW*VAR* followed by the name of a declared variable.
 
 ```console
 export FLOW_VAR_cityGmlPath="file:///root/53395658_bldg_6697_op.gml"
@@ -131,26 +146,32 @@ export FLOW_VAR_targetPackages='["bldg", "fld"]'
 ```
 
 ### Runtime Environment Variables
-| Name                                 | Description                                                        | Default |
-|--------------------------------------|--------------------------------------------------------------------|---------|
-| FLOW_RUNTIME_ACTION_LOG_DISABLE      | Whether to disable the Action log                                  | false   |
-| FLOW_RUNTIME_CHANNEL_BUFFER_SIZE     | Buffer size for channels exchanged by worker threads               | 256     |
-| FLOW_RUNTIME_EVENT_HUB_CAPACITY      | Capacity size of event hub channels                                | 8192    |
-| FLOW_RUNTIME_THREAD_POOL_SIZE        | Worker thread pool size                                            | 30      |
-| FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD | Sink node flush threadshold size                                   | 512     |
-| FLOW_RUNTIME_WORKER_NUM              | Worker number                                                      | 100     |
-| FLOW_RUNTIME_FEATURE_WRITER_DISABLE  | Whether to disable the ability to export data to the feature store | false   |
-| FLOW_RUNTIME_SLOW_ACTION_THRESHOLD   | Threshold for writing slow action logs(ms)                         | 300     |
+
+| Name                                          | Description                                                        | Default |
+| --------------------------------------------- | ------------------------------------------------------------------ | ------- |
+| FLOW_RUNTIME_ACTION_LOG_DISABLE               | Whether to disable the Action log                                  | false   |
+| FLOW_RUNTIME_CHANNEL_BUFFER_SIZE              | Buffer size for channels exchanged by worker threads               | 256     |
+| FLOW_RUNTIME_EVENT_HUB_CAPACITY               | Capacity size of event hub channels                                | 8192    |
+| FLOW_RUNTIME_THREAD_POOL_SIZE                 | Worker thread pool size                                            | 30      |
+| FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD          | Sink node flush threadshold size                                   | 512     |
+| FLOW_RUNTIME_ASYNC_WORKER_NUM                 | Tokio Worker number                                                | cpu num |
+| FLOW_RUNTIME_FEATURE_WRITER_DISABLE           | Whether to disable the ability to export data to the feature store | false   |
+| FLOW_RUNTIME_SLOW_ACTION_THRESHOLD            | Threshold for writing slow action logs(ms)                         | 300     |
+| FLOW_RUNTIME_WORKING_DIRECTORY                | working directory                                                  | mac: $HOMELibrary/Caches/<project_path>, linux: $HOME/.cache/<project_path>  |
+| FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS | Delay (ms) to ensure node status events propagate                  | 500     |
 
 ## Usage
 
 ### Run workflow
+
 ```console
 $ cargo run --package reearth-flow-cli -- run --workflow ${workflow_path}
 ```
 
 ### Run example
+
 #### Run attribute_reader example
+
 ```console
 $ FLOW_VAR_cityGmlPath="${target_citygml_path}"
 $ FLOW_VAR_codelistsPath="${codelists_path}"
@@ -159,15 +180,18 @@ $ cargo run --package reearth-flow-examples --example attribute_reader
 ```
 
 ### Run generate graphviz
+
 ```console
 $ brew install graphviz
 $ cargo install yaml-include
+$ export RUST_LOG=WARN
 $ yaml-include examples/plateau/testdata/workflow/xml_validator.yml | cargo run --package reearth-flow-cli -- dot --workflow - | dot -Tpng > output.png
 ```
 
 ![xml_validator](./docs/images/xml_validator.png)
 
 ### Run generate action documentation
+
 ```console
 $ cargo make doc-action
 ```

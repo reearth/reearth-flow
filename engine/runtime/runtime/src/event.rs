@@ -6,7 +6,7 @@ use tokio::sync::{
 };
 use tracing::{error, info, Level, Span};
 
-use crate::node::{EdgeId, NodeHandle};
+use crate::node::{EdgeId, NodeHandle, NodeStatus};
 
 #[derive(Debug, Clone)]
 pub enum Event {
@@ -26,6 +26,10 @@ pub enum Event {
         node: NodeHandle,
         name: String,
     },
+    EdgeCompleted {
+        feature_id: uuid::Uuid,
+        edge_id: EdgeId,
+    },
     EdgePassThrough {
         feature_id: uuid::Uuid,
         edge_id: EdgeId,
@@ -35,6 +39,11 @@ pub enum Event {
         span: Option<Span>,
         node_handle: Option<NodeHandle>,
         message: String,
+    },
+    NodeStatusChanged {
+        node_handle: NodeHandle,
+        status: NodeStatus,
+        feature_id: Option<uuid::Uuid>,
     },
 }
 
@@ -98,6 +107,10 @@ impl EventHub {
             node_handle: Some(node_handle),
             message: message.to_string(),
         });
+    }
+
+    pub async fn simple_flush(&self, delay_ms: u64) {
+        tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
     }
 
     pub fn warn_log<T: ToString>(&self, span: Option<Span>, message: T) {

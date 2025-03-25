@@ -19,7 +19,7 @@ const Pagination: React.FC<PaginationProps> = ({
   setCurrentPage,
 }) => {
   return (
-    <div className="flex justify-center gap-4 pt-4">
+    <div className="flex justify-center gap-4 pt-2">
       <div className="flex gap-1">
         <IconButton
           variant="outline"

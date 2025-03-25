@@ -2,7 +2,7 @@ use std::{collections::HashMap, io::Cursor, str::FromStr, sync::Arc};
 
 use reearth_flow_common::{csv::Delimiter, uri::Uri};
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder, executor_operation::ExecutorContext, node::DEFAULT_PORT,
+    executor_operation::ExecutorContext, forwarder::ProcessorChannelForwarder, node::DEFAULT_PORT,
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -13,7 +13,8 @@ use super::CompiledCommonReaderParam;
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CsvReaderParam {
-    pub(super) offset: Option<usize>,
+    /// The offset of the first row to read
+    offset: Option<usize>,
 }
 
 pub(crate) fn read_csv(
@@ -22,7 +23,7 @@ pub(crate) fn read_csv(
     params: &CompiledCommonReaderParam,
     csv_params: &CsvReaderParam,
     ctx: ExecutorContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
 ) -> Result<(), super::errors::FeatureProcessorError> {
     let feature = &ctx.feature;
     let expr_engine = Arc::clone(&ctx.expr_engine);

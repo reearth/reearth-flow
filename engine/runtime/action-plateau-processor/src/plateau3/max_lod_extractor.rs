@@ -2,10 +2,10 @@ use super::errors::PlateauProcessorError;
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
@@ -63,7 +63,7 @@ impl Processor for MaxLodExtractor {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
@@ -116,7 +116,7 @@ impl Processor for MaxLodExtractor {
         let mut attributes = feature.attributes.clone();
 
         for (k, _) in feature.attributes.iter() {
-            attributes.remove(k);
+            attributes.swap_remove(k);
         }
 
         attributes.insert(attribute_code, AttributeValue::String(code.to_string()));
@@ -139,11 +139,7 @@ impl Processor for MaxLodExtractor {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

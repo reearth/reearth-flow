@@ -1,4 +1,7 @@
-use std::borrow::Cow;
+use std::{
+    borrow::Cow,
+    sync::{atomic::AtomicBool, Arc},
+};
 
 use crossbeam::channel::{Receiver, Select};
 
@@ -14,6 +17,15 @@ pub trait ReceiverLoop {
     fn receiver_name(&self, index: usize) -> Cow<str>;
     /// Responds to `op` from the receiver at `index`.
     fn on_op(&mut self, ctx: ExecutorContext) -> Result<(), ExecutionError>;
+    /// Responds to `op` from the receiver at `index`, with failure tracking.
+    fn on_op_with_failure_tracking(
+        &mut self,
+        ctx: ExecutorContext,
+        has_failed: Arc<AtomicBool>,
+    ) -> Result<(), ExecutionError> {
+        let _ = has_failed;
+        self.on_op(ctx)
+    }
     /// Responds to `terminate`.
     fn on_terminate(&mut self, ctx: NodeContext) -> Result<(), ExecutionError>;
 

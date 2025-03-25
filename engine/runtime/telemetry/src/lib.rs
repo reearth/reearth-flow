@@ -5,7 +5,7 @@ use once_cell::sync::Lazy;
 use opentelemetry::trace::TracerProvider;
 use opentelemetry_otlp::{MetricExporter, WithExportConfig};
 use opentelemetry_sdk::{
-    metrics::{MeterProviderBuilder, PeriodicReader, SdkMeterProvider},
+    metrics::{PeriodicReader, SdkMeterProvider},
     trace::Tracer,
 };
 
@@ -33,33 +33,35 @@ pub fn init_metrics(service_name: String) -> Result<SdkMeterProvider> {
                 .map_err(|e| {
                     Error::Metrics(format!("Failed to build metrics controller: {}", e))
                 })?;
-            let reader =
-                PeriodicReader::builder(exporter, opentelemetry_sdk::runtime::Tokio).build();
+            let reader = PeriodicReader::builder(exporter).build();
 
             SdkMeterProvider::builder()
                 .with_reader(reader)
-                .with_resource(opentelemetry_sdk::Resource::new(vec![
-                    opentelemetry::KeyValue::new(
-                        opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-                        service_name,
-                    ),
-                ]))
+                .with_resource(
+                    opentelemetry_sdk::Resource::builder()
+                        .with_attribute(opentelemetry::KeyValue::new(
+                            opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+                            service_name,
+                        ))
+                        .build(),
+                )
                 .build()
         }
-        None => MeterProviderBuilder::default()
+        None => SdkMeterProvider::builder()
             .with_reader(
                 opentelemetry_sdk::metrics::PeriodicReader::builder(
                     opentelemetry_stdout::MetricExporter::default(),
-                    opentelemetry_sdk::runtime::Tokio,
                 )
                 .build(),
             )
-            .with_resource(opentelemetry_sdk::Resource::new(vec![
-                opentelemetry::KeyValue::new(
-                    opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-                    service_name,
-                ),
-            ]))
+            .with_resource(
+                opentelemetry_sdk::Resource::builder()
+                    .with_attribute(opentelemetry::KeyValue::new(
+                        opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+                        service_name,
+                    ))
+                    .build(),
+            )
             .build(),
     };
     Ok(metrics)
@@ -67,15 +69,17 @@ pub fn init_metrics(service_name: String) -> Result<SdkMeterProvider> {
 
 pub fn init_tracing(service_name: String) -> Result<Tracer> {
     let tracer = match OTEL_COLLECTOR_ENDPOINT.lock().unwrap().clone() {
-        Some(endpoint) => opentelemetry_sdk::trace::TracerProvider::builder()
+        Some(endpoint) => opentelemetry_sdk::trace::SdkTracerProvider::builder()
             .with_sampler(opentelemetry_sdk::trace::Sampler::AlwaysOn)
             .with_id_generator(opentelemetry_sdk::trace::RandomIdGenerator::default())
-            .with_resource(opentelemetry_sdk::Resource::new(vec![
-                opentelemetry::KeyValue::new(
-                    opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-                    service_name.clone(),
-                ),
-            ]))
+            .with_resource(
+                opentelemetry_sdk::Resource::builder()
+                    .with_attribute(opentelemetry::KeyValue::new(
+                        opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+                        service_name.clone(),
+                    ))
+                    .build(),
+            )
             .with_batch_exporter(
                 opentelemetry_otlp::SpanExporter::builder()
                     .with_tonic()
@@ -84,19 +88,20 @@ pub fn init_tracing(service_name: String) -> Result<Tracer> {
                     .map_err(|e| {
                         Error::Tracing(format!("Failed to build tracing exporter: {}", e))
                     })?,
-                opentelemetry_sdk::runtime::Tokio,
             )
             .build(),
-        None => opentelemetry_sdk::trace::TracerProvider::builder()
+        None => opentelemetry_sdk::trace::SdkTracerProvider::builder()
             .with_simple_exporter(opentelemetry_stdout::SpanExporter::default())
             .with_sampler(opentelemetry_sdk::trace::Sampler::AlwaysOn)
             .with_id_generator(opentelemetry_sdk::trace::RandomIdGenerator::default())
-            .with_resource(opentelemetry_sdk::Resource::new(vec![
-                opentelemetry::KeyValue::new(
-                    opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-                    service_name.clone(),
-                ),
-            ]))
+            .with_resource(
+                opentelemetry_sdk::Resource::builder()
+                    .with_attribute(opentelemetry::KeyValue::new(
+                        opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+                        service_name.clone(),
+                    ))
+                    .build(),
+            )
             .build(),
     };
     Ok(tracer.tracer(service_name.clone()))

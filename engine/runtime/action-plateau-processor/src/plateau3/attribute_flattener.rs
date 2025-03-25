@@ -1,12 +1,13 @@
 use std::collections::{HashMap, HashSet};
 
+use indexmap::IndexMap;
 use itertools::Itertools;
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
@@ -326,7 +327,7 @@ impl CommonAttributeProcessor {
         }
     }
 
-    fn update_max_lod(&mut self, attributes: &HashMap<Attribute, AttributeValue>) {
+    fn update_max_lod(&mut self, attributes: &IndexMap<Attribute, AttributeValue>) {
         let gml_path = match attributes.get(&Attribute::new("cityGmlPath")) {
             Some(AttributeValue::String(gml_path)) => gml_path.clone(),
             _ => return,
@@ -447,7 +448,7 @@ impl Processor for AttributeFlattener {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let Some(AttributeValue::Map(city_gml_attribute)) = feature.get(&"cityGmlAttributes")
@@ -542,7 +543,7 @@ impl Processor for AttributeFlattener {
             self.common_processor.update_max_lod(&feature.attributes);
         }
         // フラットにする属性の設定
-        let mut new_city_gml_attribute = HashMap::new();
+        let mut new_city_gml_attribute = IndexMap::new();
         for (k, v) in city_gml_attribute.iter() {
             let new_value = CommonAttributeProcessor::flatten_attribute(k, v);
             new_city_gml_attribute.extend(new_value);
@@ -552,11 +553,9 @@ impl Processor for AttributeFlattener {
             new_city_gml_attribute
                 .iter()
                 .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
-                .collect::<HashMap<Attribute, AttributeValue>>(),
+                .collect::<IndexMap<Attribute, AttributeValue>>(),
         );
-        feature
-            .attributes
-            .remove(&Attribute::new("cityGmlAttributes"));
+        feature.remove(&Attribute::new("cityGmlAttributes"));
         feature.attributes.extend(flattened);
         let keys = feature.attributes.keys().cloned().collect_vec();
         let attributes = &mut feature.attributes;
@@ -564,23 +563,19 @@ impl Processor for AttributeFlattener {
             if (key.to_string().starts_with("uro:") || key.to_string().starts_with("bldg:"))
                 && key.to_string().ends_with("_type")
             {
-                attributes.remove(key);
+                attributes.swap_remove(key);
             }
             if ["gen:genericAttribute", "uro:buildingDisasterRiskAttribute"]
                 .contains(&key.to_string().as_str())
             {
-                attributes.remove(key);
+                attributes.swap_remove(key);
             }
         }
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

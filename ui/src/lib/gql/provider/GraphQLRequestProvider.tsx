@@ -8,7 +8,6 @@ import {
 } from "react";
 
 import { config } from "@flow/config";
-import { useAuth } from "@flow/lib/auth";
 
 import { Sdk, getSdk } from "../__gen__/plugins/graphql-request";
 
@@ -19,29 +18,31 @@ const GraphQLContext = createContext<Sdk | undefined>(undefined);
 export const useGraphQLContext = () => useContext(GraphQLContext);
 
 export const GraphQLRequestProvider = ({
+  accesstoken,
   children,
 }: {
+  accesstoken?: string;
   children?: ReactNode;
 }) => {
   const [graphQLSdk, setGraphQLSdk] = useState<Sdk | undefined>();
   const endpoint = `${config().api}/api/graphql`;
-  const { getAccessToken } = useAuth();
 
   useEffect(() => {
     if (graphQLSdk) return;
-    (async () => {
-      const token = await getAccessToken();
 
-      const graphQLClient = new GraphQLClient(endpoint, {
-        headers: {
-          authorization: `Bearer ${token}`,
-        },
-        requestMiddleware: requestMiddleware,
-      });
-      const sdk = getSdk(graphQLClient);
-      setGraphQLSdk(sdk);
-    })();
-  }, [graphQLSdk, setGraphQLSdk, getAccessToken, endpoint]);
+    const headers: HeadersInit = {};
+
+    if (accesstoken) {
+      headers.authorization = `Bearer ${accesstoken}`;
+    }
+    const graphQLClient = new GraphQLClient(endpoint, {
+      headers,
+      requestMiddleware: requestMiddleware,
+    });
+
+    const sdk = getSdk(graphQLClient);
+    setGraphQLSdk(sdk);
+  }, [graphQLSdk, endpoint, accesstoken, setGraphQLSdk]);
 
   return graphQLSdk ? (
     <GraphQLContext.Provider value={graphQLSdk}>

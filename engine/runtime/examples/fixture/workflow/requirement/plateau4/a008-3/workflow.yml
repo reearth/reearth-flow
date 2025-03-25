@@ -1,0 +1,74 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
+name: "PLATEAU4-A008-3-workflow"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+graphs:
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FeatureCreator
+        type: action
+        action: FeatureCreator
+        with:
+          creator: |
+            [
+              #{
+                testAttribute01: "2025-02-13T12:20:00Z",
+                testAttribute02: 4.23,
+                testAttribute03: -5,
+              },
+              #{
+                testAttribute01: "2025-02-14T08:10:00Z",
+                testAttribute02: 5.023,
+                testAttribute03: 14,
+              },
+            ]
+
+      - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        name: AttributeManager
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+          - attribute: round
+            method: create
+            value: |
+              round(env.get("__value").testAttribute02)
+          - attribute: floor
+            method: create
+            value: |
+              floor(env.get("__value").testAttribute02)
+          - attribute: ceiling
+            method: create
+            value: |
+              ceiling(env.get("__value").testAttribute02)
+          - attribute: abs
+            method: create
+            value: |
+              abs(env.get("__value").testAttribute03)
+          - attribute: sqrt
+            method: create
+            value: |
+              sqrt(env.get("__value").testAttribute02)
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        name: FileWriterCSV
+        type: action
+        action: FileWriter
+        with:
+          format: csv
+          output: |
+            file::join_path(env.get("currentPath"), "a008-3.csv")
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540d
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        fromPort: default
+        toPort: default
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        fromPort: default
+        toPort: default

@@ -1,7 +1,7 @@
 import { useParams } from "@tanstack/react-router";
 import { useEffect } from "react";
 
-import { Loading } from "@flow/components";
+import { LoadingSplashscreen } from "@flow/components";
 import { useWorkspace } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
 
@@ -12,7 +12,7 @@ type Props = {
 };
 
 const WorkspaceIdWrapper: React.FC<Props> = ({ children }) => {
-  const [_, setCurrentWorkspace] = useCurrentWorkspace();
+  const [currentWorkspace, setCurrentWorkspace] = useCurrentWorkspace();
 
   const { workspaceId }: { workspaceId: string } = useParams({
     strict: false,
@@ -26,10 +26,10 @@ const WorkspaceIdWrapper: React.FC<Props> = ({ children }) => {
     setCurrentWorkspace(workspace);
   }, [workspace, setCurrentWorkspace]);
 
-  return isLoading ? (
-    <Loading />
-  ) : !workspace ? (
+  return !isLoading && !workspace ? (
     <NotFoundPage message={`Workspace with id: "${workspaceId}" not found.`} />
+  ) : isLoading || !currentWorkspace ? (
+    <LoadingSplashscreen />
   ) : (
     children
   );

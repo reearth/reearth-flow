@@ -1,17 +1,48 @@
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use crossbeam::channel::Sender;
+use reearth_flow_types::Feature;
 use tokio::runtime::Handle;
 
-use crate::channels::ProcessorChannelForwarder;
 use crate::errors::ExecutionError;
 use crate::event::{Event, EventHub};
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
 use crate::feature_store::{FeatureWriter, FeatureWriterKey};
+
 use crate::node::{NodeHandle, Port};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub enum ProcessorChannelForwarder {
+    ChannelManager(ChannelManager),
+    Noop(NoopChannelForwarder),
+}
+
+impl ProcessorChannelForwarder {
+    pub fn node_id(&self) -> String {
+        match self {
+            ProcessorChannelForwarder::ChannelManager(channel_manager) => channel_manager.node_id(),
+            ProcessorChannelForwarder::Noop(noop) => noop.node_id(),
+        }
+    }
+    pub fn send(&self, ctx: ExecutorContext) {
+        match self {
+            ProcessorChannelForwarder::ChannelManager(channel_manager) => channel_manager.send(ctx),
+            ProcessorChannelForwarder::Noop(noop) => noop.send(ctx),
+        }
+    }
+
+    pub fn send_terminate(&self, ctx: NodeContext) -> Result<(), ExecutionError> {
+        match self {
+            ProcessorChannelForwarder::ChannelManager(channel_manager) => {
+                channel_manager.send_terminate(ctx)
+            }
+            ProcessorChannelForwarder::Noop(_) => Ok(()),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct SenderWithPortMapping {
     pub sender: Sender<ExecutorOperation>,
     pub port_mapping: HashMap<Port, Vec<Port>>,
@@ -37,7 +68,7 @@ impl SenderWithPortMapping {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ChannelManager {
     owner: NodeHandle,
     feature_writers: HashMap<FeatureWriterKey, Vec<Box<dyn FeatureWriter>>>,
@@ -48,7 +79,7 @@ pub struct ChannelManager {
 
 impl ChannelManager {
     #[inline]
-    pub fn send_op(&mut self, ctx: ExecutorContext) -> Result<(), ExecutionError> {
+    pub fn send_op(&self, ctx: ExecutorContext) -> Result<(), ExecutionError> {
         let sender_ports: HashMap<Port, Vec<Port>> = {
             let mut sender_port = HashMap::new();
             for sender in &self.senders {
@@ -72,6 +103,13 @@ impl ChannelManager {
                         let feature = ctx.feature.clone();
                         let event_hub = self.event_hub.clone();
                         let node_handle = self.owner.clone();
+
+                        let edge_id_clone = edge_id.clone();
+                        self.event_hub.send(Event::EdgePassThrough {
+                            feature_id,
+                            edge_id: edge_id_clone,
+                        });
+
                         self.runtime.block_on(async move {
                             let result = writer.write(&feature).await;
                             let node = node_handle.clone();
@@ -81,11 +119,12 @@ impl ChannelManager {
                                     node,
                                     format!("Failed to write feature: {e}"),
                                 );
+                            } else {
+                                event_hub.send(Event::EdgeCompleted {
+                                    feature_id,
+                                    edge_id,
+                                });
                             }
-                        });
-                        self.event_hub.send(Event::EdgePassThrough {
-                            feature_id,
-                            edge_id,
                         });
                     }
                 }
@@ -169,12 +208,12 @@ impl ChannelManager {
     }
 }
 
-impl ProcessorChannelForwarder for ChannelManager {
+impl ChannelManager {
     fn node_id(&self) -> String {
         self.owner.id.clone().into_inner()
     }
 
-    fn send(&mut self, ctx: ExecutorContext) {
+    fn send(&self, ctx: ExecutorContext) {
         let feature_id = ctx.feature.id;
         let port = ctx.port.clone();
         let node_id = self.owner.id.clone().into_inner();
@@ -184,5 +223,33 @@ impl ProcessorChannelForwarder for ChannelManager {
                 node_id, feature_id, port, e
             )
         })
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct NoopChannelForwarder {
+    pub send_features: Arc<Mutex<Vec<Feature>>>,
+    pub send_ports: Arc<Mutex<Vec<Port>>>,
+}
+
+impl Default for NoopChannelForwarder {
+    fn default() -> Self {
+        Self {
+            send_features: Arc::new(Mutex::new(Vec::new())),
+            send_ports: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+}
+
+impl NoopChannelForwarder {
+    pub fn node_id(&self) -> String {
+        "noop".to_string()
+    }
+
+    pub fn send(&self, ctx: ExecutorContext) {
+        let mut send_features = self.send_features.lock().unwrap();
+        send_features.push(ctx.feature.clone());
+        let mut send_ports = self.send_ports.lock().unwrap();
+        send_ports.push(ctx.port.clone());
     }
 }

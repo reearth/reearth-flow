@@ -1,3 +1,6 @@
 go 1.22.3
 
-use ./server/api
+use (
+	./server/api
+	./server/subscriber
+)

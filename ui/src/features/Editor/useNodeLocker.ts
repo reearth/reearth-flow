@@ -5,9 +5,11 @@ import type { Node } from "@flow/types";
 export default ({
   nodes,
   selectedNodeIds,
+  setSelectedNodeIds,
 }: {
   nodes: Node[];
   selectedNodeIds: string[];
+  setSelectedNodeIds: (ids: string[]) => void;
 }) => {
   // Will be used to keep track of all locked nodes, local and for other users (while collaborative editing)
   const [lockedNodeIds, setLockedNodeIds] = useState<string[]>([]);
@@ -25,14 +27,18 @@ export default ({
         lln.filter((id) => id !== locallyLockedNode?.id),
       );
     }
-  }, [selectedNodeIds, locallyLockedNode]);
+  }, [selectedNodeIds, locallyLockedNode, lockedNodeIds]);
 
   const handleNodeLocking = useCallback(
     (nodeId: string) => {
       setLockedNodeIds((ids) => {
         if (ids.includes(nodeId)) {
+          if (selectedNodeIds.includes(nodeId)) {
+            setSelectedNodeIds(selectedNodeIds.filter((id) => id !== nodeId));
+          }
           return ids.filter((id) => id !== nodeId);
         }
+        setSelectedNodeIds([...selectedNodeIds, nodeId]);
         return [...ids, nodeId];
       });
 
@@ -41,7 +47,7 @@ export default ({
       );
       // handleNodesChange([{ id: nodeId, type: "locking", locked: !!locked }]);
     },
-    [nodes],
+    [nodes, selectedNodeIds, setSelectedNodeIds],
   );
 
   return {

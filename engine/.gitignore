@@ -19,6 +19,8 @@ tools/cesium/3dtiles/**
 !tools/cesium/3dtiles/.gitkeep
 tools/mvt/tiles/**
 !tools/mvt/tiles/.gitkeep
+tools/czml/json/**
+!tools/czml/json/.gitkeep
 output.png
 sample.xlsx
 metadata.json

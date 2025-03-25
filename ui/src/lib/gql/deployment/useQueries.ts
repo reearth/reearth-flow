@@ -17,6 +17,7 @@ import { useGraphQLContext } from "../provider";
 
 export enum DeploymentQueryKeys {
   GetDeployments = "getDeployments",
+  GetDeploymentHead = "getDeploymentHead",
 }
 
 export const DEPLOYMENT_FETCH_RATE = 10;
@@ -182,11 +183,32 @@ export const useQueries = () => {
       enabled: !!workspaceId,
     });
 
+  const useGetDeploymentHeadQuery = (
+    workspaceId?: string,
+    projectId?: string,
+  ) =>
+    useQuery({
+      queryKey: [DeploymentQueryKeys.GetDeploymentHead, workspaceId],
+      queryFn: async () => {
+        const data = await graphQLContext?.GetDeploymentHead({
+          input: {
+            workspaceId: workspaceId ?? "",
+            projectId,
+          },
+        });
+        if (!data?.deploymentHead) return;
+        const deployment: Deployment = toDeployment(data.deploymentHead);
+        return { deployment };
+      },
+      enabled: !!workspaceId,
+    });
+
   return {
     createDeploymentMutation,
     updateDeploymentMutation,
     deleteDeploymentMutation,
     executeDeploymentMutation,
     useGetDeploymentsQuery,
+    useGetDeploymentHeadQuery,
   };
 };

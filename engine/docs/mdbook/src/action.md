@@ -13,6 +13,7 @@ Overlays an area on another area
   "type": "object",
   "properties": {
     "groupBy": {
+      "title": "Group by",
       "type": [
         "array",
         "null"
@@ -56,12 +57,14 @@ Aggregates features by attributes
   ],
   "properties": {
     "aggregateAttributes": {
+      "title": "List of attributes to aggregate",
       "type": "array",
       "items": {
         "$ref": "#/definitions/AggregateAttribute"
       }
     },
     "calculation": {
+      "title": "Calculation to perform",
       "anyOf": [
         {
           "$ref": "#/definitions/Expr"
@@ -72,9 +75,15 @@ Aggregates features by attributes
       ]
     },
     "calculationAttribute": {
-      "$ref": "#/definitions/Attribute"
+      "title": "Attribute to store calculation result",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
     },
     "calculationValue": {
+      "title": "Value to use for calculation",
       "type": [
         "integer",
         "null"
@@ -82,7 +91,12 @@ Aggregates features by attributes
       "format": "int64"
     },
     "method": {
-      "$ref": "#/definitions/Method"
+      "title": "Method to use for aggregation",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Method"
+        }
+      ]
     }
   },
   "definitions": {
@@ -93,6 +107,7 @@ Aggregates features by attributes
       ],
       "properties": {
         "attribute": {
+          "title": "Existing attribute to use",
           "anyOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -103,6 +118,7 @@ Aggregates features by attributes
           ]
         },
         "attributeValue": {
+          "title": "Value to use for attribute",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -113,7 +129,12 @@ Aggregates features by attributes
           ]
         },
         "newAttribute": {
-          "$ref": "#/definitions/Attribute"
+          "title": "New attribute to create",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
         }
       }
     },
@@ -124,6 +145,7 @@ Aggregates features by attributes
       "type": "string"
     },
     "Method": {
+      "title": "Method to use for aggregation",
       "type": "string",
       "enum": [
         "max",
@@ -154,6 +176,7 @@ Flattens features by attributes
   "type": "object",
   "properties": {
     "ignoreAttributes": {
+      "title": "Attributes to ignore",
       "type": [
         "array",
         "null"
@@ -165,6 +188,118 @@ Flattens features by attributes
   },
   "definitions": {
     "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Attribute
+
+## AttributeConversionTable
+### Type
+* processor
+### Description
+Converts attributes from conversion table
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AttributeConversionTableParam",
+  "type": "object",
+  "required": [
+    "format",
+    "rules"
+  ],
+  "properties": {
+    "dataset": {
+      "title": "Dataset URI",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "format": {
+      "title": "Format of conversion table",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ConversionTableFormat"
+        }
+      ]
+    },
+    "inline": {
+      "title": "Inline conversion table",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "rules": {
+      "title": "Rules to convert attributes",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/AttributeConversionTableRule"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "AttributeConversionTableRule": {
+      "type": "object",
+      "required": [
+        "conversionTableKeys",
+        "conversionTableTo",
+        "featureFroms",
+        "featureTo"
+      ],
+      "properties": {
+        "conversionTableKeys": {
+          "title": "Keys to match in conversion table",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "conversionTableTo": {
+          "title": "Attribute to convert to",
+          "type": "string"
+        },
+        "featureFroms": {
+          "title": "Attributes to convert from",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Attribute"
+          }
+        },
+        "featureTo": {
+          "title": "Attribute to convert to",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        }
+      }
+    },
+    "ConversionTableFormat": {
+      "type": "string",
+      "enum": [
+        "csv",
+        "tsv",
+        "json"
+      ]
+    },
+    "Expr": {
       "type": "string"
     }
   }
@@ -193,6 +328,7 @@ Filters features by duplicate attributes
   ],
   "properties": {
     "filterBy": {
+      "title": "Attributes to filter by",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
@@ -229,7 +365,12 @@ Extracts file path information from attributes
   ],
   "properties": {
     "attribute": {
-      "$ref": "#/definitions/Attribute"
+      "title": "Attribute to extract file path from",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
     }
   },
   "definitions": {
@@ -263,6 +404,7 @@ Flattens features by attributes
   ],
   "properties": {
     "attributes": {
+      "title": "Attributes to flatten",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
@@ -299,6 +441,7 @@ Manages attributes
   ],
   "properties": {
     "operations": {
+      "title": "Operations to perform",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Operation"
@@ -326,12 +469,19 @@ Manages attributes
       ],
       "properties": {
         "attribute": {
+          "title": "Attribute name",
           "type": "string"
         },
         "method": {
-          "$ref": "#/definitions/Method"
+          "title": "Operation to perform",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Method"
+            }
+          ]
         },
         "value": {
+          "title": "Value to use for the operation",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -369,6 +519,7 @@ Maps attributes
   ],
   "properties": {
     "mappers": {
+      "title": "Mappers",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Mapper"
@@ -383,18 +534,21 @@ Maps attributes
       "type": "object",
       "properties": {
         "attribute": {
+          "title": "Attribute name",
           "type": [
             "string",
             "null"
           ]
         },
         "childAttribute": {
+          "title": "Child attribute name",
           "type": [
             "string",
             "null"
           ]
         },
         "expr": {
+          "title": "Expression to evaluate",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -405,6 +559,7 @@ Maps attributes
           ]
         },
         "multipleExpr": {
+          "title": "Expression to evaluate multiple attributes",
           "anyOf": [
             {
               "$ref": "#/definitions/Expr"
@@ -415,12 +570,14 @@ Maps attributes
           ]
         },
         "parentAttribute": {
+          "title": "Parent attribute name",
           "type": [
             "string",
             "null"
           ]
         },
         "valueAttribute": {
+          "title": "Attribute name to get value from",
           "type": [
             "string",
             "null"
@@ -471,13 +628,20 @@ Buffers a geometry
   ],
   "properties": {
     "bufferType": {
-      "$ref": "#/definitions/BufferType"
+      "title": "Buffer type",
+      "allOf": [
+        {
+          "$ref": "#/definitions/BufferType"
+        }
+      ]
     },
     "distance": {
+      "title": "Buffer distance",
       "type": "number",
       "format": "double"
     },
     "interpolationAngle": {
+      "title": "Buffer interpolation angle",
       "type": "number",
       "format": "double"
     }
@@ -518,15 +682,27 @@ Renames attributes by adding/removing prefixes or suffixes, or replacing text
   ],
   "properties": {
     "renameAction": {
-      "$ref": "#/definitions/RenameAction"
+      "title": "Action to perform on the attribute",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RenameAction"
+        }
+      ]
     },
     "renameType": {
-      "$ref": "#/definitions/RenameType"
+      "title": "Type of attributes to rename",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RenameType"
+        }
+      ]
     },
     "renameValue": {
+      "title": "Value to add or remove",
       "type": "string"
     },
     "selectedAttributes": {
+      "title": "Attributes to rename",
       "type": [
         "array",
         "null"
@@ -536,6 +712,7 @@ Renames attributes by adding/removing prefixes or suffixes, or replacing text
       }
     },
     "textToFind": {
+      "title": "Regular expression pattern to match",
       "type": [
         "string",
         "null"
@@ -641,6 +818,7 @@ Writes features to a file
 ```
 ### Input Ports
 * default
+* schema
 ### Output Ports
 ### Category
 * File
@@ -715,25 +893,40 @@ Creates a convex hull based on a group of input features.
 ### Category
 * Geometry
 
-## CoordinateSystemSetter
+## CzmlWriter
 ### Type
-* processor
+* sink
 ### Description
-Sets the coordinate system of a feature
+Writes features to a Czml file
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CoordinateSystemSetter",
+  "title": "CzmlWriterParam",
   "type": "object",
   "required": [
-    "epsgCode"
+    "output"
   ],
   "properties": {
-    "epsgCode": {
-      "type": "integer",
-      "format": "uint16",
-      "minimum": 0.0
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "output": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
+      "type": "string"
     }
   }
 }
@@ -741,9 +934,8 @@ Sets the coordinate system of a feature
 ### Input Ports
 * default
 ### Output Ports
-* default
 ### Category
-* Geometry
+* File
 
 ## DimensionFilter
 ### Type
@@ -777,6 +969,7 @@ Decompresses a directory
   ],
   "properties": {
     "archiveAttributes": {
+      "title": "Attribute to extract file path from",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
@@ -927,6 +1120,51 @@ Extrudes a polygon by a distance
 ### Category
 * Geometry
 
+## FeatureCityGmlReader
+### Type
+* processor
+### Description
+Reads features from citygml file
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureCityGmlReaderParam",
+  "type": "object",
+  "required": [
+    "dataset"
+  ],
+  "properties": {
+    "dataset": {
+      "title": "Dataset to read",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "flatten": {
+      "title": "Flatten the dataset",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* default
+### Category
+* Feature
+
 ## FeatureCounter
 ### Type
 * processor
@@ -944,10 +1182,12 @@ Counts features
   ],
   "properties": {
     "countStart": {
+      "title": "Start count",
       "type": "integer",
       "format": "int64"
     },
     "groupBy": {
+      "title": "Attributes to group by",
       "type": [
         "array",
         "null"
@@ -957,6 +1197,7 @@ Counts features
       }
     },
     "outputAttribute": {
+      "title": "Attribute to output the count",
       "type": "string"
     }
   },
@@ -1038,16 +1279,23 @@ Extracts features by file path
   ],
   "properties": {
     "destPrefix": {
+      "title": "Destination prefix",
       "type": [
         "string",
         "null"
       ]
     },
     "extractArchive": {
+      "title": "Extract archive",
       "type": "boolean"
     },
     "sourceDataset": {
-      "$ref": "#/definitions/Expr"
+      "title": "Source dataset",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
     }
   },
   "definitions": {
@@ -1081,6 +1329,7 @@ Filters features based on conditions
   ],
   "properties": {
     "conditions": {
+      "title": "Conditions to filter by",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Condition"
@@ -1096,10 +1345,20 @@ Filters features based on conditions
       ],
       "properties": {
         "expr": {
-          "$ref": "#/definitions/Expr"
+          "title": "Condition expression",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         },
         "outputPort": {
-          "$ref": "#/definitions/Port"
+          "title": "Output port",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Port"
+            }
+          ]
         }
       }
     },
@@ -1135,7 +1394,12 @@ Filter Geometry by lod
   ],
   "properties": {
     "filterKey": {
-      "$ref": "#/definitions/Attribute"
+      "title": "Attributes to filter by",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
     }
   },
   "definitions": {
@@ -1251,31 +1515,12 @@ Reads features from various formats
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
-        },
-        "flatten": {
-          "type": [
-            "boolean",
-            "null"
+          "title": "Dataset",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
           ]
-        },
-        "format": {
-          "type": "string",
-          "enum": [
-            "citygml"
-          ]
-        }
-      }
-    },
-    {
-      "type": "object",
-      "required": [
-        "dataset",
-        "format"
-      ],
-      "properties": {
-        "dataset": {
-          "$ref": "#/definitions/Expr"
         },
         "format": {
           "type": "string",
@@ -1284,6 +1529,7 @@ Reads features from various formats
           ]
         },
         "offset": {
+          "description": "The offset of the first row to read",
           "type": [
             "integer",
             "null"
@@ -1301,7 +1547,12 @@ Reads features from various formats
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "title": "Dataset",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         },
         "format": {
           "type": "string",
@@ -1310,6 +1561,7 @@ Reads features from various formats
           ]
         },
         "offset": {
+          "description": "The offset of the first row to read",
           "type": [
             "integer",
             "null"
@@ -1327,7 +1579,12 @@ Reads features from various formats
       ],
       "properties": {
         "dataset": {
-          "$ref": "#/definitions/Expr"
+          "title": "Dataset",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         },
         "format": {
           "type": "string",
@@ -1364,21 +1621,28 @@ Sorts features by attributes
   "title": "FeatureSorterParam",
   "type": "object",
   "required": [
-    "sortBy"
+    "attributes",
+    "order"
   ],
   "properties": {
-    "sortBy": {
+    "attributes": {
+      "title": "Attributes to sort by",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/SortBy"
+        "$ref": "#/definitions/Attribute"
       }
+    },
+    "order": {
+      "title": "Order to sort by",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Order"
+        }
+      ]
     }
   },
   "definitions": {
     "Attribute": {
-      "type": "string"
-    },
-    "Expr": {
       "type": "string"
     },
     "Order": {
@@ -1387,37 +1651,6 @@ Sorts features by attributes
         "ascending",
         "descending"
       ]
-    },
-    "SortBy": {
-      "type": "object",
-      "required": [
-        "order"
-      ],
-      "properties": {
-        "attribute": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Attribute"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "attributeValue": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Expr"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "order": {
-          "$ref": "#/definitions/Order"
-        }
-      }
     }
   }
 }
@@ -1445,6 +1678,7 @@ Transforms features by expressions
   ],
   "properties": {
     "transformers": {
+      "title": "Transformers to apply",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Transform"
@@ -1462,7 +1696,12 @@ Transforms features by expressions
       ],
       "properties": {
         "expr": {
-          "$ref": "#/definitions/Expr"
+          "title": "Expression to transform the feature",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         }
       }
     }
@@ -1492,6 +1731,7 @@ Filters features by feature type
   ],
   "properties": {
     "targetTypes": {
+      "description": "Target feature types",
       "type": "array",
       "items": {
         "type": "string"
@@ -1533,7 +1773,12 @@ Writes features from various formats
           ]
         },
         "output": {
-          "$ref": "#/definitions/Expr"
+          "title": "Output path",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         }
       }
     },
@@ -1551,7 +1796,12 @@ Writes features from various formats
           ]
         },
         "output": {
-          "$ref": "#/definitions/Expr"
+          "title": "Output path",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         }
       }
     },
@@ -1562,6 +1812,16 @@ Writes features from various formats
         "output"
       ],
       "properties": {
+        "converter": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "format": {
           "type": "string",
           "enum": [
@@ -1569,7 +1829,12 @@ Writes features from various formats
           ]
         },
         "output": {
-          "$ref": "#/definitions/Expr"
+          "title": "Output path",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         }
       }
     }
@@ -1640,6 +1905,7 @@ Extracts properties from a file
   ],
   "properties": {
     "filePathAttribute": {
+      "title": "Attribute to extract file path from",
       "type": "string"
     }
   }
@@ -1929,6 +2195,24 @@ Writes features to a file
         "output"
       ],
       "properties": {
+        "format": {
+          "type": "string",
+          "enum": [
+            "xml"
+          ]
+        },
+        "output": {
+          "$ref": "#/definitions/Expr"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "required": [
+        "format",
+        "output"
+      ],
+      "properties": {
         "converter": {
           "anyOf": [
             {
@@ -2048,7 +2332,12 @@ Coerces the geometry of a feature to a specific geometry
   ],
   "properties": {
     "coercerType": {
-      "$ref": "#/definitions/CoercerType"
+      "description": "The type of geometry to coerce to",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CoercerType"
+        }
+      ]
     }
   },
   "definitions": {
@@ -2392,12 +2681,12 @@ Reprojects the geometry of a feature to a specified coordinate system
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "HorizontalReprojectorParam",
   "type": "object",
+  "required": [
+    "epsgCode"
+  ],
   "properties": {
     "epsgCode": {
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": "integer",
       "format": "uint16",
       "minimum": 0.0
     }
@@ -2450,7 +2739,7 @@ Intersection points are turned into point features that can contain the merged l
   "title": "LineOnLineOverlayerParam",
   "type": "object",
   "required": [
-    "outputAttribute"
+    "tolerance"
   ],
   "properties": {
     "groupBy": {
@@ -2462,8 +2751,9 @@ Intersection points are turned into point features that can contain the merged l
         "$ref": "#/definitions/Attribute"
       }
     },
-    "outputAttribute": {
-      "$ref": "#/definitions/Attribute"
+    "tolerance": {
+      "type": "number",
+      "format": "double"
     }
   },
   "definitions": {
@@ -2498,7 +2788,12 @@ Explodes list attributes
   ],
   "properties": {
     "sourceAttribute": {
-      "$ref": "#/definitions/Attribute"
+      "description": "The attribute to explode",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
     }
   },
   "definitions": {
@@ -2863,6 +3158,7 @@ Flatten attributes for building feature
 * default
 ### Output Ports
 * default
+* schema
 ### Category
 * PLATEAU
 
@@ -2900,6 +3196,21 @@ Extracts Codelist
 * default
 ### Output Ports
 * default
+### Category
+* PLATEAU
+
+## PLATEAU4.DomainOfDefinitionValidator
+### Type
+* processor
+### Description
+Validates domain of definition of CityGML features
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
 ### Category
 * PLATEAU
 
@@ -3112,10 +3423,20 @@ Calls Rhai script
   ],
   "properties": {
     "isTarget": {
-      "$ref": "#/definitions/Expr"
+      "title": "Rhai script to determine if the feature is the target",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
     },
     "process": {
-      "$ref": "#/definitions/Expr"
+      "title": "Rhai script to process the feature",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
     }
   },
   "definitions": {
@@ -3127,6 +3448,91 @@ Calls Rhai script
 ```
 ### Input Ports
 * default
+### Output Ports
+* default
+### Category
+* Feature
+
+## ShapefileWriter
+### Type
+* sink
+### Description
+Writes features to a Shapefile
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ShapefileWriterParam",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "groupBy": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    },
+    "output": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    },
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File
+
+## SqlReader
+### Type
+* source
+### Description
+Reads features from SQL
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SqlReaderParam",
+  "type": "object",
+  "required": [
+    "databaseUrl",
+    "sql"
+  ],
+  "properties": {
+    "databaseUrl": {
+      "description": "Database URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    },
+    "sql": {
+      "$ref": "#/definitions/Expr"
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
 ### Output Ports
 * default
 ### Category
@@ -3148,6 +3554,7 @@ Calculates statistics of features
   ],
   "properties": {
     "aggregateAttribute": {
+      "title": "Attribute to aggregate by",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -3158,6 +3565,7 @@ Calculates statistics of features
       ]
     },
     "aggregateName": {
+      "title": "Name of the attribute to aggregate by",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -3168,6 +3576,7 @@ Calculates statistics of features
       ]
     },
     "calculations": {
+      "title": "Calculations to perform",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Calculation"
@@ -3186,10 +3595,20 @@ Calculates statistics of features
       ],
       "properties": {
         "expr": {
-          "$ref": "#/definitions/Expr"
+          "title": "Calculation to perform",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Expr"
+            }
+          ]
         },
         "newAttribute": {
-          "$ref": "#/definitions/Attribute"
+          "title": "New attribute name",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
         }
       }
     },
@@ -3206,6 +3625,54 @@ Calculates statistics of features
 * complete
 ### Category
 * Attribute
+
+## SurfaceFootprintReplacer
+### Type
+* processor
+### Description
+Replace the geometry with its footprint
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SurfaceFootprintReplacerParam",
+  "type": "object",
+  "properties": {
+    "elevation": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "lightDirection": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "type": "number",
+        "format": "double"
+      },
+      "maxItems": 3,
+      "minItems": 3
+    },
+    "shadowMode": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+* footprint
+* rejected
+### Category
+* Geometry
 
 ## ThreeDimensionBoxReplacer
 ### Type
@@ -3406,10 +3873,13 @@ Compiles scripts into .wasm and runs at the wasm runtime
       "$ref": "#/definitions/ProgrammingLanguage"
     },
     "sourceCodeFilePath": {
-      "type": "string"
+      "$ref": "#/definitions/Expr"
     }
   },
   "definitions": {
+    "Expr": {
+      "type": "string"
+    },
     "ProcessorType": {
       "type": "string",
       "enum": [
@@ -3543,3 +4013,40 @@ Validates XML content
 * failed
 ### Category
 * PLATEAU
+
+## ZipFileWriter
+### Type
+* sink
+### Description
+Writes features to a zip file
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ZipFileWriterParam",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "output": {
+      "description": "Output path",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* default
+### Output Ports
+### Category
+* File

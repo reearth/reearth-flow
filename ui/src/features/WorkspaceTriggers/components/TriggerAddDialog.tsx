@@ -57,7 +57,9 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   );
 
   useEffect(() => {
-    refetch();
+    (async () => {
+      await refetch();
+    })();
   }, [currentPage, currentOrder, refetch]);
 
   const deployments = page?.deployments;
@@ -76,7 +78,6 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   const handleSelectDeployment = (deployment: Deployment) => {
     const deploymentId = deployment.id;
     const selectedDeployment = deployments?.find((d) => d.id === deploymentId);
-    console.log("Deployment", deployment);
     setSelectedDeployment(selectedDeployment || null);
     setDeploymentId(deploymentId);
   };
@@ -150,14 +151,14 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
           <DialogContentSection className="flex flex-col">
             <Label>{t("Deployment: ")}</Label>
             <div
-              className="flex h-8 w-full rounded-md border bg-transparent px-3 py-1 text-sm"
+              className="flex min-h-8 w-full items-center rounded-md border bg-transparent px-3 py-1 text-sm"
               onClick={() => setOpenSelectDeploymentsDialog(true)}>
               <span className="cursor-default whitespace-nowrap pr-2 text-muted-foreground">
                 {t("Select Deployment: ")}
               </span>
               {selectedDeployment ? (
-                <span className="cursor-default truncate">
-                  {selectedDeployment.description} @{selectedDeployment.version}
+                <span className="cursor-default">
+                  {selectedDeployment.description}@{selectedDeployment.version}
                 </span>
               ) : (
                 <span className="cursor-default">

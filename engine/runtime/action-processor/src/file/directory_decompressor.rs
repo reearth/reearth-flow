@@ -2,10 +2,10 @@ use std::{collections::HashMap, fs, path::PathBuf, str::FromStr, sync::Arc};
 
 use reearth_flow_common::{dir::project_temp_dir, uri::Uri};
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 #[derive(Debug, Clone, Default)]
-pub(crate) struct DirectoryDecompressorFactory;
+pub(super) struct DirectoryDecompressorFactory;
 
 impl ProcessorFactory for DirectoryDecompressorFactory {
     fn name(&self) -> &str {
@@ -80,6 +80,7 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct DirectoryDecompressorParam {
+    /// # Attribute to extract file path from
     archive_attributes: Vec<Attribute>,
 }
 
@@ -92,7 +93,7 @@ impl Processor for DirectoryDecompressor {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
         for attribute in &self.archive_attributes {
@@ -121,11 +122,7 @@ impl Processor for DirectoryDecompressor {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

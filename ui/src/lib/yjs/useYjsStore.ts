@@ -5,6 +5,7 @@ import { rebuildWorkflow } from "./conversions";
 import type { YWorkflow } from "./types";
 import useYEdge from "./useYEdge";
 import useYHistory from "./useYHistory";
+import useYLayout from "./useYLayout";
 import useYNode from "./useYNode";
 import useYWorkflow from "./useYWorkflow";
 
@@ -17,36 +18,40 @@ export default ({
   undoTrackerActionWrapper,
 }: {
   currentWorkflowId: string;
-  yWorkflows: Y.Array<YWorkflow>;
+  yWorkflows: Y.Map<YWorkflow>;
   undoManager: Y.UndoManager | null;
   setSelectedNodeIds: Dispatch<SetStateAction<string[]>>;
   setSelectedEdgeIds: Dispatch<SetStateAction<string[]>>;
-  undoTrackerActionWrapper: (callback: () => void) => void;
+  undoTrackerActionWrapper: (
+    callback: () => void,
+    originPrepend?: string,
+  ) => void;
 }) => {
-  const rawWorkflows = yWorkflows.map((w) => rebuildWorkflow(w));
+  const rawWorkflows = Array.from(yWorkflows.entries()).map(([_, yw]) =>
+    rebuildWorkflow(yw),
+  );
 
   const {
     currentYWorkflow,
     handleYWorkflowAdd,
     handleYWorkflowUpdate,
-    handleYWorkflowsRemove,
+    handleYWorkflowRemove,
     handleYWorkflowRename,
     handleYWorkflowAddFromSelection,
   } = useYWorkflow({
     yWorkflows,
-    rawWorkflows,
     currentWorkflowId,
     undoTrackerActionWrapper,
   });
 
-  const { handleYNodesAdd, handleYNodesChange, handleYNodeParamsUpdate } =
+  const { handleYNodesAdd, handleYNodesChange, handleYNodeDataUpdate } =
     useYNode({
       currentYWorkflow,
       rawWorkflows,
       yWorkflows,
       setSelectedNodeIds,
       undoTrackerActionWrapper,
-      handleYWorkflowsRemove,
+      handleYWorkflowRemove,
     });
 
   const { handleYEdgesAdd, handleYEdgesChange } = useYEdge({
@@ -56,7 +61,13 @@ export default ({
   });
 
   const { canRedo, canUndo, handleYWorkflowRedo, handleYWorkflowUndo } =
-    useYHistory({ undoManager });
+    useYHistory({ undoManager, undoTrackerActionWrapper });
+
+  const { handleYLayoutChange } = useYLayout({
+    yWorkflows,
+    rawWorkflows,
+    undoTrackerActionWrapper,
+  });
 
   return {
     canUndo,
@@ -68,11 +79,12 @@ export default ({
     handleYWorkflowUpdate,
     handleYNodesAdd,
     handleYNodesChange,
-    handleYNodeParamsUpdate,
+    handleYNodeDataUpdate,
     handleYEdgesAdd,
     handleYEdgesChange,
     handleYWorkflowUndo,
     handleYWorkflowRedo,
     handleYWorkflowRename,
+    handleYLayoutChange,
   };
 };

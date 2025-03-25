@@ -5,10 +5,13 @@ use std::{
     sync::Arc,
 };
 
+use indexmap::IndexMap;
 use nutype::nutype;
 use reearth_flow_common::{str, xml::XmlXpathValue};
 use reearth_flow_eval_expr::{engine::Engine, scope::Scope};
 use serde::{Deserialize, Serialize};
+use serde_json::Number;
+use sqlx::{any::AnyTypeInfoKind, Column, Row, ValueRef};
 
 pub use crate::attribute::AttributeValue;
 use crate::{all_attribute_keys, attribute::Attribute, geometry::Geometry, metadata::Metadata};
@@ -35,7 +38,7 @@ pub struct MetadataKey(String);
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Feature {
     pub id: uuid::Uuid,
-    pub attributes: HashMap<Attribute, AttributeValue>,
+    pub attributes: IndexMap<Attribute, AttributeValue>,
     pub metadata: Metadata,
     pub geometry: Geometry,
 }
@@ -60,12 +63,12 @@ impl PartialEq for Feature {
 
 impl Eq for Feature {}
 
-impl From<HashMap<String, AttributeValue>> for Feature {
-    fn from(v: HashMap<String, AttributeValue>) -> Self {
+impl From<IndexMap<String, AttributeValue>> for Feature {
+    fn from(v: IndexMap<String, AttributeValue>) -> Self {
         let attributes = v
             .iter()
             .map(|(k, v)| (Attribute::new(k.to_string()), v.clone()))
-            .collect::<HashMap<_, _>>();
+            .collect::<IndexMap<_, _>>();
         Self {
             id: uuid::Uuid::new_v4(),
             attributes,
@@ -81,8 +84,8 @@ impl Hash for Feature {
     }
 }
 
-impl From<HashMap<Attribute, AttributeValue>> for Feature {
-    fn from(v: HashMap<Attribute, AttributeValue>) -> Self {
+impl From<IndexMap<Attribute, AttributeValue>> for Feature {
+    fn from(v: IndexMap<Attribute, AttributeValue>) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes: v,
@@ -98,7 +101,7 @@ impl From<Geometry> for Feature {
             id: uuid::Uuid::new_v4(),
             geometry: v,
             metadata: Default::default(),
-            attributes: HashMap::new(),
+            attributes: IndexMap::new(),
         }
     }
 }
@@ -118,7 +121,7 @@ impl From<AttributeValue> for Feature {
         let attributes = attributes
             .iter()
             .map(|(k, v)| (Attribute::new(k.to_string()), v.clone()))
-            .collect::<HashMap<_, _>>();
+            .collect::<IndexMap<_, _>>();
         Self {
             id: uuid::Uuid::new_v4(),
             attributes,
@@ -204,7 +207,7 @@ impl From<serde_json::Value> for Feature {
                     AttributeValue::from(v.clone()),
                 )
             })
-            .collect::<HashMap<_, _>>();
+            .collect::<IndexMap<_, _>>();
         let id = if let Some(serde_json::Value::String(id)) = v.get(&"id".to_string()) {
             uuid::Uuid::parse_str(id).unwrap_or_else(|_| uuid::Uuid::new_v4())
         } else {
@@ -225,6 +228,75 @@ impl From<serde_json::Value> for Feature {
             geometry: geometry.unwrap_or_default(),
             metadata: metadata.unwrap_or_default(),
         }
+    }
+}
+
+impl TryFrom<sqlx::any::AnyRow> for Feature {
+    type Error = crate::error::Error;
+
+    fn try_from(value: sqlx::any::AnyRow) -> Result<Self, Self::Error> {
+        let attributes = value
+            .columns
+            .iter()
+            .map(|column| {
+                let raw = value.try_get_raw(column.name()).map_err(|e| {
+                    crate::error::Error::Conversion(format!("Failed to get column: {}", e))
+                })?;
+                let type_info = raw.type_info();
+                let result = match type_info.kind() {
+                    AnyTypeInfoKind::Text => {
+                        let value: String = value.try_get(column.ordinal()).map_err(|e| {
+                            crate::error::Error::Conversion(format!("Failed to get text: {}", e))
+                        })?;
+                        (
+                            Attribute::new(column.name.to_string()),
+                            AttributeValue::String(value),
+                        )
+                    }
+                    AnyTypeInfoKind::SmallInt
+                    | AnyTypeInfoKind::BigInt
+                    | AnyTypeInfoKind::Integer => {
+                        let value: i64 = value.try_get(column.ordinal()).map_err(|e| {
+                            crate::error::Error::Conversion(format!("Failed to get integer: {}", e))
+                        })?;
+                        (
+                            Attribute::new(column.name.to_string()),
+                            AttributeValue::Number(Number::from(value)),
+                        )
+                    }
+                    AnyTypeInfoKind::Double | AnyTypeInfoKind::Real => {
+                        let value: f64 = value.try_get(column.ordinal()).map_err(|e| {
+                            crate::error::Error::Conversion(format!("Failed to get float: {}", e))
+                        })?;
+                        (
+                            Attribute::new(column.name.to_string()),
+                            AttributeValue::Number(
+                                Number::from_f64(value).unwrap_or(Number::from(0)),
+                            ),
+                        )
+                    }
+                    AnyTypeInfoKind::Bool => {
+                        let value: bool = value.try_get(column.ordinal()).map_err(|e| {
+                            crate::error::Error::Conversion(format!("Failed to get bool: {}", e))
+                        })?;
+                        (
+                            Attribute::new(column.name.to_string()),
+                            AttributeValue::Bool(value),
+                        )
+                    }
+                    AnyTypeInfoKind::Null => (
+                        Attribute::new(column.name.to_string()),
+                        AttributeValue::Null,
+                    ),
+                    _ => (
+                        Attribute::new(column.name.to_string()),
+                        AttributeValue::Null,
+                    ),
+                };
+                Ok::<(Attribute, AttributeValue), Self::Error>(result)
+            })
+            .collect::<Result<IndexMap<_, _>, _>>()?;
+        Ok(Self::from(attributes))
     }
 }
 
@@ -260,7 +332,7 @@ impl Feature {
     pub fn new() -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
-            attributes: HashMap::new(),
+            attributes: IndexMap::new(),
             metadata: Metadata::new(),
             geometry: Geometry::new(),
         }
@@ -268,7 +340,7 @@ impl Feature {
 
     pub fn new_with_id_and_attributes(
         id: uuid::Uuid,
-        attributes: HashMap<Attribute, AttributeValue>,
+        attributes: IndexMap<Attribute, AttributeValue>,
     ) -> Self {
         Self {
             id,
@@ -278,7 +350,7 @@ impl Feature {
         }
     }
 
-    pub fn new_with_attributes(attributes: HashMap<Attribute, AttributeValue>) -> Self {
+    pub fn new_with_attributes(attributes: IndexMap<Attribute, AttributeValue>) -> Self {
         Self {
             id: uuid::Uuid::new_v4(),
             attributes,
@@ -288,7 +360,7 @@ impl Feature {
     }
 
     pub fn new_with_attributes_and_geometry(
-        attributes: HashMap<Attribute, AttributeValue>,
+        attributes: IndexMap<Attribute, AttributeValue>,
         geometry: Geometry,
         metadata: Metadata,
     ) -> Self {
@@ -304,7 +376,7 @@ impl Feature {
         self.id = uuid::Uuid::new_v4();
     }
 
-    pub fn with_attributes(&self, attributes: HashMap<Attribute, AttributeValue>) -> Self {
+    pub fn with_attributes(&self, attributes: IndexMap<Attribute, AttributeValue>) -> Self {
         Self {
             id: self.id,
             attributes,
@@ -313,7 +385,7 @@ impl Feature {
         }
     }
 
-    pub fn into_with_attributes(self, attributes: HashMap<Attribute, AttributeValue>) -> Self {
+    pub fn into_with_attributes(self, attributes: IndexMap<Attribute, AttributeValue>) -> Self {
         Self {
             id: self.id,
             attributes,
@@ -329,6 +401,23 @@ impl Feature {
 
     pub fn get<T: AsRef<str> + std::fmt::Display>(&self, key: &T) -> Option<&AttributeValue> {
         self.attributes.get(&Attribute::new(key.to_string()))
+    }
+
+    pub fn get_by_keys<T: AsRef<str> + std::fmt::Display>(
+        &self,
+        keys: &[T],
+    ) -> Option<AttributeValue> {
+        let mut result = Vec::new();
+        for key in keys {
+            if let Some(v) = self.get(&Attribute::new(key.to_string())) {
+                result.push(v.clone());
+            }
+        }
+        if result.is_empty() {
+            None
+        } else {
+            Some(AttributeValue::Array(result))
+        }
     }
 
     pub fn insert<T: AsRef<str> + std::fmt::Display>(
@@ -350,7 +439,8 @@ impl Feature {
     }
 
     pub fn remove<T: AsRef<str> + std::fmt::Display>(&mut self, key: &T) -> Option<AttributeValue> {
-        self.attributes.remove(&Attribute::new(key.to_string()))
+        self.attributes
+            .swap_remove(&Attribute::new(key.to_string()))
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (&Attribute, &AttributeValue)> {
@@ -378,6 +468,10 @@ impl Feature {
         scope.set(
             "__feature_id",
             serde_json::Value::String(self.feature_id().unwrap_or_default()),
+        );
+        scope.set(
+            "__lod",
+            serde_json::Value::String(self.lod().unwrap_or_default()),
         );
         if let Some(with) = with {
             for (k, v) in with {
@@ -439,6 +533,12 @@ impl Feature {
 
     pub fn feature_type(&self) -> Option<String> {
         self.metadata.feature_type.clone()
+    }
+
+    pub fn lod(&self) -> Option<String> {
+        self.metadata
+            .lod
+            .and_then(|lod| lod.highest_lod().map(|lod| lod.to_string()))
     }
 
     pub fn update_feature_type(&mut self, feature_type: String) {

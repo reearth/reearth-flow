@@ -1,12 +1,11 @@
-use std::collections::HashMap;
-
+use indexmap::IndexMap;
 use itertools::Itertools;
 use nusamai_projection::crs::{EPSG_WGS84_GEOGRAPHIC_2D, EPSG_WGS84_GEOGRAPHIC_3D};
 use reearth_flow_geometry::types::conversion::is_2d_geojson_value;
 
 use crate::{
     error::{Error, Result},
-    Attribute, AttributeValue, Feature, GeometryValue,
+    Attribute, AttributeValue, Feature, GeometryValue, GmlGeometry,
 };
 
 impl TryFrom<Feature> for Vec<geojson::Feature> {
@@ -67,7 +66,7 @@ impl TryFrom<Feature> for Vec<geojson::Feature> {
 }
 
 fn from_attribute_value_map_to_geojson_object(
-    map: &HashMap<Attribute, AttributeValue>,
+    map: &IndexMap<Attribute, AttributeValue>,
 ) -> geojson::JsonObject {
     let mut properties = geojson::JsonObject::new();
     for (k, v) in map.iter() {
@@ -92,6 +91,18 @@ impl TryFrom<geojson::Value> for GeometryValue {
     }
 }
 
+impl From<GmlGeometry> for Vec<geojson::Value> {
+    fn from(feature: GmlGeometry) -> Self {
+        let mut values = feature
+            .polygons
+            .into_iter()
+            .map(|poly| poly.into())
+            .collect::<Vec<_>>();
+        values.extend(feature.line_strings.into_iter().map(|line| line.into()));
+        values
+    }
+}
+
 impl TryFrom<geojson::Feature> for Feature {
     type Error = Error;
 
@@ -99,7 +110,7 @@ impl TryFrom<geojson::Feature> for Feature {
         let attributes = if let Some(attributes) = geom.properties {
             from_geojson_object_to_attribute_value_map(&attributes)
         } else {
-            HashMap::new()
+            IndexMap::new()
         };
         let geometry = if let Some(geometry) = geom.geometry {
             geometry.value.try_into()?
@@ -132,7 +143,7 @@ impl TryFrom<geojson::Feature> for Feature {
 
 fn from_geojson_object_to_attribute_value_map(
     obj: &geojson::JsonObject,
-) -> HashMap<Attribute, AttributeValue> {
+) -> IndexMap<Attribute, AttributeValue> {
     obj.iter()
         .map(|(k, v)| (Attribute::new(k), v.clone().into()))
         .collect()

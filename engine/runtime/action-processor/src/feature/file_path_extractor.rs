@@ -3,10 +3,10 @@ use std::{collections::HashMap, fs, str::FromStr, sync::Arc};
 use once_cell::sync::Lazy;
 use reearth_flow_common::{dir::project_temp_dir, uri::Uri};
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{AttributeValue, Expr, Feature, FilePath};
@@ -18,10 +18,10 @@ use crate::utils::decompressor::extract_archive;
 
 use super::errors::FeatureProcessorError;
 
-pub static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
+static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureFilePathExtractorFactory;
+pub(super) struct FeatureFilePathExtractorFactory;
 
 impl ProcessorFactory for FeatureFilePathExtractorFactory {
     fn name(&self) -> &str {
@@ -97,21 +97,24 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct FeatureFilePathExtractorParam {
+struct FeatureFilePathExtractorParam {
+    /// # Source dataset
     source_dataset: Expr,
+    /// # Extract archive
     extract_archive: bool,
+    /// # Destination prefix
     dest_prefix: Option<String>,
 }
 
 #[derive(Debug, Clone)]
-pub struct FeatureFilePathExtractorCompiledParam {
+struct FeatureFilePathExtractorCompiledParam {
     source_dataset: rhai::AST,
     extract_archive: bool,
     dest_prefix: Option<String>,
 }
 
 #[derive(Debug, Clone)]
-pub struct FeatureFilePathExtractor {
+struct FeatureFilePathExtractor {
     params: FeatureFilePathExtractorCompiledParam,
     with: Option<HashMap<String, Value>>,
 }
@@ -120,7 +123,7 @@ impl Processor for FeatureFilePathExtractor {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let base_attributes = feature.attributes.clone();
@@ -207,11 +210,7 @@ impl Processor for FeatureFilePathExtractor {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

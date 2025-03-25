@@ -7,5 +7,5 @@ import (
 )
 
 type PermissionChecker interface {
-	CheckPermission(ctx context.Context, authInfo *appx.AuthInfo, resource string, action string) (bool, error)
+	CheckPermission(ctx context.Context, authInfo *appx.AuthInfo, userId string, resource string, action string) (bool, error)
 }

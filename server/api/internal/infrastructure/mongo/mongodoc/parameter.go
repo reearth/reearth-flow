@@ -22,7 +22,7 @@ type ParameterDocument struct {
 type ParameterConsumer = Consumer[*ParameterDocument, *parameter.Parameter]
 
 func NewParameterConsumer() *ParameterConsumer {
-	return NewConsumer[*ParameterDocument, *parameter.Parameter](func(a *parameter.Parameter) bool {
+	return NewConsumer[*ParameterDocument](func(a *parameter.Parameter) bool {
 		return true // No filtering needed for parameters
 	})
 }

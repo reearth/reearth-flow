@@ -1,40 +1,40 @@
 import { XYPosition } from "@xyflow/react";
 import { useCallback } from "react";
 import * as Y from "yjs";
-import { Array as YArray } from "yjs";
+import { Map as YMap } from "yjs";
 
 import { config } from "@flow/config";
 import {
   DEFAULT_ENTRY_GRAPH_ID,
   DEFAULT_ROUTING_PORT,
 } from "@flow/global-constants";
-import type { Action, Edge, Node } from "@flow/types";
-import { generateUUID } from "@flow/utils";
-
-import { fetcher } from "../fetch/transformers/useFetch";
+import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
+import { useT } from "@flow/lib/i18n";
+import type { Action, Edge, Node, NodeType } from "@flow/types";
+import { generateUUID, isDefined } from "@flow/utils";
 
 import {
-  yEdgeConstructor,
+  rebuildWorkflow,
   yNodeConstructor,
   yWorkflowConstructor,
 } from "./conversions";
-import type { YEdgesArray, YNode, YNodesArray, YWorkflow } from "./types";
+import type { YNode, YNodesMap, YWorkflow } from "./types";
 
 export default ({
   yWorkflows,
-  rawWorkflows,
   currentWorkflowId,
   undoTrackerActionWrapper,
 }: {
-  yWorkflows: YArray<YWorkflow>;
-  rawWorkflows: Record<string, string | Node[] | Edge[]>[];
+  yWorkflows: YMap<YWorkflow>;
   currentWorkflowId: string;
-  undoTrackerActionWrapper: (callback: () => void) => void;
+  undoTrackerActionWrapper: (
+    callback: () => void,
+    originPrepend?: string,
+  ) => void;
 }) => {
+  const t = useT();
   const { api } = config();
-  const currentYWorkflow = yWorkflows.get(
-    rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
-  );
+  const currentYWorkflow = yWorkflows.get(currentWorkflowId);
 
   const fetchRouterConfigs = useCallback(async () => {
     const [inputRouter, outputRouter] = await Promise.all([
@@ -60,12 +60,11 @@ export default ({
       // newInputNode is not a YNode because it will be converted in the yWorkflowConstructor
       const newInputNode: Node = {
         id: inputNodeId,
-        type: inputRouter.type,
+        type: inputRouter.type as NodeType,
         position: { x: 200, y: 200 },
         data: {
           officialName: inputRouter.name,
           outputs: inputRouter.outputPorts,
-          status: "idle",
           params: {
             routingPort: DEFAULT_ROUTING_PORT,
           },
@@ -76,12 +75,11 @@ export default ({
       // newOutputNode is not a YNode because it will be converted in the yWorkflowConstructor
       const newOutputNode: Node = {
         id: outputNodeId,
-        type: outputRouter.type,
+        type: outputRouter.type as NodeType,
         position: { x: 1000, y: 200 },
         data: {
           officialName: outputRouter.name,
           inputs: outputRouter.inputPorts,
-          status: "idle",
           params: {
             routingPort: DEFAULT_ROUTING_PORT,
           },
@@ -106,13 +104,13 @@ export default ({
         position,
         data: {
           officialName: workflowName,
-          status: "idle",
           pseudoInputs: [
             { nodeId: inputNodeId, portName: DEFAULT_ROUTING_PORT },
           ],
           pseudoOutputs: [
             { nodeId: outputNodeId, portName: DEFAULT_ROUTING_PORT },
           ],
+          subworkflowId: workflowId,
         },
         selected: true,
       });
@@ -128,7 +126,7 @@ export default ({
         const routers = await fetchRouterConfigs();
         undoTrackerActionWrapper(() => {
           const workflowId = generateUUID();
-          const workflowName = `Sub Workflow-${yWorkflows.length}`;
+          const workflowName = t("Subworkflow");
 
           const { newYWorkflow, newSubworkflowNode } = createYWorkflow(
             workflowId,
@@ -137,17 +135,13 @@ export default ({
             routers,
           );
 
-          const parentWorkflow = yWorkflows.get(
-            rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
-          );
+          const parentWorkflow = currentYWorkflow;
           const parentWorkflowNodes = parentWorkflow?.get("nodes") as
-            | YNodesArray
+            | YNodesMap
             | undefined;
-          parentWorkflowNodes?.insert(parentWorkflowNodes.length, [
-            newSubworkflowNode,
-          ]);
+          parentWorkflowNodes?.set(workflowId, newSubworkflowNode);
 
-          yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
+          yWorkflows.set(workflowId, newYWorkflow);
         });
       } catch (error) {
         console.error("Failed to add workflow:", error);
@@ -156,174 +150,177 @@ export default ({
     },
     [
       yWorkflows,
-      currentWorkflowId,
-      rawWorkflows,
+      currentYWorkflow,
+      t,
       createYWorkflow,
       fetchRouterConfigs,
       undoTrackerActionWrapper,
     ],
   );
 
-  const handleYWorkflowAddFromSelection = useCallback(
-    async (nodes: Node[], edges: Edge[]) => {
-      try {
-        const routers = await fetchRouterConfigs();
+  // const handleYWorkflowAddFromSelection = useCallback(
+  //   async (nodes: Node[], edges: Edge[]) => {
+  //     try {
+  //       const routers = await fetchRouterConfigs();
 
-        undoTrackerActionWrapper(() => {
-          const nodesByParentId = new Map<string, Node[]>();
-          nodes.forEach((node) => {
-            if (node.parentId) {
-              if (!nodesByParentId.has(node.parentId)) {
-                nodesByParentId.set(node.parentId, []);
-              }
-              nodesByParentId.get(node.parentId)?.push(node);
-            }
-          });
+  //       undoTrackerActionWrapper(() => {
+  //         const nodesByParentId = new Map<string, Node[]>();
+  //         nodes.forEach((node) => {
+  //           if (node.parentId) {
+  //             if (!nodesByParentId.has(node.parentId)) {
+  //               nodesByParentId.set(node.parentId, []);
+  //             }
+  //             nodesByParentId.get(node.parentId)?.push(node);
+  //           }
+  //         });
 
-          const selectedNodes = nodes.filter((n) => n.selected);
-          if (selectedNodes.length === 0) return;
+  //         const selectedNodes = nodes.filter((n) => n.selected);
+  //         if (selectedNodes.length === 0) return;
 
-          const getBatchNodes = (batchId: string): Node[] =>
-            nodesByParentId.get(batchId) ?? [];
+  //         const getBatchNodes = (batchId: string): Node[] =>
+  //           nodesByParentId.get(batchId) ?? [];
 
-          const allIncludedNodeIds = new Set<string>();
-          selectedNodes.forEach((node) => {
-            allIncludedNodeIds.add(node.id);
-            if (node.type === "batch") {
-              getBatchNodes(node.id).forEach((batchNode) =>
-                allIncludedNodeIds.add(batchNode.id),
-              );
-            }
-          });
+  //         const allIncludedNodeIds = new Set<string>();
+  //         selectedNodes.forEach((node) => {
+  //           allIncludedNodeIds.add(node.id);
+  //           if (node.type === "batch") {
+  //             getBatchNodes(node.id).forEach((batchNode) =>
+  //               allIncludedNodeIds.add(batchNode.id),
+  //             );
+  //           }
+  //         });
 
-          const allIncludedNodes = nodes.filter((n) =>
-            allIncludedNodeIds.has(n.id),
-          );
-          const position = {
-            x: Math.min(...selectedNodes.map((n) => n.position.x)),
-            y: Math.min(...selectedNodes.map((n) => n.position.y)),
-          };
+  //         const allIncludedNodes = nodes.filter((n) =>
+  //           allIncludedNodeIds.has(n.id),
+  //         );
+  //         const position = {
+  //           x: Math.min(...selectedNodes.map((n) => n.position.x)),
+  //           y: Math.min(...selectedNodes.map((n) => n.position.y)),
+  //         };
 
-          const adjustedNodes = allIncludedNodes.map((node) => ({
-            ...node,
-            position: node.parentId
-              ? node.position
-              : {
-                  x: node.position.x - position.x + 400,
-                  y: node.position.y - position.y + 200,
-                },
-            selected: false,
-          }));
+  //         const adjustedNodes = allIncludedNodes.map((node) => ({
+  //           ...node,
+  //           position: node.parentId
+  //             ? node.position
+  //             : {
+  //                 x: node.position.x - position.x + 400,
+  //                 y: node.position.y - position.y + 200,
+  //               },
+  //           selected: false,
+  //         }));
 
-          const internalEdges = edges.filter(
-            (e) =>
-              allIncludedNodeIds.has(e.source) &&
-              allIncludedNodeIds.has(e.target),
-          );
+  //         const internalEdges = edges.filter(
+  //           (e) =>
+  //             allIncludedNodeIds.has(e.source) &&
+  //             allIncludedNodeIds.has(e.target),
+  //         );
 
-          const workflowId = generateUUID();
-          const workflowName = `Sub Workflow-${yWorkflows.length}`;
+  //         const workflowId = generateUUID();
+  //         const workflowName = t("Subworkflow");
 
-          const { newYWorkflow, newSubworkflowNode } = createYWorkflow(
-            workflowId,
-            workflowName,
-            position,
-            routers,
-            adjustedNodes,
-            internalEdges,
-          );
+  //         const { newYWorkflow, newSubworkflowNode } = createYWorkflow(
+  //           workflowId,
+  //           workflowName,
+  //           position,
+  //           routers,
+  //           adjustedNodes,
+  //           internalEdges,
+  //         );
 
-          const parentWorkflow = yWorkflows.get(
-            rawWorkflows.findIndex((w) => w.id === currentWorkflowId) || 0,
-          );
-          const parentWorkflowNodes = parentWorkflow?.get("nodes") as
-            | YNodesArray
-            | undefined;
+  //         const parentWorkflow = currentYWorkflow;
+  //         const parentWorkflowNodes = parentWorkflow?.get("nodes") as
+  //           | YNodesArray
+  //           | undefined;
 
-          const parentWorkflowEdges = parentWorkflow?.get("edges") as
-            | YEdgesArray
-            | undefined;
+  //         const parentWorkflowEdges = parentWorkflow?.get("edges") as
+  //           | YEdgesMap
+  //           | undefined;
 
-          const remainingNodes = nodes
-            .filter((n) => !allIncludedNodeIds.has(n.id))
-            .map((n) => yNodeConstructor(n));
+  //         const remainingNodes = nodes
+  //           .filter((n) => !allIncludedNodeIds.has(n.id))
+  //           .map((n) => yNodeConstructor(n));
 
-          const remainingEdges = edges
-            .filter(
-              (e) =>
-                !allIncludedNodeIds.has(e.source) ||
-                !allIncludedNodeIds.has(e.target),
-            )
-            .map((e) => yEdgeConstructor(e));
+  //         const remainingEdges = edges
+  //           .filter(
+  //             (e) =>
+  //               !allIncludedNodeIds.has(e.source) ||
+  //               !allIncludedNodeIds.has(e.target),
+  //           )
+  //           .map((e) => yEdgeConstructor(e));
 
-          parentWorkflowEdges?.delete(0, parentWorkflowEdges.length);
-          parentWorkflowNodes?.delete(0, parentWorkflowNodes.length);
-          parentWorkflowNodes?.insert(0, [
-            ...remainingNodes,
-            newSubworkflowNode,
-          ]);
-          parentWorkflowEdges?.insert(0, remainingEdges);
+  //         parentWorkflowEdges?.delete(0, parentWorkflowEdges.length);
+  //         parentWorkflowNodes?.delete(0, parentWorkflowNodes.length);
+  //         parentWorkflowNodes?.insert(0, [
+  //           ...remainingNodes,
+  //           newSubworkflowNode,
+  //         ]);
+  //         parentWorkflowEdges?.insert(0, remainingEdges);
 
-          yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
-        });
-      } catch (error) {
-        console.error("Failed to add workflow from selection:", error);
-        throw error;
-      }
-    },
-    [
-      yWorkflows,
-      currentWorkflowId,
-      rawWorkflows,
-      createYWorkflow,
-      fetchRouterConfigs,
-      undoTrackerActionWrapper,
-    ],
-  );
+  //         yWorkflows.set(workflowId, newYWorkflow);
+  //       });
+  //     } catch (error) {
+  //       console.error("Failed to add workflow from selection:", error);
+  //       throw error;
+  //     }
+  //   },
+  //   [
+  //     yWorkflows,
+  //     currentYWorkflow,
+  //     t,
+  //     createYWorkflow,
+  //     fetchRouterConfigs,
+  //     undoTrackerActionWrapper,
+  //   ],
+  // );
 
   const handleYWorkflowUpdate = useCallback(
-    (workflowId: string, nodes?: Node[], edges?: Edge[]) => {
-      const workflowName = "Sub Workflow-" + yWorkflows.length.toString();
-      const newYWorkflow = yWorkflowConstructor(
-        workflowId,
-        workflowName,
-        nodes,
-        edges,
-      );
-      yWorkflows.insert(yWorkflows.length, [newYWorkflow]);
-    },
-    [yWorkflows],
+    (workflowId: string, nodes?: Node[], edges?: Edge[]) =>
+      undoTrackerActionWrapper(() => {
+        const workflowName = t("Subworkflow");
+        const newYWorkflow = yWorkflowConstructor(
+          workflowId,
+          workflowName,
+          nodes,
+          edges,
+        );
+        yWorkflows.set(workflowId, newYWorkflow);
+      }),
+    [yWorkflows, t, undoTrackerActionWrapper],
   );
 
-  const handleYWorkflowsRemove = useCallback(
-    (nodeIds: string[]) =>
+  const handleYWorkflowRemove = useCallback(
+    (workflowId: string) =>
       undoTrackerActionWrapper(() => {
-        const workflowIds: string[] = [];
-        const localWorkflows = [...rawWorkflows];
+        const workflowsToRemove = new Set<string>();
 
-        const removeNodes = (nodeIds: string[]) => {
-          nodeIds.forEach((nid) => {
-            if (nid === DEFAULT_ENTRY_GRAPH_ID) return;
+        const markWorkflowForRemoval = (id: string) => {
+          if (id === DEFAULT_ENTRY_GRAPH_ID) return;
+          if (workflowsToRemove.has(id)) return; // Avoid circular references
 
-            const index = localWorkflows.findIndex((w) => w.id === nid);
-            if (index === -1) return;
+          workflowsToRemove.add(id);
 
-            // Loop over workflow at current index and remove any subworkflow nodes
-            (localWorkflows[index].nodes as Node[]).forEach((node) => {
-              if (node.type === "subworkflow") {
-                removeNodes([node.id]);
-              }
-            });
+          const yWorkflow = yWorkflows.get(id);
+          if (!yWorkflow) return;
+          const workflow = rebuildWorkflow(yWorkflow);
 
-            workflowIds.push(nid);
-            yWorkflows.delete(index);
-            localWorkflows.splice(index, 1);
+          (workflow.nodes as Node[]).forEach((node) => {
+            if (node.type === "subworkflow" && node.data.subworkflowId) {
+              markWorkflowForRemoval(node.data.subworkflowId);
+            }
           });
         };
 
-        removeNodes(nodeIds);
+        markWorkflowForRemoval(workflowId);
+
+        const idsToRemove = Array.from(workflowsToRemove)
+          .map((id) => id)
+          .filter(isDefined);
+
+        idsToRemove.forEach((id) => {
+          yWorkflows.delete(id);
+        });
       }),
-    [rawWorkflows, yWorkflows, undoTrackerActionWrapper],
+    [yWorkflows, undoTrackerActionWrapper],
   );
 
   const handleYWorkflowRename = useCallback(
@@ -334,10 +331,10 @@ export default ({
         }
 
         // Update subworkflow node in main workflow if this is a subworkflow
-        const mainWorkflow = yWorkflows.get(0);
-        const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesArray;
+        const mainWorkflow = yWorkflows.get(DEFAULT_ENTRY_GRAPH_ID);
+        const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesMap;
 
-        for (const node of mainWorkflowNodes) {
+        mainWorkflowNodes.forEach((node) => {
           // Get the id from the YNode
           const nodeId = (node.get("id") as Y.Text).toString();
 
@@ -348,7 +345,7 @@ export default ({
             if (nodeData.get("customName")?.toString() === name) return;
             nodeData.set("customName", name);
           }
-        }
+        });
       }),
     [undoTrackerActionWrapper, yWorkflows],
   );
@@ -357,8 +354,8 @@ export default ({
     currentYWorkflow,
     handleYWorkflowAdd,
     handleYWorkflowUpdate,
-    handleYWorkflowsRemove,
+    handleYWorkflowRemove,
     handleYWorkflowRename,
-    handleYWorkflowAddFromSelection,
+    handleYWorkflowAddFromSelection: undefined,
   };
 };

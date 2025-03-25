@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
+use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reearth_flow_geometry::{
@@ -7,10 +8,10 @@ use reearth_flow_geometry::{
     types::{multi_polygon::MultiPolygon2D, rect::Rect2D},
 };
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
@@ -21,11 +22,11 @@ use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
 
-pub static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
-pub static REMNANTS_PORT: Lazy<Port> = Lazy::new(|| Port::new("remnants"));
+static AREA_PORT: Lazy<Port> = Lazy::new(|| Port::new("area"));
+static REMNANTS_PORT: Lazy<Port> = Lazy::new(|| Port::new("remnants"));
 
 #[derive(Debug, Clone, Default)]
-pub struct AreaOnAreaOverlayerFactory;
+pub(super) struct AreaOnAreaOverlayerFactory;
 
 impl ProcessorFactory for AreaOnAreaOverlayerFactory {
     fn name(&self) -> &str {
@@ -93,12 +94,13 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct AreaOnAreaOverlayerParam {
+struct AreaOnAreaOverlayerParam {
+    /// # Group by
     group_by: Option<Vec<Attribute>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct AreaOnAreaOverlayer {
+struct AreaOnAreaOverlayer {
     group_by: Option<Vec<Attribute>>,
     buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
@@ -107,7 +109,7 @@ impl Processor for AreaOnAreaOverlayer {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
@@ -156,11 +158,7 @@ impl Processor for AreaOnAreaOverlayer {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         let overlayed = self.overlay();
         for feature in &overlayed.area {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
@@ -234,12 +232,13 @@ impl AreaOnAreaOverlayer {
 
         let overlay_graph = OverlayGraph::bulk_load(&polygons_incoming);
 
+        // all (devided) polygons to output
         let midpolygons = (0..polygons_incoming.len())
             .into_par_iter()
             .map(|i| {
                 let mut polygon_target = polygons_incoming[i].clone();
 
-                // cut off the target polygon by above overlayed polygons
+                // cut off the target polygon by upper polygons
                 for j in overlay_graph.overlayed_iter(i).copied() {
                     if i < j {
                         polygon_target = polygon_target.difference(&polygons_incoming[j]);
@@ -251,7 +250,7 @@ impl AreaOnAreaOverlayer {
                     parents: vec![i],
                 }];
 
-                // divide the target polygon by below overlayed polygons
+                // divide the target polygon by lower polygons
                 for j in overlay_graph.overlayed_iter(i).copied() {
                     if i > j {
                         let mut new_queue = Vec::new();
@@ -373,7 +372,7 @@ impl OverlayedFeatures {
 
     fn from_midpolygons(
         midpolygons: Vec<MiddlePolygon>,
-        base_attributes: Vec<HashMap<Attribute, AttributeValue>>,
+        base_attributes: Vec<IndexMap<Attribute, AttributeValue>>,
         group_by: &Option<Vec<Attribute>>,
     ) -> Self {
         let mut area = Vec::new();
@@ -391,9 +390,9 @@ impl OverlayedFeatures {
                                 let value = last_feature.get(attr).cloned()?;
                                 Some((attr.clone(), value))
                             })
-                            .collect::<HashMap<_, _>>();
+                            .collect::<IndexMap<_, _>>();
                     } else {
-                        feature.attributes = HashMap::new();
+                        feature.attributes = IndexMap::new();
                     }
 
                     feature.geometry.value =

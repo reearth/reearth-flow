@@ -1,0 +1,19 @@
+[tasks.check]
+description = "Check the code for errors"
+command = "cargo"
+args = ["check"]
+
+[tasks.clippy]
+description = "Run clippy"
+command = "cargo"
+args = ["clippy", "--all-targets", "--all-features", "--", "-D", "warnings"]
+
+[tasks.test]
+description = "Run tests"
+command = "cargo"
+args = ["test", "--all-features"]
+
+[tasks.format]
+description = "Format the code"
+command = "cargo"
+args = ["fmt", "--all"]

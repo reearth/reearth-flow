@@ -28,3 +28,16 @@ examples/3dtiles/tiles.json and should be
     ```
 
 3. Open the browser and visit `http://localhost:8000/`
+
+## czml
+
+1. Copy to json/sample.json
+
+2. Start local web server:
+
+    ```bash
+    cd czml
+    python -m http.server
+    ```
+
+3. Open the browser and visit `http://localhost:8000/`

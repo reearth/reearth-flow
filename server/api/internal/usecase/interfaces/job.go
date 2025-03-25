@@ -9,6 +9,7 @@ import (
 )
 
 type Job interface {
+	Cancel(context.Context, id.JobID) (*job.Job, error)
 	Fetch(context.Context, []id.JobID) ([]*job.Job, error)
 	FindByID(context.Context, id.JobID) (*job.Job, error)
 	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *PaginationParam) ([]*job.Job, *PageBasedInfo, error)

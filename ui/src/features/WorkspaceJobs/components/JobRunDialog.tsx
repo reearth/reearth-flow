@@ -38,9 +38,13 @@ const JobRunDialog: React.FC<Props> = ({ setShowDialog }) => {
 
   const { useGetDeployments, executeDeployment } = useDeployment();
   const { page, isFetching, refetch } = useGetDeployments(currentWorkspace?.id);
+
   useEffect(() => {
-    refetch();
+    (async () => {
+      await refetch();
+    })();
   }, [currentPage, currentOrder, refetch]);
+
   const deployments = page?.deployments;
   const totalPages = page?.totalPages as number;
 
@@ -93,15 +97,15 @@ const JobRunDialog: React.FC<Props> = ({ setShowDialog }) => {
       </DialogContent>
       {openSelectDeploymentsDialog && (
         <DeploymentsDialog
-          setShowDialog={() => setOpenSelectDeploymentsDialog(false)}
           deployments={deployments}
-          handleSelectDeployment={selectDeployment}
           currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
           totalPages={totalPages}
           currentOrder={currentOrder}
-          setCurrentOrder={setCurrentOrder}
           isFetching={isFetching}
+          setShowDialog={() => setOpenSelectDeploymentsDialog(false)}
+          handleSelectDeployment={selectDeployment}
+          setCurrentPage={setCurrentPage}
+          setCurrentOrder={setCurrentOrder}
         />
       )}
     </Dialog>

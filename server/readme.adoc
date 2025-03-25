@@ -1,0 +1,31 @@
+== Getting Started
+
+=== Build and Run Instructions
+
+[IMPORTANT]
+====
+Before running the Go API server, you must first build the WebSocket server:
+
+[source,bash]
+----
+cargo build --release
+----
+====
+
+=== Running the Services
+
+. Start the API Server (Required for Authentication)
++
+[source,bash]
+----
+go run ./cmd/reearth-flow/
+----
+
+. Start the WebSocket Server
++
+[source,bash]
+----
+cargo run
+----
+
+NOTE: The API server must be running first since it provides the authentication service required by the WebSocket server.

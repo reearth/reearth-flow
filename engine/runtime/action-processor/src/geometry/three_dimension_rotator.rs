@@ -2,10 +2,10 @@ use std::{collections::HashMap, sync::Arc};
 
 use reearth_flow_geometry::{algorithm::rotate_3d::Rotate3D, types::point::Point3D};
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Expr, GeometryValue};
@@ -140,7 +140,7 @@ impl Processor for ThreeDimensionRotator {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
@@ -172,11 +172,7 @@ impl Processor for ThreeDimensionRotator {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

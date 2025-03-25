@@ -1,9 +1,9 @@
 use super::errors::AttributeProcessorError;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, Feature};
@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 #[derive(Debug, Clone, Default)]
-pub struct BulkAttributeRenamerFactory;
+pub(super) struct BulkAttributeRenamerFactory;
 
 impl ProcessorFactory for BulkAttributeRenamerFactory {
     fn name(&self) -> &str {
@@ -91,29 +91,34 @@ impl ProcessorFactory for BulkAttributeRenamerFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct BulkAttributeRenamer {
+struct BulkAttributeRenamer {
     params: BulkAttributeRenamerParam,
     regex: Option<Regex>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct BulkAttributeRenamerParam {
-    pub rename_type: RenameType,
-    pub rename_action: RenameAction,
-    pub text_to_find: Option<String>,
-    pub rename_value: String,
-    pub selected_attributes: Option<Vec<String>>,
+struct BulkAttributeRenamerParam {
+    /// # Type of attributes to rename
+    rename_type: RenameType,
+    /// # Action to perform on the attribute
+    rename_action: RenameAction,
+    /// # Regular expression pattern to match
+    text_to_find: Option<String>,
+    /// # Value to add or remove
+    rename_value: String,
+    /// # Attributes to rename
+    selected_attributes: Option<Vec<String>>,
 }
 
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
-pub enum RenameType {
+enum RenameType {
     All,
     Selected,
 }
 
 #[derive(PartialEq, Serialize, Deserialize, Debug, Clone, JsonSchema)]
-pub enum RenameAction {
+enum RenameAction {
     AddPrefix,
     AddSuffix,
     RemovePrefix,
@@ -125,7 +130,7 @@ impl Processor for BulkAttributeRenamer {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
 
@@ -133,18 +138,14 @@ impl Processor for BulkAttributeRenamer {
         let attributes_to_remove = self.rename_attributes(&mut feature, attributes_to_rename)?;
 
         for attr in attributes_to_remove {
-            feature.attributes.remove(&attr);
+            feature.remove(&attr);
         }
 
         fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -180,7 +181,7 @@ impl BulkAttributeRenamer {
             if let Some(value) = feature.attributes.get(&attr) {
                 let new_name = self.get_new_name(&attr.inner())?;
                 if new_name.is_empty() {
-                    feature.attributes.remove(&attr);
+                    feature.remove(&attr);
                 } else {
                     let new_attr = Attribute::new(new_name);
                     feature.attributes.insert(new_attr, value.clone());

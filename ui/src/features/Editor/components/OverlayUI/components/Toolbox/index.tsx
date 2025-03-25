@@ -4,6 +4,7 @@ import {
   Database,
   Disc,
   Graph,
+  Layout,
   Lightning,
   Note,
   RectangleDashed,
@@ -15,34 +16,39 @@ import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { NodeType } from "@flow/types";
 
+type BreakItem = { id: "break" };
+
 type ToolboxItem<T> = {
   id: T;
   name: string;
   icon: React.ReactNode;
   disabled?: boolean;
+  onClick?: () => void;
 };
 
-type Tool = ToolboxItem<NodeType>;
+type Tool = ToolboxItem<NodeType> | BreakItem;
 
-type CanvasAction = "undo" | "redo";
-type Action = ToolboxItem<CanvasAction>;
+type CanvasAction = "layout" | "undo" | "redo";
+type Action = ToolboxItem<CanvasAction> | BreakItem;
 
 type Props = {
   canUndo: boolean;
   canRedo: boolean;
-  onRedo?: () => void;
-  onUndo?: () => void;
   isMainWorkflow: boolean;
   hasReader?: boolean;
+  onRedo: () => void;
+  onUndo: () => void;
+  onLayoutChange: () => void;
 };
 
 const Toolbox: React.FC<Props> = ({
   canUndo,
   canRedo,
-  onRedo,
-  onUndo,
   isMainWorkflow,
   hasReader,
+  onRedo,
+  onUndo,
+  onLayoutChange,
 }) => {
   const t = useT();
   const availableTools: Tool[] = [
@@ -82,14 +88,25 @@ const Toolbox: React.FC<Props> = ({
 
   const availableActions: Action[] = [
     {
+      id: "layout",
+      name: t("Auto layout"),
+      icon: <Layout className="size-4" weight="thin" />,
+      onClick: onLayoutChange,
+    },
+    { id: "break" },
+    {
       id: "undo",
       name: t("Undo last action"),
-      icon: <ArrowArcLeft className="size-4 stroke-1" weight="thin" />,
+      icon: <ArrowArcLeft className="size-4" weight="thin" />,
+      disabled: !canUndo,
+      onClick: onUndo,
     },
     {
       id: "redo",
       name: t("Redo action"),
-      icon: <ArrowArcRight className="size-4 stroke-1" weight="thin" />,
+      icon: <ArrowArcRight className="size-4" weight="thin" />,
+      disabled: !canRedo,
+      onClick: onRedo,
     },
   ];
 
@@ -149,36 +166,38 @@ const Toolbox: React.FC<Props> = ({
   return (
     <div className="self-start rounded-md bg-secondary">
       <div className="flex flex-col flex-wrap rounded-md border transition-all">
-        {availableTools.map((tool) => (
-          <IconButton
-            key={tool.id}
-            className={`dndnode-${tool.id} rounded-[4px]`}
-            tooltipPosition="right"
-            tooltipText={tool.name}
-            icon={tool.icon}
-            onDragStart={(event) => onDragStart(event, tool.id)}
-            draggable
-            disabled={tool.disabled}
-          />
-        ))}
-        <div className="my-2 w-full border-t" />
-        {availableActions.map((action) => (
-          <IconButton
-            key={action.id}
-            className="rounded-[4px]"
-            tooltipPosition="right"
-            tooltipText={action.name}
-            icon={action.icon}
-            disabled={action.id === "undo" ? !canUndo : !canRedo}
-            onClick={() =>
-              action.id === "redo"
-                ? onRedo?.()
-                : action.id === "undo"
-                  ? onUndo?.()
-                  : undefined
-            }
-          />
-        ))}
+        {availableTools.map((tool, idx) =>
+          tool.id === "break" ? (
+            <div key={tool.id + idx} className="w-full border-t" />
+          ) : (
+            <IconButton
+              key={tool.id}
+              className={`dndnode-${tool.id} rounded-[4px]`}
+              tooltipPosition="right"
+              tooltipText={tool.name}
+              icon={tool.icon}
+              onDragStart={(event) => onDragStart(event, tool.id)}
+              draggable
+              disabled={tool.disabled}
+            />
+          ),
+        )}
+        <div className="w-full border-t" />
+        {availableActions.map((action, idx) =>
+          action.id === "break" ? (
+            <div key={action.id + idx} className="w-full border-t" />
+          ) : (
+            <IconButton
+              key={action.id}
+              className="gap-0 rounded-[4px]"
+              tooltipPosition="right"
+              tooltipText={action.name}
+              icon={action.icon}
+              disabled={action.disabled}
+              onClick={action.onClick}
+            />
+          ),
+        )}
       </div>
     </div>
   );

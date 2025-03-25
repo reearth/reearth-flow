@@ -6,6 +6,7 @@ import (
 
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearthx/account/accountdomain"
 )
@@ -43,5 +44,5 @@ type Project interface {
 	Create(context.Context, CreateProjectParam) (*project.Project, error)
 	Update(context.Context, UpdateProjectParam) (*project.Project, error)
 	Delete(context.Context, id.ProjectID) error
-	Run(context.Context, RunProjectParam) (bool, error)
+	Run(context.Context, RunProjectParam) (*job.Job, error)
 }

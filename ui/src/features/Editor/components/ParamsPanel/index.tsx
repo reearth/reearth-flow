@@ -1,5 +1,6 @@
 import { X } from "@phosphor-icons/react";
-import { memo, useCallback } from "react";
+import { useReactFlow } from "@xyflow/react";
+import { memo, useCallback, useEffect, useRef } from "react";
 
 import { IconButton } from "@flow/components";
 import { Node } from "@flow/types";
@@ -8,10 +9,14 @@ import { ParamEditor } from "./components";
 
 type Props = {
   selected?: Node;
-  onParamsSubmit: (nodeId: string, data: any) => void;
+  onDataSubmit?: (
+    nodeId: string,
+    dataField: "params" | "customizations",
+    updatedValue: any,
+  ) => void;
 };
 
-const ParamsPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
+const ParamsPanel: React.FC<Props> = ({ selected, onDataSubmit }) => {
   // This is a little hacky, but it works. We need to dispatch a click event to the react-flow__pane
   // to unlock the node when user wants to close the right panel. - @KaWaite
   const handleClose = useCallback(() => {
@@ -23,13 +28,35 @@ const ParamsPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
     paneElement.dispatchEvent(clickEvent);
   }, []);
 
-  const handleParamsSubmit = useCallback(
-    async (nodeId: string, data: any) => {
-      await Promise.resolve(onParamsSubmit(nodeId, data));
+  const handleSubmit = useCallback(
+    async (nodeId: string, data: any, type: "params" | "customizations") => {
+      if (type === "params") {
+        await Promise.resolve(onDataSubmit?.(nodeId, "params", data));
+      } else if (type === "customizations") {
+        await Promise.resolve(onDataSubmit?.(nodeId, "customizations", data));
+      }
       handleClose();
     },
-    [onParamsSubmit, handleClose],
+    [onDataSubmit, handleClose],
   );
+
+  const { getViewport, setViewport } = useReactFlow();
+
+  const previousViewportRef = useRef<{
+    x: number;
+    y: number;
+    zoom: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (selected && !previousViewportRef.current) {
+      const { x, y, zoom } = getViewport();
+      previousViewportRef.current = { x, y, zoom };
+    } else if (!selected && previousViewportRef.current) {
+      setViewport(previousViewportRef.current, { duration: 400 });
+      previousViewportRef.current = null;
+    }
+  }, [setViewport, getViewport, selected]);
 
   return (
     <>
@@ -58,13 +85,13 @@ const ParamsPanel: React.FC<Props> = ({ selected, onParamsSubmit }) => {
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
-        <div className="size-full py-4 pl-4 pr-2">
+        <div className="size-full px-2 py-4">
           {selected && (
             <ParamEditor
               nodeId={selected.id}
               nodeMeta={selected.data}
               nodeType={selected.type}
-              onSubmit={handleParamsSubmit}
+              onSubmit={handleSubmit}
             />
           )}
         </div>

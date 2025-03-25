@@ -1,5 +1,4 @@
 pub mod builder_dag;
-pub mod channels;
 pub mod dag_schemas;
 pub mod epoch;
 pub mod errors;

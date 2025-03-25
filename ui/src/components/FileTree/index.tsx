@@ -1,5 +1,6 @@
 import { CaretRight, Icon } from "@phosphor-icons/react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
+import { XYPosition } from "@xyflow/react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
 import useResizeObserver from "use-resize-observer";
 
@@ -9,12 +10,15 @@ type TreeDataItem = {
   id: string;
   name: string;
   icon?: Icon;
+  type?: string;
+  position?: XYPosition;
+  measured?: { width: number; height: number };
   children?: TreeDataItem[];
 };
 
 type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
   data: TreeDataItem[] | TreeDataItem;
-  initialSlelectedItemId?: string;
+  initialSelectedItemId?: string;
   onSelectChange?: (item: TreeDataItem | undefined) => void;
   expandAll?: boolean;
   folderIcon?: Icon;
@@ -25,7 +29,7 @@ const Tree = forwardRef<HTMLDivElement, TreeProps>(
   (
     {
       data,
-      initialSlelectedItemId,
+      initialSelectedItemId,
       onSelectChange,
       expandAll,
       folderIcon,
@@ -36,7 +40,7 @@ const Tree = forwardRef<HTMLDivElement, TreeProps>(
     ref,
   ) => {
     const [selectedItemId, setSelectedItemId] = useState<string | undefined>(
-      initialSlelectedItemId,
+      initialSelectedItemId,
     );
 
     const handleSelectChange = useCallback(
@@ -50,7 +54,7 @@ const Tree = forwardRef<HTMLDivElement, TreeProps>(
     );
 
     const expandedItemIds = useMemo(() => {
-      if (!initialSlelectedItemId) {
+      if (!initialSelectedItemId) {
         return [] as string[];
       }
 
@@ -76,9 +80,9 @@ const Tree = forwardRef<HTMLDivElement, TreeProps>(
         }
       }
 
-      walkTreeItems(data, initialSlelectedItemId);
+      walkTreeItems(data, initialSelectedItemId);
       return ids;
-    }, [data, expandAll, initialSlelectedItemId]);
+    }, [data, expandAll, initialSelectedItemId]);
 
     const { ref: refRoot } = useResizeObserver();
     // const { ref: refRoot, width, height } = useResizeObserver();
@@ -141,7 +145,7 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                         className={cn(
                           "px-2 hover:before:opacity-100 before:absolute before:left-0 before:w-full before:opacity-0 before:bg-primary before:rounded-md before:h-[1.75rem] before:-z-10",
                           selectedItemId === item.id &&
-                            "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-red-800/50",
+                            "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-logo/30",
                         )}
                         onClick={() => handleSelectChange(item)}>
                         {item.icon && (
@@ -219,7 +223,7 @@ const Leaf = forwardRef<
         hover:before:opacity-100 before:absolute before:left-0 before:right-1 before:w-full before:opacity-0 before:bg-primary before:rounded-md before:h-[1.75rem] before:-z-10",
         className,
         isSelected &&
-          "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-red-800/50",
+          "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-logo/30",
       )}
       {...props}>
       {item.icon && (

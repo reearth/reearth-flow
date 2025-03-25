@@ -2,10 +2,10 @@ use std::{collections::HashMap, path::Path};
 
 use reearth_flow_common::fs::{get_dir_size, metadata};
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
@@ -16,7 +16,7 @@ use serde_json::{Number, Value};
 use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct AttributeFilePathInfoExtractorFactory;
+pub(super) struct AttributeFilePathInfoExtractorFactory;
 
 impl ProcessorFactory for AttributeFilePathInfoExtractorFactory {
     fn name(&self) -> &str {
@@ -75,7 +75,8 @@ impl ProcessorFactory for AttributeFilePathInfoExtractorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct AttributeFilePathInfoExtractor {
+struct AttributeFilePathInfoExtractor {
+    /// # Attribute to extract file path from
     attribute: Attribute,
 }
 
@@ -83,7 +84,7 @@ impl Processor for AttributeFilePathInfoExtractor {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let Some(path) = feature.get(&self.attribute) else {
@@ -150,11 +151,7 @@ impl Processor for AttributeFilePathInfoExtractor {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

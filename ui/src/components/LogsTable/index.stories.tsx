@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 
-import { logData } from "@flow/mock_data/logsData";
+import { logData } from "./logsData";
 
 import { LogsTable } from ".";
 
@@ -27,15 +27,12 @@ const commonArgs = {
       header: "Status",
     },
     {
-      accessorKey: "transformer",
-      header: "Transformer",
-    },
-    {
       accessorKey: "message",
       header: "message",
     },
   ],
   data: logData,
+  isFetching: false,
   selectColumns: true,
   showFiltering: true,
 };

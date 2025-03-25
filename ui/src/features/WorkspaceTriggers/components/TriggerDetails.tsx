@@ -6,6 +6,7 @@ import { Button } from "@flow/components";
 import { DetailsBox, DetailsBoxContent } from "@flow/features/common";
 import { useT } from "@flow/lib/i18n";
 import { Trigger } from "@flow/types";
+import { formatTimestamp } from "@flow/utils";
 
 import { TriggerEditDialog } from "./TriggerEditDialog";
 
@@ -86,12 +87,14 @@ const TriggerDetails: React.FC<Props> = ({
             {
               id: "createdAt",
               name: t("Created At"),
-              value: selectedTrigger.createdAt || t("N/A"),
+              value:
+                formatTimestamp(selectedTrigger.createdAt) || t("Never") || "",
             },
             {
               id: "updatedAt",
               name: t("Updated At"),
-              value: selectedTrigger.updatedAt || t("Never"),
+              value:
+                formatTimestamp(selectedTrigger.updatedAt) || t("Never") || "",
             },
             {
               id: "workflowUrl",

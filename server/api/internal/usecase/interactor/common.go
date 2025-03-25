@@ -2,7 +2,7 @@ package interactor
 
 import (
 	"context"
-	"fmt"
+	"log"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -17,13 +17,14 @@ import (
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
 )
 
-var ErrPermissionDenied = fmt.Errorf("permission denied")
+var skipPermissionCheck bool
 
 type ContainerConfig struct {
-	SignupSecret    string
-	AuthSrvUIDomain string
-	Host            string
-	SharedPath      string
+	SignupSecret        string
+	AuthSrvUIDomain     string
+	Host                string
+	SharedPath          string
+	SkipPermissionCheck bool
 }
 
 func NewContainer(r *repo.Container, g *gateway.Container,
@@ -31,15 +32,20 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 	permissionChecker gateway.PermissionChecker,
 	config ContainerConfig,
 ) interfaces.Container {
-	job := NewJob(r, g)
+	setSkipPermissionCheck(config.SkipPermissionCheck)
+
+	job := NewJob(r, g, permissionChecker)
 
 	return interfaces.Container{
-		Asset:         NewAsset(r, g),
+		Asset:         NewAsset(r, g, permissionChecker),
 		Job:           job,
-		Deployment:    NewDeployment(r, g, job),
-		Parameter:     NewParameter(r),
-		Project:       NewProject(r, g, permissionChecker),
-		ProjectAccess: NewProjectAccess(r, g, config),
+		Deployment:    NewDeployment(r, g, job, permissionChecker),
+		EdgeExecution: NewEdgeExecution(r, g, permissionChecker),
+		Log:           NewLogInteractor(g.Redis, permissionChecker),
+		NodeExecution: NewNodeExecution(r.NodeExecution, g.Redis, permissionChecker),
+		Parameter:     NewParameter(r, permissionChecker),
+		Project:       NewProject(r, g, job, permissionChecker),
+		ProjectAccess: NewProjectAccess(r, g, config, permissionChecker),
 		Workspace:     accountinteractor.NewWorkspace(ar, workspaceMemberCountEnforcer(r)),
 		Trigger:       NewTrigger(r, g, job, permissionChecker),
 		User:          accountinteractor.NewMultiUser(ar, ag, config.SignupSecret, config.AuthSrvUIDomain, ar.Users),
@@ -70,14 +76,41 @@ func workspaceMemberCountEnforcer(_ *repo.Container) accountinteractor.Workspace
 	}
 }
 
+func setSkipPermissionCheck(isSkipPermissionCheck bool) {
+	skipPermissionCheck = isSkipPermissionCheck
+}
+
 func checkPermission(ctx context.Context, permissionChecker gateway.PermissionChecker, resource string, action string) error {
+	if skipPermissionCheck {
+		log.Printf("INFO: SkipPermissionCheck enabled, skipping permission check for resource=%s action=%s", resource, action)
+		return nil
+	}
+
 	authInfo := adapter.GetAuthInfo(ctx)
-	hasPermission, err := permissionChecker.CheckPermission(ctx, authInfo, resource, action)
+	if authInfo == nil {
+		log.Printf("WARNING: AuthInfo not found for resource=%s action=%s", resource, action)
+		return nil
+	}
+
+	user := adapter.User(ctx)
+	if user == nil {
+		log.Printf("WARNING: User not found for resource=%s action=%s", resource, action)
+		return nil
+	}
+
+	// Once the operation check in the oss environment is completed, delete the log output and
+	hasPermission, err := permissionChecker.CheckPermission(ctx, authInfo, user.ID().String(), resource, action)
 	if err != nil {
-		return fmt.Errorf("failed to check permission: %w", err)
+		log.Printf("WARNING: Permission check error for user=%s resource=%s action=%s: %v", user.ID().String(), resource, action, err)
+		return nil
 	}
+
 	if !hasPermission {
-		return ErrPermissionDenied
+		log.Printf("WARNING: Permission denied for user=%s resource=%s action=%s", user.ID().String(), resource, action)
+		return nil
 	}
+
+	log.Printf("DEBUG: Permission granted for user=%s resource=%s action=%s", user.ID().String(), resource, action)
+
 	return nil
 }

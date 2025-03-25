@@ -1,9 +1,41 @@
 import { XYPosition } from "@xyflow/react";
-import { useCallback, useState } from "react";
+import { MouseEvent, useCallback, useState } from "react";
 
-import { ActionNodeType } from "@flow/types";
+import { ActionNodeType, Edge, Node } from "@flow/types";
+import { cancellableDebounce } from "@flow/utils";
 
 export default ({ hasReader }: { hasReader?: boolean }) => {
+  const [hoveredDetails, setHoveredDetails] = useState<
+    Node | Edge | undefined
+  >();
+
+  const hoverActionDebounce = cancellableDebounce(
+    (callback: () => void) => callback(),
+    100,
+  );
+
+  const handleNodeHover = useCallback(
+    (e: MouseEvent, node?: Node) => {
+      hoverActionDebounce.cancel();
+      if (e.type === "mouseleave" && hoveredDetails) {
+        hoverActionDebounce(() => setHoveredDetails(undefined));
+      } else {
+        setHoveredDetails(node);
+      }
+    },
+    [hoveredDetails, hoverActionDebounce],
+  );
+
+  const handleEdgeHover = useCallback(
+    (e: MouseEvent, edge?: Edge) => {
+      if (e.type === "mouseleave" && hoveredDetails) {
+        setHoveredDetails(undefined);
+      } else {
+        setHoveredDetails(edge);
+      }
+    },
+    [hoveredDetails],
+  );
   const [nodePickerOpen, setNodePickerOpen] = useState<
     { position: XYPosition; nodeType: ActionNodeType } | undefined
   >(undefined);
@@ -37,6 +69,21 @@ export default ({ hasReader }: { hasReader?: boolean }) => {
     [],
   );
 
+  const [openPanel, setOpenPanel] = useState<"left" | "right" | undefined>(
+    undefined,
+  );
+
+  const handlePanelOpen = useCallback(
+    (panel?: "left" | "right") => {
+      if (!panel || openPanel === panel) {
+        setOpenPanel(undefined);
+      } else {
+        setOpenPanel(panel);
+      }
+    },
+    [openPanel],
+  );
+
   const [rightPanelContent, setRightPanelContent] = useState<
     "version-history" | undefined
   >(undefined);
@@ -47,8 +94,13 @@ export default ({ hasReader }: { hasReader?: boolean }) => {
   );
 
   return {
+    openPanel,
     nodePickerOpen,
     rightPanelContent,
+    hoveredDetails,
+    handleNodeHover,
+    handleEdgeHover,
+    handlePanelOpen,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleRightPanelOpen,

@@ -5,21 +5,31 @@ import (
 	"testing"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/project"
+	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmemory"
+	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 	"github.com/stretchr/testify/assert"
 )
 
 func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Container, id.ProjectID) {
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
 	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
 
 	// Create memory-based repositories for testing
 	paramRepo := memory.NewParameter()
@@ -42,7 +52,11 @@ func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Co
 	prj := project.New().ID(pid).Workspace(ws.ID()).Name("testproject").UpdatedAt(time.Now()).MustBuild()
 	_ = projectRepo.Save(ctx, prj)
 
-	i := NewParameter(r)
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
+		return true, nil
+	})
+
+	i := NewParameter(r, mockPermissionCheckerTrue)
 	return i, ctx, r, pid
 }
 

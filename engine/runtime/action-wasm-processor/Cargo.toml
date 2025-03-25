@@ -19,9 +19,11 @@ reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
 
 chrono.workspace = true
+indexmap.workspace = true
 itertools.workspace = true
 once_cell.workspace = true
 regex.workspace = true
+rhai.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true

@@ -8,7 +8,6 @@ use super::{
     bufferer::BuffererFactory, center_point_replacer::CenterPointReplacerFactory,
     clipper::ClipperFactory, closed_curve_filter::ClosedCurveFilterFactory,
     coercer::GeometryCoercerFactory, convex_hull_accumulator::ConvexHullAccumulatorFactory,
-    coordinate_system_setter::CoordinateSystemSetterFactory,
     dimension_filter::DimensionFilterFactory, dissolver::DissolverFactory,
     elevation_extractor::ElevationExtractorFactory, extractor::GeometryExtractorFactory,
     extruder::ExtruderFactory, filter::GeometryFilterFactory, hole_counter::HoleCounterFactory,
@@ -16,6 +15,7 @@ use super::{
     line_on_line_overlayer::LineOnLineOverlayerFactory, offsetter::OffsetterFactory,
     orientation_extractor::OrientationExtractorFactory, planarity_filter::PlanarityFilterFactory,
     refiner::RefinerFactory, replacer::GeometryReplacerFactory, splitter::GeometrySplitterFactory,
+    surface_footprint_replacer::SurfaceFootprintReplacerFactory,
     three_dimension_box_replacer::ThreeDimensionBoxReplacerFactory,
     three_dimension_rotator::ThreeDimensionRotatorFactory,
     two_dimension_forcer::TwoDimensionForcerFactory, validator::GeometryValidatorFactory,
@@ -25,7 +25,6 @@ use super::{
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
-        Box::<CoordinateSystemSetterFactory>::default(),
         Box::<ExtruderFactory>::default(),
         Box::<ThreeDimensionBoxReplacerFactory>::default(),
         Box::<GeometryFilterFactory>::default(),
@@ -58,6 +57,7 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<DimensionFilterFactory>::default(),
         Box::<OffsetterFactory>::default(),
         Box::<ConvexHullAccumulatorFactory>::default(),
+        Box::<SurfaceFootprintReplacerFactory>::default(),
     ];
     factories
         .into_iter()

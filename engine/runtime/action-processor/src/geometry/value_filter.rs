@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::GeometryValue;
@@ -94,7 +94,7 @@ impl Processor for GeometryValueFilter {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
@@ -117,11 +117,7 @@ impl Processor for GeometryValueFilter {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -133,33 +129,49 @@ impl Processor for GeometryValueFilter {
 #[cfg(test)]
 mod tests {
     use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
+    use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_types::{Feature, Geometry};
 
-    use crate::tests::utils::{create_default_execute_context, MockProcessorChannelForwarder};
+    use crate::tests::utils::create_default_execute_context;
 
     use super::*;
 
     #[test]
     fn test_filter_geometry_null() {
-        let mut fw = MockProcessorChannelForwarder::default();
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
         let feature = Feature::default();
         let ctx = create_default_execute_context(&feature);
-        GeometryValueFilter {}.process(ctx, &mut fw).unwrap();
-        assert_eq!(fw.send_ports.first().cloned(), Some(NONE_PORT.clone()));
+        GeometryValueFilter {}.process(ctx, &fw).unwrap();
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            assert_eq!(noop.send_ports.lock().unwrap().len(), 1);
+            assert_eq!(
+                noop.send_ports.lock().unwrap().first().cloned(),
+                Some(NONE_PORT.clone())
+            );
+        }
     }
 
     #[test]
     fn test_filter_geometry_none() {
-        let mut fw = MockProcessorChannelForwarder::default();
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
         let feature = Feature::default();
         let ctx = create_default_execute_context(&feature);
-        GeometryValueFilter {}.process(ctx, &mut fw).unwrap();
-        assert_eq!(fw.send_ports.first().cloned(), Some(NONE_PORT.clone()));
+        GeometryValueFilter {}.process(ctx, &fw).unwrap();
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            assert_eq!(noop.send_ports.lock().unwrap().len(), 1);
+            assert_eq!(
+                noop.send_ports.lock().unwrap().first().cloned(),
+                Some(NONE_PORT.clone())
+            );
+        }
     }
 
     #[test]
     fn test_filter_geometry_2d() {
-        let mut fw = MockProcessorChannelForwarder::default();
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
         let feature = Feature {
             geometry: Geometry {
                 value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Default::default())),
@@ -168,16 +180,20 @@ mod tests {
             ..Default::default()
         };
         let ctx = create_default_execute_context(&feature);
-        GeometryValueFilter {}.process(ctx, &mut fw).unwrap();
-        assert_eq!(
-            fw.send_ports.first().cloned(),
-            Some(GEOMETRY_2D_PORT.clone())
-        );
+        GeometryValueFilter {}.process(ctx, &fw).unwrap();
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            assert_eq!(noop.send_ports.lock().unwrap().len(), 1);
+            assert_eq!(
+                noop.send_ports.lock().unwrap().first().cloned(),
+                Some(GEOMETRY_2D_PORT.clone())
+            );
+        }
     }
 
     #[test]
     fn test_filter_geometry_3d() {
-        let mut fw = MockProcessorChannelForwarder::default();
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
         let feature = Feature {
             geometry: Geometry {
                 value: GeometryValue::FlowGeometry3D(Geometry3D::Point(Default::default())),
@@ -186,16 +202,21 @@ mod tests {
             ..Default::default()
         };
         let ctx = create_default_execute_context(&feature);
-        GeometryValueFilter {}.process(ctx, &mut fw).unwrap();
-        assert_eq!(
-            fw.send_ports.first().cloned(),
-            Some(GEOMETRY_3D_PORT.clone())
-        );
+        GeometryValueFilter {}.process(ctx, &fw).unwrap();
+
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            assert_eq!(noop.send_ports.lock().unwrap().len(), 1);
+            assert_eq!(
+                noop.send_ports.lock().unwrap().first().cloned(),
+                Some(GEOMETRY_3D_PORT.clone())
+            );
+        }
     }
 
     #[test]
     fn test_filter_geometry_citygml() {
-        let mut fw = MockProcessorChannelForwarder::default();
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
         let feature = Feature {
             geometry: Geometry {
                 value: GeometryValue::CityGmlGeometry(Default::default()),
@@ -204,8 +225,14 @@ mod tests {
             ..Default::default()
         };
         let ctx = create_default_execute_context(&feature);
-        GeometryValueFilter {}.process(ctx, &mut fw).unwrap();
-        assert_eq!(fw.send_ports.first().cloned(), Some(CITY_GML_PORT.clone()));
+        GeometryValueFilter {}.process(ctx, &fw).unwrap();
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            assert_eq!(noop.send_ports.lock().unwrap().len(), 1);
+            assert_eq!(
+                noop.send_ports.lock().unwrap().first().cloned(),
+                Some(CITY_GML_PORT.clone())
+            );
+        }
     }
     // Add more tests for other scenarios...
 }

@@ -3,11 +3,12 @@
   "auth0Audience": "${FLOW_AUTH0_AUDIENCE}",
   "auth0ClientId": "${FLOW_AUTH0_CLIENT_ID}",
   "auth0Domain": "${FLOW_AUTH0_DOMAIN}",
+  "brandLogoUrl": "${FLOW_BRAND_LOGO_URL}",
+  "brandFaviconUrl": "${FLOW_BRAND_FAVICON_URL}",
   "brandName": "${FLOW_BRAND_NAME}",
   "devMode": "${FLOW_DEV_MODE}",
   "documentationUrl": "${FLOW_DOCUMENTATION_URL}",
   "tosUrl": "${FLOW_TOS_URL}",
   "version": "${FLOW_VERSION}",
-  "websocket": "${FLOW_WEBSOCKET}",
-  "websocketToken": "${FLOW_WEBSOCKET_TOKEN}"
+  "websocket": "${FLOW_WEBSOCKET}"
 }

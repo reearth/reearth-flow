@@ -18,7 +18,7 @@ static JOB_COMPLETE_TOPIC: Lazy<String> = Lazy::new(|| {
         .unwrap_or("flow-job-complete-topic".to_string())
 });
 
-#[derive(Serialize, Deserialize, Debug, JsonSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum JobResult {
     Success,

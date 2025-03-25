@@ -2,10 +2,10 @@ use std::{collections::HashMap, fmt::Debug, fs, path::Path, str::FromStr};
 
 use reearth_flow_common::{fs::metadata, uri::Uri};
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
@@ -16,7 +16,7 @@ use serde_json::Value;
 use super::errors::FileProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct FilePropertyExtractorFactory;
+pub(super) struct FilePropertyExtractorFactory;
 
 impl ProcessorFactory for FilePropertyExtractorFactory {
     fn name(&self) -> &str {
@@ -76,7 +76,7 @@ impl ProcessorFactory for FilePropertyExtractorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub enum FileType {
+enum FileType {
     File,
     Directory,
 }
@@ -92,7 +92,7 @@ impl std::fmt::Display for FileType {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct FileProperty {
+struct FileProperty {
     file_type: FileType,
     file_size: i64,
     file_atime: i64,
@@ -135,7 +135,8 @@ impl From<FileProperty> for HashMap<Attribute, AttributeValue> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct FilePropertyExtractor {
+struct FilePropertyExtractor {
+    /// # Attribute to extract file path from
     file_path_attribute: String,
 }
 
@@ -143,7 +144,7 @@ impl Processor for FilePropertyExtractor {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let Some(AttributeValue::String(file_path)) = feature.get(&self.file_path_attribute) else {
@@ -183,11 +184,7 @@ impl Processor for FilePropertyExtractor {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

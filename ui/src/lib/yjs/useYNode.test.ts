@@ -4,7 +4,7 @@ import * as Y from "yjs";
 import { Node } from "@flow/types";
 
 import { yWorkflowConstructor } from "./conversions";
-import type { YNodesArray, YWorkflow } from "./types";
+import type { YNodesMap, YWorkflow } from "./types";
 import useYNode from "./useYNode";
 
 afterEach(() => {
@@ -14,10 +14,10 @@ afterEach(() => {
 describe("useYNode", () => {
   test("should add nodes correctly", () => {
     const yDoc = new Y.Doc();
-    const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+    const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
     const yWorkflow = yWorkflowConstructor("workflow-1", "My Workflow");
 
-    yWorkflows.push([yWorkflow]);
+    yWorkflows.set("workflow-1", yWorkflow);
 
     const { result } = renderHook(() =>
       useYNode({
@@ -26,7 +26,7 @@ describe("useYNode", () => {
         rawWorkflows: [],
         setSelectedNodeIds: () => {},
         undoTrackerActionWrapper: (callback) => act(callback),
-        handleYWorkflowsRemove: () => {},
+        handleYWorkflowRemove: () => {},
       }),
     );
 
@@ -43,13 +43,10 @@ describe("useYNode", () => {
           customName: "",
           inputs: ["input1"],
           outputs: ["output1"],
-          status: "idle",
           params: {},
+          customizations: {},
           pseudoInputs: [],
           pseudoOutputs: [],
-          content: "content",
-          backgroundColor: "backgroundColor",
-          textColor: "textColor",
         },
         style: { width: 0, height: 0 },
       },
@@ -57,9 +54,9 @@ describe("useYNode", () => {
 
     handleYNodesAdd(newNodes);
 
-    const yNodes = yWorkflow.get("nodes") as YNodesArray;
+    const yNodes = yWorkflow.get("nodes") as YNodesMap;
 
-    const n = yNodes.toJSON() as Node[];
+    const n = Object.values(yNodes.toJSON()) as Node[];
 
     const expectedNodes = newNodes.map((node) => ({
       ...node,
@@ -69,11 +66,8 @@ describe("useYNode", () => {
         officialName: node.data.officialName,
         inputs: node.data.inputs,
         outputs: node.data.outputs,
-        status: node.data.status,
         params: node.data.params,
-        content: node.data.content,
-        backgroundColor: node.data.backgroundColor,
-        textColor: node.data.textColor,
+        customizations: node.data.customizations,
       },
     }));
 

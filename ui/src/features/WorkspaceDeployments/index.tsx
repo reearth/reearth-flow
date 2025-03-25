@@ -5,13 +5,14 @@ import {
   Button,
   ButtonWithTooltip,
   FlowLogo,
-  Loading,
+  LoadingSkeleton,
   DataTable as Table,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { Deployment } from "@flow/types";
+import { formatTimestamp } from "@flow/utils/timestamp";
 
 import {
   DeploymentAddDialog,
@@ -24,23 +25,22 @@ import useHooks from "./hooks";
 const DeploymentManager: React.FC = () => {
   const t = useT();
   const {
-    // ref,
     deployments,
     selectedDeployment,
     deploymentToBeDeleted,
     openDeploymentAddDialog,
     deploymentToBeEdited,
+    isFetching,
+    currentPage,
+    totalPages,
+    currentOrder,
     setDeploymentToBeEdited,
     setOpenDeploymentAddDialog,
     setDeploymentToBeDeleted,
     handleDeploymentSelect,
     handleDeploymentDelete,
     handleDeploymentRun,
-    isFetching,
-    currentPage,
     setCurrentPage,
-    totalPages,
-    currentOrder,
     setCurrentOrder,
   } = useHooks();
   const resultsPerPage = DEPLOYMENT_FETCH_RATE;
@@ -60,6 +60,7 @@ const DeploymentManager: React.FC = () => {
     {
       accessorKey: "updatedAt",
       header: t("Updated At"),
+      cell: ({ getValue }) => formatTimestamp(getValue<string>()),
     },
     {
       accessorKey: "quickActions",
@@ -109,14 +110,13 @@ const DeploymentManager: React.FC = () => {
               <p className="text-lg dark:font-extralight">{t("Deployments")}</p>
               <Button
                 className="flex gap-2"
-                variant="outline"
                 onClick={() => setOpenDeploymentAddDialog(true)}>
                 <Plus weight="thin" />
                 <p className="text-xs dark:font-light">{t("New Deployment")}</p>
               </Button>
             </div>
             {isFetching ? (
-              <Loading />
+              <LoadingSkeleton />
             ) : deployments && deployments.length > 0 ? (
               <Table
                 columns={columns}
@@ -134,7 +134,7 @@ const DeploymentManager: React.FC = () => {
               />
             ) : (
               <BasicBoiler
-                text={t("No Deployment")}
+                text={t("No Deployments")}
                 icon={<FlowLogo className="size-16 text-accent" />}
               />
             )}

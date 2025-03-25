@@ -1,38 +1,35 @@
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
+import { useProjectDuplicate, useProjectPagination } from "@flow/hooks";
 import { useProject } from "@flow/lib/gql";
-import { useCurrentProject, useCurrentWorkspace } from "@flow/stores";
+import { useCurrentWorkspace } from "@flow/stores";
 import { Project } from "@flow/types";
-import { OrderDirection } from "@flow/types/paginationOptions";
 
 export default () => {
   const ref = useRef<HTMLDivElement>(null);
 
   const [workspace] = useCurrentWorkspace();
 
-  const [currentProject, setCurrentProject] = useCurrentProject();
-  const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
-    OrderDirection.Desc,
-  );
+  const { isDuplicating, handleProjectDuplication } = useProjectDuplicate();
 
   const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
-  const { useGetWorkspaceProjects, deleteProject, updateProject } =
-    useProject();
-  const [currentPage, setCurrentPage] = useState<number>(1);
+  const { deleteProject, updateProject } = useProject();
 
-  const { page, refetch, isFetching } = useGetWorkspaceProjects(workspace?.id, {
-    page: currentPage,
-    orderDir: currentOrder,
-    orderBy: "updatedAt",
-  });
+  const {
+    currentPage,
+    projects,
+    totalPages,
+    isFetching,
+    currentOrder,
+    orderDirections,
+    setCurrentPage,
+    handleOrderChange,
+  } = useProjectPagination({ workspace });
 
-  useEffect(() => {
-    refetch();
-  }, [currentPage, currentOrder, refetch]);
-
-  const totalPages = page?.totalPages as number;
   const [openProjectAddDialog, setOpenProjectAddDialog] = useState(false);
+  const [openProjectDuplicateDialog, setOpenProjectDuplicateDialog] =
+    useState(false);
   const [showError, setShowError] = useState(false);
   const [buttonDisabled, setButtonDisabled] = useState(false);
   const [projectToBeDeleted, setProjectToBeDeleted] = useState<
@@ -41,11 +38,12 @@ export default () => {
   const [editProject, setEditProject] = useState<undefined | Project>(
     undefined,
   );
+  const [duplicateProject, setDuplicateProject] = useState<undefined | Project>(
+    undefined,
+  );
 
-  const handleProjectSelect = (p: Project) => {
-    setCurrentProject(p);
+  const handleProjectSelect = (p: Project) =>
     navigate({ to: `/workspaces/${workspace?.id}/projects/${p.id}` });
-  };
 
   const handleDeleteProject = async (id: string) => {
     if (!workspace) return;
@@ -81,29 +79,33 @@ export default () => {
     return;
   };
 
-  const projects = page?.projects;
-
   return {
     projects,
     ref,
-    currentProject,
     projectToBeDeleted,
     editProject,
+    duplicateProject,
     showError,
     buttonDisabled,
     openProjectAddDialog,
+    openProjectDuplicateDialog,
+    currentPage,
+    totalPages,
+    isFetching,
+    isDuplicating,
+    currentOrder,
+    orderDirections,
     setOpenProjectAddDialog,
+    setOpenProjectDuplicateDialog,
     setEditProject,
+    setDuplicateProject,
     setProjectToBeDeleted,
+    setCurrentPage,
+    handleProjectDuplication,
     handleProjectSelect,
     handleDeleteProject,
     handleUpdateValue,
     handleUpdateProject,
-    currentPage,
-    setCurrentPage,
-    totalPages,
-    currentOrder,
-    setCurrentOrder,
-    isFetching,
+    handleOrderChange,
   };
 };

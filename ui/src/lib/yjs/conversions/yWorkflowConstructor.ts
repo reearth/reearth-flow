@@ -3,8 +3,10 @@ import * as Y from "yjs";
 import { toYjsArray, toYjsMap, toYjsText } from "@flow/lib/yjs/conversions";
 import type {
   YEdge,
+  YEdgesMap,
   YEdgeValue,
   YNode,
+  YNodesMap,
   YNodeValue,
   YWorkflow,
 } from "@flow/lib/yjs/types";
@@ -21,14 +23,18 @@ export const yNodeConstructor = (node: Node): YNode => {
     // Reference src/types/node.ts for the NodeData type
     data: toYjsMap({
       officialName: toYjsText(node.data.officialName),
-      customName: toYjsText(node.data.customName),
+      customName: toYjsText(node.data.customName), // TODO: remove data.customName when subworkflow's renaming is re-implemented
       inputs: toYjsArray(node.data.inputs?.map((input) => toYjsText(input))),
       outputs: toYjsArray(
         node.data.outputs?.map((output) => toYjsText(output)),
       ),
-      status: toYjsText(node.data.status),
       params: node.data.params,
+      customizations: node.data.customizations,
       // Subworkflow specific
+      subworkflowId:
+        node.type === "subworkflow"
+          ? toYjsText(node.data.subworkflowId ?? node.id)
+          : undefined,
       pseudoInputs: toYjsArray(
         node.data.pseudoInputs?.map((pseudoInput) => {
           const yPseudoInput = new Y.Map();
@@ -45,10 +51,6 @@ export const yNodeConstructor = (node: Node): YNode => {
           return yPseudoOutput;
         }),
       ),
-      // Batch & Note specific
-      content: toYjsText(node.data.content),
-      backgroundColor: toYjsText(node.data.backgroundColor),
-      textColor: toYjsText(node.data.textColor),
     }),
     style: toYjsMap({
       width: node.style?.width,
@@ -82,12 +84,16 @@ export const yWorkflowConstructor = (
   const yWorkflow = new Y.Map() as YWorkflow;
   const yId = toYjsText(id) ?? new Y.Text();
   const yName = toYjsText(name) ?? new Y.Text();
-  const yNodes =
-    toYjsArray<YNode>(nodes?.map((n) => yNodeConstructor(n))) ??
-    new Y.Array<YNode>();
-  const yEdges =
-    toYjsArray<YEdge>(edges?.map((e) => yEdgeConstructor(e))) ??
-    new Y.Array<YEdge>();
+  const yNodes = new Y.Map() as YNodesMap;
+  nodes?.forEach((n) => {
+    const newYNode = yNodeConstructor(n);
+    yNodes.set(n.id, newYNode);
+  });
+  const yEdges = new Y.Map() as YEdgesMap;
+  edges?.forEach((e) => {
+    const newYEdge = yEdgeConstructor(e);
+    yEdges.set(e.id, newYEdge);
+  });
 
   yWorkflow.set("id", yId);
   yWorkflow.set("name", yName);

@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use schemars::JsonSchema;
@@ -14,10 +14,10 @@ use serde_json::Value;
 
 use super::errors::FeatureProcessorError;
 
-pub static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
+static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureTypeFilterFactory;
+pub(super) struct FeatureTypeFilterFactory;
 
 impl ProcessorFactory for FeatureTypeFilterFactory {
     fn name(&self) -> &str {
@@ -76,7 +76,8 @@ impl ProcessorFactory for FeatureTypeFilterFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct FeatureTypeFilter {
+struct FeatureTypeFilter {
+    /// Target feature types
     target_types: Vec<String>,
 }
 
@@ -84,7 +85,7 @@ impl Processor for FeatureTypeFilter {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let Some(feature_type) = feature.feature_type() else {
@@ -99,11 +100,7 @@ impl Processor for FeatureTypeFilter {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

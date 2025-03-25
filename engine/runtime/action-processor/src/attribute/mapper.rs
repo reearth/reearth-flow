@@ -1,10 +1,11 @@
 use std::{collections::HashMap, sync::Arc};
 
+use indexmap::IndexMap;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Expr};
@@ -16,7 +17,7 @@ use serde_json::Value;
 use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct AttributeMapperFactory;
+pub(super) struct AttributeMapperFactory;
 
 impl ProcessorFactory for AttributeMapperFactory {
     fn name(&self) -> &str {
@@ -110,23 +111,30 @@ impl ProcessorFactory for AttributeMapperFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct AttributeMapperParam {
+struct AttributeMapperParam {
+    /// # Mappers
     mappers: Vec<Mapper>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Mapper {
+    /// # Attribute name
     attribute: Option<String>,
+    /// # Expression to evaluate
     expr: Option<Expr>,
+    /// # Attribute name to get value from
     value_attribute: Option<String>,
+    /// # Parent attribute name
     parent_attribute: Option<String>,
+    /// # Child attribute name
     child_attribute: Option<String>,
+    /// # Expression to evaluate multiple attributes
     multiple_expr: Option<Expr>,
 }
 
 #[derive(Debug, Clone)]
-pub struct CompiledAttributeMapperParam {
+struct CompiledAttributeMapperParam {
     mappers: Vec<CompiledMapper>,
 }
 
@@ -150,11 +158,11 @@ impl Processor for AttributeMapper {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let expr_engine = Arc::clone(&ctx.expr_engine);
-        let mut attributes = HashMap::<Attribute, AttributeValue>::new();
+        let mut attributes = IndexMap::<Attribute, AttributeValue>::new();
         let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
         for mapper in &self.mapper.mappers {
             match &mapper.attribute {
@@ -220,11 +228,7 @@ impl Processor for AttributeMapper {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

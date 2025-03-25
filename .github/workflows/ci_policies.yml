@@ -9,12 +9,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
       - name: set up
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
           cache: false
+
       - name: Generate policies
         run: |
           set -e
@@ -23,6 +25,7 @@ jobs:
             exit 1
           fi
         working-directory: server/api
+
       - name: List generated policy files
         run: |
           set -eo pipefail
@@ -39,10 +42,12 @@ jobs:
             exit 1
           fi
         working-directory: server/api
+
       - name: Setup Cerbos
         uses: cerbos/cerbos-setup-action@v1
         with:
-          version: '0.36.0'
+          version: '0.40.0'
+
       - name: Validate Cerbos policies
         run: |
           set -eo pipefail

@@ -5,10 +5,10 @@ use std::{
 
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::{BoxedError, ExecutionError},
     event::EventHub,
     executor_operation::{Context, ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, Expr, Feature};
@@ -24,7 +24,7 @@ static MERGED_PORT: Lazy<Port> = Lazy::new(|| Port::new("merged"));
 static UNMERGED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unmerged"));
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureMergerFactory;
+pub(super) struct FeatureMergerFactory;
 
 impl ProcessorFactory for FeatureMergerFactory {
     fn name(&self) -> &str {
@@ -171,7 +171,7 @@ impl Processor for FeatureMerger {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         match ctx.port {
             port if port == REQUESTOR_PORT.clone() => {
@@ -260,11 +260,7 @@ impl Processor for FeatureMerger {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         for (request_value, (_, request_features)) in self.requestor_buffer.iter() {
             let Some((_, supplier_features)) = self.supplier_buffer.get(request_value) else {
                 for request_feature in request_features.iter() {
@@ -300,11 +296,7 @@ impl Processor for FeatureMerger {
 }
 
 impl FeatureMerger {
-    fn change_group(
-        &mut self,
-        ctx: Context,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> errors::Result<()> {
+    fn change_group(&mut self, ctx: Context, fw: &ProcessorChannelForwarder) -> errors::Result<()> {
         if !self.params.complete_grouped {
             return Ok(());
         }

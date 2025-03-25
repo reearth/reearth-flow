@@ -2,79 +2,99 @@ import {
   ChalkboardTeacher,
   Database,
   Disc,
-  HardDrive,
+  Graph,
+  Icon,
   Lightning,
+  RectangleDashed,
   TreeView,
 } from "@phosphor-icons/react";
-import { Link, useParams } from "@tanstack/react-router";
-import { memo, useEffect, useState } from "react";
+import { useNavigate, useParams } from "@tanstack/react-router";
+import { memo, useCallback, useEffect, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
+import BasicBoiler from "@flow/components/BasicBoiler";
 import { UserMenu } from "@flow/features/common";
 import { useShortcuts } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import type { Node } from "@flow/types";
+import type { Node, NodeChange } from "@flow/types";
+import { getNodeIcon } from "@flow/utils/getNodeIcon";
 
-import { ActionsList, ProjectVariables, Resources } from "./components";
+import { ActionsList, ProjectVariables } from "./components";
 
 type Tab = "navigator" | "actions-list" | "resources" | "project-vars";
 
 type Props = {
   nodes: Node[];
   isOpen: boolean;
-  onOpen: (panel?: "left" | "right" | "bottom") => void;
-  onNodesAdd: (node: Node[]) => void;
   isMainWorkflow: boolean;
   hasReader?: boolean;
+  selected?: Node;
+  onOpen: (panel?: "left" | "right") => void;
+  onNodesAdd: (node: Node[]) => void;
+  onNodesChange: (changes: NodeChange[]) => void;
+  onNodeDoubleClick: (
+    e: React.MouseEvent<Element> | undefined,
+    nodeId: string,
+    subworkflowId?: string,
+  ) => void;
 };
 
 const LeftPanel: React.FC<Props> = ({
   nodes,
   isOpen,
-  onOpen,
-  onNodesAdd,
   isMainWorkflow,
   hasReader,
+  onOpen,
+  onNodesAdd,
+  onNodesChange,
+  onNodeDoubleClick,
 }) => {
   const t = useT();
+  const navigate = useNavigate();
   const { workspaceId } = useParams({ strict: false });
   const [selectedTab, setSelectedTab] = useState<Tab | undefined>();
+  const [nodeId, setNodeId] = useState<string | undefined>(undefined);
 
-  const [_content, setContent] = useState("Admin Page");
+  const handleNavigationToDashboard = useCallback(() => {
+    navigate({ to: `/workspaces/${workspaceId}/projects` });
+  }, [workspaceId, navigate]);
 
   useEffect(() => {
-    if (!isOpen && selectedTab) {
-      setSelectedTab(undefined);
+    if (!isOpen && nodeId) {
+      setNodeId(undefined);
     }
-  }, [isOpen, selectedTab]);
+  }, [isOpen, nodeId]);
+
+  const handleTreeDataItemDoubleClick = useCallback(
+    (nodeId: string) => {
+      const node = nodes.find((n) => n.id === nodeId);
+      if (!node) return;
+
+      const nodeChanges: NodeChange[] = nodes.map((n) => ({
+        id: n.id,
+        type: "select",
+        selected: n.id === nodeId,
+      }));
+
+      onNodesChange(nodeChanges);
+      onNodeDoubleClick(undefined, node.id, node.data.subworkflowId);
+    },
+    [nodes, onNodesChange, onNodeDoubleClick],
+  );
 
   const treeContent: TreeDataItem[] = [
-    ...(nodes
-      ?.filter((n) => n.type === "reader")
-      .map((n) => ({
-        id: n.id,
-        name: n.data.customName || n.data.officialName || "untitled",
-        icon: Database,
-      })) ?? []),
-    ...(nodes
-      ?.filter((n) => n.type === "writer")
-      .map((n) => ({
-        id: n.id,
-        name: n.data.customName || n.data.officialName || "untitled",
-        icon: Disc,
-      })) ?? []),
-    {
-      id: "transformer",
-      name: t("Transformers"),
-      icon: Lightning,
-      children: nodes
-        ?.filter((n) => n.type === "transformer")
-        .map((n) => ({
-          id: n.id,
-          name: n.data.customName || n.data.officialName || "untitled",
-          // icon: Disc,
-        })),
-    },
+    ...(createTreeDataItem("reader", Database, nodes) || []),
+    ...(createTreeDataItem("writer", Disc, nodes) || []),
+    ...(createTreeDataItem(
+      "transformer",
+      Lightning,
+      nodes,
+      t("Transformers"),
+    ) || []),
+    ...(createTreeDataItem("subworkflow", Graph, nodes, t("Subworkflows")) ||
+      []),
+    ...(createTreeDataItem("batch", RectangleDashed, nodes, t("Batches")) ||
+      []),
   ];
 
   const tabs: {
@@ -87,16 +107,27 @@ const LeftPanel: React.FC<Props> = ({
       id: "navigator",
       title: t("Canvas Navigation"),
       icon: <TreeView className="size-5" weight="thin" />,
-      component: nodes && (
-        <Tree
-          data={treeContent}
-          className="w-full shrink-0 truncate rounded px-1"
-          // initialSlelectedItemId="1"
-          onSelectChange={(item) => setContent(item?.name ?? "")}
-          // folderIcon={Folder}
-          // itemIcon={Database}
-        />
-      ),
+      component:
+        nodes.length !== 0 ? (
+          <Tree
+            data={treeContent}
+            className="w-full shrink-0 select-none truncate rounded px-1"
+            onSelectChange={(item) => {
+              setNodeId(item?.id ?? "");
+            }}
+            onDoubleClick={() => {
+              if (nodeId) {
+                handleTreeDataItemDoubleClick(nodeId);
+              }
+            }}
+          />
+        ) : (
+          <BasicBoiler
+            text={t("No Nodes in Canvas")}
+            className="size-4 pt-8 [&>div>p]:text-sm"
+            icon={<FlowLogo className="size-12 text-accent" />}
+          />
+        ),
     },
     {
       id: "project-vars",
@@ -104,12 +135,12 @@ const LeftPanel: React.FC<Props> = ({
       icon: <ChalkboardTeacher className="size-5" weight="thin" />,
       component: <ProjectVariables />,
     },
-    {
-      id: "resources",
-      title: t("Resources"),
-      icon: <HardDrive className="size-5" weight="thin" />,
-      component: <Resources />,
-    },
+    // {
+    //   id: "resources",
+    //   title: t("Resources"),
+    //   icon: <HardDrive className="size-5" weight="thin" />,
+    //   component: <Resources />,
+    // },
     {
       id: "actions-list",
       title: t("Actions list"),
@@ -152,10 +183,10 @@ const LeftPanel: React.FC<Props> = ({
       keyBinding: { key: "a", shiftKey: true },
       callback: () => handleTabChange("actions-list"),
     },
-    {
-      keyBinding: { key: "r", shiftKey: true },
-      callback: () => handleTabChange("resources"),
-    },
+    // {
+    //   keyBinding: { key: "r", shiftKey: true },
+    //   callback: () => handleTabChange("resources"),
+    // },
   ]);
 
   return (
@@ -179,13 +210,13 @@ const LeftPanel: React.FC<Props> = ({
       </div>
       <aside className="relative z-10 w-14 border-r bg-secondary">
         <div className="flex h-full flex-col">
-          <nav className="flex flex-1 flex-col items-center gap-5 p-3">
-            <Link
-              to={`/workspaces/${workspaceId}`}
-              className="flex shrink-0 items-center justify-center gap-2 text-lg font-semibold md:size-8 md:text-base">
+          <nav className="flex flex-col items-center gap-5 p-3">
+            <div
+              className="flex shrink-0 items-center justify-center gap-2 text-lg font-semibold md:size-8 md:text-base"
+              onClick={handleNavigationToDashboard}>
               <FlowLogo className="size-7 transition-all hover:size-[30px] hover:text-[#46ce7c]" />
               <span className="sr-only">{t("Dashboard")}</span>
-            </Link>
+            </div>
             {tabs.map((tab) => (
               <IconButton
                 key={tab.id}
@@ -208,13 +239,92 @@ const LeftPanel: React.FC<Props> = ({
             /> */}
             <UserMenu
               className="flex w-full justify-center"
-              dropdownPosition="right"
+              dropdownAlign="end"
             />
           </nav>
         </div>
       </aside>
     </>
   );
+};
+
+const createTreeDataItem = (
+  type: string,
+  icon: Icon,
+  nodes?: Node[],
+  name?: string,
+) => {
+  if (type === "reader" || type === "writer") {
+    return (
+      nodes
+        ?.filter((n) => n.type === type)
+        .map((n) => ({
+          id: n.id,
+          name:
+            n.data.customizations?.customName ||
+            n.data.officialName ||
+            "untitled",
+          icon,
+          type: n.type,
+        })) ?? []
+    );
+  }
+
+  if (type === "transformer" || type === "subworkflow") {
+    return nodes?.some((n) => n.type === type)
+      ? [
+          {
+            id: type,
+            name: name || "untitled",
+            icon,
+            children: nodes
+              ?.filter((n) => n.type === type)
+              .map((n) => ({
+                id: n.id,
+                name:
+                  n.data.customizations?.customName ||
+                  n.data.officialName ||
+                  "untitled",
+                icon,
+                type: n.type,
+              })),
+          },
+        ]
+      : [];
+  }
+
+  if (type === "batch") {
+    return nodes?.some((n) => n.type === type)
+      ? [
+          {
+            id: type,
+            name: name || "untitled",
+            icon,
+            children: nodes
+              ?.filter((n) => n.type === type)
+              .map((n) => ({
+                id: n.id,
+                name:
+                  n.data.customizations?.customName ||
+                  n.data.officialName ||
+                  "untitled",
+                icon,
+                type: n.type,
+                children: nodes
+                  ?.filter((d) => d.parentId === n.id)
+                  .map((d) => ({
+                    id: d.id,
+                    name:
+                      d.data.customizations?.customName ||
+                      d.data.officialName ||
+                      "untitled",
+                    icon: getNodeIcon(d.type),
+                  })),
+              })),
+          },
+        ]
+      : [];
+  }
 };
 
 export default memo(LeftPanel);

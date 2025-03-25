@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -20,52 +21,82 @@ import (
 )
 
 type Deployment struct {
-	deploymentRepo repo.Deployment
-	projectRepo    repo.Project
-	workflowRepo   repo.Workflow
-	jobRepo        repo.Job
-	workspaceRepo  accountrepo.Workspace
-	transaction    usecasex.Transaction
-	batch          gateway.Batch
-	file           gateway.File
-	job            interfaces.Job
+	deploymentRepo    repo.Deployment
+	projectRepo       repo.Project
+	workflowRepo      repo.Workflow
+	jobRepo           repo.Job
+	workspaceRepo     accountrepo.Workspace
+	transaction       usecasex.Transaction
+	batch             gateway.Batch
+	file              gateway.File
+	job               interfaces.Job
+	permissionChecker gateway.PermissionChecker
 }
 
-func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job) interfaces.Deployment {
+func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker) interfaces.Deployment {
 	return &Deployment{
-		deploymentRepo: r.Deployment,
-		projectRepo:    r.Project,
-		workflowRepo:   r.Workflow,
-		jobRepo:        r.Job,
-		workspaceRepo:  r.Workspace,
-		transaction:    r.Transaction,
-		batch:          gr.Batch,
-		file:           gr.File,
-		job:            jobUsecase,
+		deploymentRepo:    r.Deployment,
+		projectRepo:       r.Project,
+		workflowRepo:      r.Workflow,
+		jobRepo:           r.Job,
+		workspaceRepo:     r.Workspace,
+		transaction:       r.Transaction,
+		batch:             gr.Batch,
+		file:              gr.File,
+		job:               jobUsecase,
+		permissionChecker: permissionChecker,
 	}
 }
 
+func (i *Deployment) checkPermission(ctx context.Context, action string) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceDeployment, action)
+}
+
 func (i *Deployment) Fetch(ctx context.Context, ids []id.DeploymentID) ([]*deployment.Deployment, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	return i.deploymentRepo.FindByIDs(ctx, ids)
 }
 
 func (i *Deployment) FindByWorkspace(ctx context.Context, id accountdomain.WorkspaceID, p *interfaces.PaginationParam) ([]*deployment.Deployment, *interfaces.PageBasedInfo, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, nil, err
+	}
+
 	return i.deploymentRepo.FindByWorkspace(ctx, id, p)
 }
 
 func (i *Deployment) FindByProject(ctx context.Context, id id.ProjectID) (*deployment.Deployment, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	return i.deploymentRepo.FindByProject(ctx, id)
 }
 
 func (i *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID, version string) (*deployment.Deployment, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	return i.deploymentRepo.FindByVersion(ctx, wsID, projectID, version)
 }
 
 func (i *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID) (*deployment.Deployment, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	return i.deploymentRepo.FindHead(ctx, wsID, projectID)
 }
 
 func (i *Deployment) FindVersions(ctx context.Context, wsID accountdomain.WorkspaceID, projectID *id.ProjectID) ([]*deployment.Deployment, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	return i.deploymentRepo.FindVersions(ctx, wsID, projectID)
 }
 
@@ -80,6 +111,10 @@ func incrementVersion(version string) string {
 }
 
 func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentParam) (result *deployment.Deployment, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -147,6 +182,10 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 }
 
 func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentParam) (_ *deployment.Deployment, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -208,6 +247,10 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 }
 
 func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) (err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -225,19 +268,31 @@ func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) (
 		return err
 	}
 
-	versions, err := i.deploymentRepo.FindVersions(ctx, dep.Workspace(), dep.Project())
-	if err != nil {
-		return err
-	}
+	if dep.Project() != nil {
+		versions, err := i.deploymentRepo.FindVersions(ctx, dep.Workspace(), dep.Project())
+		if err != nil {
+			return err
+		}
 
-	for _, version := range versions {
-		if url, _ := url.Parse(version.WorkflowURL()); url != nil {
+		for _, version := range versions {
+			if url, _ := url.Parse(version.WorkflowURL()); url != nil {
+				if err := i.file.RemoveWorkflow(ctx, url); err != nil {
+					return err
+				}
+			}
+
+			if err := i.deploymentRepo.Remove(ctx, version.ID()); err != nil {
+				return err
+			}
+		}
+	} else {
+		if url, _ := url.Parse(dep.WorkflowURL()); url != nil {
 			if err := i.file.RemoveWorkflow(ctx, url); err != nil {
 				return err
 			}
 		}
 
-		if err := i.deploymentRepo.Remove(ctx, version.ID()); err != nil {
+		if err := i.deploymentRepo.Remove(ctx, deploymentID); err != nil {
 			return err
 		}
 	}
@@ -247,6 +302,10 @@ func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) (
 }
 
 func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeploymentParam) (_ *job.Job, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
 		return
@@ -264,8 +323,11 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
+	debug := false
+
 	j, err := job.New().
 		NewID().
+		Debug(&debug).
 		Deployment(d.ID()).
 		Workspace(d.Workspace()).
 		Status(job.StatusPending).

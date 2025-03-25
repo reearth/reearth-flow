@@ -24,38 +24,42 @@ type (
 	Mailer mailer.Mailer
 	Config struct {
 		mailer.Config
-		Port             string            `default:"8080" envconfig:"PORT"`
-		ServerHost       string            `pp:",omitempty"`
-		Host             string            `default:"http://localhost:8080"`
-		DashboardHost    string            `envconfig:"REEARTH_DASHBOARD_HOST" pp:",omitempty"`
-		Host_Web         string            `pp:",omitempty"`
-		Dev              bool              `pp:",omitempty"`
-		DB               string            `default:"mongodb://localhost"`
-		DB_Account       string            `pp:",omitempty"`
-		DB_Users         []appx.NamedURI   `pp:",omitempty"`
-		GraphQL          GraphQLConfig     `pp:",omitempty"`
-		GCPProject       string            `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
-		GCPRegion        string            `envconfig:"GOOGLE_CLOUD_REGION" pp:",omitempty"`
-		Profiler         string            `pp:",omitempty"`
-		Tracer           string            `pp:",omitempty"`
-		TracerSample     float64           `pp:",omitempty"`
-		AssetBaseURL     string            `default:"http://localhost:8080/assets"`
-		WorkflowBaseURL  string            `default:"http://localhost:8080/workflows"`
-		Origins          []string          `pp:",omitempty"`
-		Web_Disabled     bool              `pp:",omitempty"`
-		Web_App_Disabled bool              `pp:",omitempty"`
-		Web              map[string]string `pp:",omitempty"`
-		Web_Config       JSON              `pp:",omitempty"`
-		Web_Title        string            `pp:",omitempty"`
-		Web_FaviconURL   string            `pp:",omitempty"`
-		SignupSecret     string            `pp:",omitempty"`
-		SignupDisabled   bool              `pp:",omitempty"`
-		HTTPSREDIRECT    bool              `pp:",omitempty"`
-		SharedPath       string            `default:"shared"`
+		AccountsApiHost     string            `envconfig:"REEARTH_ACCOUNTS_API_HOST" pp:",omitempty"`
+		AssetBaseURL        string            `default:"http://localhost:8080/assets"`
+		DB                  string            `default:"mongodb://localhost"`
+		DB_Account          string            `pp:",omitempty"`
+		DB_Users            []appx.NamedURI   `pp:",omitempty"`
+		Dev                 bool              `pp:",omitempty"`
+		GCPProject          string            `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
+		GCPRegion           string            `envconfig:"GOOGLE_CLOUD_REGION" pp:",omitempty"`
+		GraphQL             GraphQLConfig     `pp:",omitempty"`
+		Host                string            `default:"http://localhost:8080"`
+		Host_Web            string            `pp:",omitempty"`
+		HTTPSREDIRECT       bool              `pp:",omitempty"`
+		Origins             []string          `pp:",omitempty"`
+		Port                string            `default:"8080"`
+		Profiler            string            `pp:",omitempty"`
+		ServerHost          string            `pp:",omitempty"`
+		SharedPath          string            `default:"shared"`
+		SignupDisabled      bool              `pp:",omitempty"`
+		SignupSecret        string            `pp:",omitempty"`
+		SkipPermissionCheck bool              `default:"false"`
+		Tracer              string            `pp:",omitempty"`
+		TracerSample        float64           `pp:",omitempty"`
+		Web                 map[string]string `pp:",omitempty"`
+		Web_App_Disabled    bool              `pp:",omitempty"`
+		Web_Config          JSON              `pp:",omitempty"`
+		Web_Disabled        bool              `pp:",omitempty"`
+		Web_FaviconURL      string            `pp:",omitempty"`
+		Web_Title           string            `pp:",omitempty"`
+		WorkflowBaseURL     string            `default:"http://localhost:8080/workflows"`
 
 		// storage
 		GCS GCSConfig `pp:",omitempty"`
 		S3  S3Config  `pp:",omitempty"`
+
+		// log
+		Redis_URL string `pp:",omitempty"`
 
 		// auth
 		Auth          AuthConfigs   `pp:",omitempty"`
@@ -70,9 +74,25 @@ type (
 		Auth_JWKSURI  *string       `pp:",omitempty"`
 
 		// worker
-		Worker_BatchSAEmail string `pp:",omitempty"`
-		Worker_BinaryPath   string `pp:",omitempty"`
-		Worker_ImageURL     string `pp:",omitempty"`
+		Worker_AllowedLocations                []string `envconfig:"WORKER_BATCH_ALLOWED_LOCATIONS" pp:",omitempty"`
+		Worker_BatchSAEmail                    string   `envconfig:"WORKER_BATCH_SA_EMAIL" pp:",omitempty"`
+		Worker_BinaryPath                      string   `envconfig:"WORKER_BINARY_PATH" default:"reearth-flow-worker" pp:",omitempty"`
+		Worker_BootDiskSizeGB                  string   `envconfig:"WORKER_BOOT_DISK_SIZE_GB" default:"50" pp:",omitempty"`
+		Worker_BootDiskType                    string   `envconfig:"WORKER_BOOT_DISK_TYPE" default:"pd-balanced" pp:",omitempty"`
+		Worker_ComputeCpuMilli                 string   `envconfig:"WORKER_COMPUTE_CPU_MILLI" default:"2000" pp:",omitempty"`
+		Worker_ComputeMemoryMib                string   `envconfig:"WORKER_COMPUTE_MEMORY_MIB" default:"2000" pp:",omitempty"`
+		Worker_ImageURL                        string   `envconfig:"WORKER_IMAGE_URL" pp:",omitempty"`
+		Worker_MachineType                     string   `envconfig:"WORKER_MACHINE_TYPE" default:"e2-standard-4" pp:",omitempty"`
+		Worker_MaxConcurrency                  string   `envconfig:"WORKER_MAX_CONCURRENCY" default:"4" pp:",omitempty"`
+		Worker_NodeStatusPropagationDelayMS    string   `envconfig:"WORKER_NODE_STATUS_PROPAGATION_DELAY_MS" default:"1000" pp:",omitempty"`
+		Worker_PubSubEdgePassThroughEventTopic string   `envconfig:"WORKER_PUBSUB_EDGE_PASS_THROUGH_EVENT_TOPIC" default:"flow-edge-pass-through" pp:",omitempty"`
+		Worker_PubSubJobCompleteTopic          string   `envconfig:"WORKER_PUBSUB_JOB_COMPLETE_TOPIC" default:"flow-job-complete" pp:",omitempty"`
+		Worker_PubSubLogStreamTopic            string   `envconfig:"WORKER_PUBSUB_LOG_STREAM_TOPIC" default:"flow-log-stream" pp:",omitempty"`
+		Worker_PubSubNodeStatusTopic           string   `envconfig:"WORKER_PUBSUB_NODE_STATUS_TOPIC" default:"flow-node-status" pp:",omitempty"`
+		Worker_TaskCount                       string   `envconfig:"WORKER_TASK_COUNT" default:"1" pp:",omitempty"`
+
+		// websocket
+		WebsocketThriftServerURL string `envconfig:"REEARTH_FLOW_WEBSOCKET_THRIFT_SERVER_URL" default:"http://localhost:8000" pp:",omitempty"`
 	}
 )
 

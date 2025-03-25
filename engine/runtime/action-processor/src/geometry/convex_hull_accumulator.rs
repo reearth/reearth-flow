@@ -1,14 +1,15 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
 use reearth_flow_geometry::algorithm::convex_hull::ConvexHull;
 use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::geometry_collection::GeometryCollection;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
@@ -97,7 +98,7 @@ impl Processor for ConvexHullAccumulator {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
@@ -140,11 +141,7 @@ impl Processor for ConvexHullAccumulator {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         for hull in self.create_hull() {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
@@ -192,9 +189,9 @@ impl ConvexHullAccumulator {
                     let value = last_feature.attributes.get(attr).cloned()?;
                     Some((attr.clone(), value))
                 })
-                .collect::<HashMap<_, _>>();
+                .collect::<IndexMap<_, _>>();
         } else {
-            feature.attributes = HashMap::new();
+            feature.attributes = IndexMap::new();
         }
         feature.geometry.value = GeometryValue::FlowGeometry2D(Geometry2D::Polygon(convex_hull));
         feature

@@ -1,10 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Expr};
@@ -16,7 +16,7 @@ use serde_json::Value;
 use super::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct RhaiCallerFactory;
+pub(super) struct RhaiCallerFactory;
 
 impl ProcessorFactory for RhaiCallerFactory {
     fn name(&self) -> &str {
@@ -87,7 +87,7 @@ impl ProcessorFactory for RhaiCallerFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct RhaiCaller {
+struct RhaiCaller {
     global_params: Option<HashMap<String, serde_json::Value>>,
     is_target: rhai::AST,
     process: rhai::AST,
@@ -95,8 +95,10 @@ pub struct RhaiCaller {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct RhaiCallerParam {
+struct RhaiCallerParam {
+    /// # Rhai script to determine if the feature is the target
     is_target: Expr,
+    /// # Rhai script to process the feature
     process: Expr,
 }
 
@@ -104,7 +106,7 @@ impl Processor for RhaiCaller {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
@@ -149,11 +151,7 @@ impl Processor for RhaiCaller {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

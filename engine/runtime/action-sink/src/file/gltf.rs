@@ -393,7 +393,6 @@ impl Sink for GltfWriter {
                                 let v_xyz = DVec4::new(x, z, -y, 1.0);
                                 // local ENU coordinate
                                 let v_enu = transform_matrix * v_xyz;
-                                // println!("enu: {:?}", v_enu);
 
                                 [v_enu[0], v_enu[1], v_enu[2], u, v]
                             });

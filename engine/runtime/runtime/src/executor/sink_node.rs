@@ -1,13 +1,15 @@
 use std::{
     borrow::Cow,
+    env,
     fmt::Debug,
     mem::swap,
     sync::Arc,
-    time::{self},
+    time::{self, Duration},
 };
 
 use crossbeam::channel::Receiver;
 use futures::Future;
+use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -20,11 +22,19 @@ use crate::{
     event::{Event, EventHub},
     executor_operation::{ExecutorContext, ExecutorOperation, NodeContext},
     kvs::KvStore,
-    node::{NodeHandle, Sink},
+    node::{NodeHandle, NodeStatus, Sink},
 };
 
 use super::receiver_loop::ReceiverLoop;
 use super::{execution_dag::ExecutionDag, receiver_loop::init_select};
+
+static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
+    env::var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .map(Duration::from_millis)
+        .unwrap_or(Duration::from_millis(500))
+});
 
 /// A sink in the execution DAG.
 #[derive(Debug)]
@@ -69,8 +79,10 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
 
         let (node_handles, receivers) = dag.collect_receivers(node_index);
 
+        let version = env!("CARGO_PKG_VERSION");
         let span = info_span!(
             "action",
+            "engine.version" = version,
             "otel.name" = sink.name(),
             "otel.kind" = "Sink Node",
             "workflow.id" = dag.id.to_string().as_str(),
@@ -108,25 +120,55 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
     }
 
     fn receiver_loop(mut self) -> Result<(), ExecutionError> {
-        // This is just copied from ReceiverLoop
+        let mut has_failed = false;
+
         let receivers = self.receivers();
         let mut is_terminated = vec![false; receivers.len()];
         let now = time::Instant::now();
         let span = self.span.clone();
         let mut sel = init_select(&receivers);
-        self.sink
+
+        tracing::info!("Sink node {} is starting", self.node_handle.id);
+        self.event_hub.send(Event::NodeStatusChanged {
+            node_handle: self.node_handle.clone(),
+            status: NodeStatus::Starting,
+            feature_id: None,
+        });
+
+        let init_result = self
+            .sink
             .initialize(NodeContext {
                 expr_engine: self.expr_engine.clone(),
                 kv_store: self.kv_store.clone(),
                 storage_resolver: self.storage_resolver.clone(),
                 event_hub: self.event_hub.clone(),
             })
-            .map_err(ExecutionError::Sink)?;
+            .map_err(ExecutionError::Sink);
+
+        if init_result.is_err() {
+            tracing::error!("Sink node {} initialization failed", self.node_handle.id);
+            self.event_hub.send(Event::NodeStatusChanged {
+                node_handle: self.node_handle.clone(),
+                status: NodeStatus::Failed,
+                feature_id: None,
+            });
+            return init_result;
+        }
+
+        // Log and emit Processing status
+        tracing::info!("Sink node {} is processing", self.node_handle.id);
+        self.event_hub.send(Event::NodeStatusChanged {
+            node_handle: self.node_handle.clone(),
+            status: NodeStatus::Processing,
+            feature_id: None,
+        });
+
         self.event_hub.info_log_with_node_handle(
             Some(span.clone()),
             self.node_handle.clone(),
             format!("{:?} sink start...", self.sink.name()),
         );
+
         loop {
             let index = sel.ready();
             let op = receivers[index]
@@ -134,7 +176,20 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                 .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)))?;
             match op {
                 ExecutorOperation::Op { ctx } => {
-                    self.on_op(ctx)?;
+                    let result = self.on_op(ctx.clone());
+
+                    if result.is_err() {
+                        // Track failure but don't emit per-feature status
+                        has_failed = true;
+                        tracing::warn!(
+                            "Sink node {} processing failed for feature {:?}",
+                            self.node_handle.id,
+                            ctx.feature.id
+                        );
+                    }
+
+                    // Propagate the result
+                    result?;
                 }
                 ExecutorOperation::Terminate { ctx } => {
                     is_terminated[index] = true;
@@ -149,8 +204,34 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                                 now.elapsed()
                             ),
                         );
-                        self.on_terminate(ctx)?;
-                        return Ok(());
+
+                        // Set final status based on overall success/failure
+                        let final_status = if has_failed {
+                            NodeStatus::Failed
+                        } else {
+                            NodeStatus::Completed
+                        };
+
+                        self.event_hub.send(Event::NodeStatusChanged {
+                            node_handle: self.node_handle.clone(),
+                            status: final_status,
+                            feature_id: None,
+                        });
+
+                        std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
+
+                        let terminate_result = self.on_terminate(ctx);
+
+                        if terminate_result.is_err() && !has_failed {
+                            tracing::error!("Sink node {} termination failed", self.node_handle.id);
+                            self.event_hub.send(Event::NodeStatusChanged {
+                                node_handle: self.node_handle.clone(),
+                                status: NodeStatus::Failed,
+                                feature_id: None,
+                            });
+                        }
+
+                        return terminate_result;
                     }
                 }
             }

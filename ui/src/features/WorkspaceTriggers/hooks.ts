@@ -40,7 +40,9 @@ export default () => {
   });
 
   useEffect(() => {
-    refetch();
+    (async () => {
+      await refetch();
+    })();
   }, [currentPage, currentOrder, refetch]);
 
   const totalPages = page?.totalPages as number;
@@ -68,7 +70,7 @@ export default () => {
       await useDeleteTrigger(t.id, currentWorkspace.id);
       setTriggerToBeDeleted(undefined);
       navigate({
-        to: `/workspaces/${currentWorkspace.id}/triggers/all`,
+        to: `/workspaces/${currentWorkspace.id}/triggers`,
       });
     },
     [

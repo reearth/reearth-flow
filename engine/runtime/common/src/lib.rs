@@ -32,6 +32,9 @@ pub enum Error {
 
     #[error("ZipError: {0}")]
     Zip(String),
+
+    #[error("DatetimeError: {0}")]
+    Datetime(String),
 }
 
 impl Error {
@@ -74,6 +77,10 @@ impl Error {
     pub fn zip<T: ToString>(message: T) -> Self {
         Self::Zip(message.to_string())
     }
+
+    pub fn datetime<T: ToString>(message: T) -> Self {
+        Self::Datetime(message.to_string())
+    }
 }
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
@@ -82,6 +89,7 @@ pub mod collection;
 pub mod color;
 pub mod compress;
 pub mod csv;
+pub mod datetime;
 pub mod dir;
 pub mod fs;
 pub mod future;

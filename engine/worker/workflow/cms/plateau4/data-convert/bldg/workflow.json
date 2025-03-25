@@ -1,0 +1,776 @@
+{
+  "id": "83307700-04b9-490c-b6a1-11b93e7f7a8a",
+  "name": "PLATEAU4-DataConvert-01-bldg-workflow",
+  "entryGraphId": "34bf873b-3364-46b0-8153-efeb9568bb3c",
+  "with": {
+    "cityGmlPath": null,
+    "codelists": null,
+    "schemas": null,
+    "targetPackages": [
+      "bldg"
+    ]
+  },
+  "graphs": [
+    {
+      "id": "c6863b71-953b-4d15-af56-396fc93fc617",
+      "name": "FolderAndfilePathReader",
+      "nodes": [
+        {
+          "id": "35038d96-5e81-4a21-a0e0-72f67eb71db5",
+          "name": "InputRouter",
+          "type": "action",
+          "action": "InputRouter",
+          "with": {
+            "routingPort": "default"
+          }
+        },
+        {
+          "id": "c7315341-26b3-4405-9d02-039d721cd225",
+          "name": "DirectoryDecompressor",
+          "type": "action",
+          "action": "DirectoryDecompressor",
+          "with": {
+            "archiveAttributes": [
+              "codelists",
+              "schemas"
+            ]
+          }
+        },
+        {
+          "id": "c73fbb78-74ca-490e-8dc9-e9fa1729bea0",
+          "name": "FeatureFilePathExtractor",
+          "type": "action",
+          "action": "FeatureFilePathExtractor",
+          "with": {
+            "destPrefix": "udx",
+            "sourceDataset": "env.get(\"__value\").cityGmlPath\n",
+            "extractArchive": true
+          }
+        },
+        {
+          "id": "9d04983e-e84e-4622-b0c6-827d7afad720",
+          "name": "FeatureFilter",
+          "type": "action",
+          "action": "FeatureFilter",
+          "with": {
+            "conditions": [
+              {
+                "expr": "env.get(\"__value\").extension == \"gml\"\n",
+                "outputPort": "default"
+              }
+            ]
+          }
+        },
+        {
+          "id": "712e4c72-950d-466d-9598-19f299668e7e",
+          "name": "PLATEAU4.UDXFolderExtractor",
+          "type": "action",
+          "action": "PLATEAU4.UDXFolderExtractor",
+          "with": {
+            "cityGmlPath": "env.get(\"__value\")[\"path\"]\n",
+            "codelistsPath": "codelists",
+            "schemasPath": "schemas"
+          }
+        },
+        {
+          "id": "a1554a74-3caa-4880-a4a3-6dc4ab526a13",
+          "name": "FeatureFilterByPackage",
+          "type": "action",
+          "action": "FeatureFilter",
+          "with": {
+            "conditions": [
+              {
+                "expr": "(env.get(\"targetPackages\") ?? []).is_empty() || env.get(\"__value\")[\"package\"] in env.get(\"targetPackages\")\n",
+                "outputPort": "default"
+              }
+            ]
+          }
+        },
+        {
+          "id": "f3465c78-59fa-4307-bc02-67c46c2ddd98",
+          "name": "FeatureCounterByUdxDirs",
+          "type": "action",
+          "action": "FeatureCounter",
+          "with": {
+            "countStart": 1,
+            "groupBy": [
+              "udxDirs"
+            ],
+            "outputAttribute": "fileIndex"
+          }
+        },
+        {
+          "id": "7bad5b43-6e59-4f6b-95c4-b3043d2b950d",
+          "name": "CityCodeExtractor",
+          "type": "action",
+          "action": "PLATEAU4.CityCodeExtractor",
+          "with": {
+            "codelistsPathAttribute": "dirCodelists",
+            "cityCodeAttribute": "cityCode"
+          }
+        },
+        {
+          "id": "9fccbcdb-ab58-4fda-9a47-05a45c84a7fb",
+          "name": "OutputRouter",
+          "type": "action",
+          "action": "OutputRouter",
+          "with": {
+            "routingPort": "default"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "5d700a9c-1537-442e-bfb2-0728a9e1ec9c",
+          "from": "35038d96-5e81-4a21-a0e0-72f67eb71db5",
+          "to": "c7315341-26b3-4405-9d02-039d721cd225",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "749d8e90-dbc3-4fc9-bfee-046344f5f5b9",
+          "from": "c7315341-26b3-4405-9d02-039d721cd225",
+          "to": "c73fbb78-74ca-490e-8dc9-e9fa1729bea0",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "1379a497-9e4e-40fb-8361-d2eeeb491762",
+          "from": "c73fbb78-74ca-490e-8dc9-e9fa1729bea0",
+          "to": "9d04983e-e84e-4622-b0c6-827d7afad720",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "2379a497-9e4e-40fb-8361-d2eeeb491763",
+          "from": "9d04983e-e84e-4622-b0c6-827d7afad720",
+          "to": "712e4c72-950d-466d-9598-19f299668e7e",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "2379a497-9e4e-40fb-8361-d2eeeb491764",
+          "from": "712e4c72-950d-466d-9598-19f299668e7e",
+          "to": "a1554a74-3caa-4880-a4a3-6dc4ab526a13",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "2379a497-9e4e-40fb-8361-d2eeeb491766",
+          "from": "a1554a74-3caa-4880-a4a3-6dc4ab526a13",
+          "to": "f3465c78-59fa-4307-bc02-67c46c2ddd98",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "0f43aebf-caf7-4f07-be97-f23b9c2c585f",
+          "from": "f3465c78-59fa-4307-bc02-67c46c2ddd98",
+          "to": "7bad5b43-6e59-4f6b-95c4-b3043d2b950d",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "80462b53-a06a-4e0b-bed8-07dcda744a55",
+          "from": "7bad5b43-6e59-4f6b-95c4-b3043d2b950d",
+          "to": "9fccbcdb-ab58-4fda-9a47-05a45c84a7fb",
+          "fromPort": "default",
+          "toPort": "default"
+        }
+      ]
+    },
+    {
+      "id": "34bf873b-3364-46b0-8153-efeb9568bb3c",
+      "name": "entry_point",
+      "nodes": [
+        {
+          "id": "90f40a3e-61d3-48e2-a328-e7226c2ad1ae",
+          "name": "FeatureCreator",
+          "type": "action",
+          "action": "FeatureCreator",
+          "with": {
+            "creator": "[\n  #{\n    cityGmlPath: env.get(\"cityGmlPath\"),\n    cityCode: env.get(\"cityCode\") ?? file::extract_filename(env.get(\"cityGmlPath\"))[0..5],\n    baseCityCode: env.get(\"cityCode\") ?? file::extract_filename(env.get(\"cityGmlPath\"))[0..5],\n    codelists: env.get(\"codelists\"),\n    schemas: env.get(\"schemas\"),\n  },\n]\n"
+          }
+        },
+        {
+          "id": "d376f32b-7ce8-4721-8b9e-bfa39d71b860",
+          "name": "FolderAndFilePathReader",
+          "type": "subGraph",
+          "subGraphId": "c6863b71-953b-4d15-af56-396fc93fc617"
+        },
+        {
+          "id": "ded2e272-e05c-4918-86b3-aa9f763da6e6",
+          "name": "FeatureReaderByCityGml",
+          "type": "action",
+          "action": "FeatureCityGmlReader",
+          "with": {
+            "format": "citygml",
+            "dataset": "env.get(\"__value\")[\"path\"]\n"
+          }
+        },
+        {
+          "id": "33e32a91-5ade-4265-8665-b061f552839c",
+          "name": "AttributeManagerForCityCodeAndCityName",
+          "type": "action",
+          "action": "AttributeManager",
+          "with": {
+            "operations": [
+              {
+                "attribute": "cityCode",
+                "method": "convert",
+                "value": "let attributes = env.get(\"__value\").cityGmlAttributes;\nlet buildingIdAttributes = attributes[\"uro:BuildingIDAttribute\"] ?? {};\nbuildingIdAttributes[\"uro:city_code\"] ?? env.get(\"__value\").cityCode\n"
+              },
+              {
+                "attribute": "cityName",
+                "method": "convert",
+                "value": "let attributes = env.get(\"__value\").cityGmlAttributes;\nlet buildingIdAttributes = attributes[\"uro:BuildingIDAttribute\"] ?? {};\nbuildingIdAttributes[\"uro:city\"] ?? env.get(\"__value\").cityName\n"
+              }
+            ]
+          }
+        },
+        {
+          "id": "ae9c558d-ce05-4b40-ae04-a4477d96db5a",
+          "name": "AttributeConversionTable",
+          "type": "action",
+          "action": "AttributeConversionTable",
+          "with": {
+            "format": "csv",
+            "inline": "city_code,city_name_jp,city_name_en,ward_code,ward_name_jp,ward_name_en\n01100,札幌市,sapporo-shi,01101,中央区,chuo-ku\n01100,札幌市,sapporo-shi,01102,北区,kita-ku\n01100,札幌市,sapporo-shi,01103,東区,higashi-ku\n01100,札幌市,sapporo-shi,01104,白石区,shiroishi-ku\n01100,札幌市,sapporo-shi,01105,豊平区,toyohira-ku\n01100,札幌市,sapporo-shi,01106,南区,minami-ku\n01100,札幌市,sapporo-shi,01107,西区,nishi-ku\n01100,札幌市,sapporo-shi,01108,厚別区,atsubetsu-ku\n01100,札幌市,sapporo-shi,01109,手稲区,teine-ku\n01100,札幌市,sapporo-shi,01110,清田区,kiyota-ku\n04100,仙台市,sendai-shi,04101,青葉区,aoba-ku\n04100,仙台市,sendai-shi,04102,宮城野区,miyagino-ku\n04100,仙台市,sendai-shi,04103,若林区,wakabayashi-ku\n04100,仙台市,sendai-shi,04104,太白区,taihaku-ku\n04100,仙台市,sendai-shi,04105,泉区,izumi-ku\n11100,さいたま市,saitama-shi,11101,西区,nishi-ku\n11100,さいたま市,saitama-shi,11102,北区,kita-ku\n11100,さいたま市,saitama-shi,11103,大宮区,omiya-ku\n11100,さいたま市,saitama-shi,11104,見沼区,minuma-ku\n11100,さいたま市,saitama-shi,11105,中央区,chuo-ku\n11100,さいたま市,saitama-shi,11106,桜区,sakura-ku\n11100,さいたま市,saitama-shi,11107,浦和区,urawa-ku\n11100,さいたま市,saitama-shi,11108,南区,minami-ku\n11100,さいたま市,saitama-shi,11109,緑区,midori-ku\n11100,さいたま市,saitama-shi,11110,岩槻区,iwatsuki-ku\n12100,千葉市,chiba-shi,12101,中央区,chuo-ku\n12100,千葉市,chiba-shi,12102,花見川区,hanamigawa-ku\n12100,千葉市,chiba-shi,12103,稲毛区,inage-ku\n12100,千葉市,chiba-shi,12104,若葉区,wakaba-ku\n12100,千葉市,chiba-shi,12105,緑区,midori-ku\n12100,千葉市,chiba-shi,12106,美浜区,mihama-ku\n13100,東京特別区部,ku-area,13101,千代田区,chiyoda-ku\n13100,東京特別区部,ku-area,13102,中央区,chuo-ku\n13100,東京特別区部,ku-area,13103,港区,minato-ku\n13100,東京特別区部,ku-area,13104,新宿区,shinjuku-ku\n13100,東京特別区部,ku-area,13105,文京区,bunkyo-ku\n13100,東京特別区部,ku-area,13106,台東区,taito-ku\n13100,東京特別区部,ku-area,13107,墨田区,sumida-ku\n13100,東京特別区部,ku-area,13108,江東区,koto-ku\n13100,東京特別区部,ku-area,13109,品川区,shinagawa-ku\n13100,東京特別区部,ku-area,13110,目黒区,meguro-ku\n13100,東京特別区部,ku-area,13111,大田区,ota-ku\n13100,東京特別区部,ku-area,13112,世田谷区,setagaya-ku\n13100,東京特別区部,ku-area,13113,渋谷区,shibuya-ku\n13100,東京特別区部,ku-area,13114,中野区,nakano-ku\n13100,東京特別区部,ku-area,13115,杉並区,suginami-ku\n13100,東京特別区部,ku-area,13116,豊島区,toshima-ku\n13100,東京特別区部,ku-area,13117,北区,kita-ku\n13100,東京特別区部,ku-area,13118,荒川区,arakawa-ku\n13100,東京特別区部,ku-area,13119,板橋区,itabashi-ku\n13100,東京特別区部,ku-area,13120,練馬区,nerima-ku\n13100,東京特別区部,ku-area,13121,足立区,adachi-ku\n13100,東京特別区部,ku-area,13122,葛飾区,katsushika-ku\n13100,東京特別区部,ku-area,13123,江戸川区,edogawa-ku\n14100,横浜市,yokohama-shi,14101,鶴見区,tsurumi-ku\n14100,横浜市,yokohama-shi,14102,神奈川区,kanagawa-ku\n14100,横浜市,yokohama-shi,14103,西区,nishi-ku\n14100,横浜市,yokohama-shi,14104,中区,naka-ku\n14100,横浜市,yokohama-shi,14105,南区,minami-ku\n14100,横浜市,yokohama-shi,14106,保土ケ谷区,hodogaya-ku\n14100,横浜市,yokohama-shi,14107,磯子区,isogo-ku\n14100,横浜市,yokohama-shi,14108,金沢区,kanazawa-ku\n14100,横浜市,yokohama-shi,14109,港北区,kohoku-ku\n14100,横浜市,yokohama-shi,14110,戸塚区,totsuka-ku\n14100,横浜市,yokohama-shi,14111,港南区,konan-ku\n14100,横浜市,yokohama-shi,14112,旭区,asahi-ku\n14100,横浜市,yokohama-shi,14113,緑区,midori-ku\n14100,横浜市,yokohama-shi,14114,瀬谷区,seya-ku\n14100,横浜市,yokohama-shi,14115,栄区,sakae-ku\n14100,横浜市,yokohama-shi,14116,泉区,izumi-ku\n14100,横浜市,yokohama-shi,14117,青葉区,aoba-ku\n14100,横浜市,yokohama-shi,14118,都筑区,tsuzuki-ku\n14130,川崎市,kawasaki-shi,14131,川崎区,kawasaki-ku\n14130,川崎市,kawasaki-shi,14132,幸区,saiwai-ku\n14130,川崎市,kawasaki-shi,14133,中原区,nakahara-ku\n14130,川崎市,kawasaki-shi,14134,高津区,takatsu-ku\n14130,川崎市,kawasaki-shi,14135,多摩区,tama-ku\n14130,川崎市,kawasaki-shi,14136,宮前区,miyamae-ku\n14130,川崎市,kawasaki-shi,14137,麻生区,asao-ku\n14150,相模原市,sagamihara-shi,14151,緑区,midori-ku\n14150,相模原市,sagamihara-shi,14152,中央区,chuo-ku\n14150,相模原市,sagamihara-shi,14153,南区,minami-ku\n15100,新潟市,niigata-shi,15101,北区,kita-ku\n15100,新潟市,niigata-shi,15102,東区,higashi-ku\n15100,新潟市,niigata-shi,15103,中央区,chuo-ku\n15100,新潟市,niigata-shi,15104,江南区,konan-ku\n15100,新潟市,niigata-shi,15105,秋葉区,akiha-ku\n15100,新潟市,niigata-shi,15106,南区,minami-ku\n15100,新潟市,niigata-shi,15107,西区,nishi-ku\n15100,新潟市,niigata-shi,15108,西蒲区,nishikan-ku\n22100,静岡市,shizuoka-shi,22101,葵区,aoi-ku\n22100,静岡市,shizuoka-shi,22102,駿河区,suruga-ku\n22100,静岡市,shizuoka-shi,22103,清水区,shimizu-ku\n22130,浜松市,hamamatsu-shi,22131,中区,naka-ku\n22130,浜松市,hamamatsu-shi,22132,東区,higashi-ku\n22130,浜松市,hamamatsu-shi,22133,西区,nishi-ku\n22130,浜松市,hamamatsu-shi,22134,南区,minami-ku\n22130,浜松市,hamamatsu-shi,22135,北区,kita-ku\n22130,浜松市,hamamatsu-shi,22136,浜北区,hamakita-ku\n22130,浜松市,hamamatsu-shi,22137,天竜区,tenryu-ku\n22130,浜松市,hamamatsu-shi,22138,中央区,chuo-ku\n22130,浜松市,hamamatsu-shi,22139,浜名区,hamana-ku\n22130,浜松市,hamamatsu-shi,22140,天竜区,tenryu-ku\n23100,名古屋市,nagoya-shi,23101,千種区,chikusa-ku\n23100,名古屋市,nagoya-shi,23102,東区,higashi-ku\n23100,名古屋市,nagoya-shi,23103,北区,kita-ku\n23100,名古屋市,nagoya-shi,23104,西区,nishi-ku\n23100,名古屋市,nagoya-shi,23105,中村区,nakamura-ku\n23100,名古屋市,nagoya-shi,23106,中区,naka-ku\n23100,名古屋市,nagoya-shi,23107,昭和区,showa-ku\n23100,名古屋市,nagoya-shi,23108,瑞穂区,mizuho-ku\n23100,名古屋市,nagoya-shi,23109,熱田区,atsuta-ku\n23100,名古屋市,nagoya-shi,23110,中川区,nakagawa-ku\n23100,名古屋市,nagoya-shi,23111,港区,minato-ku\n23100,名古屋市,nagoya-shi,23112,南区,minami-ku\n23100,名古屋市,nagoya-shi,23113,守山区,moriyama-ku\n23100,名古屋市,nagoya-shi,23114,緑区,midori-ku\n23100,名古屋市,nagoya-shi,23115,名東区,meito-ku\n23100,名古屋市,nagoya-shi,23116,天白区,tempaku-ku\n26100,京都市,kyoto-shi,26101,北区,kita-ku\n26100,京都市,kyoto-shi,26102,上京区,kamigyo-ku\n26100,京都市,kyoto-shi,26103,左京区,sakyo-ku\n26100,京都市,kyoto-shi,26104,中京区,nakagyo-ku\n26100,京都市,kyoto-shi,26105,東山区,higashiyama-ku\n26100,京都市,kyoto-shi,26106,下京区,shimogyo-ku\n26100,京都市,kyoto-shi,26107,南区,minami-ku\n26100,京都市,kyoto-shi,26108,右京区,ukyo-ku\n26100,京都市,kyoto-shi,26109,伏見区,fushimi-ku\n26100,京都市,kyoto-shi,26110,山科区,yamashina-ku\n26100,京都市,kyoto-shi,26111,西京区,nishikyo-ku\n27100,大阪市,osaka-shi,27102,都島区,miyakojima-ku\n27100,大阪市,osaka-shi,27103,福島区,fukushima-ku\n27100,大阪市,osaka-shi,27104,此花区,konohana-ku\n27100,大阪市,osaka-shi,27106,西区,nishi-ku\n27100,大阪市,osaka-shi,27107,港区,minato-ku\n27100,大阪市,osaka-shi,27108,大正区,taisho-ku\n27100,大阪市,osaka-shi,27109,天王寺区,tennoji-ku\n27100,大阪市,osaka-shi,27111,浪速区,naniwa-ku\n27100,大阪市,osaka-shi,27113,西淀川区,nishiyodogawa-ku\n27100,大阪市,osaka-shi,27114,東淀川区,higashiyodogawa-ku\n27100,大阪市,osaka-shi,27115,東成区,higashinari-ku\n27100,大阪市,osaka-shi,27116,生野区,ikuno-ku\n27100,大阪市,osaka-shi,27117,旭区,asahi-ku\n27100,大阪市,osaka-shi,27118,城東区,joto-ku\n27100,大阪市,osaka-shi,27119,阿倍野区,abeno-ku\n27100,大阪市,osaka-shi,27120,住吉区,sumiyoshi-ku\n27100,大阪市,osaka-shi,27121,東住吉区,higashisumiyoshi-ku\n27100,大阪市,osaka-shi,27122,西成区,nishinari-ku\n27100,大阪市,osaka-shi,27123,淀川区,yodogawa-ku\n27100,大阪市,osaka-shi,27124,鶴見区,tsurumi-ku\n27100,大阪市,osaka-shi,27125,住之江区,suminoe-ku\n27100,大阪市,osaka-shi,27126,平野区,hirano-ku\n27100,大阪市,osaka-shi,27127,北区,kita-ku\n27100,大阪市,osaka-shi,27128,中央区,chuo-ku\n27140,堺市,sakai-shi,27141,堺区,sakai-ku\n27140,堺市,sakai-shi,27142,中区,naka-ku\n27140,堺市,sakai-shi,27143,東区,higashi-ku\n27140,堺市,sakai-shi,27144,西区,nishi-ku\n27140,堺市,sakai-shi,27145,南区,minami-ku\n27140,堺市,sakai-shi,27146,北区,kita-ku\n27140,堺市,sakai-shi,27147,美原区,mihara-ku\n28100,神戸市,kobe-shi,28101,東灘区,higashinada-ku\n28100,神戸市,kobe-shi,28102,灘区,nada-ku\n28100,神戸市,kobe-shi,28105,兵庫区,hyogo-ku\n28100,神戸市,kobe-shi,28106,長田区,nagata-ku\n28100,神戸市,kobe-shi,28107,須磨区,suma-ku\n28100,神戸市,kobe-shi,28108,垂水区,tarumi-ku\n28100,神戸市,kobe-shi,28109,北区,kita-ku\n28100,神戸市,kobe-shi,28110,中央区,chuo-ku\n28100,神戸市,kobe-shi,28111,西区,nishi-ku\n33100,岡山市,okayama-shi,33101,北区,kita-ku\n33100,岡山市,okayama-shi,33102,中区,naka-ku\n33100,岡山市,okayama-shi,33103,東区,higashi-ku\n33100,岡山市,okayama-shi,33104,南区,minami-ku\n34100,広島市,hiroshima-shi,34101,中区,naka-ku\n34100,広島市,hiroshima-shi,34102,東区,higashi-ku\n34100,広島市,hiroshima-shi,34103,南区,minami-ku\n34100,広島市,hiroshima-shi,34104,西区,nishi-ku\n34100,広島市,hiroshima-shi,34105,安佐南区,asaminami-ku\n34100,広島市,hiroshima-shi,34106,安佐北区,asakita-ku\n34100,広島市,hiroshima-shi,34107,安芸区,aki-ku\n34100,広島市,hiroshima-shi,34108,佐伯区,saeki-ku\n40100,北九州市,kitakyushu-shi,40101,門司区,moji-ku\n40100,北九州市,kitakyushu-shi,40103,若松区,wakamatsu-ku\n40100,北九州市,kitakyushu-shi,40105,戸畑区,tobata-ku\n40100,北九州市,kitakyushu-shi,40106,小倉北区,kokurakita-ku\n40100,北九州市,kitakyushu-shi,40107,小倉南区,kokuraminami-ku\n40100,北九州市,kitakyushu-shi,40108,八幡東区,yahatahigashi-ku\n40100,北九州市,kitakyushu-shi,40109,八幡西区,yahatanishi-ku\n40130,福岡市,fukuoka-shi,40131,東区,higashi-ku\n40130,福岡市,fukuoka-shi,40132,博多区,hakata-ku\n40130,福岡市,fukuoka-shi,40133,中央区,chuo-ku\n40130,福岡市,fukuoka-shi,40134,南区,minami-ku\n40130,福岡市,fukuoka-shi,40135,西区,nishi-ku\n40130,福岡市,fukuoka-shi,40136,城南区,jonan-ku\n40130,福岡市,fukuoka-shi,40137,早良区,sawara-ku\n43100,熊本市,kumamoto-shi,43101,中央区,chuo-ku\n43100,熊本市,kumamoto-shi,43102,東区,higashi-ku\n43100,熊本市,kumamoto-shi,43103,西区,nishi-ku\n43100,熊本市,kumamoto-shi,43104,南区,minami-ku\n43100,熊本市,kumamoto-shi,43105,北区,kita-ku\n",
+            "rules": [
+              {
+                "featureFroms": [
+                  "cityCode"
+                ],
+                "featureTo": "cityNameEn",
+                "conversionTableKeys": [
+                  "ward_code"
+                ],
+                "conversionTableTo": "ward_name_en"
+              }
+            ]
+          }
+        },
+        {
+          "id": "4ffbb8a3-371e-4938-aa73-c142f11bb04b",
+          "name": "FeatureSorter",
+          "type": "action",
+          "action": "FeatureSorter",
+          "with": {
+            "attributes": [
+              "path"
+            ],
+            "order": "ascending"
+          }
+        },
+        {
+          "id": "dc498449-5478-4bff-abaa-59f2d160925f",
+          "name": "PLATEAU4.MaxLodExtractor",
+          "type": "action",
+          "action": "PLATEAU4.MaxLodExtractor",
+          "with": {
+            "cityGmlPathAttribute": "path",
+            "maxLodAttribute": "maxLod"
+          }
+        },
+        {
+          "id": "1fb4ce1c-538a-436d-8dfa-79185e032de3",
+          "name": "AttributeAggregatorByMaxLod",
+          "type": "action",
+          "action": "AttributeAggregator",
+          "with": {
+            "aggregateAttributes": [
+              {
+                "newAttribute": "file",
+                "attributeValue": "file::extract_filename(env.get(\"__value\")[\"path\"])\n"
+              },
+              {
+                "newAttribute": "type",
+                "attributeValue": "env.get(\"__feature_type\")\n"
+              },
+              {
+                "newAttribute": "maxLod",
+                "attributeValue": "env.get(\"__value\").maxLod\n"
+              }
+            ],
+            "calculation": "1\n",
+            "calculationAttribute": "count",
+            "method": "count"
+          }
+        },
+        {
+          "id": "52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4",
+          "name": "AttributeMapperByMaxLod",
+          "type": "action",
+          "action": "AttributeMapper",
+          "with": {
+            "mappers": [
+              {
+                "attribute": "code",
+                "expr": "env.get(\"__value\").file.split(\"_\")[0]\n"
+              },
+              {
+                "attribute": "type",
+                "expr": "env.get(\"__value\")[\"type\"].split(\":\")[0]\n"
+              },
+              {
+                "attribute": "maxLod",
+                "expr": "env.get(\"__value\").maxLod\n"
+              },
+              {
+                "attribute": "file",
+                "expr": "env.get(\"__value\").file\n"
+              }
+            ]
+          }
+        },
+        {
+          "id": "65074ffc-9113-4fbf-8957-9ba1de4c56ab",
+          "name": "FileWriterTsvFilePath",
+          "type": "action",
+          "action": "FileWriter",
+          "with": {
+            "format": "csv",
+            "output": "file::join_path(env.get(\"workerArtifactPath\"), \"maxLod.csv\")\n"
+          }
+        },
+        {
+          "id": "5daabfc0-2bda-4f8d-b206-d7a388469f7a",
+          "name": "AttributeFlattener",
+          "type": "action",
+          "action": "PLATEAU4.AttributeFlattener"
+        },
+        {
+          "id": "dc85a21b-4356-4a29-a862-270029071234",
+          "name": "BoundsExtractor",
+          "type": "action",
+          "action": "BoundsExtractor",
+          "with": {
+            "xmin": "_xmin",
+            "ymin": "_ymin",
+            "xmax": "_xmax",
+            "ymax": "_ymax",
+            "zmin": "_zmin",
+            "zmax": "_zmax"
+          }
+        },
+        {
+          "id": "8b05f9d4-1cb2-4071-a1da-c968431bc0ec",
+          "name": "VerticalReprojector",
+          "type": "action",
+          "action": "VerticalReprojector",
+          "with": {
+            "reprojectorType": "jgd2011ToWgs84"
+          }
+        },
+        {
+          "id": "3e637368-48dc-48c2-aade-253d5b0cfeeb",
+          "name": "AttributeManagerRemoveUnnecessaryAttributes",
+          "type": "action",
+          "action": "AttributeManager",
+          "with": {
+            "operations": [
+              {
+                "attribute": "meshcode",
+                "method": "create",
+                "value": "file::extract_filename_without_ext(env.get(\"__value\")[\"path\"]).split(\"_\")[0]\n"
+              },
+              {
+                "attribute": "_lod",
+                "method": "create",
+                "value": "env.get(\"__lod\")\n"
+              },
+              {
+                "attribute": "_x",
+                "method": "create",
+                "value": "(env.get(\"__value\")[\"_xmin\"] + env.get(\"__value\")[\"_xmax\"]) * 0.5\n"
+              },
+              {
+                "attribute": "_y",
+                "method": "create",
+                "value": "(env.get(\"__value\")[\"_ymin\"] + env.get(\"__value\")[\"_ymax\"]) * 0.5\n"
+              },
+              {
+                "attribute": "type",
+                "method": "rename",
+                "value": "feature_type"
+              },
+              {
+                "attribute": "path",
+                "method": "rename",
+                "value": "_path"
+              },
+              {
+                "attribute": "cityCode",
+                "method": "rename",
+                "value": "city_code"
+              },
+              {
+                "attribute": "cityName",
+                "method": "rename",
+                "value": "city_name"
+              },
+              {
+                "attribute": "gmlId",
+                "method": "rename",
+                "value": "gml_id"
+              },
+              {
+                "attribute": "package",
+                "method": "remove"
+              },
+              {
+                "attribute": "fileIndex",
+                "method": "remove"
+              },
+              {
+                "attribute": "extension",
+                "method": "remove"
+              },
+              {
+                "attribute": "root",
+                "method": "remove"
+              },
+              {
+                "attribute": "gmlRootId",
+                "method": "remove"
+              },
+              {
+                "attribute": "udxDirs",
+                "method": "remove"
+              },
+              {
+                "attribute": "cityGmlPath",
+                "method": "remove"
+              },
+              {
+                "attribute": "schemas",
+                "method": "remove"
+              },
+              {
+                "attribute": "dirCodelists",
+                "method": "remove"
+              },
+              {
+                "attribute": "dirSchemas",
+                "method": "remove"
+              },
+              {
+                "attribute": "gmlName",
+                "method": "remove"
+              },
+              {
+                "attribute": "codelists",
+                "method": "remove"
+              },
+              {
+                "attribute": "maxLod",
+                "method": "remove"
+              },
+              {
+                "attribute": "dirRoot",
+                "method": "remove"
+              }
+            ]
+          }
+        },
+        {
+          "id": "c32a279d-97be-4584-b282-4d65627b1132",
+          "name": "FeatureLodFilter",
+          "type": "action",
+          "action": "FeatureLodFilter",
+          "with": {
+            "filterKey": "_path"
+          }
+        },
+        {
+          "id": "41d69f1f-2a4d-4bc1-a5d0-175698273571",
+          "name": "cesium3DTilesWriterByLod1",
+          "type": "action",
+          "action": "Cesium3DTilesWriter",
+          "with": {
+            "minZoom": 15,
+            "maxZoom": 18,
+            "attachTexture": false,
+            "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod1\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod1_\" + env.get(\"__value\").city_code)\n}\n",
+            "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod1.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod1.zip\")\n}\n"
+          }
+        },
+        {
+          "id": "a61799d5-176e-4fb9-aa64-5d350adf0bb8",
+          "name": "cesium3DTilesWriterByLod2",
+          "type": "action",
+          "action": "Cesium3DTilesWriter",
+          "with": {
+            "minZoom": 15,
+            "maxZoom": 18,
+            "attachTexture": true,
+            "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod2\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod2_\" + env.get(\"__value\").city_code)\n}\n",
+            "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod2.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod2.zip\")\n}\n"
+          }
+        },
+        {
+          "id": "fc4c3817-6efe-4d6e-8e82-ebd84d5e6e19",
+          "name": "cesium3DTilesWriterByLod2NoTexture",
+          "type": "action",
+          "action": "Cesium3DTilesWriter",
+          "with": {
+            "minZoom": 15,
+            "maxZoom": 18,
+            "attachTexture": false,
+            "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod2_no_texture\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod2_no_texture_\" + env.get(\"__value\").city_code)\n}\n",
+            "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod2_no_texture.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod2_no_texture.zip\")\n}\n"
+          }
+        },
+        {
+          "id": "953f5c48-9875-4c78-a1d6-4619f8fdedd2",
+          "name": "cesium3DTilesWriterByLod3",
+          "type": "action",
+          "action": "Cesium3DTilesWriter",
+          "with": {
+            "minZoom": 15,
+            "maxZoom": 18,
+            "attachTexture": true,
+            "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod3\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod3_\" + env.get(\"__value\").city_code)\n}\n",
+            "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod3.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod3.zip\")\n}\n"
+          }
+        },
+        {
+          "id": "990ff798-168a-496e-a20a-b428de6a9ec0",
+          "name": "cesium3DTilesWriterByLod3NoTexture",
+          "type": "action",
+          "action": "Cesium3DTilesWriter",
+          "with": {
+            "minZoom": 15,
+            "maxZoom": 18,
+            "attachTexture": false,
+            "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod3_no_texture\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod3_no_texture_\" + env.get(\"__value\").city_code)\n}\n",
+            "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod3_no_texture.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod3_no_texture.zip\")\n}\n"
+          }
+        },
+        {
+          "id": "b0f8f2c5-bb9b-4f4f-8c27-254367031ded",
+          "name": "cesium3DTilesWriterByLod4",
+          "type": "action",
+          "action": "Cesium3DTilesWriter",
+          "with": {
+            "minZoom": 15,
+            "maxZoom": 18,
+            "attachTexture": true,
+            "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod4\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod4_\" + env.get(\"__value\").city_code)\n}\n",
+            "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod4.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod4.zip\")\n}\n"
+          }
+        },
+        {
+          "id": "3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638",
+          "name": "cesium3DTilesWriterByLod4NoTexture",
+          "type": "action",
+          "action": "Cesium3DTilesWriter",
+          "with": {
+            "minZoom": 15,
+            "maxZoom": 18,
+            "attachTexture": false,
+            "output": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod4_no_texture\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"bldg_lod4_no_texture_\" + env.get(\"__value\").city_code)\n}\n",
+            "compressOutput": "if env.get(\"__value\").baseCityCode == env.get(\"__value\").city_code {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_lod4_no_texture.zip\")\n} else {\n  file::join_path(env.get(\"workerArtifactPath\"), \"\" + file::extract_filename_without_ext(env.get(\"cityGmlPath\")) + \"_3dtiles_\" + env.get(\"__value\").city_code + \"_\" + env.get(\"__value\").cityNameEn + \"_lod4_no_texture.zip\")\n}\n"
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "5ebf24ab-1d98-49d5-8f58-eb7c18d27244",
+          "from": "90f40a3e-61d3-48e2-a328-e7226c2ad1ae",
+          "to": "d376f32b-7ce8-4721-8b9e-bfa39d71b860",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "7b81f501-3f07-4cec-bf9b-9cefcebdf47d",
+          "from": "d376f32b-7ce8-4721-8b9e-bfa39d71b860",
+          "to": "ded2e272-e05c-4918-86b3-aa9f763da6e6",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "cf845867-6ffc-4b83-9fd5-e376a22470e2",
+          "from": "ded2e272-e05c-4918-86b3-aa9f763da6e6",
+          "to": "33e32a91-5ade-4265-8665-b061f552839c",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "29479f80-4753-400b-9e05-32c69a9a5037",
+          "from": "33e32a91-5ade-4265-8665-b061f552839c",
+          "to": "ae9c558d-ce05-4b40-ae04-a4477d96db5a",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "f79ef31d-45f5-4aa5-ade2-620ab74bb35a",
+          "from": "ae9c558d-ce05-4b40-ae04-a4477d96db5a",
+          "to": "4ffbb8a3-371e-4938-aa73-c142f11bb04b",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "f7c94aaf-e43c-4779-893c-e5b23c0cf643",
+          "from": "4ffbb8a3-371e-4938-aa73-c142f11bb04b",
+          "to": "dc498449-5478-4bff-abaa-59f2d160925f",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "046c94ea-9937-4439-b5f8-c8a616f6599d",
+          "from": "dc498449-5478-4bff-abaa-59f2d160925f",
+          "to": "1fb4ce1c-538a-436d-8dfa-79185e032de3",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "59c14dab-0e56-4f90-85e6-0c8cfa6d1d14",
+          "from": "1fb4ce1c-538a-436d-8dfa-79185e032de3",
+          "to": "52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "993360df-5cfd-4525-9626-bfe13fa62117",
+          "from": "52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4",
+          "to": "65074ffc-9113-4fbf-8957-9ba1de4c56ab",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "60ee038e-db4c-4c70-8c0a-a9cbfba726d0",
+          "from": "4ffbb8a3-371e-4938-aa73-c142f11bb04b",
+          "to": "5daabfc0-2bda-4f8d-b206-d7a388469f7a",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "eeb85110-2cb8-4196-bb94-6d44c0395fb6",
+          "from": "5daabfc0-2bda-4f8d-b206-d7a388469f7a",
+          "to": "dc85a21b-4356-4a29-a862-270029071234",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "bfeb12b1-c8d5-4d13-928d-bf2b01672af9",
+          "from": "dc85a21b-4356-4a29-a862-270029071234",
+          "to": "8b05f9d4-1cb2-4071-a1da-c968431bc0ec",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "fddd597c-3e9c-400c-abd9-02b6c2214459",
+          "from": "8b05f9d4-1cb2-4071-a1da-c968431bc0ec",
+          "to": "3e637368-48dc-48c2-aade-253d5b0cfeeb",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "64540b5c-066e-449f-ace1-4af29c0e3b3c",
+          "from": "3e637368-48dc-48c2-aade-253d5b0cfeeb",
+          "to": "c32a279d-97be-4584-b282-4d65627b1132",
+          "fromPort": "default",
+          "toPort": "default"
+        },
+        {
+          "id": "dde1d751-fe3e-4283-8742-ec4a61a41574",
+          "from": "c32a279d-97be-4584-b282-4d65627b1132",
+          "to": "41d69f1f-2a4d-4bc1-a5d0-175698273571",
+          "fromPort": "up_to_lod1",
+          "toPort": "default"
+        },
+        {
+          "id": "2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30bb",
+          "from": "c32a279d-97be-4584-b282-4d65627b1132",
+          "to": "a61799d5-176e-4fb9-aa64-5d350adf0bb8",
+          "fromPort": "up_to_lod2",
+          "toPort": "default"
+        },
+        {
+          "id": "2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30bc",
+          "from": "c32a279d-97be-4584-b282-4d65627b1132",
+          "to": "fc4c3817-6efe-4d6e-8e82-ebd84d5e6e19",
+          "fromPort": "up_to_lod2",
+          "toPort": "default"
+        },
+        {
+          "id": "ce3f3571-053c-4487-8e85-b95fb71a49c7",
+          "from": "c32a279d-97be-4584-b282-4d65627b1132",
+          "to": "953f5c48-9875-4c78-a1d6-4619f8fdedd2",
+          "fromPort": "up_to_lod3",
+          "toPort": "default"
+        },
+        {
+          "id": "ce3f3571-053c-4487-8e85-b95fb71a49c8",
+          "from": "c32a279d-97be-4584-b282-4d65627b1132",
+          "to": "990ff798-168a-496e-a20a-b428de6a9ec0",
+          "fromPort": "up_to_lod3",
+          "toPort": "default"
+        },
+        {
+          "id": "841f1bed-a4d3-4425-a754-4f0dd7461eac",
+          "from": "c32a279d-97be-4584-b282-4d65627b1132",
+          "to": "b0f8f2c5-bb9b-4f4f-8c27-254367031ded",
+          "fromPort": "up_to_lod4",
+          "toPort": "default"
+        },
+        {
+          "id": "841f1bed-a4d3-4425-a754-4f0dd7461ead",
+          "from": "c32a279d-97be-4584-b282-4d65627b1132",
+          "to": "3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638",
+          "fromPort": "up_to_lod4",
+          "toPort": "default"
+        },
+        {
+          "id": "14a2d089-6d1f-4014-bb71-ff976c8e388e",
+          "from": "5daabfc0-2bda-4f8d-b206-d7a388469f7a",
+          "to": "41d69f1f-2a4d-4bc1-a5d0-175698273571",
+          "fromPort": "schema",
+          "toPort": "schema"
+        },
+        {
+          "id": "e327fb17-afa9-418d-8f71-ca2589dd5352",
+          "from": "5daabfc0-2bda-4f8d-b206-d7a388469f7a",
+          "to": "a61799d5-176e-4fb9-aa64-5d350adf0bb8",
+          "fromPort": "schema",
+          "toPort": "schema"
+        },
+        {
+          "id": "62f229c1-9acb-4057-bc7f-137f5f3265e1",
+          "from": "5daabfc0-2bda-4f8d-b206-d7a388469f7a",
+          "to": "fc4c3817-6efe-4d6e-8e82-ebd84d5e6e19",
+          "fromPort": "schema",
+          "toPort": "schema"
+        },
+        {
+          "id": "16173605-dccf-48bd-9f94-5b3792809d8a",
+          "from": "5daabfc0-2bda-4f8d-b206-d7a388469f7a",
+          "to": "953f5c48-9875-4c78-a1d6-4619f8fdedd2",
+          "fromPort": "schema",
+          "toPort": "schema"
+        },
+        {
+          "id": "b3438a6e-badd-4a08-9351-f35372593c16",
+          "from": "5daabfc0-2bda-4f8d-b206-d7a388469f7a",
+          "to": "990ff798-168a-496e-a20a-b428de6a9ec0",
+          "fromPort": "schema",
+          "toPort": "schema"
+        },
+        {
+          "id": "b559f3df-c4cb-4b96-95d6-9e3561add2b7",
+          "from": "5daabfc0-2bda-4f8d-b206-d7a388469f7a",
+          "to": "b0f8f2c5-bb9b-4f4f-8c27-254367031ded",
+          "fromPort": "schema",
+          "toPort": "schema"
+        },
+        {
+          "id": "983d9b5f-3501-4440-9a65-12110cde81dd",
+          "from": "5daabfc0-2bda-4f8d-b206-d7a388469f7a",
+          "to": "3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638",
+          "fromPort": "schema",
+          "toPort": "schema"
+        }
+      ]
+    }
+  ]
+}

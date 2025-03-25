@@ -1,9 +1,9 @@
 use super::errors::PlateauProcessorError;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{Context, ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
@@ -96,14 +96,10 @@ pub(crate) struct MaxLodExtractor {
 }
 
 impl Processor for MaxLodExtractor {
-    fn num_threads(&self) -> usize {
-        2
-    }
-
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let city_gml_path = feature
@@ -123,7 +119,12 @@ impl Processor for MaxLodExtractor {
             .ok_or(PlateauProcessorError::MaxLodExtractor(
                 "highest lod empty".to_string(),
             ))?;
-        let flush = match self.buffer.entry(city_gml_path.to_string()) {
+
+        if !self.buffer.contains_key(&city_gml_path.to_string()) {
+            self.flush_buffer(ctx.as_context(), fw);
+            self.buffer.clear();
+        }
+        match self.buffer.entry(city_gml_path.to_string()) {
             Entry::Occupied(mut entry) => {
                 let buffer = entry.get_mut();
                 if highest_lod > buffer.max_lod {
@@ -140,31 +141,11 @@ impl Processor for MaxLodExtractor {
                 true
             }
         };
-        if flush {
-            self.flush_buffer(ctx.as_context(), fw, city_gml_path.to_string());
-        }
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
-        for (_, buffer) in self.buffer.iter() {
-            for feature in buffer.features.iter() {
-                let mut feature = feature.clone();
-                feature.attributes.insert(
-                    self.max_lod_attribute.clone(),
-                    AttributeValue::Number(serde_json::Number::from(buffer.max_lod)),
-                );
-                fw.send(ExecutorContext::new_with_node_context_feature_and_port(
-                    &ctx,
-                    feature,
-                    DEFAULT_PORT.clone(),
-                ));
-            }
-        }
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
+        self.flush_buffer(ctx.as_context(), fw);
         Ok(())
     }
 
@@ -174,18 +155,9 @@ impl Processor for MaxLodExtractor {
 }
 
 impl MaxLodExtractor {
-    pub(crate) fn flush_buffer(
-        &mut self,
-        ctx: Context,
-        fw: &mut dyn ProcessorChannelForwarder,
-        ignore_key: String,
-    ) {
-        for (_, buffer) in self
-            .buffer
-            .iter()
-            .filter(|(k, _)| (*k).clone() != ignore_key)
-        {
-            for feature in buffer.features.iter() {
+    pub(crate) fn flush_buffer(&self, ctx: Context, fw: &ProcessorChannelForwarder) {
+        self.buffer.iter().for_each(|(_, buffer)| {
+            if let Some(feature) = buffer.features.first() {
                 let mut feature = feature.clone();
                 feature.attributes.insert(
                     self.max_lod_attribute.clone(),
@@ -193,16 +165,6 @@ impl MaxLodExtractor {
                 );
                 fw.send(ctx.as_executor_context(feature, DEFAULT_PORT.clone()));
             }
-        }
-        let keys: Vec<String> = self
-            .buffer
-            .keys()
-            .filter(|k| **k != ignore_key)
-            .cloned()
-            .collect();
-        let buffer = &mut self.buffer;
-        for key in keys {
-            buffer.remove(&key);
-        }
+        });
     }
 }

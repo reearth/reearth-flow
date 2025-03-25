@@ -5,10 +5,10 @@ use std::{
 };
 
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
@@ -57,7 +57,7 @@ impl AtomicCounterMap {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureCounterFactory;
+pub(super) struct FeatureCounterFactory;
 
 impl ProcessorFactory for FeatureCounterFactory {
     fn name(&self) -> &str {
@@ -120,16 +120,19 @@ impl ProcessorFactory for FeatureCounterFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct FeatureCounter {
+struct FeatureCounter {
     counter: AtomicCounterMap,
     params: FeatureCounterParam,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct FeatureCounterParam {
+struct FeatureCounterParam {
+    /// # Start count
     count_start: i64,
+    /// # Attributes to group by
     group_by: Option<Vec<Attribute>>,
+    /// # Attribute to output the count
     output_attribute: String,
 }
 
@@ -137,7 +140,7 @@ impl Processor for FeatureCounter {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         if let Some(group_by) = &self.params.group_by {
@@ -165,11 +168,7 @@ impl Processor for FeatureCounter {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

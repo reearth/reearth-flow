@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, Feature};
@@ -15,7 +15,7 @@ use serde_json::Value;
 use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct AttributeDuplicateFilterFactory;
+pub(super) struct AttributeDuplicateFilterFactory;
 
 impl ProcessorFactory for AttributeDuplicateFilterFactory {
     fn name(&self) -> &str {
@@ -78,14 +78,15 @@ impl ProcessorFactory for AttributeDuplicateFilterFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct AttributeDuplicateFilter {
+struct AttributeDuplicateFilter {
     params: AttributeDuplicateFilterParam,
     buffer: HashMap<String, Feature>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct AttributeDuplicateFilterParam {
+struct AttributeDuplicateFilterParam {
+    /// # Attributes to filter by
     filter_by: Vec<Attribute>,
 }
 
@@ -93,7 +94,7 @@ impl Processor for AttributeDuplicateFilter {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
+        _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let key_values = self
@@ -110,11 +111,7 @@ impl Processor for AttributeDuplicateFilter {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         for feature in self.buffer.values() {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,

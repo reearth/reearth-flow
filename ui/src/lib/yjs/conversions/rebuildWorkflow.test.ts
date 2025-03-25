@@ -10,7 +10,7 @@ import { yWorkflowConstructor } from "./yWorkflowConstructor";
 describe("rebuildWorkflow", () => {
   test("should rebuild a workflow from a YWorkflow", () => {
     const yDoc = new Y.Doc();
-    const yWorkflows = yDoc.getArray<YWorkflow>("workflows");
+    const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
     const id = "workflow-1";
     const name = "My Workflow";
 
@@ -32,6 +32,12 @@ describe("rebuildWorkflow", () => {
             param4: null,
             param5: { key: "value" },
           },
+          customizations: {
+            customName: "Custom Name",
+            content: "Content",
+            backgroundColor: "#000000",
+            textColor: "#FFFFFF",
+          },
           pseudoInputs: [
             { nodeId: "node-2", portName: "port1" },
             { nodeId: "node-3", portName: "port2" },
@@ -40,9 +46,6 @@ describe("rebuildWorkflow", () => {
             { nodeId: "node-4", portName: "port3" },
             { nodeId: "node-5", portName: "port4" },
           ],
-          content: "Content",
-          backgroundColor: "#FFFFFF",
-          textColor: "#000000",
         },
       },
     ];
@@ -59,7 +62,7 @@ describe("rebuildWorkflow", () => {
 
     const yWorkflow = yWorkflowConstructor(id, name, nodes, edges);
 
-    yWorkflows.push([yWorkflow]);
+    yWorkflows.set(id, yWorkflow);
 
     const workflow = rebuildWorkflow(yWorkflow);
 

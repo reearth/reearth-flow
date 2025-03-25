@@ -36,22 +36,19 @@ func (r *Workflow) FindByID(_ context.Context, wfid id.WorkflowID) (*workflow.Wo
 	defer r.lock.Unlock()
 
 	d, ok := r.data.Load(wfid)
-	if ok && r.f.CanRead(d.Workspace) {
+	if ok && r.f.CanRead(d.Workspace()) {
 		return d, nil
 	}
 
-	if ok && r.f.CanRead(d.Workspace) {
-		return d, nil
-	}
 	return nil, rerror.ErrNotFound
 }
 
 func (r *Workflow) Save(_ context.Context, w *workflow.Workflow) error {
-	if !r.f.CanWrite(w.Workspace) {
+	if !r.f.CanWrite(w.Workspace()) {
 		return repo.ErrOperationDenied
 	}
 
-	r.data.Store(w.ID, w)
+	r.data.Store(w.ID(), w)
 	return nil
 }
 
@@ -61,7 +58,7 @@ func (r *Workflow) Remove(ctx context.Context, id id.WorkflowID) error {
 		return nil
 	}
 
-	if !r.f.CanWrite(a.Workspace) {
+	if !r.f.CanWrite(a.Workspace()) {
 		return repo.ErrOperationDenied
 	}
 

@@ -1,0 +1,7 @@
+issues:
+  exclude-use-default: false
+
+linters:
+  enable:
+    - gofmt
+    - goimports

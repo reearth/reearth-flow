@@ -1,9 +1,0 @@
-cmake-build-*/
-**/*.rs.bk
-target/
-.git/
-.gitignore
-.env
-*.md
-Dockerfile*
-docker-compose*

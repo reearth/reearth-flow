@@ -10,7 +10,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
-use reearth_flow_types::{Attribute, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -18,7 +18,7 @@ use serde_json::Value;
 use crate::errors::SinkError;
 
 #[derive(Debug, Clone, Default)]
-pub struct GeoJsonWriterFactory;
+pub(crate) struct GeoJsonWriterFactory;
 
 impl SinkFactory for GeoJsonWriterFactory {
     fn name(&self) -> &str {
@@ -81,14 +81,14 @@ impl SinkFactory for GeoJsonWriterFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct GeoJsonWriter {
+pub(super) struct GeoJsonWriter {
     pub(super) params: GeoJsonWriterParam,
-    pub(super) buffer: HashMap<String, Vec<Feature>>,
+    pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct GeoJsonWriterParam {
+pub(super) struct GeoJsonWriterParam {
     pub(super) output: Expr,
     pub(super) group_by: Option<Vec<Attribute>>,
 }
@@ -102,13 +102,17 @@ impl Sink for GeoJsonWriter {
         let feature = &ctx.feature;
 
         let key = if let Some(group_by) = &self.params.group_by {
-            group_by
-                .iter()
-                .map(|k| feature.get(&k).map(|v| v.to_string()).unwrap_or_default())
-                .collect::<Vec<_>>()
-                .join("\t")
+            if group_by.is_empty() {
+                AttributeValue::Null
+            } else {
+                let key = group_by
+                    .iter()
+                    .map(|k| feature.get(&k).cloned().unwrap_or(AttributeValue::Null))
+                    .collect::<Vec<_>>();
+                AttributeValue::Array(key)
+            }
         } else {
-            "_all".to_string()
+            AttributeValue::Null
         };
         self.buffer.entry(key).or_default().push(feature.clone());
         Ok(())
@@ -124,14 +128,14 @@ impl Sink for GeoJsonWriter {
         let output = Uri::from_str(path.as_str())?;
 
         for (key, features) in self.buffer.iter() {
-            let file_path = if key == "_all" {
+            let file_path = if *key == AttributeValue::Null {
                 output.clone()
             } else {
-                output.join(format!("{}.geojson", to_hash(key)))?
+                output.join(format!("{}.geojson", to_hash(key.to_string().as_str())))?
             };
             let storage = storage_resolver
                 .resolve(&file_path)
-                .map_err(crate::errors::SinkError::file_writer)?;
+                .map_err(crate::errors::SinkError::geojson_writer)?;
             let mut buffer = Vec::from(b"{\"type\":\"FeatureCollection\",\"features\":[");
 
             let geojsons: Vec<geojson::Feature> = features

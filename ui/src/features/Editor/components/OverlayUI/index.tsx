@@ -1,7 +1,13 @@
 import { type XYPosition } from "@xyflow/react";
-import { memo } from "react";
+import { memo, useCallback, useState } from "react";
 
-import type { ActionNodeType, Edge, Node } from "@flow/types";
+import type {
+  ActionNodeType,
+  Algorithm,
+  Direction,
+  Edge,
+  Node,
+} from "@flow/types";
 
 import {
   ActionBar,
@@ -10,6 +16,9 @@ import {
   Breadcrumb,
   Infobar,
   NodePickerDialog,
+  LayoutOptionsDialog,
+  DebugLogs,
+  DebugPreview,
 } from "./components";
 
 type OverlayUIProps = {
@@ -21,18 +30,26 @@ type OverlayUIProps = {
   allowedToDeploy: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  isMainWorkflow: boolean;
+  hasReader?: boolean;
   onWorkflowDeployment: (
     description: string,
     deploymentId?: string,
   ) => Promise<void>;
+  onProjectShare: (share: boolean) => void;
   onNodesAdd: (nodes: Node[]) => void;
   onNodePickerClose: () => void;
   onRightPanelOpen: (content?: "version-history") => void;
   onWorkflowUndo: () => void;
   onWorkflowRedo: () => void;
-  isMainWorkflow: boolean;
+  onDebugRunStart: () => Promise<void>;
+  onDebugRunStop: () => Promise<void>;
+  onLayoutChange: (
+    algorithm: Algorithm,
+    direction: Direction,
+    spacing: number,
+  ) => void;
   children?: React.ReactNode;
-  hasReader?: boolean;
 };
 
 const OverlayUI: React.FC<OverlayUIProps> = ({
@@ -41,16 +58,26 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   allowedToDeploy,
   canUndo,
   canRedo,
+  isMainWorkflow,
+  hasReader,
   onWorkflowDeployment,
+  onProjectShare,
   onNodesAdd,
   onNodePickerClose,
   onRightPanelOpen,
   onWorkflowUndo,
   onWorkflowRedo,
-  isMainWorkflow,
-  hasReader,
+  onDebugRunStart,
+  onDebugRunStop,
+  onLayoutChange,
   children: canvas,
 }) => {
+  const [showLayoutOptions, setShowLayoutOptions] = useState(false);
+
+  const handleLayoutOptionsToggle = useCallback(() => {
+    setShowLayoutOptions((prev) => !prev);
+  }, []);
+
   return (
     <>
       <div className="relative flex flex-1 flex-col">
@@ -67,30 +94,43 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
           <Toolbox
             canUndo={canUndo}
             canRedo={canRedo}
-            onRedo={onWorkflowRedo}
-            onUndo={onWorkflowUndo}
             isMainWorkflow={isMainWorkflow}
             hasReader={hasReader}
+            onLayoutChange={handleLayoutOptionsToggle}
+            onRedo={onWorkflowRedo}
+            onUndo={onWorkflowUndo}
           />
         </div>
         <div id="right-top" className="absolute right-1 top-1 m-1">
           <ActionBar
             allowedToDeploy={allowedToDeploy}
+            onProjectShare={onProjectShare}
             onWorkflowDeployment={onWorkflowDeployment}
+            onDebugRunStart={onDebugRunStart}
+            onDebugRunStop={onDebugRunStop}
             onRightPanelOpen={onRightPanelOpen}
           />
         </div>
-        <div className="absolute bottom-2 right-2">
+        <div className="pointer-events-none absolute inset-y-2 left-2 flex items-end">
+          <DebugLogs />
+        </div>
+        <div className="pointer-events-none absolute bottom-2 right-2 flex flex-row-reverse items-end gap-2">
           <CanvasActionBar />
+          <DebugPreview />
         </div>
         {hoveredDetails && <Infobar hoveredDetails={hoveredDetails} />}
       </div>
+      <LayoutOptionsDialog
+        isOpen={showLayoutOptions}
+        onLayoutChange={onLayoutChange}
+        onClose={handleLayoutOptionsToggle}
+      />
       {nodePickerOpen && (
         <NodePickerDialog
           openedActionType={nodePickerOpen}
+          isMainWorkflow={isMainWorkflow}
           onNodesAdd={onNodesAdd}
           onClose={onNodePickerClose}
-          isMainWorkflow={isMainWorkflow}
         />
       )}
     </>

@@ -29,7 +29,7 @@ func ToJob(j *job.Job) *Job {
 		return nil
 	}
 
-	return &Job{
+	job := &Job{
 		ID:           ID(j.ID().String()),
 		DeploymentID: IDFrom(j.Deployment()),
 		WorkspaceID:  IDFrom(j.Workspace()),
@@ -37,10 +37,24 @@ func ToJob(j *job.Job) *Job {
 		StartedAt:    j.StartedAt(),
 		CompletedAt:  j.CompletedAt(),
 	}
+
+	if urls := j.OutputURLs(); len(urls) > 0 {
+		job.OutputURLs = urls
+	}
+	if logsURL := j.LogsURL(); logsURL != "" {
+		job.LogsURL = &logsURL
+	}
+	if debug := j.Debug(); debug != nil {
+		job.Debug = debug
+	}
+
+	return job
 }
 
 func ToJobStatus(status job.Status) JobStatus {
 	switch status {
+	case job.StatusCancelled:
+		return JobStatusCancelled
 	case job.StatusPending:
 		return JobStatusPending
 	case job.StatusRunning:

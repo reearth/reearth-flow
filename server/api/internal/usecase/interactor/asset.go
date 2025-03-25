@@ -5,6 +5,7 @@ import (
 	"net/url"
 	"path"
 
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -14,22 +15,36 @@ import (
 )
 
 type Asset struct {
-	repos    *repo.Container
-	gateways *gateway.Container
+	repos             *repo.Container
+	gateways          *gateway.Container
+	permissionChecker gateway.PermissionChecker
 }
 
-func NewAsset(r *repo.Container, g *gateway.Container) interfaces.Asset {
+func NewAsset(r *repo.Container, g *gateway.Container, permissionChecker gateway.PermissionChecker) interfaces.Asset {
 	return &Asset{
-		repos:    r,
-		gateways: g,
+		repos:             r,
+		gateways:          g,
+		permissionChecker: permissionChecker,
 	}
 }
 
+func (i *Asset) checkPermission(ctx context.Context, action string) error {
+	return checkPermission(ctx, i.permissionChecker, rbac.ResourceAsset, action)
+}
+
 func (i *Asset) Fetch(ctx context.Context, assets []id.AssetID) ([]*asset.Asset, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	return i.repos.Asset.FindByIDs(ctx, assets)
 }
 
 func (i *Asset) FindByWorkspace(ctx context.Context, tid accountdomain.WorkspaceID, keyword *string, sort *asset.SortType, p *interfaces.PaginationParam) ([]*asset.Asset, *interfaces.PageBasedInfo, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, nil, err
+	}
+
 	return Run2(
 		ctx, i.repos,
 		Usecase().WithReadableWorkspaces(tid),
@@ -44,6 +59,10 @@ func (i *Asset) FindByWorkspace(ctx context.Context, tid accountdomain.Workspace
 }
 
 func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (result *asset.Asset, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
 	if inp.File == nil {
 		return nil, interfaces.ErrFileNotIncluded
 	}
@@ -72,6 +91,10 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 }
 
 func (i *Asset) Remove(ctx context.Context, aid id.AssetID) (result id.AssetID, err error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return aid, err
+	}
+
 	return Run1(
 		ctx, i.repos,
 		Usecase().Transaction(),

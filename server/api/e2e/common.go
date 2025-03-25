@@ -149,6 +149,7 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 	mockPermissionChecker := gateway.NewMockPermissionChecker()
 	mockPermissionChecker.Allow = allowPermission
 
+	cfg.SkipPermissionCheck = true
 	srv := app.NewServer(ctx, &app.ServerConfig{
 		Config:       cfg,
 		Repos:        repos,

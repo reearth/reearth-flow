@@ -42,7 +42,8 @@ mutation DeleteProject($input: DeleteProjectInput!) {
 
 mutation RunProject($input: RunProjectInput!) {
   runProject(input: $input) {
-    projectId
-    started
+    job {
+      ...Job
+    }
   }
 }

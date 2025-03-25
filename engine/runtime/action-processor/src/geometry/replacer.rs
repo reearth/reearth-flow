@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use reearth_flow_common::compress::decode;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Geometry};
@@ -87,7 +87,7 @@ impl Processor for GeometryReplacer {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let mut feature = feature.clone();
@@ -102,16 +102,12 @@ impl Processor for GeometryReplacer {
         let dump = decode(dump)?;
         let geometry: Geometry = serde_json::from_str(&dump)?;
         feature.geometry = geometry;
-        feature.attributes.remove(&self.source_attribute);
+        feature.remove(&self.source_attribute);
         fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

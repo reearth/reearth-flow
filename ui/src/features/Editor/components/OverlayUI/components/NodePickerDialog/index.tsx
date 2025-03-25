@@ -1,16 +1,11 @@
-import { useReactFlow } from "@xyflow/react";
-import { Fragment, useEffect, useRef, useState } from "react";
+import { Fragment, memo } from "react";
 
 import { Dialog, DialogContent, DialogTitle, Input } from "@flow/components";
 import ActionItem from "@flow/components/ActionItem";
-import { useDoubleClick } from "@flow/hooks";
-import { useAction } from "@flow/lib/fetch";
 import { useT } from "@flow/lib/i18n";
-import i18n from "@flow/lib/i18n/i18n";
 import type { ActionNodeType, Node } from "@flow/types";
-import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
-import { useCreateNode } from "../../../Canvas/useCreateNode";
+import useHooks from "./hooks";
 
 export type XYPosition = {
   x: number;
@@ -21,9 +16,9 @@ type Props = {
     position: XYPosition;
     nodeType: ActionNodeType;
   };
+  isMainWorkflow: boolean;
   onNodesAdd: (nodes: Node[]) => void;
   onClose: () => void;
-  isMainWorkflow: boolean;
 };
 
 const NodePickerDialog: React.FC<Props> = ({
@@ -33,66 +28,16 @@ const NodePickerDialog: React.FC<Props> = ({
   isMainWorkflow,
 }) => {
   const t = useT();
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const containerRef = useRef<HTMLDivElement>(null);
-  const itemRefs = useRef<(HTMLDivElement | null)[]>([]);
-  // const { handleNodeDropInBatch } = useBatch();
-  const { screenToFlowPosition } = useReactFlow();
-  const { useGetActionsSegregated } = useAction(i18n.language);
-  const { actions } = useGetActionsSegregated({
-    isMainWorkflow,
-    searchTerm,
-    type: openedActionType?.nodeType,
-  });
 
-  const [selectedIndex, _setSelectedIndex] = useState(0);
-  const [selected, setSelected] = useState<string | undefined>();
-
-  useEffect(() => {
-    if (actions?.length) {
-      const actionsList = actions.byType[openedActionType.nodeType];
-      setSelected(actionsList?.[selectedIndex]?.name ?? "");
-
-      const selectedItem = itemRefs.current[selectedIndex];
-      if (selectedItem && containerRef.current) {
-        selectedItem.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest",
-        });
-      }
-    }
-  }, [selectedIndex, actions, openedActionType?.nodeType]);
-
-  const { createNode } = useCreateNode();
-
-  const [handleSingleClick, handleDoubleClick] = useDoubleClick(
-    (name?: string) => {
-      setSelected((prevName) => (prevName === name ? undefined : name));
-    },
-    async (name?: string) => {
-      if (!name) return;
-      // If the position is 0,0 then place it in the center of the screen as this is using shortcut creation and not dnd
-      const randomX = getRandomNumberInRange(50, 200);
-      const randomY = getRandomNumberInRange(50, 200);
-      const newNode = await createNode({
-        position:
-          openedActionType.position.x === 0 && openedActionType.position.y === 0
-            ? screenToFlowPosition({
-                x: window.innerWidth / 2 + randomX,
-                y: window.innerHeight / 2 - randomY,
-              })
-            : openedActionType.position,
-        type: name,
-      });
-      if (!newNode) return;
-      onNodesAdd([newNode]);
-      // TODO - add drop in batch support
-      // onNodesChange(handleNodeDropInBatch(newNode, newNodes));
-      onClose();
-    },
-  );
-
-  const actionsList = actions?.byType[openedActionType?.nodeType] || [];
+  const {
+    actionsList,
+    containerRef,
+    itemRefs,
+    selected,
+    setSearchTerm,
+    handleSingleClick,
+    handleDoubleClick,
+  } = useHooks({ openedActionType, isMainWorkflow, onNodesAdd, onClose });
 
   return (
     <Dialog open={!!openedActionType} onOpenChange={(o) => !o && onClose()}>
@@ -128,4 +73,4 @@ const NodePickerDialog: React.FC<Props> = ({
   );
 };
 
-export default NodePickerDialog;
+export default memo(NodePickerDialog);

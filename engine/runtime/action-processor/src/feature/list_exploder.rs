@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
@@ -15,7 +15,7 @@ use serde_json::Value;
 use super::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct ListExploderFactory;
+pub(super) struct ListExploderFactory;
 
 impl ProcessorFactory for ListExploderFactory {
     fn name(&self) -> &str {
@@ -74,7 +74,8 @@ impl ProcessorFactory for ListExploderFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ListExploder {
+struct ListExploder {
+    /// The attribute to explode
     source_attribute: Attribute,
 }
 
@@ -82,7 +83,7 @@ impl Processor for ListExploder {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let Some(AttributeValue::Array(value)) = feature.attributes.get(&self.source_attribute)
@@ -108,11 +109,7 @@ impl Processor for ListExploder {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

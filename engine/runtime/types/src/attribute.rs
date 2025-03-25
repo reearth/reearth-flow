@@ -55,6 +55,38 @@ pub enum AttributeValue {
 }
 
 impl AttributeValue {
+    pub fn default_bool() -> Self {
+        Self::Bool(false)
+    }
+
+    pub fn default_number() -> Self {
+        Self::Number(Number::from(0))
+    }
+
+    pub fn default_float() -> Self {
+        Self::Number(Number::from_f64(0.0f64).unwrap())
+    }
+
+    pub fn default_string() -> Self {
+        Self::String("".to_owned())
+    }
+
+    pub fn default_datetime() -> Self {
+        Self::DateTime(DateTime::default())
+    }
+
+    pub fn default_array() -> Self {
+        Self::Array(Vec::new())
+    }
+
+    pub fn default_bytes() -> Self {
+        Self::Bytes(Bytes::new())
+    }
+
+    pub fn default_map() -> Self {
+        Self::Map(HashMap::new())
+    }
+
     pub fn as_bool(&self) -> Option<bool> {
         match self {
             Self::Bool(v) => Some(*v),
@@ -215,10 +247,18 @@ impl Display for AttributeValue {
             AttributeValue::Bool(v) => write!(f, "{}", v),
             AttributeValue::Number(v) => write!(f, "{}", v),
             AttributeValue::String(v) => write!(f, "{}", v),
-            AttributeValue::Array(v) => write!(f, "{:?}", v),
+            AttributeValue::Array(v) => {
+                for (i, value) in v.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}", value)?;
+                }
+                Ok(())
+            }
             AttributeValue::Bytes(v) => write!(f, "{:?}", v),
             AttributeValue::Map(v) => write!(f, "{:?}", v),
-            AttributeValue::DateTime(v) => write!(f, "{}", v),
+            AttributeValue::DateTime(v) => write!(f, "{}", v.to_rfc3339()),
         }
     }
 }

@@ -1,1 +1,1 @@
-export { default as ParamEditor } from "./ParamEditor";
+export * from "./VersionHistory";

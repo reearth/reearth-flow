@@ -43,10 +43,11 @@ func (c *UserLoader) SearchUser(ctx context.Context, nameOrEmail string) (*gqlmo
 		return nil, err
 	}
 
-	for _, u := range res {
-		return gqlmodel.ToUserFromSimple(u), nil
+	users := gqlmodel.ToUsersFromSimple(res)
+	if len(users) == 0 {
+		return nil, nil
 	}
-	return nil, nil
+	return users[0], nil
 }
 
 // data loader

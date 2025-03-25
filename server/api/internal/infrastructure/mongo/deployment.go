@@ -2,6 +2,8 @@ package mongo
 
 import (
 	"context"
+	"fmt"
+	"strconv"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -129,40 +131,41 @@ func (r *DeploymentAdapter) FindByWorkspace(ctx context.Context, id accountdomai
 	return c.Result, interfaces.NewPageBasedInfo(total, 1, len(c.Result)), nil
 }
 
-func (a *DeploymentAdapter) FindByProject(ctx context.Context, pid id.ProjectID) (*deployment.Deployment, error) {
-	return a.findOne(ctx, bson.M{
-		"project": pid.String(),
+func (r *Deployment) FindByProject(ctx context.Context, pid id.ProjectID) (*deployment.Deployment, error) {
+	return r.findOne(ctx, bson.M{
+		"projectid": pid.String(),
+		"ishead":    true,
 	}, true)
 }
 
 func (r *Deployment) FindByVersion(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID, version string) (*deployment.Deployment, error) {
 	filter := bson.M{
-		"workspace": wsID.String(),
-		"version":   version,
+		"workspaceid": wsID.String(),
+		"version":     version,
 	}
 	if pID != nil {
-		filter["project"] = pID.String()
+		filter["projectid"] = pID.String()
 	}
 	return r.findOne(ctx, filter, true)
 }
 
 func (r *Deployment) FindHead(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID) (*deployment.Deployment, error) {
 	filter := bson.M{
-		"workspace": wsID.String(),
-		"isHead":    true,
+		"workspaceid": wsID.String(),
+		"ishead":      true,
 	}
 	if pID != nil {
-		filter["project"] = pID.String()
+		filter["projectid"] = pID.String()
 	}
 	return r.findOne(ctx, filter, true)
 }
 
 func (r *Deployment) FindVersions(ctx context.Context, wsID accountdomain.WorkspaceID, pID *id.ProjectID) ([]*deployment.Deployment, error) {
 	filter := bson.M{
-		"workspace": wsID.String(),
+		"workspaceid": wsID.String(),
 	}
 	if pID != nil {
-		filter["project"] = pID.String()
+		filter["projectid"] = pID.String()
 	}
 
 	c := mongodoc.NewDeploymentConsumer(r.f.Readable)
@@ -178,14 +181,46 @@ func (r *Deployment) Create(ctx context.Context, param interfaces.CreateDeployme
 		Workspace(param.Workspace).
 		Project(param.Project).
 		Description(param.Description).
-		WorkflowURL(param.Workflow.Path).
-		MustBuild()
+		WorkflowURL(param.Workflow.Path)
 
-	if err := r.Save(ctx, d); err != nil {
+	if param.Project != nil {
+		head, _ := r.FindHead(ctx, param.Workspace, param.Project)
+
+		d = d.IsHead(true)
+		if head != nil {
+			currentHeadID := head.ID()
+			d = d.HeadID(&currentHeadID)
+			d = d.Version(incrementVersion(head.Version()))
+
+			head.SetIsHead(false)
+			if err := r.Save(ctx, head); err != nil {
+				return nil, err
+			}
+		} else {
+			d = d.Version("v1")
+		}
+	} else {
+		d = d.Version("v0")
+		d = d.IsHead(false)
+	}
+
+	dep := d.MustBuild()
+	if err := r.Save(ctx, dep); err != nil {
 		return nil, err
 	}
 
-	return d, nil
+	return dep, nil
+}
+
+func incrementVersion(version string) string {
+	if len(version) < 2 || version[0] != 'v' {
+		return "v1"
+	}
+	num := version[1:]
+	if n, err := strconv.Atoi(num); err == nil {
+		return fmt.Sprintf("v%d", n+1)
+	}
+	return "v1"
 }
 
 func (r *Deployment) Update(ctx context.Context, param interfaces.UpdateDeploymentParam) (*deployment.Deployment, error) {

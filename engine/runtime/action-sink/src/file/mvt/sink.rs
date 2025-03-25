@@ -205,7 +205,7 @@ impl Sink for MVTWriter {
         let mut join_handles = self.join_handles.clone();
         join_handles.extend(result);
 
-        let timeout = std::time::Duration::from_secs(60 * 10);
+        let timeout = std::time::Duration::from_secs(60 * 60);
         let mut errors = Vec::new();
 
         for (i, join) in join_handles.iter().enumerate() {
@@ -348,12 +348,10 @@ impl MVTWriter {
                         let buffer = Vec::new();
                         let mut cursor = Cursor::new(buffer);
                         let writer = BufWriter::new(&mut cursor);
-                        let zip_result = reearth_flow_common::zip::write(
-                            writer,
-                            out.path().as_path(),
-                            out.path().as_path(),
-                        )
-                        .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()));
+                        let zip_result =
+                            reearth_flow_common::zip::write(writer, out.path().as_path()).map_err(
+                                |e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()),
+                            );
                         match zip_result {
                             Ok(_) => {
                                 match storage

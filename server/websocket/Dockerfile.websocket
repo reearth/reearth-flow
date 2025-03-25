@@ -1,0 +1,22 @@
+FROM rust:1.85.1-slim as builder
+
+RUN apt-get update && \
+    apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src/app
+COPY . .
+
+RUN cargo build --release --no-default-features 
+
+FROM gcr.io/distroless/cc-debian12
+
+COPY --from=builder /usr/src/app/target/release/websocket /usr/local/bin/websocket
+# COPY .env.docker /usr/local/bin/.env
+
+WORKDIR /usr/local/bin
+EXPOSE 8000
+
+CMD ["websocket"] 

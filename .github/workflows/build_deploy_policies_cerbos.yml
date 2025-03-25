@@ -1,0 +1,166 @@
+name: build-deploy-policies-cerbos
+on:
+  workflow_call:
+  workflow_dispatch:
+env:
+  GO_VERSION: '1.22'
+  GCS_BUCKET_PATH: gs://cerbos-policy-reearth-oss
+
+jobs:
+  update-policies:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+
+      - name: set up
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Generate policies
+        run: |
+          set -e
+          if ! make gen-policies; then
+            echo "Policy generation failed"
+            exit 1
+          fi
+        working-directory: server/api
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Sync policies with Cloud Storage
+        run: |
+          set -euo pipefail
+
+          # List all files in the bucket before sync
+          echo "All files in bucket (before sync):"
+          gsutil ls "${GCS_BUCKET_PATH}/" || true
+          echo "----------------------------------------"
+
+          # List current policy files in the bucket
+          echo "Current flow files in bucket:"
+          bucket_files=$(gsutil ls "${GCS_BUCKET_PATH}/flow_*.yaml" || true)
+          echo "$bucket_files"
+          echo "----------------------------------------"
+
+          # List local policy files that will be uploaded
+          echo "Local policy files:"
+          local_files=$(ls policies/flow_*.yaml 2>/dev/null || true)
+          echo "$local_files"
+          echo "----------------------------------------"
+
+          # Delete bucket files that no longer exist locally
+          echo "=== Starting cleanup process ==="
+          if gsutil ls "${GCS_BUCKET_PATH}/flow_*.yaml" 2>/dev/null; then
+            for bucket_file in $(gsutil ls "${GCS_BUCKET_PATH}/flow_*.yaml"); do
+              file_name=$(basename "$bucket_file")
+              if [ ! -f "policies/$file_name" ] && [[ "$file_name" == flow_* ]]; then
+                echo "Deleting: $file_name"
+                if ! gsutil rm "$bucket_file"; then
+                  echo "Error: Failed to delete $bucket_file"
+                  exit 1
+                fi
+              fi
+            done
+          else
+            echo "No flow_*.yaml files found in bucket to delete"
+          fi
+          echo "=== Cleanup complete ==="
+          echo "----------------------------------------"
+
+          # Upload/update local policy files to the bucket
+          echo "=== Starting Upload/update process ==="
+          for file in policies/flow_*.yaml; do
+            if [ -f "$file" ]; then
+              file_name=$(basename "$file")
+              echo "Uploading/Updating: $file_name"
+              if ! gsutil cp "$file" "${GCS_BUCKET_PATH}/$file_name"; then
+                echo "Error: Failed to upload $file_name"
+                exit 1
+              fi
+            fi
+          done
+          echo "=== Upload/update complete==="
+          echo "----------------------------------------"
+
+          # List all files in the bucket after sync
+          echo "Sync completed. All files in bucket:"
+          gsutil ls "${GCS_BUCKET_PATH}/" || true
+        working-directory: server/api
+
+      - name: Archive policies
+        run: |
+          set -e
+          tar -czf policies.tar.gz -C policies .
+        working-directory: server/api
+
+      - name: Upload policies archive to Artifact Registry
+        run: |
+          set -euxo pipefail
+
+          echo "Current working directory: $(pwd)"
+          echo "Files in current dir:"
+          ls -l
+
+          echo "Checking tarball exists..."
+          test -f policies.tar.gz && echo "✔ policies.tar.gz exists"
+
+          gcloud artifacts versions delete current \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --repository=cerbos-policies \
+            --location=us-central1 \
+            --package=flow \
+            --quiet
+
+          echo "Running gcloud upload with debug output..."
+          gcloud artifacts generic upload \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --repository=cerbos-policies \
+            --location=us-central1 \
+            --package=flow \
+            --version=current \
+            --source=policies.tar.gz
+        working-directory: server/api
+
+  deploy-cerbos:
+    needs: update-policies
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      IMAGE_CERBOS: cerbos/cerbos:0.40.0
+      GCP_REGION: us-central1
+      CLOUD_RUN_SERVICE: cerbos
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCP
+        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Deploy Cerbos
+        run: |
+          gcloud run deploy $CLOUD_RUN_SERVICE \
+            --image $IMAGE_CERBOS \
+            --region $GCP_REGION \
+            --platform managed \
+            --quiet

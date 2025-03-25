@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -12,6 +13,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearthx/account/accountdomain"
+	"github.com/reearth/reearthx/account/accountdomain/user"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/mongox/mongotest"
@@ -20,7 +22,15 @@ import (
 )
 
 func TestTrigger_Create(t *testing.T) {
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
 	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
+
 	c := mongotest.Connect(t)(t)
 
 	wid := accountdomain.NewWorkspaceID()
@@ -39,10 +49,10 @@ func TestTrigger_Create(t *testing.T) {
 		Deployment: mongo.NewDeployment(mongox.NewClientWithDatabase(c)),
 	}
 	gateway := &gateway.Container{}
-	job := NewJob(&repo, gateway)
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
 		return true, nil
 	})
+	job := NewJob(&repo, gateway, mockPermissionCheckerTrue)
 	i := NewTrigger(&repo, gateway, job, mockPermissionCheckerTrue)
 
 	param := interfaces.CreateTriggerParam{
@@ -84,7 +94,15 @@ func TestTrigger_Create(t *testing.T) {
 }
 
 func TestTrigger_Update(t *testing.T) {
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
 	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
+
 	c := mongotest.Connect(t)(t)
 
 	tid := id.NewTriggerID()
@@ -124,10 +142,10 @@ func TestTrigger_Update(t *testing.T) {
 		Deployment: mongo.NewDeployment(mongox.NewClientWithDatabase(c)),
 	}
 	gateway := &gateway.Container{}
-	job := NewJob(&repo, gateway)
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
 		return true, nil
 	})
+	job := NewJob(&repo, gateway, mockPermissionCheckerTrue)
 	i := NewTrigger(&repo, gateway, job, mockPermissionCheckerTrue)
 
 	// Test updating description and event source
@@ -175,7 +193,15 @@ func TestTrigger_Update(t *testing.T) {
 }
 
 func TestTrigger_Fetch(t *testing.T) {
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
 	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
+
 	c := mongotest.Connect(t)(t)
 
 	tid1 := id.NewTriggerID()
@@ -208,10 +234,10 @@ func TestTrigger_Fetch(t *testing.T) {
 		Trigger: mongo.NewTrigger(mongox.NewClientWithDatabase(c)),
 	}
 	gateway := &gateway.Container{}
-	job := NewJob(&repo, gateway)
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
 		return true, nil
 	})
+	job := NewJob(&repo, gateway, mockPermissionCheckerTrue)
 	i := NewTrigger(&repo, gateway, job, mockPermissionCheckerTrue)
 
 	got, err := i.Fetch(ctx, []id.TriggerID{tid1, tid2})
@@ -224,7 +250,15 @@ func TestTrigger_Fetch(t *testing.T) {
 }
 
 func TestTrigger_Delete(t *testing.T) {
+	mockAuthInfo := &appx.AuthInfo{
+		Token: "token",
+	}
+	mockUser := user.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild()
+
 	ctx := context.Background()
+	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
+	ctx = adapter.AttachUser(ctx, mockUser)
+
 	c := mongotest.Connect(t)(t)
 
 	tid := id.NewTriggerID()
@@ -244,10 +278,10 @@ func TestTrigger_Delete(t *testing.T) {
 		Trigger: mongo.NewTrigger(mongox.NewClientWithDatabase(c)),
 	}
 	gateway := &gateway.Container{}
-	job := NewJob(&repo, gateway)
-	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, resource, action string) (bool, error) {
+	mockPermissionCheckerTrue := NewMockPermissionChecker(func(ctx context.Context, authInfo *appx.AuthInfo, userId, resource, action string) (bool, error) {
 		return true, nil
 	})
+	job := NewJob(&repo, gateway, mockPermissionCheckerTrue)
 	i := NewTrigger(&repo, gateway, job, mockPermissionCheckerTrue)
 
 	err := i.Delete(ctx, tid)

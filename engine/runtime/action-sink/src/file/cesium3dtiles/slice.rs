@@ -29,6 +29,7 @@ pub struct SlicedFeature {
 
 pub fn slice_to_tiles<E>(
     feature: &Feature,
+    schema: &nusamai_citygml::schema::Schema,
     min_zoom: u8,
     max_zoom: u8,
     attach_texture: bool,
@@ -69,7 +70,10 @@ pub fn slice_to_tiles<E>(
         .sorted()
         .dedup()
         .collect();
-
+    let Some(feature_type) = feature.feature_type() else {
+        return Ok(());
+    };
+    let feature_schema = schema.types.get(&feature_type).unwrap();
     for entry in city_gml.gml_geometries.iter() {
         match entry.ty {
             GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
@@ -160,6 +164,9 @@ pub fn slice_to_tiles<E>(
                                                 .clone()
                                                 .into_iter()
                                                 .filter(|(_, v)| v.convertible_nusamai_type_ref())
+                                                .filter(|(k, _)| {
+                                                    feature_schema.fields().contains(&k.to_string())
+                                                })
                                                 .map(|(k, v)| {
                                                     if let AttributeValue::Number(value) = v {
                                                         (
@@ -181,7 +188,6 @@ pub fn slice_to_tiles<E>(
                                 sliced_feature.polygon_material_ids.push(mat_idx as u32);
                             });
                         } else {
-                            // slicing disabled
                             let (z, x, y) = zxy_from_lng_lat(zoom, lng_center, lat_center);
                             let sliced_feature =
                                 sliced_tiles
@@ -193,6 +199,9 @@ pub fn slice_to_tiles<E>(
                                             .clone()
                                             .into_iter()
                                             .filter(|(_, v)| v.convertible_nusamai_type_ref())
+                                            .filter(|(k, _)| {
+                                                feature_schema.fields().contains(&k.to_string())
+                                            })
                                             .map(|(k, v)| {
                                                 if let AttributeValue::Number(value) = v {
                                                     (

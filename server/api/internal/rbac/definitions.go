@@ -10,10 +10,18 @@ const (
 )
 
 const (
-	ResourceUser      = "user"
-	ResourceWorkspace = "workspace"
-	ResourceProject   = "project"
-	ResourceTrigger   = "trigger"
+	ResourceAsset         = "asset"
+	ResourceDeployment    = "deployment"
+	ResourceEdge          = "edge"
+	ResourceJob           = "job"
+	ResourceLog           = "log"
+	ResourceNode          = "Node"
+	ResourceParameter     = "parameter"
+	ResourceProject       = "project"
+	ResourceProjectAccess = "projectAccess"
+	ResourceTrigger       = "trigger"
+	ResourceUser          = "user"
+	ResourceWorkspace     = "workspace"
 )
 
 const (
@@ -39,31 +47,45 @@ func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDef
 	}
 
 	return builder.
-		AddResource(ResourceUser, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionRead, []string{
-				roleSelf,
-			}),
-			generator.NewActionDefinition(ActionEdit, []string{
-				roleSelf,
+		AddResource(ResourceAsset, []generator.ActionDefinition{
+			generator.NewActionDefinition(ActionAny, []string{
+				roleMaintainer,
 			}),
 		}).
-		AddResource(ResourceWorkspace, []generator.ActionDefinition{
-			generator.NewActionDefinition(ActionList, []string{
-				roleSelf,
+		AddResource(ResourceDeployment, []generator.ActionDefinition{
+			generator.NewActionDefinition(ActionAny, []string{
+				roleMaintainer,
 			}),
-			generator.NewActionDefinition(ActionCreate, []string{
-				roleSelf,
+		}).
+		AddResource(ResourceEdge, []generator.ActionDefinition{
+			generator.NewActionDefinition(ActionAny, []string{
+				roleMaintainer,
 			}),
-			generator.NewActionDefinition(ActionEdit, []string{
-				roleOwner,
+		}).
+		AddResource(ResourceJob, []generator.ActionDefinition{
+			generator.NewActionDefinition(ActionAny, []string{
+				roleMaintainer,
 			}),
-			generator.NewActionDefinition(ActionDelete, []string{
-				roleOwner,
+		}).
+		AddResource(ResourceLog, []generator.ActionDefinition{
+			generator.NewActionDefinition(ActionAny, []string{
+				roleMaintainer,
+			}),
+		}).
+		AddResource(ResourceNode, []generator.ActionDefinition{
+			generator.NewActionDefinition(ActionAny, []string{
+				roleMaintainer,
+			}),
+		}).
+		AddResource(ResourceParameter, []generator.ActionDefinition{
+			generator.NewActionDefinition(ActionAny, []string{
+				roleMaintainer,
 			}),
 		}).
 		AddResource(ResourceProject, []generator.ActionDefinition{
 			generator.NewActionDefinition(ActionList, []string{
 				roleSelf,
+				roleMaintainer,
 			}),
 			generator.NewActionDefinition(ActionCreate, []string{
 				roleMaintainer,
@@ -84,6 +106,11 @@ func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDef
 				roleMaintainer,
 			}),
 		}).
+		AddResource(ResourceProjectAccess, []generator.ActionDefinition{
+			generator.NewActionDefinition(ActionAny, []string{
+				roleMaintainer,
+			}),
+		}).
 		AddResource(ResourceTrigger, []generator.ActionDefinition{
 			generator.NewActionDefinition(ActionCreate, []string{
 				roleMaintainer,
@@ -99,6 +126,35 @@ func DefineResources(builder *generator.ResourceBuilder) []generator.ResourceDef
 			}),
 			generator.NewActionDefinition(ActionAny, []string{
 				roleSelf,
+				roleMaintainer,
+			}),
+		}).
+		AddResource(ResourceUser, []generator.ActionDefinition{
+			generator.NewActionDefinition(ActionRead, []string{
+				roleSelf,
+				roleMaintainer,
+			}),
+			generator.NewActionDefinition(ActionEdit, []string{
+				roleSelf,
+				roleMaintainer,
+			}),
+		}).
+		AddResource(ResourceWorkspace, []generator.ActionDefinition{
+			generator.NewActionDefinition(ActionList, []string{
+				roleSelf,
+				roleMaintainer,
+			}),
+			generator.NewActionDefinition(ActionCreate, []string{
+				roleSelf,
+				roleMaintainer,
+			}),
+			generator.NewActionDefinition(ActionEdit, []string{
+				roleOwner,
+				roleMaintainer,
+			}),
+			generator.NewActionDefinition(ActionDelete, []string{
+				roleOwner,
+				roleMaintainer,
 			}),
 		}).
 		Build()

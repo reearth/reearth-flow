@@ -1,14 +1,15 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::{
     algorithm::bool_ops::BooleanOps, types::multi_polygon::MultiPolygon2D,
 };
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
@@ -99,7 +100,7 @@ impl Processor for Dissolver {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
@@ -142,11 +143,7 @@ impl Processor for Dissolver {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         for dissolved in self.dissolve() {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
@@ -214,9 +211,9 @@ impl Dissolver {
                         let value = last_feature.attributes.get(attr).cloned()?;
                         Some((attr.clone(), value))
                     })
-                    .collect::<HashMap<_, _>>();
+                    .collect::<IndexMap<_, _>>();
             } else {
-                feature.attributes = HashMap::new();
+                feature.attributes = IndexMap::new();
             }
             feature.geometry.value = GeometryValue::FlowGeometry2D(multi_polygon_2d.into());
             Some(feature)

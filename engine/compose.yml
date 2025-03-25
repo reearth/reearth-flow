@@ -1,11 +1,16 @@
+networks:
+  reearth-flow-net:
+    external: true
 services:
   gcs:
     image: fsouza/fake-gcs-server
     ports:
       - 4443:4443
     volumes:
-      - ./tmp/gcs/data:/data # :/data/{bucket-name}
+      - ./tmp/gcs/data:/data/reearth-flow-oss-bucket # :/data/{bucket-name}
     command: --scheme http # Allow http
+    networks:
+      - reearth-flow-net
   pubsub:
     build:
       context: .
@@ -14,7 +19,7 @@ services:
     environment:
       - PROJECT_ID=local-project
       - TOPIC_IDS=flow-edge-pass-through-topic,flow-log-stream-topic,flow-job-complete-topic # Corresponding pull-type subscriptions({TOPIC}-sub) will be created automatically
-    extra_hosts: # For other docker-compose services
-      - ${DOCKER_HOST_INTERNAL:-host.docker.internal}:${DOCKER_HOST_GATEWAY:-host-gateway}
     ports:
       - 8085:8085
+    networks:
+      - reearth-flow-net

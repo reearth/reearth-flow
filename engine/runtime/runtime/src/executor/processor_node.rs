@@ -16,7 +16,9 @@ use tracing::{info_span, Span};
 
 use crate::event::{Event, EventHub};
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
+use crate::forwarder::ProcessorChannelForwarder;
 use crate::kvs::KvStore;
+use crate::node::NodeStatus;
 use crate::{
     builder_dag::NodeKind,
     errors::ExecutionError,
@@ -27,12 +29,20 @@ use crate::{
 use super::receiver_loop::init_select;
 use super::{execution_dag::ExecutionDag, receiver_loop::ReceiverLoop};
 
+static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
+    env::var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .map(Duration::from_millis)
+        .unwrap_or(Duration::from_millis(500))
+});
+
 static SLOW_ACTION_THRESHOLD: Lazy<Duration> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_SLOW_ACTION_THRESHOLD")
         .ok()
         .and_then(|v| v.parse().ok())
         .map(Duration::from_millis)
-        .unwrap_or(Duration::from_millis(300))
+        .unwrap_or(Duration::from_millis(1000))
 });
 
 /// A processor in the execution DAG.
@@ -47,7 +57,7 @@ pub struct ProcessorNode<F> {
     /// The processor.
     processor: Arc<parking_lot::RwLock<Box<dyn Processor>>>,
     /// This node's output channel manager, for forwarding data, writing metadata and writing port state.
-    channel_manager: Arc<parking_lot::RwLock<ChannelManager>>,
+    channel_manager: Arc<parking_lot::RwLock<ProcessorChannelForwarder>>,
     /// The shutdown future.
     #[allow(dead_code)]
     shutdown: F,
@@ -84,15 +94,17 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let senders = dag.collect_senders(node_index);
         let record_writers = dag.collect_record_writers(node_index).await;
 
-        let channel_manager = ChannelManager::new(
+        let channel_manager = ProcessorChannelForwarder::ChannelManager(ChannelManager::new(
             node_handle.clone(),
             record_writers,
             senders,
             runtime.clone(),
             dag.event_hub().clone(),
-        );
+        ));
+        let version = env!("CARGO_PKG_VERSION");
         let span = info_span!(
             "action",
+            "engine.version" = version,
             "otel.name" = processor.name(),
             "otel.kind" = "Processor Node",
             "workflow.id" = dag.id.to_string().as_str(),
@@ -147,6 +159,13 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         let span = self.span.clone();
         let now = time::Instant::now();
         let processor = Arc::clone(&self.processor);
+
+        self.event_hub.send(Event::NodeStatusChanged {
+            node_handle: self.node_handle.clone(),
+            status: NodeStatus::Starting,
+            feature_id: None,
+        });
+
         processor
             .write()
             .initialize(NodeContext::new(
@@ -157,11 +176,19 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             ))
             .map_err(ExecutionError::Processor)?;
 
+        self.event_hub.send(Event::NodeStatusChanged {
+            node_handle: self.node_handle.clone(),
+            status: NodeStatus::Processing,
+            feature_id: None,
+        });
+
         self.event_hub.info_log_with_node_handle(
             Some(span.clone()),
             self.node_handle.clone(),
             format!("{:?} process start...", self.processor.read().name()),
         );
+
+        let has_failed = Arc::new(std::sync::atomic::AtomicBool::new(false));
 
         loop {
             if is_terminated.iter().all(|value| *value) {
@@ -180,15 +207,44 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         ),
                     );
 
-                    self.on_terminate(NodeContext::new(
+                    let final_status = if has_failed.load(std::sync::atomic::Ordering::SeqCst) {
+                        NodeStatus::Failed
+                    } else {
+                        NodeStatus::Completed
+                    };
+
+                    self.event_hub.send(Event::NodeStatusChanged {
+                        node_handle: self.node_handle.clone(),
+                        status: final_status,
+                        feature_id: None,
+                    });
+
+                    tracing::info!(
+                        "Waiting for final status to propagate for processor node {}",
+                        self.node_handle.id
+                    );
+                    std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
+
+                    let terminate_result = self.on_terminate(NodeContext::new(
                         self.expr_engine.clone(),
                         self.storage_resolver.clone(),
                         self.kv_store.clone(),
                         self.event_hub.clone(),
-                    ))?;
-                    return Ok(());
+                    ));
+
+                    if terminate_result.is_err()
+                        && !has_failed.load(std::sync::atomic::Ordering::SeqCst)
+                    {
+                        self.event_hub.send(Event::NodeStatusChanged {
+                            node_handle: self.node_handle.clone(),
+                            status: NodeStatus::Failed,
+                            feature_id: None,
+                        });
+                    }
+
+                    return terminate_result;
                 }
-                std::thread::sleep(Duration::from_millis(100));
+                std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
                 continue;
             }
             let index = sel.ready();
@@ -197,7 +253,8 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                 .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)))?;
             match op {
                 ExecutorOperation::Op { ctx } => {
-                    self.on_op(ctx)?;
+                    let has_failed_clone = has_failed.clone();
+                    self.on_op_with_failure_tracking(ctx, has_failed_clone)?;
                 }
                 ExecutorOperation::Terminate { ctx: _ctx } => {
                     is_terminated[index] = true;
@@ -211,7 +268,11 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         Cow::Owned(self.node_handles[index].to_string())
     }
 
-    fn on_op(&mut self, ctx: ExecutorContext) -> Result<(), ExecutionError> {
+    fn on_op_with_failure_tracking(
+        &mut self,
+        ctx: ExecutorContext,
+        has_failed: Arc<std::sync::atomic::AtomicBool>,
+    ) -> Result<(), ExecutionError> {
         let channel_manager = Arc::clone(&self.channel_manager);
         let processor = Arc::clone(&self.processor);
 
@@ -228,22 +289,30 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                 event_hub,
                 channel_manager,
                 processor,
+                has_failed,
             );
             counter.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
         });
         Ok(())
     }
 
+    fn on_op(&mut self, ctx: ExecutorContext) -> Result<(), ExecutionError> {
+        let has_failed = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        self.on_op_with_failure_tracking(ctx, has_failed)
+    }
+
     fn on_terminate(&mut self, ctx: NodeContext) -> Result<(), ExecutionError> {
         let channel_manager = Arc::clone(&self.channel_manager);
-        let mut channel_manager_guard = channel_manager.write();
+        let channel_manager_guard = channel_manager.read();
         let processor = Arc::clone(&self.processor);
-        let channel_manager: &mut ChannelManager = &mut channel_manager_guard;
+        let channel_manager: &ProcessorChannelForwarder = &channel_manager_guard;
         let now = time::Instant::now();
-        processor
+
+        let result = processor
             .write()
             .finish(ctx.clone(), channel_manager)
-            .map_err(|e| ExecutionError::CannotSendToChannel(format!("{:?}", e)))?;
+            .map_err(|e| ExecutionError::CannotSendToChannel(format!("{:?}", e)));
+
         let span = self.span.clone();
         self.event_hub.info_log_with_node_handle(
             Some(span),
@@ -254,7 +323,14 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                 now.elapsed()
             ),
         );
-        channel_manager.send_terminate(ctx)
+
+        let terminate_result = channel_manager.send_terminate(ctx);
+
+        if result.is_err() {
+            result
+        } else {
+            terminate_result
+        }
     }
 }
 
@@ -263,18 +339,20 @@ fn process(
     node_handle: NodeHandle,
     span: Span,
     event_hub: EventHub,
-    channel_manager: Arc<parking_lot::RwLock<ChannelManager>>,
+    channel_manager: Arc<parking_lot::RwLock<ProcessorChannelForwarder>>,
     processor: Arc<parking_lot::RwLock<Box<dyn Processor>>>,
+    has_failed: Arc<std::sync::atomic::AtomicBool>,
 ) {
     let feature_id = ctx.feature.id;
-    let mut channel_manager_guard = channel_manager.write();
+    let channel_manager_guard = channel_manager.read();
     let mut processor_guard = processor.write();
-    let channel_manager: &mut ChannelManager = &mut channel_manager_guard;
+    let channel_manager: &ProcessorChannelForwarder = &channel_manager_guard;
     let processor: &mut Box<dyn Processor> = &mut processor_guard;
     let now = time::Instant::now();
     let result = processor.process(ctx, channel_manager);
     let elapsed = now.elapsed();
     let name = processor.name();
+
     if elapsed >= *SLOW_ACTION_THRESHOLD {
         event_hub.info_log_with_node_handle(
             Some(span.clone()),
@@ -288,7 +366,10 @@ fn process(
             ),
         );
     }
+
     if let Err(e) = result {
+        has_failed.store(true, std::sync::atomic::Ordering::SeqCst);
+
         event_hub.error_log_with_node_handle(
             Some(span.clone()),
             node_handle.clone(),
@@ -300,6 +381,7 @@ fn process(
                 e,
             ),
         );
+
         event_hub.send(Event::ProcessorFailed {
             node: node_handle.clone(),
             name: name.to_string(),

@@ -3,19 +3,23 @@ use reearth_flow_geometry::types::coordnum::CoordNum;
 use reearth_flow_geometry::types::geometry::{Geometry, Geometry2D, Geometry3D};
 use reearth_flow_geometry::types::point::Point;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use reearth_flow_types::{CityGmlGeometry, GeometryValue};
 
 use num_traits::NumCast;
-use serde_json::Value;
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+use serde_json::{Number, Value};
 use std::collections::HashMap;
 use std::fmt::Debug;
+
+use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone)]
 pub struct Bounds {
@@ -29,27 +33,27 @@ pub struct Bounds {
 
 impl Bounds {
     fn min_x_value(&self) -> AttributeValue {
-        AttributeValue::String(self.min_x.to_string())
+        AttributeValue::Number(Number::from_f64(self.min_x).unwrap_or_else(|| Number::from(0)))
     }
     fn max_x_value(&self) -> AttributeValue {
-        AttributeValue::String(self.max_x.to_string())
+        AttributeValue::Number(Number::from_f64(self.max_x).unwrap_or_else(|| Number::from(0)))
     }
     fn min_y_value(&self) -> AttributeValue {
-        AttributeValue::String(self.min_y.to_string())
+        AttributeValue::Number(Number::from_f64(self.min_y).unwrap_or_else(|| Number::from(0)))
     }
     fn max_y_value(&self) -> AttributeValue {
-        AttributeValue::String(self.max_y.to_string())
+        AttributeValue::Number(Number::from_f64(self.max_y).unwrap_or_else(|| Number::from(0)))
     }
     fn min_z_value(&self) -> AttributeValue {
-        AttributeValue::String(self.min_z.to_string())
+        AttributeValue::Number(Number::from_f64(self.min_z).unwrap_or_else(|| Number::from(0)))
     }
     fn max_z_value(&self) -> AttributeValue {
-        AttributeValue::String(self.max_z.to_string())
+        AttributeValue::Number(Number::from_f64(self.max_z).unwrap_or_else(|| Number::from(0)))
     }
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct BoundsExtractorFactory;
+pub(super) struct BoundsExtractorFactory;
 
 impl ProcessorFactory for BoundsExtractorFactory {
     fn name(&self) -> &str {
@@ -81,21 +85,53 @@ impl ProcessorFactory for BoundsExtractorFactory {
         _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
-        _with: Option<HashMap<String, Value>>,
+        with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let process = BoundsExtractor {};
+        let params: BoundsExtractorParam = if let Some(with) = with {
+            let value: Value = serde_json::to_value(with).map_err(|e| {
+                GeometryProcessorError::BoundsExtractorFactory(format!(
+                    "Failed to serialize `with` parameter: {}",
+                    e
+                ))
+            })?;
+            serde_json::from_value(value).map_err(|e| {
+                GeometryProcessorError::BoundsExtractorFactory(format!(
+                    "Failed to deserialize `with` parameter: {}",
+                    e
+                ))
+            })?
+        } else {
+            return Err(GeometryProcessorError::BoundsExtractorFactory(
+                "Missing required parameter `with`".to_string(),
+            )
+            .into());
+        };
+        let process = BoundsExtractor { params };
         Ok(Box::new(process))
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct BoundsExtractorParam {
+    xmin: Option<Attribute>,
+    xmax: Option<Attribute>,
+    ymin: Option<Attribute>,
+    ymax: Option<Attribute>,
+    zmin: Option<Attribute>,
+    zmax: Option<Attribute>,
+}
+
 #[derive(Debug, Clone)]
-pub struct BoundsExtractor {}
+pub struct BoundsExtractor {
+    params: BoundsExtractorParam,
+}
 
 impl Processor for BoundsExtractor {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = feature.geometry.clone();
@@ -109,12 +145,30 @@ impl Processor for BoundsExtractor {
         if let Some(bounds) = bounds {
             let mut attributes = feature.attributes.clone();
 
-            attributes.insert(Attribute::new("xmin"), bounds.min_x_value());
-            attributes.insert(Attribute::new("xmax"), bounds.max_x_value());
-            attributes.insert(Attribute::new("ymin"), bounds.min_y_value());
-            attributes.insert(Attribute::new("ymax"), bounds.max_y_value());
-            attributes.insert(Attribute::new("zmin"), bounds.min_z_value());
-            attributes.insert(Attribute::new("zmax"), bounds.max_z_value());
+            attributes.insert(
+                self.params.xmin.clone().unwrap_or(Attribute::new("xmin")),
+                bounds.min_x_value(),
+            );
+            attributes.insert(
+                self.params.xmax.clone().unwrap_or(Attribute::new("xmax")),
+                bounds.max_x_value(),
+            );
+            attributes.insert(
+                self.params.ymin.clone().unwrap_or(Attribute::new("ymin")),
+                bounds.min_y_value(),
+            );
+            attributes.insert(
+                self.params.ymax.clone().unwrap_or(Attribute::new("ymax")),
+                bounds.max_y_value(),
+            );
+            attributes.insert(
+                self.params.zmin.clone().unwrap_or(Attribute::new("zmin")),
+                bounds.min_z_value(),
+            );
+            attributes.insert(
+                self.params.zmax.clone().unwrap_or(Attribute::new("zmax")),
+                bounds.max_z_value(),
+            );
 
             let feature = Feature {
                 attributes,
@@ -127,11 +181,7 @@ impl Processor for BoundsExtractor {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

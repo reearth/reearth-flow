@@ -6,7 +6,6 @@ with:
   cityGmlPath:
   codelists:
   schemas:
-  cityCode:
   targetPackages:
     - bldg
   outputPath:
@@ -25,6 +24,7 @@ graphs:
               #{
                 cityGmlPath: env.get("cityGmlPath"),
                 cityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
+                baseCityCode: env.get("cityCode") ?? file::extract_filename(env.get("cityGmlPath"))[0..5],
                 codelists: env.get("codelists"),
                 schemas: env.get("schemas"),
               },
@@ -38,11 +38,54 @@ graphs:
       - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
         name: FeatureReaderByCityGml
         type: action
-        action: FeatureReader
+        action: FeatureCityGmlReader
         with:
           format: citygml
           dataset: |
             env.get("__value")["path"]
+
+      - id: 33e32a91-5ade-4265-8665-b061f552839c
+        name: AttributeManagerForCityCodeAndCityName
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: cityCode
+              method: convert
+              value: |
+                let attributes = env.get("__value").cityGmlAttributes;
+                let buildingIdAttributes = attributes["uro:BuildingIDAttribute"] ?? {};
+                buildingIdAttributes["uro:city_code"] ?? env.get("__value").cityCode
+
+            - attribute: cityName
+              method: convert
+              value: |
+                let attributes = env.get("__value").cityGmlAttributes;
+                let buildingIdAttributes = attributes["uro:BuildingIDAttribute"] ?? {};
+                buildingIdAttributes["uro:city"] ?? env.get("__value").cityName
+
+
+      - id: ae9c558d-ce05-4b40-ae04-a4477d96db5a
+        name: AttributeConversionTable
+        type: action
+        action: AttributeConversionTable
+        with:
+          format: csv
+          inline: !include ../../../../config/admin_ward_list.csv.txt
+          rules:
+            - featureFroms: ["cityCode"]
+              featureTo: "cityNameEn"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "ward_name_en"
+
+      - id: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
+        name: FeatureSorter
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - path
+          order: ascending
 
       - id: dc498449-5478-4bff-abaa-59f2d160925f
         name: PLATEAU4.MaxLodExtractor
@@ -80,7 +123,7 @@ graphs:
           mappers:
           - attribute: code
             expr: |
-              env.get("__value").file[0..6]
+              env.get("__value").file.split("_")[0]
           - attribute: type
             expr: |
               env.get("__value")["type"].split(":")[0]
@@ -105,6 +148,18 @@ graphs:
         type: action
         action: PLATEAU4.AttributeFlattener
 
+      - id: dc85a21b-4356-4a29-a862-270029071234
+        name: BoundsExtractor
+        type: action
+        action: BoundsExtractor
+        with:
+          xmin: _xmin
+          ymin: _ymin
+          xmax: _xmax
+          ymax: _ymax
+          zmin: _zmin
+          zmax: _zmax
+
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         name: VerticalReprojector
         type: action
@@ -122,6 +177,18 @@ graphs:
               method: create
               value: |
                 file::extract_filename_without_ext(env.get("__value")["path"]).split("_")[0]
+            - attribute: _lod
+              method: create
+              value: |
+                env.get("__lod")
+            - attribute: _x
+              method: create
+              value: |
+                 (env.get("__value")["_xmin"] + env.get("__value")["_xmax"]) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                 (env.get("__value")["_ymin"] + env.get("__value")["_ymax"]) * 0.5
             - attribute: type
               method: rename
               value: "feature_type"
@@ -182,9 +249,17 @@ graphs:
           maxZoom: 18
           attachTexture: false
           output: |
-            file::join_path(env.get("outputPath"), "bldg_lod1")
+            if env.get("__value").baseCityCode == env.get("__value").city_code {
+              file::join_path(env.get("outputPath"), "bldg_lod1")
+            } else {
+              file::join_path(env.get("outputPath"), "bldg_lod1_" + env.get("__value").city_code)
+            }
           compressOutput: |
-            file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod1.zip")
+            if env.get("__value").baseCityCode == env.get("__value").city_code {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod1.zip")
+            } else {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod1.zip")
+            }
 
       - id: a61799d5-176e-4fb9-aa64-5d350adf0bb8
         name: cesium3DTilesWriterByLod2
@@ -195,9 +270,17 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output: |
-            file::join_path(env.get("outputPath"), "bldg_lod2")
+            if env.get("__value").baseCityCode == env.get("__value").city_code {
+              file::join_path(env.get("outputPath"), "bldg_lod2")
+            } else {
+              file::join_path(env.get("outputPath"), "bldg_lod2_" + env.get("__value").city_code)
+            }
           compressOutput: |
-            file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod2.zip")
+            if env.get("__value").baseCityCode == env.get("__value").city_code {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod2.zip")
+            } else {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod2.zip")
+            }
 
       - id: fc4c3817-6efe-4d6e-8e82-ebd84d5e6e19
         name: cesium3DTilesWriterByLod2NoTexture
@@ -208,9 +291,17 @@ graphs:
           maxZoom: 18
           attachTexture: false
           output: |
-            file::join_path(env.get("outputPath"), "bldg_lod2_no_texture")
+            if env.get("__value").baseCityCode == env.get("__value").city_code {
+              file::join_path(env.get("outputPath"), "bldg_lod2_no_texture")
+            } else {
+              file::join_path(env.get("outputPath"), "bldg_lod2_no_texture_" + env.get("__value").city_code)
+            }
           compressOutput: |
-            file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod2_no_texture.zip")
+            if env.get("__value").baseCityCode == env.get("__value").city_code {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod2_no_texture.zip")
+            } else {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod2_no_texture.zip")
+            }
 
       - id: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
         name: cesium3DTilesWriterByLod3
@@ -221,9 +312,17 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output: |
-            file::join_path(env.get("outputPath"), "bldg_lod3")
+            if env.get("__value").baseCityCode == env.get("__value").city_code {
+              file::join_path(env.get("outputPath"), "bldg_lod3")
+            } else {
+              file::join_path(env.get("outputPath"), "bldg_lod3_" + env.get("__value").city_code)
+            }
           compressOutput: |
-            file::join_path(env.get("outputPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod3.zip")
+            if env.get("__value").baseCityCode == env.get("__value").city_code {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod3.zip")
+            } else {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod3.zip")
+            }
 
       - id: 990ff798-168a-496e-a20a-b428de6a9ec0
         name: cesium3DTilesWriterByLod3NoTexture
@@ -234,9 +333,17 @@ graphs:
           maxZoom: 18
           attachTexture: false
           output: |
-            file::join_path(env.get("outputPath"), "bldg_lod3_no_texture")
+            if env.get("__value").baseCityCode == env.get("__value").city_code {
+              file::join_path(env.get("outputPath"), "bldg_lod3_no_texture")
+            } else {
+              file::join_path(env.get("outputPath"), "bldg_lod3_no_texture_" + env.get("__value").city_code)
+            }
           compressOutput: |
-            file::join_path(env.get("outputPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod3_no_texture.zip")
+            if env.get("__value").baseCityCode == env.get("__value").city_code {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod3_no_texture.zip")
+            } else {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod3_no_texture.zip")
+            }
 
       - id: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
         name: cesium3DTilesWriterByLod4
@@ -247,9 +354,17 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output: |
-             file::join_path(env.get("outputPath"), "bldg_lod4")
+            if env.get("__value").baseCityCode == env.get("__value").city_code {
+              file::join_path(env.get("outputPath"), "bldg_lod4")
+            } else {
+              file::join_path(env.get("outputPath"), "bldg_lod4_" + env.get("__value").city_code)
+            }
           compressOutput: |
-            file::join_path(env.get("outputPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod4.zip")
+            if env.get("__value").baseCityCode == env.get("__value").city_code {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod4.zip")
+            } else {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod4.zip")
+            }
 
       - id: 3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638
         name: cesium3DTilesWriterByLod4NoTexture
@@ -260,9 +375,17 @@ graphs:
           maxZoom: 18
           attachTexture: false
           output: |
-            file::join_path(env.get("outputPath"), "bldg_lod4_no_texture")
+            if env.get("__value").baseCityCode == env.get("__value").city_code {
+              file::join_path(env.get("outputPath"), "bldg_lod4_no_texture")
+            } else {
+              file::join_path(env.get("outputPath"), "bldg_lod4_no_texture_" + env.get("__value").city_code)
+            }
           compressOutput: |
-            file::join_path(env.get("outputPath"), file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod4_no_texture.zip")
+            if env.get("__value").baseCityCode == env.get("__value").city_code {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_lod4_no_texture.zip")
+            } else {
+              file::join_path(env.get("outputPath"), "" + file::extract_filename_without_ext(env.get("cityGmlPath")) + "_3dtiles_" + env.get("__value").city_code + "_" + env.get("__value").cityNameEn + "_lod4_no_texture.zip")
+            }
 
     edges:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
@@ -277,6 +400,21 @@ graphs:
         toPort: default
       - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        to: 33e32a91-5ade-4265-8665-b061f552839c
+        fromPort: default
+        toPort: default
+      - id: 29479f80-4753-400b-9e05-32c69a9a5037
+        from: 33e32a91-5ade-4265-8665-b061f552839c
+        to: ae9c558d-ce05-4b40-ae04-a4477d96db5a
+        fromPort: default
+        toPort: default
+      - id: f79ef31d-45f5-4aa5-ade2-620ab74bb35a
+        from: ae9c558d-ce05-4b40-ae04-a4477d96db5a
+        to: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
+        fromPort: default
+        toPort: default
+      - id: f7c94aaf-e43c-4779-893c-e5b23c0cf643
+        from: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
         to: dc498449-5478-4bff-abaa-59f2d160925f
         fromPort: default
         toPort: default
@@ -295,13 +433,18 @@ graphs:
         to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
         fromPort: default
         toPort: default
-      - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
-        from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+      - id: 60ee038e-db4c-4c70-8c0a-a9cbfba726d0
+        from: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
         to: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         fromPort: default
         toPort: default
-      - id: bfeb12b1-c8d5-4d13-928d-bf2b01672af9
+      - id: eeb85110-2cb8-4196-bb94-6d44c0395fb6
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: dc85a21b-4356-4a29-a862-270029071234
+        fromPort: default
+        toPort: default
+      - id: bfeb12b1-c8d5-4d13-928d-bf2b01672af9
+        from: dc85a21b-4356-4a29-a862-270029071234
         to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         fromPort: default
         toPort: default
@@ -350,3 +493,38 @@ graphs:
         to: 3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638
         fromPort: up_to_lod4
         toPort: default
+      - id: 14a2d089-6d1f-4014-bb71-ff976c8e388e
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: 41d69f1f-2a4d-4bc1-a5d0-175698273571
+        fromPort: schema
+        toPort: schema
+      - id: e327fb17-afa9-418d-8f71-ca2589dd5352
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: a61799d5-176e-4fb9-aa64-5d350adf0bb8
+        fromPort: schema
+        toPort: schema
+      - id: 62f229c1-9acb-4057-bc7f-137f5f3265e1
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: fc4c3817-6efe-4d6e-8e82-ebd84d5e6e19
+        fromPort: schema
+        toPort: schema
+      - id: 16173605-dccf-48bd-9f94-5b3792809d8a
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
+        fromPort: schema
+        toPort: schema
+      - id: b3438a6e-badd-4a08-9351-f35372593c16
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: 990ff798-168a-496e-a20a-b428de6a9ec0
+        fromPort: schema
+        toPort: schema
+      - id: b559f3df-c4cb-4b96-95d6-9e3561add2b7
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
+        fromPort: schema
+        toPort: schema
+      - id: 983d9b5f-3501-4440-9a65-12110cde81dd
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: 3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638
+        fromPort: schema
+        toPort: schema

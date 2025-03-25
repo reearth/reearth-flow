@@ -1,9 +1,9 @@
 import * as Y from "yjs";
 
 import { Workflow } from "@flow/types";
-import type { Edge, Node, NodeData } from "@flow/types";
+import type { Edge, Node, NodeData, NodeType } from "@flow/types";
 
-import type { YWorkflow, YEdge, YNode } from "../types";
+import type { YWorkflow, YEdge, YNode, YNodesMap, YEdgesMap } from "../types";
 
 export const reassembleNode = (yNode: YNode): Node => {
   const id = yNode.get("id")?.toString() as string;
@@ -11,7 +11,7 @@ export const reassembleNode = (yNode: YNode): Node => {
     x: (yNode.get("position") as Y.Map<any>).get("x"),
     y: (yNode.get("position") as Y.Map<any>).get("y"),
   };
-  const type = yNode.get("type")?.toString() as string;
+  const type = yNode.get("type")?.toString() as NodeType;
   const dragging = yNode.get("dragging") as boolean;
   const measured = {
     width: (yNode.get("measured") as Y.Map<any>)?.get("width"),
@@ -24,6 +24,7 @@ export const reassembleNode = (yNode: YNode): Node => {
       ?.get("officialName")
       .toString(),
   };
+  // TODO: remove data.customName when subworkflow's renaming is re-implemented
   if ((yNode.get("data") as Y.Map<any>)?.get("customName") !== undefined) {
     data.customName = (yNode.get("data") as Y.Map<any>)
       ?.get("customName")
@@ -39,14 +40,20 @@ export const reassembleNode = (yNode: YNode): Node => {
       (yNode.get("data") as Y.Map<any>)?.get("outputs").toArray() as Y.Text[]
     ).map((input) => input.toString());
   }
-  // NOTE: Status might be better not to be persisted
-  if ((yNode.get("data") as Y.Map<any>)?.get("status") !== undefined) {
-    data.status = (yNode.get("data") as Y.Map<any>)?.get("status").toString();
-  }
   if ((yNode.get("data") as Y.Map<any>)?.get("params") !== undefined) {
     data.params = (yNode.get("data") as Y.Map<any>)?.get("params");
   }
+  if ((yNode.get("data") as Y.Map<any>)?.get("customizations") !== undefined) {
+    data.customizations = (yNode.get("data") as Y.Map<any>)?.get(
+      "customizations",
+    );
+  }
   // Subworkflow specific
+  if ((yNode.get("data") as Y.Map<any>)?.get("subworkflowId") !== undefined) {
+    data.subworkflowId = (yNode.get("data") as Y.Map<any>)
+      ?.get("subworkflowId")
+      .toString();
+  }
   if ((yNode.get("data") as Y.Map<any>)?.get("pseudoInputs") !== undefined) {
     data.pseudoInputs = (yNode.get("data") as Y.Map<any>)
       ?.get("pseudoInputs")
@@ -64,20 +71,6 @@ export const reassembleNode = (yNode: YNode): Node => {
         nodeId: input.get("nodeId").toString(),
         portName: input.get("portName").toString(),
       }));
-  }
-  // Batch & note specific
-  if ((yNode.get("data") as Y.Map<any>)?.get("content") !== undefined) {
-    data.content = (yNode.get("data") as Y.Map<any>)?.get("content").toString();
-  }
-  if ((yNode.get("data") as Y.Map<any>)?.get("backgroundColor") !== undefined) {
-    data.backgroundColor = (yNode.get("data") as Y.Map<any>)
-      ?.get("backgroundColor")
-      .toString();
-  }
-  if ((yNode.get("data") as Y.Map<any>)?.get("textColor") !== undefined) {
-    data.textColor = (yNode.get("data") as Y.Map<any>)
-      ?.get("textColor")
-      .toString();
   }
 
   const style = {
@@ -129,16 +122,16 @@ export const rebuildWorkflow = (yWorkflow: YWorkflow): Workflow => {
       workflow.id = value.toString();
     } else if (key === "name" && value instanceof Y.Text) {
       workflow.name = value.toString();
-    } else if (key === "nodes" && value instanceof Y.Array) {
-      // Convert nodes to plain objects
-      workflow.nodes = value
-        .toArray()
-        .map((yNode) => reassembleNode(yNode as YNode));
-    } else if (key === "edges" && value instanceof Y.Array) {
-      // Convert edges to plain objects
-      workflow.edges = value
-        .toArray()
-        .map((yEdge) => reassembleEdge(yEdge as YEdge));
+    } else if (key === "nodes" && value instanceof Y.Map) {
+      // Convert map of nodes to array of plain objects
+      workflow.nodes = Array.from(value as YNodesMap).map(([, yNode]) =>
+        reassembleNode(yNode as YNode),
+      );
+    } else if (key === "edges" && value instanceof Y.Map) {
+      // Convert map of edges to array of plain objects
+      workflow.edges = Array.from(value as YEdgesMap).map(([, yEdge]) =>
+        reassembleEdge(yEdge as YEdge),
+      );
     } else if (key === "createdAt" && value instanceof Y.Text) {
       workflow.createdAt = value.toString();
     } else if (key === "updatedAt" && value instanceof Y.Text) {

@@ -5,13 +5,14 @@ import {
   Button,
   ButtonWithTooltip,
   FlowLogo,
-  Loading,
+  LoadingSkeleton,
   DataTable as Table,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import { TRIGGERS_FETCH_RATE } from "@flow/lib/gql/trigger/useQueries";
 import { useT } from "@flow/lib/i18n";
 import { Trigger } from "@flow/types";
+import { formatTimestamp } from "@flow/utils";
 
 import {
   TriggerAddDialog,
@@ -57,6 +58,7 @@ const TriggerManager: React.FC = () => {
     {
       accessorKey: "updatedAt",
       header: t("Updated At"),
+      cell: ({ getValue }) => formatTimestamp(getValue<string>()),
     },
     {
       accessorKey: "quickActions",
@@ -98,7 +100,6 @@ const TriggerManager: React.FC = () => {
               <p className="text-lg dark:font-extralight">{t("Triggers")}</p>
               <Button
                 className="flex gap-2"
-                variant="outline"
                 onClick={() => setOpenTriggerAddDialog(true)}>
                 <Plus weight="thin" />
                 <p className="text-xs dark:font-light">{t("New Trigger")}</p>
@@ -106,7 +107,7 @@ const TriggerManager: React.FC = () => {
             </div>
 
             {isFetching ? (
-              <Loading />
+              <LoadingSkeleton />
             ) : triggers && triggers.length > 0 ? (
               <Table
                 columns={columns}

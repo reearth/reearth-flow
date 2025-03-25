@@ -8,6 +8,7 @@ import { Workflow } from "@flow/types";
 import WorkflowTab from "./WorkflowTab";
 
 type Props = {
+  className?: string;
   currentWorkflowId: string;
   openWorkflows: {
     id: string;
@@ -15,10 +16,11 @@ type Props = {
   }[];
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
-  onWorkflowRename: (id: string, name: string) => void;
+  onWorkflowRename?: (id: string, name: string) => void;
 };
 
 const WorkflowTabs: React.FC<Props> = ({
+  className,
   currentWorkflowId,
   openWorkflows,
   onWorkflowClose,
@@ -42,10 +44,12 @@ const WorkflowTabs: React.FC<Props> = ({
       onWorkflowClose(workflowId);
     };
 
-  const handleDoubleClick = (workflowId: string, name: string | undefined) => {
-    setEditId(workflowId);
-    setName(name);
-  };
+  const handleDoubleClick = onWorkflowRename
+    ? (workflowId: string, name: string | undefined) => {
+        setEditId(workflowId);
+        setName(name);
+      }
+    : undefined;
 
   const handleSubmit = () => {
     if (!name || !editId) {
@@ -57,7 +61,7 @@ const WorkflowTabs: React.FC<Props> = ({
     if (!trimmedName || trimmedName.length < 1) return;
 
     try {
-      onWorkflowRename(editId, trimmedName);
+      onWorkflowRename?.(editId, trimmedName);
     } catch {
       toast({
         title: t("Unable to rename workflow"),
@@ -70,7 +74,7 @@ const WorkflowTabs: React.FC<Props> = ({
   };
 
   return (
-    <div className="max-w-[calc(100vw-360px)]">
+    <div className={`max-w-[calc(100vw-360px)] ${className}`}>
       <div className="flex h-[29px] flex-1 items-center gap-1">
         <div
           className={`group flex h-4/5 w-[135px] shrink-0 cursor-pointer items-center justify-center rounded px-[6px]  ${currentWorkflowId === mainWorkflow?.id ? "bg-accent" : "bg-card hover:bg-popover"}`}

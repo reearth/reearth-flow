@@ -10,10 +10,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::mpsc::Sender;
 
-use crate::channels::ProcessorChannelForwarder;
 use crate::errors::{BoxedError, DeserializationError};
 use crate::event::EventHub;
 use crate::executor_operation::{ExecutorContext, NodeContext};
+use crate::forwarder::ProcessorChannelForwarder;
 
 pub static DEFAULT_PORT: Lazy<Port> = Lazy::new(|| Port::new("default"));
 pub static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
@@ -124,6 +124,14 @@ pub enum NodeKind {
     Source(Box<dyn SourceFactory>),
     Processor(Box<dyn ProcessorFactory>),
     Sink(Box<dyn SinkFactory>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NodeStatus {
+    Starting,
+    Processing,
+    Completed,
+    Failed,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -321,13 +329,9 @@ pub trait Processor: Send + Sync + Debug + ProcessorClone {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError>;
-    fn finish(
-        &self,
-        ctx: NodeContext,
-        fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError>;
+    fn finish(&self, ctx: NodeContext, fw: &ProcessorChannelForwarder) -> Result<(), BoxedError>;
 
     fn name(&self) -> &str;
 }
@@ -445,7 +449,7 @@ impl Processor for InputRouter {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = ctx.feature;
         fw.send(ExecutorContext::new(
@@ -459,11 +463,7 @@ impl Processor for InputRouter {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -527,7 +527,7 @@ impl Processor for OutputRouter {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = ctx.feature;
         fw.send(ExecutorContext::new(
@@ -541,11 +541,7 @@ impl Processor for OutputRouter {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

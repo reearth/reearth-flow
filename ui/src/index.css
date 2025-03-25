@@ -47,13 +47,19 @@
     --ring: 24, 24, 27;
     --radius: 0.5rem;
     /* Custom Flow colors */
-    --logo: 69, 10, 10;
+    --logo: 0, 163, 64;
     /* Workflow colors */
     --node-entrance: 162, 28, 175;
     --node-exit: 126, 34, 206;
     --node-reader: 22, 78, 99;
     --node-transformer: 99, 22, 40;
-    --node-writer: 99, 81, 22;
+    --node-writer: 72, 62, 28;
+    --node-subworkflow: 111, 32, 119;
+    /* Selected Node colors */
+    --node-reader-selected: 25, 94, 117;
+    --node-transformer-selected: 117, 34, 54;
+    --node-writer-selected: 102, 84, 32;
+    --node-subworkflow-selected: 162, 28, 175;
     /* success green */
     --success: 34, 197, 94;
   }
@@ -90,8 +96,27 @@
   }
 }
 
+/* Animation for active node - shadow */
+@keyframes cycleActiveColorsShadow {
+  0% {
+    box-shadow: 0 0 5px 2px rgba(var(--primary), 1); /* All sides */
+  }
+  25% {
+    box-shadow: 0 0 5px 2px rgba(var(--success), 1); /* All sides */
+  }
+  50% {
+    box-shadow: 0 0 5px 2px rgba(var(--warning), 1); /* All sides */
+  }
+  75% {
+    box-shadow: 0 0 5px 2px rgba(var(--destructive), 1); /* All sides */
+  }
+  100% {
+    box-shadow: 0 0 5px 2px rgba(var(--primary), 1); /* All sides */
+  }
+}
+
 /* Animation for active node */
-@keyframes cycleColors {
+@keyframes cycleActiveColors {
   0% {
     @apply bg-primary;
   }
@@ -109,6 +134,25 @@
   }
 }
 
+/* Animation for active node - border */
+@keyframes cycleActiveColorsBorder {
+  0% {
+    @apply border-primary;
+  }
+  25% {
+    @apply border-success;
+  }
+  50% {
+    @apply border-warning;
+  }
+  75% {
+    @apply border-destructive;
+  }
+  100% {
+    @apply border-primary;
+  }
+}
+
 @keyframes pulse {
   0%,
   100% {
@@ -117,34 +161,63 @@
   50% {
     transform: scale(1.05);
   }
+}
+
+.pulse {
+  animation: pulse 1.5s infinite;
 }
 
 .active-node-status {
-  animation:
-    cycleColors 3s infinite,
-    pulse 1.5s infinite;
+  animation: cycleActiveColors 3s infinite linear;
+  /* pulse 1.5s infinite; */
 }
 
-/* Animation for queued node */
+.active-node-status-shadow {
+  animation: cycleActiveColorsShadow 3s infinite linear;
+  /* pulse 1.5s infinite; */
+}
+
+.active-node-status-border {
+  animation: cycleActiveColorsBorder 3s infinite linear;
+  /* pulse 1.5s infinite; */
+}
+
+/* Animation for queued node - shadow */
+@keyframes cycleColorsShadow {
+  0% {
+    box-shadow: 0 0 5px 2px rgba(var(--foreground), 1); /* All sides */
+  }
+  50% {
+    box-shadow: 0 0 5px 2px rgba(var(--primary), 1); /* All sides */
+  }
+  100% {
+    box-shadow: 0 0 5px 2px rgba(var(--foreground), 1); /* All sides */
+  }
+}
+
+/* Animation for queued node - */
 @keyframes cycleColors {
   0% {
-    @apply bg-primary;
-  }
-  50% {
     @apply bg-foreground;
   }
-  100% {
+  50% {
     @apply bg-primary;
+  }
+  100% {
+    @apply bg-foreground;
   }
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(1);
+/* Animation for queued node -border */
+@keyframes cycleColorsBorder {
+  0% {
+    @apply border-foreground;
   }
   50% {
-    transform: scale(1.05);
+    @apply border-primary;
+  }
+  100% {
+    @apply border-foreground;
   }
 }
 
@@ -154,10 +227,19 @@
     pulse 1.5s infinite;
 }
 
+.queued-node-status-shadow {
+  animation: cycleColorsShadow 3s infinite linear;
+}
+
+.queued-node-status-border {
+  animation: cycleColorsBorder 3s infinite linear;
+}
+
 /* Animation for queued node END */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

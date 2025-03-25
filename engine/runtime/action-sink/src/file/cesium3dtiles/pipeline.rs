@@ -45,6 +45,7 @@ use crate::file::mvt::tileid::TileIdMethod;
 
 pub(super) fn geometry_slicing_stage(
     upstream: &[Feature],
+    schema: &nusamai_citygml::schema::Schema,
     tile_id_conv: TileIdMethod,
     sender_sliced: mpsc::SyncSender<(u64, String, Vec<u8>)>,
     min_zoom: u8,
@@ -52,10 +53,10 @@ pub(super) fn geometry_slicing_stage(
     attach_texture: bool,
 ) -> crate::errors::Result<()> {
     let bincode_config = bincode::config::standard();
-
     upstream.iter().par_bridge().try_for_each(|parcel| {
         slice_to_tiles(
             parcel,
+            schema,
             min_zoom,
             max_zoom,
             attach_texture,

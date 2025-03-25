@@ -1,5 +1,6 @@
 import { ApiResponse } from "./api";
 import { Deployment } from "./deployment";
+import { Job } from "./job";
 import { Workflow } from "./workflow";
 
 export type Project = {
@@ -10,7 +11,13 @@ export type Project = {
   description: string;
   workspaceId: string;
   workflows?: Workflow[];
+  sharedToken?: string;
   deployment?: Deployment;
+};
+
+export type ProjectToImport = {
+  name: string;
+  description: string;
 };
 
 export type GetWorkspaceProjects = {
@@ -39,6 +46,14 @@ export type DeleteProject = {
 } & ApiResponse;
 
 export type RunProject = {
+  job?: Job;
+} & ApiResponse;
+
+export type ShareProject = {
   projectId?: string;
-  started?: boolean;
+  sharingUrl?: string;
+} & ApiResponse;
+
+export type UnshareProject = {
+  projectId?: string;
 } & ApiResponse;

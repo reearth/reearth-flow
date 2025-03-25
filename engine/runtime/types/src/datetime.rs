@@ -54,25 +54,9 @@ impl TryFrom<String> for DateTime {
 impl TryFrom<&str> for DateTime {
     type Error = ();
     fn try_from(s: &str) -> Result<Self, Self::Error> {
-        if let Ok(v) =
-            chrono::DateTime::parse_from_rfc3339(s).map(|dt| Self(dt.with_timezone(&Utc)))
-        {
-            Ok(v)
-        } else if let Ok(v) = chrono::DateTime::parse_from_str(s, "%Y/%m/%d %H:%M:%S")
-            .map(|dt| Self(dt.with_timezone(&Utc)))
-        {
-            Ok(v)
-        } else if let Ok(v) = chrono::DateTime::parse_from_str(s, "%Y-%m-%d %H:%M:%S")
-            .map(|dt| Self(dt.with_timezone(&Utc)))
-        {
-            Ok(v)
-        } else if let Ok(v) =
-            chrono::DateTime::parse_from_str(s, "%Y-%m-%d").map(|dt| Self(dt.with_timezone(&Utc)))
-        {
-            Ok(v)
-        } else {
-            Err(())
-        }
+        reearth_flow_common::datetime::try_from(s)
+            .map_err(|_| ())
+            .map(Self)
     }
 }
 

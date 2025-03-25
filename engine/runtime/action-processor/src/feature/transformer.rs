@@ -2,10 +2,10 @@ use std::{collections::HashMap, sync::Arc};
 
 use reearth_flow_eval_expr::engine::Engine;
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
@@ -17,7 +17,7 @@ use serde_json::Value;
 use super::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct FeatureTransformerFactory;
+pub(super) struct FeatureTransformerFactory;
 
 impl ProcessorFactory for FeatureTransformerFactory {
     fn name(&self) -> &str {
@@ -89,20 +89,22 @@ impl ProcessorFactory for FeatureTransformerFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct FeatureTransformer {
+struct FeatureTransformer {
     global_params: Option<HashMap<String, serde_json::Value>>,
     transformers: Vec<CompiledTransform>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct FeatureTransformerParam {
+struct FeatureTransformerParam {
+    /// # Transformers to apply
     transformers: Vec<Transform>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Transform {
+    /// # Expression to transform the feature
     expr: Expr,
 }
 
@@ -115,7 +117,7 @@ impl Processor for FeatureTransformer {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let feature = &ctx.feature;
@@ -132,11 +134,7 @@ impl Processor for FeatureTransformer {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 

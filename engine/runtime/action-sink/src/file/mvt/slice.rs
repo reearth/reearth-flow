@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use flatgeom::{LineString2, MultiLineString2, MultiPolygon2, Polygon2};
+use indexmap::IndexMap;
 use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryType, GeometryValue};
 use serde::{Deserialize, Serialize};
 use tinymvt::webmercator::lnglat_to_web_mercator;
@@ -14,7 +15,7 @@ pub(super) struct SlicedFeature<'a> {
     pub(super) typename: String,
     pub(super) multi_polygons: MultiPolygon2<'a>,
     pub(super) multi_line_strings: MultiLineString2<'a>,
-    pub(super) properties: HashMap<Attribute, AttributeValue>,
+    pub(super) properties: IndexMap<Attribute, AttributeValue>,
 }
 
 #[allow(clippy::too_many_arguments)]

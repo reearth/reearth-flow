@@ -74,19 +74,29 @@ impl reearth_flow_runtime::event::EventHandler for EventHandler {
             reearth_flow_runtime::event::Event::SinkFinished { .. } => {
                 // TODO: Implement this
             }
+            reearth_flow_runtime::event::Event::EdgeCompleted { .. } => {
+                // TODO: Implement this
+            }
             reearth_flow_runtime::event::Event::EdgePassThrough { .. } => {
                 // TODO: Implement this
             }
             reearth_flow_runtime::event::Event::Log { .. } => {
                 // TODO: Implement this
             }
+            reearth_flow_runtime::event::Event::NodeStatusChanged { .. } => {
+                // TODO: Implement this
+            }
         }
     }
 }
 
-#[allow(dead_code)]
 pub(crate) fn execute(workflow: &str) {
-    unsafe { env::set_var("RAYON_NUM_THREADS", "10") };
+    env::set_var(
+        "RAYON_NUM_THREADS",
+        std::cmp::min((num_cpus::get() as f64 * 1.2_f64).floor() as u64, 64)
+            .to_string()
+            .as_str(),
+    );
     setup_logging_and_tracing();
     let job_id = uuid::Uuid::new_v4();
     let action_log_uri = setup_job_directory("engine", "action-log", job_id)

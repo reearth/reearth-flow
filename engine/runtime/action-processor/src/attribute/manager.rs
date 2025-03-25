@@ -1,10 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
-    executor_operation::{ExecutorContext, NodeContext},
+    executor_operation::{Context, ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use rhai::Dynamic;
@@ -18,7 +18,7 @@ use serde_json::Value;
 use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub struct AttributeManagerFactory;
+pub(super) struct AttributeManagerFactory;
 
 impl ProcessorFactory for AttributeManagerFactory {
     fn name(&self) -> &str {
@@ -84,28 +84,32 @@ impl ProcessorFactory for AttributeManagerFactory {
 }
 
 #[derive(Debug, Clone)]
-pub struct AttributeManager {
+struct AttributeManager {
     global_params: Option<HashMap<String, serde_json::Value>>,
     operations: Vec<Operate>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct AttributeManagerParam {
+struct AttributeManagerParam {
+    /// # Operations to perform
     operations: Vec<Operation>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct Operation {
-    pub(super) attribute: String,
-    pub(super) method: Method,
-    pub(super) value: Option<Expr>,
+struct Operation {
+    /// # Attribute name
+    attribute: String,
+    /// # Operation to perform
+    method: Method,
+    /// # Value to use for the operation
+    value: Option<Expr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub(super) enum Method {
+enum Method {
     Convert,
     Create,
     Rename,
@@ -113,7 +117,7 @@ pub(super) enum Method {
 }
 
 #[derive(Debug, Clone)]
-pub(super) enum Operate {
+enum Operate {
     Convert {
         expr: Option<rhai::AST>,
         attribute: String,
@@ -135,9 +139,10 @@ impl Processor for AttributeManager {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = process_feature(
+            ctx.as_context(),
             &ctx.feature,
             &self.operations,
             Arc::clone(&ctx.expr_engine),
@@ -147,11 +152,7 @@ impl Processor for AttributeManager {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -161,6 +162,7 @@ impl Processor for AttributeManager {
 }
 
 fn process_feature(
+    ctx: Context,
     feature: &Feature,
     operations: &[Operate],
     expr_engine: Arc<Engine>,
@@ -182,6 +184,9 @@ fn process_feature(
                         if let Ok(new_value) = new_value.try_into() {
                             result.insert(attribute.clone(), new_value);
                         }
+                    } else if let Err(e) = new_value {
+                        ctx.event_hub
+                            .warn_log(None, format!("convert error with: {:?}", e));
                     }
                 }
             }
@@ -193,6 +198,9 @@ fn process_feature(
                         if let Ok(new_value) = new_value.try_into() {
                             result.insert(attribute.clone(), new_value);
                         }
+                    } else if let Err(e) = new_value {
+                        ctx.event_hub
+                            .warn_log(None, format!("create error with: {:?}", e));
                     }
                 }
             }

@@ -4,10 +4,10 @@ use inflector::cases::camelcase::to_camel_case;
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_runtime::{
-    channels::ProcessorChannelForwarder,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
+    forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Feature, Geometry, GeometryType, GeometryValue};
@@ -131,7 +131,7 @@ impl Processor for GeometryFilter {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        fw: &mut dyn ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         match self.params {
@@ -162,11 +162,7 @@ impl Processor for GeometryFilter {
         Ok(())
     }
 
-    fn finish(
-        &self,
-        _ctx: NodeContext,
-        _fw: &mut dyn ProcessorChannelForwarder,
-    ) -> Result<(), BoxedError> {
+    fn finish(&self, _ctx: NodeContext, _fw: &ProcessorChannelForwarder) -> Result<(), BoxedError> {
         Ok(())
     }
 
@@ -177,7 +173,7 @@ impl Processor for GeometryFilter {
 
 fn filter_multiple_geometry(
     ctx: &ExecutorContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
     feature: &Feature,
     geometry: &Geometry,
 ) {
@@ -222,7 +218,7 @@ fn filter_multiple_geometry(
 
 fn filter_geometry_type(
     ctx: &ExecutorContext,
-    fw: &mut dyn ProcessorChannelForwarder,
+    fw: &ProcessorChannelForwarder,
     feature: &Feature,
     geometry: &Geometry,
 ) {
@@ -265,29 +261,35 @@ fn filter_geometry_type(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::utils::{create_default_execute_context, MockProcessorChannelForwarder};
+    use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+
+    use crate::tests::utils::create_default_execute_context;
 
     use super::*;
 
     #[test]
     fn test_filter_multiple_geometry_null() {
-        let mut fw = MockProcessorChannelForwarder::default();
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
         let feature = Feature::default();
         let geometry = Geometry {
             value: GeometryValue::None,
             ..Default::default()
         };
         let ctx = create_default_execute_context(&feature);
-        filter_multiple_geometry(&ctx, &mut fw, &feature, &geometry);
-        assert_eq!(
-            fw.send_ports.first().cloned(),
-            Some(UNFILTERED_PORT.clone())
-        );
+        filter_multiple_geometry(&ctx, &fw, &feature, &geometry);
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            assert_eq!(
+                noop.send_ports.lock().unwrap().first().cloned(),
+                Some(UNFILTERED_PORT.clone())
+            );
+        }
     }
 
     #[test]
     fn test_filter_multiple_geometry_3d_multipolygon() {
-        let mut fw = MockProcessorChannelForwarder::default();
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
         let feature = Feature {
             geometry: Geometry {
                 value: GeometryValue::FlowGeometry3D(Geometry3D::MultiPolygon(Default::default())),
@@ -296,16 +298,19 @@ mod tests {
             ..Default::default()
         };
         let ctx = create_default_execute_context(&feature);
-        filter_multiple_geometry(&ctx, &mut fw, &feature, &feature.geometry.clone());
-        assert_eq!(
-            fw.send_ports.first().cloned(),
-            Some(GeometryFilterParam::Multiple.output_port())
-        );
+        filter_multiple_geometry(&ctx, &fw, &feature, &feature.geometry.clone());
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            assert_eq!(
+                noop.send_ports.lock().unwrap().first().cloned(),
+                Some(GeometryFilterParam::Multiple.output_port())
+            );
+        }
     }
 
     #[test]
     fn test_filter_multiple_geometry_3d_geometry_collection() {
-        let mut fw = MockProcessorChannelForwarder::default();
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
         let feature = Feature {
             geometry: Geometry {
                 value: GeometryValue::FlowGeometry3D(Geometry3D::GeometryCollection(
@@ -316,16 +321,19 @@ mod tests {
             ..Default::default()
         };
         let ctx = create_default_execute_context(&feature);
-        filter_multiple_geometry(&ctx, &mut fw, &feature, &feature.geometry.clone());
-        assert_eq!(
-            fw.send_ports.first().cloned(),
-            Some(GeometryFilterParam::Multiple.output_port())
-        );
+        filter_multiple_geometry(&ctx, &fw, &feature, &feature.geometry.clone());
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            assert_eq!(
+                noop.send_ports.lock().unwrap().first().cloned(),
+                Some(GeometryFilterParam::Multiple.output_port())
+            );
+        }
     }
 
     #[test]
     fn test_filter_multiple_geometry_3d_other_geometry() {
-        let mut fw = MockProcessorChannelForwarder::default();
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop);
         let feature = Feature {
             geometry: Geometry {
                 value: GeometryValue::FlowGeometry3D(Geometry3D::Point(Default::default())),
@@ -334,11 +342,13 @@ mod tests {
             ..Default::default()
         };
         let ctx = create_default_execute_context(&feature);
-        filter_multiple_geometry(&ctx, &mut fw, &feature, &feature.geometry.clone());
-        assert_eq!(
-            fw.send_ports.first().cloned(),
-            Some(UNFILTERED_PORT.clone())
-        );
+        filter_multiple_geometry(&ctx, &fw, &feature, &feature.geometry.clone());
+        if let ProcessorChannelForwarder::Noop(noop) = fw {
+            assert_eq!(
+                noop.send_ports.lock().unwrap().first().cloned(),
+                Some(UNFILTERED_PORT.clone())
+            );
+        }
     }
 
     // Add more tests for other scenarios...

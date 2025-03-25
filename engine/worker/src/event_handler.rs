@@ -2,8 +2,10 @@ use std::sync::Arc;
 
 use parking_lot::Mutex;
 use reearth_flow_runtime::node::NodeHandle;
+use reearth_flow_runtime::node::NodeStatus;
 use uuid::Uuid;
 
+use crate::types::node_status_event::{NodeStatus as PublishNodeStatus, NodeStatusEvent};
 use crate::{
     pubsub::publisher::Publisher,
     types::{
@@ -116,11 +118,83 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                     tracing::error!("Failed to publish edge pass through event: {}", e);
                 }
             }
+            reearth_flow_runtime::event::Event::EdgeCompleted {
+                edge_id,
+                feature_id,
+            } => {
+                let edge_completed_event = EdgePassThroughEvent {
+                    workflow_id: self.workflow_id,
+                    job_id: self.job_id,
+                    status: EventStatus::Completed,
+                    timestamp: chrono::Utc::now(),
+                    updated_edges: vec![UpdatedEdge {
+                        id: edge_id.to_string(),
+                        status: EventStatus::Completed,
+                        feature_id: Some(*feature_id),
+                    }],
+                };
+                if let Err(e) = self.publisher.publish(edge_completed_event).await {
+                    tracing::error!("Failed to publish edge completed event: {}", e);
+                }
+            }
+            reearth_flow_runtime::event::Event::NodeStatusChanged {
+                node_handle,
+                status,
+                feature_id,
+            } => {
+                tracing::info!(
+                    "SENDING NODE STATUS EVENT: node_id={}, status={:?}, feature_id={:?}",
+                    node_handle.id,
+                    status,
+                    feature_id
+                );
+
+                let publish_status = match status {
+                    NodeStatus::Starting => PublishNodeStatus::Starting,
+                    NodeStatus::Processing => PublishNodeStatus::Processing,
+                    NodeStatus::Completed => {
+                        tracing::info!("Node completed: {}", node_handle.id);
+                        PublishNodeStatus::Completed
+                    }
+                    NodeStatus::Failed => {
+                        tracing::warn!("Node failed: {}", node_handle.id);
+                        PublishNodeStatus::Failed
+                    }
+                };
+
+                let node_status_event = NodeStatusEvent::new(
+                    self.workflow_id,
+                    self.job_id,
+                    node_handle.id.to_string(),
+                    publish_status,
+                    *feature_id,
+                );
+
+                match self.publisher.publish(node_status_event).await {
+                    Ok(_) => {
+                        tracing::info!(
+                            "Successfully published node status: node_id={}, status={:?}",
+                            node_handle.id,
+                            status
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to publish node status event for node_id={}, status={:?}: {}",
+                            node_handle.id,
+                            status,
+                            e
+                        );
+                    }
+                }
+            }
             _ => {}
         }
     }
 
     async fn on_shutdown(&self) {
+        tracing::info!("EventHandler shutting down. Closing publisher...");
         self.publisher.shutdown().await;
+        tracing::info!("Publisher shutdown complete");
     }
 }

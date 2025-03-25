@@ -37,28 +37,28 @@ jobs:
 
       - name: Build Websocket
         run: |
-          cd websocket
-          cargo build --release --features gcs-storage
+          cd server/websocket
+          cargo build --release
 
       - name: Create distribution directory
         run: |
-          mkdir -p websocket/dist
-          mv websocket/target/release/main websocket/dist/reearth-flow-websocket
+          mkdir -p server/websocket/dist
+          cp server/target/release/websocket server/websocket/dist/reearth-flow-websocket
 
       - name: Rename Artifacts
         if: ${{ inputs.name != 'blank' }}
         run: |
-          cd websocket/dist
+          cd server/websocket/dist
           mv reearth-flow-websocket reearth-flow-websocket_${{ inputs.name }}
 
       - name: List Artifacts
-        run: ls -l websocket/dist
+        run: ls -l server/websocket/dist
 
       - name: Upload Websocket Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: websocket-artifacts
-          path: websocket/dist/*
+          path: server/websocket/dist/*
 
   build-docker-image:
     name: Build and Push Docker Image
@@ -70,7 +70,6 @@ jobs:
       id-token: write
     env:
       IMAGE_NAME: reearth/reearth-flow-websocket
-      IMAGE_GCP: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-websocket
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -79,7 +78,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: websocket-artifacts
-          path: websocket/dist
+          path: server/websocket/dist
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -90,8 +89,8 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          service_account: ${{ secrets.GCP_SA_EMAIL }}
-          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Log in to DockerHub
         uses: docker/login-action@v3
@@ -129,8 +128,8 @@ jobs:
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v6
         with:
-          context: websocket
-          file: websocket/Websocket.Dockerfile
+          context: server/websocket
+          file: server/websocket/Dockerfile.websocket
           platforms: ${{ steps.options.outputs.platforms }}
           push: true
           build-args: VERSION=${{ steps.options.outputs.version }}
@@ -145,8 +144,8 @@ jobs:
         if: ${{ inputs.name == 'nightly' }}
         run: |
           docker pull $IMAGE_NAME:${{ inputs.name }}
-          docker tag $IMAGE_NAME:${{ inputs.name }} $IMAGE_GCP:${{ inputs.name }}
-          docker push $IMAGE_GCP:${{ inputs.name }}
+          docker tag $IMAGE_NAME:${{ inputs.name }} ${{ secrets.WEBSOCKET_IMAGE_GC }}:${{ inputs.name }}
+          docker push ${{ secrets.WEBSOCKET_IMAGE_GC }}:${{ inputs.name }}
 
   deploy-to-cloud-run:
     name: Deploy to Cloud Run (Nightly)
@@ -157,23 +156,21 @@ jobs:
       contents: read
       id-token: write
     env:
-      IMAGE: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-websocket:nightly
-      GCP_REGION: us-central1
       CLOUD_RUN_SERVICE: reearth-flow-websocket
     steps:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
-          service_account: ${{ secrets.GCP_SA_EMAIL }}
-          workload_identity_provider: ${{ secrets.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy $CLOUD_RUN_SERVICE \
-            --image $IMAGE \
-            --region $GCP_REGION \
+          gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
+            --image ${{ secrets.WEBSOCKET_IMAGE_GC }}:nightly \
+            --region ${{ secrets.GC_REGION }} \
             --platform managed \
             --quiet
