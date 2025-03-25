@@ -38,8 +38,9 @@ export default ({
   const [hasIntermediateData, setHasIntermediateData] = useState(false);
 
   const intermediateDataIsSet = useMemo(
-    () => debugJobState?.selectedIntermediateData?.edgeId === id,
-    [debugJobState?.selectedIntermediateData?.edgeId, id],
+    () =>
+      debugJobState?.selectedIntermediateData?.find((sid) => sid.edgeId === id),
+    [debugJobState?.selectedIntermediateData, id],
   );
 
   const intermediateDataUrl = useMemo(() => {
@@ -86,9 +87,14 @@ export default ({
         debugRunState?.jobs?.map((job) => {
           const newSelectedIntermediateData =
             job.projectId === currentProject?.id
-              ? job.selectedIntermediateData?.edgeId === id
-                ? undefined
-                : { edgeId: id, url: intermediateDataUrl }
+              ? job.selectedIntermediateData?.find((sid) => id === sid.edgeId)
+                ? job.selectedIntermediateData.filter(
+                    (sid) => id !== sid.edgeId,
+                  )
+                : [
+                    ...(job.selectedIntermediateData ?? []),
+                    { edgeId: id, url: intermediateDataUrl },
+                  ]
               : job.selectedIntermediateData;
           return {
             ...job,

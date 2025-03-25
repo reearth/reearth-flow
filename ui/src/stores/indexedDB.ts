@@ -15,7 +15,7 @@ export type JobState = {
   status: JobStatus;
   nodeExecutions?: NodeExecution[];
   tempWorkflowHasPossibleIssuesFlag?: boolean;
-  selectedIntermediateData?: SelectedIntermediateData;
+  selectedIntermediateData?: SelectedIntermediateData[];
 };
 
 export type DebugRunState = {
