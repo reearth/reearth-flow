@@ -47,22 +47,19 @@ impl BroadcastGroupManager {
                 let group_clone = entry.get().clone();
                 drop(entry);
 
-                if let Some(doc_name) = group_clone.get_doc_name() {
-                    let redis_store = group_clone.get_redis_store();
-                    let valid = match redis_store.check_stream_exists(&doc_name).await {
-                        Ok(exists) => exists,
-                        Err(e) => {
-                            tracing::warn!("Error checking Redis stream: {}", e);
-                            false
-                        }
-                    };
-
-                    if !valid {
-                        tracing::warn!("Found cached broadcast group for '{}' but Redis stream does not exist, recreating", doc_id);
-                        self.doc_to_id_map.remove(&doc_id_string);
-                    } else {
-                        return Ok(group_clone);
+                let doc_name = group_clone.get_doc_name();
+                let redis_store = group_clone.get_redis_store();
+                let valid = match redis_store.check_stream_exists(&doc_name).await {
+                    Ok(exists) => exists,
+                    Err(e) => {
+                        tracing::warn!("Error checking Redis stream: {}", e);
+                        false
                     }
+                };
+
+                if !valid {
+                    tracing::warn!("Found cached broadcast group for '{}' but Redis stream does not exist, recreating", doc_id);
+                    self.doc_to_id_map.remove(&doc_id_string);
                 } else {
                     return Ok(group_clone);
                 }
@@ -199,7 +196,7 @@ impl Manager for BroadcastGroupManager {
 
         async move {
             if group.connection_count() == 0 {
-                let doc_id = group.get_doc_name().unwrap_or_default();
+                let doc_id = group.get_doc_name();
                 tracing::info!("Recycling empty broadcast group for document '{}'", doc_id);
 
                 doc_to_id_map.remove(&doc_id);
@@ -215,7 +212,7 @@ impl Manager for BroadcastGroupManager {
                     "Group has no connections".into(),
                 ));
             }
-            let doc_id = group.get_doc_name().unwrap_or_default();
+            let doc_id = group.get_doc_name();
             tracing::info!("Recycling broadcast group for document '{}'", doc_id);
             Ok(())
         }
@@ -291,7 +288,7 @@ impl BroadcastPool {
 
         if let Some(group) = broadcast_group {
             let store = self.get_store();
-            let doc_name = group.get_doc_name().unwrap_or_else(|| doc_id.to_string());
+            let doc_name = group.get_doc_name();
 
             let redis_store = group.get_redis_store();
             let active_connections = match redis_store.get_active_instances(&doc_name, 60).await {
