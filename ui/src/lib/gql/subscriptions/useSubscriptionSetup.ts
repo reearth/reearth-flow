@@ -7,6 +7,8 @@ import { config } from "@flow/config";
 export enum SubscriptionKeys {
   GetSubscribedLogs = "getSubscribedLogs",
   GetSubscribedJobStatus = "getSubscribedJobStatus",
+  GetSubscribedEdgeStatus = "getSubscribedEdgeStatus", // TODO: Delete
+  GetSubscribedNodeStatus = "getSubscribedNodeStatus",
 }
 
 export type PossibleSubscriptionKeys = keyof typeof SubscriptionKeys;
@@ -29,12 +31,26 @@ const LOG_SUBSCRIPTION = `
  }
 `;
 
+const EDGE_STATUS_SUBSCRIPTION = `
+  subscription OnEdgeStatusChange($jobId: ID!, $edgeId: String!) {
+    edgeStatus(jobId: $jobId, edgeId: $edgeId)
+  }
+`; // TODO: Delete
+
+const Node_STATUS_SUBSCRIPTION = `
+  subscription OnNodeStatusChange($jobId: ID!, $nodeId: String!) {
+    nodeStatus(jobId: $jobId, nodeId: $nodeId)
+  }
+`;
+
 const SubscriptionStrings: Record<PossibleSubscriptionKeys, string> = {
   GetSubscribedJobStatus: JOB_STATUS_SUBSCRIPTION,
+  GetSubscribedEdgeStatus: EDGE_STATUS_SUBSCRIPTION, // TODO: Delete
+  GetSubscribedNodeStatus: Node_STATUS_SUBSCRIPTION,
   GetSubscribedLogs: LOG_SUBSCRIPTION,
 };
 
-const getWebSocketClient = (() => {
+const getWebSocketClient = (disabled?: boolean) => {
   const clients = new Map<string, Client>();
 
   return (
@@ -42,7 +58,7 @@ const getWebSocketClient = (() => {
     key: string,
     accessToken?: string,
   ): Client | undefined => {
-    if (!accessToken) return undefined;
+    if (!accessToken || disabled) return undefined;
 
     if (!clients.has(key)) {
       const newClient = createClient({
@@ -65,7 +81,7 @@ const getWebSocketClient = (() => {
 
     return client;
   };
-})();
+};
 
 export function useSubscriptionSetup<Data = any, CachedData = any>(
   subscriptionKey: PossibleSubscriptionKeys,
@@ -78,8 +94,13 @@ export function useSubscriptionSetup<Data = any, CachedData = any>(
   const api = config().api;
 
   const isSubscribedRef = useRef(false);
-  const queryClient = useQueryClient();
-  const wsClient = getWebSocketClient(
+  const wsClientRef = useRef<Client | undefined>(undefined);
+  const queryClientRef = useRef<ReturnType<typeof useQueryClient> | undefined>(
+    undefined,
+  );
+
+  queryClientRef.current = useQueryClient();
+  wsClientRef.current = getWebSocketClient(disabled)(
     `${api}/api/graphql`,
     `${subscriptionKey}:${secondaryCacheKey}`,
     accessToken,
@@ -90,7 +111,7 @@ export function useSubscriptionSetup<Data = any, CachedData = any>(
 
     isSubscribedRef.current = true;
     // Set up subscription only once
-    const unsubscribe = wsClient?.subscribe<Data>(
+    const unsubscribe = wsClientRef.current?.subscribe<Data>(
       {
         query: SubscriptionStrings[subscriptionKey],
         variables,
@@ -99,16 +120,15 @@ export function useSubscriptionSetup<Data = any, CachedData = any>(
         next: (data) => {
           if (data.data) {
             // Update React Query cache
-            const cachedData = queryClient.getQueryData<CachedData>([
-              SubscriptionKeys[subscriptionKey],
-              secondaryCacheKey,
-            ]);
+            const cachedData = queryClientRef.current?.getQueryData<CachedData>(
+              [SubscriptionKeys[subscriptionKey], secondaryCacheKey],
+            );
 
             const formattedData = dataFormatter
               ? dataFormatter(data.data, cachedData)
               : data.data;
 
-            queryClient.setQueryData(
+            queryClientRef.current?.setQueryData(
               [SubscriptionKeys[subscriptionKey], secondaryCacheKey],
               formattedData,
             );
@@ -129,13 +149,5 @@ export function useSubscriptionSetup<Data = any, CachedData = any>(
       isSubscribedRef.current = false;
       unsubscribe?.();
     };
-  }, [
-    disabled,
-    variables,
-    secondaryCacheKey,
-    subscriptionKey,
-    wsClient,
-    queryClient,
-    dataFormatter,
-  ]);
+  }, [disabled, variables, secondaryCacheKey, subscriptionKey, dataFormatter]);
 }

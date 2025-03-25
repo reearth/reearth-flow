@@ -74,10 +74,16 @@ impl reearth_flow_runtime::event::EventHandler for EventHandler {
             reearth_flow_runtime::event::Event::SinkFinished { .. } => {
                 // TODO: Implement this
             }
+            reearth_flow_runtime::event::Event::EdgeCompleted { .. } => {
+                // TODO: Implement this
+            }
             reearth_flow_runtime::event::Event::EdgePassThrough { .. } => {
                 // TODO: Implement this
             }
             reearth_flow_runtime::event::Event::Log { .. } => {
+                // TODO: Implement this
+            }
+            reearth_flow_runtime::event::Event::NodeStatusChanged { .. } => {
                 // TODO: Implement this
             }
         }

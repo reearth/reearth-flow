@@ -1,3 +1,6 @@
+import { parseJSONL } from "./jsonl";
+import { intermediateDataTransform } from "./jsonl/transformIntermediateData";
+
 export type SupportedDataTypes = "geojson";
 
 export async function fetchAndReadData(fileUrl: string): Promise<{
@@ -23,8 +26,22 @@ export async function fetchAndReadData(fileUrl: string): Promise<{
       const content = await response.text();
       const parsedData = JSON.parse(content);
       return { fileContent: parsedData, type: "geojson", error: null };
+    } else if (fileExtension === "jsonl") {
+      const text = await response.text();
+      const parsedJSONL = parseJSONL(text, {
+        transform: intermediateDataTransform,
+      });
+      const interData = {
+        type: "FeatureCollection",
+        features: parsedJSONL,
+      };
+      return {
+        fileContent: interData,
+        type: "geojson",
+        error: null,
+      };
     } else {
-      console.log("didn't get geojson");
+      console.error("Unsupported file format");
       return {
         fileContent: null,
         type: null,

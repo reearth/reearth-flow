@@ -7,7 +7,7 @@ import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import type { Log } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
-import { parseJSONL } from "@flow/utils/parseJsonL";
+import { parseJSONL } from "@flow/utils/jsonl";
 
 type LogsConsoleProps = {
   jobId: string;
@@ -80,7 +80,7 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
             `Skipping malformed log at line ${index}:`,
             line.substring(0, 100),
           );
-          console.log("Error:", error);
+          console.error("Error:", error);
         },
       });
       setUrlLogs(logsArray);

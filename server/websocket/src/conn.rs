@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use bytes::Bytes;
 use futures_util::{SinkExt, StreamExt};
 use std::future::Future;
 use std::marker::PhantomData;
@@ -12,8 +13,6 @@ use crate::group::{BroadcastGroup, Subscription};
 
 type CompletionFuture = Pin<Box<dyn Future<Output = Result<(), Error>> + Send>>;
 
-/// Connection handler over a pair of message streams, which implements a Yjs/Yrs awareness and
-/// update exchange protocol.
 pub struct Connection<Sink, Stream> {
     broadcast_sub: Option<Subscription>,
     completion_future: Option<CompletionFuture>,
@@ -24,19 +23,18 @@ pub struct Connection<Sink, Stream> {
 
 impl<Sink, Stream, E> Connection<Sink, Stream>
 where
-    Sink: SinkExt<Vec<u8>, Error = E> + Send + Sync + Unpin + 'static,
-    Stream: StreamExt<Item = Result<Vec<u8>, E>> + Send + Sync + Unpin + 'static,
+    Sink: SinkExt<Bytes, Error = E> + Send + Sync + Unpin + 'static,
+    Stream: StreamExt<Item = Result<Bytes, E>> + Send + Sync + Unpin + 'static,
     E: std::error::Error + Into<Error> + Send + Sync + 'static,
 {
-    /// Creates a new connection using a BroadcastGroup with user information
-    pub async fn with_broadcast_group_and_user(
+    pub async fn new(
         broadcast_group: Arc<BroadcastGroup>,
         sink: Sink,
         stream: Stream,
         user_token: Option<String>,
     ) -> Self {
         let sink = Arc::new(Mutex::new(sink));
-        let broadcast_sub = Some(broadcast_group.clone().subscribe_with_user(
+        let broadcast_sub = Some(broadcast_group.clone().subscribe(
             sink,
             stream,
             user_token.clone(),
@@ -46,38 +44,6 @@ where
             broadcast_sub,
             completion_future: None,
             user_token,
-            _sink: PhantomData,
-            _stream: PhantomData,
-        }
-    }
-
-    /// Creates a new connection using a BroadcastGroup
-    pub async fn with_broadcast_group(
-        broadcast_group: Arc<BroadcastGroup>,
-        sink: Sink,
-        stream: Stream,
-    ) -> Self {
-        let sink = Arc::new(Mutex::new(sink));
-        let broadcast_sub = Some(broadcast_group.subscribe(sink, stream));
-
-        Connection {
-            broadcast_sub,
-            completion_future: None,
-            user_token: None,
-            _sink: PhantomData,
-            _stream: PhantomData,
-        }
-    }
-
-    /// Creates a new connection with default protocol
-    pub fn new(broadcast_group: Arc<BroadcastGroup>, sink: Sink, stream: Stream) -> Self {
-        let sink = Arc::new(Mutex::new(sink));
-        let broadcast_sub = Some(broadcast_group.subscribe(sink, stream));
-
-        Connection {
-            broadcast_sub,
-            completion_future: None,
-            user_token: None,
             _sink: PhantomData,
             _stream: PhantomData,
         }

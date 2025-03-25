@@ -13,12 +13,6 @@ import {
 } from "@xyflow/react";
 import { MouseEvent, memo, useCallback, useState } from "react";
 
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuTrigger,
-} from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import {
   isValidConnection,
@@ -33,7 +27,7 @@ import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
 
-const gridSize = 30;
+const gridSize = 25;
 
 const snapGrid: SnapGrid = [gridSize, gridSize];
 
@@ -123,106 +117,69 @@ const Canvas: React.FC<Props> = ({
   };
 
   return (
-    <>
-      <ContextMenu>
-        <ContextMenuTrigger asChild>
-          <ReactFlow
-            // minZoom={0.7}
-            // maxZoom={1}
-            // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
-            // nodeDragThreshold={60}
-            // translateExtent={[
-            //   [-1000, -1000],
-            //   [1000, 1000],
-            // ]}
-            // onInit={setReactFlowInstance}
-            // selectNodesOnDrag={false}
-            // fitViewOptions={{ padding: 0.5 }}
-            // fitView
+    <ReactFlow
+      // minZoom={0.7}
+      // maxZoom={1}
+      // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
+      // translateExtent={[
+      //   [-1000, -1000],
+      //   [1000, 1000],
+      // ]}
+      // onInit={setReactFlowInstance}
+      // selectNodesOnDrag={false}
+      // fitViewOptions={{ padding: 0.5 }}
+      // fitView
 
-            // Locking props START
-            nodesDraggable={!canvasLock}
-            nodesConnectable={!canvasLock}
-            nodesFocusable={!canvasLock}
-            edgesFocusable={!canvasLock}
-            // elementsSelectable={!canvasLock}
-            autoPanOnConnect={!canvasLock}
-            autoPanOnNodeDrag={!canvasLock}
-            // panOnDrag={!canvasLock}
-            selectionOnDrag={!canvasLock}
-            // panOnScroll={!canvasLock}
-            // zoomOnScroll={!canvasLock}
-            // zoomOnPinch={!canvasLock}
-            // zoomOnDoubleClick={!canvasLock}
-            connectOnClick={!canvasLock}
-            // Locking props END
+      // Locking props START
+      nodesDraggable={!canvasLock}
+      nodesConnectable={!canvasLock}
+      nodesFocusable={!canvasLock}
+      edgesFocusable={!canvasLock}
+      // elementsSelectable={!canvasLock}
+      autoPanOnConnect={!canvasLock}
+      autoPanOnNodeDrag={!canvasLock}
+      // panOnDrag={!canvasLock}
+      selectionOnDrag={!canvasLock}
+      // panOnScroll={!canvasLock}
+      // zoomOnScroll={!canvasLock}
+      // zoomOnPinch={!canvasLock}
+      // zoomOnDoubleClick={!canvasLock}
+      connectOnClick={!canvasLock}
+      // Locking props END
 
-            snapGrid={snapGrid}
-            selectionMode={SelectionMode["Partial"]}
-            nodes={nodes}
-            nodeTypes={nodeTypes}
-            edges={edges}
-            edgeTypes={edgeTypes}
-            defaultEdgeOptions={defaultEdgeOptions}
-            connectionLineComponent={CustomConnectionLine}
-            connectionLineStyle={connectionLineStyle}
-            isValidConnection={isValidConnection}
-            onNodesChange={handleNodesChange}
-            onEdgesChange={handleEdgesChange}
-            onNodeDoubleClick={handleNodeDoubleClick}
-            onNodeDragStop={handleNodeDragStop}
-            onNodesDelete={handleNodesDelete}
-            onNodeMouseEnter={onNodeHover}
-            onNodeMouseLeave={onNodeHover}
-            onDrop={handleNodeDrop}
-            onDragOver={handleNodeDragOver}
-            onEdgeMouseEnter={onEdgeHover}
-            onEdgeMouseLeave={onEdgeHover}
-            onConnect={handleConnect}
-            onReconnect={handleReconnect}
-            onSelectionContextMenu={handleSelectionContextMenu}
-            proOptions={proOptions}>
-            <Background
-              className="bg-background"
-              variant={BackgroundVariant["Lines"]}
-              gap={gridSize}
-              color="rgba(63, 63, 70, 0.3)"
-            />
-          </ReactFlow>
-        </ContextMenuTrigger>
-        <ContextMenuContent>
-          {!nodes.some((node) => node.type === "reader") && (
-            <ContextMenuItem
-              className="justify-between gap-4 text-xs"
-              onClick={(e) =>
-                onNodePickerOpen &&
-                onNodePickerOpen({ x: e.clientX, y: e.clientY }, "reader")
-              }>
-              <p>{t("Add Reader")}</p>
-              <p>⌘+R</p>
-            </ContextMenuItem>
-          )}
-          <ContextMenuItem
-            className="justify-between gap-4 text-xs"
-            onClick={(e) =>
-              onNodePickerOpen &&
-              onNodePickerOpen({ x: e.clientX, y: e.clientY }, "transformer")
-            }>
-            <p>{t("Add Transformer")}</p>
-            <p>⌘+T</p>
-          </ContextMenuItem>
-          <ContextMenuItem
-            className="justify-between gap-4 text-xs"
-            onClick={(e) =>
-              onNodePickerOpen &&
-              onNodePickerOpen({ x: e.clientX, y: e.clientY }, "writer")
-            }>
-            <p>{t("Add Writer")}</p>
-            <p>⌘+W</p>
-          </ContextMenuItem>
-        </ContextMenuContent>
-      </ContextMenu>
-
+      nodeDragThreshold={2}
+      snapToGrid
+      snapGrid={snapGrid}
+      selectionMode={SelectionMode["Partial"]}
+      nodes={nodes}
+      nodeTypes={nodeTypes}
+      edges={edges}
+      edgeTypes={edgeTypes}
+      defaultEdgeOptions={defaultEdgeOptions}
+      connectionLineComponent={CustomConnectionLine}
+      connectionLineStyle={connectionLineStyle}
+      isValidConnection={isValidConnection}
+      onNodesChange={handleNodesChange}
+      onEdgesChange={handleEdgesChange}
+      onNodeDoubleClick={handleNodeDoubleClick}
+      onNodeDragStop={handleNodeDragStop}
+      onNodesDelete={handleNodesDelete}
+      onNodeMouseEnter={onNodeHover}
+      onNodeMouseLeave={onNodeHover}
+      onDrop={handleNodeDrop}
+      onDragOver={handleNodeDragOver}
+      onEdgeMouseEnter={onEdgeHover}
+      onEdgeMouseLeave={onEdgeHover}
+      onConnect={handleConnect}
+      onReconnect={handleReconnect}
+      proOptions={proOptions}
+      onSelectionContextMenu={handleSelectionContextMenu}>
+      <Background
+        className="bg-background"
+        variant={BackgroundVariant["Lines"]}
+        gap={gridSize}
+        color="rgba(63, 63, 70, 0.3)"
+      />
       {selectionMenuPosition && (
         <div
           className="absolute z-50"
@@ -265,7 +222,7 @@ const Canvas: React.FC<Props> = ({
           onContextMenu={closeSelectionMenu}
         />
       )}
-    </>
+    </ReactFlow>
   );
 };
 

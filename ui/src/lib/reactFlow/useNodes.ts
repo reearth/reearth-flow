@@ -128,6 +128,7 @@ export default ({
       const connectedEdges = edges.filter(
         (e) => e.source === droppedNode.id || e.target === droppedNode.id,
       );
+
       if (connectedEdges && connectedEdges.length > 0) return;
 
       for (const edge of edges) {
@@ -182,19 +183,12 @@ export default ({
             true,
           )
         ) {
-          const removeChanges: EdgeChange[] = edges.reduce((acc, edge) => {
-            if (edge.source === e.source && edge.target === e.target) {
-              return [
-                ...acc,
-                {
-                  id: edge.id,
-                  type: "remove" as const,
-                },
-              ];
-            }
-            return acc;
-          }, [] as EdgeChange[]);
-
+          const removeChanges: EdgeChange[] = [
+            {
+              id: edge.id,
+              type: "remove" as const,
+            },
+          ];
           const addChanges: EdgeChange[] = [
             {
               type: "add" as const,

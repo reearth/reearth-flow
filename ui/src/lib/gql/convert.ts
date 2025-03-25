@@ -3,20 +3,24 @@ import type {
   ProjectFragment,
   JobFragment,
   JobStatus as GraphqlJobStatus,
+  NodeStatus as GraphqlNodeStatus,
   TriggerFragment,
   LogFragment,
-  ProjectSnapshotFragment,
   ProjectDocumentFragment,
+  NodeExecutionFragment,
+  ProjectSnapshotMetadataFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
-import {
+import type {
   Log,
-  type Deployment,
-  type Job,
-  type JobStatus,
-  type Project,
-  type Trigger,
-  type ProjectSnapshot,
-  type ProjectDocument,
+  Deployment,
+  Job,
+  JobStatus,
+  Project,
+  Trigger,
+  ProjectDocument,
+  NodeExecution,
+  NodeStatus,
+  ProjectSnapshotMeta,
 } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
@@ -56,6 +60,17 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   description: trigger.description ?? undefined,
 });
 
+export const toNodeExecution = (
+  node: NodeExecutionFragment,
+): NodeExecution => ({
+  id: node.id,
+  jobId: node.jobId,
+  nodeId: node.nodeId,
+  status: toNodeStatus(node.status),
+  startedAt: node.startedAt,
+  completedAt: node.completedAt,
+});
+
 export const toJob = (job: JobFragment): Job => ({
   id: job.id,
   deploymentId: job.deployment?.id,
@@ -76,12 +91,11 @@ export const toLog = (log: LogFragment): Log => ({
   message: log.message,
 });
 
-export const toProjectSnapShot = (
-  projectSnapshot: ProjectSnapshotFragment,
-): ProjectSnapshot => ({
+export const toProjectSnapShotMeta = (
+  projectSnapshot: ProjectSnapshotMetadataFragment,
+): ProjectSnapshotMeta => ({
   timestamp: projectSnapshot.timestamp,
   version: projectSnapshot.version,
-  updates: projectSnapshot.updates,
 });
 
 export const toProjectDocument = (
@@ -106,5 +120,24 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
     case "PENDING":
     default:
       return "queued";
+  }
+};
+
+export const toNodeStatus = (
+  status: GraphqlNodeStatus,
+): NodeStatus | undefined => {
+  switch (status) {
+    case "STARTING":
+      return "starting";
+    case "PENDING":
+      return "pending";
+    case "PROCESSING":
+      return "processing";
+    case "COMPLETED":
+      return "completed";
+    case "FAILED":
+      return "failed";
+    default:
+      return undefined;
   }
 };

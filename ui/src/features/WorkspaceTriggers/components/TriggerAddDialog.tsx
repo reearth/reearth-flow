@@ -57,7 +57,9 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   );
 
   useEffect(() => {
-    refetch();
+    (async () => {
+      await refetch();
+    })();
   }, [currentPage, currentOrder, refetch]);
 
   const deployments = page?.deployments;

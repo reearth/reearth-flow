@@ -12,13 +12,14 @@ export default () => {
   const debugJobId = useMemo(
     () =>
       debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
-        ?.jobId ?? "",
+        ?.jobId,
     [debugRunState, currentProject],
   );
 
   const { data: jobStatus } = useSubscription(
     "GetSubscribedJobStatus",
     debugJobId,
+    !debugJobId,
   );
 
   return {

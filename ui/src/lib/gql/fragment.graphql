@@ -41,6 +41,16 @@ fragment Trigger on Trigger {
   description
 }
 
+fragment NodeExecution on NodeExecution {
+  id
+  nodeId
+  jobId
+  status
+  createdAt
+  startedAt
+  completedAt
+}
+
 fragment Job on Job {
   id
   workspaceId
@@ -49,19 +59,22 @@ fragment Job on Job {
   completedAt
   logsURL
   outputURLs
+  debug
   deployment {
     id
     description
   }
-  # workspace{
-  #   ...Workspace
-  # }
 }
 
 fragment ProjectDocument on ProjectDocument {
   id
   timestamp
   updates
+  version
+}
+
+fragment ProjectSnapshotMetadata on ProjectSnapshotMetadata {
+  timestamp
   version
 }
 

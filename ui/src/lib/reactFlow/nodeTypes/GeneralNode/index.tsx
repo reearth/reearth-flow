@@ -1,7 +1,6 @@
 import {
   Database,
   Disc,
-  Eye,
   GearFine,
   Graph,
   Lightning,
@@ -19,7 +18,7 @@ import {
 } from "@flow/components";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
-import { isActionNodeType, Node } from "@flow/types";
+import { Node } from "@flow/types";
 
 import { Handles } from "./components";
 import useHooks from "./hooks";
@@ -55,8 +54,8 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     customName,
     inputs,
     outputs,
-    status,
-    metaProps,
+    // status,
+    // intermediateDataUrl,
     borderColor,
     selectedColor,
     selectedBackgroundColor,
@@ -66,9 +65,11 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     <ContextMenu>
       <ContextMenuTrigger>
         <div className="rounded-sm bg-secondary">
+          {/* <div
+          className={`rounded-sm bg-secondary ${status === "processing" ? "active-node-status-shadow" : status === "pending" ? "queued-node-status-shadow" : ""}`}> */}
           <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
             <div
-              className={`flex w-4 justify-center rounded-l-sm border-y border-l ${status === "failed" ? "border-destructive" : selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className} `}>
+              className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
               {type === "reader" ? (
                 <Database className={typeIconClasses} />
               ) : type === "writer" ? (
@@ -80,18 +81,14 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
               ) : null}
             </div>
             <div
-              className={`flex flex-1 justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${status === "failed" ? "border-destructive" : selected ? selectedColor : borderColor}`}>
+              className={`flex flex-1 items-center justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? selectedColor : borderColor}`}>
               <p className="self-center truncate text-xs dark:font-light">
                 {data.customizations?.customName || customName || officialName}
               </p>
-              {status === "succeeded" ? (
-                <div className="self-center">
-                  <Eye />
-                </div>
-              ) : null}
-              <div
-                className={`size-[8px] shrink-0 self-center rounded ${metaProps.style}`}
-              />
+              {/* {status === "failed" && <X className="size-4 text-destructive" />} */}
+              {/* {status === "completed" && intermediateDataUrl && (
+                <Table className="size-4 text-success" />
+              )} */}
             </div>
           </div>
           <Handles nodeType={type} inputs={inputs} outputs={outputs} />
@@ -113,12 +110,12 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
             <GearFine weight="light" />
           </ContextMenuItem>
         )}
-        {isActionNodeType(type) && (
+        {/* {isActionNodeType(type) && (
           <ContextMenuItem className="justify-between gap-4 text-xs" disabled>
             {t("Preview Intermediate Data")}
             <Eye weight="light" />
           </ContextMenuItem>
-        )}
+        )} */}
 
         {/* <ContextMenuItem
       className="justify-between gap-4 text-xs"

@@ -13,7 +13,10 @@ export default ({
 }: {
   currentYWorkflow?: YWorkflow;
   setSelectedEdgeIds: Dispatch<SetStateAction<string[]>>;
-  undoTrackerActionWrapper: (callback: () => void) => void;
+  undoTrackerActionWrapper: (
+    callback: () => void,
+    originPrepend?: string,
+  ) => void;
 }) => {
   const handleYEdgesAdd = useCallback(
     (newEdges: Edge[]) => {

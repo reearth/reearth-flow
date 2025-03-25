@@ -11,3 +11,7 @@ subscription RealTimeLogs($jobId: ID!) {
     message
   }
 }
+
+subscription OnNodeStatusChange($jobId: ID!, $nodeId: String!) {
+  nodeStatus(jobId: $jobId, nodeId: $nodeId)
+}

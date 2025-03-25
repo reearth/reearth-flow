@@ -89,62 +89,58 @@ const ParamEditor: React.FC<Props> = ({
         onValueChange={setActiveTab}
         value={activeTab}
         className="flex h-full flex-col gap-4">
-        <div className="flex justify-between gap-2">
-          <p className="text-lg dark:font-thin">
-            {activeTab === "params"
-              ? t("Parameters")
-              : activeTab === "customizations"
-                ? t("Customizations")
-                : t("Details")}
-          </p>
-          {activeTab !== "details" && (
-            <Button onClick={handleSubmit}>{t("Submit")}</Button>
-          )}
-          {activeTab === "details" && <div className="h-[36px]" />}
-        </div>
         <TabsList className="flex justify-between gap-2">
           {createdAction?.parameter && (
-            <TabsTrigger className="flex-1" value="params">
+            <TabsTrigger
+              className={`h-[30px] ${activeTab === "params" ? "flex-[5]" : "flex-1"}`}
+              value="params">
               {t("Parameters")}
             </TabsTrigger>
           )}
-          <TabsTrigger className="flex-1" value="customizations">
+          <TabsTrigger
+            className={`h-[30px] ${activeTab === "customizations" ? "flex-[5]" : "flex-1"}`}
+            value="customizations">
             {t("Customizations")}
           </TabsTrigger>
-          <TabsTrigger className="flex-1" value="details">
+          <TabsTrigger
+            className={`h-[30px] ${activeTab === "details" ? "flex-[5]" : "flex-1"}`}
+            value="details">
             {t("Details")}
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="params">
-          <div className="min-h-32 overflow-scroll rounded border bg-card px-2 pt-1">
-            {!createdAction?.parameter && (
-              <BasicBoiler
-                text={t("No Parameters Available")}
-                className="size-4 pt-16 [&>div>p]:text-sm"
-                icon={<FlowLogo className="size-12 text-accent" />}
-              />
-            )}
-            {createdAction && (
-              <SchemaForm
-                schema={patchedSchemaParams}
-                defaultFormData={updatedParams}
-                onChange={handleParamChange}
-              />
-            )}
-          </div>
+        <TabsContent value="params" asChild>
+          <>
+            <div className="min-h-0 overflow-scroll rounded border bg-card px-2 pt-1">
+              {!createdAction?.parameter && (
+                <BasicBoiler
+                  text={t("No Parameters Available")}
+                  className="size-4 pt-16 [&>div>p]:text-sm"
+                  icon={<FlowLogo className="size-12 text-accent" />}
+                />
+              )}
+              {createdAction && (
+                <SchemaForm
+                  schema={patchedSchemaParams}
+                  defaultFormData={updatedParams}
+                  onChange={handleParamChange}
+                />
+              )}
+            </div>
+            <Button onClick={handleSubmit}>{t("Submit")}</Button>
+          </>
         </TabsContent>
-        <TabsContent value="customizations">
-          <div className="min-h-32 overflow-scroll rounded border bg-card px-2 pt-4">
-            {!createdAction?.customizations && (
-              <BasicBoiler
-                text={t("No Customizations Available")}
-                className="size-4 pt-16 [&>div>p]:text-sm"
-                icon={<FlowLogo className="size-12 text-accent" />}
-              />
-            )}
-            {createdAction && (
-              <div className="space-y-4">
-                <div>
+        <TabsContent value="customizations" asChild>
+          <>
+            <div className="min-h-0 overflow-scroll rounded border bg-card px-2 pt-4">
+              {!createdAction?.customizations && (
+                <BasicBoiler
+                  text={t("No Customizations Available")}
+                  className="size-4 pt-16 [&>div>p]:text-sm"
+                  icon={<FlowLogo className="size-12 text-accent" />}
+                />
+              )}
+              {createdAction && (
+                <div className="space-y-4">
                   <h4 className="border-b text-sm font-medium">
                     {t("Customization Options")}
                   </h4>
@@ -154,9 +150,10 @@ const ParamEditor: React.FC<Props> = ({
                     onChange={handleCustomizationChange}
                   />
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+            <Button onClick={handleSubmit}>{t("Submit")}</Button>
+          </>
         </TabsContent>
         <TabsContent value="details">
           <div className="min-h-32 overflow-scroll rounded border bg-card px-2 pt-4">

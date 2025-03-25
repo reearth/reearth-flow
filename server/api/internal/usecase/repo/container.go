@@ -19,6 +19,7 @@ type Container struct {
 	EdgeExecution EdgeExecution
 	Job           Job
 	Lock          Lock
+	NodeExecution NodeExecution
 	Parameter     Parameter
 	Permittable   accountrepo.Permittable // TODO: Delete this once the permission check migration is complete.
 	Project       Project
@@ -53,13 +54,14 @@ func (c *Container) Filtered(workspace WorkspaceFilter) *Container {
 		EdgeExecution: c.EdgeExecution,
 		Job:           c.Job.Filtered(workspace),
 		Lock:          c.Lock,
-		Workflow:      c.Workflow.Filtered(workspace),
+		NodeExecution: c.NodeExecution,
 		Parameter:     c.Parameter,
 		Project:       c.Project.Filtered(workspace),
 		ProjectAccess: c.ProjectAccess,
 		Transaction:   c.Transaction,
 		Trigger:       c.Trigger,
 		User:          c.User,
+		Workflow:      c.Workflow,
 		Workspace:     c.Workspace,
 	}
 }

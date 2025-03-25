@@ -9,7 +9,6 @@ pub mod conf;
 pub mod conn;
 pub mod doc;
 pub mod storage;
-pub mod thrift;
 pub mod ws;
 
 pub use broadcast::group;
@@ -17,10 +16,8 @@ pub use broadcast::pool;
 
 pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
 
-// New modules
 pub mod server;
 
-// Types
 #[cfg(feature = "auth")]
 #[derive(Debug, serde::Deserialize)]
 pub struct AuthQuery {
