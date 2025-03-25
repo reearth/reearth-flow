@@ -473,7 +473,6 @@ impl BroadcastGroup {
                         &awareness,
                         msg,
                         &redis_store,
-                        doc_name.as_ref(),
                         stream_key.clone(),
                         &mut conn,
                     )
@@ -505,24 +504,23 @@ impl BroadcastGroup {
         awareness: &AwarenessRef,
         msg: Message,
         redis_store: &Arc<RedisStore>,
-        doc_name: Option<&String>,
         stream_key: String,
         conn: &mut Connection,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
-                if doc_name.is_some() {
-                    let rs = redis_store.clone();
-                    let update_bytes = match &msg {
-                        SyncMessage::Update(update) => update.clone(),
-                        SyncMessage::SyncStep2(update) => update.clone(),
-                        _ => Vec::new(),
-                    };
+                let update_bytes = match &msg {
+                    SyncMessage::Update(update) => update.clone(),
+                    SyncMessage::SyncStep2(update) => update.clone(),
+                    _ => Vec::new(),
+                };
 
-                    if !update_bytes.is_empty() {
-                        if let Err(e) = rs.publish_update(&stream_key, &update_bytes, conn).await {
-                            tracing::error!("Redis Stream update failed: {}", e);
-                        }
+                if !update_bytes.is_empty() {
+                    if let Err(e) = redis_store
+                        .publish_update(&stream_key, &update_bytes, conn)
+                        .await
+                    {
+                        tracing::error!("Redis Stream update failed: {}", e);
                     }
                 }
 
