@@ -1,4 +1,3 @@
-import { Trash, Copy } from "@phosphor-icons/react";
 import {
   ReactFlow,
   Background,
@@ -9,11 +8,9 @@ import {
   XYPosition,
   NodeChange,
   EdgeChange,
-  useOnSelectionChange,
 } from "@xyflow/react";
 import { MouseEvent, memo, useCallback, useState } from "react";
 
-import { useT } from "@flow/lib/i18n";
 import {
   isValidConnection,
   CustomConnectionLine,
@@ -26,6 +23,7 @@ import type { ActionNodeType, Edge, Node } from "@flow/types";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
+import { NodeContextMenu } from "./components";
 
 const gridSize = 25;
 
@@ -87,30 +85,19 @@ const Canvas: React.FC<Props> = ({
     onEdgesChange,
     onNodePickerOpen,
   });
-  const t = useT();
 
   const [selectionMenuPosition, setSelectionMenuPosition] =
     useState<XYPosition | null>(null);
-  // TODO: Types below must be fixed and figured out. Right now working on just getting the context menu logic to work etc.
-  const [selectedNodes, setSelectedNodes] = useState([]);
-  const [selectedEdges, setSelectedEdges] = useState([]);
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
-  const onChange = useCallback(
-    ({ nodes, edges }: { nodes: any; edges: any }) => {
-      setSelectedNodes(nodes.map((node: any) => node.id));
-      setSelectedEdges(edges.map((edge: any) => edge.id));
+  const onNodeContextMenu = useCallback(
+    (event: MouseEvent, node: Node) => {
+      event.preventDefault();
+      setSelectionMenuPosition({ x: event.clientX, y: event.clientY });
+      setSelectedNode(node);
     },
-    [],
+    [setSelectionMenuPosition],
   );
-
-  useOnSelectionChange({
-    onChange,
-  });
-
-  const handleSelectionContextMenu = (event: MouseEvent) => {
-    event.preventDefault();
-    setSelectionMenuPosition({ x: event.clientX, y: event.clientY });
-  };
 
   const closeSelectionMenu = () => {
     setSelectionMenuPosition(null);
@@ -173,45 +160,25 @@ const Canvas: React.FC<Props> = ({
       onConnect={handleConnect}
       onReconnect={handleReconnect}
       proOptions={proOptions}
-      onSelectionContextMenu={handleSelectionContextMenu}>
+      onNodeContextMenu={onNodeContextMenu}>
       <Background
         className="bg-background"
         variant={BackgroundVariant["Lines"]}
         gap={gridSize}
         color="rgba(63, 63, 70, 0.3)"
       />
-      {selectionMenuPosition && (
+
+      {selectionMenuPosition && selectedNode && (
         <div
           className="absolute z-50"
           style={{
             top: selectionMenuPosition.y,
             left: selectionMenuPosition.x,
           }}>
-          <div className="min-w-[160px] select-none rounded-md border bg-card p-1 text-popover-foreground shadow-md">
-            <div
-              className="flex items-center justify-between gap-4 rounded-sm px-2 py-1.5 text-xs hover:bg-accent"
-              onClick={() => {
-                closeSelectionMenu();
-              }}>
-              <p>{t("Copy Selected Nodes")}</p>
-              <Copy weight="light" />
-            </div>
-            <div className="-mx-1 my-1 h-px bg-border" />
-            <div
-              className="flex items-center justify-between gap-4 rounded-sm px-2 py-1.5 text-xs text-destructive hover:bg-accent"
-              onClick={() => {
-                onNodesChange?.(
-                  selectedNodes.map((id) => ({ id, type: "remove" })),
-                );
-                onEdgesChange?.(
-                  selectedEdges.map((id) => ({ id, type: "remove" })),
-                );
-                closeSelectionMenu();
-              }}>
-              <p>{t("Delete Selected Nodes")}</p>
-              <Trash weight="light" />
-            </div>
-          </div>
+          <NodeContextMenu
+            node={selectedNode}
+            closeSelectionMenu={closeSelectionMenu}
+          />
         </div>
       )}
 
