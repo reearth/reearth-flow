@@ -2740,6 +2740,23 @@
       ]
     },
     {
+      "name": "JPStandardGridAccumulator",
+      "type": "processor",
+      "description": "Divides the input geometry into Japanese standard (1km) mesh grid.",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
       "name": "LineOnLineOverlayer",
       "type": "processor",
       "description": "Los puntos de intersección se convierten en entidades de puntos que pueden contener la lista combinada de atributos de las líneas originales intersectadas.",
@@ -3761,6 +3778,23 @@
       ],
       "outputPorts": [
         "default"
+      ],
+      "categories": [
+        "Geometry"
+      ]
+    },
+    {
+      "name": "ThreeDimensionPlanarityRotator",
+      "type": "processor",
+      "description": "Rotates a single or a set of 2D geometries in 3D space to align them horizontally.",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "default"
+      ],
+      "outputPorts": [
+        "default",
+        "rejected"
       ],
       "categories": [
         "Geometry"

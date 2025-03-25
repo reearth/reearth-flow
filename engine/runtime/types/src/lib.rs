@@ -6,6 +6,7 @@ pub mod expr;
 pub mod feature;
 pub mod file;
 pub mod geometry;
+pub mod jpmesh;
 pub mod lod;
 pub mod material;
 pub mod metadata;
