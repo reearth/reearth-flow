@@ -496,7 +496,7 @@ impl RedisStore {
         consumer_name: &str,
         count: usize,
     ) -> Result<Vec<Bytes>, anyhow::Error> {
-        let block_ms = 1500;
+        let block_ms = 1600;
 
         let result: RedisStreamResults = redis::cmd("XREADGROUP")
             .arg("GROUP")
