@@ -129,7 +129,6 @@
     "eslint-plugin-storybook": "0.11.6",
     "i18next-parser": "9.3.0",
     "jsdom": "26.0.0",
-    "postcss": "8.5.3",
     "prettier": "3.5.3",
     "read-env": "2.0.0",
     "storybook": "8.6.7",
