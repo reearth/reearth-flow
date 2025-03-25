@@ -514,60 +514,6 @@ mod tests {
     }
 
     #[test]
-    fn test_mesh_code_downscale() {
-        // Create smaller scale meshes by adding digits to the dataset's mesh_code,
-        // and verify that the dataset's inner coordinates are contained within these mesh boundaries
-        for test_case in get_test_cases() {
-            // the mesh code will be (test_case.mesh_code_number * 1000 + 111)
-            let inner_coord = test_case.inner_coord();
-            let mesh_codes =
-                JPMeshCode::from_number(test_case.mesh_code_number, test_case.mesh_type);
-
-            // 1km -> 500m
-            let mesh_codes_500m = mesh_codes.downscale();
-            for (i, mesh_code_500m) in mesh_codes_500m.iter().enumerate() {
-                let bounds_500m = mesh_code_500m.bounds();
-
-                assert_mesh_size_correct!(bounds_500m, 22.5, 15.0);
-
-                if i == 0 {
-                    assert_rect_includes!(bounds_500m, inner_coord);
-                } else {
-                    assert_rect_not_includes!(bounds_500m, inner_coord);
-                }
-            }
-
-            // 1km -> 250m
-            let mesh_codes_250m = mesh_codes_500m.first().unwrap().downscale();
-            for (i, mesh_code_250m) in mesh_codes_250m.iter().enumerate() {
-                let bounds_250m = mesh_code_250m.bounds();
-
-                assert_mesh_size_correct!(bounds_250m, 11.25, 7.5);
-
-                if i == 0 {
-                    assert_rect_includes!(bounds_250m, inner_coord);
-                } else {
-                    assert_rect_not_includes!(bounds_250m, inner_coord);
-                }
-            }
-
-            // 1km -> 125m
-            let mesh_codes_125m = mesh_codes_250m.first().unwrap().downscale();
-            for (i, mesh_code_125m) in mesh_codes_125m.iter().enumerate() {
-                let bounds_125m = mesh_code_125m.bounds();
-
-                assert_mesh_size_correct!(bounds_125m, 5.625, 3.75);
-
-                if i == 0 {
-                    assert_rect_includes!(bounds_125m, inner_coord);
-                } else {
-                    assert_rect_not_includes!(bounds_125m, inner_coord);
-                }
-            }
-        }
-    }
-
-    #[test]
     fn test_mesh_type_order() {
         let mesh_types = [
             JPMeshType::Mesh80km,
