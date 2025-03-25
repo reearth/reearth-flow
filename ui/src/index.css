@@ -1,22 +1,40 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-:root {
-  font-family: Inter, "Noto Sans JP", sans-serif;
-  font-feature-settings:
-    "liga" 1,
-    "calt" 1; /* fix for Chrome */
+@config '../tailwind.config.ts';
+
+/*
+  The default border color has changed to `currentColor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentColor);
+  }
+}
+
+@utility no-scrollbar {
+  /* Chrome, Safari and Opera */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
 }
 
 @layer utilities {
-  /* Chrome, Safari and Opera */
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .no-scrollbar {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+  :root {
+    font-family: Inter, 'Noto Sans JP', sans-serif;
+    font-feature-settings:
+      'liga' 1,
+      'calt' 1; /* fix for Chrome */
   }
 }
 
@@ -88,9 +106,9 @@
 
 @layer base {
   * {
-    @apply border-border;
-    @apply no-scrollbar;
+    @apply border-border no-scrollbar;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -99,25 +117,24 @@
 /* Animation for active node */
 @keyframes cycleActiveColors {
   0% {
-    @apply bg-primary;
+    background-color: theme('colors.primary.DEFAULT');
   }
   25% {
-    @apply bg-success;
+    background-color: theme('colors.success.DEFAULT');
   }
   50% {
-    @apply bg-warning;
+    background-color: theme('colors.warning.DEFAULT');
   }
   75% {
-    @apply bg-destructive;
+    background-color: theme('colors.destructive.DEFAULT');
   }
   100% {
-    @apply bg-primary;
+    background-color: theme('colors.primary.DEFAULT');
   }
 }
 
 @keyframes pulse {
-  0%,
-  100% {
+  0%, 100% {
     transform: scale(1);
   }
   50% {
@@ -134,25 +151,16 @@
 /* Animation for queued node */
 @keyframes cycleColors {
   0% {
-    @apply bg-primary;
+    background-color: theme('colors.primary.DEFAULT');
   }
   50% {
-    @apply bg-foreground;
+    background-color: theme('colors.foreground');
   }
   100% {
-    @apply bg-primary;
+    background-color: theme('colors.primary.DEFAULT');
   }
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
 
 .queued-node-status {
   animation:

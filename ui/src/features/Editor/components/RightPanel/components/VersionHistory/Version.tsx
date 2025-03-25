@@ -24,7 +24,7 @@ const Version: React.FC<VersionProps> = ({
         onClick={onClick}
         onDoubleClick={onDoubleClick}
         style={{ height: "100%" }}>
-        <p className="flex-[2] self-center text-xs font-thin">
+        <p className="flex-2 self-center text-xs font-thin">
           {formatDate(version.timestamp)}
         </p>
         <div className="flex justify-end">

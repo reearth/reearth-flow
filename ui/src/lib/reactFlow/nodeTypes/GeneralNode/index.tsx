@@ -65,7 +65,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     <ContextMenu>
       <ContextMenuTrigger>
         <div className="rounded-sm bg-secondary">
-          <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
+          <div className="relative z-1001 flex h-[25px] w-[150px] rounded-sm">
             <div
               className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className} `}>
               {type === "reader" ? (

@@ -92,18 +92,18 @@ const ParamEditor: React.FC<Props> = ({
         <TabsList className="flex justify-between gap-2">
           {createdAction?.parameter && (
             <TabsTrigger
-              className={`h-[30px] ${activeTab === "params" ? "flex-[5]" : "flex-1"}`}
+              className={`h-[30px] ${activeTab === "params" ? "flex-5" : "flex-1"}`}
               value="params">
               {t("Parameters")}
             </TabsTrigger>
           )}
           <TabsTrigger
-            className={`h-[30px] ${activeTab === "customizations" ? "flex-[5]" : "flex-1"}`}
+            className={`h-[30px] ${activeTab === "customizations" ? "flex-5" : "flex-1"}`}
             value="customizations">
             {t("Customizations")}
           </TabsTrigger>
           <TabsTrigger
-            className={`h-[30px] ${activeTab === "details" ? "flex-[5]" : "flex-1"}`}
+            className={`h-[30px] ${activeTab === "details" ? "flex-5" : "flex-1"}`}
             value="details">
             {t("Details")}
           </TabsTrigger>

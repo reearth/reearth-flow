@@ -102,7 +102,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
                     );
                 }
               }}>
-              <p className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-none">
+              <p className="nowheel nodrag size-full resize-none bg-transparent text-xs focus-visible:outline-hidden">
                 {data.customizations?.content}
               </p>
             </div>
