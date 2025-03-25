@@ -47,18 +47,24 @@ impl RedisStore {
         update: &[u8],
         conn: &mut Connection,
     ) -> Result<(), anyhow::Error> {
-        let mut pipe = redis::pipe();
+        let script = redis::Script::new(
+            r#"
+            local stream_key = KEYS[1]
+            local update = ARGV[1]
+            local ttl = ARGV[2]
+            
+            redis.call('XADD', stream_key, 'NOMKSTREAM', '*', 'update', update)
+            redis.call('EXPIRE', stream_key, ttl)
+            return 1
+            "#,
+        );
 
-        let fields = &[("update", update)];
-        pipe.cmd("XADD")
-            .arg(stream_key)
-            .arg("NOMKSTREAM")
-            .arg("*")
-            .arg(fields);
-
-        pipe.cmd("EXPIRE").arg(stream_key).arg(self.config.ttl);
-
-        let _: () = pipe.query_async(&mut *conn).await?;
+        let _: () = script
+            .key(stream_key)
+            .arg(update)
+            .arg(self.config.ttl)
+            .invoke_async(&mut *conn)
+            .await?;
 
         Ok(())
     }
