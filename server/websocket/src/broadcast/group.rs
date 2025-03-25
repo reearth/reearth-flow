@@ -186,14 +186,7 @@ impl BroadcastGroup {
     ) -> Result<Self> {
         let doc_name = config.doc_name.unwrap_or_default();
         if !config.storage_enabled {
-            return Self::new(
-                awareness,
-                buffer_capacity,
-                redis_store.clone(),
-                store,
-                doc_name,
-            )
-            .await;
+            return Self::new(awareness, buffer_capacity, redis_store, store, doc_name).await;
         }
 
         let mut group = Self::new(
