@@ -291,8 +291,6 @@ impl BroadcastGroup {
         group.redis_consumer_name = Some(consumer_name);
         group.redis_group_name = Some(group_name);
 
-        let redis_store_clone = redis_store.clone();
-        let doc_name_clone = doc_name.clone();
         let shutdown_flag = Arc::new(AtomicBool::new(false));
         let shutdown_flag_clone = shutdown_flag.clone();
         let instance_id = group.instance_id.clone();
@@ -303,21 +301,21 @@ impl BroadcastGroup {
             while !shutdown_flag_clone.load(Ordering::Relaxed) {
                 interval.tick().await;
 
-                if let Err(e) = redis_store_clone
-                    .update_instance_heartbeat(&doc_name_clone, &instance_id)
+                if let Err(e) = redis_store
+                    .update_instance_heartbeat(&doc_name, &instance_id)
                     .await
                 {
                     tracing::warn!("Failed to update instance heartbeat: {}", e);
                 } else {
                     tracing::debug!(
                         "Updated heartbeat for doc '{}' instance {}",
-                        doc_name_clone,
+                        doc_name,
                         instance_id
                     );
                 }
             }
 
-            tracing::debug!("Heartbeat task for '{}' stopped", doc_name_clone);
+            tracing::debug!("Heartbeat task for '{}' stopped", doc_name);
         });
 
         group.heartbeat_task = Some(heartbeat_task);
@@ -373,12 +371,11 @@ impl BroadcastGroup {
         <Sink as futures_util::Sink<Bytes>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
-        let doc_id = self.doc_name.clone();
         let current_count = self.connection_count();
 
         tracing::info!(
             "Creating new subscription for doc '{}', current count: {}",
-            doc_id,
+            self.doc_name,
             current_count
         );
 
