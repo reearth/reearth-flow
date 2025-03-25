@@ -578,12 +578,11 @@ impl BroadcastGroup {
             .store(true, std::sync::atomic::Ordering::SeqCst);
 
         if self.connection_count() == 0 {
-            let doc_name_clone = self.doc_name.clone();
             let redis_store_clone = self.redis_store.clone();
             let store_clone = self.storage.clone();
 
             if let Err(e) = redis_store_clone
-                .remove_instance_heartbeat(&doc_name_clone, &self.instance_id)
+                .remove_instance_heartbeat(&self.doc_name, &self.instance_id)
                 .await
             {
                 tracing::warn!(
@@ -598,20 +597,20 @@ impl BroadcastGroup {
             }
 
             let should_save = match redis_store_clone
-                .get_active_instances(&doc_name_clone, 60)
+                .get_active_instances(&self.doc_name, 60)
                 .await
             {
                 Ok(connections) => {
                     if connections <= 0 {
                         tracing::info!(
                             "All instances disconnected from '{}', proceeding with GCS save",
-                            doc_name_clone
+                            self.doc_name
                         );
                         true
                     } else {
                         tracing::debug!(
                             "Other instances still connected to '{}', skipping GCS save",
-                            doc_name_clone
+                            self.doc_name
                         );
                         false
                     }
@@ -623,7 +622,7 @@ impl BroadcastGroup {
             };
 
             if should_save {
-                let lock_id = format!("gcs:lock:{}", doc_name_clone);
+                let lock_id = format!("gcs:lock:{}", self.doc_name);
                 let instance_id = format!("instance-{}", rand::random::<u64>());
 
                 let lock_acquired = match redis_store_clone
@@ -631,7 +630,7 @@ impl BroadcastGroup {
                     .await
                 {
                     Ok(true) => {
-                        tracing::debug!("Acquired lock for GCS operations on {}", doc_name_clone);
+                        tracing::debug!("Acquired lock for GCS operations on {}", self.doc_name);
                         Some((redis_store_clone.clone(), lock_id, instance_id))
                     }
                     Ok(false) => {
@@ -654,7 +653,7 @@ impl BroadcastGroup {
                     let gcs_doc = Doc::new();
                     let mut gcs_txn = gcs_doc.transact_mut();
 
-                    if let Err(e) = store_clone.load_doc(&doc_name_clone, &mut gcs_txn).await {
+                    if let Err(e) = store_clone.load_doc(&self.doc_name, &mut gcs_txn).await {
                         tracing::warn!("Failed to load current state from GCS: {}", e);
                     }
 
@@ -663,7 +662,7 @@ impl BroadcastGroup {
                     let awareness_txn = awareness_doc.transact();
                     let update = awareness_txn.encode_diff_v1(&gcs_state);
                     let update_bytes = Bytes::from(update);
-                    Self::handle_gcs_update(update_bytes, &doc_name_clone, &store_clone).await;
+                    Self::handle_gcs_update(update_bytes, &self.doc_name, &store_clone).await;
                 }
 
                 if let Some((redis, lock_id, instance_id)) = lock_acquired {
