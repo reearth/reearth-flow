@@ -226,7 +226,7 @@ pub struct BroadcastPool {
 
 impl BroadcastPool {
     pub fn new(store: Arc<GcsStore>, redis_store: Arc<RedisStore>) -> Self {
-        let manager = BroadcastGroupManager::new(store.clone(), redis_store.clone());
+        let manager = BroadcastGroupManager::new(store, redis_store);
 
         let doc_to_id_map = manager.doc_to_id_map.clone();
         tokio::spawn(async move {
