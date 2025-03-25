@@ -3742,6 +3742,21 @@ Replaces a three Dimension box with a polygon.
 ### Category
 * Geometry
 
+## ThreeDimensionPlanarityRotator
+### Type
+* processor
+### Description
+Rotates a single or a set of 2D geometries in 3D space to align them horizontally.
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Geometry
+
 ## ThreeDimensionRotator
 ### Type
 * processor

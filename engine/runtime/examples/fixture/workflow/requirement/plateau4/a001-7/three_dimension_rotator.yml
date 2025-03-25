@@ -1,0 +1,116 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 3da19dc4-1ebd-4762-8250-2a4bc8043409
+name: "three-dimension-rotator-workflow"
+entryGraphId: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+with:
+  geojson: !include ./files/3d_prism.geojson.txt
+  outputPath:
+graphs:
+  - id: 3e3450c8-2344-4728-afa9-5fdb81eec33a
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FileReader
+        type: action
+        action: FileReader
+        with:
+          format: geojson
+          inline: |
+            env.get("geojson")
+
+      - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
+        name: ThreeDimensionRotator
+        type: action
+        action: ThreeDimensionRotator
+        with:
+          angleDegree: "10.0"
+          originX: "139.7586"
+          originY: "35.6435"
+          originZ: "50.0"
+          directionX: "1.0"
+          directionY: "0.0"
+          directionZ: "0.0"
+
+      - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d41
+        name: ThreeDimensionRotator
+        type: action
+        action: ThreeDimensionRotator
+        with:
+          angleDegree: "10.0"
+          originX: "139.7586"
+          originY: "35.6435"
+          originZ: "50.0"
+          directionX: "0.0"
+          directionY: "1.0"
+          directionZ: "0.0"
+
+      - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d42
+        name: ThreeDimensionRotator
+        type: action
+        action: ThreeDimensionRotator
+        with:
+          angleDegree: "30.0"
+          originX: "139.7586"
+          originY: "35.6435"
+          originZ: "50.0"
+          directionX: "1.0"
+          directionY: "0.5"
+          directionZ: "0.0"
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906e
+        name: GeoJsonWriter
+        type: action
+        action: GeoJsonWriter
+        with:
+          output: |
+            file::join_path(env.get("outputPath"), "a001-7-three-dimension-rotator-x10.geojson")
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906f
+        name: GeoJsonWriter
+        type: action
+        action: GeoJsonWriter
+        with:
+          output: |
+            file::join_path(env.get("outputPath"), "a001-7-three-dimension-rotator-y10.geojson")
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906d
+        name: GeoJsonWriter
+        type: action
+        action: GeoJsonWriter
+        with:
+          output: |
+            file::join_path(env.get("outputPath"), "a001-7-three-dimension-rotator-x10-y5.geojson")
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540d
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
+        fromPort: default
+        toPort: default
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb9
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d40
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906e
+        fromPort: default
+        toPort: default
+
+      - id: c064cf52-705f-443a-b2de-6795266c540e
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d41
+        fromPort: default
+        toPort: default
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb9
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d41
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906f
+        fromPort: default
+        toPort: default
+
+      - id: c064cf52-705f-443a-b2de-6795266c540f
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d42
+        fromPort: default
+        toPort: default
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb9
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d42
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906d
+        fromPort: default
+        toPort: default
