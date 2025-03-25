@@ -373,7 +373,7 @@ impl BroadcastGroup {
     {
         let current_count = self.connection_count();
 
-        tracing::info!(
+        tracing::debug!(
             "Creating new subscription for doc '{}', current count: {}",
             self.doc_name,
             current_count
@@ -592,7 +592,7 @@ impl BroadcastGroup {
             {
                 Ok(connections) => {
                     if connections <= 0 {
-                        tracing::info!(
+                        tracing::debug!(
                             "All instances disconnected from '{}', proceeding with GCS save",
                             self.doc_name
                         );
@@ -684,12 +684,12 @@ impl BroadcastGroup {
             {
                 Ok(deleted) => {
                     if deleted {
-                        tracing::info!(
+                        tracing::debug!(
                             "Successfully deleted Redis stream for '{}'",
                             doc_name_clone
                         );
                     } else {
-                        tracing::info!(
+                        tracing::debug!(
                             "Did not delete Redis stream for '{}' as it may still be in use",
                             doc_name_clone
                         );
