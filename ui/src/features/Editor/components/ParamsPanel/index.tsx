@@ -68,7 +68,7 @@ const ParamsPanel: React.FC<Props> = ({ selected, onDataSubmit }) => {
           transitionDuration: "0ms",
           transitionProperty: "transform",
         }}>
-        <div className="fixed right-0 z-[1] flex justify-end p-4">
+        <div className="fixed right-0 z-1 flex justify-end p-4">
           <IconButton
             className="relative before:absolute before:inset-y-0 before:right-0 before:z-[-1] before:bg-success before:content-['']"
             icon={<X className="size-[30px]" weight="thin" />}
