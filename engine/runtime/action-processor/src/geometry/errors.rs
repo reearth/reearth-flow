@@ -3,6 +3,10 @@ use thiserror::Error;
 #[allow(dead_code)]
 #[derive(Error, Debug)]
 pub(super) enum GeometryProcessorError {
+    #[error("ThreeDimensionPlanarityRotator Factory error: {0}")]
+    ThreeDimensionPlanarityRotatorFactory(String),
+    #[error("ThreeDimensionPlanarityRotator error: {0}")]
+    ThreeDimensionPlanarityRotator(String),
     #[error("Extruder Factory error: {0}")]
     ExtruderFactory(String),
     #[error("Extruder error: {0}")]
@@ -103,6 +107,10 @@ pub(super) enum GeometryProcessorError {
     OffsetterFactory(String),
     #[error("Offsetter error: {0}")]
     Offsetter(String),
+    #[error("JPStandardGridAccumulator Factory error: {0}")]
+    JPStandardGridAccumulatorFactory(String),
+    #[error("JPStandardGridAccumulator error: {0}")]
+    JPStandardGridAccumulator(String),
     #[error("SurfaceFootprintReplacer Factory error: {0}")]
     SurfaceFootprintReplacerFactory(String),
     #[error("SurfaceFootprintReplacer error: {0}")]

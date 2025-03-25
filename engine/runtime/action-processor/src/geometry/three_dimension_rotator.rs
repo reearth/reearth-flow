@@ -1,12 +1,15 @@
 use std::{collections::HashMap, sync::Arc};
 
-use reearth_flow_geometry::{algorithm::rotate_3d::Rotate3D, types::point::Point3D};
+use reearth_flow_geometry::{
+    algorithm::rotate::{query::RotateQuery3D, rotate_3d::Rotate3D},
+    types::point::Point3D,
+};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Expr, GeometryValue};
 use schemars::JsonSchema;
@@ -58,7 +61,7 @@ impl ProcessorFactory for ThreeDimensionRotatorFactory {
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::LineOnLineOverlayerFactory(format!(
+                GeometryProcessorError::ThreeDimensionRotatorFactory(format!(
                     "Failed to deserialize `with` parameter: {}",
                     e
                 ))
@@ -154,21 +157,31 @@ impl Processor for ThreeDimensionRotator {
         let geometry = &feature.geometry;
         let geometry = match &geometry.value {
             GeometryValue::FlowGeometry3D(geos) => {
-                let rotate = geos.rotate_3d(
+                if let Some(rotate_query) = RotateQuery3D::from_angle_and_direction(
                     angle_degree,
-                    Some(Point3D::new_(origin_x, origin_y, origin_z)),
                     Point3D::new_(direction_x, direction_y, direction_z),
-                );
-                let mut geometry = geometry.clone();
-                geometry.value = GeometryValue::FlowGeometry3D(rotate);
-                geometry
+                ) {
+                    let rotate = geos.rotate_3d(
+                        rotate_query,
+                        Some(Point3D::new_(origin_x, origin_y, origin_z)),
+                    );
+                    let mut geometry = geometry.clone();
+                    geometry.value = GeometryValue::FlowGeometry3D(rotate);
+                    Some(geometry)
+                } else {
+                    None
+                }
             }
-            _ => geometry.clone(),
+            _ => None,
         };
 
-        let mut feature = ctx.feature.clone();
-        feature.geometry = geometry;
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        if let Some(geometry) = geometry {
+            let mut feature = ctx.feature.clone();
+            feature.geometry = geometry;
+            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        } else {
+            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+        }
         Ok(())
     }
 
