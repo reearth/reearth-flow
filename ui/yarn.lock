@@ -12,13 +12,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@alloc/quick-lru@npm:^5.2.0":
-  version: 5.2.0
-  resolution: "@alloc/quick-lru@npm:5.2.0"
-  checksum: 10c0/7b878c48b9d25277d0e1a9b8b2f2312a314af806b4129dc902f2bc29ab09b58236e53964689feec187b28c80d2203aff03829754773a707a8a5987f1b7682d92
-  languageName: node
-  linkType: hard
-
 "@ampproject/remapping@npm:^2.2.0, @ampproject/remapping@npm:^2.3.0":
   version: 2.3.0
   resolution: "@ampproject/remapping@npm:2.3.0"
@@ -3587,7 +3580,7 @@ __metadata:
     "@storybook/react": "npm:8.5.3"
     "@storybook/react-vite": "npm:8.5.3"
     "@storybook/test": "npm:8.5.3"
-    "@tailwindcss/postcss": "npm:4.0.15"
+    "@tailwindcss/vite": "npm:4.0.15"
     "@tanstack/react-query": "npm:5.66.0"
     "@tanstack/react-query-devtools": "npm:5.66.0"
     "@tanstack/react-router": "npm:1.102.1"
@@ -3631,7 +3624,6 @@ __metadata:
     jsdom: "npm:26.0.0"
     jszip: "npm:3.10.1"
     lodash-es: "npm:4.17.21"
-    postcss: "npm:8.5.1"
     prettier: "npm:3.5.0"
     react: "npm:19.0.0"
     react-datepicker: "npm:8.0.0"
@@ -4418,17 +4410,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tailwindcss/postcss@npm:4.0.15":
+"@tailwindcss/vite@npm:4.0.15":
   version: 4.0.15
-  resolution: "@tailwindcss/postcss@npm:4.0.15"
+  resolution: "@tailwindcss/vite@npm:4.0.15"
   dependencies:
-    "@alloc/quick-lru": "npm:^5.2.0"
     "@tailwindcss/node": "npm:4.0.15"
     "@tailwindcss/oxide": "npm:4.0.15"
     lightningcss: "npm:1.29.2"
-    postcss: "npm:^8.4.41"
     tailwindcss: "npm:4.0.15"
-  checksum: 10c0/49e38901e30787cf0c713a379cfc6d5fb2cdfd110cd5063ec8617a6ac860e15d7aa4252ad7d033769d9cc8a55f231e9540794e32eb7d9c5bd19415ea9f011c41
+  peerDependencies:
+    vite: ^5.2.0 || ^6
+  checksum: 10c0/7b852798b7a71204fc9156fa60a308f51ab82dc907ad9ee88f5de692acf80aaa350b2a591329028450a938a1d66029ef0f6f0b4595bc455834e20d0a434bd924
   languageName: node
   linkType: hard
 
@@ -11567,7 +11559,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"postcss@npm:8.5.1, postcss@npm:^8.4.4, postcss@npm:^8.5.1":
+"postcss@npm:^8.4.4, postcss@npm:^8.5.1":
   version: 8.5.1
   resolution: "postcss@npm:8.5.1"
   dependencies:
@@ -11575,17 +11567,6 @@ __metadata:
     picocolors: "npm:^1.1.1"
     source-map-js: "npm:^1.2.1"
   checksum: 10c0/c4d90c59c98e8a0c102b77d3f4cac190f883b42d63dc60e2f3ed840f16197c0c8e25a4327d2e9a847b45a985612317dc0534178feeebd0a1cf3eb0eecf75cae4
-  languageName: node
-  linkType: hard
-
-"postcss@npm:^8.4.41":
-  version: 8.5.3
-  resolution: "postcss@npm:8.5.3"
-  dependencies:
-    nanoid: "npm:^3.3.8"
-    picocolors: "npm:^1.1.1"
-    source-map-js: "npm:^1.2.1"
-  checksum: 10c0/b75510d7b28c3ab728c8733dd01538314a18c52af426f199a3c9177e63eb08602a3938bfb66b62dc01350b9aed62087eabbf229af97a1659eb8d3513cec823b3
   languageName: node
   linkType: hard
 
