@@ -342,12 +342,12 @@ impl BroadcastGroup {
         &self.awareness_ref
     }
 
-    pub fn get_redis_store(&self) -> Arc<RedisStore> {
-        self.redis_store.clone()
+    pub fn get_redis_store(&self) -> &Arc<RedisStore> {
+        &self.redis_store
     }
 
-    pub fn get_redis_group_name(&self) -> Option<String> {
-        self.redis_group_name.clone()
+    pub fn get_redis_group_name(&self) -> Option<&String> {
+        self.redis_group_name.as_ref()
     }
 
     pub fn get_doc_name(&self) -> String {
@@ -475,7 +475,7 @@ impl BroadcastGroup {
                         &awareness,
                         msg,
                         &redis_store,
-                        stream_key.clone(),
+                        &stream_key,
                         &mut conn,
                     )
                     .await
@@ -506,7 +506,7 @@ impl BroadcastGroup {
         awareness: &AwarenessRef,
         msg: Message,
         redis_store: &Arc<RedisStore>,
-        stream_key: String,
+        stream_key: &str,
         conn: &mut Connection,
     ) -> Result<Option<Message>, Error> {
         match msg {
@@ -519,7 +519,7 @@ impl BroadcastGroup {
 
                 if !update_bytes.is_empty() {
                     if let Err(e) = redis_store
-                        .publish_update(&stream_key, &update_bytes, conn)
+                        .publish_update(stream_key, &update_bytes, conn)
                         .await
                     {
                         tracing::error!("Redis Stream update failed: {}", e);
