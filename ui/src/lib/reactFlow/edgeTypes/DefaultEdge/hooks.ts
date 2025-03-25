@@ -25,6 +25,16 @@ export default ({
     [debugRunState, currentProject],
   );
 
+  const jobStatus = useMemo(
+    () => debugJobState?.status,
+    [debugJobState?.status],
+  );
+
+  const tempWorkflowHasPossibleIssuesFlag = useMemo(
+    () => debugJobState?.tempWorkflowHasPossibleIssuesFlag,
+    [debugJobState?.tempWorkflowHasPossibleIssuesFlag],
+  );
+
   const [hasIntermediateData, setHasIntermediateData] = useState(false);
 
   const intermediateDataIsSet = useMemo(
@@ -109,6 +119,8 @@ export default ({
 
   return {
     // sourceNodeStatus,
+    jobStatus,
+    tempWorkflowHasPossibleIssuesFlag,
     intermediateDataIsSet,
     hasIntermediateData,
     handleIntermediateDataSet,

@@ -163,6 +163,10 @@
   }
 }
 
+.pulse {
+  animation: pulse 1.5s infinite;
+}
+
 .active-node-status {
   animation: cycleActiveColors 3s infinite linear;
   /* pulse 1.5s infinite; */

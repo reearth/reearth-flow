@@ -1,12 +1,10 @@
 import {
   Database,
   Disc,
-  Eye,
   GearFine,
   Graph,
   Lightning,
   Trash,
-  X,
 } from "@phosphor-icons/react";
 import { NodeProps } from "@xyflow/react";
 import { memo, useCallback } from "react";
@@ -20,7 +18,7 @@ import {
 } from "@flow/components";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
-import { isActionNodeType, Node } from "@flow/types";
+import { Node } from "@flow/types";
 
 import { Handles } from "./components";
 import useHooks from "./hooks";
@@ -56,18 +54,19 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     customName,
     inputs,
     outputs,
-    status,
+    // status,
     // intermediateDataUrl,
     borderColor,
     selectedColor,
     selectedBackgroundColor,
-  } = useHooks({ id, data, type });
+  } = useHooks({ data, type });
 
   return (
     <ContextMenu>
       <ContextMenuTrigger>
-        <div
-          className={`rounded-sm bg-secondary ${status === "processing" ? "active-node-status-shadow" : status === "pending" ? "queued-node-status-shadow" : ""}`}>
+        <div className="rounded-sm bg-secondary">
+          {/* <div
+          className={`rounded-sm bg-secondary ${status === "processing" ? "active-node-status-shadow" : status === "pending" ? "queued-node-status-shadow" : ""}`}> */}
           <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
             <div
               className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
@@ -86,7 +85,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
               <p className="self-center truncate text-xs dark:font-light">
                 {data.customizations?.customName || customName || officialName}
               </p>
-              {status === "failed" && <X className="size-4 text-destructive" />}
+              {/* {status === "failed" && <X className="size-4 text-destructive" />} */}
               {/* {status === "completed" && intermediateDataUrl && (
                 <Table className="size-4 text-success" />
               )} */}
@@ -111,12 +110,12 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
             <GearFine weight="light" />
           </ContextMenuItem>
         )}
-        {isActionNodeType(type) && (
+        {/* {isActionNodeType(type) && (
           <ContextMenuItem className="justify-between gap-4 text-xs" disabled>
             {t("Preview Intermediate Data")}
             <Eye weight="light" />
           </ContextMenuItem>
-        )}
+        )} */}
 
         {/* <ContextMenuItem
       className="justify-between gap-4 text-xs"

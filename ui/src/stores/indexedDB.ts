@@ -14,6 +14,7 @@ export type JobState = {
   jobId: string;
   status: JobStatus;
   nodeExecutions?: NodeExecution[];
+  tempWorkflowHasPossibleIssuesFlag?: boolean;
   selectedIntermediateData?: SelectedIntermediateData;
 };
 

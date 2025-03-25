@@ -1,6 +1,6 @@
-import { NodeStatus } from "@flow/types";
+import { JobStatus } from "@flow/types";
 
-export const getNodeColors = (type: string, status?: NodeStatus) => {
+export const getNodeColors = (type: string, status?: JobStatus) => {
   const baseColors = nodeColors[type as keyof typeof nodeColors];
   if (status) {
     return [
@@ -44,11 +44,14 @@ const nodeColors = {
   },
 };
 
-export const nodeStatusColors: Record<NodeStatus | "default", string> = {
+export const nodeStatusColors: Record<JobStatus | "default", string> = {
   completed: "border-success",
   failed: "border-destructive",
-  processing: "active-node-status-border",
-  pending: "queued-node-status-border",
-  starting: "queued-node-status-border",
+  running: "active-node-status-border",
+  queued: "queued-node-status-border",
+  cancelled: "border-warning",
+  // processing: "active-node-status-border",
+  // pending: "queued-node-status-border",
+  // starting: "queued-node-status-border",
   default: "",
 };

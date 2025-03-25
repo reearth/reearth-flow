@@ -1,4 +1,11 @@
-import { MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import useFetchAndReadData from "@flow/hooks/useFetchAndReadData";
 import { useJob } from "@flow/lib/gql/job";
@@ -15,7 +22,7 @@ export default () => {
 
   const [currentProject] = useCurrentProject();
 
-  const { value: debugRunState } = useIndexedDB("debugRun");
+  const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
 
   const debugJobState = useMemo(
     () =>
@@ -23,13 +30,39 @@ export default () => {
     [debugRunState, currentProject],
   );
 
+  const [showTempPossibleIssuesDialog, setShowTempPossibleIssuesDialog] =
+    useState(false);
+
   const { useGetJob } = useJob();
 
   const { job: debugJob, refetch } = useGetJob(debugJobState?.jobId ?? "");
 
   const outputURLs = useMemo(() => debugJob?.outputURLs, [debugJob]);
 
+  const handleShowTempPossibleIssuesDialogClose = useCallback(() => {
+    updateValue((prevState) => {
+      const newJobs = prevState.jobs.map((pj) => {
+        if (
+          debugJob?.id === pj.jobId &&
+          !pj.tempWorkflowHasPossibleIssuesFlag
+        ) {
+          return {
+            ...pj,
+            tempWorkflowHasPossibleIssuesFlag: false,
+          };
+        } else {
+          return pj;
+        }
+      });
+      return {
+        jobs: newJobs,
+      };
+    });
+    setShowTempPossibleIssuesDialog(false);
+  }, [debugJob?.id, updateValue]);
+
   useEffect(() => {
+    if (debugJobState?.tempWorkflowHasPossibleIssuesFlag) return;
     if (
       !outputURLs &&
       (debugJobState?.status === "completed" ||
@@ -38,13 +71,45 @@ export default () => {
     ) {
       (async () => {
         try {
-          await refetch();
+          const { data: job } = await refetch();
+
+          if (
+            !job?.outputURLs &&
+            debugJobState?.tempWorkflowHasPossibleIssuesFlag === undefined
+          ) {
+            updateValue((prevState) => {
+              const newJobs = prevState.jobs.map((pj) => {
+                if (
+                  job?.id === pj.jobId &&
+                  !pj.tempWorkflowHasPossibleIssuesFlag
+                ) {
+                  const tempFlag = !!job.outputURLs?.length;
+                  setShowTempPossibleIssuesDialog(tempFlag);
+                  return {
+                    ...pj,
+                    tempWorkflowHasPossibleIssuesFlag: tempFlag, // No logsURL + a completed/failed/cancelled status means potential issues. @KaWaite
+                  };
+                } else {
+                  return pj;
+                }
+              });
+              return {
+                jobs: newJobs,
+              };
+            });
+          }
         } catch (error) {
           console.error("Error during refetch:", error);
         }
       })();
     }
-  }, [debugJobState?.status, outputURLs, refetch]);
+  }, [
+    debugJobState?.status,
+    debugJobState?.tempWorkflowHasPossibleIssuesFlag,
+    outputURLs,
+    refetch,
+    updateValue,
+  ]);
 
   const intermediateDataURL = useMemo(
     () => debugJobState?.selectedIntermediateData?.url,
@@ -124,6 +189,8 @@ export default () => {
     fileType,
     debugJobState,
     isLoadingData,
+    showTempPossibleIssuesDialog,
+    handleShowTempPossibleIssuesDialogClose,
     handleExpand,
     handleMinimize,
     handleTabChange,

@@ -4,17 +4,9 @@ import type { NodeData } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 import { getNodeColors } from "./nodeColors";
-import useNodeStatus from "./useNodeStatus";
+// import useNodeStatus from "./useNodeStatus";
 
-export default ({
-  id,
-  data,
-  type,
-}: {
-  id: string;
-  data: NodeData;
-  type: string;
-}) => {
+export default ({ data, type }: { data: NodeData; type: string }) => {
   const {
     officialName,
     customName,
@@ -22,7 +14,7 @@ export default ({
     outputs: defaultOutputs,
   } = data;
 
-  const { nodeStatus } = useNodeStatus({ id });
+  // const { nodeStatus } = useNodeStatus();
 
   const inputs: string[] = useMemo(() => {
     if (data.params?.conditions) {
@@ -44,17 +36,15 @@ export default ({
     return defaultOutputs;
   }, [data.params?.conditions, defaultOutputs]);
 
-  const [borderColor, selectedColor, selectedBackgroundColor] = getNodeColors(
-    type,
-    nodeStatus,
-  );
+  const [borderColor, selectedColor, selectedBackgroundColor] =
+    getNodeColors(type);
 
   return {
     officialName,
     customName,
     inputs,
     outputs,
-    status: nodeStatus,
+    // status: nodeStatus,
     borderColor,
     selectedColor,
     selectedBackgroundColor,
