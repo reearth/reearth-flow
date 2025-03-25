@@ -23,12 +23,13 @@ type ProjectSnapshotMetadata {
 
 extend type Query {
   latestProjectSnapshot(projectId: ID!): ProjectDocument
-  projectHistory(projectId: ID!): [ProjectSnapshot!]!
-  projectHistoryMetadata(projectId: ID!): [ProjectSnapshotMetadata!]!
+  projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
+  projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
 }
 
 # Mutation
 
 extend type Mutation {
   rollbackProject(projectId: ID!, version: Int!): ProjectDocument
+  flushProjectToGcs(projectId: ID!): Boolean
 }

@@ -1,7 +1,20 @@
-export const getNodeColors = (type: string) =>
-  Object.keys(nodeColors).includes(type)
-    ? Object.values(nodeColors[type as keyof typeof nodeColors])
-    : Object.values(nodeColors.default);
+import { JobStatus } from "@flow/types";
+
+export const getNodeColors = (type: string, status?: JobStatus) => {
+  const baseColors = nodeColors[type as keyof typeof nodeColors];
+  if (status) {
+    return [
+      nodeStatusColors[status],
+      baseColors.selected,
+      baseColors.selectedBackground,
+    ];
+  }
+  return [
+    baseColors.border,
+    baseColors.selected,
+    baseColors.selectedBackground,
+  ];
+};
 
 const nodeColors = {
   reader: {
@@ -29,4 +42,16 @@ const nodeColors = {
     selected: "border-zinc-600",
     selectedBackground: "bg-zinc-600",
   },
+};
+
+export const nodeStatusColors: Record<JobStatus | "default", string> = {
+  completed: "border-success",
+  failed: "border-destructive",
+  running: "active-node-status-border",
+  queued: "queued-node-status-border",
+  cancelled: "border-warning",
+  // processing: "active-node-status-border",
+  // pending: "queued-node-status-border",
+  // starting: "queued-node-status-border",
+  default: "",
 };

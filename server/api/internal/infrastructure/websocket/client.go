@@ -208,6 +208,52 @@ func (c *Client) GetHistoryMetadata(ctx context.Context, docID string) ([]*webso
 	return metadata, nil
 }
 
+func (c *Client) GetHistoryByVersion(ctx context.Context, docID string, version int) (*websocket.History, error) {
+	url := fmt.Sprintf("%s/api/document/%s/history/version/%d", c.config.ServerURL, docID, version)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get document history for version %d: %w", version, err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
+	}
+
+	var historyResp historyResponse
+	if err := json.NewDecoder(resp.Body).Decode(&historyResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	timestamp, err := time.Parse(time.RFC3339, historyResp.Timestamp)
+	if err != nil {
+		log.Warnf("failed to parse timestamp: %v, using current time", err)
+		timestamp = time.Now()
+	}
+
+	updates := make([]int, len(historyResp.Updates))
+	for j, update := range historyResp.Updates {
+		updates[j] = int(update)
+	}
+
+	return &websocket.History{
+		Version:   int(historyResp.Version),
+		Timestamp: timestamp,
+		Updates:   updates,
+	}, nil
+}
+
 func (c *Client) Rollback(ctx context.Context, id string, version int) (*websocket.Document, error) {
 	url := fmt.Sprintf("%s/api/document/%s/rollback", c.config.ServerURL, id)
 
@@ -265,4 +311,31 @@ func (c *Client) Rollback(ctx context.Context, id string, version int) (*websock
 		Version:   int(docResp.Version),
 		Timestamp: timestamp,
 	}, nil
+}
+
+func (c *Client) FlushToGCS(ctx context.Context, id string) error {
+	url := fmt.Sprintf("%s/api/document/%s/flush", c.config.ServerURL, id)
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to flush document to GCS: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
+	}
+
+	return nil
 }

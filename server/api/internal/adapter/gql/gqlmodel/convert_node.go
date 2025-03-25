@@ -8,7 +8,7 @@ func ToNodeExecution(e *graph.NodeExecution) *NodeExecution {
 	}
 
 	return &NodeExecution{
-		ID:          ID(e.ID().String()),
+		ID:          ID(e.ID()),
 		JobID:       ID(e.JobID().String()),
 		NodeID:      ID(e.NodeID().String()),
 		Status:      ToNodeStatus(e.Status()),

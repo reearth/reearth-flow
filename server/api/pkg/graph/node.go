@@ -17,7 +17,7 @@ const (
 )
 
 type NodeExecution struct {
-	id          NodeExecutionID
+	id          string
 	jobID       id.JobID
 	nodeID      id.NodeID
 	status      Status
@@ -26,7 +26,7 @@ type NodeExecution struct {
 }
 
 func NewNodeExecution(
-	id NodeExecutionID,
+	id string,
 	jobID id.JobID,
 	nodeID id.NodeID,
 	status Status,
@@ -39,7 +39,7 @@ func NewNodeExecution(
 	}
 }
 
-func (e *NodeExecution) ID() NodeExecutionID {
+func (e *NodeExecution) ID() string {
 	return e.id
 }
 

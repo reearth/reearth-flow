@@ -16,7 +16,7 @@ export const convertNodes = (nodes?: Node[]) => {
       const n: EngineReadyNode = {
         id,
         name: data.officialName,
-        type: type === "subworkflow" ? "subgraph" : "action",
+        type: type === "subworkflow" ? "subGraph" : "action",
       };
 
       if (data.params) {
@@ -24,7 +24,7 @@ export const convertNodes = (nodes?: Node[]) => {
       }
 
       if (type === "subworkflow") {
-        n.subGraphId = id;
+        n.subGraphId = data.subworkflowId;
       } else {
         n.action = data.officialName;
       }
