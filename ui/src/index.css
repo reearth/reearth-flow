@@ -165,19 +165,19 @@
 /* Animation for active node - border */
 @keyframes cycleActiveColorsBorder {
   0% {
-    @apply border-primary;
+    border-color: rgba(var(--primary));
   }
   25% {
-    @apply border-success;
+    border-color: rgba(var(--success));
   }
   50% {
-    @apply border-warning;
+    border-color: rgba(var(--warning));
   }
   75% {
-    @apply border-destructive;
+    border-color: rgba(var(--destructive));
   }
   100% {
-    @apply border-primary;
+    border-color: rgba(var(--primary));
   }
 }
 
@@ -222,31 +222,32 @@
   }
 }
 
-/* Animation for queued node - */
+/* Animation for queued node - background */
 @keyframes cycleColors {
   0% {
-    @apply bg-foreground;
+    background-color: rgba(var(--foreground));
   }
   50% {
-    @apply bg-primary;
+    background-color: rgba(var(--primary));
   }
   100% {
-    @apply bg-foreground;
+    background-color: rgba(var(--foreground));
   }
 }
 
-/* Animation for queued node -border */
+/* Animation for queued node - border */
 @keyframes cycleColorsBorder {
   0% {
-    @apply border-foreground;
+    border-color: rgba(var(--foreground));
   }
   50% {
-    @apply border-primary;
+    border-color: rgba(var(--primary));
   }
   100% {
-    @apply border-foreground;
+    border-color: rgba(var(--foreground));
   }
 }
+
 
 .queued-node-status {
   animation:

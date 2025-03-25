@@ -126,7 +126,6 @@
     "eslint-config-reearth": "0.3.7",
     "eslint-plugin-import": "2.31.0",
     "eslint-plugin-storybook": "0.11.2",
-    "eslint-plugin-tailwindcss": "3.18.0",
     "i18next-parser": "9.1.0",
     "jsdom": "26.0.0",
     "prettier": "3.5.0",
