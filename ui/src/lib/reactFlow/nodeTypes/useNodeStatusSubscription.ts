@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@flow/lib/auth";
-import { OnEdgeStatusChangeSubscription } from "@flow/lib/gql/__gen__/graphql";
+import { OnNodeStatusChangeSubscription } from "@flow/lib/gql/__gen__/graphql";
+import { toNodeStatus } from "@flow/lib/gql/convert";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useSubscriptionSetup } from "@flow/lib/gql/subscriptions/useSubscriptionSetup";
 import { JobState } from "@flow/stores";
@@ -29,19 +30,20 @@ export default ({
   }, [accessToken, getAccessToken]);
 
   const subscriptionVariables = useMemo(
-    () => ({ jobId: debugJobState?.jobId, edgeId: id }),
+    () => ({ jobId: debugJobState?.jobId, nodeId: id }),
     [debugJobState?.jobId, id],
   );
 
+  // TODO: Update here when generated code is available for node status
   const subscriptionDataFormatter = useCallback(
-    (data: OnEdgeStatusChangeSubscription) => {
-      return data.edgeStatus;
+    (data: OnNodeStatusChangeSubscription) => {
+      return toNodeStatus(data.nodeStatus);
     },
     [],
   );
 
-  useSubscriptionSetup<OnEdgeStatusChangeSubscription>(
-    "GetSubscribedEdgeStatus",
+  useSubscriptionSetup<OnNodeStatusChangeSubscription>(
+    "GetSubscribedNodeStatus",
     accessToken,
     subscriptionVariables,
     id,
@@ -49,12 +51,12 @@ export default ({
     !id || !debugRun,
   );
 
-  const { data: realTimeEdgeStatus } = useSubscription(
-    "GetSubscribedEdgeStatus",
+  const { data: realTimeNodeStatus } = useSubscription(
+    "GetSubscribedNodeStatus",
     id,
     !id || !debugRun,
   );
   return {
-    realTimeEdgeStatus,
+    realTimeNodeStatus,
   };
 };

@@ -8,13 +8,13 @@ import {
 import { isDefined } from "@flow/utils";
 
 import { CancelJobInput } from "../__gen__/graphql";
-import { toEdgeExecution, toJob } from "../convert";
+import { toJob, toNodeExecution } from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum JobQueryKeys {
   GetJobs = "getJobs",
   GetJob = "getJob",
-  GetEdgeExecution = "getEdgeExecution",
+  GetNodeExecution = "getNodeExecution",
 }
 
 export const JOBS_FETCH_RATE = 15;
@@ -64,22 +64,22 @@ export const useQueries = () => {
       enabled: !!jobId,
     });
 
-  const useGetEdgeExecutionQuery = (
+  const useGetNodeExecutionQuery = (
     jobId?: string,
-    edgeId?: string,
+    nodeId?: string,
     disabled?: boolean,
   ) =>
     useQuery({
-      queryKey: [JobQueryKeys.GetEdgeExecution, jobId, edgeId],
+      queryKey: [JobQueryKeys.GetNodeExecution, jobId, nodeId],
       queryFn: async () => {
-        const data = await graphQLContext?.GetEdgeExecution({
+        const data = await graphQLContext?.GetNodeExecution({
           jobId: jobId ?? "",
-          edgeId: edgeId ?? "",
+          nodeId: nodeId ?? "",
         });
-        if (!data?.edgeExecution) return;
-        return toEdgeExecution(data.edgeExecution);
+        if (!data?.nodeExecution) return;
+        return toNodeExecution(data.nodeExecution);
       },
-      enabled: !disabled && !!jobId && !!edgeId,
+      enabled: !disabled && !!jobId && !!nodeId,
     });
 
   const cancelJobMutation = useMutation({
@@ -107,7 +107,7 @@ export const useQueries = () => {
   return {
     useGetJobsQuery,
     useGetJobQuery,
-    useGetEdgeExecutionQuery,
+    useGetNodeExecutionQuery,
     cancelJobMutation,
   };
 };
