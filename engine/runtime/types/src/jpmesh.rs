@@ -569,12 +569,14 @@ mod tests {
 
     #[test]
     fn test_mesh_type_order() {
-        let mesh_types = [JPMeshType::Mesh80km,
+        let mesh_types = [
+            JPMeshType::Mesh80km,
             JPMeshType::Mesh10km,
             JPMeshType::Mesh1km,
             JPMeshType::Mesh500m,
             JPMeshType::Mesh250m,
-            JPMeshType::Mesh125m];
+            JPMeshType::Mesh125m,
+        ];
 
         for i in 1..mesh_types.len() {
             assert!(mesh_types[i - 1] > mesh_types[i]);
