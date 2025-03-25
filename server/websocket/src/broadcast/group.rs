@@ -5,6 +5,7 @@ use crate::AwarenessRef;
 
 use anyhow::Result;
 use bytes::Bytes;
+use deadpool_redis::Connection;
 use futures_util::{SinkExt, StreamExt};
 use rand;
 
@@ -448,8 +449,8 @@ impl BroadcastGroup {
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
             let stream_key = format!("yjs:stream:{}", doc_name.clone().unwrap_or_default());
-
             tokio::spawn(async move {
+                let mut conn = redis_store.get_pool().get().await.unwrap();
                 while let Some(res) = stream.next().await {
                     let data = match res.map_err(anyhow::Error::from) {
                         Ok(data) => data,
@@ -474,6 +475,7 @@ impl BroadcastGroup {
                         &redis_store,
                         doc_name.as_ref(),
                         stream_key.clone(),
+                        &mut conn,
                     )
                     .await
                     {
@@ -505,6 +507,7 @@ impl BroadcastGroup {
         redis_store: &Arc<RedisStore>,
         doc_name: Option<&String>,
         stream_key: String,
+        conn: &mut Connection,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
@@ -517,11 +520,9 @@ impl BroadcastGroup {
                     };
 
                     if !update_bytes.is_empty() {
-                        tokio::spawn(async move {
-                            if let Err(e) = rs.publish_update(&stream_key, &update_bytes).await {
-                                tracing::error!("Redis Stream update failed: {}", e);
-                            }
-                        });
+                        if let Err(e) = rs.publish_update(&stream_key, &update_bytes, conn).await {
+                            tracing::error!("Redis Stream update failed: {}", e);
+                        }
                     }
                 }
 

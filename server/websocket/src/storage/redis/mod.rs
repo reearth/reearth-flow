@@ -45,21 +45,21 @@ impl RedisStore {
         &self,
         stream_key: &str,
         update: &[u8],
+        conn: &mut Connection,
     ) -> Result<(), anyhow::Error> {
-        if let Ok(mut conn) = self.pool.get().await {
-            let mut pipe = redis::pipe();
+        let mut pipe = redis::pipe();
 
-            let fields = &[("update", update)];
-            pipe.cmd("XADD")
-                .arg(stream_key)
-                .arg("NOMKSTREAM")
-                .arg("*")
-                .arg(fields);
+        let fields = &[("update", update)];
+        pipe.cmd("XADD")
+            .arg(stream_key)
+            .arg("NOMKSTREAM")
+            .arg("*")
+            .arg(fields);
 
-            pipe.cmd("EXPIRE").arg(stream_key).arg(self.config.ttl);
+        pipe.cmd("EXPIRE").arg(stream_key).arg(self.config.ttl);
 
-            let _: () = pipe.query_async(&mut *conn).await?;
-        }
+        let _: () = pipe.query_async(&mut *conn).await?;
+
         Ok(())
     }
 
