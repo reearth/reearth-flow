@@ -95,7 +95,7 @@
     --ring: 2, 8, 23;
   }
 }
-
+/* Note: following two @layer is need to ensure code reflects previous styles from Tailwind 3 */
 @layer base {
   *,
   ::after,
@@ -103,6 +103,13 @@
   ::backdrop,
   ::file-selector-button {
     border-color: #3f3f3f;
+  }
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
   }
 }
 
