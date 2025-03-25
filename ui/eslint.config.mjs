@@ -1,7 +1,6 @@
 import * as graphql from "@graphql-eslint/eslint-plugin";
 import config from "eslint-config-reearth";
 import storybook from "eslint-plugin-storybook";
-import tailwind from "eslint-plugin-tailwindcss";
 
 const storyBookConfig = {
   files: ["*.stories.@(ts|tsx|js|jsx|mjs|cjs)"],
@@ -10,26 +9,26 @@ const storyBookConfig = {
   },
 };
 
-const customTailwindConfig = [
-  ...tailwind.configs["flat/recommended"],
-  {
-    rules: {
-      "tailwindcss/no-custom-classname": [
-        "warn",
-        {
-          whitelist: [
-            "nopan",
-            "nodrag",
-            "nowheel",
-            "destructive",
-            "warning",
-            "dndnode-",
-          ],
-        },
-      ],
-    },
-  },
-];
+// const customTailwindConfig = [
+//   ...tailwind.configs["flat/recommended"],
+//   {
+//     rules: {
+//       "tailwindcss/no-custom-classname": [
+//         "warn",
+//         {
+//           whitelist: [
+//             "nopan",
+//             "nodrag",
+//             "nowheel",
+//             "destructive",
+//             "warning",
+//             "dndnode-",
+//           ],
+//         },
+//       ],
+//     },
+//   },
+// ];
 
 const graphqlConfig = {
   files: ["**/*.graphql"],
@@ -84,7 +83,6 @@ const flowConfig = {
 /** @type { import("eslint").Linter.Config[] } */
 export default [
   ...config("flow"),
-  ...customTailwindConfig,
   flowConfig,
   storyBookConfig,
   graphqlConfig,

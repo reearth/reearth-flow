@@ -4,6 +4,7 @@
 import { readFileSync } from "fs";
 import { resolve } from "path";
 
+import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
 import react from "@vitejs/plugin-react";
 import { readEnv } from "read-env";
@@ -18,7 +19,7 @@ export default defineConfig(() => {
       port: 3000,
     },
     envPrefix: "FLOW_",
-    plugins: [react(), TanStackRouterVite(), cesium(), config()],
+    plugins: [react(), TanStackRouterVite(), cesium(), config(), tailwindcss()],
     build: {
       target: "esnext",
       assetsDir: "static", // avoid conflicts with backend asset endpoints

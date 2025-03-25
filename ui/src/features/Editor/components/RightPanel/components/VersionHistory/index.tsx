@@ -51,7 +51,7 @@ const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
           <div className="flex items-center justify-between rounded bg-primary p-1 px-4">
             <div>
               <p className="text-sm font-light">{t("Current Version")}</p>
-              <p className="flex-[2] text-xs font-thin">
+              <p className="flex-2 text-xs font-thin">
                 {formatDate(latestProjectSnapshotVersion.timestamp)}
               </p>
             </div>
