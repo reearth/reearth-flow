@@ -103,6 +103,10 @@ pub(super) enum GeometryProcessorError {
     OffsetterFactory(String),
     #[error("Offsetter error: {0}")]
     Offsetter(String),
+    #[error("JPStandardGridAccumulator Factory error: {0}")]
+    JPStandardGridAccumulatorFactory(String),
+    #[error("JPStandardGridAccumulator error: {0}")]
+    JPStandardGridAccumulator(String),
     #[error("SurfaceFootprintReplacer Factory error: {0}")]
     SurfaceFootprintReplacerFactory(String),
     #[error("SurfaceFootprintReplacer error: {0}")]
