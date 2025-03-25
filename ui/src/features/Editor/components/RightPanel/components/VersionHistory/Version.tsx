@@ -1,9 +1,9 @@
 import { useT } from "@flow/lib/i18n";
-import { ProjectSnapshot } from "@flow/types";
+import type { ProjectSnapshotMeta } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
 type VersionProps = {
-  version: ProjectSnapshot;
+  version: ProjectSnapshotMeta;
   isSelected: boolean;
   onClick: () => void;
   onDoubleClick: () => void;

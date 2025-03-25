@@ -1,13 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { ProjectSnapshot } from "@flow/types";
+import type { ProjectSnapshotMeta } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
-import { toProjectDocument, toProjectSnapShot } from "../convert";
+import { toProjectDocument, toProjectSnapShotMeta } from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum DocumentQueryKeys {
   GetLatestProjectSnapshot = "getLatestProjectSnapshot",
+  GetProjectSnapshot = "getProjectSnapshot",
   GetProjectHistory = "getProjectHistory",
 }
 
@@ -38,9 +39,9 @@ export const useQueries = () => {
 
         if (!data) return;
         const { projectHistory } = data;
-        const history: ProjectSnapshot[] = projectHistory
+        const history: ProjectSnapshotMeta[] = projectHistory
           .filter(isDefined)
-          .map((projectSnapshot) => toProjectSnapShot(projectSnapshot));
+          .map((projectSnapshot) => toProjectSnapShotMeta(projectSnapshot));
 
         return history;
       },

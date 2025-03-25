@@ -5,10 +5,19 @@ import {
   Globe,
   GridNine,
   Minus,
+  Warning,
 } from "@phosphor-icons/react";
 import { memo } from "react";
 
 import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogContentSection,
+  DialogContentWrapper,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
   LoadingSkeleton,
   Select,
   SelectContent,
@@ -36,6 +45,8 @@ const DebugPreview: React.FC = () => {
     fileType,
     debugJobState,
     isLoadingData,
+    showTempPossibleIssuesDialog,
+    handleShowTempPossibleIssuesDialogClose,
     handleExpand,
     handleMinimize,
     handleTabChange,
@@ -71,14 +82,16 @@ const DebugPreview: React.FC = () => {
               value="data-viewer"
               onClick={handleTabChange}>
               <GridNine />
-              <p className="text-sm font-thin">{t("Table Viewer")}</p>
+              <p className="select-none text-sm font-thin">
+                {t("Table Viewer")}
+              </p>
             </TabsTrigger>
             <TabsTrigger
               className="gap-1 bg-card"
               value="3d-viewer"
               onClick={handleTabChange}>
               <Globe />
-              <p className="text-sm font-thin">{t("3D Viewer")}</p>
+              <p className="select-none text-sm font-thin">{t("3D Viewer")}</p>
             </TabsTrigger>
           </TabsList>
         </div>
@@ -118,6 +131,39 @@ const DebugPreview: React.FC = () => {
         </>
       )}
     </Tabs>
+  ) : showTempPossibleIssuesDialog ? (
+    <Dialog open={showTempPossibleIssuesDialog}>
+      <DialogContent size="sm" hideCloseButton>
+        <DialogHeader className="text-warning">
+          <DialogTitle className="flex justify-center gap-1">
+            <Warning weight="light" />
+            {t("Warning")}
+          </DialogTitle>
+        </DialogHeader>
+        <DialogContentWrapper>
+          <DialogContentSection>
+            <p className="text-sm font-light">
+              {t("Your workflow completed without any output data.")}
+            </p>
+          </DialogContentSection>
+          <DialogContentSection>
+            <p className="text-sm font-light">
+              {t(
+                "Please review the logs to see if there were any errors during the workflow process.",
+              )}
+            </p>
+          </DialogContentSection>
+        </DialogContentWrapper>
+        <DialogFooter>
+          <Button
+            className="self-end"
+            size="sm"
+            onClick={handleShowTempPossibleIssuesDialogClose}>
+            {t("OK")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   ) : null;
 };
 

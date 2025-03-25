@@ -1,4 +1,11 @@
-import { MouseEvent, useEffect, useMemo, useRef, useState } from "react";
+import {
+  MouseEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import useFetchAndReadData from "@flow/hooks/useFetchAndReadData";
 import { useJob } from "@flow/lib/gql/job";
@@ -9,13 +16,13 @@ import { useCurrentProject } from "@flow/stores";
 export default () => {
   const t = useT();
 
-  const prevIntermediateDataUrl = useRef<string | undefined>(undefined);
+  const prevIntermediateDataUrls = useRef<string[] | undefined>(undefined);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
 
   const [currentProject] = useCurrentProject();
 
-  const { value: debugRunState } = useIndexedDB("debugRun");
+  const { value: debugRunState, updateValue } = useIndexedDB("debugRun");
 
   const debugJobState = useMemo(
     () =>
@@ -23,43 +30,100 @@ export default () => {
     [debugRunState, currentProject],
   );
 
+  const [showTempPossibleIssuesDialog, setShowTempPossibleIssuesDialog] =
+    useState(false);
+
   const { useGetJob } = useJob();
 
   const { job: debugJob, refetch } = useGetJob(debugJobState?.jobId ?? "");
 
   const outputURLs = useMemo(() => debugJob?.outputURLs, [debugJob]);
 
+  const handleShowTempPossibleIssuesDialogClose = useCallback(() => {
+    updateValue((prevState) => {
+      const newJobs = prevState.jobs.map((pj) => {
+        if (
+          debugJob?.id === pj.jobId &&
+          !pj.tempWorkflowHasPossibleIssuesFlag
+        ) {
+          return {
+            ...pj,
+            tempWorkflowHasPossibleIssuesFlag: false,
+          };
+        } else {
+          return pj;
+        }
+      });
+      return {
+        jobs: newJobs,
+      };
+    });
+    setShowTempPossibleIssuesDialog(false);
+  }, [debugJob?.id, updateValue]);
+
   useEffect(() => {
+    if (debugJobState?.tempWorkflowHasPossibleIssuesFlag) return;
     if (
       !outputURLs &&
       (debugJobState?.status === "completed" ||
         debugJobState?.status === "failed" ||
         debugJobState?.status === "cancelled")
     ) {
-      // TODO: once backend is fixed, remove this timeout @KaWaite
-      const timer = setTimeout(async () => {
+      (async () => {
         try {
-          await refetch();
+          const { data: job } = await refetch();
+
+          if (
+            !job?.outputURLs &&
+            debugJobState?.tempWorkflowHasPossibleIssuesFlag === undefined
+          ) {
+            updateValue((prevState) => {
+              const newJobs = prevState.jobs.map((pj) => {
+                if (
+                  job?.id === pj.jobId &&
+                  !pj.tempWorkflowHasPossibleIssuesFlag
+                ) {
+                  const tempFlag = !!job.outputURLs?.length;
+                  setShowTempPossibleIssuesDialog(tempFlag);
+                  return {
+                    ...pj,
+                    tempWorkflowHasPossibleIssuesFlag: tempFlag, // No logsURL + a completed/failed/cancelled status means potential issues. @KaWaite
+                  };
+                } else {
+                  return pj;
+                }
+              });
+              return {
+                jobs: newJobs,
+              };
+            });
+          }
         } catch (error) {
           console.error("Error during refetch:", error);
         }
-      }, 5000);
-
-      return () => clearTimeout(timer);
+      })();
     }
-  }, [debugJobState?.status, outputURLs, refetch]);
+  }, [
+    debugJobState?.status,
+    debugJobState?.tempWorkflowHasPossibleIssuesFlag,
+    outputURLs,
+    refetch,
+    updateValue,
+  ]);
 
-  const intermediateDataURL = useMemo(
-    () => debugJobState?.selectedIntermediateData?.url,
+  const intermediateDataURLs = useMemo(
+    () => debugJobState?.selectedIntermediateData?.map((sid) => sid.url),
     [debugJobState],
   );
 
   const dataURLs = useMemo(() => {
     const urls: { key: string; name: string }[] = [];
-    if (intermediateDataURL) {
-      urls.push({
-        key: intermediateDataURL,
-        name: intermediateDataURL.split("/").pop() || intermediateDataURL,
+    if (intermediateDataURLs) {
+      intermediateDataURLs.forEach((intermediateDataURL) => {
+        urls.push({
+          key: intermediateDataURL,
+          name: intermediateDataURL.split("/").pop() || intermediateDataURL,
+        });
       });
     }
     if (outputURLs) {
@@ -71,26 +135,31 @@ export default () => {
       );
     }
     return urls.length ? urls : undefined;
-  }, [outputURLs, intermediateDataURL, t]);
+  }, [outputURLs, intermediateDataURLs, t]);
 
   const [selectedDataURL, setSelectedDataURL] = useState<string | undefined>(
     undefined,
   );
 
   useEffect(() => {
-    if (intermediateDataURL !== prevIntermediateDataUrl.current) {
-      setSelectedDataURL(intermediateDataURL);
-      prevIntermediateDataUrl.current = intermediateDataURL;
+    if (intermediateDataURLs !== prevIntermediateDataUrls.current) {
+      const newURL = intermediateDataURLs?.find(
+        (url) => !prevIntermediateDataUrls.current?.includes(url),
+      );
+      setSelectedDataURL(newURL);
+      prevIntermediateDataUrls.current = intermediateDataURLs;
+      setMinimized(false);
     } else if (
       (dataURLs?.length && !selectedDataURL) ||
       (selectedDataURL && !dataURLs?.find((u) => u.key === selectedDataURL))
     ) {
       setSelectedDataURL(dataURLs?.[0].key);
     }
-  }, [dataURLs, selectedDataURL, intermediateDataURL]);
+  }, [dataURLs, selectedDataURL, intermediateDataURLs]);
 
   const handleSelectedDataChange = (url: string) => {
     setSelectedDataURL(url);
+    setMinimized(false);
   };
 
   const {
@@ -125,6 +194,8 @@ export default () => {
     fileType,
     debugJobState,
     isLoadingData,
+    showTempPossibleIssuesDialog,
+    handleShowTempPossibleIssuesDialogClose,
     handleExpand,
     handleMinimize,
     handleTabChange,

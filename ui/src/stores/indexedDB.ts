@@ -1,18 +1,21 @@
-import { EdgeExecution, JobStatus } from "@flow/types";
+import { JobStatus, NodeExecution } from "@flow/types";
 
 export type GeneralState = {
   clipboard: any | undefined;
+};
+
+export type SelectedIntermediateData = {
+  edgeId: string;
+  url: string;
 };
 
 export type JobState = {
   projectId: string;
   jobId: string;
   status: JobStatus;
-  edgeExecutions?: EdgeExecution[];
-  selectedIntermediateData?: {
-    edgeId: string;
-    url: string;
-  };
+  nodeExecutions?: NodeExecution[];
+  tempWorkflowHasPossibleIssuesFlag?: boolean;
+  selectedIntermediateData?: SelectedIntermediateData[];
 };
 
 export type DebugRunState = {
