@@ -9,7 +9,7 @@ import {
   NodeChange,
   EdgeChange,
 } from "@xyflow/react";
-import { MouseEvent, memo, useCallback, useState } from "react";
+import { MouseEvent, memo, useCallback, useRef, useState } from "react";
 
 import {
   isValidConnection,
@@ -24,6 +24,7 @@ import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
 import { NodeContextMenu } from "./components";
+import { MenuPosition } from "@flow/components";
 
 const gridSize = 25;
 
@@ -86,14 +87,24 @@ const Canvas: React.FC<Props> = ({
     onNodePickerOpen,
   });
 
-  const [menuPosition, setMenuPosition] = useState<XYPosition | null>(null);
+  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
 
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   const onNodeContextMenu = useCallback(
     (event: MouseEvent, node: Node) => {
       event.preventDefault();
-      setMenuPosition({ x: event.clientX, y: event.clientY });
+      if (!ref.current) return;
+      const pane = ref.current.getBoundingClientRect();
+      setMenuPosition({
+        top: event.clientY < pane.height - 200 && event.clientY,
+        left: event.clientX < pane.width - 200 && event.clientX,
+        right: event.clientX >= pane.width - 200 && pane.width - event.clientX,
+        bottom:
+          event.clientY >= pane.height - 200 && pane.height - event.clientY,
+      });
+
       setSelectedNode(node);
     },
     [setMenuPosition],
@@ -116,7 +127,7 @@ const Canvas: React.FC<Props> = ({
       // selectNodesOnDrag={false}
       // fitViewOptions={{ padding: 0.5 }}
       // fitView
-
+      ref={ref}
       // Locking props START
       nodesDraggable={!canvasLock}
       nodesConnectable={!canvasLock}
@@ -160,6 +171,7 @@ const Canvas: React.FC<Props> = ({
       onConnect={handleConnect}
       onReconnect={handleReconnect}
       proOptions={proOptions}
+      onPaneClick={closeMenu}
       onNodeContextMenu={onNodeContextMenu}>
       <Background
         className="bg-background"

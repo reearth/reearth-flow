@@ -1,7 +1,14 @@
+export type MenuPosition = {
+  top: number | false;
+  left: number | false;
+  right: number | false;
+  bottom: number | false;
+};
+
 type ContextMenuProps = {
   items: ContextMenuItemProps[];
   onClose: () => void;
-  menuPosition: { x: number; y: number };
+  menuPosition: MenuPosition;
 };
 
 const ContextMenu: React.FC<ContextMenuProps> = ({
@@ -9,36 +16,30 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   onClose,
   menuPosition,
 }) => {
+  const { top, left, right, bottom } = menuPosition;
   return (
-    <>
-      <div
-        className="absolute z-50"
-        style={{
-          top: menuPosition.y,
-          left: menuPosition.x,
-        }}>
-        <div className="min-w-[160px] select-none rounded-md border bg-card p-1 text-popover-foreground shadow-md">
-          {items.map((item, index) => (
-            <ContextMenuItem
-              key={index}
-              label={item.label}
-              icon={item.icon}
-              onCallback={item.onCallback}
-              onClose={onClose}
-              destructive={item.destructive}
-              disabled={item.disabled}
-            />
-          ))}
-        </div>{" "}
-      </div>
-      {menuPosition && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={onClose}
-          onContextMenu={onClose}
-        />
-      )}
-    </>
+    <div
+      className="absolute z-50"
+      style={{
+        top: top !== false ? top : undefined,
+        left: left !== false ? left - 75 : undefined,
+        right: right !== false ? right : undefined,
+        bottom: bottom !== false ? bottom : undefined,
+      }}>
+      <div className="min-w-[160px] select-none rounded-md border bg-card p-1 text-popover-foreground shadow-md">
+        {items.map((item, index) => (
+          <ContextMenuItem
+            key={index}
+            label={item.label}
+            icon={item.icon}
+            onCallback={item.onCallback}
+            onClose={onClose}
+            destructive={item.destructive}
+            disabled={item.disabled}
+          />
+        ))}
+      </div>{" "}
+    </div>
   );
 };
 

@@ -1,14 +1,14 @@
 import { Eye, GearFine, Graph, Trash } from "@phosphor-icons/react";
 import { useCallback } from "react";
 
-import { ContextMenu } from "@flow/components";
+import { ContextMenu, MenuPosition } from "@flow/components";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import { isActionNodeType, Node } from "@flow/types";
 
 type Props = {
   node: Node;
-  menuPosition: { x: number; y: number };
+  menuPosition: MenuPosition;
   onClose: () => void;
 };
 
