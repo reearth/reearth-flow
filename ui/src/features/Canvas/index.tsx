@@ -91,18 +91,19 @@ const Canvas: React.FC<Props> = ({
 
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const ref = useRef<HTMLDivElement>(null);
-
   const onNodeContextMenu = useCallback(
     (event: MouseEvent, node: Node) => {
       event.preventDefault();
       if (!ref.current) return;
       const pane = ref.current.getBoundingClientRect();
+      const localX = event.clientX - pane.left;
+      const localY = event.clientY - pane.top;
+
       setMenuPosition({
-        top: event.clientY < pane.height - 200 && event.clientY,
-        left: event.clientX < pane.width - 200 && event.clientX,
-        right: event.clientX >= pane.width - 200 && pane.width - event.clientX,
-        bottom:
-          event.clientY >= pane.height - 200 && pane.height - event.clientY,
+        top: localY < pane.height - 200 && localY,
+        left: localX < pane.width - 200 && localX,
+        right: localX >= pane.width - 200 && pane.width - localX,
+        bottom: localY >= pane.height - 200 && pane.height - localY,
       });
 
       setSelectedNode(node);

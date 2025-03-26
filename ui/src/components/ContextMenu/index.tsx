@@ -22,7 +22,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
       className="absolute z-50"
       style={{
         top: top !== false ? top : undefined,
-        left: left !== false ? left - 75 : undefined,
+        left: left !== false ? left : undefined,
         right: right !== false ? right : undefined,
         bottom: bottom !== false ? bottom : undefined,
       }}>
