@@ -830,32 +830,29 @@ impl RedisStore {
         let stream_key = format!("yjs:stream:{}", doc_id);
 
         if let Ok(mut conn) = self.pool.get().await {
-            let exists: bool = redis::cmd("EXISTS")
-                .arg(&stream_key)
-                .query_async(&mut *conn)
-                .await?;
+            let script = redis::Script::new(
+                r#"
+                if redis.call('EXISTS', KEYS[1]) == 0 then
+                    return {}
+                end
+                
+                local result = redis.call('XRANGE', KEYS[1], '-', '+')
+                local updates = {}
+                
+                for i, entry in ipairs(result) do
+                    local fields = entry[2]
+                    for j = 1, #fields, 2 do
+                        if fields[j] == "update" then
+                            table.insert(updates, fields[j+1])
+                        end
+                    end
+                end
+                
+                return updates
+            "#,
+            );
 
-            if !exists {
-                return Ok(Vec::new());
-            }
-
-            type RawStreamEntry = (String, Vec<(String, Bytes)>);
-            let result: Vec<RawStreamEntry> = redis::cmd("XRANGE")
-                .arg(&stream_key)
-                .arg("-")
-                .arg("+")
-                .query_async(&mut *conn)
-                .await?;
-
-            let mut updates = Vec::new();
-
-            for (_, fields) in result {
-                for (field_name, field_value) in fields {
-                    if field_name == "update" {
-                        updates.push(field_value);
-                    }
-                }
-            }
+            let updates: Vec<Bytes> = script.key(&stream_key).invoke_async(&mut *conn).await?;
 
             return Ok(updates);
         }
