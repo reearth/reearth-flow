@@ -198,7 +198,17 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 
 	resp, err := b.client.CreateJob(ctx, req)
 	if err != nil {
+		log.Debugfc(ctx, "[Batch] Error creating job: %v", err)
 		return "", fmt.Errorf("failed to create job: %v", err)
+	}
+
+	log.Debugfc(ctx, "[Batch] Job created successfully: name=%s, uid=%s", resp.Name, resp.Uid)
+
+	if resp.Name == "" {
+		log.Warnfc(ctx, "[Batch] Empty job name returned from GCP API")
+
+		log.Debugfc(ctx, "[Batch] Using fallback name: %s", jobName)
+		return jobName, nil
 	}
 
 	return resp.Name, nil

@@ -14,6 +14,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
+	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -173,12 +174,22 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		projectID = *deployment.Project()
 	}
 
+	log.Debugfc(ctx, "[Trigger] Submitting job ID: %s, workflow: %s\n", j.ID(), deployment.WorkflowURL())
+
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), p.Variables, projectID, deployment.Workspace())
 	if err != nil {
+		log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
 		return nil, interfaces.ErrJobCreationFailed
 	}
-
-	j.SetGCPJobID(gcpJobID)
+	log.Debugfc(ctx, "[Trigger] GCP job ID received: %s\n", gcpJobID)
+	if gcpJobID == "" {
+		log.Debugfc(ctx, "[Trigger] WARNING: Empty GCP job ID returned\n")
+	} else {
+		j.SetGCPJobID(gcpJobID)
+		if err := i.jobRepo.Save(ctx, j); err != nil {
+			log.Debugfc(ctx, "[Trigger] Failed to save job with GCP ID: %v\n", err)
+		}
+	}
 
 	if err := i.job.StartMonitoring(ctx, j, p.NotificationURL); err != nil {
 		return nil, err
