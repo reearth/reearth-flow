@@ -86,21 +86,21 @@ const Canvas: React.FC<Props> = ({
     onNodePickerOpen,
   });
 
-  const [selectionMenuPosition, setSelectionMenuPosition] =
-    useState<XYPosition | null>(null);
+  const [menuPosition, setMenuPosition] = useState<XYPosition | null>(null);
+
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
   const onNodeContextMenu = useCallback(
     (event: MouseEvent, node: Node) => {
       event.preventDefault();
-      setSelectionMenuPosition({ x: event.clientX, y: event.clientY });
+      setMenuPosition({ x: event.clientX, y: event.clientY });
       setSelectedNode(node);
     },
-    [setSelectionMenuPosition],
+    [setMenuPosition],
   );
 
-  const closeSelectionMenu = () => {
-    setSelectionMenuPosition(null);
+  const closeMenu = () => {
+    setMenuPosition(null);
   };
 
   return (
@@ -168,25 +168,11 @@ const Canvas: React.FC<Props> = ({
         color="rgba(63, 63, 70, 0.3)"
       />
 
-      {selectionMenuPosition && selectedNode && (
-        <div
-          className="absolute z-50"
-          style={{
-            top: selectionMenuPosition.y,
-            left: selectionMenuPosition.x,
-          }}>
-          <NodeContextMenu
-            node={selectedNode}
-            closeSelectionMenu={closeSelectionMenu}
-          />
-        </div>
-      )}
-
-      {selectionMenuPosition && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={closeSelectionMenu}
-          onContextMenu={closeSelectionMenu}
+      {menuPosition && selectedNode && (
+        <NodeContextMenu
+          node={selectedNode}
+          menuPosition={menuPosition}
+          onClose={closeMenu}
         />
       )}
     </ReactFlow>

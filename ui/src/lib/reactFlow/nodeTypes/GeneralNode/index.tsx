@@ -2,7 +2,7 @@ import { Database, Disc, Graph, Lightning } from "@phosphor-icons/react";
 import { NodeProps } from "@xyflow/react";
 import { memo } from "react";
 
-import { Node } from "@flow/types";
+import type { Node } from "@flow/types";
 
 import { Handles } from "./components";
 import useHooks from "./hooks";

@@ -1,15 +1,18 @@
 import { Eye, GearFine, Graph, Trash } from "@phosphor-icons/react";
-import { useT } from "@flow/lib/i18n";
-import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useCallback } from "react";
+
+import { ContextMenu } from "@flow/components";
+import { useEditorContext } from "@flow/features/Editor/editorContext";
+import { useT } from "@flow/lib/i18n";
 import { isActionNodeType, Node } from "@flow/types";
-import CustomContextMenuItem from "../ContextMenuItem";
+
 type Props = {
   node: Node;
-  closeSelectionMenu: () => void;
+  menuPosition: { x: number; y: number };
+  onClose: () => void;
 };
 
-const NodeContextMenu: React.FC<Props> = ({ closeSelectionMenu, node }) => {
+const NodeContextMenu: React.FC<Props> = ({ node, menuPosition, onClose }) => {
   const t = useT();
   const { onNodesChange, onSecondaryNodeAction } = useEditorContext();
   const { id } = node;
@@ -22,44 +25,46 @@ const NodeContextMenu: React.FC<Props> = ({ closeSelectionMenu, node }) => {
     onSecondaryNodeAction?.(undefined, id, node.data.subworkflowId);
   }, [id, node.data.subworkflowId, onSecondaryNodeAction]);
 
-  return (
-    <div className="min-w-[160px] select-none rounded-md border bg-card p-1 text-popover-foreground shadow-md">
-      {node.type === "subworkflow" ? (
-        <CustomContextMenuItem
-          label={t("Open Subworkflow Canvas")}
-          icon={<Graph weight="light" />}
-          onAction={handleSecondaryNodeAction}
-          onClose={closeSelectionMenu}
-        />
-      ) : (
-        <CustomContextMenuItem
-          label={t("Node Settings")}
-          icon={<GearFine weight="light" />}
-          onAction={handleSecondaryNodeAction}
-          onClose={closeSelectionMenu}
-        />
-      )}
+  const menuItems = [
+    node.type === "subworkflow"
+      ? {
+          label: t("Open Subworkflow Canvas"),
+          icon: <Graph weight="light" />,
+          onCallback: handleSecondaryNodeAction,
+          onClose,
+        }
+      : {
+          label: t("Node Settings"),
+          icon: <GearFine weight="light" />,
+          onCallback: handleSecondaryNodeAction,
+          onClose,
+        },
+    ...(isActionNodeType(node.type)
+      ? [
+          {
+            label: t("Preview Intermediate Data"),
+            icon: <Eye weight="light" />,
+            onCallback: handleSecondaryNodeAction,
+            disabled: true,
+            onClose,
+          },
+        ]
+      : []),
+    {
+      label: t("Delete Node"),
+      icon: <Trash weight="light" />,
+      destructive: true,
+      onCallback: handleNodeDelete,
+      onClose,
+    },
+  ];
 
-      {isActionNodeType(node.type) && (
-        <div
-          className="flex items-center justify-between gap-4 rounded-sm px-2 py-1.5 text-xs hover:bg-accent"
-          onClick={() => {
-            handleSecondaryNodeAction;
-            closeSelectionMenu();
-          }}>
-          <p> {t("Preview Intermediate Data")}</p>
-          <Eye weight="light" />
-        </div>
-      )}
-      <div className="-mx-1 my-1 h-px bg-border" />
-      <CustomContextMenuItem
-        label={t("Delete Node")}
-        icon={<Trash weight="light" />}
-        destructive
-        onAction={handleNodeDelete}
-        onClose={closeSelectionMenu}
-      />
-    </div>
+  return (
+    <ContextMenu
+      items={menuItems}
+      menuPosition={menuPosition}
+      onClose={onClose}
+    />
   );
 };
 
