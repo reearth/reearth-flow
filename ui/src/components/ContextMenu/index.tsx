@@ -1,4 +1,7 @@
-export type MenuPosition = {
+import type { Node } from "@flow/types";
+
+export type ContextMenuMeta = {
+  node?: Node;
   top: number | false;
   left: number | false;
   right: number | false;
@@ -8,15 +11,15 @@ export type MenuPosition = {
 type ContextMenuProps = {
   items: ContextMenuItemProps[];
   onClose: () => void;
-  menuPosition: MenuPosition;
+  contextMenuMeta: ContextMenuMeta;
 };
 
 const ContextMenu: React.FC<ContextMenuProps> = ({
   items,
   onClose,
-  menuPosition,
+  contextMenuMeta,
 }) => {
-  const { top, left, right, bottom } = menuPosition;
+  const { top, left, right, bottom } = contextMenuMeta;
   return (
     <div
       className="absolute z-50"
@@ -62,17 +65,15 @@ const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
   onCallback,
   onClose,
 }) => {
-  const isDescructive = destructive ? "text-destructive" : "";
-
-  const isDisabled = disabled
-    ? "pointer-events-none opacity-50 text-muted-foreground"
-    : "hover:bg-accent cursor-pointer";
-
   return (
     <>
       {destructive && <div className="-mx-1 my-1 h-px bg-border" />}
       <div
-        className={`flex items-center justify-between gap-4 rounded-sm px-2 py-1.5 text-xs ${isDescructive} ${isDisabled} hover:bg-accent ${className}`}
+        className={`flex items-center justify-between gap-4 rounded-sm px-2 py-1.5 text-xs ${destructive ? "text-destructive" : ""} ${
+          disabled
+            ? "pointer-events-none opacity-50 text-muted-foreground"
+            : "hover:bg-accent cursor-pointer"
+        } hover:bg-accent ${className}`}
         onClick={() => {
           if (!disabled) {
             onCallback();

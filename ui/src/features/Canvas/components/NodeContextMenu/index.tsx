@@ -1,18 +1,18 @@
 import { Eye, GearFine, Graph, Trash } from "@phosphor-icons/react";
 import { useCallback } from "react";
 
-import { ContextMenu, MenuPosition } from "@flow/components";
+import { ContextMenu, ContextMenuMeta } from "@flow/components";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import { isActionNodeType, Node } from "@flow/types";
 
 type Props = {
   node: Node;
-  menuPosition: MenuPosition;
+  contextMenu: ContextMenuMeta;
   onClose: () => void;
 };
 
-const NodeContextMenu: React.FC<Props> = ({ node, menuPosition, onClose }) => {
+const NodeContextMenu: React.FC<Props> = ({ node, contextMenu, onClose }) => {
   const t = useT();
   const { onNodesChange, onSecondaryNodeAction } = useEditorContext();
   const { id } = node;
@@ -62,7 +62,7 @@ const NodeContextMenu: React.FC<Props> = ({ node, menuPosition, onClose }) => {
   return (
     <ContextMenu
       items={menuItems}
-      menuPosition={menuPosition}
+      contextMenuMeta={contextMenu}
       onClose={onClose}
     />
   );

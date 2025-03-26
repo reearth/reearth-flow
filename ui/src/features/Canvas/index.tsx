@@ -9,7 +9,7 @@ import {
   NodeChange,
   EdgeChange,
 } from "@xyflow/react";
-import { MouseEvent, memo, useCallback, useRef, useState } from "react";
+import { MouseEvent, memo } from "react";
 
 import {
   isValidConnection,
@@ -24,7 +24,6 @@ import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
 import { NodeContextMenu } from "./components";
-import { MenuPosition } from "@flow/components";
 
 const gridSize = 25;
 
@@ -75,6 +74,10 @@ const Canvas: React.FC<Props> = ({
     handleEdgesChange,
     handleConnect,
     handleReconnect,
+    handleNodeContextMenu,
+    handleCloseContextmenu,
+    contextMenu,
+    paneRef,
   } = useHooks({
     nodes,
     edges,
@@ -86,34 +89,6 @@ const Canvas: React.FC<Props> = ({
     onEdgesChange,
     onNodePickerOpen,
   });
-
-  const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null);
-
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
-  const onNodeContextMenu = useCallback(
-    (event: MouseEvent, node: Node) => {
-      event.preventDefault();
-      if (!ref.current) return;
-      const pane = ref.current.getBoundingClientRect();
-      const localX = event.clientX - pane.left;
-      const localY = event.clientY - pane.top;
-
-      setMenuPosition({
-        top: localY < pane.height - 200 && localY,
-        left: localX < pane.width - 200 && localX,
-        right: localX >= pane.width - 200 && pane.width - localX,
-        bottom: localY >= pane.height - 200 && pane.height - localY,
-      });
-
-      setSelectedNode(node);
-    },
-    [setMenuPosition],
-  );
-
-  const closeMenu = () => {
-    setMenuPosition(null);
-  };
 
   return (
     <ReactFlow
@@ -128,7 +103,7 @@ const Canvas: React.FC<Props> = ({
       // selectNodesOnDrag={false}
       // fitViewOptions={{ padding: 0.5 }}
       // fitView
-      ref={ref}
+      ref={paneRef}
       // Locking props START
       nodesDraggable={!canvasLock}
       nodesConnectable={!canvasLock}
@@ -165,15 +140,15 @@ const Canvas: React.FC<Props> = ({
       onNodesDelete={handleNodesDelete}
       onNodeMouseEnter={onNodeHover}
       onNodeMouseLeave={onNodeHover}
+      onNodeContextMenu={handleNodeContextMenu}
+      onPaneClick={handleCloseContextmenu}
       onDrop={handleNodeDrop}
       onDragOver={handleNodeDragOver}
       onEdgeMouseEnter={onEdgeHover}
       onEdgeMouseLeave={onEdgeHover}
       onConnect={handleConnect}
       onReconnect={handleReconnect}
-      proOptions={proOptions}
-      onPaneClick={closeMenu}
-      onNodeContextMenu={onNodeContextMenu}>
+      proOptions={proOptions}>
       <Background
         className="bg-background"
         variant={BackgroundVariant["Lines"]}
@@ -181,11 +156,11 @@ const Canvas: React.FC<Props> = ({
         color="rgba(63, 63, 70, 0.3)"
       />
 
-      {menuPosition && selectedNode && (
+      {contextMenu && contextMenu.node && (
         <NodeContextMenu
-          node={selectedNode}
-          menuPosition={menuPosition}
-          onClose={closeMenu}
+          node={contextMenu.node}
+          contextMenu={contextMenu}
+          onClose={handleCloseContextmenu}
         />
       )}
     </ReactFlow>

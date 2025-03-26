@@ -4,8 +4,9 @@ import {
   NodeChange,
   XYPosition,
 } from "@xyflow/react";
-import { MouseEvent } from "react";
+import { MouseEvent, useCallback, useRef, useState } from "react";
 
+import type { ContextMenuMeta } from "@flow/components";
 import { useEdges, useNodes } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
@@ -77,6 +78,33 @@ export default ({
     onEdgesChange,
   });
 
+  const [contextMenu, setContextMenu] = useState<ContextMenuMeta | null>(null);
+
+  const paneRef = useRef<HTMLDivElement>(null);
+
+  const handleNodeContextMenu = useCallback(
+    (event: MouseEvent, node: Node) => {
+      event.preventDefault();
+      if (!paneRef.current) return;
+      const pane = paneRef.current.getBoundingClientRect();
+      const localX = event.clientX - pane.left;
+      const localY = event.clientY - pane.top;
+
+      setContextMenu({
+        node,
+        top: localY < pane.height - 200 && localY,
+        left: localX < pane.width - 200 && localX,
+        right: localX >= pane.width - 200 && pane.width - localX,
+        bottom: localY >= pane.height - 200 && pane.height - localY,
+      });
+    },
+    [setContextMenu],
+  );
+
+  const handleCloseContextmenu = () => {
+    setContextMenu(null);
+  };
+
   return {
     handleNodesChange,
     handleNodesDelete,
@@ -87,5 +115,9 @@ export default ({
     handleEdgesChange,
     handleConnect,
     handleReconnect,
+    handleNodeContextMenu,
+    handleCloseContextmenu,
+    contextMenu,
+    paneRef,
   };
 };
