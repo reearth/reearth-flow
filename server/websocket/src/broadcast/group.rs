@@ -31,24 +31,87 @@ pub struct BroadcastConfig {
     pub doc_name: Option<String>,
 }
 
+pub struct BackgroundTasks {
+    awareness_updater: JoinHandle<()>,
+    awareness_shutdown_tx: tokio::sync::mpsc::Sender<()>,
+    redis_subscriber_task: Option<JoinHandle<()>>,
+    redis_subscriber_shutdown_tx: Option<tokio::sync::mpsc::Sender<()>>,
+    heartbeat_task: Option<JoinHandle<()>>,
+    heartbeat_shutdown_tx: Option<tokio::sync::mpsc::Sender<()>>,
+}
+
+impl BackgroundTasks {
+    pub fn new(
+        awareness_updater: JoinHandle<()>,
+        awareness_shutdown_tx: tokio::sync::mpsc::Sender<()>,
+    ) -> Self {
+        Self {
+            awareness_updater,
+            awareness_shutdown_tx,
+            redis_subscriber_task: None,
+            redis_subscriber_shutdown_tx: None,
+            heartbeat_task: None,
+            heartbeat_shutdown_tx: None,
+        }
+    }
+
+    pub fn set_redis_subscriber(
+        &mut self,
+        task: JoinHandle<()>,
+        shutdown_tx: tokio::sync::mpsc::Sender<()>,
+    ) {
+        self.redis_subscriber_task = Some(task);
+        self.redis_subscriber_shutdown_tx = Some(shutdown_tx);
+    }
+
+    pub fn set_heartbeat(
+        &mut self,
+        task: JoinHandle<()>,
+        shutdown_tx: tokio::sync::mpsc::Sender<()>,
+    ) {
+        self.heartbeat_task = Some(task);
+        self.heartbeat_shutdown_tx = Some(shutdown_tx);
+    }
+}
+
+impl Drop for BackgroundTasks {
+    fn drop(&mut self) {
+        if let Some(tx) = self.redis_subscriber_shutdown_tx.take() {
+            let _ = tx.try_send(());
+            if let Some(task) = self.redis_subscriber_task.take() {
+                task.abort();
+            }
+        } else if let Some(task) = self.redis_subscriber_task.take() {
+            task.abort();
+        }
+
+        if let Some(tx) = self.heartbeat_shutdown_tx.take() {
+            let _ = tx.try_send(());
+            if let Some(task) = self.heartbeat_task.take() {
+                task.abort();
+            }
+        } else if let Some(task) = self.heartbeat_task.take() {
+            task.abort();
+        }
+
+        let _ = self.awareness_shutdown_tx.try_send(());
+        self.awareness_updater.abort();
+    }
+}
+
 pub struct BroadcastGroup {
     connections: Arc<AtomicUsize>,
     awareness_ref: AwarenessRef,
     sender: Sender<Bytes>,
-    awareness_updater: JoinHandle<()>,
-    awareness_shutdown_tx: tokio::sync::mpsc::Sender<()>,
+    background_tasks: Arc<Mutex<BackgroundTasks>>,
     doc_sub: Option<yrs::Subscription>,
     awareness_sub: Option<yrs::Subscription>,
     storage: Arc<GcsStore>,
     redis_store: Arc<RedisStore>,
     doc_name: String,
-    redis_subscriber_task: Option<JoinHandle<()>>,
-    redis_subscriber_shutdown_tx: Option<tokio::sync::mpsc::Sender<()>>,
     redis_consumer_name: Option<String>,
     redis_group_name: Option<String>,
     shutdown_complete: AtomicBool,
-    heartbeat_task: Option<JoinHandle<()>>,
-    heartbeat_shutdown_tx: Option<tokio::sync::mpsc::Sender<()>>,
     instance_id: String,
 }
 
@@ -178,24 +241,24 @@ impl BroadcastGroup {
 
         let instance_id = format!("instance-{}", rand::random::<u64>());
 
+        let background_tasks = Arc::new(Mutex::new(BackgroundTasks::new(
+            awareness_updater,
+            awareness_shutdown_tx,
+        )));
+
         let result = Self {
             connections: Arc::new(AtomicUsize::new(0)),
             awareness_ref: awareness,
             sender,
-            awareness_updater,
-            awareness_shutdown_tx,
+            background_tasks,
             doc_sub: Some(doc_sub),
             awareness_sub: Some(awareness_sub),
             storage,
             redis_store,
             doc_name,
-            redis_subscriber_task: None,
-            redis_subscriber_shutdown_tx: None,
             redis_consumer_name: None,
             redis_group_name: None,
             shutdown_complete: AtomicBool::new(false),
-            heartbeat_task: None,
-            heartbeat_shutdown_tx: None,
             instance_id,
         };
 
@@ -323,8 +386,10 @@ impl BroadcastGroup {
             tracing::debug!("Redis subscriber task exited gracefully");
         });
 
-        group.redis_subscriber_task = Some(redis_subscriber_task);
-        group.redis_subscriber_shutdown_tx = Some(redis_shutdown_tx);
+        {
+            let mut background_tasks = group.background_tasks.lock().await;
+            background_tasks.set_redis_subscriber(redis_subscriber_task, redis_shutdown_tx);
+        }
         group.redis_consumer_name = Some(consumer_name);
         group.redis_group_name = Some(group_name);
 
@@ -346,22 +411,16 @@ impl BroadcastGroup {
                             .await
                         {
                             tracing::warn!("Failed to update instance heartbeat: {}", e);
-                        } else {
-                            tracing::debug!(
-                                "Updated heartbeat for doc '{}' instance {}",
-                                doc_name,
-                                instance_id
-                            );
                         }
                     }
                 }
             }
-
-            tracing::debug!("Heartbeat task for '{}' stopped gracefully", doc_name);
         });
 
-        group.heartbeat_task = Some(heartbeat_task);
-        group.heartbeat_shutdown_tx = Some(heartbeat_shutdown_tx);
+        {
+            let mut background_tasks = group.background_tasks.lock().await;
+            background_tasks.set_heartbeat(heartbeat_task, heartbeat_shutdown_tx);
+        }
 
         Ok(group)
     }
@@ -706,33 +765,29 @@ impl BroadcastGroup {
             }
         }
 
-        if let Some(tx) = &self.redis_subscriber_shutdown_tx {
-            if let Err(e) = tx.send(()).await {
-                tracing::warn!("Failed to send shutdown signal to Redis subscriber: {}", e);
-                if let Some(task) = &self.redis_subscriber_task {
+        {
+            let mut background_tasks = self.background_tasks.lock().await;
+
+            if let Some(tx) = background_tasks.redis_subscriber_shutdown_tx.take() {
+                let _ = tx.try_send(());
+                if let Some(task) = background_tasks.redis_subscriber_task.take() {
                     task.abort();
                 }
-            } else {
-                tracing::debug!("Sent shutdown signal to Redis subscriber");
+            } else if let Some(task) = background_tasks.redis_subscriber_task.take() {
+                task.abort();
             }
-        }
 
-        if let Some(tx) = &self.heartbeat_shutdown_tx {
-            if let Err(e) = tx.send(()).await {
-                tracing::warn!("Failed to send shutdown signal to heartbeat task: {}", e);
-                if let Some(task) = &self.heartbeat_task {
+            if let Some(tx) = background_tasks.heartbeat_shutdown_tx.take() {
+                let _ = tx.try_send(());
+                if let Some(task) = background_tasks.heartbeat_task.take() {
                     task.abort();
                 }
-            } else {
-                tracing::debug!("Sent shutdown signal to heartbeat task");
+            } else if let Some(task) = background_tasks.heartbeat_task.take() {
+                task.abort();
             }
-        }
 
-        if let Err(e) = self.awareness_shutdown_tx.send(()).await {
-            tracing::warn!("Failed to send shutdown signal to awareness updater: {}", e);
-            self.awareness_updater.abort();
-        } else {
-            tracing::debug!("Sent shutdown signal to awareness updater");
+            let _ = background_tasks.awareness_shutdown_tx.try_send(());
+            background_tasks.awareness_updater.abort();
         }
 
         let redis_store_clone = self.redis_store.clone();
@@ -783,29 +838,33 @@ impl Drop for BroadcastGroup {
             drop(sub);
         }
 
-        if let Some(tx) = self.redis_subscriber_shutdown_tx.take() {
-            let _ = tx.try_send(());
-            if let Some(task) = self.redis_subscriber_task.take() {
-                task.abort();
-            }
-        } else if let Some(task) = self.redis_subscriber_task.take() {
-            task.abort();
-        }
-
-        if let Some(tx) = self.heartbeat_shutdown_tx.take() {
-            let _ = tx.try_send(());
-            if let Some(task) = self.heartbeat_task.take() {
-                task.abort();
-            }
-        } else if let Some(task) = self.heartbeat_task.take() {
-            task.abort();
-        }
-
-        let _ = self.awareness_shutdown_tx.try_send(());
-        self.awareness_updater.abort();
-
         self.shutdown_complete
             .store(true, std::sync::atomic::Ordering::SeqCst);
+
+        let background_tasks = self.background_tasks.clone();
+        tokio::spawn(async move {
+            let mut tasks = background_tasks.lock().await;
+            if let Some(tx) = tasks.redis_subscriber_shutdown_tx.take() {
+                let _ = tx.try_send(());
+                if let Some(task) = tasks.redis_subscriber_task.take() {
+                    task.abort();
+                }
+            } else if let Some(task) = tasks.redis_subscriber_task.take() {
+                task.abort();
+            }
+
+            if let Some(tx) = tasks.heartbeat_shutdown_tx.take() {
+                let _ = tx.try_send(());
+                if let Some(task) = tasks.heartbeat_task.take() {
+                    task.abort();
+                }
+            } else if let Some(task) = tasks.heartbeat_task.take() {
+                task.abort();
+            }
+
+            let _ = tasks.awareness_shutdown_tx.try_send(());
+            tasks.awareness_updater.abort();
+        });
     }
 }
 
