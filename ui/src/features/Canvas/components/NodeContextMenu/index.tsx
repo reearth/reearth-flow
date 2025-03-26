@@ -1,5 +1,5 @@
 import { Eye, GearFine, Graph, Trash } from "@phosphor-icons/react";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 
 import { ContextMenu, ContextMenuMeta } from "@flow/components";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
@@ -25,47 +25,46 @@ const NodeContextMenu: React.FC<Props> = ({ node, contextMenu, onClose }) => {
     onSecondaryNodeAction?.(undefined, id, node.data.subworkflowId);
   }, [id, node.data.subworkflowId, onSecondaryNodeAction]);
 
-  const menuItems = [
-    node.type === "subworkflow"
-      ? {
-          label: t("Open Subworkflow Canvas"),
-          icon: <Graph weight="light" />,
-          onCallback: handleSecondaryNodeAction,
-          onClose,
-        }
-      : {
-          label: t("Node Settings"),
-          icon: <GearFine weight="light" />,
-          onCallback: handleSecondaryNodeAction,
-          onClose,
-        },
-    ...(isActionNodeType(node.type)
-      ? [
-          {
-            label: t("Preview Intermediate Data"),
-            icon: <Eye weight="light" />,
-            onCallback: handleSecondaryNodeAction,
-            disabled: true,
-            onClose,
-          },
-        ]
-      : []),
-    {
-      label: t("Delete Node"),
-      icon: <Trash weight="light" />,
-      destructive: true,
-      onCallback: handleNodeDelete,
-      onClose,
-    },
-  ];
+  const menuItems = useMemo(() => {
+    const wrapWithClose = (callback: () => void) => () => {
+      callback();
+      onClose();
+    };
 
-  return (
-    <ContextMenu
-      items={menuItems}
-      contextMenuMeta={contextMenu}
-      onClose={onClose}
-    />
-  );
+    const items = [
+      node.type === "subworkflow"
+        ? {
+            label: t("Open Subworkflow Canvas"),
+            icon: <Graph weight="light" />,
+            onCallback: wrapWithClose(handleSecondaryNodeAction),
+          }
+        : {
+            label: t("Node Settings"),
+            icon: <GearFine weight="light" />,
+            onCallback: wrapWithClose(handleSecondaryNodeAction),
+          },
+      ...(isActionNodeType(node.type)
+        ? [
+            {
+              label: t("Preview Intermediate Data"),
+              icon: <Eye weight="light" />,
+              onCallback: wrapWithClose(handleSecondaryNodeAction),
+              disabled: true,
+            },
+          ]
+        : []),
+      {
+        label: t("Delete Node"),
+        icon: <Trash weight="light" />,
+        destructive: true,
+        onCallback: wrapWithClose(handleNodeDelete),
+      },
+    ];
+
+    return items;
+  }, [t, node, handleSecondaryNodeAction, handleNodeDelete, onClose]);
+
+  return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;
 };
 
 export default NodeContextMenu;

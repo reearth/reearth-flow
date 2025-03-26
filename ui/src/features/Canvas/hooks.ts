@@ -89,13 +89,22 @@ export default ({
       const pane = paneRef.current.getBoundingClientRect();
       const localX = event.clientX - pane.left;
       const localY = event.clientY - pane.top;
+      const styles: React.CSSProperties = {};
 
+      if (localY < pane.height - 200) {
+        styles.top = localY;
+      } else {
+        styles.bottom = pane.height - localY;
+      }
+
+      if (localX < pane.width - 200) {
+        styles.left = localX;
+      } else {
+        styles.right = pane.width - localX;
+      }
       setContextMenu({
         node,
-        top: localY < pane.height - 200 && localY,
-        left: localX < pane.width - 200 && localX,
-        right: localX >= pane.width - 200 && pane.width - localX,
-        bottom: localY >= pane.height - 200 && pane.height - localY,
+        styles,
       });
     },
     [setContextMenu],
