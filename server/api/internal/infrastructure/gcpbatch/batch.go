@@ -14,6 +14,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/account/accountdomain"
+	"github.com/reearth/reearthx/log"
 	"google.golang.org/api/iterator"
 )
 
@@ -197,13 +198,25 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 
 	resp, err := b.client.CreateJob(ctx, req)
 	if err != nil {
+		log.Debugfc(ctx, "[Batch] Error creating job: %v", err)
 		return "", fmt.Errorf("failed to create job: %v", err)
+	}
+
+	log.Debugfc(ctx, "[Batch] Job created successfully: name=%s, uid=%s", resp.Name, resp.Uid)
+
+	if resp.Name == "" {
+		log.Warnfc(ctx, "[Batch] Empty job name returned from GCP API")
+
+		log.Debugfc(ctx, "[Batch] Using fallback name: %s", jobName)
+		return jobName, nil
 	}
 
 	return resp.Name, nil
 }
 
 func (b *BatchRepo) GetJobStatus(ctx context.Context, jobName string) (gateway.JobStatus, error) {
+	log.Debugfc(ctx, "GetJobStatus: name=%s, config.ProjectID=%s, config.Region=%s",
+		jobName, b.config.ProjectID, b.config.Region)
 
 	req := &batchpb.GetJobRequest{
 		Name: jobName,
@@ -211,11 +224,33 @@ func (b *BatchRepo) GetJobStatus(ctx context.Context, jobName string) (gateway.J
 
 	job, err := b.client.GetJob(ctx, req)
 	if err != nil {
+		if strings.Contains(err.Error(), "RESOURCE_PROJECT_INVALID") {
+			log.Debugfc(ctx, "Detected project invalid error, inspecting job name: %s", jobName)
+
+			parts := strings.Split(jobName, "/")
+			jobID := parts[len(parts)-1]
+
+			fixedName := fmt.Sprintf("projects/%s/locations/%s/jobs/%s",
+				b.config.ProjectID, b.config.Region, jobID)
+
+			log.Debugfc(ctx, "Retrying with name: %s", fixedName)
+
+			retryReq := &batchpb.GetJobRequest{
+				Name: fixedName,
+			}
+
+			job, err = b.client.GetJob(ctx, retryReq)
+			if err == nil {
+				status := convertGCPStatusToGatewayStatus(job.Status.State)
+				return status, nil
+			}
+			log.Debugfc(ctx, "Retry failed: %v", err)
+		}
+
 		return gateway.JobStatusUnknown, fmt.Errorf("failed to get job status: %v", err)
 	}
 
 	status := convertGCPStatusToGatewayStatus(job.Status.State)
-
 	return status, nil
 }
 

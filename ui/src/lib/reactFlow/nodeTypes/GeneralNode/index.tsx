@@ -1,24 +1,8 @@
-import {
-  Database,
-  Disc,
-  GearFine,
-  Graph,
-  Lightning,
-  Trash,
-} from "@phosphor-icons/react";
+import { Database, Disc, Graph, Lightning } from "@phosphor-icons/react";
 import { NodeProps } from "@xyflow/react";
-import { memo, useCallback } from "react";
+import { memo } from "react";
 
-import {
-  ContextMenu,
-  ContextMenuContent,
-  ContextMenuItem,
-  ContextMenuSeparator,
-  ContextMenuTrigger,
-} from "@flow/components";
-import { useEditorContext } from "@flow/features/Editor/editorContext";
-import { useT } from "@flow/lib/i18n";
-import { Node } from "@flow/types";
+import type { Node } from "@flow/types";
 
 import { Handles } from "./components";
 import useHooks from "./hooks";
@@ -31,24 +15,10 @@ const typeIconClasses = "w-[10px] h-[100%]";
 
 const GeneralNode: React.FC<GeneralNodeProps> = ({
   className,
-  id,
   data,
   type,
   selected,
 }) => {
-  const t = useT();
-
-  const { onNodesChange, onSecondaryNodeAction } = useEditorContext();
-
-  const handleNodeDelete = useCallback(() => {
-    onNodesChange?.([{ id, type: "remove" }]);
-  }, [id, onNodesChange]);
-
-  const handleSecondaryNodeAction = useCallback(() => {
-    if (!id) return;
-    onSecondaryNodeAction?.(undefined, id, data.subworkflowId);
-  }, [id, data.subworkflowId, onSecondaryNodeAction]);
-
   const {
     officialName,
     customName,
@@ -62,76 +32,35 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   } = useHooks({ data, type });
 
   return (
-    <ContextMenu>
-      <ContextMenuTrigger>
-        <div className="rounded-sm bg-secondary">
-          {/* <div
+    <div className="rounded-sm bg-secondary">
+      {/* <div
           className={`rounded-sm bg-secondary ${status === "processing" ? "active-node-status-shadow" : status === "pending" ? "queued-node-status-shadow" : ""}`}> */}
-          <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
-            <div
-              className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
-              {type === "reader" ? (
-                <Database className={typeIconClasses} />
-              ) : type === "writer" ? (
-                <Disc className={typeIconClasses} />
-              ) : type === "transformer" ? (
-                <Lightning className={typeIconClasses} />
-              ) : type === "subworkflow" ? (
-                <Graph className={typeIconClasses} />
-              ) : null}
-            </div>
-            <div
-              className={`flex flex-1 items-center justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? selectedColor : borderColor}`}>
-              <p className="self-center truncate text-xs dark:font-light">
-                {data.customizations?.customName || customName || officialName}
-              </p>
-              {/* {status === "failed" && <X className="size-4 text-destructive" />} */}
-              {/* {status === "completed" && intermediateDataUrl && (
+      <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
+        <div
+          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
+          {type === "reader" ? (
+            <Database className={typeIconClasses} />
+          ) : type === "writer" ? (
+            <Disc className={typeIconClasses} />
+          ) : type === "transformer" ? (
+            <Lightning className={typeIconClasses} />
+          ) : type === "subworkflow" ? (
+            <Graph className={typeIconClasses} />
+          ) : null}
+        </div>
+        <div
+          className={`flex flex-1 items-center justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? selectedColor : borderColor}`}>
+          <p className="self-center truncate text-xs dark:font-light">
+            {data.customizations?.customName || customName || officialName}
+          </p>
+          {/* {status === "failed" && <X className="size-4 text-destructive" />} */}
+          {/* {status === "completed" && intermediateDataUrl && (
                 <Table className="size-4 text-success" />
               )} */}
-            </div>
-          </div>
-          <Handles nodeType={type} inputs={inputs} outputs={outputs} />
         </div>
-      </ContextMenuTrigger>
-      <ContextMenuContent>
-        {type === "subworkflow" ? (
-          <ContextMenuItem
-            className="justify-between gap-4 text-xs"
-            onClick={handleSecondaryNodeAction}>
-            {t("Open Subworkflow Canvas")}
-            <Graph weight="light" />
-          </ContextMenuItem>
-        ) : (
-          <ContextMenuItem
-            className="justify-between gap-4 text-xs"
-            onClick={handleSecondaryNodeAction}>
-            {t("Node Settings")}
-            <GearFine weight="light" />
-          </ContextMenuItem>
-        )}
-        {/* {isActionNodeType(type) && (
-          <ContextMenuItem className="justify-between gap-4 text-xs" disabled>
-            {t("Preview Intermediate Data")}
-            <Eye weight="light" />
-          </ContextMenuItem>
-        )} */}
-
-        {/* <ContextMenuItem
-      className="justify-between gap-4 text-xs"
-      disabled={!selected}>
-      {t("Subworkflow from Selection")}
-      <Graph weight="light" />
-    </ContextMenuItem> */}
-        <ContextMenuSeparator />
-        <ContextMenuItem
-          className="justify-between gap-4 text-xs text-destructive"
-          onClick={handleNodeDelete}>
-          {t("Delete Node")}
-          <Trash weight="light" />
-        </ContextMenuItem>
-      </ContextMenuContent>
-    </ContextMenu>
+      </div>
+      <Handles nodeType={type} inputs={inputs} outputs={outputs} />
+    </div>
   );
 };
 
