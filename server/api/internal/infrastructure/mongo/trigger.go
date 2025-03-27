@@ -123,7 +123,13 @@ func (r *Trigger) Save(ctx context.Context, trigger *trigger.Trigger) error {
 }
 
 func (r *Trigger) Remove(ctx context.Context, id id.TriggerID) error {
-	return r.client.RemoveOne(ctx, bson.M{"id": id.String()})
+	return r.client.RemoveOne(ctx, r.writeFilter(bson.M{
+		"id": id.String(),
+	}))
+}
+
+func (r *Trigger) writeFilter(filter any) any {
+	return applyWorkspaceFilter(filter, r.f.Writable)
 }
 
 func (r *Trigger) find(ctx context.Context, filter interface{}) ([]*trigger.Trigger, error) {
