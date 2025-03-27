@@ -23,7 +23,7 @@ import type { ActionNodeType, Edge, Node } from "@flow/types";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
-import { NodeContextMenu } from "./components";
+import { NodeContextMenu, SelectionContextMenu } from "./components";
 
 const gridSize = 25;
 
@@ -34,6 +34,7 @@ const proOptions: ProOptions = { hideAttribution: true };
 type Props = {
   nodes: Node[];
   edges: Edge[];
+  selectedEdgeIds?: string[];
   canvasLock: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onNodesAdd?: (newNode: Node[]) => void;
@@ -54,6 +55,7 @@ const Canvas: React.FC<Props> = ({
   canvasLock,
   nodes,
   edges,
+  selectedEdgeIds,
   onWorkflowAdd,
   onNodesAdd,
   onNodesChange,
@@ -75,6 +77,7 @@ const Canvas: React.FC<Props> = ({
     handleConnect,
     handleReconnect,
     handleNodeContextMenu,
+    handleSelectionContextMenu,
     handleCloseContextmenu,
     contextMenu,
     paneRef,
@@ -142,6 +145,7 @@ const Canvas: React.FC<Props> = ({
       onNodeMouseEnter={onNodeHover}
       onNodeMouseLeave={onNodeHover}
       onNodeContextMenu={handleNodeContextMenu}
+      onSelectionContextMenu={handleSelectionContextMenu}
       onMoveStart={handleCloseContextmenu}
       onDrop={handleNodeDrop}
       onDragOver={handleNodeDragOver}
@@ -157,10 +161,22 @@ const Canvas: React.FC<Props> = ({
         color="rgba(63, 63, 70, 0.3)"
       />
 
-      {contextMenu && contextMenu.node && (
+      {contextMenu?.type === "node" && (
         <NodeContextMenu
-          node={contextMenu.node}
+          node={contextMenu.data}
           contextMenu={contextMenu}
+          onNodesChange={handleNodesChange}
+          onSecondaryNodeAction={onNodeDoubleClick}
+          onClose={handleCloseContextmenu}
+        />
+      )}
+      {contextMenu?.type === "selection" && (
+        <SelectionContextMenu
+          nodes={contextMenu.data}
+          selectedEdgeIds={selectedEdgeIds}
+          contextMenu={contextMenu}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={handleEdgesChange}
           onClose={handleCloseContextmenu}
         />
       )}
