@@ -8,7 +8,7 @@ import type { Node, NodeChange } from "@flow/types";
 
 type Props = {
   nodes: Node[];
-  selectedEdgeIds: string[];
+  selectedEdgeIds?: string[];
   contextMenu: ContextMenuMeta;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
@@ -29,7 +29,7 @@ const SelectionContextMenu: React.FC<Props> = ({
     nodes.forEach((node) => {
       onNodesChange?.([{ id: node.id, type: "remove" as const }]);
     });
-    selectedEdgeIds.forEach((edgeId) => {
+    selectedEdgeIds?.forEach((edgeId) => {
       onEdgesChange?.([{ id: edgeId, type: "remove" as const }]);
     });
   }, [nodes, selectedEdgeIds, onNodesChange, onEdgesChange]);

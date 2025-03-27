@@ -1,10 +1,22 @@
 import type { Node } from "@flow/types";
 
-export type ContextMenuMeta = {
-  node?: Node;
-  nodes?: Node[];
+type ContextMenuStyles = {
   styles: React.CSSProperties;
 };
+
+type NodeContextMenuMeta = {
+  type: "node";
+  data: Node;
+};
+
+type SelectionContextMenuMeta = {
+  type: "selection";
+  data: Node[];
+};
+
+export type ContextMenuMeta =
+  | (ContextMenuStyles & NodeContextMenuMeta)
+  | (ContextMenuStyles & SelectionContextMenuMeta);
 
 type ContextMenuProps = {
   items: ContextMenuItemProps[];

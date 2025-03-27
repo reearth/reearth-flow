@@ -109,7 +109,8 @@ export default ({
       if (!styles) return;
 
       setContextMenu({
-        node,
+        type: "node",
+        data: node,
         styles,
       });
     },
@@ -123,7 +124,8 @@ export default ({
       if (!styles) return;
 
       setContextMenu({
-        nodes,
+        type: "selection",
+        data: nodes,
         styles,
       });
     },

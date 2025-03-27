@@ -34,7 +34,7 @@ const proOptions: ProOptions = { hideAttribution: true };
 type Props = {
   nodes: Node[];
   edges: Edge[];
-  selectedEdgeIds: string[];
+  selectedEdgeIds?: string[];
   canvasLock: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onNodesAdd?: (newNode: Node[]) => void;
@@ -161,18 +161,18 @@ const Canvas: React.FC<Props> = ({
         color="rgba(63, 63, 70, 0.3)"
       />
 
-      {contextMenu && contextMenu.node && (
+      {contextMenu?.type === "node" && (
         <NodeContextMenu
-          node={contextMenu.node}
+          node={contextMenu.data}
           contextMenu={contextMenu}
           onNodesChange={handleNodesChange}
           onSecondaryNodeAction={onNodeDoubleClick}
           onClose={handleCloseContextmenu}
         />
       )}
-      {contextMenu && contextMenu.nodes && (
+      {contextMenu?.type === "selection" && (
         <SelectionContextMenu
-          nodes={contextMenu.nodes}
+          nodes={contextMenu.data}
           selectedEdgeIds={selectedEdgeIds}
           contextMenu={contextMenu}
           onNodesChange={handleNodesChange}
