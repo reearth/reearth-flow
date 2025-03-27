@@ -53,7 +53,7 @@ impl RedisStore {
             local update = ARGV[1]
             local ttl = ARGV[2]
             
-            redis.call('XADD', stream_key, 'NOMKSTREAM', '*', 'update', update)
+            redis.call('XADD', stream_key, '*', 'update', update)
             redis.call('EXPIRE', stream_key, ttl)
             return 1
             "#,
