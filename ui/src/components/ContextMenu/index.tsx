@@ -1,12 +1,25 @@
 import type { Node } from "@flow/types";
 
-export type ContextMenuMeta = {
-  node?: Node;
+type ContextMenuStyles = {
   styles: React.CSSProperties;
 };
 
+type NodeContextMenuMeta = {
+  type: "node";
+  data: Node;
+};
+
+type SelectionContextMenuMeta = {
+  type: "selection";
+  data: Node[];
+};
+
+export type ContextMenuMeta =
+  | (ContextMenuStyles & NodeContextMenuMeta)
+  | (ContextMenuStyles & SelectionContextMenuMeta);
+
 type ContextMenuProps = {
-  items: ContextMenuItemProps[];
+  items: ContextMenuItemType[];
   contextMenuMeta: ContextMenuMeta;
 };
 
@@ -17,16 +30,13 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
   return (
     <div className="absolute z-50" style={{ ...contextMenuMeta.styles }}>
       <div className="min-w-[160px] select-none rounded-md border bg-card p-1 text-popover-foreground shadow-md">
-        {items.map((item, index) => (
-          <ContextMenuItem
-            key={index}
-            label={item.label}
-            icon={item.icon}
-            onCallback={item.onCallback}
-            destructive={item.destructive}
-            disabled={item.disabled}
-          />
-        ))}
+        {items.map((item, index) =>
+          item.type === "action" ? (
+            <ContextMenuItem key={index} {...item.props} />
+          ) : (
+            <ContextMenuSeparator key={index} />
+          ),
+        )}
       </div>{" "}
     </div>
   );
@@ -41,6 +51,10 @@ type ContextMenuItemProps = {
   disabled?: boolean;
 };
 
+export type ContextMenuItemType =
+  | { type: "action"; props: ContextMenuItemProps }
+  | { type: "separator" };
+
 const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
   label,
   icon,
@@ -51,7 +65,6 @@ const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
 }) => {
   return (
     <>
-      {destructive && <div className="-mx-1 my-1 h-px bg-border" />}
       <div
         className={`flex items-center justify-between gap-4 rounded-sm px-2 py-1.5 text-xs ${destructive ? "text-destructive" : ""} ${
           disabled
@@ -70,4 +83,8 @@ const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
   );
 };
 
-export { ContextMenu, ContextMenuItem };
+const ContextMenuSeparator: React.FC = () => (
+  <div className="-mx-1 my-1 h-px bg-border" />
+);
+
+export { ContextMenu, ContextMenuItem, ContextMenuSeparator };

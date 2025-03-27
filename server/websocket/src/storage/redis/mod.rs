@@ -45,21 +45,27 @@ impl RedisStore {
         &self,
         stream_key: &str,
         update: &[u8],
+        conn: &mut Connection,
     ) -> Result<(), anyhow::Error> {
-        if let Ok(mut conn) = self.pool.get().await {
-            let mut pipe = redis::pipe();
+        let script = redis::Script::new(
+            r#"
+            local stream_key = KEYS[1]
+            local update = ARGV[1]
+            local ttl = ARGV[2]
+            
+            redis.call('XADD', stream_key, 'NOMKSTREAM', '*', 'update', update)
+            redis.call('EXPIRE', stream_key, ttl)
+            return 1
+            "#,
+        );
 
-            let fields = &[("update", update)];
-            pipe.cmd("XADD")
-                .arg(stream_key)
-                .arg("NOMKSTREAM")
-                .arg("*")
-                .arg(fields);
+        let _: () = script
+            .key(stream_key)
+            .arg(update)
+            .arg(self.config.ttl)
+            .invoke_async(&mut *conn)
+            .await?;
 
-            pipe.cmd("EXPIRE").arg(stream_key).arg(self.config.ttl);
-
-            let _: () = pipe.query_async(&mut *conn).await?;
-        }
         Ok(())
     }
 
@@ -490,7 +496,7 @@ impl RedisStore {
         consumer_name: &str,
         count: usize,
     ) -> Result<Vec<Bytes>, anyhow::Error> {
-        let block_ms = 1500;
+        let block_ms = 1600;
 
         let result: RedisStreamResults = redis::cmd("XREADGROUP")
             .arg("GROUP")
@@ -824,32 +830,29 @@ impl RedisStore {
         let stream_key = format!("yjs:stream:{}", doc_id);
 
         if let Ok(mut conn) = self.pool.get().await {
-            let exists: bool = redis::cmd("EXISTS")
-                .arg(&stream_key)
-                .query_async(&mut *conn)
-                .await?;
+            let script = redis::Script::new(
+                r#"
+                if redis.call('EXISTS', KEYS[1]) == 0 then
+                    return {}
+                end
+                
+                local result = redis.call('XRANGE', KEYS[1], '-', '+')
+                local updates = {}
+                
+                for i, entry in ipairs(result) do
+                    local fields = entry[2]
+                    for j = 1, #fields, 2 do
+                        if fields[j] == "update" then
+                            table.insert(updates, fields[j+1])
+                        end
+                    end
+                end
+                
+                return updates
+            "#,
+            );
 
-            if !exists {
-                return Ok(Vec::new());
-            }
-
-            type RawStreamEntry = (String, Vec<(String, Bytes)>);
-            let result: Vec<RawStreamEntry> = redis::cmd("XRANGE")
-                .arg(&stream_key)
-                .arg("-")
-                .arg("+")
-                .query_async(&mut *conn)
-                .await?;
-
-            let mut updates = Vec::new();
-
-            for (_, fields) in result {
-                for (field_name, field_value) in fields {
-                    if field_name == "update" {
-                        updates.push(field_value);
-                    }
-                }
-            }
+            let updates: Vec<Bytes> = script.key(&stream_key).invoke_async(&mut *conn).await?;
 
             return Ok(updates);
         }

@@ -1,20 +1,34 @@
 import { Eye, GearFine, Graph, Trash } from "@phosphor-icons/react";
 import { useCallback, useMemo } from "react";
 
-import { ContextMenu, ContextMenuMeta } from "@flow/components";
-import { useEditorContext } from "@flow/features/Editor/editorContext";
+import {
+  ContextMenu,
+  ContextMenuItemType,
+  ContextMenuMeta,
+} from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { isActionNodeType, Node } from "@flow/types";
+import { isActionNodeType, Node, NodeChange } from "@flow/types";
 
 type Props = {
   node: Node;
   contextMenu: ContextMenuMeta;
+  onNodesChange: (changes: NodeChange[]) => void;
+  onSecondaryNodeAction?: (
+    e: React.MouseEvent | undefined,
+    nodeId: string,
+    subworkflowId?: string,
+  ) => void;
   onClose: () => void;
 };
 
-const NodeContextMenu: React.FC<Props> = ({ node, contextMenu, onClose }) => {
+const NodeContextMenu: React.FC<Props> = ({
+  node,
+  contextMenu,
+  onNodesChange,
+  onSecondaryNodeAction,
+  onClose,
+}) => {
   const t = useT();
-  const { onNodesChange, onSecondaryNodeAction } = useEditorContext();
   const { id } = node;
   const handleNodeDelete = useCallback(() => {
     onNodesChange?.([{ id, type: "remove" }]);
@@ -31,33 +45,48 @@ const NodeContextMenu: React.FC<Props> = ({ node, contextMenu, onClose }) => {
       onClose();
     };
 
-    const items = [
+    const items: ContextMenuItemType[] = [
       node.type === "subworkflow"
         ? {
-            label: t("Open Subworkflow Canvas"),
-            icon: <Graph weight="light" />,
-            onCallback: wrapWithClose(handleSecondaryNodeAction),
+            type: "action",
+            props: {
+              label: t("Open Subworkflow Canvas"),
+              icon: <Graph weight="light" />,
+              onCallback: wrapWithClose(handleSecondaryNodeAction),
+            },
           }
         : {
-            label: t("Node Settings"),
-            icon: <GearFine weight="light" />,
-            onCallback: wrapWithClose(handleSecondaryNodeAction),
+            type: "action",
+            props: {
+              label: t("Node Settings"),
+              icon: <GearFine weight="light" />,
+              onCallback: wrapWithClose(handleSecondaryNodeAction),
+            },
           },
       ...(isActionNodeType(node.type)
         ? [
             {
-              label: t("Preview Intermediate Data"),
-              icon: <Eye weight="light" />,
-              onCallback: wrapWithClose(handleSecondaryNodeAction),
-              disabled: true,
+              type: "action" as const,
+              props: {
+                label: t("Preview Intermediate Data"),
+                icon: <Eye weight="light" />,
+                onCallback: wrapWithClose(handleSecondaryNodeAction),
+                disabled: true,
+              },
             },
           ]
         : []),
       {
-        label: t("Delete Node"),
-        icon: <Trash weight="light" />,
-        destructive: true,
-        onCallback: wrapWithClose(handleNodeDelete),
+        type: "separator",
+      },
+      {
+        type: "action",
+        props: {
+          label: t("Delete Node"),
+          icon: <Trash weight="light" />,
+          destructive: true,
+          onCallback: wrapWithClose(handleNodeDelete),
+        },
       },
     ];
 
