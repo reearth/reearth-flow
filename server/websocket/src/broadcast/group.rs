@@ -1,3 +1,4 @@
+use crate::broadcast::tasks::BackgroundTasks;
 use crate::storage::gcs::GcsStore;
 use crate::storage::kv::DocOps;
 use crate::storage::redis::RedisStore;
@@ -25,27 +26,21 @@ use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, Transact, Update};
 
-#[derive(Debug, Clone)]
-pub struct BroadcastConfig {
-    pub storage_enabled: bool,
-    pub doc_name: Option<String>,
-}
+use super::types::BroadcastConfig;
 
 pub struct BroadcastGroup {
     connections: Arc<AtomicUsize>,
     awareness_ref: AwarenessRef,
     sender: Sender<Bytes>,
-    awareness_updater: JoinHandle<()>,
+    background_tasks: Arc<Mutex<BackgroundTasks>>,
     doc_sub: Option<yrs::Subscription>,
     awareness_sub: Option<yrs::Subscription>,
     storage: Arc<GcsStore>,
     redis_store: Arc<RedisStore>,
     doc_name: String,
-    redis_subscriber_task: Option<JoinHandle<()>>,
     redis_consumer_name: Option<String>,
     redis_group_name: Option<String>,
     shutdown_complete: AtomicBool,
-    heartbeat_task: Option<JoinHandle<()>>,
     instance_id: String,
 }
 
@@ -118,6 +113,8 @@ impl BroadcastGroup {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
         let sink = sender.clone();
 
+        let (awareness_shutdown_tx, mut awareness_shutdown_rx) = tokio::sync::mpsc::channel(1);
+
         let awareness_sub = lock.on_update(move |_awareness, event, _origin| {
             let added = event.added();
             let updated = event.updated();
@@ -139,38 +136,58 @@ impl BroadcastGroup {
         drop(lock);
 
         let awareness_updater = tokio::task::spawn(async move {
-            while let Some(changed_clients) = rx.recv().await {
-                if let Some(awareness) = awareness_c.upgrade() {
-                    let awareness = awareness.read().await;
-                    if let Ok(update) = awareness.update_with_clients(changed_clients) {
-                        let msg_bytes = Bytes::from(Message::Awareness(update).encode_v1());
-                        if sink.send(msg_bytes).is_err() {
-                            tracing::warn!("couldn't broadcast awareness update");
+            loop {
+                select! {
+                    _ = awareness_shutdown_rx.recv() => {
+                        tracing::debug!("Awareness updater received shutdown signal");
+                        break;
+                    },
+                    client_update = rx.recv() => {
+                        match client_update {
+                            Some(changed_clients) => {
+                                if let Some(awareness) = awareness_c.upgrade() {
+                                    let awareness = awareness.read().await;
+                                    if let Ok(update) = awareness.update_with_clients(changed_clients) {
+                                        let msg_bytes = Bytes::from(Message::Awareness(update).encode_v1());
+                                        if sink.send(msg_bytes).is_err() {
+                                            tracing::warn!("couldn't broadcast awareness update");
+                                        }
+                                    }
+                                } else {
+                                    break;
+                                }
+                            },
+                            None => {
+                                tracing::debug!("Awareness update channel closed");
+                                break;
+                            }
                         }
                     }
-                } else {
-                    return;
                 }
             }
+            tracing::debug!("Awareness updater task exited gracefully");
         });
 
         let instance_id = format!("instance-{}", rand::random::<u64>());
+
+        let background_tasks = Arc::new(Mutex::new(BackgroundTasks::new(
+            awareness_updater,
+            awareness_shutdown_tx,
+        )));
 
         let result = Self {
             connections: Arc::new(AtomicUsize::new(0)),
             awareness_ref: awareness,
             sender,
-            awareness_updater,
+            background_tasks,
             doc_sub: Some(doc_sub),
             awareness_sub: Some(awareness_sub),
             storage,
             redis_store,
             doc_name,
-            redis_subscriber_task: None,
             redis_consumer_name: None,
             redis_group_name: None,
             shutdown_complete: AtomicBool::new(false),
-            heartbeat_task: None,
             instance_id,
         };
 
@@ -210,6 +227,8 @@ impl BroadcastGroup {
         let group_name = format!("yjs-group-{}", consumer_name);
         let group_name_clone = group_name.clone();
 
+        let (redis_shutdown_tx, mut redis_shutdown_rx) = tokio::sync::mpsc::channel(1);
+
         let redis_subscriber_task = tokio::spawn(async move {
             if let Err(e) = redis_store_for_sub
                 .create_consumer_group(&doc_name_for_sub, &group_name_clone)
@@ -233,92 +252,104 @@ impl BroadcastGroup {
             };
 
             loop {
-                match redis_store_for_sub
-                    .read_and_ack(
-                        &mut conn,
-                        &stream_key,
-                        &group_name_clone,
-                        &consumer_name_clone,
-                        16,
-                    )
-                    .await
-                {
-                    Ok(updates) => {
-                        consecutive_errors = 0;
-                        if !updates.is_empty() {
-                            let awareness = awareness_for_sub.write().await;
-                            let mut txn = awareness.doc().transact_mut();
+                select! {
+                    _ = redis_shutdown_rx.recv() => {
+                        tracing::debug!("Redis subscriber received shutdown signal");
+                        break;
+                    },
+                    _ = async {
+                        match redis_store_for_sub
+                            .read_and_ack(
+                                &mut conn,
+                                &stream_key,
+                                &group_name_clone,
+                                &consumer_name_clone,
+                                16,
+                            )
+                            .await
+                        {
+                            Ok(updates) => {
+                                consecutive_errors = 0;
+                                if !updates.is_empty() {
+                                    let awareness = awareness_for_sub.write().await;
+                                    let mut txn = awareness.doc().transact_mut();
 
-                            for update in updates {
-                                let decode_result = Update::decode_v1(&update);
+                                    for update in updates {
+                                        let decode_result = Update::decode_v1(&update);
 
-                                if let Ok(decoded) = decode_result {
-                                    if let Err(e) = txn.apply_update(decoded) {
-                                        tracing::warn!("Failed to apply update from Redis: {}", e);
+                                        if let Ok(decoded) = decode_result {
+                                            if let Err(e) = txn.apply_update(decoded) {
+                                                tracing::warn!("Failed to apply update from Redis: {}", e);
+                                            }
+                                        }
+
+                                        if sender_for_sub.send(update).is_err() {
+                                            tracing::debug!("Failed to broadcast Redis update");
+                                        }
                                     }
                                 }
+                            }
+                            Err(e) => {
+                                tracing::error!("Error reading from Redis Stream: {}", e);
 
-                                if sender_for_sub.send(update).is_err() {
-                                    tracing::debug!("Failed to broadcast Redis update");
+                                consecutive_errors += 1;
+                                total_errors += 1;
+                                if consecutive_errors >= max_consecutive_errors
+                                    || total_errors >= max_total_errors
+                                {
+                                    tracing::warn!(
+                                        "Too many Redis errors ({} total, {} consecutive), stopping subscriber",
+                                        total_errors, consecutive_errors
+                                    );
+                                    return;
                                 }
+
+                                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                             }
                         }
-                    }
-                    Err(e) => {
-                        tracing::error!("Error reading from Redis Stream: {}", e);
 
-                        consecutive_errors += 1;
-                        total_errors += 1;
-                        if consecutive_errors >= max_consecutive_errors
-                            || total_errors >= max_total_errors
-                        {
-                            tracing::warn!(
-                                "Too many Redis errors ({} total, {} consecutive), stopping subscriber",
-                                total_errors, consecutive_errors
-                            );
-                            return;
-                        }
-
-                        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                    }
+                        tokio::task::yield_now().await;
+                    } => {}
                 }
-
-                tokio::task::yield_now().await;
             }
+            tracing::debug!("Redis subscriber task exited gracefully");
         });
 
-        group.redis_subscriber_task = Some(redis_subscriber_task);
+        {
+            let mut background_tasks = group.background_tasks.lock().await;
+            background_tasks.set_redis_subscriber(redis_subscriber_task, redis_shutdown_tx);
+        }
         group.redis_consumer_name = Some(consumer_name);
         group.redis_group_name = Some(group_name);
 
-        let shutdown_flag = Arc::new(AtomicBool::new(false));
-        let shutdown_flag_clone = shutdown_flag.clone();
+        let (heartbeat_shutdown_tx, mut heartbeat_shutdown_rx) = tokio::sync::mpsc::channel(1);
         let instance_id = group.instance_id.clone();
 
         let heartbeat_task = tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(56));
 
-            while !shutdown_flag_clone.load(Ordering::Relaxed) {
-                interval.tick().await;
-
-                if let Err(e) = redis_store
-                    .update_instance_heartbeat(&doc_name, &instance_id)
-                    .await
-                {
-                    tracing::warn!("Failed to update instance heartbeat: {}", e);
-                } else {
-                    tracing::debug!(
-                        "Updated heartbeat for doc '{}' instance {}",
-                        doc_name,
-                        instance_id
-                    );
+            loop {
+                select! {
+                    _ = heartbeat_shutdown_rx.recv() => {
+                        tracing::debug!("Heartbeat task received shutdown signal");
+                        break;
+                    },
+                    _ = interval.tick() => {
+                        if let Err(e) = redis_store
+                            .update_instance_heartbeat(&doc_name, &instance_id)
+                            .await
+                        {
+                            tracing::warn!("Failed to update instance heartbeat: {}", e);
+                        }
+                    }
                 }
             }
-
-            tracing::debug!("Heartbeat task for '{}' stopped", doc_name);
         });
 
-        group.heartbeat_task = Some(heartbeat_task);
+        {
+            let mut background_tasks = group.background_tasks.lock().await;
+            background_tasks.set_heartbeat(heartbeat_task, heartbeat_shutdown_tx);
+        }
 
         Ok(group)
     }
@@ -663,15 +694,10 @@ impl BroadcastGroup {
             }
         }
 
-        if let Some(task) = &self.redis_subscriber_task {
-            task.abort();
+        {
+            let mut background_tasks = self.background_tasks.lock().await;
+            background_tasks.stop_all();
         }
-
-        if let Some(task) = &self.heartbeat_task {
-            task.abort();
-        }
-
-        self.awareness_updater.abort();
 
         let redis_store_clone = self.redis_store.clone();
         let doc_name_clone = self.doc_name.clone();
@@ -721,18 +747,14 @@ impl Drop for BroadcastGroup {
             drop(sub);
         }
 
-        if let Some(task) = self.redis_subscriber_task.take() {
-            task.abort();
-        }
-
-        if let Some(task) = self.heartbeat_task.take() {
-            task.abort();
-        }
-
-        self.awareness_updater.abort();
-
         self.shutdown_complete
             .store(true, std::sync::atomic::Ordering::SeqCst);
+
+        let background_tasks = self.background_tasks.clone();
+        tokio::spawn(async move {
+            let mut tasks = background_tasks.lock().await;
+            tasks.stop_all();
+        });
     }
 }
 
