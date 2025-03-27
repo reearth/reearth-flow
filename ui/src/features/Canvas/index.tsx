@@ -142,7 +142,6 @@ const Canvas: React.FC<Props> = ({
       onNodeMouseEnter={onNodeHover}
       onNodeMouseLeave={onNodeHover}
       onNodeContextMenu={handleNodeContextMenu}
-      onPaneClick={handleCloseContextmenu}
       onMoveStart={handleCloseContextmenu}
       onDrop={handleNodeDrop}
       onDragOver={handleNodeDragOver}
