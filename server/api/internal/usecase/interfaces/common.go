@@ -27,6 +27,7 @@ type Container struct {
 	EdgeExecution EdgeExecution
 	Job           Job
 	Log           Log
+	NodeExecution NodeExecution
 	Parameter     Parameter
 	Project       Project
 	ProjectAccess ProjectAccess

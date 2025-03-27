@@ -33,6 +33,7 @@ pub struct DagExecutor {
 }
 
 pub struct DagExecutorJoinHandle {
+    event_hub: EventHub,
     join_handles: Vec<JoinHandle<Result<(), ExecutionError>>>,
     notify: Arc<Notify>,
 }
@@ -78,6 +79,8 @@ impl DagExecutor {
             Arc::clone(&state),
         )?;
         let node_indexes = execution_dag.graph().node_indices().collect::<Vec<_>>();
+
+        let event_hub = execution_dag.event_hub().clone();
 
         let ctx = NodeContext::new(
             Arc::clone(&expr_engine),
@@ -145,6 +148,7 @@ impl DagExecutor {
         }
 
         Ok(DagExecutorJoinHandle {
+            event_hub,
             join_handles,
             notify: notify_publish.clone(),
         })
@@ -176,6 +180,18 @@ impl DagExecutorJoinHandle {
             handle.join().unwrap()?;
 
             if self.join_handles.is_empty() {
+                // All threads have completed, add a delay before returning
+                if let Ok(handle) = Handle::try_current() {
+                    tracing::info!(
+                        "Workflow complete, waiting for final events to be published..."
+                    );
+
+                    // Simple delay approach - block for 500ms to let events publish
+                    handle.block_on(self.event_hub.simple_flush(500));
+
+                    tracing::info!("Proceeding with workflow termination");
+                }
+
                 return Ok(());
             }
         }

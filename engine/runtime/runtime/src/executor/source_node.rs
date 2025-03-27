@@ -1,5 +1,13 @@
-use std::{fmt::Debug, future::Future, pin::pin, sync::Arc, time};
+use std::{
+    env,
+    fmt::Debug,
+    future::Future,
+    pin::pin,
+    sync::Arc,
+    time::{self, Duration},
+};
 
+use once_cell::sync::Lazy;
 use petgraph::visit::IntoNodeIdentifiers;
 
 use async_stream::stream;
@@ -19,11 +27,19 @@ use crate::{
     executor_operation::{ExecutorContext, ExecutorOperation, ExecutorOptions, NodeContext},
     forwarder::ChannelManager,
     kvs::KvStore,
-    node::{IngestionMessage, Port, Source, SourceState},
+    node::{IngestionMessage, NodeStatus, Port, Source, SourceState},
 };
 
 use super::execution_dag::ExecutionDag;
 use super::node::Node;
+
+static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
+    env::var("FLOW_RUNTIME_NODE_STATUS_PROPAGATION_DELAY_MS")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .map(Duration::from_millis)
+        .unwrap_or(Duration::from_millis(500))
+});
 
 /// The source operation collector.
 #[derive(Debug)]
@@ -48,8 +64,26 @@ pub struct SourceNode<F> {
 
 impl<F: Future + Unpin> Node for SourceNode<F> {
     fn run(mut self) -> Result<(), ExecutionError> {
+        for source in &self.sources {
+            self.event_hub.send(Event::NodeStatusChanged {
+                node_handle: source.channel_manager.owner().clone(),
+                status: NodeStatus::Starting,
+                feature_id: None,
+            });
+        }
+
+        for source in &self.sources {
+            self.event_hub.send(Event::NodeStatusChanged {
+                node_handle: source.channel_manager.owner().clone(),
+                status: NodeStatus::Processing,
+                feature_id: None,
+            });
+        }
+
         let mut handles = vec![];
-        for mut source_runner in self.source_runners {
+        let source_runners = std::mem::take(&mut self.source_runners);
+
+        for (index, source_runner) in source_runners.into_iter().enumerate() {
             let ctx = NodeContext::new(
                 Arc::clone(&self.expr_engine),
                 Arc::clone(&self.storage_resolver),
@@ -58,23 +92,45 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
             );
             let span = self.span.clone();
             let event_hub = self.event_hub.clone();
+            let source_node_handle = self.sources[index].channel_manager.owner().clone();
+
+            self.event_hub.send(Event::NodeStatusChanged {
+                node_handle: source_node_handle.clone(),
+                status: NodeStatus::Processing,
+                feature_id: None,
+            });
+
+            let mut source = source_runner.source;
+            let sender = source_runner.sender;
+
             handles.push(Some(self.runtime.spawn(async move {
                 let now = time::Instant::now();
-                let result = source_runner.source.start(ctx, source_runner.sender).await;
+                let result = source.start(ctx, sender).await;
                 event_hub.info_log(
                     Some(span.clone()),
                     format!(
                         "{:?} finish source complete. elapsed = {:?}",
-                        source_runner.source.name(),
+                        source.name(),
                         now.elapsed()
                     ),
                 );
+
+                event_hub.send(Event::NodeStatusChanged {
+                    node_handle: source_node_handle,
+                    status: NodeStatus::Completed,
+                    feature_id: None,
+                });
+
+                tracing::info!("Waiting for final status to propagate for all source nodes");
+                std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
+
                 result
             })));
         }
-        let mut num_running_sources = handles.len();
 
+        let mut num_running_sources = handles.len();
         let mut stream = pin!(receivers_stream(self.receivers));
+
         loop {
             let next = stream.next();
             let next = pin!(next);
@@ -89,6 +145,18 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                         Arc::clone(&self.kv_store),
                         self.event_hub.clone(),
                     );
+
+                    for source in &self.sources {
+                        self.event_hub.send(Event::NodeStatusChanged {
+                            node_handle: source.channel_manager.owner().clone(),
+                            status: NodeStatus::Completed,
+                            feature_id: None,
+                        });
+                    }
+
+                    tracing::info!("Waiting for final status to propagate for all source nodes");
+                    std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
+
                     send_to_all_nodes(&self.sources, ExecutorOperation::Terminate { ctx })?;
                     self.event_hub.send(Event::SourceFlushed);
                     return Ok(());
@@ -112,6 +180,18 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                         Arc::clone(&self.kv_store),
                                         self.event_hub.clone(),
                                     );
+
+                                    for source in &self.sources {
+                                        self.event_hub.send(Event::NodeStatusChanged {
+                                            node_handle: source.channel_manager.owner().clone(),
+                                            status: NodeStatus::Completed,
+                                            feature_id: None,
+                                        });
+                                    }
+
+                                    tracing::info!("Waiting for final status to propagate for all source nodes");
+                                    std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
+
                                     send_to_all_nodes(
                                         &self.sources,
                                         ExecutorOperation::Terminate { ctx },
@@ -121,19 +201,53 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                 }
                                 continue;
                             }
-                            Ok(Err(e)) => return Err(ExecutionError::Source(e)),
+                            Ok(Err(e)) => {
+                                self.event_hub.send(Event::NodeStatusChanged {
+                                    node_handle: self.sources[index]
+                                        .channel_manager
+                                        .owner()
+                                        .clone(),
+                                    status: NodeStatus::Failed,
+                                    feature_id: None,
+                                });
+
+                                tracing::info!(
+                                    "Waiting for failed status to propagate for source node {}",
+                                    self.sources[index].channel_manager.owner().id
+                                );
+                                std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
+
+                                return Err(ExecutionError::Source(e));
+                            }
                             Err(e) => {
+                                self.event_hub.send(Event::NodeStatusChanged {
+                                    node_handle: self.sources[index]
+                                        .channel_manager
+                                        .owner()
+                                        .clone(),
+                                    status: NodeStatus::Failed,
+                                    feature_id: None,
+                                });
+
                                 panic!("Source panicked: {e}");
                             }
                         }
                     };
+
                     let source = &mut self.sources[index];
                     match message {
                         IngestionMessage::OperationEvent { feature, .. } => {
                             source.state = SourceState::NonRestartable;
+
+                            self.event_hub.send(Event::NodeStatusChanged {
+                                node_handle: source.channel_manager.owner().clone(),
+                                status: NodeStatus::Processing,
+                                feature_id: Some(feature.id),
+                            });
+
                             source.channel_manager.send_op(ExecutorContext::new(
-                                feature,
-                                port,
+                                feature.clone(),
+                                port.clone(),
                                 Arc::clone(&self.expr_engine),
                                 Arc::clone(&self.storage_resolver),
                                 Arc::clone(&self.kv_store),

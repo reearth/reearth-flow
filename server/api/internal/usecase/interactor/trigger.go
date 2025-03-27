@@ -14,6 +14,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearthx/account/accountdomain"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
+	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -163,6 +164,9 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	}
 
 	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
+	if err != nil {
+		return nil, err
+	}
 	j.SetMetadataURL(metadataURL.String())
 	if err := i.jobRepo.Save(ctx, j); err != nil {
 		return nil, err
@@ -175,17 +179,22 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), p.Variables, projectID, deployment.Workspace())
 	if err != nil {
+		log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
 		return nil, interfaces.ErrJobCreationFailed
 	}
 
 	j.SetGCPJobID(gcpJobID)
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		log.Errorf("Failed to save job %s with GCP ID: %v", j.ID(), err)
+		return nil, err
+	}
 
 	if err := i.job.StartMonitoring(ctx, j, p.NotificationURL); err != nil {
+		log.Errorf("Failed to start monitoring for job %s: %v", j.ID(), err)
 		return nil, err
 	}
 
 	tx.Commit()
-
 	return j, nil
 }
 

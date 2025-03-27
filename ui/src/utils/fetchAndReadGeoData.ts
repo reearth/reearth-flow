@@ -41,7 +41,7 @@ export async function fetchAndReadData(fileUrl: string): Promise<{
         error: null,
       };
     } else {
-      console.log("Unsupported file format");
+      console.error("Unsupported file format");
       return {
         fileContent: null,
         type: null,

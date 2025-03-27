@@ -263,6 +263,32 @@ func (f *fileRepo) CheckJobLogExists(ctx context.Context, jobID string) (bool, e
 	return true, nil
 }
 
+func (f *fileRepo) GetIntermediateDataURL(ctx context.Context, edgeID, jobID string) string {
+	intermediateDataPath := path.Join(gcsArtifactBasePath, jobID, "feature-store", edgeID+".jsonl")
+	url := getGCSObjectURL(f.base, intermediateDataPath)
+	if url == nil {
+		return ""
+	}
+	return url.String()
+}
+
+func (f *fileRepo) CheckIntermediateDataExists(ctx context.Context, edgeID, jobID string) (bool, error) {
+	bucket, err := f.bucket(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	intermediateDataPath := path.Join(gcsArtifactBasePath, jobID, "feature-store", edgeID+".jsonl")
+	_, err = bucket.Object(intermediateDataPath).Attrs(ctx)
+	if err == storage.ErrObjectNotExist {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // helpers
 func (f *fileRepo) bucket(ctx context.Context) (*storage.BucketHandle, error) {
 	client, err := storage.NewClient(ctx)

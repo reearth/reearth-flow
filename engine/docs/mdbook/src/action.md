@@ -2727,6 +2727,21 @@ Action for first port forwarding for sub-workflows.
 ### Category
 * System
 
+## JPStandardGridAccumulator
+### Type
+* processor
+### Description
+Divides the input geometry into Japanese standard (1km) mesh grid.
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
+### Category
+* Geometry
+
 ## LineOnLineOverlayer
 ### Type
 * processor
@@ -3724,6 +3739,21 @@ Replaces a three Dimension box with a polygon.
 * default
 ### Output Ports
 * default
+### Category
+* Geometry
+
+## ThreeDimensionPlanarityRotator
+### Type
+* processor
+### Description
+Rotates a single or a set of 2D geometries in 3D space to align them horizontally.
+### Parameters
+* No parameters
+### Input Ports
+* default
+### Output Ports
+* default
+* rejected
 ### Category
 * Geometry
 

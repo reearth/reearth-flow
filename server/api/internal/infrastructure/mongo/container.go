@@ -34,7 +34,7 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 		Deployment:    NewDeployment(client),
 		EdgeExecution: NewEdgeExecution(client),
 		Job:           NewJob(client),
-		Workflow:      NewWorkflow(client),
+		NodeExecution: NewNodeExecution(client),
 		Parameter:     NewParameter(client),
 		Permittable:   accountmongo.NewPermittable(client), // TODO: Delete this once the permission check migration is complete.
 		Project:       NewProject(client),
@@ -43,6 +43,7 @@ func New(ctx context.Context, db *mongo.Database, account *accountrepo.Container
 		Lock:          lock,
 		Transaction:   client.Transaction(),
 		Trigger:       NewTrigger(client),
+		Workflow:      NewWorkflow(client),
 		Workspace:     account.Workspace,
 		User:          account.User,
 	}
@@ -67,10 +68,10 @@ func Init(r *repo.Container) error {
 	return util.Try(
 		func() error { return r.Asset.(*Asset).Init(ctx) },
 		func() error { return r.AuthRequest.(*authserver.Mongo).Init(ctx) },
-		func() error { return r.Workflow.(*Workflow).Init(ctx) },
 		func() error { return r.Deployment.(*DeploymentAdapter).Deployment.Init(ctx) },
 		func() error { return r.EdgeExecution.(*EdgeExecution).Init(ctx) },
 		func() error { return r.Job.(*Job).Init(ctx) },
+		func() error { return r.NodeExecution.(*NodeExecution).Init(ctx) },
 		func() error { return r.Parameter.(*Parameter).Init(ctx) },
 		func() error { return r.Permittable.(*accountmongo.Permittable).Init(ctx) }, // TODO: Delete this once the permission check migration is complete.
 		func() error { return r.Project.(*Project).Init(ctx) },
@@ -78,6 +79,7 @@ func Init(r *repo.Container) error {
 		func() error { return r.Role.(*accountmongo.Role).Init(ctx) }, // TODO: Delete this once the permission check migration is complete.
 		func() error { return r.Trigger.(*Trigger).Init(ctx) },
 		func() error { return r.User.(*accountmongo.User).Init() },
+		func() error { return r.Workflow.(*Workflow).Init(ctx) },
 		func() error { return r.Workspace.(*accountmongo.Workspace).Init() },
 	)
 }

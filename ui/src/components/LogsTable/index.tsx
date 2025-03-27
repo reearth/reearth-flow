@@ -123,7 +123,6 @@ const LogsTable = ({
               placeholder={t("Search") + "..."}
               value={globalFilter ?? ""}
               onChange={(e) => setGlobalFilter(String(e.target.value))}
-              className="w-3/5 min-w-80"
             />
           )}
         </div>

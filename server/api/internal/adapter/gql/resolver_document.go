@@ -21,18 +21,30 @@ func (r *queryResolver) LatestProjectSnapshot(ctx context.Context, projectId gql
 	}, nil
 }
 
-func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.ID) ([]*gqlmodel.ProjectSnapshot, error) {
-	history, err := interactor.GetHistory(ctx, string(projectId))
+func (r *queryResolver) ProjectSnapshot(ctx context.Context, projectId gqlmodel.ID, version int) (*gqlmodel.ProjectSnapshot, error) {
+	history, err := interactor.GetHistoryByVersion(ctx, string(projectId), version)
 	if err != nil {
 		return nil, err
 	}
 
-	nodes := make([]*gqlmodel.ProjectSnapshot, len(history))
-	for i, h := range history {
-		nodes[i] = &gqlmodel.ProjectSnapshot{
-			Updates:   h.Updates,
-			Version:   h.Version,
-			Timestamp: h.Timestamp,
+	return &gqlmodel.ProjectSnapshot{
+		Updates:   history.Updates,
+		Version:   history.Version,
+		Timestamp: history.Timestamp,
+	}, nil
+}
+
+func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.ID) ([]*gqlmodel.ProjectSnapshotMetadata, error) {
+	metadata, err := interactor.GetHistoryMetadata(ctx, string(projectId))
+	if err != nil {
+		return nil, err
+	}
+
+	nodes := make([]*gqlmodel.ProjectSnapshotMetadata, len(metadata))
+	for i, m := range metadata {
+		nodes[i] = &gqlmodel.ProjectSnapshotMetadata{
+			Version:   m.Version,
+			Timestamp: m.Timestamp,
 		}
 	}
 
@@ -51,6 +63,15 @@ func (r *mutationResolver) RollbackProject(ctx context.Context, projectId gqlmod
 		Version:   doc.Version,
 		Timestamp: doc.Timestamp,
 	}, nil
+}
+
+func (r *mutationResolver) FlushProjectToGcs(ctx context.Context, projectId gqlmodel.ID) (*bool, error) {
+	err := interactor.FlushToGCS(ctx, string(projectId))
+	if err != nil {
+		return nil, err
+	}
+	result := true
+	return &result, nil
 }
 
 type projectDocumentResolver struct{ *Resolver }

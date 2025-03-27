@@ -21,7 +21,6 @@ RUN --mount=type=bind,source=package.json,target=package.json \
     --mount=type=bind,source=tsconfig.json,target=tsconfig.json \
     --mount=type=bind,source=tsconfig.node.json,target=tsconfig.node.json \
     --mount=type=bind,source=tailwind.config.ts,target=tailwind.config.ts \
-    --mount=type=bind,source=postcss.config.js,target=postcss.config.js \
     --mount=type=bind,source=vite.config.ts,target=vite.config.ts \
     --mount=type=bind,source=src,target=src \
     --mount=type=cache,target=/root/.yarn,sharing=locked \
