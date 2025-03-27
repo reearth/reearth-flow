@@ -1,4 +1,4 @@
-use crate::broadcast::group::{BroadcastConfig, BroadcastGroup};
+use crate::broadcast::group::BroadcastGroup;
 use crate::storage::gcs::GcsStore;
 use crate::storage::kv::DocOps;
 use crate::storage::redis::RedisStore;
@@ -14,12 +14,9 @@ use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
-const DEFAULT_DOC_ID: &str = "01jpjfpw0qtw17kbrcdbgefakg";
+use super::types::{BroadcastConfig, BroadcastGroupContext};
 
-#[derive(Debug)]
-pub struct BroadcastGroupContext {
-    group: Arc<BroadcastGroup>,
-}
+const DEFAULT_DOC_ID: &str = "01jpjfpw0qtw17kbrcdbgefakg";
 
 #[derive(Debug, Clone)]
 pub struct BroadcastGroupManager {

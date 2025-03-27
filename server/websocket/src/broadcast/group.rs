@@ -1,3 +1,4 @@
+use crate::broadcast::tasks::BackgroundTasks;
 use crate::storage::gcs::GcsStore;
 use crate::storage::kv::DocOps;
 use crate::storage::redis::RedisStore;
@@ -25,79 +26,7 @@ use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::{Encode, Encoder, EncoderV1};
 use yrs::{Doc, ReadTxn, Transact, Update};
 
-#[derive(Debug, Clone)]
-pub struct BroadcastConfig {
-    pub storage_enabled: bool,
-    pub doc_name: Option<String>,
-}
-
-pub struct BackgroundTasks {
-    awareness_updater: JoinHandle<()>,
-    awareness_shutdown_tx: tokio::sync::mpsc::Sender<()>,
-    redis_subscriber_task: Option<JoinHandle<()>>,
-    redis_subscriber_shutdown_tx: Option<tokio::sync::mpsc::Sender<()>>,
-    heartbeat_task: Option<JoinHandle<()>>,
-    heartbeat_shutdown_tx: Option<tokio::sync::mpsc::Sender<()>>,
-}
-
-impl BackgroundTasks {
-    pub fn new(
-        awareness_updater: JoinHandle<()>,
-        awareness_shutdown_tx: tokio::sync::mpsc::Sender<()>,
-    ) -> Self {
-        Self {
-            awareness_updater,
-            awareness_shutdown_tx,
-            redis_subscriber_task: None,
-            redis_subscriber_shutdown_tx: None,
-            heartbeat_task: None,
-            heartbeat_shutdown_tx: None,
-        }
-    }
-
-    pub fn set_redis_subscriber(
-        &mut self,
-        task: JoinHandle<()>,
-        shutdown_tx: tokio::sync::mpsc::Sender<()>,
-    ) {
-        self.redis_subscriber_task = Some(task);
-        self.redis_subscriber_shutdown_tx = Some(shutdown_tx);
-    }
-
-    pub fn set_heartbeat(
-        &mut self,
-        task: JoinHandle<()>,
-        shutdown_tx: tokio::sync::mpsc::Sender<()>,
-    ) {
-        self.heartbeat_task = Some(task);
-        self.heartbeat_shutdown_tx = Some(shutdown_tx);
-    }
-}
-
-impl Drop for BackgroundTasks {
-    fn drop(&mut self) {
-        if let Some(tx) = self.redis_subscriber_shutdown_tx.take() {
-            let _ = tx.try_send(());
-            if let Some(task) = self.redis_subscriber_task.take() {
-                task.abort();
-            }
-        } else if let Some(task) = self.redis_subscriber_task.take() {
-            task.abort();
-        }
-
-        if let Some(tx) = self.heartbeat_shutdown_tx.take() {
-            let _ = tx.try_send(());
-            if let Some(task) = self.heartbeat_task.take() {
-                task.abort();
-            }
-        } else if let Some(task) = self.heartbeat_task.take() {
-            task.abort();
-        }
-
-        let _ = self.awareness_shutdown_tx.try_send(());
-        self.awareness_updater.abort();
-    }
-}
+use super::types::BroadcastConfig;
 
 pub struct BroadcastGroup {
     connections: Arc<AtomicUsize>,
@@ -767,27 +696,7 @@ impl BroadcastGroup {
 
         {
             let mut background_tasks = self.background_tasks.lock().await;
-
-            if let Some(tx) = background_tasks.redis_subscriber_shutdown_tx.take() {
-                let _ = tx.try_send(());
-                if let Some(task) = background_tasks.redis_subscriber_task.take() {
-                    task.abort();
-                }
-            } else if let Some(task) = background_tasks.redis_subscriber_task.take() {
-                task.abort();
-            }
-
-            if let Some(tx) = background_tasks.heartbeat_shutdown_tx.take() {
-                let _ = tx.try_send(());
-                if let Some(task) = background_tasks.heartbeat_task.take() {
-                    task.abort();
-                }
-            } else if let Some(task) = background_tasks.heartbeat_task.take() {
-                task.abort();
-            }
-
-            let _ = background_tasks.awareness_shutdown_tx.try_send(());
-            background_tasks.awareness_updater.abort();
+            background_tasks.stop_all();
         }
 
         let redis_store_clone = self.redis_store.clone();
@@ -844,26 +753,7 @@ impl Drop for BroadcastGroup {
         let background_tasks = self.background_tasks.clone();
         tokio::spawn(async move {
             let mut tasks = background_tasks.lock().await;
-            if let Some(tx) = tasks.redis_subscriber_shutdown_tx.take() {
-                let _ = tx.try_send(());
-                if let Some(task) = tasks.redis_subscriber_task.take() {
-                    task.abort();
-                }
-            } else if let Some(task) = tasks.redis_subscriber_task.take() {
-                task.abort();
-            }
-
-            if let Some(tx) = tasks.heartbeat_shutdown_tx.take() {
-                let _ = tx.try_send(());
-                if let Some(task) = tasks.heartbeat_task.take() {
-                    task.abort();
-                }
-            } else if let Some(task) = tasks.heartbeat_task.take() {
-                task.abort();
-            }
-
-            let _ = tasks.awareness_shutdown_tx.try_send(());
-            tasks.awareness_updater.abort();
+            tasks.stop_all();
         });
     }
 }

@@ -5,6 +5,8 @@ use axum::{
     routing::get,
     Router,
 };
+use tower::ServiceBuilder;
+use tower_http::compression::CompressionLayer;
 
 use google_cloud_storage::{
     client::Client,
@@ -60,7 +62,8 @@ pub async fn start_server(state: Arc<AppState>, port: &str) -> Result<(), anyhow
     let app = Router::new()
         .merge(ws_router)
         .nest("/api", document_routes())
-        .with_state(state);
+        .with_state(state)
+        .layer(ServiceBuilder::new().layer(CompressionLayer::new()));
 
     info!("WebSocket endpoint available at ws://{}/[doc_id]", addr);
     info!(
