@@ -2,7 +2,11 @@ import { Trash } from "@phosphor-icons/react";
 import { EdgeChange } from "@xyflow/react";
 import { useCallback, useMemo } from "react";
 
-import { ContextMenu, ContextMenuMeta } from "@flow/components";
+import {
+  ContextMenu,
+  ContextMenuItemType,
+  ContextMenuMeta,
+} from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { Node, NodeChange } from "@flow/types";
 
@@ -40,12 +44,15 @@ const SelectionContextMenu: React.FC<Props> = ({
       onClose();
     };
 
-    const items = [
+    const items: ContextMenuItemType[] = [
       {
-        label: t("Delete Selection"),
-        icon: <Trash weight="light" />,
-        destructive: true,
-        onCallback: wrapWithClose(handleNodeDelete),
+        type: "action",
+        props: {
+          label: t("Delete Selection"),
+          icon: <Trash weight="light" />,
+          destructive: true,
+          onCallback: wrapWithClose(handleNodeDelete),
+        },
       },
     ];
 

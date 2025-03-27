@@ -1,7 +1,11 @@
 import { Eye, GearFine, Graph, Trash } from "@phosphor-icons/react";
 import { useCallback, useMemo } from "react";
 
-import { ContextMenu, ContextMenuMeta } from "@flow/components";
+import {
+  ContextMenu,
+  ContextMenuItemType,
+  ContextMenuMeta,
+} from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { isActionNodeType, Node, NodeChange } from "@flow/types";
 
@@ -41,33 +45,48 @@ const NodeContextMenu: React.FC<Props> = ({
       onClose();
     };
 
-    const items = [
+    const items: ContextMenuItemType[] = [
       node.type === "subworkflow"
         ? {
-            label: t("Open Subworkflow Canvas"),
-            icon: <Graph weight="light" />,
-            onCallback: wrapWithClose(handleSecondaryNodeAction),
+            type: "action",
+            props: {
+              label: t("Open Subworkflow Canvas"),
+              icon: <Graph weight="light" />,
+              onCallback: wrapWithClose(handleSecondaryNodeAction),
+            },
           }
         : {
-            label: t("Node Settings"),
-            icon: <GearFine weight="light" />,
-            onCallback: wrapWithClose(handleSecondaryNodeAction),
+            type: "action",
+            props: {
+              label: t("Node Settings"),
+              icon: <GearFine weight="light" />,
+              onCallback: wrapWithClose(handleSecondaryNodeAction),
+            },
           },
       ...(isActionNodeType(node.type)
         ? [
             {
-              label: t("Preview Intermediate Data"),
-              icon: <Eye weight="light" />,
-              onCallback: wrapWithClose(handleSecondaryNodeAction),
-              disabled: true,
+              type: "action" as const,
+              props: {
+                label: t("Preview Intermediate Data"),
+                icon: <Eye weight="light" />,
+                onCallback: wrapWithClose(handleSecondaryNodeAction),
+                disabled: true,
+              },
             },
           ]
         : []),
       {
-        label: t("Delete Node"),
-        icon: <Trash weight="light" />,
-        destructive: true,
-        onCallback: wrapWithClose(handleNodeDelete),
+        type: "separator",
+      },
+      {
+        type: "action",
+        props: {
+          label: t("Delete Node"),
+          icon: <Trash weight="light" />,
+          destructive: true,
+          onCallback: wrapWithClose(handleNodeDelete),
+        },
       },
     ];
 
