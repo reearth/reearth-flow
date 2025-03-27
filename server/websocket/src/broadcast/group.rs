@@ -254,7 +254,6 @@ impl BroadcastGroup {
             loop {
                 select! {
                     _ = redis_shutdown_rx.recv() => {
-                        tracing::debug!("Redis subscriber received shutdown signal");
                         break;
                     },
                     _ = async {
@@ -264,7 +263,7 @@ impl BroadcastGroup {
                                 &stream_key,
                                 &group_name_clone,
                                 &consumer_name_clone,
-                                16,
+                                20,
                             )
                             .await
                         {
@@ -331,7 +330,6 @@ impl BroadcastGroup {
             loop {
                 select! {
                     _ = heartbeat_shutdown_rx.recv() => {
-                        tracing::debug!("Heartbeat task received shutdown signal");
                         break;
                     },
                     _ = interval.tick() => {
@@ -563,14 +561,13 @@ impl BroadcastGroup {
                         protocol.handle_sync_step1(&awareness, state_vector)
                     }
                     SyncMessage::SyncStep2(update) => {
-                        let awareness = awareness.write().await;
                         let decoded_update = Update::decode_v1(&update)?;
-
+                        let awareness = awareness.write().await;
                         protocol.handle_sync_step2(&awareness, decoded_update)
                     }
                     SyncMessage::Update(update) => {
-                        let awareness = awareness.write().await;
                         let update = Update::decode_v1(&update)?;
+                        let awareness = awareness.write().await;
                         protocol.handle_sync_step2(&awareness, update)
                     }
                 }
