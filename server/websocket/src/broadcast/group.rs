@@ -270,24 +270,29 @@ impl BroadcastGroup {
                             Ok(updates) => {
                                 consecutive_errors = 0;
                                 if !updates.is_empty() {
-                                    let awareness = awareness_for_sub.write().await;
-                                    let mut txn = awareness.doc().transact_mut();
+                                    let mut decoded_updates = Vec::with_capacity(updates.len());
 
-                                    for update in updates {
-                                        let decode_result = Update::decode_v1(&update);
+                                    for update in &updates {
+                                        if let Ok(decoded) = Update::decode_v1(update) {
+                                            decoded_updates.push(decoded);
+                                        }
 
-                                        if let Ok(decoded) = decode_result {
+                                        if sender_for_sub.send(update.clone()).is_err() {
+                                            tracing::debug!("Failed to broadcast Redis update");
+                                        }
+                                    }
+
+                                    if !decoded_updates.is_empty() {
+                                        let awareness = awareness_for_sub.write().await;
+                                        let mut txn = awareness.doc().transact_mut();
+
+                                        for decoded in decoded_updates {
                                             if let Err(e) = txn.apply_update(decoded) {
                                                 tracing::warn!("Failed to apply update from Redis: {}", e);
                                             }
                                         }
-
-                                        if sender_for_sub.send(update).is_err() {
-                                            tracing::debug!("Failed to broadcast Redis update");
-                                        }
                                     }
-                                }
-                            }
+                                }                            }
                             Err(e) => {
                                 tracing::error!("Error reading from Redis Stream: {}", e);
 
