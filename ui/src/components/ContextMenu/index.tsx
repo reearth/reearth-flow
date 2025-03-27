@@ -2,6 +2,7 @@ import type { Node } from "@flow/types";
 
 export type ContextMenuMeta = {
   node?: Node;
+  nodes?: Node[];
   styles: React.CSSProperties;
 };
 

@@ -81,29 +81,49 @@ export default ({
   const [contextMenu, setContextMenu] = useState<ContextMenuMeta | null>(null);
 
   const paneRef = useRef<HTMLDivElement>(null);
+  const getContextMenuPosition = (event: MouseEvent) => {
+    if (!paneRef.current) return;
+    const pane = paneRef.current.getBoundingClientRect();
+    const localX = event.clientX - pane.left;
+    const localY = event.clientY - pane.top;
+    const styles: React.CSSProperties = {};
+
+    if (localY < pane.height - 200) {
+      styles.top = localY;
+    } else {
+      styles.bottom = pane.height - localY;
+    }
+
+    if (localX < pane.width - 200) {
+      styles.left = localX;
+    } else {
+      styles.right = pane.width - localX;
+    }
+    return styles;
+  };
 
   const handleNodeContextMenu = useCallback(
     (event: MouseEvent, node: Node) => {
       event.preventDefault();
-      if (!paneRef.current) return;
-      const pane = paneRef.current.getBoundingClientRect();
-      const localX = event.clientX - pane.left;
-      const localY = event.clientY - pane.top;
-      const styles: React.CSSProperties = {};
+      const styles = getContextMenuPosition(event);
+      if (!styles) return;
 
-      if (localY < pane.height - 200) {
-        styles.top = localY;
-      } else {
-        styles.bottom = pane.height - localY;
-      }
-
-      if (localX < pane.width - 200) {
-        styles.left = localX;
-      } else {
-        styles.right = pane.width - localX;
-      }
       setContextMenu({
         node,
+        styles,
+      });
+    },
+    [setContextMenu],
+  );
+
+  const handleSelectionContextMenu = useCallback(
+    (event: MouseEvent, nodes: Node[]) => {
+      event.preventDefault();
+      const styles = getContextMenuPosition(event);
+      if (!styles) return;
+
+      setContextMenu({
+        nodes,
         styles,
       });
     },
@@ -125,6 +145,7 @@ export default ({
     handleConnect,
     handleReconnect,
     handleNodeContextMenu,
+    handleSelectionContextMenu,
     handleCloseContextmenu,
     contextMenu,
     paneRef,

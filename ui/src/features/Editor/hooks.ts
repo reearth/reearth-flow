@@ -279,6 +279,7 @@ export default ({
     currentProject,
     nodes,
     edges,
+    selectedEdgeIds,
     lockedNodeIds,
     locallyLockedNode,
     hoveredDetails,

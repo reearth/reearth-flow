@@ -23,7 +23,7 @@ import type { ActionNodeType, Edge, Node } from "@flow/types";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
-import { NodeContextMenu } from "./components";
+import { NodeContextMenu, SelectionContextMenu } from "./components";
 
 const gridSize = 25;
 
@@ -34,6 +34,7 @@ const proOptions: ProOptions = { hideAttribution: true };
 type Props = {
   nodes: Node[];
   edges: Edge[];
+  selectedEdgeIds: string[];
   canvasLock: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onNodesAdd?: (newNode: Node[]) => void;
@@ -54,6 +55,7 @@ const Canvas: React.FC<Props> = ({
   canvasLock,
   nodes,
   edges,
+  selectedEdgeIds,
   onWorkflowAdd,
   onNodesAdd,
   onNodesChange,
@@ -75,6 +77,7 @@ const Canvas: React.FC<Props> = ({
     handleConnect,
     handleReconnect,
     handleNodeContextMenu,
+    handleSelectionContextMenu,
     handleCloseContextmenu,
     contextMenu,
     paneRef,
@@ -142,6 +145,7 @@ const Canvas: React.FC<Props> = ({
       onNodeMouseEnter={onNodeHover}
       onNodeMouseLeave={onNodeHover}
       onNodeContextMenu={handleNodeContextMenu}
+      onSelectionContextMenu={handleSelectionContextMenu}
       onMoveStart={handleCloseContextmenu}
       onDrop={handleNodeDrop}
       onDragOver={handleNodeDragOver}
@@ -161,6 +165,18 @@ const Canvas: React.FC<Props> = ({
         <NodeContextMenu
           node={contextMenu.node}
           contextMenu={contextMenu}
+          onNodesChange={handleNodesChange}
+          onSecondaryNodeAction={onNodeDoubleClick}
+          onClose={handleCloseContextmenu}
+        />
+      )}
+      {contextMenu && contextMenu.nodes && (
+        <SelectionContextMenu
+          nodes={contextMenu.nodes}
+          selectedEdgeIds={selectedEdgeIds}
+          contextMenu={contextMenu}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={handleEdgesChange}
           onClose={handleCloseContextmenu}
         />
       )}

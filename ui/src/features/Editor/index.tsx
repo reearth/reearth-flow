@@ -36,6 +36,7 @@ export default function Editor({
     currentProject,
     nodes,
     edges,
+    selectedEdgeIds,
     // lockedNodeIds,
     locallyLockedNode,
     hoveredDetails,
@@ -117,6 +118,7 @@ export default function Editor({
               <Canvas
                 nodes={nodes}
                 edges={edges}
+                selectedEdgeIds={selectedEdgeIds}
                 canvasLock={!!locallyLockedNode}
                 onWorkflowAdd={handleWorkflowAdd}
                 onNodesAdd={handleNodesAdd}
