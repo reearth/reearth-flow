@@ -2,7 +2,6 @@ name: ci-api
 on:
   workflow_call:
 env:
-  GO_VERSION: "1.22"
   RUST_VERSION: "1.85"
 
 jobs:
@@ -15,7 +14,8 @@ jobs:
       - name: set up
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version-file: 'server/api/go.mod'
+          check-latest: true
           cache: false
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
@@ -62,7 +62,8 @@ jobs:
       - name: set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version-file: 'server/api/go.mod'
+          check-latest: true
           cache-dependency-path: server/api/go.sum
       - name: test
         run: |
