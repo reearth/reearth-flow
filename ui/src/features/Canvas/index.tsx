@@ -23,6 +23,7 @@ import type { ActionNodeType, Edge, Node } from "@flow/types";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
+import { NodeContextMenu } from "./components";
 
 const gridSize = 25;
 
@@ -73,6 +74,10 @@ const Canvas: React.FC<Props> = ({
     handleEdgesChange,
     handleConnect,
     handleReconnect,
+    handleNodeContextMenu,
+    handleCloseContextmenu,
+    contextMenu,
+    paneRef,
   } = useHooks({
     nodes,
     edges,
@@ -98,7 +103,7 @@ const Canvas: React.FC<Props> = ({
       // selectNodesOnDrag={false}
       // fitViewOptions={{ padding: 0.5 }}
       // fitView
-
+      ref={paneRef}
       // Locking props START
       nodesDraggable={!canvasLock}
       nodesConnectable={!canvasLock}
@@ -131,10 +136,13 @@ const Canvas: React.FC<Props> = ({
       onNodesChange={handleNodesChange}
       onEdgesChange={handleEdgesChange}
       onNodeDoubleClick={handleNodeDoubleClick}
+      onNodeDragStart={handleCloseContextmenu}
       onNodeDragStop={handleNodeDragStop}
       onNodesDelete={handleNodesDelete}
       onNodeMouseEnter={onNodeHover}
       onNodeMouseLeave={onNodeHover}
+      onNodeContextMenu={handleNodeContextMenu}
+      onMoveStart={handleCloseContextmenu}
       onDrop={handleNodeDrop}
       onDragOver={handleNodeDragOver}
       onEdgeMouseEnter={onEdgeHover}
@@ -148,6 +156,14 @@ const Canvas: React.FC<Props> = ({
         gap={gridSize}
         color="rgba(63, 63, 70, 0.3)"
       />
+
+      {contextMenu && contextMenu.node && (
+        <NodeContextMenu
+          node={contextMenu.node}
+          contextMenu={contextMenu}
+          onClose={handleCloseContextmenu}
+        />
+      )}
     </ReactFlow>
   );
 };
