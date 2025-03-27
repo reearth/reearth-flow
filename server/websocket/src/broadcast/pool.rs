@@ -1,4 +1,4 @@
-use crate::broadcast::group::{BroadcastConfig, BroadcastGroup};
+use crate::broadcast::group::BroadcastGroup;
 use crate::storage::gcs::GcsStore;
 use crate::storage::kv::DocOps;
 use crate::storage::redis::RedisStore;
@@ -14,12 +14,9 @@ use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
-const DEFAULT_DOC_ID: &str = "01jpjfpw0qtw17kbrcdbgefakg";
+use super::types::{BroadcastConfig, BroadcastGroupContext};
 
-#[derive(Debug)]
-pub struct BroadcastGroupContext {
-    group: Arc<BroadcastGroup>,
-}
+const DEFAULT_DOC_ID: &str = "01jpjfpw0qtw17kbrcdbgefakg";
 
 #[derive(Debug, Clone)]
 pub struct BroadcastGroupManager {
@@ -47,22 +44,19 @@ impl BroadcastGroupManager {
                 let group_clone = entry.get().clone();
                 drop(entry);
 
-                if let Some(doc_name) = group_clone.get_doc_name() {
-                    let redis_store = group_clone.get_redis_store();
-                    let valid = match redis_store.check_stream_exists(&doc_name).await {
-                        Ok(exists) => exists,
-                        Err(e) => {
-                            tracing::warn!("Error checking Redis stream: {}", e);
-                            false
-                        }
-                    };
-
-                    if !valid {
-                        tracing::warn!("Found cached broadcast group for '{}' but Redis stream does not exist, recreating", doc_id);
-                        self.doc_to_id_map.remove(&doc_id_string);
-                    } else {
-                        return Ok(group_clone);
+                let doc_name = group_clone.get_doc_name();
+                let redis_store = group_clone.get_redis_store();
+                let valid = match redis_store.check_stream_exists(&doc_name).await {
+                    Ok(exists) => exists,
+                    Err(e) => {
+                        tracing::warn!("Error checking Redis stream: {}", e);
+                        false
                     }
+                };
+
+                if !valid {
+                    tracing::warn!("Found cached broadcast group for '{}' but Redis stream does not exist, recreating", doc_id);
+                    self.doc_to_id_map.remove(&doc_id_string);
                 } else {
                     return Ok(group_clone);
                 }
@@ -199,7 +193,7 @@ impl Manager for BroadcastGroupManager {
 
         async move {
             if group.connection_count() == 0 {
-                let doc_id = group.get_doc_name().unwrap_or_default();
+                let doc_id = group.get_doc_name();
                 tracing::info!("Recycling empty broadcast group for document '{}'", doc_id);
 
                 doc_to_id_map.remove(&doc_id);
@@ -215,7 +209,7 @@ impl Manager for BroadcastGroupManager {
                     "Group has no connections".into(),
                 ));
             }
-            let doc_id = group.get_doc_name().unwrap_or_default();
+            let doc_id = group.get_doc_name();
             tracing::info!("Recycling broadcast group for document '{}'", doc_id);
             Ok(())
         }
@@ -229,7 +223,7 @@ pub struct BroadcastPool {
 
 impl BroadcastPool {
     pub fn new(store: Arc<GcsStore>, redis_store: Arc<RedisStore>) -> Self {
-        let manager = BroadcastGroupManager::new(store.clone(), redis_store.clone());
+        let manager = BroadcastGroupManager::new(store, redis_store);
 
         let doc_to_id_map = manager.doc_to_id_map.clone();
         tokio::spawn(async move {
@@ -291,7 +285,7 @@ impl BroadcastPool {
 
         if let Some(group) = broadcast_group {
             let store = self.get_store();
-            let doc_name = group.get_doc_name().unwrap_or_else(|| doc_id.to_string());
+            let doc_name = group.get_doc_name();
 
             let redis_store = group.get_redis_store();
             let active_connections = match redis_store.get_active_instances(&doc_name, 60).await {
