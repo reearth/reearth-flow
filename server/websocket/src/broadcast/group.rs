@@ -612,13 +612,7 @@ impl BroadcastGroup {
                     "Failed to remove instance heartbeat before checking connections: {}",
                     e
                 );
-            } else {
-                tracing::debug!(
-                    "Removed heartbeat for instance {} before checking connections",
-                    self.instance_id
-                );
             }
-
             let should_save = match redis_store_clone
                 .get_active_instances(&self.doc_name, 60)
                 .await
@@ -720,33 +714,13 @@ impl BroadcastGroup {
         let instance_id = self.instance_id.clone();
 
         tokio::spawn(async move {
-            match redis_store_clone
+            if (redis_store_clone
                 .safe_delete_stream(&doc_name_clone, &instance_id)
-                .await
+                .await)
+                .is_ok()
             {
-                Ok(deleted) => {
-                    if deleted {
-                        tracing::debug!(
-                            "Successfully deleted Redis stream for '{}'",
-                            doc_name_clone
-                        );
-                    } else {
-                        tracing::debug!(
-                            "Did not delete Redis stream for '{}' as it may still be in use",
-                            doc_name_clone
-                        );
-                    }
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        "Error during safe Redis stream deletion for '{}': {}",
-                        doc_name_clone,
-                        e
-                    );
-                }
+                tracing::debug!("Successfully deleted Redis stream for '{}'", doc_name_clone);
             }
-
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
         });
 
         Ok(())

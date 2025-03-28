@@ -708,7 +708,7 @@ impl RedisStore {
         &self,
         doc_id: &str,
         instance_id: &str,
-    ) -> Result<bool, anyhow::Error> {
+    ) -> Result<(), anyhow::Error> {
         if self.acquire_doc_lock(doc_id, instance_id).await? {
             let connections = self.get_active_instances(doc_id, 60).await?;
 
@@ -725,30 +725,17 @@ impl RedisStore {
                             .arg(&stream_key)
                             .query_async(&mut *conn)
                             .await?;
-
-                        tracing::info!("Safely deleted Redis stream for '{}'", doc_id);
                     }
                 }
 
                 let _ = self.release_doc_lock(doc_id, instance_id).await;
-                return Ok(true);
+                return Ok(());
             }
 
-            tracing::info!(
-                "Not deleting Redis stream for '{}' as there are still {} connections",
-                doc_id,
-                connections
-            );
-
             let _ = self.release_doc_lock(doc_id, instance_id).await;
-        } else {
-            tracing::debug!(
-                "Could not acquire lock for doc '{}', skipping deletion attempt",
-                doc_id
-            );
         }
 
-        Ok(false)
+        Ok(())
     }
 
     pub async fn check_stream_exists(&self, doc_id: &str) -> Result<bool, anyhow::Error> {
