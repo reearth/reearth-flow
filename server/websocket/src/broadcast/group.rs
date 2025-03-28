@@ -689,14 +689,16 @@ impl BroadcastGroup {
                     if !(update_bytes.is_empty()
                         || update_bytes.len() == 2 && update_bytes[0] == 0 && update_bytes[1] == 0)
                     {
-                        Self::handle_gcs_update(update_bytes, &self.doc_name, &store_clone).await;
-                    }
+                        let update_future =
+                            Self::handle_gcs_update(update_bytes, &self.doc_name, &store_clone);
+                        let flush_future =
+                            store_clone.flush_doc_direct(&self.doc_name, awareness_doc);
 
-                    if let Err(e) = store_clone
-                        .flush_doc_direct(&self.doc_name, awareness_doc)
-                        .await
-                    {
-                        tracing::warn!("Failed to flush document directly to storage: {}", e);
+                        let (_, flush_result) = tokio::join!(update_future, flush_future);
+
+                        if let Err(e) = flush_result {
+                            tracing::warn!("Failed to flush document directly to storage: {}", e);
+                        }
                     }
                 }
 
