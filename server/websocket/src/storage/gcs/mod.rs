@@ -17,6 +17,8 @@ use time::OffsetDateTime;
 use tracing::debug;
 use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 
+const BATCH_SIZE: usize = 40;
+
 fn find_common_prefix(a: &str, b: &str) -> String {
     let min_len = std::cmp::min(a.len(), b.len());
     let mut common_len = 0;
@@ -306,7 +308,6 @@ impl GcsStore {
             doc_id
         );
 
-        const BATCH_SIZE: usize = 20;
         let doc = Doc::new();
         let mut txn = doc.transact_mut();
 
@@ -641,7 +642,7 @@ impl KVStore for GcsStore {
 
         all_objects.sort_by(|a, b| a.name.cmp(&b.name));
 
-        const BATCH_SIZE: usize = 20;
+        const BATCH_SIZE: usize = 40;
 
         let mut all_values = Vec::with_capacity(all_objects.len());
 
