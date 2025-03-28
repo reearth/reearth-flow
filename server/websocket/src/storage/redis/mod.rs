@@ -735,6 +735,8 @@ impl RedisStore {
             let _ = self.release_doc_lock(doc_id, instance_id).await;
         }
 
+        tracing::warn!("still using stream");
+
         Ok(())
     }
 
