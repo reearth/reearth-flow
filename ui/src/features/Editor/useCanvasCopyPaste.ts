@@ -33,9 +33,9 @@ export default ({
   const { toast } = useToast();
   const t = useT();
   const newEdgeCreation = useCallback(
-    (pe: Edge[], oldNodes: Node[], newNodes: Node[]): Edge[] => {
+    (pastedEdges: Edge[], oldNodes: Node[], newNodes: Node[]): Edge[] => {
       let newEdges: Edge[] = [];
-      for (const e of pe) {
+      for (const e of pastedEdges) {
         const sourceNode =
           newNodes[oldNodes?.findIndex((n) => n.id === e.source)];
         const targetNode =
@@ -60,11 +60,11 @@ export default ({
   );
 
   const newNodeCreation = useCallback(
-    (pn: Node[], pastedWorkflows?: Workflow[]): Node[] => {
+    (pastedNodes: Node[], pastedWorkflows?: Workflow[]): Node[] => {
       const newNodes: Node[] = [];
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
 
-      for (const n of pn) {
+      for (const n of pastedNodes) {
         // if NOT a child of a batch, offset position for user's benefit
         const newPosition = n.parentId
           ? { x: n.position.x, y: n.position.y }
