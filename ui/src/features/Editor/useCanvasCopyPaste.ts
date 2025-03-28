@@ -55,7 +55,7 @@ export default ({
     [],
   );
   const newNodeCreation = useCallback(
-    (pn: Node[], paste?: boolean): Node[] => {
+    (pn: Node[], pastedWorkflows?: Workflow[], isPaste?: boolean): Node[] => {
       const newNodes: Node[] = [];
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
 
@@ -77,16 +77,20 @@ export default ({
 
         if (newNode.type === "batch") {
           parentIdMapArray.push({ prevId: n.id, newId: newNode.id });
-        } else if (newNode.type === "subworkflow" && paste) {
+        } else if (newNode.type === "subworkflow" && isPaste) {
           const subworkflowId = generateUUID();
 
-          const subworkflowNodes = (rawWorkflows.find(
+          const subworkflowNodes = (pastedWorkflows?.find(
             (w) => w.id === n.data.subworkflowId,
           )?.nodes ?? []) as Node[];
 
-          const newSubworkflowNodes = newNodeCreation(subworkflowNodes);
+          const newSubworkflowNodes = newNodeCreation(
+            subworkflowNodes,
+            pastedWorkflows,
+            isPaste,
+          );
 
-          const oldEdges = (rawWorkflows.find(
+          const oldEdges = (pastedWorkflows?.find(
             (w) => w.id === n.data.subworkflowId,
           )?.edges ?? []) as Edge[];
 
@@ -122,7 +126,7 @@ export default ({
 
       return reBatchedNodes;
     },
-    [rawWorkflows, handleWorkflowUpdate, newEdgeCreation],
+    [handleWorkflowUpdate, newEdgeCreation],
   );
 
   const handleCopy = useCallback(async () => {
@@ -139,17 +143,26 @@ export default ({
 
     const newNodes = newNodeCreation(copiedNodes);
     const newEdges = newEdgeCreation(selected.edges, copiedNodes, newNodes);
+    const copiedWorkflows = rawWorkflows;
 
-    await copy({ edges: newEdges, nodes: newNodes });
-  }, [nodes, edges, newNodeCreation, newEdgeCreation, copy]);
+    await copy({
+      edges: newEdges,
+      nodes: newNodes,
+      workflows: copiedWorkflows,
+    });
+  }, [nodes, edges, newNodeCreation, newEdgeCreation, copy, rawWorkflows]);
 
   const handlePaste = useCallback(async () => {
-    const { nodes: pastedNodes, edges: pastedEdges } = (await paste()) || {
+    const {
+      nodes: pastedNodes,
+      edges: pastedEdges,
+      workflows: pastedWorkflows,
+    } = (await paste()) || {
       nodes: [],
       edges: [],
     };
 
-    const newNodes = newNodeCreation(pastedNodes, true);
+    const newNodes = newNodeCreation(pastedNodes, pastedWorkflows, true);
     const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
 
     // Copy new nodes and edges. Since they are selected now,
@@ -158,6 +171,7 @@ export default ({
     copy({
       nodes: newNodes,
       edges: newEdges,
+      workflows: pastedWorkflows,
     });
 
     // deselect all previously selected nodes
