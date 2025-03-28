@@ -17,7 +17,7 @@ use time::OffsetDateTime;
 use tracing::debug;
 use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 
-const BATCH_SIZE: usize = 40;
+const BATCH_SIZE: usize = 50;
 
 fn find_common_prefix(a: &str, b: &str) -> String {
     let min_len = std::cmp::min(a.len(), b.len());
