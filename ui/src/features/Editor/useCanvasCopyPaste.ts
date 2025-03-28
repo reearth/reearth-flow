@@ -28,28 +28,8 @@ export default ({
 }) => {
   const { copy, paste } = useCopyPaste();
 
-  const handleCopy = useCallback(async () => {
-    const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
-      nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
-      edges: edges.filter((e) => e.selected),
-    };
-    if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
-    await copy(selected);
-  }, [nodes, edges, copy]);
-
-  const handlePaste = useCallback(async () => {
-    const { nodeIds: pnid, edges: pastedEdges } = (await paste()) || {
-      nodeIds: [],
-      edges: [],
-    };
-
-    const pastedNodes = nodes.filter((n) => pnid.includes(n.id));
-
-    const newEdgeCreation = (
-      pe: Edge[],
-      oldNodes: Node[],
-      newNodes: Node[],
-    ): Edge[] => {
+  const newEdgeCreation = useCallback(
+    (pe: Edge[], oldNodes: Node[], newNodes: Node[]): Edge[] => {
       let newEdges: Edge[] = [];
       for (const e of pe) {
         const sourceNode =
@@ -71,11 +51,12 @@ export default ({
         );
       }
       return newEdges;
-    };
-
-    const newNodeCreation = (pn: Node[]): Node[] => {
+    },
+    [],
+  );
+  const newNodeCreation = useCallback(
+    (pn: Node[]): Node[] => {
       const newNodes: Node[] = [];
-
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
 
       for (const n of pn) {
@@ -83,6 +64,7 @@ export default ({
         const newPosition = n.parentId
           ? { x: n.position.x, y: n.position.y }
           : { x: n.position.x + 40, y: n.position.y + 20 };
+
         const newNode: Node = {
           ...n,
           id: generateUUID(),
@@ -97,6 +79,7 @@ export default ({
           parentIdMapArray.push({ prevId: n.id, newId: newNode.id });
         } else if (newNode.type === "subworkflow") {
           const subworkflowId = generateUUID();
+
           const subworkflowNodes = (rawWorkflows.find(
             (w) => w.id === n.data.subworkflowId,
           )?.nodes ?? []) as Node[];
@@ -138,6 +121,32 @@ export default ({
       });
 
       return reBatchedNodes;
+    },
+    [rawWorkflows, handleWorkflowUpdate, newEdgeCreation],
+  );
+
+  const handleCopy = useCallback(async () => {
+    const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
+      nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
+      edges: edges.filter((e) => e.selected),
+    };
+
+    const selectedNodes = nodes.filter((n) => selected.nodeIds.includes(n.id));
+    if (selectedNodes.some((n) => n.type === "reader")) return;
+
+    if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
+    const copiedNodes = nodes.filter((n) => selected.nodeIds.includes(n.id));
+
+    const newNodes = newNodeCreation(copiedNodes);
+    const newEdges = newEdgeCreation(selected.edges, copiedNodes, newNodes);
+
+    await copy({ edges: newEdges, nodes: newNodes });
+  }, [nodes, edges, newNodeCreation, newEdgeCreation, copy]);
+
+  const handlePaste = useCallback(async () => {
+    const { nodes: pastedNodes, edges: pastedEdges } = (await paste()) || {
+      nodes: [],
+      edges: [],
     };
 
     const newNodes = newNodeCreation(pastedNodes);
@@ -147,7 +156,7 @@ export default ({
     // if the user pastes again, the new nodes and edges will
     // be what is pasted with an appropriate offset position.
     copy({
-      nodeIds: newNodes.map((n) => n.id),
+      nodes: newNodes,
       edges: newEdges,
     });
 
@@ -165,13 +174,13 @@ export default ({
     handleEdgesAdd(newEdges);
   }, [
     nodes,
-    rawWorkflows,
     copy,
     paste,
-    handleWorkflowUpdate,
     handleNodesAdd,
     handleNodesChange,
     handleEdgesAdd,
+    newEdgeCreation,
+    newNodeCreation,
   ]);
 
   return {
