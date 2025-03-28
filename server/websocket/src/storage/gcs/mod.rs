@@ -642,8 +642,6 @@ impl KVStore for GcsStore {
 
         all_objects.sort_by(|a, b| a.name.cmp(&b.name));
 
-        const BATCH_SIZE: usize = 40;
-
         let mut all_values = Vec::with_capacity(all_objects.len());
 
         for chunk in all_objects.chunks(BATCH_SIZE) {
