@@ -207,10 +207,6 @@ impl BroadcastPool {
                 }
 
                 for (doc_id, group) in empty_groups {
-                    tracing::info!(
-                        "Cleaning up empty broadcast group for document '{}'",
-                        doc_id
-                    );
                     doc_to_id_map.remove(&doc_id);
 
                     if let Err(e) = group.shutdown().await {
