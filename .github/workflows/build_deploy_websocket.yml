@@ -43,7 +43,7 @@ jobs:
       - name: Create distribution directory
         run: |
           mkdir -p server/websocket/dist
-          cp server/target/release/websocket server/websocket/dist/reearth-flow-websocket
+          cp server/websocket/target/release/websocket server/websocket/dist/reearth-flow-websocket
 
       - name: Rename Artifacts
         if: ${{ inputs.name != 'blank' }}
