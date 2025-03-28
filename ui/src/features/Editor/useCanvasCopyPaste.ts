@@ -150,7 +150,7 @@ export default ({
 
     const newNodes = newNodeCreation(selected.nodes);
     const newEdges = newEdgeCreation(selected.edges, selected.nodes, newNodes);
-    const newWorkflows = rawWorkflows;
+    const newWorkflows = [...rawWorkflows];
 
     await copy({
       edges: newEdges,
