@@ -2,6 +2,7 @@ package gql
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -23,12 +24,13 @@ func (r *projectResolver) Parameters(ctx context.Context, obj *gqlmodel.Project)
 		return nil, err
 	}
 
+	fmt.Println("GOING TO GET PARAMETERS FOR PROJECT", sid)
 	parameters, err := usecases(ctx).Parameter.FetchByProject(ctx, sid)
 	if err != nil {
 		return nil, err
 	}
 
-	res := gqlmodel.ToParameters(*parameters)
+	res := gqlmodel.ToParameters(parameters)
 	return res, nil
 }
 

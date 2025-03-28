@@ -1,73 +1,74 @@
 type Parameter {
-    createdAt: DateTime!
-    id: ID!
-    index: Int!
-    name: String!
-    projectId: ID!
-    required: Boolean!
-    type: ParameterType!
-    updatedAt: DateTime!
-    value: Any!
+  createdAt: DateTime!
+  id: ID!
+  index: Int!
+  name: String!
+  projectId: ID!
+  required: Boolean!
+  type: ParameterType!
+  updatedAt: DateTime!
+  value: Any!
 }
 
 enum ParameterType {
-    CHOICE
-    COLOR
-    DATETIME
-    FILE_FOLDER
-    MESSAGE
-    NUMBER
-    PASSWORD
-    TEXT
-    YES_NO
-    ATTRIBUTE_NAME
-    COORDINATE_SYSTEM
-    DATABASE_CONNECTION
-    GEOMETRY
-    REPROJECTION_FILE
-    WEB_CONNECTION
+  CHOICE
+  COLOR
+  DATETIME
+  FILE_FOLDER
+  MESSAGE
+  NUMBER
+  PASSWORD
+  TEXT
+  YES_NO
+  ATTRIBUTE_NAME
+  COORDINATE_SYSTEM
+  DATABASE_CONNECTION
+  GEOMETRY
+  REPROJECTION_FILE
+  WEB_CONNECTION
 }
 
 # InputType
 
 input DeclareParameterInput {
-    name: String!
-    type: ParameterType!
-    required: Boolean!
-    value: Any
-    index: Int
+  name: String!
+  type: ParameterType!
+  required: Boolean!
+  value: Any
+  index: Int
 }
 
 input UpdateParameterValueInput {
-    value: Any!
+  value: Any!
 }
 
 input UpdateParameterOrderInput {
-    paramId: ID!
-    newIndex: Int!
+  paramId: ID!
+  newIndex: Int!
 }
 
 input RemoveParameterInput {
-    paramId: ID!
+  paramId: ID!
 }
 
 # Query and Mutation
 
+extend type Query {
+  parameters(projectId: ID!): [Parameter!]!
+}
+
 extend type Mutation {
-    declareParameter(
-        projectId: ID!
-        input: DeclareParameterInput!
-    ): Parameter!
+  declareParameter(projectId: ID!, input: DeclareParameterInput!): Parameter!
 
-    updateParameterValue(
-        paramId: ID!
-        input: UpdateParameterValueInput!
-    ): Parameter!
+  updateParameterValue(
+    paramId: ID!
+    input: UpdateParameterValueInput!
+  ): Parameter!
 
-     updateParameterOrder(
-        projectId: ID!
-        input: UpdateParameterOrderInput!
-    ): [Parameter!]! 
+  updateParameterOrder(
+    projectId: ID!
+    input: UpdateParameterOrderInput!
+  ): [Parameter!]!
 
-    removeParameter(input: RemoveParameterInput!): Boolean!
+  removeParameter(input: RemoveParameterInput!): Boolean!
 }

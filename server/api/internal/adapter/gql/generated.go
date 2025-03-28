@@ -303,6 +303,7 @@ type ComplexityRoot struct {
 		Node                  func(childComplexity int, id gqlmodel.ID, typeArg gqlmodel.NodeType) int
 		NodeExecution         func(childComplexity int, jobID gqlmodel.ID, nodeID string) int
 		Nodes                 func(childComplexity int, id []gqlmodel.ID, typeArg gqlmodel.NodeType) int
+		Parameters            func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectHistory        func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectSharingInfo    func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectSnapshot       func(childComplexity int, projectID gqlmodel.ID, version int) int
@@ -479,6 +480,7 @@ type QueryResolver interface {
 	Jobs(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
 	NodeExecution(ctx context.Context, jobID gqlmodel.ID, nodeID string) (*gqlmodel.NodeExecution, error)
+	Parameters(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.Parameter, error)
 	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
 	SharedProject(ctx context.Context, token string) (*gqlmodel.SharedProjectPayload, error)
 	ProjectSharingInfo(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectSharingInfoPayload, error)
@@ -1842,6 +1844,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Query.Nodes(childComplexity, args["id"].([]gqlmodel.ID), args["type"].(gqlmodel.NodeType)), true
 
+	case "Query.parameters":
+		if e.complexity.Query.Parameters == nil {
+			break
+		}
+
+		args, err := ec.field_Query_parameters_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Parameters(childComplexity, args["projectId"].(gqlmodel.ID)), true
+
 	case "Query.projectHistory":
 		if e.complexity.Query.ProjectHistory == nil {
 			break
@@ -2765,77 +2779,78 @@ extend type Query {
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/parameter.graphql", Input: `type Parameter {
-    createdAt: DateTime!
-    id: ID!
-    index: Int!
-    name: String!
-    projectId: ID!
-    required: Boolean!
-    type: ParameterType!
-    updatedAt: DateTime!
-    value: Any!
+  createdAt: DateTime!
+  id: ID!
+  index: Int!
+  name: String!
+  projectId: ID!
+  required: Boolean!
+  type: ParameterType!
+  updatedAt: DateTime!
+  value: Any!
 }
 
 enum ParameterType {
-    CHOICE
-    COLOR
-    DATETIME
-    FILE_FOLDER
-    MESSAGE
-    NUMBER
-    PASSWORD
-    TEXT
-    YES_NO
-    ATTRIBUTE_NAME
-    COORDINATE_SYSTEM
-    DATABASE_CONNECTION
-    GEOMETRY
-    REPROJECTION_FILE
-    WEB_CONNECTION
+  CHOICE
+  COLOR
+  DATETIME
+  FILE_FOLDER
+  MESSAGE
+  NUMBER
+  PASSWORD
+  TEXT
+  YES_NO
+  ATTRIBUTE_NAME
+  COORDINATE_SYSTEM
+  DATABASE_CONNECTION
+  GEOMETRY
+  REPROJECTION_FILE
+  WEB_CONNECTION
 }
 
 # InputType
 
 input DeclareParameterInput {
-    name: String!
-    type: ParameterType!
-    required: Boolean!
-    value: Any
-    index: Int
+  name: String!
+  type: ParameterType!
+  required: Boolean!
+  value: Any
+  index: Int
 }
 
 input UpdateParameterValueInput {
-    value: Any!
+  value: Any!
 }
 
 input UpdateParameterOrderInput {
-    paramId: ID!
-    newIndex: Int!
+  paramId: ID!
+  newIndex: Int!
 }
 
 input RemoveParameterInput {
-    paramId: ID!
+  paramId: ID!
 }
 
 # Query and Mutation
 
+extend type Query {
+  parameters(projectId: ID!): [Parameter!]!
+}
+
 extend type Mutation {
-    declareParameter(
-        projectId: ID!
-        input: DeclareParameterInput!
-    ): Parameter!
+  declareParameter(projectId: ID!, input: DeclareParameterInput!): Parameter!
 
-    updateParameterValue(
-        paramId: ID!
-        input: UpdateParameterValueInput!
-    ): Parameter!
+  updateParameterValue(
+    paramId: ID!
+    input: UpdateParameterValueInput!
+  ): Parameter!
 
-     updateParameterOrder(
-        projectId: ID!
-        input: UpdateParameterOrderInput!
-    ): [Parameter!]! 
+  updateParameterOrder(
+    projectId: ID!
+    input: UpdateParameterOrderInput!
+  ): [Parameter!]!
 
-    removeParameter(input: RemoveParameterInput!): Boolean!
+  removeParameter(input: RemoveParameterInput!): Boolean!
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/project.graphql", Input: `type Project implements Node {
@@ -4007,6 +4022,21 @@ func (ec *executionContext) field_Query_nodes_args(ctx context.Context, rawArgs 
 		}
 	}
 	args["type"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_parameters_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.ID
+	if tmp, ok := rawArgs["projectId"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+		arg0, err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["projectId"] = arg0
 	return args, nil
 }
 
@@ -12454,6 +12484,81 @@ func (ec *executionContext) fieldContext_Query_nodeExecution(ctx context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_parameters(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_parameters(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().Parameters(rctx, fc.Args["projectId"].(gqlmodel.ID))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlmodel.Parameter)
+	fc.Result = res
+	return ec.marshalNParameter2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_parameters(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "createdAt":
+				return ec.fieldContext_Parameter_createdAt(ctx, field)
+			case "id":
+				return ec.fieldContext_Parameter_id(ctx, field)
+			case "index":
+				return ec.fieldContext_Parameter_index(ctx, field)
+			case "name":
+				return ec.fieldContext_Parameter_name(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Parameter_projectId(ctx, field)
+			case "required":
+				return ec.fieldContext_Parameter_required(ctx, field)
+			case "type":
+				return ec.fieldContext_Parameter_type(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Parameter_updatedAt(ctx, field)
+			case "value":
+				return ec.fieldContext_Parameter_value(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_parameters_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Query_projects(ctx, field)
 	if err != nil {
@@ -20600,6 +20705,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_nodeExecution(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "parameters":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_parameters(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 

@@ -22,13 +22,13 @@ func ToParameter(p *parameter.Parameter) *Parameter {
 	}
 }
 
-func ToParameters(params parameter.ParameterList) []*Parameter {
+func ToParameters(params *parameter.ParameterList) []*Parameter {
 	if params == nil {
 		return nil
 	}
 
-	res := make([]*Parameter, 0, len(params))
-	for _, p := range params {
+	res := make([]*Parameter, 0, len(*params))
+	for _, p := range *params {
 		if p != nil {
 			res = append(res, ToParameter(p))
 		}
