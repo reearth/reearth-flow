@@ -691,6 +691,13 @@ impl BroadcastGroup {
                     {
                         Self::handle_gcs_update(update_bytes, &self.doc_name, &store_clone).await;
                     }
+
+                    if let Err(e) = store_clone
+                        .flush_doc_direct(&self.doc_name, awareness_doc)
+                        .await
+                    {
+                        tracing::warn!("Failed to flush document directly to storage: {}", e);
+                    }
                 }
 
                 if let Some((redis, lock_id, instance_id)) = lock_acquired {

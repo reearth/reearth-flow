@@ -37,26 +37,17 @@ impl BroadcastGroupManager {
     }
 
     async fn create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
-        let doc_id_string = doc_id.to_string();
-
-        match self.doc_to_id_map.entry(doc_id_string.clone()) {
+        match self.doc_to_id_map.entry(doc_id.to_string()) {
             dashmap::mapref::entry::Entry::Occupied(entry) => {
                 let group_clone = entry.get().clone();
                 drop(entry);
 
                 let doc_name = group_clone.get_doc_name();
                 let redis_store = group_clone.get_redis_store();
-                let valid = match redis_store.check_stream_exists(&doc_name).await {
-                    Ok(exists) => exists,
-                    Err(e) => {
-                        tracing::warn!("Error checking Redis stream: {}", e);
-                        false
-                    }
-                };
+                let valid = (redis_store.check_stream_exists(&doc_name).await).unwrap_or(false);
 
                 if !valid {
-                    tracing::warn!("Found cached broadcast group for '{}' but Redis stream does not exist, recreating", doc_id);
-                    self.doc_to_id_map.remove(&doc_id_string);
+                    self.doc_to_id_map.remove(doc_id);
                 } else {
                     return Ok(group_clone);
                 }
@@ -65,46 +56,28 @@ impl BroadcastGroupManager {
         }
 
         let mut need_initial_save = false;
-        let awareness: AwarenessRef = {
-            let doc = Doc::new();
+        let awareness: AwarenessRef = match self.store.load_doc_direct(doc_id).await {
+            Ok(direct_doc) => Arc::new(tokio::sync::RwLock::new(Awareness::new(direct_doc))),
+            Err(_) => {
+                let doc = Doc::new();
+                {
+                    let mut txn = doc.transact_mut();
 
-            {
-                let mut txn = doc.transact_mut();
-                let mut loaded = false;
+                    let loaded = self.store.load_doc(doc_id, &mut txn).await.unwrap_or(false);
 
-                match self.store.load_doc(doc_id, &mut txn).await {
-                    Ok(true) => {
-                        loaded = true;
-                    }
-                    Ok(false) => match self.store.load_doc(DEFAULT_DOC_ID, &mut txn).await {
-                        Ok(true) => {
-                            tracing::debug!("Loaded default document '{}'", DEFAULT_DOC_ID);
-                            loaded = true;
-                        }
-                        Ok(false) => {
-                            need_initial_save = true;
-                        }
-                        Err(e) => {
-                            tracing::warn!(
-                                "Failed to load default document '{}': {}",
-                                DEFAULT_DOC_ID,
-                                e
-                            );
-                            need_initial_save = true;
-                        }
-                    },
-                    Err(e) => {
-                        tracing::error!("Failed to load document '{}': {}", doc_id, e);
-                        return Err(e);
+                    if !loaded
+                        && !self
+                            .store
+                            .load_doc(DEFAULT_DOC_ID, &mut txn)
+                            .await
+                            .unwrap_or(false)
+                    {
+                        need_initial_save = true;
                     }
                 }
 
-                if !loaded {
-                    need_initial_save = true;
-                }
+                Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
             }
-
-            Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
         };
 
         if let Ok(updates) = self.redis_store.read_all_stream_data(doc_id).await {
@@ -114,16 +87,14 @@ impl BroadcastGroupManager {
 
                 for update_data in &updates {
                     if let Ok(update) = Update::decode_v1(update_data) {
-                        if let Err(e) = txn.apply_update(update) {
-                            tracing::warn!("Failed to apply update from Redis: {}", e);
-                        }
+                        let _ = txn.apply_update(update);
                     }
                 }
             }
         }
 
         if need_initial_save {
-            let doc_id_clone = doc_id_string.clone();
+            let doc_id_clone = doc_id.to_string();
             let store_clone = Arc::clone(&self.store);
             let awareness_clone = Arc::clone(&awareness);
 
@@ -136,13 +107,7 @@ impl BroadcastGroupManager {
                 let update = txn.encode_diff_v1(&StateVector::default());
                 let update_bytes = bytes::Bytes::from(update);
 
-                if let Err(e) = store_clone.push_update(&doc_id_clone, &update_bytes).await {
-                    tracing::error!(
-                        "Failed to save initial awareness state for document '{}' after 2s: {}",
-                        doc_id_clone,
-                        e
-                    );
-                }
+                let _ = store_clone.push_update(&doc_id_clone, &update_bytes).await;
             });
         }
 
@@ -154,13 +119,13 @@ impl BroadcastGroupManager {
                 self.redis_store.clone(),
                 BroadcastConfig {
                     storage_enabled: true,
-                    doc_name: Some(doc_id_string.clone()),
+                    doc_name: Some(doc_id.to_string()),
                 },
             )
             .await?,
         );
 
-        match self.doc_to_id_map.entry(doc_id_string) {
+        match self.doc_to_id_map.entry(doc_id.to_string()) {
             dashmap::mapref::entry::Entry::Occupied(entry) => {
                 let existing_group = entry.get().clone();
                 Ok(existing_group)
