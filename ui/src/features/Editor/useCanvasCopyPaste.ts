@@ -55,7 +55,7 @@ export default ({
     [],
   );
   const newNodeCreation = useCallback(
-    (pn: Node[]): Node[] => {
+    (pn: Node[], paste?: boolean): Node[] => {
       const newNodes: Node[] = [];
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
 
@@ -77,7 +77,7 @@ export default ({
 
         if (newNode.type === "batch") {
           parentIdMapArray.push({ prevId: n.id, newId: newNode.id });
-        } else if (newNode.type === "subworkflow") {
+        } else if (newNode.type === "subworkflow" && paste) {
           const subworkflowId = generateUUID();
 
           const subworkflowNodes = (rawWorkflows.find(
@@ -149,7 +149,7 @@ export default ({
       edges: [],
     };
 
-    const newNodes = newNodeCreation(pastedNodes);
+    const newNodes = newNodeCreation(pastedNodes, true);
     const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
 
     // Copy new nodes and edges. Since they are selected now,
