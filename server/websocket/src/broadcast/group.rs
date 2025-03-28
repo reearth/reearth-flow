@@ -263,7 +263,7 @@ impl BroadcastGroup {
                                 &stream_key,
                                 &group_name_clone,
                                 &consumer_name_clone,
-                                32,
+                                64,
                             )
                             .await
                         {
