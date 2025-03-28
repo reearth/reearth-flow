@@ -175,6 +175,74 @@ where
         self.flush_doc_with(name, yrs::Options::default()).await
     }
 
+    async fn trim_updates<K: AsRef<[u8]> + ?Sized + Sync>(
+        &self,
+        name: &K,
+        keep_recent: u32,
+    ) -> Result<Option<Doc>, Error> {
+        if let Some(oid) = get_oid(self, name.as_ref()).await? {
+            let update_range_start = key_update(oid, 0)?;
+            let update_range_end = key_update(oid, u32::MAX)?;
+            let mut updates = Vec::new();
+
+            for entry in self
+                .iter_range(&update_range_start, &update_range_end)
+                .await?
+            {
+                let key = entry.key();
+                let len = key.len();
+                let seq_bytes = &key[(len - 5)..(len - 1)];
+                let seq_nr = u32::from_be_bytes(seq_bytes.try_into().unwrap());
+                updates.push(seq_nr);
+            }
+
+            if updates.len() > keep_recent as usize {
+                updates.sort_unstable();
+
+                let cutoff = updates[updates.len() - keep_recent as usize];
+
+                let doc = Doc::new();
+                let mut found = false;
+
+                {
+                    let doc_key = key_doc(oid)?;
+                    if let Some(doc_state) = self.get(&doc_key).await? {
+                        let update = Update::decode_v1(doc_state.as_ref())?;
+                        let _ = doc.transact_mut().apply_update(update);
+                        found = true;
+                    }
+                }
+
+                let mut applied = false;
+                for seq_nr in &updates {
+                    if *seq_nr < cutoff {
+                        let update_key = key_update(oid, *seq_nr)?;
+                        if let Some(data) = self.get(&update_key).await? {
+                            let update = Update::decode_v1(data.as_ref())?;
+                            let _ = doc.transact_mut().apply_update(update);
+                            applied = true;
+                            self.remove(&update_key).await?;
+                        }
+                    }
+                }
+
+                if found || applied {
+                    let txn = doc.transact();
+                    let doc_state = txn.encode_state_as_update_v1(&StateVector::default());
+                    let state_vec = txn.state_vector().encode_v1();
+                    drop(txn);
+
+                    insert_inner_v1(self, oid, &doc_state, &state_vec).await?;
+                    return Ok(Some(doc));
+                }
+            }
+
+            Ok(None)
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Merges all updates stored via [Self::push_update] that were detached from the main document
     /// state, updates the document and its state vector and finally prunes the updates that have
     /// been integrated this way. `options` are used to drive the details of integration process.
