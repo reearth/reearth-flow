@@ -2,8 +2,11 @@ import { addEdge } from "@xyflow/react";
 import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
+import { useT } from "@flow/lib/i18n";
 import type { Edge, Node, NodeChange, Workflow } from "@flow/types";
 import { generateUUID } from "@flow/utils";
+
+import { useToast } from "../NotificationSystem/useToast";
 
 export default ({
   nodes,
@@ -27,7 +30,8 @@ export default ({
   handleEdgesAdd: (newEdges: Edge[]) => void;
 }) => {
   const { copy, paste } = useCopyPaste();
-
+  const { toast } = useToast();
+  const t = useT();
   const newEdgeCreation = useCallback(
     (pe: Edge[], oldNodes: Node[], newNodes: Node[]): Edge[] => {
       let newEdges: Edge[] = [];
@@ -54,8 +58,9 @@ export default ({
     },
     [],
   );
+
   const newNodeCreation = useCallback(
-    (pn: Node[], pastedWorkflows?: Workflow[], isPaste?: boolean): Node[] => {
+    (pn: Node[], pastedWorkflows?: Workflow[]): Node[] => {
       const newNodes: Node[] = [];
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
 
@@ -77,7 +82,7 @@ export default ({
 
         if (newNode.type === "batch") {
           parentIdMapArray.push({ prevId: n.id, newId: newNode.id });
-        } else if (newNode.type === "subworkflow" && isPaste) {
+        } else if (newNode.type === "subworkflow" && pastedWorkflows) {
           const subworkflowId = generateUUID();
 
           const subworkflowNodes = (pastedWorkflows?.find(
@@ -87,7 +92,6 @@ export default ({
           const newSubworkflowNodes = newNodeCreation(
             subworkflowNodes,
             pastedWorkflows,
-            isPaste,
           );
 
           const oldEdges = (pastedWorkflows?.find(
@@ -130,27 +134,39 @@ export default ({
   );
 
   const handleCopy = useCallback(async () => {
-    const selected: { nodeIds: string[]; edges: Edge[] } | undefined = {
-      nodeIds: nodes.filter((n) => n.selected).map((n) => n.id),
+    const selected: { nodes: Node[]; edges: Edge[] } | undefined = {
+      nodes: nodes.filter((n) => n.selected).map((n) => n),
       edges: edges.filter((e) => e.selected),
     };
 
-    const selectedNodes = nodes.filter((n) => selected.nodeIds.includes(n.id));
-    if (selectedNodes.some((n) => n.type === "reader")) return;
+    if (selected.nodes.some((n) => n.type === "reader"))
+      return toast({
+        title: t("Reader node cannot be copied"),
+        description: t("Only one reader can be present in any project."),
+        variant: "default",
+      });
 
-    if (selected.nodeIds.length === 0 && selected.edges.length === 0) return;
-    const copiedNodes = nodes.filter((n) => selected.nodeIds.includes(n.id));
+    if (selected.nodes.length === 0 && selected.edges.length === 0) return;
 
-    const newNodes = newNodeCreation(copiedNodes);
-    const newEdges = newEdgeCreation(selected.edges, copiedNodes, newNodes);
-    const copiedWorkflows = rawWorkflows;
+    const newNodes = newNodeCreation(selected.nodes);
+    const newEdges = newEdgeCreation(selected.edges, selected.nodes, newNodes);
+    const newWorkflows = rawWorkflows;
 
     await copy({
       edges: newEdges,
       nodes: newNodes,
-      workflows: copiedWorkflows,
+      workflows: newWorkflows,
     });
-  }, [nodes, edges, newNodeCreation, newEdgeCreation, copy, rawWorkflows]);
+  }, [
+    nodes,
+    edges,
+    newNodeCreation,
+    newEdgeCreation,
+    copy,
+    rawWorkflows,
+    toast,
+    t,
+  ]);
 
   const handlePaste = useCallback(async () => {
     const {
@@ -162,7 +178,7 @@ export default ({
       edges: [],
     };
 
-    const newNodes = newNodeCreation(pastedNodes, pastedWorkflows, true);
+    const newNodes = newNodeCreation(pastedNodes, pastedWorkflows);
     const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
 
     // Copy new nodes and edges. Since they are selected now,

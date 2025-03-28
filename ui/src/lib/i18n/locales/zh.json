@@ -143,6 +143,8 @@
   "Main Workflow": "主工作流",
   "Set Workflow name": "设置工作流名称",
   "Close canvas": "关闭画布",
+  "Reader node cannot be copied": "",
+  "Only one reader can be present in any project.": "",
   "Empty workflow detected": "检测到空工作流",
   "You cannot create a deployment without a workflow.": "没有工作流，您无法创建部署。",
   "General shortcuts": "常规快捷键",

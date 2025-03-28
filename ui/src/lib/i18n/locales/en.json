@@ -143,6 +143,8 @@
   "Main Workflow": "",
   "Set Workflow name": "Set Workflow name",
   "Close canvas": "",
+  "Reader node cannot be copied": "",
+  "Only one reader can be present in any project.": "",
   "Empty workflow detected": "",
   "You cannot create a deployment without a workflow.": "",
   "General shortcuts": "",

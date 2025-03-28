@@ -143,6 +143,8 @@
   "Main Workflow": "メインワークフロー",
   "Set Workflow name": "ワークフロー名を設定",
   "Close canvas": "キャンバスを閉じる",
+  "Reader node cannot be copied": "リーダーノードはコピーできません",
+  "Only one reader can be present in any project.": "1つのプロジェクトには1つのリーダーのみが存在できます。",
   "Empty workflow detected": "空のワークフローが検出されました",
   "You cannot create a deployment without a workflow.": "ワークフローがないとデプロイメントを作成できません。",
   "General shortcuts": "一般ショートカット",
