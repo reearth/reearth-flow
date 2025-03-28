@@ -714,12 +714,11 @@ impl BroadcastGroup {
         let instance_id = self.instance_id.clone();
 
         tokio::spawn(async move {
-            if (redis_store_clone
+            if let Err(e) = redis_store_clone
                 .safe_delete_stream(&doc_name_clone, &instance_id)
-                .await)
-                .is_ok()
+                .await
             {
-                tracing::debug!("Successfully deleted Redis stream for '{}'", doc_name_clone);
+                tracing::warn!("Failed to delete Redis stream: {}", e);
             }
         });
 
