@@ -685,7 +685,12 @@ impl BroadcastGroup {
                     let awareness_txn = awareness_doc.transact();
                     let update = awareness_txn.encode_diff_v1(&gcs_state);
                     let update_bytes = Bytes::from(update);
-                    Self::handle_gcs_update(update_bytes, &self.doc_name, &store_clone).await;
+
+                    if !(update_bytes.is_empty()
+                        || update_bytes.len() == 2 && update_bytes[0] == 0 && update_bytes[1] == 0)
+                    {
+                        Self::handle_gcs_update(update_bytes, &self.doc_name, &store_clone).await;
+                    }
                 }
 
                 if let Some((redis, lock_id, instance_id)) = lock_acquired {
