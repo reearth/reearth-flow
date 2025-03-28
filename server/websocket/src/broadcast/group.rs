@@ -254,7 +254,6 @@ impl BroadcastGroup {
             loop {
                 select! {
                     _ = redis_shutdown_rx.recv() => {
-                        tracing::debug!("Redis subscriber received shutdown signal");
                         break;
                     },
                     _ = async {
@@ -264,31 +263,36 @@ impl BroadcastGroup {
                                 &stream_key,
                                 &group_name_clone,
                                 &consumer_name_clone,
-                                16,
+                                64,
                             )
                             .await
                         {
                             Ok(updates) => {
                                 consecutive_errors = 0;
                                 if !updates.is_empty() {
-                                    let awareness = awareness_for_sub.write().await;
-                                    let mut txn = awareness.doc().transact_mut();
+                                    let mut decoded_updates = Vec::with_capacity(updates.len());
 
-                                    for update in updates {
-                                        let decode_result = Update::decode_v1(&update);
+                                    for update in &updates {
+                                        if let Ok(decoded) = Update::decode_v1(update) {
+                                            decoded_updates.push(decoded);
+                                        }
 
-                                        if let Ok(decoded) = decode_result {
+                                        if sender_for_sub.send(update.clone()).is_err() {
+                                            tracing::debug!("Failed to broadcast Redis update");
+                                        }
+                                    }
+
+                                    if !decoded_updates.is_empty() {
+                                        let awareness = awareness_for_sub.write().await;
+                                        let mut txn = awareness.doc().transact_mut();
+
+                                        for decoded in decoded_updates {
                                             if let Err(e) = txn.apply_update(decoded) {
                                                 tracing::warn!("Failed to apply update from Redis: {}", e);
                                             }
                                         }
-
-                                        if sender_for_sub.send(update).is_err() {
-                                            tracing::debug!("Failed to broadcast Redis update");
-                                        }
                                     }
-                                }
-                            }
+                                }                            }
                             Err(e) => {
                                 tracing::error!("Error reading from Redis Stream: {}", e);
 
@@ -331,7 +335,6 @@ impl BroadcastGroup {
             loop {
                 select! {
                     _ = heartbeat_shutdown_rx.recv() => {
-                        tracing::debug!("Heartbeat task received shutdown signal");
                         break;
                     },
                     _ = interval.tick() => {
@@ -563,14 +566,13 @@ impl BroadcastGroup {
                         protocol.handle_sync_step1(&awareness, state_vector)
                     }
                     SyncMessage::SyncStep2(update) => {
-                        let awareness = awareness.write().await;
                         let decoded_update = Update::decode_v1(&update)?;
-
+                        let awareness = awareness.write().await;
                         protocol.handle_sync_step2(&awareness, decoded_update)
                     }
                     SyncMessage::Update(update) => {
-                        let awareness = awareness.write().await;
                         let update = Update::decode_v1(&update)?;
+                        let awareness = awareness.write().await;
                         protocol.handle_sync_step2(&awareness, update)
                     }
                 }
