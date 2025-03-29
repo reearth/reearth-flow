@@ -85,12 +85,12 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         {canvas}
         <div
           id="top-middle"
-          className="pointer-events-none absolute inset-x-0 top-0 flex shrink-0 justify-center [&>*]:pointer-events-auto">
+          className="pointer-events-none absolute inset-x-0 top-0 flex shrink-0 justify-center *:pointer-events-auto">
           <Breadcrumb />
         </div>
         <div
           id="left-top"
-          className="pointer-events-none absolute bottom-1 left-2 top-2 flex shrink-0 gap-2 [&>*]:pointer-events-auto">
+          className="pointer-events-none absolute bottom-1 left-2 top-2 flex shrink-0 gap-2 *:pointer-events-auto">
           <Toolbox
             canUndo={canUndo}
             canRedo={canRedo}

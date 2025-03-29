@@ -33,91 +33,102 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
     targetPosition,
   });
 
-  const { edgeStatus, intermediateDataUrl, handleIntermediateDataSet } =
-    useHooks({
-      id,
-      selected,
-    });
+  const {
+    // sourceNodeStatus,
+    jobStatus,
+    intermediateDataIsSet,
+    hasIntermediateData,
+    tempWorkflowHasPossibleIssuesFlag,
+    handleIntermediateDataSet,
+  } = useHooks({
+    id,
+    // source,
+    selected,
+  });
 
   return (
     <>
       <BaseEdge id={id} path={edgePath} />
       <EdgeLabelRenderer>
-        {edgeStatus === "failed" ? (
+        {jobStatus === "failed" && (
           <X
             className="nodrag nopan absolute size-[20px] origin-center rounded-full border border-destructive bg-primary fill-destructive p-1"
+            weight="bold"
             style={{
               pointerEvents: "all",
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             }}
           />
-        ) : edgeStatus === "completed" && intermediateDataUrl ? (
+        )}
+        {hasIntermediateData && (
           <Table
-            className="nodrag nopan absolute size-[30px] origin-center rounded-full border border-white bg-primary p-1 transition-[height,width] hover:size-[50px]"
+            className={`nodrag nopan absolute size-[25px] origin-center rounded-full border bg-primary p-1 transition-[height,width] hover:size-[40px] hover:fill-success  ${intermediateDataIsSet ? "size-[35px] border-success bg-success fill-white hover:fill-white" : selected ? "border-success fill-success" : "border-slate-400/80 fill-success/80"}`}
             style={{
               pointerEvents: "all",
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,
             }}
-            weight="bold"
             onDoubleClick={handleIntermediateDataSet}
           />
-        ) : null}
+        )}
       </EdgeLabelRenderer>
-      {edgeStatus === "completed" && (
-        <path
-          d={edgePath}
-          stroke="#00ff00"
-          strokeWidth="1"
-          fill="none"
-          markerEnd="url(#arrow)"
-        />
-      )}
-      {edgeStatus === "inProgress" && (
+      {tempWorkflowHasPossibleIssuesFlag ? (
+        <path d={edgePath} fill="none" className="stroke-warning" />
+      ) : (
         <>
-          <path
-            d={edgePath}
-            stroke="#27272A"
-            strokeWidth="2"
-            strokeDasharray="20,20"
-            fill="none">
-            <animate
-              attributeName="stroke-dashoffset"
-              from="40"
-              to="0"
-              dur="1s"
-              repeatCount="indefinite"
+          {jobStatus === "completed" && (
+            <path
+              d={edgePath}
+              stroke="#00a340"
+              strokeWidth="1"
+              fill="none"
+              markerEnd="url(#arrow)"
             />
-          </path>
-          <g>
-            <circle className="opacity-25" r="8" fill="#ffffff">
-              <animateMotion
-                dur="5s"
-                repeatCount="indefinite"
-                path={edgePath}
-              />
-            </circle>
-            <circle
-              style={{ filter: `drop-shadow(3px 3px 5px #471a27)` }}
-              r="3"
-              fill="#bbffff">
-              <animateMotion
-                dur="5s"
-                repeatCount="indefinite"
-                path={edgePath}
-              />
-            </circle>
-          </g>
+          )}
+          {jobStatus === "queued" && (
+            <path d={edgePath} stroke="#27272A" fill="none" className="pulse" />
+          )}
+          {jobStatus === "running" && (
+            <>
+              <path
+                d={edgePath}
+                stroke="#27272A"
+                strokeDasharray="10,10"
+                fill="none">
+                <animate
+                  attributeName="stroke-dashoffset"
+                  from="40"
+                  to="0"
+                  dur="3s"
+                  repeatCount="indefinite"
+                />
+              </path>
+              <g>
+                <circle className="opacity-25" r="6" fill="#ffffff">
+                  <animateMotion
+                    dur="6s"
+                    repeatCount="indefinite"
+                    path={edgePath}
+                  />
+                </circle>
+                <circle
+                  className="opacity-75"
+                  style={{ filter: `drop-shadow(3px 3px 5px #471a27)` }}
+                  r="3"
+                  fill="#bbffff">
+                  <animateMotion
+                    dur="6s"
+                    repeatCount="indefinite"
+                    path={edgePath}
+                  />
+                </circle>
+              </g>
+            </>
+          )}
         </>
       )}
-      {edgeStatus === "failed" && (
-        <path
-          d={edgePath}
-          stroke="#ff0000"
-          strokeWidth="1"
-          fill="none"
-          markerEnd="url(#arrow)"
-        />
-      )}
+      {/* {sourceNodeStatus === "failed" && (
+        <path d={edgePath} stroke="#fc4444" strokeWidth="1" fill="none" />
+      )} */}
     </>
   );
 };

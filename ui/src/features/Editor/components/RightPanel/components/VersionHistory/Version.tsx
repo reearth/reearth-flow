@@ -1,9 +1,9 @@
 import { useT } from "@flow/lib/i18n";
-import { ProjectSnapshot } from "@flow/types";
+import type { ProjectSnapshotMeta } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
 type VersionProps = {
-  version: ProjectSnapshot;
+  version: ProjectSnapshotMeta;
   isSelected: boolean;
   onClick: () => void;
   onDoubleClick: () => void;
@@ -24,7 +24,7 @@ const Version: React.FC<VersionProps> = ({
         onClick={onClick}
         onDoubleClick={onDoubleClick}
         style={{ height: "100%" }}>
-        <p className="flex-[2] self-center text-xs font-thin">
+        <p className="flex-2 self-center text-xs font-thin">
           {formatDate(version.timestamp)}
         </p>
         <div className="flex justify-end">

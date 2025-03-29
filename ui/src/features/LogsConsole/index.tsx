@@ -80,7 +80,7 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId }) => {
             `Skipping malformed log at line ${index}:`,
             line.substring(0, 100),
           );
-          console.log("Error:", error);
+          console.error("Error:", error);
         },
       });
       setUrlLogs(logsArray);

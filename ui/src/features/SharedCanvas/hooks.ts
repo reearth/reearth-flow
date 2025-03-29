@@ -21,7 +21,10 @@ export default ({
 }: {
   yWorkflows: YMap<YWorkflow>;
   project?: Project;
-  undoTrackerActionWrapper: (callback: () => void) => void;
+  undoTrackerActionWrapper: (
+    callback: () => void,
+    originPrepend?: string,
+  ) => void;
 }) => {
   const { fitView } = useReactFlow();
 

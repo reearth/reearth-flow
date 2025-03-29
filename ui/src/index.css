@@ -1,22 +1,22 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-:root {
-  font-family: Inter, "Noto Sans JP", sans-serif;
-  font-feature-settings:
-    "liga" 1,
-    "calt" 1; /* fix for Chrome */
+@config '../tailwind.config.ts';
+
+@utility no-scrollbar {
+  /* Chrome, Safari and Opera */
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
 }
 
 @layer utilities {
-  /* Chrome, Safari and Opera */
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .no-scrollbar {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+  :root {
+    font-family: Inter, "Noto Sans JP", sans-serif;
+    font-feature-settings:
+      "liga" 1,
+      "calt" 1; /* fix for Chrome */
   }
 }
 
@@ -85,33 +85,88 @@
     --ring: 2, 8, 23;
   }
 }
+/* Note: following two @layer is need to ensure code reflects previous styles from Tailwind 3 */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: #3f3f3f;
+  }
+}
+
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
 
 @layer base {
   * {
-    @apply border-border;
     @apply no-scrollbar;
   }
+
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Animation for active node - shadow */
+@keyframes cycleActiveColorsShadow {
+  0% {
+    box-shadow: 0 0 5px 2px rgba(var(--primary), 1); /* All sides */
+  }
+  25% {
+    box-shadow: 0 0 5px 2px rgba(var(--success), 1); /* All sides */
+  }
+  50% {
+    box-shadow: 0 0 5px 2px rgba(var(--warning), 1); /* All sides */
+  }
+  75% {
+    box-shadow: 0 0 5px 2px rgba(var(--destructive), 1); /* All sides */
+  }
+  100% {
+    box-shadow: 0 0 5px 2px rgba(var(--primary), 1); /* All sides */
   }
 }
 
 /* Animation for active node */
 @keyframes cycleActiveColors {
   0% {
-    @apply bg-primary;
+    background-color: theme("colors.primary.DEFAULT");
   }
   25% {
-    @apply bg-success;
+    background-color: theme("colors.success");
   }
   50% {
-    @apply bg-warning;
+    background-color: theme("colors.warning.DEFAULT");
   }
   75% {
-    @apply bg-destructive;
+    background-color: theme("colors.destructive.DEFAULT");
   }
   100% {
-    @apply bg-primary;
+    background-color: theme("colors.primary.DEFAULT");
+  }
+}
+
+/* Animation for active node - border */
+@keyframes cycleActiveColorsBorder {
+  0% {
+    border-color: rgba(var(--primary));
+  }
+  25% {
+    border-color: rgba(var(--success));
+  }
+  50% {
+    border-color: rgba(var(--warning));
+  }
+  75% {
+    border-color: rgba(var(--destructive));
+  }
+  100% {
+    border-color: rgba(var(--primary));
   }
 }
 
@@ -123,34 +178,63 @@
   50% {
     transform: scale(1.05);
   }
+}
+
+.pulse {
+  animation: pulse 1.5s infinite;
 }
 
 .active-node-status {
-  animation:
-    cycleActiveColors 3s infinite,
-    pulse 1.5s infinite;
+  animation: cycleActiveColors 3s infinite linear;
+  /* pulse 1.5s infinite; */
 }
 
-/* Animation for queued node */
+.active-node-status-shadow {
+  animation: cycleActiveColorsShadow 3s infinite linear;
+  /* pulse 1.5s infinite; */
+}
+
+.active-node-status-border {
+  animation: cycleActiveColorsBorder 3s infinite linear;
+  /* pulse 1.5s infinite; */
+}
+
+/* Animation for queued node - shadow */
+@keyframes cycleColorsShadow {
+  0% {
+    box-shadow: 0 0 5px 2px rgba(var(--foreground), 1); /* All sides */
+  }
+  50% {
+    box-shadow: 0 0 5px 2px rgba(var(--primary), 1); /* All sides */
+  }
+  100% {
+    box-shadow: 0 0 5px 2px rgba(var(--foreground), 1); /* All sides */
+  }
+}
+
+/* Animation for queued node - background */
 @keyframes cycleColors {
   0% {
-    @apply bg-primary;
+    background-color: rgba(var(--foreground));
   }
   50% {
-    @apply bg-foreground;
+    background-color: rgba(var(--primary));
   }
   100% {
-    @apply bg-primary;
+    background-color: rgba(var(--foreground));
   }
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    transform: scale(1);
+/* Animation for queued node - border */
+@keyframes cycleColorsBorder {
+  0% {
+    border-color: rgba(var(--foreground));
   }
   50% {
-    transform: scale(1.05);
+    border-color: rgba(var(--primary));
+  }
+  100% {
+    border-color: rgba(var(--foreground));
   }
 }
 
@@ -158,6 +242,14 @@
   animation:
     cycleColors 3s infinite,
     pulse 1.5s infinite;
+}
+
+.queued-node-status-shadow {
+  animation: cycleColorsShadow 3s infinite linear;
+}
+
+.queued-node-status-border {
+  animation: cycleColorsBorder 3s infinite linear;
 }
 
 /* Animation for queued node END */

@@ -41,16 +41,14 @@ fragment Trigger on Trigger {
   description
 }
 
-fragment EdgeExecution on EdgeExecution {
+fragment NodeExecution on NodeExecution {
   id
-  edgeId
+  nodeId
   jobId
   status
   createdAt
   startedAt
   completedAt
-  featureId
-  intermediateDataUrl
 }
 
 fragment Job on Job {
@@ -72,6 +70,11 @@ fragment ProjectDocument on ProjectDocument {
   id
   timestamp
   updates
+  version
+}
+
+fragment ProjectSnapshotMetadata on ProjectSnapshotMetadata {
+  timestamp
   version
 }
 

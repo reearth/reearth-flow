@@ -17,7 +17,10 @@ import useHooks from "./hooks";
 type Props = {
   yWorkflows: YMap<YWorkflow>;
   undoManager: YUndoManager | null;
-  undoTrackerActionWrapper: (callback: () => void) => void;
+  undoTrackerActionWrapper: (
+    callback: () => void,
+    originPrepend?: string,
+  ) => void;
   yDoc: Doc | null;
 };
 
@@ -33,6 +36,7 @@ export default function Editor({
     currentProject,
     nodes,
     edges,
+    selectedEdgeIds,
     // lockedNodeIds,
     locallyLockedNode,
     hoveredDetails,
@@ -114,6 +118,7 @@ export default function Editor({
               <Canvas
                 nodes={nodes}
                 edges={edges}
+                selectedEdgeIds={selectedEdgeIds}
                 canvasLock={!!locallyLockedNode}
                 onWorkflowAdd={handleWorkflowAdd}
                 onNodesAdd={handleNodesAdd}

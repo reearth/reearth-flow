@@ -9,7 +9,7 @@ export const useJob = () => {
   const {
     useGetJobsQuery,
     useGetJobQuery,
-    useGetEdgeExecutionQuery,
+    useGetNodeExecutionQuery,
     cancelJobMutation,
   } = useQueries();
   const { toast } = useToast();
@@ -33,14 +33,14 @@ export const useJob = () => {
     };
   };
 
-  const useGetEdgeExecution = (
+  const useGetNodeExecution = (
     jobId?: string,
-    edgeId?: string,
+    nodeId?: string,
     disabled?: boolean,
   ) => {
-    const { data, ...rest } = useGetEdgeExecutionQuery(jobId, edgeId, disabled);
+    const { data, ...rest } = useGetNodeExecutionQuery(jobId, nodeId, disabled);
     return {
-      edgeExecution: data,
+      nodeExecution: data,
       ...rest,
     };
   };
@@ -70,6 +70,6 @@ export const useJob = () => {
     useGetJob,
     useGetJobs,
     useJobCancel,
-    useGetEdgeExecution,
+    useGetNodeExecution,
   };
 };

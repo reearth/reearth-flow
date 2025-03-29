@@ -24,7 +24,9 @@ export default () => {
   });
 
   useEffect(() => {
-    refetch();
+    (async () => {
+      await refetch();
+    })();
   }, [currentPage, currentOrder, refetch]);
 
   const totalPages = page?.totalPages as number;

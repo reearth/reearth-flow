@@ -33,7 +33,10 @@ export default ({
 }: {
   yWorkflows: YMap<YWorkflow>;
   undoManager: YUndoManager | null;
-  undoTrackerActionWrapper: (callback: () => void) => void;
+  undoTrackerActionWrapper: (
+    callback: () => void,
+    originPrepend?: string,
+  ) => void;
 }) => {
   const { fitView } = useReactFlow();
 
@@ -276,6 +279,7 @@ export default ({
     currentProject,
     nodes,
     edges,
+    selectedEdgeIds,
     lockedNodeIds,
     locallyLockedNode,
     hoveredDetails,

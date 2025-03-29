@@ -15,7 +15,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
       {nodeType !== "reader" && inputs && inputs.length === 1 && (
         <CustomHandle
           id={inputs[0]}
-          className="left-2 z-[1001] w-[16px] rounded-l rounded-r-none"
+          className="left-2 z-1001 w-[16px] rounded-l rounded-r-none"
           type="target"
           position={Position.Left}
         />
@@ -23,7 +23,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
       {outputs && outputs.length === 1 && (
         <CustomHandle
           id={outputs[0]}
-          className="right-2 z-[1001] w-[16px] rounded-l-none rounded-r"
+          className="right-2 z-1001 w-[16px] rounded-l-none rounded-r"
           type="source"
           position={Position.Right}
         />

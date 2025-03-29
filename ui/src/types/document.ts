@@ -1,5 +1,9 @@
 import { ApiResponse } from "./api";
 
+export type ProjectSnapshotMeta = {
+  timestamp: string;
+  version: number;
+};
 export type ProjectSnapshot = {
   timestamp: string;
   version: number;
