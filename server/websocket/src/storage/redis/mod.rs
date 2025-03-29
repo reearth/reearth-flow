@@ -53,7 +53,7 @@ impl RedisStore {
             local update = ARGV[1]
             local ttl = ARGV[2]
             
-            redis.call('XADD', stream_key, 'NOMKSTREAM', '*', 'update', update)
+            redis.call('XADD', stream_key, '*', 'update', update)
             redis.call('EXPIRE', stream_key, ttl)
             return 1
             "#,
@@ -66,42 +66,6 @@ impl RedisStore {
             .invoke_async(&mut *conn)
             .await?;
 
-        Ok(())
-    }
-
-    pub async fn publish_batch_updates(
-        &self,
-        doc_id: &str,
-        updates: &[&[u8]],
-    ) -> Result<(), anyhow::Error> {
-        if updates.is_empty() {
-            return Ok(());
-        }
-
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        if let Ok(mut conn) = self.pool.get().await {
-            let ttl = self.config.ttl;
-
-            let mut pipe = redis::pipe();
-
-            pipe.atomic();
-
-            for update in updates {
-                let fields = &[("update", *update)];
-                pipe.cmd("XADD")
-                    .arg(&stream_key)
-                    .arg("MAXLEN")
-                    .arg("~")
-                    .arg(1000)
-                    .arg("NOMKSTREAM")
-                    .arg("*")
-                    .arg(fields);
-            }
-
-            pipe.cmd("EXPIRE").arg(&stream_key).arg(ttl);
-
-            let _: () = pipe.query_async(&mut *conn).await?;
-        }
         Ok(())
     }
 
@@ -372,24 +336,6 @@ impl RedisStore {
     pub async fn set(&self, key: &str, value: &str) -> Result<(), anyhow::Error> {
         if let Ok(mut conn) = self.pool.get().await {
             let _: () = conn.set(key, value).await?;
-        }
-        Ok(())
-    }
-
-    pub async fn set_with_expiry(
-        &self,
-        key: &str,
-        value: &str,
-        ttl_seconds: u64,
-    ) -> Result<(), anyhow::Error> {
-        if let Ok(mut conn) = self.pool.get().await {
-            let _: () = redis::cmd("SET")
-                .arg(key)
-                .arg(value)
-                .arg("EX")
-                .arg(ttl_seconds)
-                .query_async(&mut *conn)
-                .await?;
         }
         Ok(())
     }

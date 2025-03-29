@@ -43,3 +43,10 @@ cargo run --package reearth-flow-examples --example example_main
 export FLOW_EXAMPLE_TARGET_WORKFLOW=fixture/workflow/requirement/plateau4/a001-7/symmetrical_difference.yml
 cargo run --package reearth-flow-examples --example example_main
 ```
+
+#### clip / difference
+``` sh
+## Specify the workflow yaml you want to run
+export FLOW_EXAMPLE_TARGET_WORKFLOW=fixture/workflow/requirement/plateau4/a001-7/clipper.yml
+cargo run --package reearth-flow-examples --example example_main
+```
