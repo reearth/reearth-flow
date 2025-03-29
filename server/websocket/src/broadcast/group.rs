@@ -366,12 +366,6 @@ impl BroadcastGroup {
         }
     }
 
-    async fn handle_gcs_update(update: Bytes, doc_name: &str, store: &Arc<GcsStore>) {
-        if let Err(e) = store.push_update(doc_name, &update).await {
-            tracing::error!("Failed to store update for document '{}': {}", doc_name, e);
-        }
-    }
-
     pub fn awareness(&self) -> &AwarenessRef {
         &self.awareness_ref
     }
@@ -601,10 +595,8 @@ impl BroadcastGroup {
             .store(true, std::sync::atomic::Ordering::SeqCst);
 
         if self.connection_count() == 0 {
-            let redis_store_clone = self.redis_store.clone();
-            let store_clone = self.storage.clone();
-
-            if let Err(e) = redis_store_clone
+            if let Err(e) = self
+                .redis_store
                 .remove_instance_heartbeat(&self.doc_name, &self.instance_id)
                 .await
             {
@@ -613,7 +605,8 @@ impl BroadcastGroup {
                     e
                 );
             }
-            let should_save = match redis_store_clone
+            let should_save = match self
+                .redis_store
                 .get_active_instances(&self.doc_name, 60)
                 .await
             {
@@ -642,13 +635,14 @@ impl BroadcastGroup {
                 let lock_id = format!("gcs:lock:{}", self.doc_name);
                 let instance_id = format!("instance-{}", rand::random::<u64>());
 
-                let lock_acquired = match redis_store_clone
+                let lock_acquired = match self
+                    .redis_store
                     .acquire_doc_lock(&lock_id, &instance_id)
                     .await
                 {
                     Ok(true) => {
                         tracing::debug!("Acquired lock for GCS operations on {}", self.doc_name);
-                        Some((redis_store_clone.clone(), lock_id, instance_id))
+                        Some((self.redis_store.clone(), lock_id, instance_id))
                     }
                     Ok(false) => {
                         tracing::warn!(
@@ -670,7 +664,7 @@ impl BroadcastGroup {
                     let gcs_doc = Doc::new();
                     let mut gcs_txn = gcs_doc.transact_mut();
 
-                    if let Err(e) = store_clone.load_doc(&self.doc_name, &mut gcs_txn).await {
+                    if let Err(e) = self.storage.load_doc(&self.doc_name, &mut gcs_txn).await {
                         tracing::warn!("Failed to load current state from GCS: {}", e);
                     }
 
@@ -683,15 +677,19 @@ impl BroadcastGroup {
                     if !(update_bytes.is_empty()
                         || update_bytes.len() == 2 && update_bytes[0] == 0 && update_bytes[1] == 0)
                     {
-                        let update_future =
-                            Self::handle_gcs_update(update_bytes, &self.doc_name, &store_clone);
+                        let update_future = self.storage.push_update(&self.doc_name, &update_bytes);
                         let flush_future =
-                            store_clone.flush_doc_direct(&self.doc_name, awareness_doc);
+                            self.storage.flush_doc_direct(&self.doc_name, awareness_doc);
 
-                        let (_, flush_result) = tokio::join!(update_future, flush_future);
+                        let (update_result, flush_result) =
+                            tokio::join!(update_future, flush_future);
 
                         if let Err(e) = flush_result {
                             tracing::warn!("Failed to flush document directly to storage: {}", e);
+                        }
+
+                        if let Err(e) = update_result {
+                            tracing::warn!("Failed to update document in storage: {}", e);
                         }
                     }
                 }
