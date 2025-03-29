@@ -43,8 +43,8 @@ impl BroadcastGroupManager {
                 drop(entry);
 
                 let doc_name = group_clone.get_doc_name();
-                let redis_store = group_clone.get_redis_store();
-                let valid = (redis_store.check_stream_exists(&doc_name).await).unwrap_or(false);
+                let valid =
+                    (self.redis_store.check_stream_exists(&doc_name).await).unwrap_or(false);
 
                 if !valid {
                     self.doc_to_id_map.remove(doc_id);
@@ -244,8 +244,12 @@ impl BroadcastPool {
             let store = self.get_store();
             let doc_name = group.get_doc_name();
 
-            let redis_store = group.get_redis_store();
-            let active_connections = match redis_store.get_active_instances(&doc_name, 60).await {
+            let active_connections = match self
+                .manager
+                .redis_store
+                .get_active_instances(&doc_name, 60)
+                .await
+            {
                 Ok(count) => count,
                 Err(e) => {
                     tracing::warn!("Failed to get active instances for '{}': {}", doc_id, e);
@@ -264,7 +268,12 @@ impl BroadcastPool {
                 let gcs_state = temp_txn.state_vector();
                 drop(temp_txn);
 
-                match redis_store.read_all_stream_data(&doc_name).await {
+                match self
+                    .manager
+                    .redis_store
+                    .read_all_stream_data(&doc_name)
+                    .await
+                {
                     Ok(updates) if !updates.is_empty() => {
                         tracing::info!(
                             "Found {} updates in Redis stream for '{}', applying before GCS flush",
@@ -304,11 +313,15 @@ impl BroadcastPool {
                 let lock_id = format!("gcs:lock:{}", doc_name);
                 let instance_id = format!("sync-{}", rand::random::<u64>());
 
-                let lock_acquired = match redis_store.acquire_doc_lock(&lock_id, &instance_id).await
+                let lock_acquired = match self
+                    .manager
+                    .redis_store
+                    .acquire_doc_lock(&lock_id, &instance_id)
+                    .await
                 {
                     Ok(true) => {
                         tracing::debug!("Acquired lock for GCS flush operation on {}", doc_name);
-                        Some((redis_store.clone(), lock_id, instance_id))
+                        Some((self.manager.redis_store.clone(), lock_id, instance_id))
                     }
                     Ok(false) => {
                         tracing::warn!("Could not acquire lock for GCS flush operation");

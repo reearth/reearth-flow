@@ -15,7 +15,6 @@ use std::sync::atomic::AtomicBool;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::select;
-use tokio::sync::broadcast::error::SendError;
 use tokio::sync::broadcast::{channel, Sender};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -374,17 +373,8 @@ impl BroadcastGroup {
         &self.redis_store
     }
 
-    pub fn get_redis_group_name(&self) -> Option<&String> {
-        self.redis_group_name.as_ref()
-    }
-
     pub fn get_doc_name(&self) -> String {
         self.doc_name.clone()
-    }
-
-    pub fn broadcast(&self, msg: Bytes) -> Result<(), SendError<Bytes>> {
-        self.sender.send(msg)?;
-        Ok(())
     }
 
     pub fn subscribe<Sink, Stream, E>(
