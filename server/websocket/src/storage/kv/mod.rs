@@ -47,7 +47,6 @@ use keys::{
     key_oid, key_state_vector, key_update, Key, KEYSPACE_DOC, KEYSPACE_OID, OID, V1,
 };
 use std::convert::TryInto;
-use tracing::debug;
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, TransactionMut, Update};
@@ -156,8 +155,6 @@ where
         txn: &mut TransactionMut<'doc>,
     ) -> Result<bool, Error> {
         if let Some(oid) = get_oid(self, name.as_ref()).await? {
-            debug!("Loading document from KV store - oid: {:?}", oid);
-            debug!("Document-----------------------------");
             let loaded = load_doc(self, oid, txn).await?;
             Ok(loaded != 0)
         } else {
