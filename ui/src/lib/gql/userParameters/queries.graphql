@@ -1,0 +1,11 @@
+query GetProjectParameters($projectId: ID!) {
+  parameters(projectId: $projectId) {
+    ...Parameter
+  }
+}
+
+mutation CreateUserParameters($projectId: ID!, $input: DeclareParameterInput!) {
+  declareParameter(projectId: $projectId, input: $input) {
+    ...Parameter
+  }
+}

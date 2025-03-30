@@ -22,48 +22,49 @@ import {
   ScrollArea,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { ProjectVar } from "@flow/types";
+import { UserParameter } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
 type Props = {
   isOpen: boolean;
-  currentProjectVars: ProjectVar[];
+  currentUserParameters?: UserParameter[];
   onClose: () => void;
-  onSubmit: (newProjectVars: ProjectVar[]) => void;
+  onSubmit: (newUserParams: UserParameter[]) => void;
 };
 
-const ProjectVarDialog: React.FC<Props> = ({
+const UserParameterDialog: React.FC<Props> = ({
   isOpen,
-  currentProjectVars,
+  currentUserParameters,
   onClose,
   onSubmit,
 }) => {
   const t = useT();
-  const [projectVariables, setProjectVariables] =
-    useState<ProjectVar[]>(currentProjectVars);
+  const [userParameters, setUserParameters] = useState<UserParameter[]>(
+    currentUserParameters ?? [],
+  );
 
   const [selectedIndex, setSelectedIndex] = useState<number | undefined>();
 
   const handleAdd = () => {
-    setProjectVariables((pvs) => {
+    setUserParameters((pvs) => {
       if (selectedIndex !== undefined) {
-        const newProjectVars = [...pvs];
-        newProjectVars.splice(selectedIndex + 1, 0, {
+        const newUserParams = [...pvs];
+        newUserParams.splice(selectedIndex + 1, 0, {
           id: generateUUID(),
           name: "",
-          definition: "",
-          type: "string",
+          value: "asldfkj",
+          type: "text",
           required: false,
         });
-        return newProjectVars;
+        return newUserParams;
       }
       return [
         ...pvs,
         {
           id: generateUUID(),
           name: "",
-          definition: "",
-          type: "string",
+          value: "dddd",
+          type: "text",
           required: false,
         },
       ];
@@ -71,51 +72,51 @@ const ProjectVarDialog: React.FC<Props> = ({
   };
 
   const handleDelete = () => {
-    setProjectVariables((pvs) => {
+    setUserParameters((pvs) => {
       if (selectedIndex !== undefined) {
-        const newProjectVars = [...pvs];
-        newProjectVars.splice(selectedIndex, 1);
+        const newUserParams = [...pvs];
+        newUserParams.splice(selectedIndex, 1);
         setSelectedIndex(undefined);
-        return newProjectVars;
+        return newUserParams;
       }
       return pvs;
     });
   };
 
   const handleMoveUp = () => {
-    setProjectVariables((pvs) => {
+    setUserParameters((pvs) => {
       if (selectedIndex !== undefined && selectedIndex > 0) {
-        const newProjectVars = [...pvs];
-        const temp = newProjectVars[selectedIndex];
-        newProjectVars[selectedIndex] = newProjectVars[selectedIndex - 1];
-        newProjectVars[selectedIndex - 1] = temp;
+        const newUserParams = [...pvs];
+        const temp = newUserParams[selectedIndex];
+        newUserParams[selectedIndex] = newUserParams[selectedIndex - 1];
+        newUserParams[selectedIndex - 1] = temp;
         setSelectedIndex(selectedIndex - 1);
-        return newProjectVars;
+        return newUserParams;
       }
       return pvs;
     });
   };
 
   const handleMoveDown = () => {
-    setProjectVariables((pvs) => {
+    setUserParameters((pvs) => {
       if (selectedIndex !== undefined && selectedIndex < pvs.length - 1) {
-        const newProjectVars = [...pvs];
-        const temp = newProjectVars[selectedIndex];
-        newProjectVars[selectedIndex] = newProjectVars[selectedIndex + 1];
-        newProjectVars[selectedIndex + 1] = temp;
+        const newUserParams = [...pvs];
+        const temp = newUserParams[selectedIndex];
+        newUserParams[selectedIndex] = newUserParams[selectedIndex + 1];
+        newUserParams[selectedIndex + 1] = temp;
         setSelectedIndex(selectedIndex + 1);
-        return newProjectVars;
+        return newUserParams;
       }
       return pvs;
     });
   };
 
   const handleClose = () => {
-    setProjectVariables(currentProjectVars);
+    setUserParameters(userParameters);
     onClose();
   };
 
-  const handleSubmit = () => onSubmit(projectVariables);
+  const handleSubmit = () => onSubmit(userParameters);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -138,9 +139,9 @@ const ProjectVarDialog: React.FC<Props> = ({
               </div>
               <ScrollArea>
                 <div className="flex flex-1 flex-col gap-1">
-                  {projectVariables.map((variable, idx) => (
+                  {userParameters.map((param, idx) => (
                     <div
-                      key={variable.id}
+                      key={param.id}
                       className={`flex gap-2 rounded p-1 hover:bg-primary ${idx === selectedIndex && "bg-primary"}`}
                       onClick={() =>
                         setSelectedIndex((sidx) =>
@@ -151,10 +152,10 @@ const ProjectVarDialog: React.FC<Props> = ({
                         <DotsSixVertical />
                       </div>
                       <Input
-                        value={variable.name}
+                        value={param.name}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
-                          setProjectVariables((pvs) => {
+                          setUserParameters((pvs) => {
                             const newPvs = [...pvs];
                             const newValue = e.target.value;
                             newPvs[idx].name = newValue.split(/\s+/).join(""); // Don't allow white space in the name
@@ -164,12 +165,12 @@ const ProjectVarDialog: React.FC<Props> = ({
                       />
                       <Input
                         type="text"
-                        value={variable.definition}
+                        value={param.value}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => {
-                          setProjectVariables((pvs) => {
+                          setUserParameters((pvs) => {
                             const newPvs = [...pvs];
-                            newPvs[idx].definition = e.target.value;
+                            newPvs[idx].value = e.target.value;
                             return newPvs;
                           });
                         }}
@@ -196,4 +197,4 @@ const ProjectVarDialog: React.FC<Props> = ({
   );
 };
 
-export { ProjectVarDialog };
+export { UserParameterDialog };

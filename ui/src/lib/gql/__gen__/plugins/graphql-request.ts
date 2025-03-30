@@ -635,9 +635,10 @@ export type Query = {
   node?: Maybe<Node>;
   nodeExecution?: Maybe<NodeExecution>;
   nodes: Array<Maybe<Node>>;
+  parameters: Array<Parameter>;
   projectHistory: Array<ProjectSnapshotMetadata>;
   projectSharingInfo: ProjectSharingInfoPayload;
-  projectSnapshot: Array<ProjectSnapshot>;
+  projectSnapshot: ProjectSnapshot;
   projects: ProjectConnection;
   searchUser?: Maybe<User>;
   sharedProject: SharedProjectPayload;
@@ -706,6 +707,11 @@ export type QueryNodeExecutionArgs = {
 export type QueryNodesArgs = {
   id: Array<Scalars['ID']['input']>;
   type: NodeType;
+};
+
+
+export type QueryParametersArgs = {
+  projectId: Scalars['ID']['input'];
 };
 
 
@@ -1056,6 +1062,8 @@ export type RollbackProjectMutation = { __typename?: 'Mutation', rollbackProject
 
 export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
+export type ParameterFragment = { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, value: any, type: ParameterType, required: boolean, createdAt: any, updatedAt: any };
+
 export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
 
 export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } };
@@ -1243,6 +1251,21 @@ export type UpdateMeMutationVariables = Exact<{
 
 export type UpdateMeMutation = { __typename?: 'Mutation', updateMe?: { __typename?: 'UpdateMePayload', me: { __typename?: 'Me', id: string, name: string, email: string, lang: any } } | null };
 
+export type GetProjectParametersQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+}>;
+
+
+export type GetProjectParametersQuery = { __typename?: 'Query', parameters: Array<{ __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, value: any, type: ParameterType, required: boolean, createdAt: any, updatedAt: any }> };
+
+export type CreateUserParametersMutationVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  input: DeclareParameterInput;
+}>;
+
+
+export type CreateUserParametersMutation = { __typename?: 'Mutation', declareParameter: { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, value: any, type: ParameterType, required: boolean, createdAt: any, updatedAt: any } };
+
 export type WorkspaceFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> };
 
 export type CreateWorkspaceMutationVariables = Exact<{
@@ -1328,6 +1351,19 @@ export const ProjectFragmentDoc = gql`
   }
 }
     ${DeploymentFragmentDoc}`;
+export const ParameterFragmentDoc = gql`
+    fragment Parameter on Parameter {
+  id
+  projectId
+  index
+  name
+  value
+  type
+  required
+  createdAt
+  updatedAt
+}
+    `;
 export const TriggerFragmentDoc = gql`
     fragment Trigger on Trigger {
   id
@@ -1716,6 +1752,20 @@ export const UpdateMeDocument = gql`
   }
 }
     `;
+export const GetProjectParametersDocument = gql`
+    query GetProjectParameters($projectId: ID!) {
+  parameters(projectId: $projectId) {
+    ...Parameter
+  }
+}
+    ${ParameterFragmentDoc}`;
+export const CreateUserParametersDocument = gql`
+    mutation CreateUserParameters($projectId: ID!, $input: DeclareParameterInput!) {
+  declareParameter(projectId: $projectId, input: $input) {
+    ...Parameter
+  }
+}
+    ${ParameterFragmentDoc}`;
 export const CreateWorkspaceDocument = gql`
     mutation CreateWorkspace($input: CreateWorkspaceInput!) {
   createWorkspace(input: $input) {
@@ -1892,6 +1942,12 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     UpdateMe(variables: UpdateMeMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateMeMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<UpdateMeMutation>(UpdateMeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateMe', 'mutation', variables);
+    },
+    GetProjectParameters(variables: GetProjectParametersQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetProjectParametersQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectParametersQuery>(GetProjectParametersDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetProjectParameters', 'query', variables);
+    },
+    CreateUserParameters(variables: CreateUserParametersMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateUserParametersMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CreateUserParametersMutation>(CreateUserParametersDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateUserParameters', 'mutation', variables);
     },
     CreateWorkspace(variables: CreateWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateWorkspaceMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateWorkspaceMutation>(CreateWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateWorkspace', 'mutation', variables);

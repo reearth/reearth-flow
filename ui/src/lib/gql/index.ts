@@ -5,3 +5,4 @@ export * from "./project";
 export * from "./deployment";
 export * from "./trigger";
 export * from "./sharedProject";
+export * from "./userParameters";
