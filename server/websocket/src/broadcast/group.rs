@@ -377,7 +377,7 @@ impl BroadcastGroup {
         self.doc_name.clone()
     }
 
-    pub fn subscribe<Sink, Stream, E>(
+    pub async fn subscribe<Sink, Stream, E>(
         self: Arc<Self>,
         sink: Arc<Mutex<Sink>>,
         stream: Stream,
@@ -389,45 +389,33 @@ impl BroadcastGroup {
         <Sink as futures_util::Sink<Bytes>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
-        let current_count = self.connection_count();
-
-        tracing::debug!(
-            "Creating new subscription for doc '{}', current count: {}",
-            self.doc_name,
-            current_count
-        );
-
         if let Some(token) = user_token {
             let awareness = self.awareness().clone();
             let client_id = rand::random::<u64>();
 
-            tokio::spawn(async move {
-                let awareness = awareness.write().await;
-                let mut local_state = std::collections::HashMap::new();
+            let awareness = awareness.write().await;
+            let mut local_state = std::collections::HashMap::new();
 
-                local_state.insert(
-                    "user",
-                    serde_json::json!({
-                        "id": token,
-                        "name": format!("User-{}", client_id % 1000),
-                    }),
-                );
+            local_state.insert(
+                "user",
+                serde_json::json!({
+                    "id": token,
+                    "name": format!("User-{}", client_id % 1000),
+                }),
+            );
 
-                if let Err(e) = awareness.set_local_state(Some(local_state)) {
-                    tracing::error!("Failed to set awareness state: {}", e);
-                }
-            });
+            if let Err(e) = awareness.set_local_state(Some(local_state)) {
+                tracing::error!("Failed to set awareness state: {}", e);
+            }
         }
 
         let subscription = self.listen(sink, stream, DefaultProtocol);
         let (tx, rx) = tokio::sync::oneshot::channel();
 
-        tokio::spawn(async move {
-            if let Err(e) = self.increment_connections().await {
-                tracing::error!("Failed to increment connections: {}", e);
-            }
-            let _ = tx.send(());
-        });
+        if let Err(e) = self.increment_connections().await {
+            tracing::error!("Failed to increment connections: {}", e);
+        }
+        let _ = tx.send(());
 
         Subscription {
             sink_task: subscription.sink_task,
