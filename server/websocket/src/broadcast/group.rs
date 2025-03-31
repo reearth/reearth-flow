@@ -666,18 +666,13 @@ impl BroadcastGroup {
             background_tasks.stop_all();
         }
 
-        let redis_store_clone = self.redis_store.clone();
-        let doc_name_clone = self.doc_name.clone();
-        let instance_id = self.instance_id.clone();
-
-        tokio::spawn(async move {
-            if let Err(e) = redis_store_clone
-                .safe_delete_stream(&doc_name_clone, &instance_id)
-                .await
-            {
-                warn!("Failed to delete Redis stream: {}", e);
-            }
-        });
+        if let Err(e) = self
+            .redis_store
+            .safe_delete_stream(&self.doc_name, &self.instance_id)
+            .await
+        {
+            warn!("Failed to delete Redis stream: {}", e);
+        }
 
         Ok(())
     }
