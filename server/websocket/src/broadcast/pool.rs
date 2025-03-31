@@ -10,6 +10,7 @@ use deadpool::managed::{self, Manager, Metrics, RecycleResult};
 use rand;
 use std::sync::Arc;
 use std::time::Duration;
+use tracing::{debug, error, info, warn};
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
@@ -159,12 +160,12 @@ impl Manager for BroadcastGroupManager {
         async move {
             if group.connection_count() == 0 {
                 let doc_id = group.get_doc_name();
-                tracing::info!("Recycling empty broadcast group for document '{}'", doc_id);
+                info!("Recycling empty broadcast group for document '{}'", doc_id);
 
                 doc_to_id_map.remove(&doc_id);
 
                 if let Err(e) = group.shutdown().await {
-                    tracing::warn!("Error shutting down empty group for '{}': {}", doc_id, e);
+                    warn!("Error shutting down empty group for '{}': {}", doc_id, e);
                     return Err(managed::RecycleError::Message(
                         format!("Failed to shutdown: {}", e).into(),
                     ));
@@ -175,7 +176,7 @@ impl Manager for BroadcastGroupManager {
                 ));
             }
             let doc_id = group.get_doc_name();
-            tracing::info!("Recycling broadcast group for document '{}'", doc_id);
+            info!("Recycling broadcast group for document '{}'", doc_id);
             Ok(())
         }
     }
@@ -210,7 +211,7 @@ impl BroadcastPool {
                     doc_to_id_map.remove(&doc_id);
 
                     if let Err(e) = group.shutdown().await {
-                        tracing::warn!("Error shutting down empty group for '{}': {}", doc_id, e);
+                        warn!("Error shutting down empty group for '{}': {}", doc_id, e);
                     }
                 }
             }
@@ -252,7 +253,7 @@ impl BroadcastPool {
             {
                 Ok(count) => count,
                 Err(e) => {
-                    tracing::warn!("Failed to get active instances for '{}': {}", doc_id, e);
+                    warn!("Failed to get active instances for '{}': {}", doc_id, e);
                     0
                 }
             };
@@ -262,7 +263,7 @@ impl BroadcastPool {
                 let mut temp_txn = temp_doc.transact_mut();
 
                 if let Err(e) = store.load_doc(&doc_name, &mut temp_txn).await {
-                    tracing::warn!("Failed to load current GCS state for '{}': {}", doc_id, e);
+                    warn!("Failed to load current GCS state for '{}': {}", doc_id, e);
                 }
 
                 let gcs_state = temp_txn.state_vector();
@@ -275,7 +276,7 @@ impl BroadcastPool {
                     .await
                 {
                     Ok(updates) if !updates.is_empty() => {
-                        tracing::info!(
+                        info!(
                             "Found {} updates in Redis stream for '{}', applying before GCS flush",
                             updates.len(),
                             doc_id
@@ -287,11 +288,11 @@ impl BroadcastPool {
                             match Update::decode_v1(update_data) {
                                 Ok(update) => {
                                     if let Err(e) = txn.apply_update(update) {
-                                        tracing::warn!("Failed to apply Redis update: {}", e);
+                                        warn!("Failed to apply Redis update: {}", e);
                                     }
                                 }
                                 Err(e) => {
-                                    tracing::warn!("Failed to decode Redis update: {}", e);
+                                    warn!("Failed to decode Redis update: {}", e);
                                 }
                             }
                         }
@@ -299,13 +300,12 @@ impl BroadcastPool {
                         drop(awareness);
                     }
                     Ok(_) => {
-                        tracing::debug!("No Redis updates found for document '{}'", doc_id);
+                        debug!("No Redis updates found for document '{}'", doc_id);
                     }
                     Err(e) => {
-                        tracing::warn!(
+                        warn!(
                             "Failed to read updates from Redis stream for document '{}': {}",
-                            doc_id,
-                            e
+                            doc_id, e
                         );
                     }
                 }
@@ -320,15 +320,15 @@ impl BroadcastPool {
                     .await
                 {
                     Ok(true) => {
-                        tracing::debug!("Acquired lock for GCS flush operation on {}", doc_name);
+                        debug!("Acquired lock for GCS flush operation on {}", doc_name);
                         Some((self.manager.redis_store.clone(), lock_id, instance_id))
                     }
                     Ok(false) => {
-                        tracing::warn!("Could not acquire lock for GCS flush operation");
+                        warn!("Could not acquire lock for GCS flush operation");
                         None
                     }
                     Err(e) => {
-                        tracing::warn!("Error acquiring lock for GCS flush operation: {}", e);
+                        warn!("Error acquiring lock for GCS flush operation: {}", e);
                         None
                     }
                 };
@@ -343,10 +343,9 @@ impl BroadcastPool {
                     if !update.is_empty() {
                         let update_bytes = bytes::Bytes::from(update);
                         if let Err(e) = store.push_update(&doc_name, &update_bytes).await {
-                            tracing::error!(
+                            error!(
                                 "Failed to flush websocket changes to GCS for '{}': {}",
-                                doc_id,
-                                e
+                                doc_id, e
                             );
                             return Err(anyhow::anyhow!("Failed to flush changes to GCS: {}", e));
                         }
@@ -354,7 +353,7 @@ impl BroadcastPool {
 
                     if let Some((redis, lock_id, instance_id)) = lock_acquired {
                         if let Err(e) = redis.release_doc_lock(&lock_id, &instance_id).await {
-                            tracing::warn!("Failed to release GCS lock: {}", e);
+                            warn!("Failed to release GCS lock: {}", e);
                         }
                     }
                 }

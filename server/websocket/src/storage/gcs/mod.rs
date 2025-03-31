@@ -14,7 +14,7 @@ use google_cloud_storage::{
 use hex;
 use serde::Deserialize;
 use time::OffsetDateTime;
-use tracing::debug;
+use tracing::{debug, error};
 use yrs::{updates::decoder::Decode, Doc, Transact, Update};
 
 const BATCH_SIZE: usize = 50;
@@ -163,7 +163,7 @@ impl GcsStore {
                     }
                 }
             } else {
-                tracing::error!("Failed to download update from {}", obj.name);
+                error!("Failed to download update from {}", obj.name);
             }
         }
 
@@ -230,7 +230,7 @@ impl GcsStore {
                                 }));
                             }
                         } else {
-                            tracing::error!("Failed to download update from {}", obj.name);
+                            error!("Failed to download update from {}", obj.name);
                         }
                     }
                 }

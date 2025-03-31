@@ -9,6 +9,7 @@ use bytes::Bytes;
 use deadpool_redis::Connection;
 use futures_util::{SinkExt, StreamExt};
 use rand;
+use tracing::{debug, error, warn};
 
 use serde_json;
 use std::sync::atomic::AtomicBool;
@@ -58,10 +59,9 @@ impl BroadcastGroup {
         let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
         let new_count = prev_count + 1;
 
-        tracing::debug!(
+        debug!(
             "Connection count increased: {} -> {}",
-            prev_count,
-            new_count
+            prev_count, new_count
         );
 
         Ok(())
@@ -71,10 +71,9 @@ impl BroadcastGroup {
         let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
         let new_count = prev_count - 1;
 
-        tracing::debug!(
+        debug!(
             "Connection count decreased: {} -> {}",
-            prev_count,
-            new_count
+            prev_count, new_count
         );
 
         new_count
@@ -104,7 +103,7 @@ impl BroadcastGroup {
                 encoder.write_buf(&u.update);
                 let msg = Bytes::from(encoder.to_vec());
                 if let Err(_e) = sink.send(msg) {
-                    tracing::debug!("broadcast channel closed");
+                    debug!("broadcast channel closed");
                 }
             })?
         };
@@ -129,7 +128,7 @@ impl BroadcastGroup {
             changed.extend_from_slice(removed);
 
             if tx.send(changed).is_err() {
-                tracing::warn!("failed to send awareness update");
+                warn!("failed to send awareness update");
             }
         });
         drop(lock);
@@ -138,7 +137,7 @@ impl BroadcastGroup {
             loop {
                 select! {
                     _ = awareness_shutdown_rx.recv() => {
-                        tracing::debug!("Awareness updater received shutdown signal");
+                        debug!("Awareness updater received shutdown signal");
                         break;
                     },
                     client_update = rx.recv() => {
@@ -149,7 +148,7 @@ impl BroadcastGroup {
                                     if let Ok(update) = awareness.update_with_clients(changed_clients) {
                                         let msg_bytes = Bytes::from(Message::Awareness(update).encode_v1());
                                         if sink.send(msg_bytes).is_err() {
-                                            tracing::warn!("couldn't broadcast awareness update");
+                                            warn!("couldn't broadcast awareness update");
                                         }
                                     }
                                 } else {
@@ -157,14 +156,14 @@ impl BroadcastGroup {
                                 }
                             },
                             None => {
-                                tracing::debug!("Awareness update channel closed");
+                                debug!("Awareness update channel closed");
                                 break;
                             }
                         }
                     }
                 }
             }
-            tracing::debug!("Awareness updater task exited gracefully");
+            debug!("Awareness updater task exited gracefully");
         });
 
         let instance_id = format!("instance-{}", rand::random::<u64>());
@@ -233,7 +232,7 @@ impl BroadcastGroup {
                 .create_consumer_group(&doc_name_for_sub, &group_name_clone)
                 .await
             {
-                tracing::error!("Failed to create Redis consumer group: {}", e);
+                error!("Failed to create Redis consumer group: {}", e);
                 return;
             }
 
@@ -242,7 +241,7 @@ impl BroadcastGroup {
             let mut conn = if let Ok(conn) = redis_store_for_sub.get_pool().get().await {
                 conn
             } else {
-                tracing::error!("Failed to get Redis connection");
+                error!("Failed to get Redis connection");
                 return;
             };
 
@@ -272,7 +271,7 @@ impl BroadcastGroup {
                                     }
 
                                     if sender_for_sub.send(update.clone()).is_err() {
-                                        tracing::debug!("Failed to broadcast Redis update");
+                                        debug!("Failed to broadcast Redis update");
                                     }
                                 }
 
@@ -282,13 +281,13 @@ impl BroadcastGroup {
 
                                     for decoded in decoded_updates {
                                         if let Err(e) = txn.apply_update(decoded) {
-                                            tracing::warn!("Failed to apply update from Redis: {}", e);
+                                            warn!("Failed to apply update from Redis: {}", e);
                                         }
                                     }
                                 }
                             },
                             Err(e) => {
-                                tracing::error!("Error reading from Redis Stream: {}", e);
+                                error!("Error reading from Redis Stream: {}", e);
                                 tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
                             },
                             _ => {}
@@ -298,7 +297,7 @@ impl BroadcastGroup {
                     } => {}
                 }
             }
-            tracing::debug!("Redis subscriber task exited gracefully");
+            debug!("Redis subscriber task exited gracefully");
         });
 
         {
@@ -325,7 +324,7 @@ impl BroadcastGroup {
                             .update_instance_heartbeat(&doc_name, &instance_id)
                             .await
                         {
-                            tracing::warn!("Failed to update instance heartbeat: {}", e);
+                            warn!("Failed to update instance heartbeat: {}", e);
                         }
                     }
                 }
@@ -345,7 +344,7 @@ impl BroadcastGroup {
         let mut txn = awareness.doc().transact_mut();
 
         if let Err(e) = store.load_doc(doc_name, &mut txn).await {
-            tracing::error!("Error loading document '{}' from storage: {}", doc_name, e);
+            error!("Error loading document '{}' from storage: {}", doc_name, e);
         }
     }
 
@@ -389,7 +388,7 @@ impl BroadcastGroup {
             );
 
             if let Err(e) = awareness.set_local_state(Some(local_state)) {
-                tracing::error!("Failed to set awareness state: {}", e);
+                error!("Failed to set awareness state: {}", e);
             }
         }
 
@@ -397,7 +396,7 @@ impl BroadcastGroup {
         let (tx, rx) = tokio::sync::oneshot::channel();
 
         if let Err(e) = self.increment_connections().await {
-            tracing::error!("Failed to increment connections: {}", e);
+            error!("Failed to increment connections: {}", e);
         }
         let _ = tx.send(());
 
@@ -447,7 +446,7 @@ impl BroadcastGroup {
                     let data = match res.map_err(anyhow::Error::from) {
                         Ok(data) => data,
                         Err(e) => {
-                            tracing::warn!("Error receiving message: {}", e);
+                            warn!("Error receiving message: {}", e);
                             continue;
                         }
                     };
@@ -455,7 +454,7 @@ impl BroadcastGroup {
                     let msg = match Message::decode_v1(&data) {
                         Ok(msg) => msg,
                         Err(e) => {
-                            tracing::warn!("Failed to decode message: {}", e);
+                            warn!("Failed to decode message: {}", e);
                             continue;
                         }
                     };
@@ -473,10 +472,10 @@ impl BroadcastGroup {
                         Ok(Some(reply)) => {
                             let mut sink_lock = sink.lock().await;
                             if let Err(e) = sink_lock.send(Bytes::from(reply.encode_v1())).await {
-                                tracing::warn!("Failed to send reply: {}", e);
+                                warn!("Failed to send reply: {}", e);
                             }
                         }
-                        Err(e) => tracing::warn!("Error handling message: {}", e),
+                        Err(e) => warn!("Error handling message: {}", e),
                         _ => {}
                     }
                 }
@@ -512,7 +511,7 @@ impl BroadcastGroup {
                         .publish_update(stream_key, &update_bytes, conn)
                         .await
                     {
-                        tracing::error!("Redis Stream update failed: {}", e);
+                        error!("Redis Stream update failed: {}", e);
                     }
                 }
 
@@ -562,7 +561,7 @@ impl BroadcastGroup {
                 .remove_instance_heartbeat(&self.doc_name, &self.instance_id)
                 .await
             {
-                tracing::warn!(
+                warn!(
                     "Failed to remove instance heartbeat before checking connections: {}",
                     e
                 );
@@ -574,13 +573,13 @@ impl BroadcastGroup {
             {
                 Ok(connections) => {
                     if connections <= 0 {
-                        tracing::debug!(
+                        debug!(
                             "All instances disconnected from '{}', proceeding with GCS save",
                             self.doc_name
                         );
                         true
                     } else {
-                        tracing::debug!(
+                        debug!(
                             "Other instances still connected to '{}', skipping GCS save",
                             self.doc_name
                         );
@@ -588,7 +587,7 @@ impl BroadcastGroup {
                     }
                 }
                 Err(e) => {
-                    tracing::warn!("Failed to get Redis connection count: {}", e);
+                    warn!("Failed to get Redis connection count: {}", e);
                     true
                 }
             };
@@ -603,17 +602,15 @@ impl BroadcastGroup {
                     .await
                 {
                     Ok(true) => {
-                        tracing::debug!("Acquired lock for GCS operations on {}", self.doc_name);
+                        debug!("Acquired lock for GCS operations on {}", self.doc_name);
                         Some((self.redis_store.clone(), lock_id, instance_id))
                     }
                     Ok(false) => {
-                        tracing::warn!(
-                            "Could not acquire lock for GCS operations, skipping update"
-                        );
+                        warn!("Could not acquire lock for GCS operations, skipping update");
                         None
                     }
                     Err(e) => {
-                        tracing::warn!("Error acquiring lock for GCS operations: {}", e);
+                        warn!("Error acquiring lock for GCS operations: {}", e);
                         None
                     }
                 };
@@ -627,7 +624,7 @@ impl BroadcastGroup {
                     let mut gcs_txn = gcs_doc.transact_mut();
 
                     if let Err(e) = self.storage.load_doc(&self.doc_name, &mut gcs_txn).await {
-                        tracing::warn!("Failed to load current state from GCS: {}", e);
+                        warn!("Failed to load current state from GCS: {}", e);
                     }
 
                     let gcs_state = gcs_txn.state_vector();
@@ -647,18 +644,18 @@ impl BroadcastGroup {
                             tokio::join!(update_future, flush_future);
 
                         if let Err(e) = flush_result {
-                            tracing::warn!("Failed to flush document directly to storage: {}", e);
+                            warn!("Failed to flush document directly to storage: {}", e);
                         }
 
                         if let Err(e) = update_result {
-                            tracing::warn!("Failed to update document in storage: {}", e);
+                            warn!("Failed to update document in storage: {}", e);
                         }
                     }
                 }
 
                 if let Some((redis, lock_id, instance_id)) = lock_acquired {
                     if let Err(e) = redis.release_doc_lock(&lock_id, &instance_id).await {
-                        tracing::warn!("Failed to release GCS lock: {}", e);
+                        warn!("Failed to release GCS lock: {}", e);
                     }
                 }
             }
@@ -678,7 +675,7 @@ impl BroadcastGroup {
                 .safe_delete_stream(&doc_name_clone, &instance_id)
                 .await
             {
-                tracing::warn!("Failed to delete Redis stream: {}", e);
+                warn!("Failed to delete Redis stream: {}", e);
             }
         });
 

@@ -3,6 +3,7 @@ use deadpool::Runtime;
 use deadpool_redis::{Config, Connection, Pool};
 use redis::AsyncCommands;
 use std::sync::Arc;
+use tracing::{debug, warn};
 
 type RedisField = (String, Bytes);
 type RedisFields = Vec<RedisField>;
@@ -739,7 +740,7 @@ impl RedisStore {
             let _ = self.release_doc_lock(doc_id, instance_id).await;
         }
 
-        tracing::warn!("still using stream");
+        warn!("still using stream");
 
         Ok(())
     }
@@ -754,9 +755,9 @@ impl RedisStore {
                 .await?;
 
             if exists {
-                tracing::debug!("Redis stream '{}' exists", stream_key);
+                debug!("Redis stream '{}' exists", stream_key);
             } else {
-                tracing::debug!("Redis stream '{}' does not exist", stream_key);
+                debug!("Redis stream '{}' does not exist", stream_key);
             }
 
             return Ok(exists);
