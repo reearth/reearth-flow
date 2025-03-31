@@ -7,7 +7,7 @@ import { useT } from "@flow/lib/i18n";
 import { YWorkflow } from "@flow/lib/yjs/types";
 import { Project } from "@flow/types";
 
-import { ParamsPanel, WorkflowTabs } from "../Editor/components";
+import { ParamsDialog, WorkflowTabs } from "../Editor/components";
 import { EditorContextType, EditorProvider } from "../Editor/editorContext";
 
 import useHooks from "./hooks";
@@ -77,7 +77,7 @@ const SharedCanvas: React.FC<Props> = ({
             {t("Export Project")}
           </Button>
         </div>
-        <ParamsPanel selected={locallyLockedNode} />
+        <ParamsDialog selected={locallyLockedNode} />
       </EditorProvider>
     </div>
   );

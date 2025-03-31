@@ -1,10 +1,4 @@
-import {
-  ArrowDown,
-  ArrowUp,
-  DotsSixVertical,
-  Minus,
-  Plus,
-} from "@phosphor-icons/react";
+import { ArrowDown, ArrowUp, Minus, Plus } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
@@ -20,6 +14,7 @@ import {
   Input,
   Label,
   ScrollArea,
+  Switch,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { UserParameter } from "@flow/types";
@@ -120,7 +115,7 @@ const UserParameterDialog: React.FC<Props> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="h-[50vh]" size="xl" position="off-center">
+      <DialogContent className="h-[50vh]" size="2xl" position="off-center">
         <div className="flex h-full flex-col">
           <DialogHeader>
             <DialogTitle>{t("Edit Project Variables")}</DialogTitle>
@@ -136,6 +131,8 @@ const UserParameterDialog: React.FC<Props> = ({
               <div className="flex">
                 <Label className="flex-1">{t("Key")}</Label>
                 <Label className="flex-1">{t("Value")}</Label>
+                <Label className="flex-1">{t("Type")}</Label>
+                <Label className="flex-1">{t("Required")}</Label>
               </div>
               <ScrollArea>
                 <div className="flex flex-1 flex-col gap-1">
@@ -148,9 +145,9 @@ const UserParameterDialog: React.FC<Props> = ({
                           sidx === idx ? undefined : idx,
                         )
                       }>
-                      <div className="flex items-center">
+                      {/* <div className="flex items-center">
                         <DotsSixVertical />
-                      </div>
+                      </div> */}
                       <Input
                         value={param.name}
                         onClick={(e) => e.stopPropagation()}
@@ -175,6 +172,12 @@ const UserParameterDialog: React.FC<Props> = ({
                           });
                         }}
                       />
+                      <div className="w-full">
+                        <p>{param.type}</p>
+                      </div>
+                      <div className="w-full">
+                        <Switch />
+                      </div>
                     </div>
                   ))}
                 </div>
