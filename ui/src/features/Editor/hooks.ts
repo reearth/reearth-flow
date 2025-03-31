@@ -156,11 +156,6 @@ export default ({
     if (subworkflowId) {
       handleWorkflowOpen(subworkflowId);
     } else {
-      fitView({
-        nodes: [{ id: nodeId }],
-        duration: 500,
-        padding: 2,
-      });
       handleNodeLocking(nodeId);
     }
   };
