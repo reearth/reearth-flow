@@ -136,6 +136,16 @@ export default ({
           case "select": {
             setSelectedNodeIds((snids) => {
               if (change.selected) {
+                const nodes = Object.values(yNodes.toJSON() || {}) as Node[];
+                const selectedNode = nodes.find((n) => n.id === change.id);
+                // Used to find all children of a batch node
+                if (selectedNode?.type === "batch") {
+                  const childrenIds = nodes
+                    .filter((n) => n.parentId === selectedNode.id)
+                    .map((n) => n.id);
+                  return [...snids, change.id, ...childrenIds];
+                }
+
                 return [...snids, change.id];
               } else {
                 return snids.filter((snid) => snid !== change.id);
