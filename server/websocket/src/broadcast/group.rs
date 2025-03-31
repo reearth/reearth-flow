@@ -237,17 +237,13 @@ impl BroadcastGroup {
                 return;
             }
 
-            let mut consecutive_errors = 0;
-            let max_consecutive_errors = 5;
-            let mut total_errors = 0;
-            let max_total_errors = 10;
             let stream_key = format!("yjs:stream:{}", doc_name_for_sub);
-            let mut conn = match redis_store_for_sub.get_pool().get().await {
-                Ok(conn) => conn,
-                Err(e) => {
-                    tracing::error!("Failed to get Redis connection: {}", e);
-                    return;
-                }
+
+            let mut conn = if let Ok(conn) = redis_store_for_sub.get_pool().get().await {
+                conn
+            } else {
+                tracing::error!("Failed to get Redis connection");
+                return;
             };
 
             loop {
@@ -256,7 +252,7 @@ impl BroadcastGroup {
                         break;
                     },
                     _ = async {
-                        match redis_store_for_sub
+                        let result = redis_store_for_sub
                             .read_and_ack(
                                 &mut conn,
                                 &stream_key,
@@ -264,51 +260,38 @@ impl BroadcastGroup {
                                 &consumer_name_clone,
                                 50,
                             )
-                            .await
-                        {
-                            Ok(updates) => {
-                                consecutive_errors = 0;
-                                if !updates.is_empty() {
-                                    let mut decoded_updates = Vec::with_capacity(updates.len());
+                            .await;
 
-                                    for update in &updates {
-                                        if let Ok(decoded) = Update::decode_v1(update) {
-                                            decoded_updates.push(decoded);
-                                        }
+                        match result {
+                            Ok(updates) if !updates.is_empty() => {
+                                let mut decoded_updates = Vec::with_capacity(updates.len());
 
-                                        if sender_for_sub.send(update.clone()).is_err() {
-                                            tracing::debug!("Failed to broadcast Redis update");
-                                        }
+                                for update in &updates {
+                                    if let Ok(decoded) = Update::decode_v1(update) {
+                                        decoded_updates.push(decoded);
                                     }
 
-                                    if !decoded_updates.is_empty() {
-                                        let awareness = awareness_for_sub.write().await;
-                                        let mut txn = awareness.doc().transact_mut();
-
-                                        for decoded in decoded_updates {
-                                            if let Err(e) = txn.apply_update(decoded) {
-                                                tracing::warn!("Failed to apply update from Redis: {}", e);
-                                            }
-                                        }
+                                    if sender_for_sub.send(update.clone()).is_err() {
+                                        tracing::debug!("Failed to broadcast Redis update");
                                     }
-                                }                            }
-                            Err(e) => {
-                                tracing::error!("Error reading from Redis Stream: {}", e);
-
-                                consecutive_errors += 1;
-                                total_errors += 1;
-                                if consecutive_errors >= max_consecutive_errors
-                                    || total_errors >= max_total_errors
-                                {
-                                    tracing::warn!(
-                                        "Too many Redis errors ({} total, {} consecutive), stopping subscriber",
-                                        total_errors, consecutive_errors
-                                    );
-                                    return;
                                 }
 
-                                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
-                            }
+                                if !decoded_updates.is_empty() {
+                                    let awareness = awareness_for_sub.write().await;
+                                    let mut txn = awareness.doc().transact_mut();
+
+                                    for decoded in decoded_updates {
+                                        if let Err(e) = txn.apply_update(decoded) {
+                                            tracing::warn!("Failed to apply update from Redis: {}", e);
+                                        }
+                                    }
+                                }
+                            },
+                            Err(e) => {
+                                tracing::error!("Error reading from Redis Stream: {}", e);
+                                tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
+                            },
+                            _ => {}
                         }
 
                         tokio::task::yield_now().await;
@@ -322,6 +305,7 @@ impl BroadcastGroup {
             let mut background_tasks = group.background_tasks.lock().await;
             background_tasks.set_redis_subscriber(redis_subscriber_task, redis_shutdown_tx);
         }
+
         group.redis_consumer_name = Some(consumer_name);
         group.redis_group_name = Some(group_name);
 
