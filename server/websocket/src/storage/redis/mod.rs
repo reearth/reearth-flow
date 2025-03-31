@@ -51,10 +51,8 @@ impl RedisStore {
             r#"
             local stream_key = KEYS[1]
             local update = ARGV[1]
-            local ttl = ARGV[2]
             
             redis.call('XADD', stream_key, '*', 'update', update)
-            redis.call('EXPIRE', stream_key, ttl)
             return 1
             "#,
         );
@@ -62,7 +60,6 @@ impl RedisStore {
         let _: () = script
             .key(stream_key)
             .arg(update)
-            .arg(self.config.ttl)
             .invoke_async(&mut *conn)
             .await?;
 
@@ -76,25 +73,32 @@ impl RedisStore {
     ) -> Result<(), anyhow::Error> {
         let stream_key = format!("yjs:stream:{}", doc_id);
         if let Ok(mut conn) = self.pool.get().await {
-            let result: Result<String, redis::RedisError> = redis::cmd("XGROUP")
-                .arg("CREATE")
-                .arg(&stream_key)
-                .arg(group_name)
-                .arg("0")
-                .arg("MKSTREAM")
-                .query_async(&mut *conn)
-                .await;
+            let script = redis::Script::new(
+                r#"
+                local stream_key = KEYS[1]
+                local group_name = ARGV[1]
+                local ttl = ARGV[2]
+                
+                local ok, err = pcall(function()
+                    redis.call('XGROUP', 'CREATE', stream_key, group_name, '0', 'MKSTREAM')
+                end)
+                
+                if ok or (not ok and string.find(err, "BUSYGROUP")) then
+                    redis.call('EXPIRE', stream_key, ttl)
+                    return "OK"
+                else
+                    return {err=err}
+                end
+                "#,
+            );
 
-            match result {
-                Ok(_) => Ok(()),
-                Err(e) => {
-                    if e.to_string().contains("BUSYGROUP") {
-                        Ok(())
-                    } else {
-                        Err(e.into())
-                    }
-                }
-            }
+            let _: () = script
+                .key(&stream_key)
+                .arg(group_name)
+                .arg(self.config.ttl)
+                .invoke_async(&mut *conn)
+                .await?;
+            Ok(())
         } else {
             Err(anyhow::anyhow!("Failed to get Redis connection"))
         }
