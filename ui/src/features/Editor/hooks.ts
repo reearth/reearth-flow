@@ -170,7 +170,7 @@ export default ({
     [],
   );
 
-  const { handleCopy, handlePaste } = useCanvasCopyPaste({
+  const { handleCopy, handlePaste, hasItemsToPaste } = useCanvasCopyPaste({
     nodes,
     edges,
     rawWorkflows,
@@ -316,5 +316,6 @@ export default ({
     handleDebugRunStop,
     handleCopy,
     handlePaste,
+    hasItemsToPaste,
   };
 };

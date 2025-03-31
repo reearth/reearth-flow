@@ -51,6 +51,7 @@ type Props = {
   onEdgeHover?: (e: MouseEvent, edge?: Edge) => void;
   onCopy?: () => void;
   onPaste?: () => void;
+  hasItemsToPaste?: boolean;
 };
 
 const Canvas: React.FC<Props> = ({
@@ -69,6 +70,7 @@ const Canvas: React.FC<Props> = ({
   onNodePickerOpen,
   onCopy,
   onPaste,
+  hasItemsToPaste,
 }) => {
   const {
     handleNodesChange,
@@ -183,6 +185,7 @@ const Canvas: React.FC<Props> = ({
           onEdgesChange={handleEdgesChange}
           onCopy={onCopy}
           onPaste={onPaste}
+          hasItemsToPaste={hasItemsToPaste}
           onClose={handleCloseContextmenu}
         />
       )}

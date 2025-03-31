@@ -1,5 +1,5 @@
 import { addEdge } from "@xyflow/react";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
 import { useT } from "@flow/lib/i18n";
@@ -32,6 +32,8 @@ export default ({
   const { copy, paste } = useCopyPaste();
   const { toast } = useToast();
   const t = useT();
+  const [hasItemsToPaste, setHasItemsToPaste] = useState<boolean>(false);
+
   const newEdgeCreation = useCallback(
     (pastedEdges: Edge[], oldNodes: Node[], newNodes: Node[]): Edge[] => {
       let newEdges: Edge[] = [];
@@ -151,7 +153,7 @@ export default ({
     const newNodes = newNodeCreation(selected.nodes);
     const newEdges = newEdgeCreation(selected.edges, selected.nodes, newNodes);
     const newWorkflows = [...rawWorkflows];
-
+    setHasItemsToPaste(true);
     await copy({
       edges: newEdges,
       nodes: newNodes,
@@ -202,6 +204,8 @@ export default ({
     handleNodesAdd([...newNodes]);
 
     handleEdgesAdd(newEdges);
+
+    return pastedNodes;
   }, [
     nodes,
     copy,
@@ -216,5 +220,6 @@ export default ({
   return {
     handleCopy,
     handlePaste,
+    hasItemsToPaste,
   };
 };

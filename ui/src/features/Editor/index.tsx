@@ -73,6 +73,7 @@ export default function Editor({
     handleLayoutChange,
     handleCopy,
     handlePaste,
+    hasItemsToPaste,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
 
   const editorContext = useMemo(
@@ -133,6 +134,7 @@ export default function Editor({
                 onEdgeHover={handleEdgeHover}
                 onCopy={handleCopy}
                 onPaste={handlePaste}
+                hasItemsToPaste={hasItemsToPaste}
               />
             </OverlayUI>
             <BottomBar
