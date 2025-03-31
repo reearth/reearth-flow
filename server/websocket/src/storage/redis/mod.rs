@@ -772,7 +772,7 @@ impl RedisStore {
             .key(&stream_key)
             .arg(instance_id)
             .arg(now)
-            .arg(60) // 超时秒数
+            .arg(60)
             .invoke_async(&mut *conn)
             .await?;
 
