@@ -3,7 +3,7 @@ use deadpool::Runtime;
 use deadpool_redis::{Config, Connection, Pool};
 use redis::AsyncCommands;
 use std::sync::Arc;
-use tracing::{debug, warn};
+use tracing::debug;
 
 type RedisField = (String, Bytes);
 type RedisFields = Vec<RedisField>;
