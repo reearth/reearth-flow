@@ -62,11 +62,7 @@ export default ({
   );
 
   const newNodeCreation = useCallback(
-    (
-      pastedNodes: Node[],
-      pastedWorkflows?: Workflow[],
-      isPasted?: boolean,
-    ): Node[] => {
+    (pastedNodes: Node[], pastedWorkflows?: Workflow[]): Node[] => {
       const newNodes: Node[] = [];
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
 
@@ -86,38 +82,28 @@ export default ({
           },
         };
 
-        if (newNode.type === "batch" && pastedWorkflows) {
+        if (newNode.type === "batch") {
           parentIdMapArray.push({ prevId: n.id, newId: newNode.id });
 
-          const currentWorkflow = pastedWorkflows.find(
-            (workflow) =>
-              workflow.nodes && workflow.nodes.some((node) => node.id === n.id),
+          const batchNodeChildren = nodes.filter(
+            (child) => child.parentId === n.id,
           );
 
-          if (currentWorkflow) {
-            const batchNodeChildren = (currentWorkflow.nodes as Node[]).filter(
-              (child) => child.parentId === n.id,
-            );
-            batchNodeChildren.forEach((child) => {
-              if (!pastedNodes.some((node) => node.id === child.id)) {
-                const childNewNode = {
-                  ...child,
-                  id: generateUUID(),
-                  position: { ...child.position },
-                  selected: true,
-                  data: { ...child.data },
-                  parentId: newNode.id,
-                };
+          batchNodeChildren.forEach((child) => {
+            if (!pastedNodes.some((node) => node.id === child.id)) {
+              const childNewNode = {
+                ...child,
+                id: generateUUID(),
+                position: { ...child.position },
+                selected: true,
+                data: { ...child.data },
+                parentId: newNode.id,
+              };
 
-                newNodes.push(childNewNode);
-              }
-            });
-          }
-        } else if (
-          newNode.type === "subworkflow" &&
-          pastedWorkflows &&
-          isPasted
-        ) {
+              newNodes.push(childNewNode);
+            }
+          });
+        } else if (newNode.type === "subworkflow" && pastedWorkflows) {
           const subworkflowId = generateUUID();
 
           const subworkflowNodes = (pastedWorkflows?.find(
@@ -165,7 +151,7 @@ export default ({
 
       return reBatchedNodes;
     },
-    [handleWorkflowUpdate, newEdgeCreation],
+    [handleWorkflowUpdate, newEdgeCreation, nodes],
   );
 
   const handleCopy = useCallback(async () => {
@@ -184,7 +170,7 @@ export default ({
     if (selected.nodes.length === 0 && selected.edges.length === 0) return;
 
     const newWorkflows = [...rawWorkflows];
-    const newNodes = newNodeCreation(selected.nodes, newWorkflows);
+    const newNodes = newNodeCreation(selected.nodes);
     const newEdges = newEdgeCreation(selected.edges, selected.nodes, newNodes);
     setHasItemsToPaste(true);
     await copy({
@@ -213,7 +199,7 @@ export default ({
       edges: [],
     };
 
-    const newNodes = newNodeCreation(pastedNodes, pastedWorkflows, true);
+    const newNodes = newNodeCreation(pastedNodes, pastedWorkflows);
     const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
 
     // Copy new nodes and edges. Since they are selected now,
