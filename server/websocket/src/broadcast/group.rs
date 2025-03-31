@@ -225,6 +225,34 @@ impl BroadcastGroup {
         let group_name = format!("yjs-group-{}", consumer_name);
         let group_name_clone = group_name.clone();
 
+        let (heartbeat_shutdown_tx, mut heartbeat_shutdown_rx) = tokio::sync::mpsc::channel(1);
+        let instance_id = group.instance_id.clone();
+
+        let heartbeat_task = tokio::spawn(async move {
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(56));
+
+            loop {
+                select! {
+                    _ = heartbeat_shutdown_rx.recv() => {
+                        break;
+                    },
+                    _ = interval.tick() => {
+                        if let Err(e) = redis_store
+                            .update_instance_heartbeat(&doc_name, &instance_id)
+                            .await
+                        {
+                            warn!("Failed to update instance heartbeat: {}", e);
+                        }
+                    }
+                }
+            }
+        });
+
+        {
+            let mut background_tasks = group.background_tasks.lock().await;
+            background_tasks.set_heartbeat(heartbeat_task, heartbeat_shutdown_tx);
+        }
+
         let (redis_shutdown_tx, mut redis_shutdown_rx) = tokio::sync::mpsc::channel(1);
 
         let redis_subscriber_task = tokio::spawn(async move {
@@ -307,34 +335,6 @@ impl BroadcastGroup {
 
         group.redis_consumer_name = Some(consumer_name);
         group.redis_group_name = Some(group_name);
-
-        let (heartbeat_shutdown_tx, mut heartbeat_shutdown_rx) = tokio::sync::mpsc::channel(1);
-        let instance_id = group.instance_id.clone();
-
-        let heartbeat_task = tokio::spawn(async move {
-            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(56));
-
-            loop {
-                select! {
-                    _ = heartbeat_shutdown_rx.recv() => {
-                        break;
-                    },
-                    _ = interval.tick() => {
-                        if let Err(e) = redis_store
-                            .update_instance_heartbeat(&doc_name, &instance_id)
-                            .await
-                        {
-                            warn!("Failed to update instance heartbeat: {}", e);
-                        }
-                    }
-                }
-            }
-        });
-
-        {
-            let mut background_tasks = group.background_tasks.lock().await;
-            background_tasks.set_heartbeat(heartbeat_task, heartbeat_shutdown_tx);
-        }
 
         Ok(group)
     }

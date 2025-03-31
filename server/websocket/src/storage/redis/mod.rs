@@ -714,33 +714,69 @@ impl RedisStore {
         doc_id: &str,
         instance_id: &str,
     ) -> Result<(), anyhow::Error> {
-        if self.acquire_doc_lock(doc_id, instance_id).await? {
-            let connections = self.get_active_instances(doc_id, 60).await?;
+        let stream_key = format!("yjs:stream:{}", doc_id);
+        let instances_key = format!("doc:instances:{}", doc_id);
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
 
-            if connections <= 0 {
-                let stream_key = format!("yjs:stream:{}", doc_id);
-                if let Ok(mut conn) = self.pool.get().await {
-                    let exists: bool = redis::cmd("EXISTS")
-                        .arg(&stream_key)
-                        .query_async(&mut *conn)
-                        .await?;
+        let mut conn = self.pool.get().await?;
 
-                    if exists {
-                        let _: () = redis::cmd("DEL")
-                            .arg(&stream_key)
-                            .query_async(&mut *conn)
-                            .await?;
-                    }
-                }
+        let script = redis::Script::new(
+            r#"
+            local lock_key = KEYS[1]
+            local instances_key = KEYS[2]
+            local stream_key = KEYS[3]
+            
+                local instance_id = ARGV[1]
+                local now = tonumber(ARGV[2])
+                local timeout = tonumber(ARGV[3])
+                
+                if redis.call('GET', lock_key) ~= instance_id then
+                    if redis.call('SET', lock_key, instance_id, 'NX', 'EX', 10) == false then
+                        return {acquired=0, deleted=0, reason="lock_failed"}
+                    end
+                end
+                
+                local active_count = 0
+                local instances = redis.call('HGETALL', instances_key)
+                
+                for i = 1, #instances, 2 do
+                    local inst_id = instances[i]
+                    local last_seen = tonumber(instances[i+1])
+                    if now - last_seen < timeout then
+                        active_count = active_count + 1
+                    end
+                end
+                
+                if active_count <= 0 then
+                    local exists = redis.call('EXISTS', stream_key)
+                    if exists == 1 then
+                        redis.call('DEL', stream_key)
+                        return {acquired=1, deleted=1, reason="success"}
+                    else
+                        return {acquired=1, deleted=0, reason="stream_not_exists"}
+                    end
+                else
+                    return {acquired=1, deleted=0, reason="active_instances", count=active_count}
+                end
+            "#,
+        );
 
-                let _ = self.release_doc_lock(doc_id, instance_id).await;
-                return Ok(());
-            }
+        let lock_key = format!("lock:doc:{}", doc_id);
 
-            let _ = self.release_doc_lock(doc_id, instance_id).await;
-        }
+        let _: redis::Value = script
+            .key(&lock_key)
+            .key(&instances_key)
+            .key(&stream_key)
+            .arg(instance_id)
+            .arg(now)
+            .arg(60) // 超时秒数
+            .invoke_async(&mut *conn)
+            .await?;
 
-        warn!("still using stream");
+        let _ = self.release_doc_lock(doc_id, instance_id).await;
 
         Ok(())
     }
