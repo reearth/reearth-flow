@@ -316,14 +316,14 @@ impl BroadcastGroup {
                             },
                             Err(e) => {
                                 error!("Error reading from Redis Stream: {}", e);
-                                if e.to_string().contains("NOGROUP") {
-                                    if let Err(create_err) = redis_store_for_sub
-                                        .create_consumer_group(&doc_name_for_sub, &group_name_clone)
-                                        .await
-                                    {
-                                        error!("Failed to recreate Redis consumer group: {}", create_err);
-                                    }
-                                }
+                                // if e.to_string().contains("NOGROUP") {
+                                //     if let Err(create_err) = redis_store_for_sub
+                                //         .create_consumer_group(&doc_name_for_sub, &group_name_clone)
+                                //         .await
+                                //     {
+                                //         error!("Failed to recreate Redis consumer group: {}", create_err);
+                                //     }
+                                // }
                                 tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
                             },
                             _ => {}
