@@ -778,6 +778,12 @@ impl RedisStore {
 
         let _ = self.release_doc_lock(doc_id, instance_id).await;
 
+        let stream_exists = self.check_stream_exists(doc_id).await?;
+
+        if !stream_exists {
+            tracing::info!("Successfully deleted Redis stream '{}'", stream_key);
+        }
+
         Ok(())
     }
 
