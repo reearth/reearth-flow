@@ -10,6 +10,7 @@ use deadpool::managed::{self, Manager, Metrics, RecycleResult};
 use rand;
 use std::sync::Arc;
 use std::time::Duration;
+use tracing::{debug, error, info, warn};
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
@@ -37,26 +38,17 @@ impl BroadcastGroupManager {
     }
 
     async fn create_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
-        let doc_id_string = doc_id.to_string();
-
-        match self.doc_to_id_map.entry(doc_id_string.clone()) {
+        match self.doc_to_id_map.entry(doc_id.to_string()) {
             dashmap::mapref::entry::Entry::Occupied(entry) => {
                 let group_clone = entry.get().clone();
                 drop(entry);
 
                 let doc_name = group_clone.get_doc_name();
-                let redis_store = group_clone.get_redis_store();
-                let valid = match redis_store.check_stream_exists(&doc_name).await {
-                    Ok(exists) => exists,
-                    Err(e) => {
-                        tracing::warn!("Error checking Redis stream: {}", e);
-                        false
-                    }
-                };
+                let valid =
+                    (self.redis_store.check_stream_exists(&doc_name).await).unwrap_or(false);
 
                 if !valid {
-                    tracing::warn!("Found cached broadcast group for '{}' but Redis stream does not exist, recreating", doc_id);
-                    self.doc_to_id_map.remove(&doc_id_string);
+                    self.doc_to_id_map.remove(doc_id);
                 } else {
                     return Ok(group_clone);
                 }
@@ -65,46 +57,28 @@ impl BroadcastGroupManager {
         }
 
         let mut need_initial_save = false;
-        let awareness: AwarenessRef = {
-            let doc = Doc::new();
+        let awareness: AwarenessRef = match self.store.load_doc_direct(doc_id).await {
+            Ok(direct_doc) => Arc::new(tokio::sync::RwLock::new(Awareness::new(direct_doc))),
+            Err(_) => {
+                let doc = Doc::new();
+                {
+                    let mut txn = doc.transact_mut();
 
-            {
-                let mut txn = doc.transact_mut();
-                let mut loaded = false;
+                    let loaded = self.store.load_doc(doc_id, &mut txn).await.unwrap_or(false);
 
-                match self.store.load_doc(doc_id, &mut txn).await {
-                    Ok(true) => {
-                        loaded = true;
-                    }
-                    Ok(false) => match self.store.load_doc(DEFAULT_DOC_ID, &mut txn).await {
-                        Ok(true) => {
-                            tracing::debug!("Loaded default document '{}'", DEFAULT_DOC_ID);
-                            loaded = true;
-                        }
-                        Ok(false) => {
-                            need_initial_save = true;
-                        }
-                        Err(e) => {
-                            tracing::warn!(
-                                "Failed to load default document '{}': {}",
-                                DEFAULT_DOC_ID,
-                                e
-                            );
-                            need_initial_save = true;
-                        }
-                    },
-                    Err(e) => {
-                        tracing::error!("Failed to load document '{}': {}", doc_id, e);
-                        return Err(e);
+                    if !loaded
+                        && !self
+                            .store
+                            .load_doc(DEFAULT_DOC_ID, &mut txn)
+                            .await
+                            .unwrap_or(false)
+                    {
+                        need_initial_save = true;
                     }
                 }
 
-                if !loaded {
-                    need_initial_save = true;
-                }
+                Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
             }
-
-            Arc::new(tokio::sync::RwLock::new(Awareness::new(doc)))
         };
 
         if let Ok(updates) = self.redis_store.read_all_stream_data(doc_id).await {
@@ -114,16 +88,14 @@ impl BroadcastGroupManager {
 
                 for update_data in &updates {
                     if let Ok(update) = Update::decode_v1(update_data) {
-                        if let Err(e) = txn.apply_update(update) {
-                            tracing::warn!("Failed to apply update from Redis: {}", e);
-                        }
+                        let _ = txn.apply_update(update);
                     }
                 }
             }
         }
 
         if need_initial_save {
-            let doc_id_clone = doc_id_string.clone();
+            let doc_id_clone = doc_id.to_string();
             let store_clone = Arc::clone(&self.store);
             let awareness_clone = Arc::clone(&awareness);
 
@@ -136,13 +108,7 @@ impl BroadcastGroupManager {
                 let update = txn.encode_diff_v1(&StateVector::default());
                 let update_bytes = bytes::Bytes::from(update);
 
-                if let Err(e) = store_clone.push_update(&doc_id_clone, &update_bytes).await {
-                    tracing::error!(
-                        "Failed to save initial awareness state for document '{}' after 2s: {}",
-                        doc_id_clone,
-                        e
-                    );
-                }
+                let _ = store_clone.push_update(&doc_id_clone, &update_bytes).await;
             });
         }
 
@@ -154,13 +120,13 @@ impl BroadcastGroupManager {
                 self.redis_store.clone(),
                 BroadcastConfig {
                     storage_enabled: true,
-                    doc_name: Some(doc_id_string.clone()),
+                    doc_name: Some(doc_id.to_string()),
                 },
             )
             .await?,
         );
 
-        match self.doc_to_id_map.entry(doc_id_string) {
+        match self.doc_to_id_map.entry(doc_id.to_string()) {
             dashmap::mapref::entry::Entry::Occupied(entry) => {
                 let existing_group = entry.get().clone();
                 Ok(existing_group)
@@ -194,12 +160,12 @@ impl Manager for BroadcastGroupManager {
         async move {
             if group.connection_count() == 0 {
                 let doc_id = group.get_doc_name();
-                tracing::info!("Recycling empty broadcast group for document '{}'", doc_id);
+                info!("Recycling empty broadcast group for document '{}'", doc_id);
 
                 doc_to_id_map.remove(&doc_id);
 
                 if let Err(e) = group.shutdown().await {
-                    tracing::warn!("Error shutting down empty group for '{}': {}", doc_id, e);
+                    warn!("Error shutting down empty group for '{}': {}", doc_id, e);
                     return Err(managed::RecycleError::Message(
                         format!("Failed to shutdown: {}", e).into(),
                     ));
@@ -210,7 +176,7 @@ impl Manager for BroadcastGroupManager {
                 ));
             }
             let doc_id = group.get_doc_name();
-            tracing::info!("Recycling broadcast group for document '{}'", doc_id);
+            info!("Recycling broadcast group for document '{}'", doc_id);
             Ok(())
         }
     }
@@ -227,7 +193,7 @@ impl BroadcastPool {
 
         let doc_to_id_map = manager.doc_to_id_map.clone();
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(3));
+            let mut interval = tokio::time::interval(Duration::from_secs(4));
             loop {
                 interval.tick().await;
 
@@ -242,14 +208,10 @@ impl BroadcastPool {
                 }
 
                 for (doc_id, group) in empty_groups {
-                    tracing::info!(
-                        "Cleaning up empty broadcast group for document '{}'",
-                        doc_id
-                    );
                     doc_to_id_map.remove(&doc_id);
 
                     if let Err(e) = group.shutdown().await {
-                        tracing::warn!("Error shutting down empty group for '{}': {}", doc_id, e);
+                        warn!("Error shutting down empty group for '{}': {}", doc_id, e);
                     }
                 }
             }
@@ -260,10 +222,6 @@ impl BroadcastPool {
 
     pub fn get_store(&self) -> Arc<GcsStore> {
         self.manager.store.clone()
-    }
-
-    pub fn get_redis_store(&self) -> Arc<RedisStore> {
-        self.manager.redis_store.clone()
     }
 
     pub async fn get_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
@@ -287,11 +245,15 @@ impl BroadcastPool {
             let store = self.get_store();
             let doc_name = group.get_doc_name();
 
-            let redis_store = group.get_redis_store();
-            let active_connections = match redis_store.get_active_instances(&doc_name, 60).await {
+            let active_connections = match self
+                .manager
+                .redis_store
+                .get_active_instances(&doc_name, 60)
+                .await
+            {
                 Ok(count) => count,
                 Err(e) => {
-                    tracing::warn!("Failed to get active instances for '{}': {}", doc_id, e);
+                    warn!("Failed to get active instances for '{}': {}", doc_id, e);
                     0
                 }
             };
@@ -301,15 +263,20 @@ impl BroadcastPool {
                 let mut temp_txn = temp_doc.transact_mut();
 
                 if let Err(e) = store.load_doc(&doc_name, &mut temp_txn).await {
-                    tracing::warn!("Failed to load current GCS state for '{}': {}", doc_id, e);
+                    warn!("Failed to load current GCS state for '{}': {}", doc_id, e);
                 }
 
                 let gcs_state = temp_txn.state_vector();
                 drop(temp_txn);
 
-                match redis_store.read_all_stream_data(&doc_name).await {
+                match self
+                    .manager
+                    .redis_store
+                    .read_all_stream_data(&doc_name)
+                    .await
+                {
                     Ok(updates) if !updates.is_empty() => {
-                        tracing::info!(
+                        info!(
                             "Found {} updates in Redis stream for '{}', applying before GCS flush",
                             updates.len(),
                             doc_id
@@ -321,11 +288,11 @@ impl BroadcastPool {
                             match Update::decode_v1(update_data) {
                                 Ok(update) => {
                                     if let Err(e) = txn.apply_update(update) {
-                                        tracing::warn!("Failed to apply Redis update: {}", e);
+                                        warn!("Failed to apply Redis update: {}", e);
                                     }
                                 }
                                 Err(e) => {
-                                    tracing::warn!("Failed to decode Redis update: {}", e);
+                                    warn!("Failed to decode Redis update: {}", e);
                                 }
                             }
                         }
@@ -333,13 +300,12 @@ impl BroadcastPool {
                         drop(awareness);
                     }
                     Ok(_) => {
-                        tracing::debug!("No Redis updates found for document '{}'", doc_id);
+                        debug!("No Redis updates found for document '{}'", doc_id);
                     }
                     Err(e) => {
-                        tracing::warn!(
+                        warn!(
                             "Failed to read updates from Redis stream for document '{}': {}",
-                            doc_id,
-                            e
+                            doc_id, e
                         );
                     }
                 }
@@ -347,18 +313,22 @@ impl BroadcastPool {
                 let lock_id = format!("gcs:lock:{}", doc_name);
                 let instance_id = format!("sync-{}", rand::random::<u64>());
 
-                let lock_acquired = match redis_store.acquire_doc_lock(&lock_id, &instance_id).await
+                let lock_acquired = match self
+                    .manager
+                    .redis_store
+                    .acquire_doc_lock(&lock_id, &instance_id)
+                    .await
                 {
                     Ok(true) => {
-                        tracing::debug!("Acquired lock for GCS flush operation on {}", doc_name);
-                        Some((redis_store.clone(), lock_id, instance_id))
+                        debug!("Acquired lock for GCS flush operation on {}", doc_name);
+                        Some((self.manager.redis_store.clone(), lock_id, instance_id))
                     }
                     Ok(false) => {
-                        tracing::warn!("Could not acquire lock for GCS flush operation");
+                        warn!("Could not acquire lock for GCS flush operation");
                         None
                     }
                     Err(e) => {
-                        tracing::warn!("Error acquiring lock for GCS flush operation: {}", e);
+                        warn!("Error acquiring lock for GCS flush operation: {}", e);
                         None
                     }
                 };
@@ -373,10 +343,9 @@ impl BroadcastPool {
                     if !update.is_empty() {
                         let update_bytes = bytes::Bytes::from(update);
                         if let Err(e) = store.push_update(&doc_name, &update_bytes).await {
-                            tracing::error!(
+                            error!(
                                 "Failed to flush websocket changes to GCS for '{}': {}",
-                                doc_id,
-                                e
+                                doc_id, e
                             );
                             return Err(anyhow::anyhow!("Failed to flush changes to GCS: {}", e));
                         }
@@ -384,7 +353,7 @@ impl BroadcastPool {
 
                     if let Some((redis, lock_id, instance_id)) = lock_acquired {
                         if let Err(e) = redis.release_doc_lock(&lock_id, &instance_id).await {
-                            tracing::warn!("Failed to release GCS lock: {}", e);
+                            warn!("Failed to release GCS lock: {}", e);
                         }
                     }
                 }

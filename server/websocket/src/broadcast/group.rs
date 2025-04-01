@@ -9,13 +9,13 @@ use bytes::Bytes;
 use deadpool_redis::Connection;
 use futures_util::{SinkExt, StreamExt};
 use rand;
+use tracing::{debug, error, warn};
 
 use serde_json;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::select;
-use tokio::sync::broadcast::error::SendError;
 use tokio::sync::broadcast::{channel, Sender};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
@@ -59,10 +59,9 @@ impl BroadcastGroup {
         let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
         let new_count = prev_count + 1;
 
-        tracing::debug!(
+        debug!(
             "Connection count increased: {} -> {}",
-            prev_count,
-            new_count
+            prev_count, new_count
         );
 
         Ok(())
@@ -72,10 +71,9 @@ impl BroadcastGroup {
         let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
         let new_count = prev_count - 1;
 
-        tracing::debug!(
+        debug!(
             "Connection count decreased: {} -> {}",
-            prev_count,
-            new_count
+            prev_count, new_count
         );
 
         new_count
@@ -105,7 +103,7 @@ impl BroadcastGroup {
                 encoder.write_buf(&u.update);
                 let msg = Bytes::from(encoder.to_vec());
                 if let Err(_e) = sink.send(msg) {
-                    tracing::debug!("broadcast channel closed");
+                    debug!("broadcast channel closed");
                 }
             })?
         };
@@ -130,7 +128,7 @@ impl BroadcastGroup {
             changed.extend_from_slice(removed);
 
             if tx.send(changed).is_err() {
-                tracing::warn!("failed to send awareness update");
+                warn!("failed to send awareness update");
             }
         });
         drop(lock);
@@ -139,7 +137,7 @@ impl BroadcastGroup {
             loop {
                 select! {
                     _ = awareness_shutdown_rx.recv() => {
-                        tracing::debug!("Awareness updater received shutdown signal");
+                        debug!("Awareness updater received shutdown signal");
                         break;
                     },
                     client_update = rx.recv() => {
@@ -150,7 +148,7 @@ impl BroadcastGroup {
                                     if let Ok(update) = awareness.update_with_clients(changed_clients) {
                                         let msg_bytes = Bytes::from(Message::Awareness(update).encode_v1());
                                         if sink.send(msg_bytes).is_err() {
-                                            tracing::warn!("couldn't broadcast awareness update");
+                                            warn!("couldn't broadcast awareness update");
                                         }
                                     }
                                 } else {
@@ -158,14 +156,14 @@ impl BroadcastGroup {
                                 }
                             },
                             None => {
-                                tracing::debug!("Awareness update channel closed");
+                                debug!("Awareness update channel closed");
                                 break;
                             }
                         }
                     }
                 }
             }
-            tracing::debug!("Awareness updater task exited gracefully");
+            debug!("Awareness updater task exited gracefully");
         });
 
         let instance_id = format!("instance-{}", rand::random::<u64>());
@@ -227,105 +225,6 @@ impl BroadcastGroup {
         let group_name = format!("yjs-group-{}", consumer_name);
         let group_name_clone = group_name.clone();
 
-        let (redis_shutdown_tx, mut redis_shutdown_rx) = tokio::sync::mpsc::channel(1);
-
-        let redis_subscriber_task = tokio::spawn(async move {
-            if let Err(e) = redis_store_for_sub
-                .create_consumer_group(&doc_name_for_sub, &group_name_clone)
-                .await
-            {
-                tracing::error!("Failed to create Redis consumer group: {}", e);
-                return;
-            }
-
-            let mut consecutive_errors = 0;
-            let max_consecutive_errors = 5;
-            let mut total_errors = 0;
-            let max_total_errors = 10;
-            let stream_key = format!("yjs:stream:{}", doc_name_for_sub);
-            let mut conn = match redis_store_for_sub.get_pool().get().await {
-                Ok(conn) => conn,
-                Err(e) => {
-                    tracing::error!("Failed to get Redis connection: {}", e);
-                    return;
-                }
-            };
-
-            loop {
-                select! {
-                    _ = redis_shutdown_rx.recv() => {
-                        break;
-                    },
-                    _ = async {
-                        match redis_store_for_sub
-                            .read_and_ack(
-                                &mut conn,
-                                &stream_key,
-                                &group_name_clone,
-                                &consumer_name_clone,
-                                64,
-                            )
-                            .await
-                        {
-                            Ok(updates) => {
-                                consecutive_errors = 0;
-                                if !updates.is_empty() {
-                                    let mut decoded_updates = Vec::with_capacity(updates.len());
-
-                                    for update in &updates {
-                                        if let Ok(decoded) = Update::decode_v1(update) {
-                                            decoded_updates.push(decoded);
-                                        }
-
-                                        if sender_for_sub.send(update.clone()).is_err() {
-                                            tracing::debug!("Failed to broadcast Redis update");
-                                        }
-                                    }
-
-                                    if !decoded_updates.is_empty() {
-                                        let awareness = awareness_for_sub.write().await;
-                                        let mut txn = awareness.doc().transact_mut();
-
-                                        for decoded in decoded_updates {
-                                            if let Err(e) = txn.apply_update(decoded) {
-                                                tracing::warn!("Failed to apply update from Redis: {}", e);
-                                            }
-                                        }
-                                    }
-                                }                            }
-                            Err(e) => {
-                                tracing::error!("Error reading from Redis Stream: {}", e);
-
-                                consecutive_errors += 1;
-                                total_errors += 1;
-                                if consecutive_errors >= max_consecutive_errors
-                                    || total_errors >= max_total_errors
-                                {
-                                    tracing::warn!(
-                                        "Too many Redis errors ({} total, {} consecutive), stopping subscriber",
-                                        total_errors, consecutive_errors
-                                    );
-                                    return;
-                                }
-
-                                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-                            }
-                        }
-
-                        tokio::task::yield_now().await;
-                    } => {}
-                }
-            }
-            tracing::debug!("Redis subscriber task exited gracefully");
-        });
-
-        {
-            let mut background_tasks = group.background_tasks.lock().await;
-            background_tasks.set_redis_subscriber(redis_subscriber_task, redis_shutdown_tx);
-        }
-        group.redis_consumer_name = Some(consumer_name);
-        group.redis_group_name = Some(group_name);
-
         let (heartbeat_shutdown_tx, mut heartbeat_shutdown_rx) = tokio::sync::mpsc::channel(1);
         let instance_id = group.instance_id.clone();
 
@@ -342,7 +241,7 @@ impl BroadcastGroup {
                             .update_instance_heartbeat(&doc_name, &instance_id)
                             .await
                         {
-                            tracing::warn!("Failed to update instance heartbeat: {}", e);
+                            warn!("Failed to update instance heartbeat: {}", e);
                         }
                     }
                 }
@@ -354,6 +253,97 @@ impl BroadcastGroup {
             background_tasks.set_heartbeat(heartbeat_task, heartbeat_shutdown_tx);
         }
 
+        let (redis_shutdown_tx, mut redis_shutdown_rx) = tokio::sync::mpsc::channel(1);
+
+        let redis_subscriber_task = tokio::spawn(async move {
+            if let Err(e) = redis_store_for_sub
+                .create_consumer_group(&doc_name_for_sub, &group_name_clone)
+                .await
+            {
+                error!("Failed to create Redis consumer group: {}", e);
+                return;
+            }
+
+            let stream_key = format!("yjs:stream:{}", doc_name_for_sub);
+
+            let mut conn = if let Ok(conn) = redis_store_for_sub.get_pool().get().await {
+                conn
+            } else {
+                error!("Failed to get Redis connection");
+                return;
+            };
+
+            loop {
+                select! {
+                    _ = redis_shutdown_rx.recv() => {
+                        break;
+                    },
+                    _ = async {
+                        let result = redis_store_for_sub
+                            .read_and_ack(
+                                &mut conn,
+                                &stream_key,
+                                &group_name_clone,
+                                &consumer_name_clone,
+                                50,
+                            )
+                            .await;
+
+                        match result {
+                            Ok(updates) if !updates.is_empty() => {
+                                let mut decoded_updates = Vec::with_capacity(updates.len());
+
+                                for update in &updates {
+                                    if let Ok(decoded) = Update::decode_v1(update) {
+                                        decoded_updates.push(decoded);
+                                    }
+
+                                    if sender_for_sub.send(update.clone()).is_err() {
+                                        debug!("Failed to broadcast Redis update");
+                                    }
+                                }
+
+                                if !decoded_updates.is_empty() {
+                                    let awareness = awareness_for_sub.write().await;
+                                    let mut txn = awareness.doc().transact_mut();
+
+                                    for decoded in decoded_updates {
+                                        if let Err(e) = txn.apply_update(decoded) {
+                                            warn!("Failed to apply update from Redis: {}", e);
+                                        }
+                                    }
+                                }
+                            },
+                            Err(e) => {
+                                error!("Error reading from Redis Stream: {}", e);
+                                // if e.to_string().contains("NOGROUP") {
+                                //     if let Err(create_err) = redis_store_for_sub
+                                //         .create_consumer_group(&doc_name_for_sub, &group_name_clone)
+                                //         .await
+                                //     {
+                                //         error!("Failed to recreate Redis consumer group: {}", create_err);
+                                //     }
+                                // }
+                                tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
+                            },
+                            _ => {}
+                        }
+
+                        tokio::task::yield_now().await;
+                    } => {}
+                }
+            }
+            debug!("Redis subscriber task exited gracefully");
+        });
+
+        {
+            let mut background_tasks = group.background_tasks.lock().await;
+            background_tasks.set_redis_subscriber(redis_subscriber_task, redis_shutdown_tx);
+        }
+
+        group.redis_consumer_name = Some(consumer_name);
+        group.redis_group_name = Some(group_name);
+
         Ok(group)
     }
 
@@ -362,13 +352,7 @@ impl BroadcastGroup {
         let mut txn = awareness.doc().transact_mut();
 
         if let Err(e) = store.load_doc(doc_name, &mut txn).await {
-            tracing::error!("Error loading document '{}' from storage: {}", doc_name, e);
-        }
-    }
-
-    async fn handle_gcs_update(update: Bytes, doc_name: &str, store: &Arc<GcsStore>) {
-        if let Err(e) = store.push_update(doc_name, &update).await {
-            tracing::error!("Failed to store update for document '{}': {}", doc_name, e);
+            error!("Error loading document '{}' from storage: {}", doc_name, e);
         }
     }
 
@@ -380,20 +364,11 @@ impl BroadcastGroup {
         &self.redis_store
     }
 
-    pub fn get_redis_group_name(&self) -> Option<&String> {
-        self.redis_group_name.as_ref()
-    }
-
     pub fn get_doc_name(&self) -> String {
         self.doc_name.clone()
     }
 
-    pub fn broadcast(&self, msg: Bytes) -> Result<(), SendError<Bytes>> {
-        self.sender.send(msg)?;
-        Ok(())
-    }
-
-    pub fn subscribe<Sink, Stream, E>(
+    pub async fn subscribe<Sink, Stream, E>(
         self: Arc<Self>,
         sink: Arc<Mutex<Sink>>,
         stream: Stream,
@@ -405,45 +380,33 @@ impl BroadcastGroup {
         <Sink as futures_util::Sink<Bytes>>::Error: std::error::Error + Send + Sync,
         E: std::error::Error + Send + Sync + 'static,
     {
-        let current_count = self.connection_count();
-
-        tracing::debug!(
-            "Creating new subscription for doc '{}', current count: {}",
-            self.doc_name,
-            current_count
-        );
-
         if let Some(token) = user_token {
             let awareness = self.awareness().clone();
             let client_id = rand::random::<u64>();
 
-            tokio::spawn(async move {
-                let awareness = awareness.write().await;
-                let mut local_state = std::collections::HashMap::new();
+            let awareness = awareness.write().await;
+            let mut local_state = std::collections::HashMap::new();
 
-                local_state.insert(
-                    "user",
-                    serde_json::json!({
-                        "id": token,
-                        "name": format!("User-{}", client_id % 1000),
-                    }),
-                );
+            local_state.insert(
+                "user",
+                serde_json::json!({
+                    "id": token,
+                    "name": format!("User-{}", client_id % 1000),
+                }),
+            );
 
-                if let Err(e) = awareness.set_local_state(Some(local_state)) {
-                    tracing::error!("Failed to set awareness state: {}", e);
-                }
-            });
+            if let Err(e) = awareness.set_local_state(Some(local_state)) {
+                error!("Failed to set awareness state: {}", e);
+            }
         }
 
         let subscription = self.listen(sink, stream, DefaultProtocol);
         let (tx, rx) = tokio::sync::oneshot::channel();
 
-        tokio::spawn(async move {
-            if let Err(e) = self.increment_connections().await {
-                tracing::error!("Failed to increment connections: {}", e);
-            }
-            let _ = tx.send(());
-        });
+        if let Err(e) = self.increment_connections().await {
+            error!("Failed to increment connections: {}", e);
+        }
+        let _ = tx.send(());
 
         Subscription {
             sink_task: subscription.sink_task,
@@ -491,7 +454,7 @@ impl BroadcastGroup {
                     let data = match res.map_err(anyhow::Error::from) {
                         Ok(data) => data,
                         Err(e) => {
-                            tracing::warn!("Error receiving message: {}", e);
+                            warn!("Error receiving message: {}", e);
                             continue;
                         }
                     };
@@ -499,7 +462,7 @@ impl BroadcastGroup {
                     let msg = match Message::decode_v1(&data) {
                         Ok(msg) => msg,
                         Err(e) => {
-                            tracing::warn!("Failed to decode message: {}", e);
+                            warn!("Failed to decode message: {}", e);
                             continue;
                         }
                     };
@@ -517,10 +480,10 @@ impl BroadcastGroup {
                         Ok(Some(reply)) => {
                             let mut sink_lock = sink.lock().await;
                             if let Err(e) = sink_lock.send(Bytes::from(reply.encode_v1())).await {
-                                tracing::warn!("Failed to send reply: {}", e);
+                                warn!("Failed to send reply: {}", e);
                             }
                         }
-                        Err(e) => tracing::warn!("Error handling message: {}", e),
+                        Err(e) => warn!("Error handling message: {}", e),
                         _ => {}
                     }
                 }
@@ -556,7 +519,7 @@ impl BroadcastGroup {
                         .publish_update(stream_key, &update_bytes, conn)
                         .await
                     {
-                        tracing::error!("Redis Stream update failed: {}", e);
+                        error!("Redis Stream update failed: {}", e);
                     }
                 }
 
@@ -601,37 +564,30 @@ impl BroadcastGroup {
             .store(true, std::sync::atomic::Ordering::SeqCst);
 
         if self.connection_count() == 0 {
-            let redis_store_clone = self.redis_store.clone();
-            let store_clone = self.storage.clone();
-
-            if let Err(e) = redis_store_clone
+            if let Err(e) = self
+                .redis_store
                 .remove_instance_heartbeat(&self.doc_name, &self.instance_id)
                 .await
             {
-                tracing::warn!(
+                warn!(
                     "Failed to remove instance heartbeat before checking connections: {}",
                     e
                 );
-            } else {
-                tracing::debug!(
-                    "Removed heartbeat for instance {} before checking connections",
-                    self.instance_id
-                );
             }
-
-            let should_save = match redis_store_clone
+            let should_save = match self
+                .redis_store
                 .get_active_instances(&self.doc_name, 60)
                 .await
             {
                 Ok(connections) => {
                     if connections <= 0 {
-                        tracing::debug!(
+                        debug!(
                             "All instances disconnected from '{}', proceeding with GCS save",
                             self.doc_name
                         );
                         true
                     } else {
-                        tracing::debug!(
+                        debug!(
                             "Other instances still connected to '{}', skipping GCS save",
                             self.doc_name
                         );
@@ -639,7 +595,7 @@ impl BroadcastGroup {
                     }
                 }
                 Err(e) => {
-                    tracing::warn!("Failed to get Redis connection count: {}", e);
+                    warn!("Failed to get Redis connection count: {}", e);
                     true
                 }
             };
@@ -648,22 +604,21 @@ impl BroadcastGroup {
                 let lock_id = format!("gcs:lock:{}", self.doc_name);
                 let instance_id = format!("instance-{}", rand::random::<u64>());
 
-                let lock_acquired = match redis_store_clone
+                let lock_acquired = match self
+                    .redis_store
                     .acquire_doc_lock(&lock_id, &instance_id)
                     .await
                 {
                     Ok(true) => {
-                        tracing::debug!("Acquired lock for GCS operations on {}", self.doc_name);
-                        Some((redis_store_clone.clone(), lock_id, instance_id))
+                        debug!("Acquired lock for GCS operations on {}", self.doc_name);
+                        Some((self.redis_store.clone(), lock_id, instance_id))
                     }
                     Ok(false) => {
-                        tracing::warn!(
-                            "Could not acquire lock for GCS operations, skipping update"
-                        );
+                        warn!("Could not acquire lock for GCS operations, skipping update");
                         None
                     }
                     Err(e) => {
-                        tracing::warn!("Error acquiring lock for GCS operations: {}", e);
+                        warn!("Error acquiring lock for GCS operations: {}", e);
                         None
                     }
                 };
@@ -676,8 +631,8 @@ impl BroadcastGroup {
                     let gcs_doc = Doc::new();
                     let mut gcs_txn = gcs_doc.transact_mut();
 
-                    if let Err(e) = store_clone.load_doc(&self.doc_name, &mut gcs_txn).await {
-                        tracing::warn!("Failed to load current state from GCS: {}", e);
+                    if let Err(e) = self.storage.load_doc(&self.doc_name, &mut gcs_txn).await {
+                        warn!("Failed to load current state from GCS: {}", e);
                     }
 
                     let gcs_state = gcs_txn.state_vector();
@@ -685,12 +640,30 @@ impl BroadcastGroup {
                     let awareness_txn = awareness_doc.transact();
                     let update = awareness_txn.encode_diff_v1(&gcs_state);
                     let update_bytes = Bytes::from(update);
-                    Self::handle_gcs_update(update_bytes, &self.doc_name, &store_clone).await;
+
+                    if !(update_bytes.is_empty()
+                        || update_bytes.len() == 2 && update_bytes[0] == 0 && update_bytes[1] == 0)
+                    {
+                        let update_future = self.storage.push_update(&self.doc_name, &update_bytes);
+                        let flush_future =
+                            self.storage.flush_doc_direct(&self.doc_name, awareness_doc);
+
+                        let (update_result, flush_result) =
+                            tokio::join!(update_future, flush_future);
+
+                        if let Err(e) = flush_result {
+                            warn!("Failed to flush document directly to storage: {}", e);
+                        }
+
+                        if let Err(e) = update_result {
+                            warn!("Failed to update document in storage: {}", e);
+                        }
+                    }
                 }
 
                 if let Some((redis, lock_id, instance_id)) = lock_acquired {
                     if let Err(e) = redis.release_doc_lock(&lock_id, &instance_id).await {
-                        tracing::warn!("Failed to release GCS lock: {}", e);
+                        warn!("Failed to release GCS lock: {}", e);
                     }
                 }
             }
@@ -701,39 +674,13 @@ impl BroadcastGroup {
             background_tasks.stop_all();
         }
 
-        let redis_store_clone = self.redis_store.clone();
-        let doc_name_clone = self.doc_name.clone();
-        let instance_id = self.instance_id.clone();
-
-        tokio::spawn(async move {
-            match redis_store_clone
-                .safe_delete_stream(&doc_name_clone, &instance_id)
-                .await
-            {
-                Ok(deleted) => {
-                    if deleted {
-                        tracing::debug!(
-                            "Successfully deleted Redis stream for '{}'",
-                            doc_name_clone
-                        );
-                    } else {
-                        tracing::debug!(
-                            "Did not delete Redis stream for '{}' as it may still be in use",
-                            doc_name_clone
-                        );
-                    }
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        "Error during safe Redis stream deletion for '{}': {}",
-                        doc_name_clone,
-                        e
-                    );
-                }
-            }
-
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        });
+        if let Err(e) = self
+            .redis_store
+            .safe_delete_stream(&self.doc_name, &self.instance_id)
+            .await
+        {
+            warn!("Failed to delete Redis stream: {}", e);
+        }
 
         Ok(())
     }

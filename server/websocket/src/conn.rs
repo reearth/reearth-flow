@@ -34,7 +34,11 @@ where
         user_token: Option<String>,
     ) -> Self {
         let sink = Arc::new(Mutex::new(sink));
-        let broadcast_sub = Some(broadcast_group.subscribe(sink, stream, user_token.clone()));
+        let broadcast_sub = Some(
+            broadcast_group
+                .subscribe(sink, stream, user_token.clone())
+                .await,
+        );
 
         Connection {
             broadcast_sub,

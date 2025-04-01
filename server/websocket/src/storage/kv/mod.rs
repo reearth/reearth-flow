@@ -38,14 +38,15 @@
 pub mod error;
 pub mod keys;
 
+use anyhow;
 use async_trait::async_trait;
 use error::Error;
+use hex;
 use keys::{
     doc_oid_name, key_doc, key_doc_end, key_doc_start, key_meta, key_meta_end, key_meta_start,
     key_oid, key_state_vector, key_update, Key, KEYSPACE_DOC, KEYSPACE_OID, OID, V1,
 };
 use std::convert::TryInto;
-use tracing::debug;
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, TransactionMut, Update};
@@ -154,8 +155,6 @@ where
         txn: &mut TransactionMut<'doc>,
     ) -> Result<bool, Error> {
         if let Some(oid) = get_oid(self, name.as_ref()).await? {
-            debug!("Loading document from KV store - oid: {:?}", oid);
-            debug!("Document-----------------------------");
             let loaded = load_doc(self, oid, txn).await?;
             Ok(loaded != 0)
         } else {
@@ -173,6 +172,74 @@ where
         name: &K,
     ) -> Result<Option<Doc>, Error> {
         self.flush_doc_with(name, yrs::Options::default()).await
+    }
+
+    async fn trim_updates<K: AsRef<[u8]> + ?Sized + Sync>(
+        &self,
+        name: &K,
+        keep_recent: u32,
+    ) -> Result<Option<Doc>, Error> {
+        if let Some(oid) = get_oid(self, name.as_ref()).await? {
+            let update_range_start = key_update(oid, 0)?;
+            let update_range_end = key_update(oid, u32::MAX)?;
+            let mut updates = Vec::new();
+
+            for entry in self
+                .iter_range(&update_range_start, &update_range_end)
+                .await?
+            {
+                let key = entry.key();
+                let len = key.len();
+                let seq_bytes = &key[(len - 5)..(len - 1)];
+                let seq_nr = u32::from_be_bytes(seq_bytes.try_into().unwrap());
+                updates.push(seq_nr);
+            }
+
+            if updates.len() > keep_recent as usize {
+                updates.sort_unstable();
+
+                let cutoff = updates[updates.len() - keep_recent as usize];
+
+                let doc = Doc::new();
+                let mut found = false;
+
+                {
+                    let doc_key = key_doc(oid)?;
+                    if let Some(doc_state) = self.get(&doc_key).await? {
+                        let update = Update::decode_v1(doc_state.as_ref())?;
+                        let _ = doc.transact_mut().apply_update(update);
+                        found = true;
+                    }
+                }
+
+                let mut applied = false;
+                for seq_nr in &updates {
+                    if *seq_nr < cutoff {
+                        let update_key = key_update(oid, *seq_nr)?;
+                        if let Some(data) = self.get(&update_key).await? {
+                            let update = Update::decode_v1(data.as_ref())?;
+                            let _ = doc.transact_mut().apply_update(update);
+                            applied = true;
+                            self.remove(&update_key).await?;
+                        }
+                    }
+                }
+
+                if found || applied {
+                    let txn = doc.transact();
+                    let doc_state = txn.encode_state_as_update_v1(&StateVector::default());
+                    let state_vec = txn.state_vector().encode_v1();
+                    drop(txn);
+
+                    insert_inner_v1(self, oid, &doc_state, &state_vec).await?;
+                    return Ok(Some(doc));
+                }
+            }
+
+            Ok(None)
+        } else {
+            Ok(None)
+        }
     }
 
     /// Merges all updates stored via [Self::push_update] that were detached from the main document
@@ -372,6 +439,45 @@ where
         } else {
             Ok(MetadataIter(None))
         }
+    }
+
+    async fn load_doc_direct<K: AsRef<[u8]> + ?Sized + Sync>(
+        &self,
+        name: &K,
+    ) -> Result<Doc, Error> {
+        let doc_key = format!("direct_doc:{}", hex::encode(name.as_ref()));
+        let doc_key_bytes = doc_key.as_bytes();
+
+        match self.get(doc_key_bytes).await? {
+            Some(data) => {
+                let doc = Doc::new();
+                let mut txn = doc.transact_mut();
+                if let Ok(update) = Update::decode_v2(data.as_ref()) {
+                    txn.apply_update(update)?;
+                }
+                drop(txn);
+                Ok(doc)
+            }
+            None => Err(anyhow::anyhow!(
+                "Document not found: {}",
+                hex::encode(name.as_ref())
+            )),
+        }
+    }
+
+    async fn flush_doc_direct<K: AsRef<[u8]> + ?Sized + Sync>(
+        &self,
+        name: &K,
+        doc: &Doc,
+    ) -> Result<(), Error> {
+        let doc_key = format!("direct_doc:{}", hex::encode(name.as_ref()));
+        let doc_key_bytes = doc_key.as_bytes();
+
+        let txn = doc.transact();
+        let state = txn.encode_state_as_update_v2(&StateVector::default());
+
+        self.upsert(doc_key_bytes, &state).await?;
+        Ok(())
     }
 }
 
