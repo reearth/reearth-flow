@@ -65,7 +65,6 @@ export default ({
     (pastedNodes: Node[], pastedWorkflows?: Workflow[]): Node[] => {
       const newNodes: Node[] = [];
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
-      // console.log("MenuPosition", menuPosition);
       for (const n of pastedNodes) {
         // if NOT a child of a batch, offset position for user's benefit
         const newPosition = n.parentId
