@@ -159,7 +159,7 @@ export default ({
       nodes: nodes.filter((n) => n.selected).map((n) => n),
       edges: edges.filter((e) => e.selected),
     };
-
+    let newWorkflows: Workflow[] = [];
     if (selected.nodes.some((n) => n.type === "reader"))
       return toast({
         title: t("Reader node cannot be copied"),
@@ -168,11 +168,17 @@ export default ({
       });
 
     if (selected.nodes.length === 0 && selected.edges.length === 0) return;
+    if (selected.nodes.some((n) => n.type === "subworkflow")) {
+      newWorkflows = rawWorkflows.filter((w) =>
+        selected.nodes.some((n) => n.data.subworkflowId === w.id),
+      );
+      if (newWorkflows.length === 0) return;
+    }
 
-    const newWorkflows = [...rawWorkflows];
     const newNodes = newNodeCreation(selected.nodes);
     const newEdges = newEdgeCreation(selected.edges, selected.nodes, newNodes);
     setHasItemsToPaste(true);
+
     await copy({
       edges: newEdges,
       nodes: newNodes,
