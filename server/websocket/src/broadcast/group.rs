@@ -285,7 +285,7 @@ impl BroadcastGroup {
                                 &stream_key,
                                 &group_name_clone,
                                 &consumer_name_clone,
-                                50,
+                                256,
                             )
                             .await;
 
@@ -330,6 +330,7 @@ impl BroadcastGroup {
                         }
 
                         tokio::task::yield_now().await;
+                        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
                     } => {}
                 }
             }
