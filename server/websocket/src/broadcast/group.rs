@@ -330,7 +330,7 @@ impl BroadcastGroup {
                         }
 
                         tokio::task::yield_now().await;
-                        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+                        tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
                     } => {}
                 }
             }
