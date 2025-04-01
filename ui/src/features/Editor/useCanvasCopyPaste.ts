@@ -237,7 +237,6 @@ export default ({
     copy({
       nodes: newNodes,
       edges: newEdges,
-      workflows: pastedWorkflows,
     });
 
     // deselect all previously selected nodes
