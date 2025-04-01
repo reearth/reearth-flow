@@ -65,7 +65,7 @@ export default ({
     (pastedNodes: Node[], pastedWorkflows?: Workflow[]): Node[] => {
       const newNodes: Node[] = [];
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
-
+      // console.log("MenuPosition", menuPosition);
       for (const n of pastedNodes) {
         // if NOT a child of a batch, offset position for user's benefit
         const newPosition = n.parentId
@@ -154,6 +154,30 @@ export default ({
     [handleWorkflowUpdate, newEdgeCreation, nodes],
   );
 
+  const collectSubworkflows = useCallback(
+    (nodesToCheck: Node[], workflows: Workflow[]): Workflow[] => {
+      let collectedWorkflows: Workflow[] = [];
+
+      for (const node of nodesToCheck) {
+        if (node.type === "subworkflow" && node.data.subworkflowId) {
+          const subworkflow = workflows.find(
+            (w) => w.id === node.data.subworkflowId,
+          );
+          if (subworkflow) {
+            collectedWorkflows.push(subworkflow);
+            const subworkflowNodes = subworkflow.nodes as Node[];
+            collectedWorkflows = collectedWorkflows.concat(
+              collectSubworkflows(subworkflowNodes, workflows),
+            );
+          }
+        }
+      }
+
+      return collectedWorkflows;
+    },
+    [],
+  );
+
   const handleCopy = useCallback(async () => {
     const selected: { nodes: Node[]; edges: Edge[] } | undefined = {
       nodes: nodes.filter((n) => n.selected).map((n) => n),
@@ -168,10 +192,9 @@ export default ({
       });
 
     if (selected.nodes.length === 0 && selected.edges.length === 0) return;
+
     if (selected.nodes.some((n) => n.type === "subworkflow")) {
-      newWorkflows = rawWorkflows.filter((w) =>
-        selected.nodes.some((n) => n.data.subworkflowId === w.id),
-      );
+      newWorkflows = collectSubworkflows(selected.nodes, rawWorkflows);
       if (newWorkflows.length === 0) return;
     }
 
@@ -189,6 +212,7 @@ export default ({
     edges,
     newNodeCreation,
     newEdgeCreation,
+    collectSubworkflows,
     copy,
     rawWorkflows,
     toast,
