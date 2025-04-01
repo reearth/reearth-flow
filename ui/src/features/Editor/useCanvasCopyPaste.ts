@@ -106,11 +106,9 @@ export default ({
           const subworkflowId = generateUUID();
 
           const newSubworkflow = {
-            ...pastedWorkflows?.find((w) => w.id === n.data.subworkflowId),
+            ...pastedWorkflows.find((w) => w.id === n.data.subworkflowId),
             id: subworkflowId,
           };
-
-          if (!newSubworkflow) return [];
 
           const newSubworkflowNodes = newNodeCreation(
             newSubworkflow.nodes ?? [],
@@ -240,8 +238,6 @@ export default ({
       edges: newEdges,
       workflows: pastedWorkflows,
     });
-
-    console.log("Pasted nodes", newNodes);
 
     // deselect all previously selected nodes
     const nodeChanges: NodeChange[] = nodes.map((n) => ({
