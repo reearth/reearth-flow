@@ -105,22 +105,21 @@ export default ({
         } else if (newNode.type === "subworkflow" && pastedWorkflows) {
           const subworkflowId = generateUUID();
 
-          const subworkflowNodes = (pastedWorkflows?.find(
-            (w) => w.id === n.data.subworkflowId,
-          )?.nodes ?? []) as Node[];
+          const newSubworkflow = {
+            ...pastedWorkflows?.find((w) => w.id === n.data.subworkflowId),
+            id: subworkflowId,
+          };
+
+          if (!newSubworkflow) return [];
 
           const newSubworkflowNodes = newNodeCreation(
-            subworkflowNodes,
+            newSubworkflow.nodes ?? [],
             pastedWorkflows,
           );
 
-          const oldEdges = (pastedWorkflows?.find(
-            (w) => w.id === n.data.subworkflowId,
-          )?.edges ?? []) as Edge[];
-
           const newSubworkflowEdges = newEdgeCreation(
-            oldEdges,
-            subworkflowNodes,
+            newSubworkflow.edges ?? [],
+            newSubworkflow.nodes ?? [],
             newSubworkflowNodes,
           );
 
@@ -131,6 +130,8 @@ export default ({
             newSubworkflowNodes,
             newSubworkflowEdges,
           );
+
+          pastedWorkflows.push(newSubworkflow);
         }
 
         newNodes.push(newNode);
@@ -237,7 +238,10 @@ export default ({
     copy({
       nodes: newNodes,
       edges: newEdges,
+      workflows: pastedWorkflows,
     });
+
+    console.log("Pasted nodes", newNodes);
 
     // deselect all previously selected nodes
     const nodeChanges: NodeChange[] = nodes.map((n) => ({
