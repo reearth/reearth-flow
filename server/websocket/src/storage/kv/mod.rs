@@ -494,6 +494,8 @@ where
     if let Some(value) = value {
         let bytes: [u8; 4] = value.as_ref().try_into().unwrap();
         let oid = OID::from_be_bytes(bytes);
+        tracing::info!("Found OID for name: {}", hex::encode(name));
+        tracing::info!("OID: {}", oid);
         Ok(Some(oid))
     } else {
         Ok(None)
@@ -514,7 +516,7 @@ where
 
     let mut lock_value = None;
     let max_retries = 5;
-    let retry_delay_ms = 200;
+    let retry_delay_ms = 500;
 
     for attempt in 0..max_retries {
         match redis.acquire_oid_lock(10).await {
@@ -563,6 +565,7 @@ where
 
     let key = key_oid(name)?;
     db.upsert(&key, new_oid.to_be_bytes().as_ref()).await?;
+    tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
 
     let _ = redis.release_oid_lock(&lock_value).await;
 
