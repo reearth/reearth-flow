@@ -316,9 +316,9 @@ impl BroadcastGroup {
                                 }
 
                                 if update_count == 0 {
-                                    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+                                    tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
                                 } else if update_count < 10 {
-                                    let sleep_ms = std::cmp::max(1, 6 - (update_count as u64 / 2));
+                                    let sleep_ms = std::cmp::max(1, 21 - (update_count as u64 / 2));
                                     tokio::time::sleep(tokio::time::Duration::from_millis(sleep_ms)).await;
                                 }
                             },
@@ -652,8 +652,7 @@ impl BroadcastGroup {
                         || update_bytes.len() == 2 && update_bytes[0] == 0 && update_bytes[1] == 0)
                     {
                         let update_future = self.storage.push_update(&self.doc_name, &update_bytes);
-                        let flush_future =
-                            self.storage.flush_doc_direct(&self.doc_name, awareness_doc);
+                        let flush_future = self.storage.flush_doc_v2(&self.doc_name, awareness_doc);
 
                         let (update_result, flush_result) =
                             tokio::join!(update_future, flush_future);

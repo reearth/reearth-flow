@@ -440,45 +440,6 @@ where
             Ok(MetadataIter(None))
         }
     }
-
-    async fn load_doc_direct<K: AsRef<[u8]> + ?Sized + Sync>(
-        &self,
-        name: &K,
-    ) -> Result<Doc, Error> {
-        let doc_key = format!("direct_doc:{}", hex::encode(name.as_ref()));
-        let doc_key_bytes = doc_key.as_bytes();
-
-        match self.get(doc_key_bytes).await? {
-            Some(data) => {
-                let doc = Doc::new();
-                let mut txn = doc.transact_mut();
-                if let Ok(update) = Update::decode_v2(data.as_ref()) {
-                    txn.apply_update(update)?;
-                }
-                drop(txn);
-                Ok(doc)
-            }
-            None => Err(anyhow::anyhow!(
-                "Document not found: {}",
-                hex::encode(name.as_ref())
-            )),
-        }
-    }
-
-    async fn flush_doc_direct<K: AsRef<[u8]> + ?Sized + Sync>(
-        &self,
-        name: &K,
-        doc: &Doc,
-    ) -> Result<(), Error> {
-        let doc_key = format!("direct_doc:{}", hex::encode(name.as_ref()));
-        let doc_key_bytes = doc_key.as_bytes();
-
-        let txn = doc.transact();
-        let state = txn.encode_state_as_update_v2(&StateVector::default());
-
-        self.upsert(doc_key_bytes, &state).await?;
-        Ok(())
-    }
 }
 
 pub async fn get_oid<'a, DB: DocOps<'a>>(db: &DB, name: &[u8]) -> Result<Option<OID>, Error>

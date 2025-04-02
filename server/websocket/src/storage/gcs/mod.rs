@@ -1,6 +1,7 @@
 pub use super::kv as store;
 use super::kv::keys::{KEYSPACE_DOC, SUB_UPDATE, V1};
 use super::kv::{get_oid, DocOps, KVEntry, KVStore};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use futures::future::join_all;
 use google_cloud_storage::{
     client::{Client, ClientConfig},
@@ -15,7 +16,8 @@ use hex;
 use serde::Deserialize;
 use time::OffsetDateTime;
 use tracing::{debug, error};
-use yrs::{updates::decoder::Decode, Doc, Transact, Update};
+use yrs::ReadTxn;
+use yrs::{updates::decoder::Decode, Doc, StateVector, Transact, Update};
 
 const BATCH_SIZE: usize = 50;
 
@@ -478,6 +480,66 @@ impl GcsStore {
         metadata.sort_by_key(|(clock, _)| std::cmp::Reverse(*clock));
 
         Ok(metadata)
+    }
+
+    pub async fn load_doc_v2<K: AsRef<[u8]> + ?Sized + Sync>(
+        &self,
+        name: &K,
+    ) -> Result<Doc, anyhow::Error> {
+        let doc_key = format!("doc_v2:{}", BASE64.encode(name.as_ref()));
+        let doc_key_bytes = doc_key.as_bytes();
+
+        let request = GetObjectRequest {
+            bucket: self.bucket.clone(),
+            object: hex::encode(doc_key_bytes),
+            ..Default::default()
+        };
+
+        match self
+            .client
+            .download_object(&request, &Range::default())
+            .await
+        {
+            Ok(data) => {
+                let doc = Doc::new();
+                let mut txn = doc.transact_mut();
+                if let Ok(update) = Update::decode_v2(&data) {
+                    txn.apply_update(update)?;
+                }
+                drop(txn);
+                Ok(doc)
+            }
+            Err(_) => Err(anyhow::anyhow!(
+                "Document not found: {}",
+                BASE64.encode(name.as_ref())
+            )),
+        }
+    }
+
+    pub async fn flush_doc_v2<K: AsRef<[u8]> + ?Sized + Sync>(
+        &self,
+        name: &K,
+        doc: &Doc,
+    ) -> Result<(), anyhow::Error> {
+        let doc_key = format!("doc_v2:{}", BASE64.encode(name.as_ref()));
+        let doc_key_bytes = doc_key.as_bytes();
+
+        let txn = doc.transact();
+        let state = txn.encode_state_as_update_v2(&StateVector::default());
+
+        let upload_type = UploadType::Simple(Media::new(hex::encode(doc_key_bytes)));
+        self.client
+            .upload_object(
+                &UploadObjectRequest {
+                    bucket: self.bucket.clone(),
+                    ..Default::default()
+                },
+                state,
+                &upload_type,
+            )
+            .await?;
+
+        Ok(())
     }
 }
 
