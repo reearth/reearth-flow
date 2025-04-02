@@ -173,7 +173,7 @@ export default ({
     (
       nodesToCheck: Node[],
       workflows: Workflow[],
-      visitedWorkflows = new Set<string>(),
+      referencedWorkflows = new Set<string>(),
     ): Workflow[] => {
       let collectedWorkflows: Workflow[] = [];
 
@@ -182,7 +182,7 @@ export default ({
           const subworkflow = workflows.find(
             (w) => w.id === node.data.subworkflowId,
           );
-          if (visitedWorkflows.has(node.data.subworkflowId)) continue;
+          if (referencedWorkflows.has(node.data.subworkflowId)) continue;
           if (subworkflow) {
             collectedWorkflows.push(subworkflow);
             const subworkflowNodes = subworkflow.nodes as Node[];
@@ -190,7 +190,7 @@ export default ({
               collectSubworkflows(
                 subworkflowNodes,
                 workflows,
-                visitedWorkflows,
+                referencedWorkflows,
               ),
             );
           }
@@ -222,26 +222,14 @@ export default ({
       if (newWorkflows.length === 0) return;
     }
 
-    const newNodes = newNodeCreation(selected.nodes);
-    const newEdges = newEdgeCreation(selected.edges, selected.nodes, newNodes);
     setHasItemsToPaste(true);
 
     await copy({
-      edges: newEdges,
-      nodes: newNodes,
+      nodes: selected.nodes,
+      edges: selected.edges,
       workflows: newWorkflows,
     });
-  }, [
-    nodes,
-    edges,
-    newNodeCreation,
-    newEdgeCreation,
-    collectSubworkflows,
-    copy,
-    rawWorkflows,
-    toast,
-    t,
-  ]);
+  }, [nodes, edges, collectSubworkflows, copy, rawWorkflows, toast, t]);
 
   const handlePaste = useCallback(async () => {
     const {
