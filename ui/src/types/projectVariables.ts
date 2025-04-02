@@ -18,7 +18,7 @@ export type VarType =
   | "yes_no"
   | "unsupported";
 
-export type UserParameter = {
+export type ProjectVariable = {
   id: string;
   name: string;
   value: any;
@@ -29,6 +29,6 @@ export type UserParameter = {
   projectId?: string;
 };
 
-export type CreateUserParamater = {
-  userParameter?: UserParameter;
+export type CreateProjectVariables = {
+  projectVariable?: ProjectVariable;
 } & ApiResponse;

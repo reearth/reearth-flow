@@ -9,7 +9,7 @@ export * from "./log";
 export * from "./member";
 export * from "./node";
 export * from "./project";
-export * from "./userParameter";
+export * from "./projectVariables";
 export * from "./shared";
 export * from "./shortcuts";
 export * from "./trigger";

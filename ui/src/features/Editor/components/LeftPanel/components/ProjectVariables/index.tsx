@@ -1,13 +1,13 @@
 import { useState } from "react";
 
 import { Button, ScrollArea } from "@flow/components";
-import { useUserParameter } from "@flow/lib/gql";
+import { useProjectVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
-import { UserParameter as UserParameterType } from "@flow/types";
+import { ProjectVariable as ProjectVariableType } from "@flow/types";
 
-import { UserParameterDialog } from "./UserParamDialog";
-import { UserParameter } from "./UserParameter";
+import { ProjectVariable } from "./ProjectVariable";
+import { ProjectVariableDialog } from "./ProjectVariableDialog";
 
 const ProjectVariables: React.FC = () => {
   const t = useT();
@@ -15,32 +15,33 @@ const ProjectVariables: React.FC = () => {
 
   const [currentProject] = useCurrentProject();
 
-  const { useGetUserParameters, createUserParameter } = useUserParameter();
+  const { useGetProjectVariables, createProjectVariable } =
+    useProjectVariables();
 
-  const { userParameters } = useGetUserParameters(currentProject?.id);
+  const { projectVariables } = useGetProjectVariables(currentProject?.id);
 
-  const [updatedUserParameters, setCurrentUserParameters] = useState<
-    UserParameterType[]
-  >(userParameters ?? []);
+  const [updatedProjectVariables, setUpdatedProjectVariables] = useState<
+    ProjectVariableType[]
+  >(projectVariables ?? []);
 
   const handleDialogOpen = () => setIsOpen(true);
   const handleDialogClose = () => setIsOpen(false);
 
-  const handleSubmit = async (newUserParameters: UserParameterType[]) => {
+  const handleSubmit = async (newProjectVariables: ProjectVariableType[]) => {
     if (!currentProject) return;
 
     await (async () => {
       try {
-        newUserParameters.forEach(async (parameter) => {
-          const { name, value, type, required } = parameter;
-          const index = updatedUserParameters.length;
-          const existingParameter = updatedUserParameters.find(
+        newProjectVariables.forEach(async (projectVar) => {
+          const { name, value, type, required } = projectVar;
+          const index = updatedProjectVariables.length;
+          const existingVariable = updatedProjectVariables.find(
             (p) => p.name === name,
           );
-          if (existingParameter) {
+          if (existingVariable) {
             // Update existing parameter
           } else {
-            await createUserParameter(
+            await createProjectVariable(
               currentProject.id,
               name,
               value,
@@ -51,11 +52,11 @@ const ProjectVariables: React.FC = () => {
           }
         });
       } catch (error) {
-        console.error("Error creating user parameters", error);
+        console.error("Error creating project variable", error);
       }
     })();
 
-    setCurrentUserParameters(newUserParameters);
+    setUpdatedProjectVariables(newProjectVariables);
     handleDialogClose();
   };
 
@@ -64,16 +65,16 @@ const ProjectVariables: React.FC = () => {
       <div className="flex h-full flex-col gap-4 p-1">
         <div className="flex-1">
           <div className="flex items-center pb-2">
-            <p className="flex-1 text-sm font-thin">{t("Key")}</p>
+            <p className="flex-1 text-sm font-thin">{t("Name")}</p>
             <p className="flex-1 text-sm font-thin">{t("Value")}</p>
           </div>
           <ScrollArea>
             <div className="flex flex-col gap-1 overflow-y-auto">
-              {userParameters?.map((parameter, idx) => (
-                <UserParameter
-                  key={parameter.id}
+              {projectVariables?.map((variable, idx) => (
+                <ProjectVariable
+                  key={variable.id}
                   className={`${idx % 2 !== 0 ? "bg-card" : "bg-primary"}`}
-                  parameter={parameter}
+                  projectVariable={variable}
                 />
               ))}
             </div>
@@ -83,16 +84,16 @@ const ProjectVariables: React.FC = () => {
           <Button
             className="self-end"
             size="sm"
-            variant="outline"
+            // variant="outline"
             onClick={handleDialogOpen}>
-            {t("Edit User Parameters")}
+            {t("Edit")}
           </Button>
         </div>
       </div>
-      {userParameters && (
-        <UserParameterDialog
+      {projectVariables && (
+        <ProjectVariableDialog
           isOpen={isOpen}
-          currentUserParameters={userParameters}
+          currentProjectVariable={projectVariables}
           onClose={handleDialogClose}
           onSubmit={handleSubmit}
         />

@@ -1,3 +1,3 @@
 export * from "./Actions";
 export * from "./Resources";
-export * from "./UserParameters";
+export * from "./ProjectVariables";
