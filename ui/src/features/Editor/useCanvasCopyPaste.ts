@@ -85,7 +85,7 @@ export default ({
           parentIdMapArray.push({ prevId: n.id, newId: newNode.id });
 
           nodes.forEach((child) => {
-            if (child.parentId === n.id && !pastedNodes.includes(child)) {
+            if (child.parentId === n.id) {
               const childNewNode = {
                 ...child,
                 id: generateUUID(),
