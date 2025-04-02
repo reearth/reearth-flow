@@ -20,10 +20,10 @@ import {
 } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
+import { NodeContextMenu, SelectionContextMenu } from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
-import { NodeContextMenu, SelectionContextMenu } from "./components";
 
 const gridSize = 25;
 
