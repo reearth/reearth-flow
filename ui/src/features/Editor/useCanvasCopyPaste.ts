@@ -62,7 +62,7 @@ export default ({
   );
 
   const newNodeCreation = useCallback(
-    (pastedNodes: Node[], pastedWorkflows?: Workflow[]): Node[] => {
+    (pastedNodes: Node[]): Node[] => {
       const newNodes: Node[] = [];
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
       for (const n of pastedNodes) {
@@ -84,52 +84,16 @@ export default ({
         if (newNode.type === "batch") {
           parentIdMapArray.push({ prevId: n.id, newId: newNode.id });
 
-          const batchNodeChildren = nodes.filter(
-            (child) => child.parentId === n.id,
-          );
-
-          batchNodeChildren.forEach((child) => {
-            if (!pastedNodes.some((node) => node.id === child.id)) {
+          nodes.forEach((child) => {
+            if (child.parentId === n.id && !pastedNodes.includes(child)) {
               const childNewNode = {
                 ...child,
                 id: generateUUID(),
-                position: { ...child.position },
-                selected: true,
-                data: { ...child.data },
-                parentId: newNode.id,
               };
 
               newNodes.push(childNewNode);
             }
           });
-        } else if (newNode.type === "subworkflow" && pastedWorkflows) {
-          const subworkflowId = generateUUID();
-
-          const newSubworkflow = {
-            ...pastedWorkflows.find((w) => w.id === n.data.subworkflowId),
-            id: subworkflowId,
-          };
-
-          const newSubworkflowNodes = newNodeCreation(
-            newSubworkflow.nodes ?? [],
-            pastedWorkflows,
-          );
-
-          const newSubworkflowEdges = newEdgeCreation(
-            newSubworkflow.edges ?? [],
-            newSubworkflow.nodes ?? [],
-            newSubworkflowNodes,
-          );
-
-          newNode.data.subworkflowId = subworkflowId;
-
-          handleWorkflowUpdate(
-            subworkflowId,
-            newSubworkflowNodes,
-            newSubworkflowEdges,
-          );
-
-          pastedWorkflows.push(newSubworkflow);
         }
 
         newNodes.push(newNode);
@@ -149,11 +113,68 @@ export default ({
 
       return reBatchedNodes;
     },
-    [handleWorkflowUpdate, newEdgeCreation, nodes],
+    [nodes],
+  );
+
+  const newWorkflowCreation = useCallback(
+    (nodes: Node[], pastedWorkflows: Workflow[]) => {
+      const newWorkflows: Workflow[] = [];
+
+      const processSubworkflow = (node: Node) => {
+        const subworkflowId = generateUUID();
+        const originalSubworkflow = pastedWorkflows.find(
+          (w) => w.id === node.data.subworkflowId,
+        );
+
+        if (!originalSubworkflow) return;
+
+        const newSubworkflow = {
+          ...originalSubworkflow,
+          id: subworkflowId,
+        };
+
+        const newSubworkflowNodes = newNodeCreation(newSubworkflow.nodes ?? []);
+
+        const newSubworkflowEdges = newEdgeCreation(
+          newSubworkflow.edges ?? [],
+          newSubworkflow.nodes ?? [],
+          newSubworkflowNodes,
+        );
+
+        node.data.subworkflowId = subworkflowId;
+
+        handleWorkflowUpdate(
+          subworkflowId,
+          newSubworkflowNodes,
+          newSubworkflowEdges,
+        );
+
+        newSubworkflowNodes.forEach((subNode) => {
+          if (subNode.type === "subworkflow") {
+            processSubworkflow(subNode);
+          }
+        });
+
+        newWorkflows.push(newSubworkflow);
+      };
+
+      for (const n of nodes) {
+        if (n.type === "subworkflow") {
+          processSubworkflow(n);
+        }
+      }
+
+      return newWorkflows;
+    },
+    [newEdgeCreation, newNodeCreation, handleWorkflowUpdate],
   );
 
   const collectSubworkflows = useCallback(
-    (nodesToCheck: Node[], workflows: Workflow[]): Workflow[] => {
+    (
+      nodesToCheck: Node[],
+      workflows: Workflow[],
+      visitedWorkflows = new Set<string>(),
+    ): Workflow[] => {
       let collectedWorkflows: Workflow[] = [];
 
       for (const node of nodesToCheck) {
@@ -161,11 +182,16 @@ export default ({
           const subworkflow = workflows.find(
             (w) => w.id === node.data.subworkflowId,
           );
+          if (visitedWorkflows.has(node.data.subworkflowId)) continue;
           if (subworkflow) {
             collectedWorkflows.push(subworkflow);
             const subworkflowNodes = subworkflow.nodes as Node[];
             collectedWorkflows = collectedWorkflows.concat(
-              collectSubworkflows(subworkflowNodes, workflows),
+              collectSubworkflows(
+                subworkflowNodes,
+                workflows,
+                visitedWorkflows,
+              ),
             );
           }
         }
@@ -178,7 +204,7 @@ export default ({
 
   const handleCopy = useCallback(async () => {
     const selected: { nodes: Node[]; edges: Edge[] } | undefined = {
-      nodes: nodes.filter((n) => n.selected).map((n) => n),
+      nodes: nodes.filter((n) => n.selected),
       edges: edges.filter((e) => e.selected),
     };
     let newWorkflows: Workflow[] = [];
@@ -227,16 +253,17 @@ export default ({
       edges: [],
     };
 
-    const newNodes = newNodeCreation(pastedNodes, pastedWorkflows);
+    const newNodes = newNodeCreation(pastedNodes);
     const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
-
+    const newWorkflows = newWorkflowCreation(newNodes, pastedWorkflows);
     // Copy new nodes and edges. Since they are selected now,
     // if the user pastes again, the new nodes and edges will
     // be what is pasted with an appropriate offset position.
+
     copy({
       nodes: newNodes,
       edges: newEdges,
-      workflows: pastedWorkflows,
+      workflows: newWorkflows,
     });
 
     // deselect all previously selected nodes
@@ -260,8 +287,9 @@ export default ({
     handleNodesAdd,
     handleNodesChange,
     handleEdgesAdd,
-    newEdgeCreation,
     newNodeCreation,
+    newEdgeCreation,
+    newWorkflowCreation,
   ]);
 
   return {
