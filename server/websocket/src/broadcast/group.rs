@@ -211,8 +211,6 @@ impl BroadcastGroup {
         )
         .await?;
 
-        Self::load_from_storage(&store, &doc_name, &group.awareness_ref).await;
-
         let awareness_for_sub = group.awareness_ref.clone();
         let sender_for_sub = group.sender.clone();
         let doc_name_for_sub = doc_name.clone();
@@ -320,15 +318,6 @@ impl BroadcastGroup {
         }
 
         Ok(group)
-    }
-
-    async fn load_from_storage(store: &Arc<GcsStore>, doc_name: &str, awareness: &AwarenessRef) {
-        let awareness = awareness.write().await;
-        let mut txn = awareness.doc().transact_mut();
-
-        if let Err(e) = store.load_doc(doc_name, &mut txn).await {
-            error!("Error loading document '{}' from storage: {}", doc_name, e);
-        }
     }
 
     pub fn awareness(&self) -> &AwarenessRef {
