@@ -285,13 +285,14 @@ impl BroadcastGroup {
                                 &stream_key,
                                 &group_name_clone,
                                 &consumer_name_clone,
-                                50,
+                                256,
                             )
                             .await;
 
                         match result {
-                            Ok(updates) if !updates.is_empty() => {
-                                let mut decoded_updates = Vec::with_capacity(updates.len());
+                            Ok(updates) => {
+                                let update_count = updates.len();
+                                let mut decoded_updates = Vec::with_capacity(update_count);
 
                                 for update in &updates {
                                     if let Ok(decoded) = Update::decode_v1(update) {
@@ -313,6 +314,13 @@ impl BroadcastGroup {
                                         }
                                     }
                                 }
+
+                                if update_count == 0 {
+                                    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
+                                } else if update_count < 10 {
+                                    let sleep_ms = std::cmp::max(1, 6 - (update_count as u64 / 2));
+                                    tokio::time::sleep(tokio::time::Duration::from_millis(sleep_ms)).await;
+                                }
                             },
                             Err(e) => {
                                 error!("Error reading from Redis Stream: {}", e);
@@ -326,7 +334,6 @@ impl BroadcastGroup {
                                 // }
                                 tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
                             },
-                            _ => {}
                         }
 
                         tokio::task::yield_now().await;
