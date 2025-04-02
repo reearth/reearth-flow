@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { ProjectVariables, VarType } from "@flow/types";
+import type { ProjectVariable, VarType } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
-import { toGqlParameterType, toUserParameter } from "../convert";
+import { toGqlParameterType, toProjectVariable } from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum ParameterQueryKeys {
@@ -24,9 +24,9 @@ export const useQueries = () => {
 
         if (!data) return;
         const { parameters } = data;
-        const projectVars: ProjectVariables[] = parameters
+        const projectVars: ProjectVariable[] = parameters
           .filter(isDefined)
-          .map((p) => toUserParameter(p));
+          .map((p) => toProjectVariable(p));
 
         return projectVars;
       },
@@ -65,7 +65,7 @@ export const useQueries = () => {
       });
 
       if (data?.declareParameter) {
-        return toUserParameter(data?.declareParameter);
+        return toProjectVariable(data?.declareParameter);
       }
     },
     onSuccess: (parameterDocument) => {

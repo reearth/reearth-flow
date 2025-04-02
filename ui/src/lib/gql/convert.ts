@@ -24,7 +24,7 @@ import type {
   NodeStatus,
   ProjectSnapshotMeta,
   VarType,
-  UserParameter,
+  ProjectVariable,
 } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
@@ -146,9 +146,9 @@ export const toNodeStatus = (
   }
 };
 
-export const toUserParameter = (
+export const toProjectVariable = (
   parameter: ParameterFragment,
-): UserParameter => ({
+): ProjectVariable => ({
   id: parameter.id,
   name: parameter.name,
   type: toUserParamVarType(parameter.type),
