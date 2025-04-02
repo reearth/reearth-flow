@@ -38,10 +38,8 @@
 pub mod error;
 pub mod keys;
 
-use anyhow;
 use async_trait::async_trait;
 use error::Error;
-use hex;
 use keys::{
     doc_oid_name, key_doc, key_doc_end, key_doc_start, key_meta, key_meta_end, key_meta_start,
     key_oid, key_state_vector, key_update, Key, KEYSPACE_DOC, KEYSPACE_OID, OID, V1,
