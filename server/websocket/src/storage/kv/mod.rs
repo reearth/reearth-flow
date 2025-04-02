@@ -38,6 +38,7 @@
 pub mod error;
 pub mod keys;
 
+use crate::storage::redis::RedisStore;
 use anyhow;
 use async_trait::async_trait;
 use error::Error;
@@ -50,7 +51,6 @@ use std::convert::TryInto;
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, TransactionMut, Update};
-
 /// A trait to be implemented by the specific key-value store transaction equivalent in order to
 /// auto-implement features provided by [DocOps] trait.
 
@@ -119,10 +119,11 @@ where
         &self,
         name: &K,
         txn: &T,
+        redis: &RedisStore,
     ) -> Result<(), Error> {
         let doc_state = txn.encode_diff_v1(&StateVector::default());
         let state_vector = txn.state_vector().encode_v1();
-        self.insert_doc_raw_v1(name.as_ref(), &doc_state, &state_vector)
+        self.insert_doc_raw_v1(name.as_ref(), &doc_state, &state_vector, redis)
             .await
     }
 
@@ -138,8 +139,9 @@ where
         name: &[u8],
         doc_state_v1: &[u8],
         doc_sv_v1: &[u8],
+        redis: &RedisStore,
     ) -> Result<(), Error> {
-        let oid = get_or_create_oid(self, name).await?;
+        let oid = get_or_create_oid(self, name, redis).await?;
         insert_inner_v1(self, oid, doc_state_v1, doc_sv_v1).await?;
         Ok(())
     }
@@ -308,8 +310,9 @@ where
         &self,
         name: &K,
         update: &[u8],
+        redis: &RedisStore,
     ) -> Result<u32, Error> {
-        let oid = get_or_create_oid(self, name.as_ref()).await?;
+        let oid = get_or_create_oid(self, name.as_ref(), redis).await?;
         let last_clock = {
             let end = key_update(oid, u32::MAX)?;
             if let Some(e) = self.peek_back(&end).await? {
@@ -396,8 +399,9 @@ where
         name: &K1,
         meta_key: &K2,
         meta: &[u8],
+        redis: &RedisStore,
     ) -> Result<(), Error> {
-        let oid = get_or_create_oid(self, name.as_ref()).await?;
+        let oid = get_or_create_oid(self, name.as_ref(), redis).await?;
         let key = key_meta(oid, meta_key.as_ref())?;
         self.upsert(&key, meta).await?;
         Ok(())
@@ -496,24 +500,73 @@ where
     }
 }
 
-async fn get_or_create_oid<'a, DB: DocOps<'a>>(db: &DB, name: &[u8]) -> Result<OID, Error>
+async fn get_or_create_oid<'a, DB: DocOps<'a>>(
+    db: &DB,
+    name: &[u8],
+    redis: &RedisStore,
+) -> Result<OID, Error>
 where
     Error: From<<DB as KVStore>::Error>,
 {
     if let Some(oid) = get_oid(db, name).await? {
-        Ok(oid)
-    } else {
+        return Ok(oid);
+    }
+
+    let mut lock_value = None;
+    let max_retries = 5;
+    let retry_delay_ms = 200;
+
+    for attempt in 0..max_retries {
+        match redis.acquire_oid_lock(10).await {
+            Ok(value) => {
+                lock_value = Some(value);
+                break;
+            }
+            Err(e) => {
+                if attempt < max_retries - 1 {
+                    tracing::debug!(
+                        "Failed to acquire OID lock, retrying ({}/{}): {}",
+                        attempt + 1,
+                        max_retries,
+                        e
+                    );
+                    tokio::time::sleep(std::time::Duration::from_millis(retry_delay_ms)).await;
+
+                    if let Some(oid) = get_oid(db, name).await? {
+                        return Ok(oid);
+                    }
+                } else {
+                    return Err(anyhow::anyhow!("Failed to acquire OID lock: {}", e));
+                }
+            }
+        }
+    }
+
+    let lock_value = lock_value.ok_or_else(|| {
+        anyhow::anyhow!("Failed to acquire OID lock after {} attempts", max_retries)
+    })?;
+
+    if let Some(oid) = get_oid(db, name).await? {
+        let _ = redis.release_oid_lock(&lock_value).await;
+        return Ok(oid);
+    }
+
+    let new_oid = {
         let last_oid = if let Some(e) = db.peek_back([V1, KEYSPACE_DOC].as_ref()).await? {
             let value = e.value();
             OID::from_be_bytes(value.try_into().unwrap())
         } else {
             0
         };
-        let new_oid = last_oid + 1;
-        let key = key_oid(name)?;
-        db.upsert(&key, new_oid.to_be_bytes().as_ref()).await?;
-        Ok(new_oid)
-    }
+        last_oid + 1
+    };
+
+    let key = key_oid(name)?;
+    db.upsert(&key, new_oid.to_be_bytes().as_ref()).await?;
+
+    let _ = redis.release_oid_lock(&lock_value).await;
+
+    Ok(new_oid)
 }
 
 async fn load_doc<'doc, 'a, DB: DocOps<'a>>(

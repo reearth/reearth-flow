@@ -783,4 +783,48 @@ impl RedisStore {
 
         Ok(updates)
     }
+
+    pub async fn acquire_oid_lock(&self, ttl_seconds: u64) -> Result<String, anyhow::Error> {
+        let lock_key = "lock:oid_generation";
+        let lock_value = uuid::Uuid::new_v4().to_string();
+        let mut conn = self.pool.get().await?;
+
+        let result: Option<String> = redis::cmd("SET")
+            .arg(lock_key)
+            .arg(&lock_value)
+            .arg("NX")
+            .arg("EX")
+            .arg(ttl_seconds)
+            .query_async(&mut *conn)
+            .await?;
+
+        if result.is_some() {
+            Ok(lock_value)
+        } else {
+            Err(anyhow::anyhow!("Failed to acquire OID generation lock"))
+        }
+    }
+
+    pub async fn release_oid_lock(&self, lock_value: &str) -> Result<bool, anyhow::Error> {
+        let lock_key = "lock:oid_generation";
+        let mut conn = self.pool.get().await?;
+
+        let script = redis::Script::new(
+            r#"
+            if redis.call('get', KEYS[1]) == ARGV[1] then
+                return redis.call('del', KEYS[1])
+            else
+                return 0
+            end
+            "#,
+        );
+
+        let result: i32 = script
+            .key(lock_key)
+            .arg(lock_value)
+            .invoke_async(&mut *conn)
+            .await?;
+
+        Ok(result == 1)
+    }
 }
