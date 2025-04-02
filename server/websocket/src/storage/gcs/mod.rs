@@ -1,7 +1,7 @@
 pub use super::kv as store;
 use super::kv::keys::{KEYSPACE_DOC, SUB_UPDATE, V1};
 use super::kv::{get_oid, DocOps, KVEntry, KVStore};
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use futures::future::join_all;
 use google_cloud_storage::{
     client::{Client, ClientConfig},
