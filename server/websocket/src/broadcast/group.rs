@@ -38,10 +38,9 @@ pub struct BroadcastGroup {
     storage: Arc<GcsStore>,
     redis_store: Arc<RedisStore>,
     doc_name: String,
-    redis_consumer_name: Option<String>,
-    redis_group_name: Option<String>,
     shutdown_complete: AtomicBool,
     instance_id: String,
+    last_read_id: Arc<tokio::sync::Mutex<String>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -183,10 +182,9 @@ impl BroadcastGroup {
             storage,
             redis_store,
             doc_name,
-            redis_consumer_name: None,
-            redis_group_name: None,
             shutdown_complete: AtomicBool::new(false),
             instance_id,
+            last_read_id: Arc::new(tokio::sync::Mutex::new("0".to_string())),
         };
 
         Ok(result)
@@ -204,7 +202,7 @@ impl BroadcastGroup {
             return Self::new(awareness, buffer_capacity, redis_store, store, doc_name).await;
         }
 
-        let mut group = Self::new(
+        let group = Self::new(
             awareness,
             buffer_capacity,
             redis_store.clone(),
@@ -215,15 +213,11 @@ impl BroadcastGroup {
 
         Self::load_from_storage(&store, &doc_name, &group.awareness_ref).await;
 
-        let consumer_name = format!("instance-{}", rand::random::<u32>());
-        let consumer_name_clone = consumer_name.clone();
         let awareness_for_sub = group.awareness_ref.clone();
         let sender_for_sub = group.sender.clone();
         let doc_name_for_sub = doc_name.clone();
         let redis_store_for_sub = redis_store.clone();
-
-        let group_name = format!("yjs-group-{}", consumer_name);
-        let group_name_clone = group_name.clone();
+        let last_read_id_for_sub = group.last_read_id.clone();
 
         let (heartbeat_shutdown_tx, mut heartbeat_shutdown_rx) = tokio::sync::mpsc::channel(1);
         let instance_id = group.instance_id.clone();
@@ -256,14 +250,6 @@ impl BroadcastGroup {
         let (redis_shutdown_tx, mut redis_shutdown_rx) = tokio::sync::mpsc::channel(1);
 
         let redis_subscriber_task = tokio::spawn(async move {
-            if let Err(e) = redis_store_for_sub
-                .create_consumer_group(&doc_name_for_sub, &group_name_clone)
-                .await
-            {
-                error!("Failed to create Redis consumer group: {}", e);
-                return;
-            }
-
             let stream_key = format!("yjs:stream:{}", doc_name_for_sub);
 
             let mut conn = if let Ok(conn) = redis_store_for_sub.get_pool().get().await {
@@ -283,9 +269,8 @@ impl BroadcastGroup {
                             .read_and_ack(
                                 &mut conn,
                                 &stream_key,
-                                &group_name_clone,
-                                &consumer_name_clone,
                                 256,
+                                &last_read_id_for_sub,
                             )
                             .await;
 
@@ -315,23 +300,9 @@ impl BroadcastGroup {
                                     }
                                 }
 
-                                if update_count == 0 {
-                                    tokio::time::sleep(tokio::time::Duration::from_millis(10)).await;
-                                } else if update_count < 10 {
-                                    let sleep_ms = std::cmp::max(1, 6 - (update_count as u64 / 2));
-                                    tokio::time::sleep(tokio::time::Duration::from_millis(sleep_ms)).await;
-                                }
                             },
                             Err(e) => {
                                 error!("Error reading from Redis Stream: {}", e);
-                                // if e.to_string().contains("NOGROUP") {
-                                //     if let Err(create_err) = redis_store_for_sub
-                                //         .create_consumer_group(&doc_name_for_sub, &group_name_clone)
-                                //         .await
-                                //     {
-                                //         error!("Failed to recreate Redis consumer group: {}", create_err);
-                                //     }
-                                // }
                                 tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
                             },
                         }
@@ -347,9 +318,6 @@ impl BroadcastGroup {
             let mut background_tasks = group.background_tasks.lock().await;
             background_tasks.set_redis_subscriber(redis_subscriber_task, redis_shutdown_tx);
         }
-
-        group.redis_consumer_name = Some(consumer_name);
-        group.redis_group_name = Some(group_name);
 
         Ok(group)
     }
