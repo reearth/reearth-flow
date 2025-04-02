@@ -120,36 +120,44 @@ export default ({
     (nodes: Node[], pastedWorkflows: Workflow[]) => {
       const newWorkflows: Workflow[] = [];
 
-      const processSubworkflow = (node: Node) => {
+      const processSubworkflow = (node: Node): Node => {
         const subworkflowId = generateUUID();
         const originalSubworkflow = pastedWorkflows.find(
           (w) => w.id === node.data.subworkflowId,
         );
 
-        if (!originalSubworkflow) return;
+        if (!originalSubworkflow) return node;
+
+        const newSubWorkflowNode = {
+          ...node,
+          data: {
+            ...node.data,
+            subworkflowId,
+          },
+        };
+
+        const updatedSubworkflowNodes = originalSubworkflow.nodes?.map(
+          (subNode) =>
+            subNode.type === "subworkflow"
+              ? processSubworkflow(subNode)
+              : subNode,
+        );
 
         const newSubworkflow = {
           ...originalSubworkflow,
           id: subworkflowId,
+          nodes: updatedSubworkflowNodes,
         };
 
-        node.data.subworkflowId = subworkflowId;
-        newSubworkflow.nodes?.forEach((subNode) => {
-          if (subNode.type === "subworkflow") {
-            processSubworkflow(subNode);
-          }
-        });
-
         newWorkflows.push(newSubworkflow);
+        return newSubWorkflowNode;
       };
 
-      for (const n of nodes) {
-        if (n.type === "subworkflow") {
-          processSubworkflow(n);
-        }
-      }
+      const processedNewNodes = nodes.map((n) =>
+        n.type === "subworkflow" ? processSubworkflow(n) : n,
+      );
 
-      return newWorkflows;
+      return { newWorkflows, processedNewNodes };
     },
     [],
   );
@@ -228,10 +236,10 @@ export default ({
 
     const newNodes = newNodeCreation(pastedNodes);
     const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
-    const newWorkflows = newWorkflowCreation(newNodes, pastedWorkflows);
-    // Copy new nodes and edges. Since they are selected now,
-    // if the user pastes again, the new nodes and edges will
-    // be what is pasted with an appropriate offset position.
+    const { newWorkflows, processedNewNodes } = newWorkflowCreation(
+      newNodes,
+      pastedWorkflows,
+    );
 
     // deselect all previously selected nodes
     const nodeChanges: NodeChange[] = nodes.map((n) => ({
@@ -242,7 +250,7 @@ export default ({
 
     handleNodesChange(nodeChanges);
 
-    handleNodesAdd([...newNodes]);
+    handleNodesAdd([...processedNewNodes]);
 
     handleEdgesAdd(newEdges);
 
