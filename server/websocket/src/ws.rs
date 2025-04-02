@@ -9,14 +9,14 @@ use bytes::Bytes;
 #[cfg(feature = "auth")]
 use axum::extract::Query;
 
+use crate::AppState;
 use futures_util::stream::{SplitSink, SplitStream};
 use futures_util::{Stream, StreamExt};
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
+use tracing::{debug, error};
 use yrs::sync::Error;
-
-use crate::AppState;
 
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
@@ -131,17 +131,17 @@ pub async fn ws_handler(
         let authorized = state.auth.verify_token(&query.token).await;
         match authorized {
             Ok(true) => {
-                tracing::debug!("Token verified successfully");
+                debug!("Token verified successfully");
             }
             Ok(false) => {
-                tracing::error!("Token verification failed");
+                error!("Token verification failed");
                 return Response::builder()
                     .status(401)
                     .body(axum::body::Body::empty())
                     .unwrap();
             }
             Err(e) => {
-                tracing::error!("Token verification error: {}", e);
+                error!("Token verification error: {}", e);
                 return Response::builder()
                     .status(500)
                     .body(axum::body::Body::empty())
@@ -153,7 +153,7 @@ pub async fn ws_handler(
     let bcast = match state.pool.get_group(&doc_id).await {
         Ok(group) => group,
         Err(e) => {
-            tracing::error!("Failed to get or create group for {}: {}", doc_id, e);
+            error!("Failed to get or create group for {}: {}", doc_id, e);
             return Response::builder()
                 .status(500)
                 .body(axum::body::Body::empty())
@@ -182,11 +182,11 @@ async fn handle_socket(
 
     let result = conn.await;
     if let Err(e) = result {
-        tracing::error!("WebSocket connection error: {}", e);
+        error!("WebSocket connection error: {}", e);
     }
 
     let _ = bcast.decrement_connections().await;
-    tracing::debug!("Connection decreased for document '{}'", doc_id);
+    debug!("Connection decreased for document '{}'", doc_id);
 }
 
 fn normalize_doc_id(doc_id: &str) -> String {
