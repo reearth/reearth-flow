@@ -133,23 +133,8 @@ export default ({
           id: subworkflowId,
         };
 
-        const newSubworkflowNodes = newNodeCreation(newSubworkflow.nodes ?? []);
-
-        const newSubworkflowEdges = newEdgeCreation(
-          newSubworkflow.edges ?? [],
-          newSubworkflow.nodes ?? [],
-          newSubworkflowNodes,
-        );
-
         node.data.subworkflowId = subworkflowId;
-
-        handleWorkflowUpdate(
-          subworkflowId,
-          newSubworkflowNodes,
-          newSubworkflowEdges,
-        );
-
-        newSubworkflowNodes.forEach((subNode) => {
+        newSubworkflow.nodes?.forEach((subNode) => {
           if (subNode.type === "subworkflow") {
             processSubworkflow(subNode);
           }
@@ -166,7 +151,7 @@ export default ({
 
       return newWorkflows;
     },
-    [newEdgeCreation, newNodeCreation, handleWorkflowUpdate],
+    [],
   );
 
   const collectSubworkflows = useCallback(
@@ -248,12 +233,6 @@ export default ({
     // if the user pastes again, the new nodes and edges will
     // be what is pasted with an appropriate offset position.
 
-    copy({
-      nodes: newNodes,
-      edges: newEdges,
-      workflows: newWorkflows,
-    });
-
     // deselect all previously selected nodes
     const nodeChanges: NodeChange[] = nodes.map((n) => ({
       id: n.id,
@@ -267,6 +246,16 @@ export default ({
 
     handleEdgesAdd(newEdges);
 
+    newWorkflows.forEach((w) => {
+      handleWorkflowUpdate(w.id, w.nodes, w.edges);
+    });
+
+    copy({
+      nodes: newNodes,
+      edges: newEdges,
+      workflows: newWorkflows,
+    });
+
     return pastedNodes;
   }, [
     nodes,
@@ -278,6 +267,7 @@ export default ({
     newNodeCreation,
     newEdgeCreation,
     newWorkflowCreation,
+    handleWorkflowUpdate,
   ]);
 
   return {
