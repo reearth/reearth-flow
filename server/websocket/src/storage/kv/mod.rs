@@ -553,18 +553,49 @@ where
         return Ok(oid);
     }
 
-    let new_oid = {
-        let last_oid = if let Some(e) = db.peek_back([V1, KEYSPACE_DOC].as_ref()).await? {
-            let value = e.value();
-            OID::from_be_bytes(value.try_into().unwrap())
-        } else {
-            0
-        };
-        last_oid + 1
+    let last_oid_key = b"system:last_oid".to_vec();
+    let new_oid = match db.get(&last_oid_key).await? {
+        Some(last_oid_data) => {
+            if last_oid_data.as_ref().len() >= 4 {
+                let bytes: [u8; 4] = last_oid_data.as_ref()[..4].try_into().unwrap();
+                let last_oid = OID::from_be_bytes(bytes);
+                last_oid + 1
+            } else {
+                let last_oid = if let Some(e) = db.peek_back([V1, KEYSPACE_DOC].as_ref()).await? {
+                    let value = e.value();
+                    OID::from_be_bytes(value.try_into().unwrap())
+                } else {
+                    0
+                };
+                last_oid + 1
+            }
+        }
+        None => {
+            let last_oid = if let Some(e) = db.peek_back([V1, KEYSPACE_DOC].as_ref()).await? {
+                let value = e.value();
+                OID::from_be_bytes(value.try_into().unwrap())
+            } else {
+                0
+            };
+            last_oid + 1
+        }
     };
 
+    tracing::info!(
+        "Creating new OID {} for name: {}",
+        new_oid,
+        hex::encode(name)
+    );
+
     let key = key_oid(name)?;
-    db.upsert(&key, new_oid.to_be_bytes().as_ref()).await?;
+    let key_ref = key.as_ref();
+    let new_oid_bytes = new_oid.to_be_bytes();
+    let batch = [
+        (key_ref, &new_oid_bytes[..]),
+        (last_oid_key.as_ref(), &new_oid_bytes[..]),
+    ];
+    db.batch_upsert(&batch).await?;
+
     tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
 
     let _ = redis.release_oid_lock(&lock_value).await;
