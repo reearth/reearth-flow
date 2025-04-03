@@ -485,6 +485,35 @@ impl RedisStore {
         Ok(())
     }
 
+    pub async fn create_empty_stream_with_ttl(
+        &self,
+        doc_id: &str,
+        ttl_seconds: u64,
+    ) -> Result<(), anyhow::Error> {
+        let stream_key = format!("yjs:stream:{}", doc_id);
+        let mut conn = self.pool.get().await?;
+
+        let script = redis::Script::new(
+            r#"
+            if redis.call('EXISTS', KEYS[1]) == 0 then
+                redis.call('XADD', KEYS[1], '*', 'init', 'true')
+                redis.call('EXPIRE', KEYS[1], ARGV[1])
+                return 1
+            else
+                return redis.call('EXPIRE', KEYS[1], ARGV[1])
+            end
+            "#,
+        );
+
+        let _: () = script
+            .key(&stream_key)
+            .arg(ttl_seconds)
+            .invoke_async(&mut *conn)
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn check_stream_exists(&self, doc_id: &str) -> Result<bool, anyhow::Error> {
         let stream_key = format!("yjs:stream:{}", doc_id);
 
