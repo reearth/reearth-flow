@@ -212,7 +212,7 @@ impl BroadcastGroup {
         .await?;
 
         redis_store
-            .create_empty_stream_with_ttl(&doc_name, 7200)
+            .create_empty_stream_with_ttl(&doc_name, 86400)
             .await?;
 
         let awareness_for_sub = group.awareness_ref.clone();
