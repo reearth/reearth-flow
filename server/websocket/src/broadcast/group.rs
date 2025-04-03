@@ -608,7 +608,11 @@ impl BroadcastGroup {
                     if !(update_bytes.is_empty()
                         || update_bytes.len() == 2 && update_bytes[0] == 0 && update_bytes[1] == 0)
                     {
-                        let update_future = self.storage.push_update(&self.doc_name, &update_bytes);
+                        let update_future = self.storage.push_update(
+                            &self.doc_name,
+                            &update_bytes,
+                            &self.redis_store,
+                        );
                         let flush_future =
                             self.storage.flush_doc_direct(&self.doc_name, awareness_doc);
 
