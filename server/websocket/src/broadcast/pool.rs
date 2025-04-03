@@ -3,10 +3,9 @@ use crate::storage::gcs::GcsStore;
 use crate::storage::kv::DocOps;
 use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
-use anyhow::{Error, Result};
+use anyhow::Result;
 use bytes;
 use dashmap::DashMap;
-use deadpool::managed::{self, Manager, Metrics, RecycleResult};
 use rand;
 use std::sync::Arc;
 use std::time::Duration;
@@ -15,7 +14,7 @@ use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
-use super::types::{BroadcastConfig, BroadcastGroupContext};
+use super::types::BroadcastConfig;
 
 const DEFAULT_DOC_ID: &str = "01jpjfpw0qtw17kbrcdbgefakg";
 
@@ -137,49 +136,6 @@ impl BroadcastGroupManager {
                 let new_group = entry.insert(Arc::clone(&group)).clone();
                 Ok(new_group)
             }
-        }
-    }
-}
-
-impl Manager for BroadcastGroupManager {
-    type Type = BroadcastGroupContext;
-    type Error = Error;
-
-    async fn create(&self) -> Result<Self::Type, Self::Error> {
-        let group = self.create_group(DEFAULT_DOC_ID).await?;
-
-        Ok(BroadcastGroupContext { group })
-    }
-
-    fn recycle(
-        &self,
-        obj: &mut Self::Type,
-        _metrics: &Metrics,
-    ) -> impl std::future::Future<Output = RecycleResult<Self::Error>> + Send {
-        let doc_to_id_map = self.doc_to_id_map.clone();
-        let group = obj.group.clone();
-
-        async move {
-            if group.connection_count() == 0 {
-                let doc_id = group.get_doc_name();
-                info!("Recycling empty broadcast group for document '{}'", doc_id);
-
-                doc_to_id_map.remove(&doc_id);
-
-                if let Err(e) = group.shutdown().await {
-                    warn!("Error shutting down empty group for '{}': {}", doc_id, e);
-                    return Err(managed::RecycleError::Message(
-                        format!("Failed to shutdown: {}", e).into(),
-                    ));
-                }
-
-                return Err(managed::RecycleError::Message(
-                    "Group has no connections".into(),
-                ));
-            }
-            let doc_id = group.get_doc_name();
-            info!("Recycling broadcast group for document '{}'", doc_id);
-            Ok(())
         }
     }
 }
