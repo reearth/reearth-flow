@@ -13,6 +13,8 @@ type RedisStreamMessages = Vec<RedisStreamMessage>;
 type RedisStreamResult = (String, RedisStreamMessages);
 type RedisStreamResults = Vec<RedisStreamResult>;
 
+const OID_LOCK_KEY: &str = "lock:oid_generation";
+
 #[derive(Debug, Clone)]
 pub struct RedisConfig {
     pub url: String,
@@ -533,28 +535,35 @@ impl RedisStore {
     }
 
     pub async fn acquire_oid_lock(&self, ttl_seconds: u64) -> Result<String, anyhow::Error> {
-        let lock_key = "lock:oid_generation";
         let lock_value = uuid::Uuid::new_v4().to_string();
         let mut conn = self.pool.get().await?;
 
-        let result: Option<String> = redis::cmd("SET")
-            .arg(lock_key)
+        let script = redis::Script::new(
+            r#"
+            local result = redis.call('SET', KEYS[1], ARGV[1], 'NX', 'EX', ARGV[2])
+            if result then
+                return ARGV[1]
+            else
+                return false
+            end
+            "#,
+        );
+
+        let result: Option<String> = script
+            .key(OID_LOCK_KEY)
             .arg(&lock_value)
-            .arg("NX")
-            .arg("EX")
             .arg(ttl_seconds)
-            .query_async(&mut *conn)
+            .invoke_async(&mut *conn)
             .await?;
 
-        if result.is_some() {
-            Ok(lock_value)
+        if let Some(val) = result {
+            Ok(val)
         } else {
             Err(anyhow::anyhow!("Failed to acquire OID generation lock"))
         }
     }
 
     pub async fn release_oid_lock(&self, lock_value: &str) -> Result<bool, anyhow::Error> {
-        let lock_key = "lock:oid_generation";
         let mut conn = self.pool.get().await?;
 
         let script = redis::Script::new(
@@ -568,7 +577,7 @@ impl RedisStore {
         );
 
         let result: i32 = script
-            .key(lock_key)
+            .key(OID_LOCK_KEY)
             .arg(lock_value)
             .invoke_async(&mut *conn)
             .await?;
