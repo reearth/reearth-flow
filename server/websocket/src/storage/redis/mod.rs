@@ -3,6 +3,7 @@ use deadpool::Runtime;
 use deadpool_redis::{Config, Connection, Pool};
 use redis::AsyncCommands;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use tracing::debug;
 
 type RedisField = (String, Bytes);
@@ -65,214 +66,6 @@ impl RedisStore {
             .await?;
 
         Ok(())
-    }
-
-    pub async fn create_consumer_group(
-        &self,
-        doc_id: &str,
-        group_name: &str,
-    ) -> Result<(), anyhow::Error> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        let mut conn = self.pool.get().await?;
-        let script = redis::Script::new(
-            r#"
-            local stream_key = KEYS[1]
-            local group_name = ARGV[1]
-            local ttl = ARGV[2]
-            
-            local ok, err = pcall(function()
-                redis.call('XGROUP', 'CREATE', stream_key, group_name, '0', 'MKSTREAM')
-            end)
-            
-            if ok or (not ok and string.find(err, "BUSYGROUP")) then
-                redis.call('EXPIRE', stream_key, ttl)
-                return "OK"
-            else
-                return {err=err}
-            end
-            "#,
-        );
-
-        let _: () = script
-            .key(&stream_key)
-            .arg(group_name)
-            .arg(self.config.ttl)
-            .invoke_async(&mut *conn)
-            .await?;
-        Ok(())
-    }
-
-    pub async fn read_stream_messages(
-        &self,
-        doc_id: &str,
-        group_name: &str,
-        consumer_name: &str,
-        count: usize,
-        block_ms: usize,
-    ) -> Result<Vec<(String, Bytes)>, anyhow::Error> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        let mut conn = self.pool.get().await?;
-        let result: RedisStreamResults = redis::cmd("XREADGROUP")
-            .arg("GROUP")
-            .arg(group_name)
-            .arg(consumer_name)
-            .arg("COUNT")
-            .arg(count)
-            .arg("BLOCK")
-            .arg(block_ms)
-            .arg("STREAMS")
-            .arg(&stream_key)
-            .arg(">")
-            .query_async(&mut *conn)
-            .await?;
-
-        let mut updates = Vec::new();
-        if !result.is_empty() && !result[0].1.is_empty() {
-            for (msg_id, fields) in &result[0].1 {
-                for (field_name, field_value) in fields {
-                    if field_name == "update" {
-                        updates.push((msg_id.clone(), field_value.clone()));
-                    }
-                }
-            }
-        }
-
-        Ok(updates)
-    }
-
-    pub async fn batch_ack_messages(
-        &self,
-        doc_id: &str,
-        group_name: &str,
-        message_ids: &[String],
-    ) -> Result<(), anyhow::Error> {
-        if message_ids.is_empty() {
-            return Ok(());
-        }
-
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        let mut conn = self.pool.get().await?;
-        let mut pipe = redis::pipe();
-
-        let mut cmd = redis::cmd("XACK");
-        cmd.arg(&stream_key).arg(group_name);
-
-        for id in message_ids {
-            cmd.arg(id);
-        }
-
-        pipe.add_command(cmd);
-
-        let _: () = pipe.query_async(&mut *conn).await?;
-        Ok(())
-    }
-
-    pub async fn read_batch_messages(
-        &self,
-        doc_id: &str,
-        group_name: &str,
-        consumer_name: &str,
-        count: usize,
-        block_ms: usize,
-    ) -> Result<Vec<(String, Bytes)>, anyhow::Error> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        let mut conn = self.pool.get().await?;
-        let result: RedisStreamResults = redis::cmd("XREADGROUP")
-            .arg("GROUP")
-            .arg(group_name)
-            .arg(consumer_name)
-            .arg("COUNT")
-            .arg(count)
-            .arg("BLOCK")
-            .arg(block_ms)
-            .arg("STREAMS")
-            .arg(&stream_key)
-            .arg(">")
-            .query_async(&mut *conn)
-            .await?;
-
-        let mut updates = Vec::new();
-        let mut message_ids = Vec::new();
-
-        if !result.is_empty() && !result[0].1.is_empty() {
-            for (msg_id, fields) in &result[0].1 {
-                message_ids.push(msg_id.clone());
-
-                for (field_name, field_value) in fields {
-                    if field_name == "update" {
-                        updates.push((msg_id.clone(), field_value.clone()));
-                    }
-                }
-            }
-
-            if !message_ids.is_empty() {
-                let mut pipe = redis::pipe();
-                let mut cmd = redis::cmd("XACK");
-                cmd.arg(&stream_key).arg(group_name);
-
-                for id in &message_ids {
-                    cmd.arg(id);
-                }
-
-                pipe.add_command(cmd);
-                let _: () = pipe.query_async(&mut *conn).await?;
-            }
-        }
-
-        Ok(updates)
-    }
-
-    pub async fn ack_message(
-        &self,
-        doc_id: &str,
-        group_name: &str,
-        message_id: &str,
-    ) -> Result<(), anyhow::Error> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        let mut conn = self.pool.get().await?;
-        let _: () = redis::cmd("XACK")
-            .arg(&stream_key)
-            .arg(group_name)
-            .arg(message_id)
-            .query_async(&mut *conn)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn read_pending_messages(
-        &self,
-        doc_id: &str,
-        group_name: &str,
-        consumer_name: &str,
-        count: usize,
-    ) -> Result<Vec<(String, Bytes)>, anyhow::Error> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        let mut conn = self.pool.get().await?;
-        let result: RedisStreamResults = redis::cmd("XREADGROUP")
-            .arg("GROUP")
-            .arg(group_name)
-            .arg(consumer_name)
-            .arg("COUNT")
-            .arg(count)
-            .arg("STREAMS")
-            .arg(&stream_key)
-            .arg("0")
-            .query_async(&mut *conn)
-            .await?;
-
-        let mut updates = Vec::new();
-        if !result.is_empty() && !result[0].1.is_empty() {
-            for (msg_id, fields) in &result[0].1 {
-                for (field_name, field_value) in fields {
-                    if field_name == "update" {
-                        updates.push((msg_id.clone(), field_value.clone()));
-                    }
-                }
-            }
-        }
-
-        Ok(updates)
     }
 
     pub async fn acquire_lock(
@@ -414,23 +207,24 @@ impl RedisStore {
         &self,
         conn: &mut Connection,
         stream_key: &str,
-        group_name: &str,
-        consumer_name: &str,
         count: usize,
+        last_read_id: &Arc<Mutex<String>>,
     ) -> Result<Vec<Bytes>, anyhow::Error> {
         let block_ms = 1600;
 
-        let result: RedisStreamResults = redis::cmd("XREADGROUP")
-            .arg("GROUP")
-            .arg(group_name)
-            .arg(consumer_name)
+        let read_id = {
+            let last_id = last_read_id.lock().await;
+            last_id.clone()
+        };
+
+        let result: RedisStreamResults = redis::cmd("XREAD")
             .arg("COUNT")
             .arg(count)
             .arg("BLOCK")
             .arg(block_ms)
             .arg("STREAMS")
             .arg(stream_key)
-            .arg(">")
+            .arg(read_id)
             .query_async(&mut *conn)
             .await?;
 
@@ -439,38 +233,20 @@ impl RedisStore {
         }
 
         let mut updates = Vec::with_capacity(result[0].1.len());
-        let mut message_ids = Vec::with_capacity(result[0].1.len());
+        let mut last_msg_id = String::new();
 
         for (msg_id, fields) in result[0].1.iter() {
-            message_ids.push(msg_id.clone());
             if let Some((_, update)) = fields.iter().find(|(name, _)| name == "update") {
                 updates.push(update.clone());
             }
+            last_msg_id = msg_id.clone();
         }
 
-        if !message_ids.is_empty() {
-            let lua_script = r#"
-            local key = KEYS[1]
-            local group = ARGV[1]
-            local result = 0
-            for i=2, #ARGV do
-                result = result + redis.call('XACK', key, group, ARGV[i])
-            end
-            return result
-            "#;
-
-            let script = redis::Script::new(lua_script);
-
-            let mut cmd = script.prepare_invoke();
-            cmd.key(stream_key);
-            cmd.arg(group_name);
-
-            for msg_id in &message_ids {
-                cmd.arg(msg_id);
-            }
-
-            let _: i64 = cmd.invoke_async(&mut *conn).await?;
+        if !last_msg_id.is_empty() {
+            let mut last_id = last_read_id.lock().await;
+            *last_id = last_msg_id;
         }
+
         Ok(updates)
     }
 
@@ -483,34 +259,6 @@ impl RedisStore {
             .await?;
 
         Ok(())
-    }
-
-    pub async fn delete_consumer(
-        &self,
-        doc_id: &str,
-        group_name: &str,
-        consumer_name: &str,
-    ) -> Result<i64, anyhow::Error> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        let mut conn = self.pool.get().await?;
-        let exists: bool = redis::cmd("EXISTS")
-            .arg(&stream_key)
-            .query_async(&mut *conn)
-            .await?;
-
-        if !exists {
-            return Ok(0);
-        }
-
-        let result: i64 = redis::cmd("XGROUP")
-            .arg("DELCONSUMER")
-            .arg(&stream_key)
-            .arg(group_name)
-            .arg(consumer_name)
-            .query_async(&mut *conn)
-            .await?;
-
-        Ok(result)
     }
 
     pub async fn acquire_doc_lock(
