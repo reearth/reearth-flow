@@ -1,4 +1,5 @@
 import {
+  ChalkboardTeacher,
   Database,
   Disc,
   Graph,
@@ -18,9 +19,9 @@ import { useT } from "@flow/lib/i18n";
 import type { Node, NodeChange } from "@flow/types";
 import { getNodeIcon } from "@flow/utils/getNodeIcon";
 
-import { ActionsList } from "./components";
+import { ActionsList, ProjectVariables } from "./components";
 
-type Tab = "navigator" | "actions-list" | "resources";
+type Tab = "navigator" | "actions-list" | "resources" | "project-vars";
 
 type Props = {
   nodes: Node[];
@@ -129,6 +130,18 @@ const LeftPanel: React.FC<Props> = ({
         ),
     },
     {
+      id: "project-vars",
+      title: t("Project Variables"),
+      icon: <ChalkboardTeacher className="size-5" weight="thin" />,
+      component: <ProjectVariables />,
+    },
+    // {
+    //   id: "resources",
+    //   title: t("Resources"),
+    //   icon: <HardDrive className="size-5" weight="thin" />,
+    //   component: <Resources />,
+    // },
+    {
       id: "actions-list",
       title: t("Actions list"),
       icon: <Lightning className="size-5" weight="thin" />,
@@ -179,19 +192,20 @@ const LeftPanel: React.FC<Props> = ({
   return (
     <>
       <div
-        className="absolute left-12 top-0 z-10 flex h-[calc(100vh-30px)] w-[300px] flex-1 flex-col gap-3 overflow-auto border-r bg-background transition-all"
+        className="absolute left-[55px] top-[8px] bottom-[35px] z-10 flex w-[350px] flex-1 flex-col gap-3 overflow-auto border rounded-md bg-secondary transition-all"
         style={{
-          transform: `translateX(${isOpen ? "8px" : "-100%"})`,
+          transform: `translateX(${isOpen ? "8px" : "-120%"})`,
           transitionDuration: isOpen ? "500ms" : "300ms",
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
-        <div className="flex flex-col gap-2 border-b px-4 py-2">
+        <div className="flex items-center gap-2 px-2 py-1">
+          {tabs?.find((tc) => tc.id === selectedTab)?.icon}
           <p className="text-lg dark:font-thin">
             {tabs?.find((tc) => tc.id === selectedTab)?.title}
           </p>
         </div>
-        <div className="flex flex-col gap-2 overflow-auto">
+        <div className="flex flex-col gap-2 overflow-auto bg-card rounded mx-2">
           {tabs?.find((tc) => tc.id === selectedTab)?.component}
         </div>
       </div>

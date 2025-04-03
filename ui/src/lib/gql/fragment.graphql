@@ -11,6 +11,20 @@ fragment Project on Project {
   }
 }
 
+fragment Parameter on Parameter {
+  id
+  projectId
+  index
+  name
+  value
+  type
+  required
+  createdAt
+  updatedAt
+  # defaultValue
+  # description
+}
+
 fragment Deployment on Deployment {
   id
   projectId

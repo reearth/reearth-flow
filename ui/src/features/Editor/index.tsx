@@ -8,7 +8,7 @@ import {
   BottomBar,
   LeftPanel,
   OverlayUI,
-  ParamsPanel,
+  ParamsDialog,
   RightPanel,
 } from "./components";
 import { EditorContextType, EditorProvider } from "./editorContext";
@@ -145,7 +145,7 @@ export default function Editor({
             project={currentProject}
             yDoc={yDoc}
           />
-          <ParamsPanel
+          <ParamsDialog
             selected={locallyLockedNode}
             onDataSubmit={handleNodeDataUpdate}
           />
