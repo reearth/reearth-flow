@@ -22,7 +22,7 @@ auth = []
 
 [dependencies]
 yrs = { version = "0.23.0", features = ["sync"] }
-axum = { version = "0.8.1", features = ["ws"] }
+axum = { version = "0.8.3", features = ["ws"] }
 futures-util = "0.3"
 tokio = { version = "1.44", features = ["full"] }
 serde = { version = "1.0.219", features = ["derive", "rc"] }
