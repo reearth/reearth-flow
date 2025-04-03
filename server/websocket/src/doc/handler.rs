@@ -6,7 +6,7 @@ use axum::{
 };
 use chrono::Utc;
 use std::sync::Arc;
-use tracing::{error, info};
+use tracing::error;
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
@@ -147,11 +147,6 @@ impl DocumentHandler {
         State(state): State<Arc<AppState>>,
         Json(request): Json<RollbackRequest>,
     ) -> Response {
-        info!(
-            "Rolling back document {} to version {}",
-            doc_id, request.version
-        );
-
         let storage = state.pool.get_store();
         let version = request.version;
 

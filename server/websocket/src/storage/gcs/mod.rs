@@ -2,6 +2,7 @@ pub use super::kv as store;
 use super::kv::keys::{KEYSPACE_DOC, SUB_UPDATE, V1};
 use super::kv::{get_oid, DocOps, KVEntry, KVStore};
 use super::redis::RedisStore;
+use anyhow::Result;
 use futures::future::join_all;
 use google_cloud_storage::{
     client::{Client, ClientConfig},
@@ -77,7 +78,7 @@ impl GcsStore {
         Ok(Self { client, bucket })
     }
 
-    pub async fn new_with_config(config: GcsConfig) -> Result<Self, anyhow::Error> {
+    pub async fn new_with_config(config: GcsConfig) -> Result<Self> {
         let client_config = if let Some(endpoint) = &config.endpoint {
             let mut client_config = ClientConfig::default().anonymous();
             client_config.storage_endpoint = endpoint.clone();
@@ -108,7 +109,7 @@ impl GcsStore {
         DocOps::push_update(self, doc_id, update, redis).await
     }
 
-    pub async fn get_updates(&self, doc_id: &str) -> Result<Vec<UpdateInfo>, anyhow::Error> {
+    pub async fn get_updates(&self, doc_id: &str) -> Result<Vec<UpdateInfo>> {
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => return Ok(Vec::new()),
@@ -175,7 +176,7 @@ impl GcsStore {
         &self,
         doc_id: &str,
         version: u32,
-    ) -> Result<Option<UpdateInfo>, anyhow::Error> {
+    ) -> Result<Option<UpdateInfo>> {
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => return Ok(None),
@@ -237,7 +238,7 @@ impl GcsStore {
         Ok(None)
     }
 
-    pub async fn rollback_to(&self, doc_id: &str, target_clock: u32) -> anyhow::Result<Doc> {
+    pub async fn rollback_to(&self, doc_id: &str, target_clock: u32) -> Result<Doc> {
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => anyhow::bail!("Document not found"),
@@ -343,7 +344,7 @@ impl GcsStore {
     pub async fn get_latest_update_metadata(
         &self,
         doc_id: &str,
-    ) -> Result<Option<(u32, OffsetDateTime)>, anyhow::Error> {
+    ) -> Result<Option<(u32, OffsetDateTime)>> {
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => return Ok(None),
@@ -394,10 +395,7 @@ impl GcsStore {
         Ok(Some((latest_clock, latest_timestamp)))
     }
 
-    pub async fn get_updates_metadata(
-        &self,
-        doc_id: &str,
-    ) -> Result<Vec<(u32, OffsetDateTime)>, anyhow::Error> {
+    pub async fn get_updates_metadata(&self, doc_id: &str) -> Result<Vec<(u32, OffsetDateTime)>> {
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => return Ok(Vec::new()),
