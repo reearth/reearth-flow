@@ -143,29 +143,26 @@ impl GcsStore {
                 ..Default::default()
             };
 
-            if let Ok(data) = self
+            let data = self
                 .client
                 .download_object(&request, &Range::default())
-                .await
-            {
-                if let Ok(update) = Update::decode_v1(&data) {
-                    if let Ok(key_bytes) = hex::decode(&obj.name) {
-                        if key_bytes.len() >= 12 {
-                            let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
-                            let clock = u32::from_be_bytes(clock_bytes);
+                .await?;
 
-                            let timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
+            if let Ok(update) = Update::decode_v1(&data) {
+                if let Ok(key_bytes) = hex::decode(&obj.name) {
+                    if key_bytes.len() >= 12 {
+                        let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+                        let clock = u32::from_be_bytes(clock_bytes);
 
-                            updates.push(UpdateInfo {
-                                clock,
-                                timestamp,
-                                update,
-                            });
-                        }
+                        let timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
+
+                        updates.push(UpdateInfo {
+                            clock,
+                            timestamp,
+                            update,
+                        });
                     }
                 }
-            } else {
-                error!("Failed to download update from {}", obj.name);
             }
         }
 
@@ -231,8 +228,6 @@ impl GcsStore {
                                     update,
                                 }));
                             }
-                        } else {
-                            error!("Failed to download update from {}", obj.name);
                         }
                     }
                 }
@@ -278,12 +273,6 @@ impl GcsStore {
             }
         }
 
-        debug!(
-            "Found {} objects for rollback for doc: {}",
-            all_objects.len(),
-            doc_id
-        );
-
         let mut filtered_objects = Vec::new();
         for obj in all_objects {
             let key_bytes = hex::decode(&obj.name)
@@ -303,13 +292,6 @@ impl GcsStore {
 
         filtered_objects.sort_by_key(|(_, clock)| *clock);
 
-        debug!(
-            "Applying {} updates for rollback to clock {} for doc: {}",
-            filtered_objects.len(),
-            target_clock,
-            doc_id
-        );
-
         let doc = Doc::new();
         let mut txn = doc.transact_mut();
 
@@ -317,7 +299,6 @@ impl GcsStore {
             let chunk_futures = chunk.iter().map(|(obj, clock)| {
                 let bucket = self.bucket.clone();
                 let object = obj.name.clone();
-                let doc_id = doc_id.to_string();
                 let clock = *clock;
 
                 async move {
@@ -334,18 +315,14 @@ impl GcsStore {
                     {
                         Ok(data) => {
                             if let Ok(update) = Update::decode_v1(&data) {
-                                debug!(
-                                    "Downloaded update with clock: {} for doc: {}",
-                                    clock, doc_id
-                                );
                                 Some((clock, update))
                             } else {
-                                debug!("Failed to decode update from object: {}", object);
+                                error!("Failed to decode update from object: {}", object);
                                 None
                             }
                         }
                         Err(e) => {
-                            debug!("Failed to download object {}: {:?}", object, e);
+                            error!("Failed to download object {}: {:?}", object, e);
                             None
                         }
                     }
@@ -355,8 +332,7 @@ impl GcsStore {
             let batch_results = join_all(chunk_futures).await;
 
             for result in batch_results.into_iter().flatten() {
-                let (clock, update) = result;
-                debug!("Applying update with clock: {} for doc: {}", clock, doc_id);
+                let (_, update) = result;
                 let _ = txn.apply_update(update);
             }
         }
@@ -500,19 +476,12 @@ impl KVStore for GcsStore {
             ..Default::default()
         };
 
-        debug!("Getting from GCS storage - key: {:?}", key);
-
         match self
             .client
             .download_object(&request, &Range::default())
             .await
         {
-            Ok(data) => {
-                debug!("Got from GCS storage - key: {:?}", key);
-                debug!("Value length: {} bytes", data.len());
-                debug!("Value: {:?}", data);
-                Ok(Some(data))
-            }
+            Ok(data) => Ok(Some(data)),
             Err(_) => Ok(None),
         }
     }
@@ -552,10 +521,6 @@ impl KVStore for GcsStore {
         let to_hex = hex::encode(to);
 
         let common_prefix = find_common_prefix(&from_hex, &to_hex);
-        debug!(
-            "Remove range from: {:?} to: {:?} with prefix: {}",
-            from_hex, to_hex, common_prefix
-        );
 
         let mut all_objects = Vec::new();
         let mut page_token = None;
@@ -584,8 +549,6 @@ impl KVStore for GcsStore {
             }
         }
 
-        debug!("Removing {} objects in range", all_objects.len());
-
         let delete_futures = all_objects.into_iter().map(|obj| {
             let bucket = self.bucket.clone();
             async move {
@@ -594,7 +557,6 @@ impl KVStore for GcsStore {
                     object: obj.name.clone(),
                     ..Default::default()
                 };
-                debug!("Deleting object: {}", obj.name);
                 self.client.delete_object(&delete_request).await
             }
         });
@@ -609,10 +571,6 @@ impl KVStore for GcsStore {
         let to_hex = hex::encode(to);
 
         let common_prefix = find_common_prefix(&from_hex, &to_hex);
-        debug!(
-            "Range query from: {:?} to: {:?} with prefix: {}",
-            from_hex, to_hex, common_prefix
-        );
 
         let mut all_objects = Vec::new();
         let mut page_token = None;
@@ -681,13 +639,6 @@ impl KVStore for GcsStore {
             }
         }
 
-        debug!(
-            "Got range from GCS storage using batched download - from: {:?}, to: {:?}, count: {}",
-            from,
-            to,
-            all_objects.len()
-        );
-
         Ok(GcsRange {
             objects: all_objects,
             values: all_values,
@@ -697,10 +648,6 @@ impl KVStore for GcsStore {
 
     async fn peek_back(&self, key: &[u8]) -> Result<Option<Self::Entry>, Self::Error> {
         let key_hex = hex::encode(key);
-        debug!(
-            "Peeking back in GCS storage - key: {:?}, hex: {}",
-            key, key_hex
-        );
 
         let prefix = if key_hex.len() > 2 {
             key_hex.chars().take(2).collect::<String>()
