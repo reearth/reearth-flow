@@ -494,8 +494,6 @@ where
     if let Some(value) = value {
         let bytes: [u8; 4] = value.as_ref().try_into().unwrap();
         let oid = OID::from_be_bytes(bytes);
-        tracing::info!("Found OID for name: {}", hex::encode(name));
-        tracing::info!("OID: {}", oid);
         Ok(Some(oid))
     } else {
         Ok(None)
@@ -580,12 +578,6 @@ where
             last_oid + 1
         }
     };
-
-    tracing::info!(
-        "Creating new OID {} for name: {}",
-        new_oid,
-        hex::encode(name)
-    );
 
     let key = key_oid(name)?;
     let key_ref = key.as_ref();
