@@ -275,8 +275,7 @@ impl GcsStore {
 
         let mut filtered_objects = Vec::new();
         for obj in all_objects {
-            let key_bytes = hex::decode(&obj.name)
-                .map_err(|e| anyhow::anyhow!("Failed to decode hex: {}", e))?;
+            let key_bytes = hex::decode(&obj.name)?;
 
             if key_bytes.len() < 12 {
                 continue;
@@ -434,12 +433,6 @@ impl GcsStore {
             }
         }
 
-        debug!(
-            "Found {} update objects for doc: {}",
-            all_objects.len(),
-            doc_id
-        );
-
         let mut metadata = Vec::new();
         for obj in all_objects {
             if let Ok(key_bytes) = hex::decode(&obj.name) {
@@ -476,14 +469,12 @@ impl KVStore for GcsStore {
             ..Default::default()
         };
 
-        match self
+        let data = self
             .client
             .download_object(&request, &Range::default())
-            .await
-        {
-            Ok(data) => Ok(Some(data)),
-            Err(_) => Ok(None),
-        }
+            .await?;
+
+        Ok(Some(data))
     }
 
     async fn upsert(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error> {
@@ -510,10 +501,8 @@ impl KVStore for GcsStore {
             ..Default::default()
         };
 
-        match self.client.delete_object(&request).await {
-            Ok(_) => Ok(()),
-            Err(_) => Ok(()),
-        }
+        self.client.delete_object(&request).await?;
+        Ok(())
     }
 
     async fn remove_range(&self, from: &[u8], to: &[u8]) -> Result<(), Self::Error> {
@@ -587,7 +576,6 @@ impl KVStore for GcsStore {
             let items = response.items.unwrap_or_default();
 
             let filtered_items = items.into_iter().filter(|obj| {
-                debug!("Checking object: {:?}", obj.name.as_str());
                 obj.name.as_str() >= from_hex.as_str() && obj.name.as_str() <= to_hex.as_str()
             });
 
@@ -695,8 +683,6 @@ impl KVStore for GcsStore {
                 .client
                 .download_object(&get_request, &Range::default())
                 .await?;
-
-            debug!("Found peek_back object: {}", obj.name);
 
             Ok(Some(GcsEntry {
                 key: hex::decode(&obj.name).unwrap_or_default(),
