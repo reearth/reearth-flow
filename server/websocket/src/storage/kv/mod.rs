@@ -524,12 +524,6 @@ where
             }
             Err(e) => {
                 if attempt < max_retries - 1 {
-                    tracing::debug!(
-                        "Failed to acquire OID lock, retrying ({}/{}): {}",
-                        attempt + 1,
-                        max_retries,
-                        e
-                    );
                     tokio::time::sleep(std::time::Duration::from_millis(retry_delay_ms)).await;
 
                     if let Some(oid) = get_oid(db, name).await? {
