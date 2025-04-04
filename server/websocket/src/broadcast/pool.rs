@@ -9,7 +9,7 @@ use dashmap::DashMap;
 use rand;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, warn};
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
@@ -237,11 +237,6 @@ impl BroadcastPool {
                     .await
                 {
                     Ok(updates) if !updates.is_empty() => {
-                        info!(
-                            "Found {} updates in Redis stream for '{}', applying before GCS flush",
-                            updates.len(),
-                            doc_id
-                        );
                         let awareness = group.awareness().write().await;
                         let mut txn = awareness.doc().transact_mut();
 
