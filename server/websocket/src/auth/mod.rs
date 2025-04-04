@@ -23,8 +23,7 @@ pub struct TokenVerifyResponse {
 
 impl AuthService {
     pub async fn new(config: AuthConfig) -> Result<Self> {
-        let client = reqwest::ClientBuilder::new()
-            .build()?;
+        let client = reqwest::ClientBuilder::new().build()?;
         Ok(Self {
             client,
             url: config.url,
