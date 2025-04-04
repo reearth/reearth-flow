@@ -152,7 +152,7 @@ impl GcsStore {
             if let Ok(update) = Update::decode_v1(&data) {
                 if let Ok(key_bytes) = hex::decode(&obj.name) {
                     if key_bytes.len() >= 12 {
-                        let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+                        let clock_bytes: [u8; 4] = key_bytes[7..11].try_into()?;
                         let clock = u32::from_be_bytes(clock_bytes);
 
                         let timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
@@ -282,7 +282,7 @@ impl GcsStore {
                 continue;
             }
 
-            let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+            let clock_bytes: [u8; 4] = key_bytes[7..11].try_into()?;
             let clock = u32::from_be_bytes(clock_bytes);
 
             if clock <= target_clock {
@@ -381,7 +381,7 @@ impl GcsStore {
         for obj in objects {
             if let Ok(key_bytes) = hex::decode(&obj.name) {
                 if key_bytes.len() >= 12 {
-                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into()?;
                     let clock = u32::from_be_bytes(clock_bytes);
 
                     if clock > latest_clock {
@@ -435,7 +435,7 @@ impl GcsStore {
         for obj in all_objects {
             if let Ok(key_bytes) = hex::decode(&obj.name) {
                 if key_bytes.len() >= 12 {
-                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into()?;
                     let clock = u32::from_be_bytes(clock_bytes);
                     let timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
 
