@@ -317,9 +317,7 @@ impl BroadcastPool {
                     }
 
                     if let Some((redis, lock_id, instance_id)) = lock_acquired {
-                        if let Err(e) = redis.release_doc_lock(&lock_id, &instance_id).await {
-                            warn!("Failed to release GCS lock: {}", e);
-                        }
+                        redis.release_doc_lock(&lock_id, &instance_id).await?;
                     }
                 }
             }

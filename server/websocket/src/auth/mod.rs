@@ -23,13 +23,7 @@ pub struct TokenVerifyResponse {
 
 impl AuthService {
     pub async fn new(config: AuthConfig) -> Result<Self> {
-        debug!("Connecting to auth service at: {}", config.url);
         let client = reqwest::ClientBuilder::new()
-            .no_deflate()
-            .no_brotli()
-            .no_gzip()
-            .tcp_keepalive(None)
-            .pool_max_idle_per_host(0)
             .build()?;
         Ok(Self {
             client,
@@ -38,8 +32,6 @@ impl AuthService {
     }
 
     pub async fn verify_token(&self, token: &str) -> Result<bool> {
-        debug!("Verifying token");
-
         let request = TokenVerifyRequest {
             token: token.to_string(),
         };
@@ -64,12 +56,10 @@ impl AuthService {
 
         if !response.status().is_success() {
             let error_text = response.text().await?;
-            debug!("Token verification failed: {}", error_text);
             return Err(anyhow!("Token verification failed: {}", error_text));
         }
 
         let verify_response = response.json::<TokenVerifyResponse>().await?;
-        debug!("Token verification result: {}", verify_response.authorized);
 
         if !verify_response.authorized {
             return Err(anyhow!("Token verification failed: unauthorized"));
