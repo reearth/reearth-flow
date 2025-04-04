@@ -483,12 +483,10 @@ impl BroadcastGroup {
                 };
 
                 if !update_bytes.is_empty() {
-                    if let Err(e) = redis_store
+                    redis_store
                         .publish_update(stream_key, &update_bytes, conn)
                         .await
-                    {
-                        error!("Redis Stream update failed: {}", e);
-                    }
+                        .map_err(|e| Error::Other(e.into()))?;
                 }
 
                 match msg {
