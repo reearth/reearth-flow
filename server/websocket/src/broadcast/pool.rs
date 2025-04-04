@@ -44,7 +44,7 @@ impl BroadcastGroupManager {
 
                 let doc_name = group_clone.get_doc_name();
                 let valid =
-                    (self.redis_store.check_stream_exists(&doc_name).await).unwrap_or(false);
+                    self.redis_store.check_stream_exists(&doc_name).await.unwrap_or(false);
 
                 if !valid {
                     self.doc_to_id_map.remove(doc_id);
@@ -99,7 +99,7 @@ impl BroadcastGroupManager {
             let awareness_clone = Arc::clone(&awareness);
             let redis_store_clone = Arc::clone(&self.redis_store);
             tokio::spawn(async move {
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                tokio::time::sleep(Duration::from_secs(1)).await;
 
                 let awareness_guard = awareness_clone.read().await;
                 let doc = awareness_guard.doc();

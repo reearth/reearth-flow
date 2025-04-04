@@ -136,25 +136,6 @@ impl RedisStore {
         Ok(result)
     }
 
-    pub async fn set_nx_with_expiry(
-        &self,
-        key: &str,
-        value: &str,
-        ttl_seconds: u64,
-    ) -> Result<bool> {
-        let mut conn = self.pool.get().await?;
-        let result: Option<String> = redis::cmd("SET")
-            .arg(key)
-            .arg(value)
-            .arg("NX")
-            .arg("EX")
-            .arg(ttl_seconds)
-            .query_async(&mut *conn)
-            .await?;
-
-        Ok(result.is_some())
-    }
-
     pub async fn del(&self, key: &str) -> Result<()> {
         let mut conn = self.pool.get().await?;
         let _: () = redis::cmd("DEL").arg(key).query_async(&mut *conn).await?;
