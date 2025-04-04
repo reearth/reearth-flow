@@ -1,3 +1,4 @@
+use crate::broadcast::redis_pub::{create_update_cache, UpdateCache};
 use crate::broadcast::tasks::BackgroundTasks;
 use crate::storage::gcs::GcsStore;
 use crate::storage::kv::DocOps;
@@ -41,6 +42,7 @@ pub struct BroadcastGroup {
     shutdown_complete: AtomicBool,
     instance_id: String,
     last_read_id: Arc<Mutex<String>>,
+    update_cache: Option<Arc<UpdateCache>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -172,6 +174,8 @@ impl BroadcastGroup {
             awareness_shutdown_tx,
         )));
 
+        let update_cache = create_update_cache(&doc_name, redis_store.clone(), None, None).await;
+
         let result = Self {
             connections: Arc::new(AtomicUsize::new(0)),
             awareness_ref: awareness,
@@ -185,6 +189,7 @@ impl BroadcastGroup {
             shutdown_complete: AtomicBool::new(false),
             instance_id,
             last_read_id: Arc::new(Mutex::new("0".to_string())),
+            update_cache: Some(update_cache),
         };
 
         Ok(result)
@@ -202,7 +207,7 @@ impl BroadcastGroup {
             return Self::new(awareness, buffer_capacity, redis_store, store, doc_name).await;
         }
 
-        let group = Self::new(
+        let mut group = Self::new(
             awareness,
             buffer_capacity,
             redis_store.clone(),
@@ -214,6 +219,9 @@ impl BroadcastGroup {
         redis_store
             .create_empty_stream_with_ttl(&doc_name, 86400)
             .await?;
+
+        let update_cache = create_update_cache(&doc_name, redis_store.clone(), None, None).await;
+        group.update_cache = Some(update_cache);
 
         let awareness_for_sub = group.awareness_ref.clone();
         let sender_for_sub = group.sender.clone();
@@ -416,6 +424,8 @@ impl BroadcastGroup {
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
             let stream_key = format!("yjs:stream:{}", doc_name);
+            let update_cache = self.update_cache.clone();
+
             tokio::spawn(async move {
                 let mut conn = redis_store.get_pool().get().await.unwrap();
                 while let Some(res) = stream.next().await {
@@ -442,6 +452,7 @@ impl BroadcastGroup {
                         &redis_store,
                         &stream_key,
                         &mut conn,
+                        update_cache.as_ref(),
                     )
                     .await
                     {
@@ -473,6 +484,7 @@ impl BroadcastGroup {
         redis_store: &Arc<RedisStore>,
         stream_key: &str,
         conn: &mut Connection,
+        update_cache: Option<&Arc<UpdateCache>>,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
@@ -483,10 +495,17 @@ impl BroadcastGroup {
                 };
 
                 if !update_bytes.is_empty() {
-                    redis_store
-                        .publish_update(stream_key, &update_bytes, conn)
-                        .await
-                        .map_err(|e| Error::Other(e.into()))?;
+                    if let Some(cache) = update_cache {
+                        cache
+                            .add_update(Bytes::from(update_bytes.clone()))
+                            .await
+                            .map_err(|e| Error::Other(e.into()))?;
+                    } else {
+                        redis_store
+                            .publish_update(stream_key, &update_bytes, conn)
+                            .await
+                            .map_err(|e| Error::Other(e.into()))?;
+                    }
                 }
 
                 match msg {
@@ -635,6 +654,15 @@ impl BroadcastGroup {
                         warn!("Failed to release GCS lock: {}", e);
                     }
                 }
+            }
+        }
+
+        if let Some(cache) = &self.update_cache {
+            if let Err(e) = cache.flush().await {
+                warn!("Failed to flush update cache during shutdown: {}", e);
+            }
+            if let Err(e) = cache.shutdown().await {
+                warn!("Failed to shutdown update cache: {}", e);
             }
         }
 
