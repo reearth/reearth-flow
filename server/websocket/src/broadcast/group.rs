@@ -184,7 +184,7 @@ impl BroadcastGroup {
             doc_name,
             shutdown_complete: AtomicBool::new(false),
             instance_id,
-            last_read_id: Arc::new(tokio::sync::Mutex::new("0".to_string())),
+            last_read_id: Arc::new(Mutex::new("0".to_string())),
         };
 
         Ok(result)
@@ -669,7 +669,7 @@ impl Drop for BroadcastGroup {
         }
 
         self.shutdown_complete
-            .store(true, std::sync::atomic::Ordering::SeqCst);
+            .store(true, Ordering::SeqCst);
 
         let background_tasks = self.background_tasks.clone();
         tokio::spawn(async move {
