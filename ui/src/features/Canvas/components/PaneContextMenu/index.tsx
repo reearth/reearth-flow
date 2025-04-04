@@ -13,7 +13,6 @@ type Props = {
   contextMenu: ContextMenuMeta;
   onCopy?: () => void;
   onPaste?: (menuPosition?: XYPosition) => void;
-  hasItemsToPaste?: boolean;
   onClose: () => void;
 };
 
@@ -21,7 +20,6 @@ const PaneContextMenu: React.FC<Props> = ({
   contextMenu,
   onCopy,
   onPaste,
-  hasItemsToPaste,
   onClose,
 }) => {
   const t = useT();
@@ -47,14 +45,14 @@ const PaneContextMenu: React.FC<Props> = ({
         props: {
           label: t("Paste"),
           icon: <Clipboard weight="light" />,
-          disabled: !hasItemsToPaste,
+
           onCallback: wrapWithClose(onPaste ?? (() => {})),
         },
       },
     ];
 
     return items;
-  }, [t, onCopy, onPaste, hasItemsToPaste, onClose]);
+  }, [t, onCopy, onPaste, onClose]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;
 };

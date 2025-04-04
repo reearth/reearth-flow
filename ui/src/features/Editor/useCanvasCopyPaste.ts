@@ -1,5 +1,5 @@
 import { addEdge } from "@xyflow/react";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
 import { useT } from "@flow/lib/i18n";
@@ -32,7 +32,6 @@ export default ({
   const { copy, paste } = useCopyPaste();
   const { toast } = useToast();
   const t = useT();
-  const [hasItemsToPaste, setHasItemsToPaste] = useState<boolean>(false);
 
   const newEdgeCreation = useCallback(
     (pastedEdges: Edge[], oldNodes: Node[], newNodes: Node[]): Edge[] => {
@@ -177,6 +176,7 @@ export default ({
           );
           if (referencedWorkflows.has(node.data.subworkflowId)) continue;
           if (subworkflow) {
+            referencedWorkflows.add(node.data.subworkflowId);
             collectedWorkflows.push(subworkflow);
             const subworkflowNodes = subworkflow.nodes as Node[];
             collectedWorkflows = collectedWorkflows.concat(
@@ -200,7 +200,7 @@ export default ({
       nodes: nodes.filter((n) => n.selected),
       edges: edges.filter((e) => e.selected),
     };
-    let newWorkflows: Workflow[] = [];
+    let referencedWorkflows: Workflow[] = [];
     if (selected.nodes.some((n) => n.type === "reader"))
       return toast({
         title: t("Reader node cannot be copied"),
@@ -211,16 +211,15 @@ export default ({
     if (selected.nodes.length === 0 && selected.edges.length === 0) return;
 
     if (selected.nodes.some((n) => n.type === "subworkflow")) {
-      newWorkflows = collectSubworkflows(selected.nodes, rawWorkflows);
-      if (newWorkflows.length === 0) return;
+      referencedWorkflows = collectSubworkflows(selected.nodes, rawWorkflows);
+      if (referencedWorkflows.length === 0) return;
     }
-
-    setHasItemsToPaste(true);
 
     await copy({
       nodes: selected.nodes,
       edges: selected.edges,
-      workflows: newWorkflows,
+      workflows: referencedWorkflows,
+      copiedAt: Date.now(),
     });
   }, [nodes, edges, collectSubworkflows, copy, rawWorkflows, toast, t]);
 
@@ -259,7 +258,7 @@ export default ({
     });
 
     copy({
-      nodes: newNodes,
+      nodes: processedNewNodes,
       edges: newEdges,
       workflows: newWorkflows,
     });
@@ -281,6 +280,5 @@ export default ({
   return {
     handleCopy,
     handlePaste,
-    hasItemsToPaste,
   };
 };

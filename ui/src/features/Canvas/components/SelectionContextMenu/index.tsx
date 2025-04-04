@@ -18,7 +18,6 @@ type Props = {
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onCopy?: () => void;
   onPaste?: () => void;
-  hasItemsToPaste?: boolean;
   onClose: () => void;
 };
 
@@ -30,7 +29,6 @@ const SelectionContextMenu: React.FC<Props> = ({
   onEdgesChange,
   onCopy,
   onPaste,
-  hasItemsToPaste,
   onClose,
 }) => {
   const t = useT();
@@ -64,7 +62,7 @@ const SelectionContextMenu: React.FC<Props> = ({
         props: {
           label: t("Paste"),
           icon: <Clipboard weight="light" />,
-          disabled: !hasItemsToPaste,
+          disabled: true,
           onCallback: wrapWithClose(onPaste ?? (() => {})),
         },
       },
@@ -80,7 +78,7 @@ const SelectionContextMenu: React.FC<Props> = ({
     ];
 
     return items;
-  }, [t, handleNodeDelete, onCopy, onPaste, hasItemsToPaste, onClose]);
+  }, [t, handleNodeDelete, onCopy, onClose, onPaste]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;
 };
