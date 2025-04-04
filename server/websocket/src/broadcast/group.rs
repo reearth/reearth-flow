@@ -40,7 +40,7 @@ pub struct BroadcastGroup {
     doc_name: String,
     shutdown_complete: AtomicBool,
     instance_id: String,
-    last_read_id: Arc<tokio::sync::Mutex<String>>,
+    last_read_id: Arc<Mutex<String>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
