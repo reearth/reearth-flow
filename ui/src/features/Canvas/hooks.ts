@@ -132,6 +132,20 @@ export default ({
     [setContextMenu],
   );
 
+  const handlePaneContextMenu = useCallback(
+    (event: MouseEvent | globalThis.MouseEvent) => {
+      event.preventDefault();
+      const styles = getContextMenuPosition(event as MouseEvent);
+      if (!styles) return;
+
+      setContextMenu({
+        type: "pane",
+        styles,
+      });
+    },
+    [setContextMenu],
+  );
+
   const handleCloseContextmenu = () => {
     setContextMenu(null);
   };
@@ -148,6 +162,7 @@ export default ({
     handleReconnect,
     handleNodeContextMenu,
     handleSelectionContextMenu,
+    handlePaneContextMenu,
     handleCloseContextmenu,
     contextMenu,
     paneRef,
