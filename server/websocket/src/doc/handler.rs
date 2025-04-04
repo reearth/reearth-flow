@@ -7,7 +7,6 @@ use axum::{
 use chrono::Utc;
 use std::sync::Arc;
 use tracing::error;
-use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
 use crate::doc::types::{Document, HistoryItem};
@@ -98,18 +97,8 @@ impl DocumentHandler {
         let result = async {
             let updates = storage.get_updates(&doc_id).await?;
 
-            let history_items: Vec<HistoryItem> = updates
-                .iter()
-                .map(|update_info| HistoryItem {
-                    version: update_info.clock as u64,
-                    updates: update_info.update.encode_v1(),
-                    timestamp: chrono::DateTime::from_timestamp(
-                        update_info.timestamp.unix_timestamp(),
-                        0,
-                    )
-                    .unwrap_or(Utc::now()),
-                })
-                .collect();
+            let history_items: Vec<HistoryItem> =
+                updates.into_iter().map(HistoryItem::from).collect();
 
             Ok::<_, anyhow::Error>(history_items)
         }
@@ -247,16 +236,7 @@ impl DocumentHandler {
 
             match update_info {
                 Some(info) => {
-                    let item = HistoryItem {
-                        version: info.clock as u64,
-                        updates: info.update.encode_v1(),
-                        timestamp: chrono::DateTime::from_timestamp(
-                            info.timestamp.unix_timestamp(),
-                            0,
-                        )
-                        .unwrap_or(Utc::now()),
-                    };
-
+                    let item = HistoryItem::from(info);
                     Ok::<_, anyhow::Error>(item)
                 }
                 None => Err(anyhow::anyhow!("History version not found")),
