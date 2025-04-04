@@ -529,7 +529,7 @@ impl BroadcastGroup {
 
     pub async fn shutdown(&self) -> Result<()> {
         self.shutdown_complete
-            .store(true, std::sync::atomic::Ordering::SeqCst);
+            .store(true, Ordering::SeqCst);
 
         if self.connection_count() == 0 {
             if let Err(e) = self
