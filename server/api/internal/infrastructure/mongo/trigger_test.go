@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
@@ -121,6 +122,42 @@ func TestTrigger_Remove(t *testing.T) {
 	got, err := r.FindByID(ctx, tid)
 	assert.Error(t, err)
 	assert.Nil(t, got)
+}
+
+func TestTrigger_Remove_WithWorkspaceFilter(t *testing.T) {
+	c := mongotest.Connect(t)(t)
+	ctx := context.Background()
+
+	wid1 := accountdomain.NewWorkspaceID()
+	wid2 := accountdomain.NewWorkspaceID()
+	tid1 := id.NewTriggerID()
+	tid2 := id.NewTriggerID()
+
+	_, _ = c.Collection("trigger").InsertMany(ctx, []any{
+		bson.M{"id": tid1.String(), "workspaceid": wid1.String()},
+		bson.M{"id": tid2.String(), "workspaceid": wid2.String()},
+	})
+
+	filter := repo.WorkspaceFilter{
+		Readable: accountdomain.WorkspaceIDList{wid1},
+		Writable: accountdomain.WorkspaceIDList{wid1},
+	}
+	r := NewTrigger(mongox.NewClientWithDatabase(c)).Filtered(filter)
+
+	err := r.Remove(ctx, tid1)
+	assert.NoError(t, err)
+
+	got, err := r.FindByID(ctx, tid1)
+	assert.Error(t, err)
+	assert.Nil(t, got)
+
+	err = r.Remove(ctx, tid2)
+	assert.NoError(t, err)
+
+	base := NewTrigger(mongox.NewClientWithDatabase(c))
+	got, err = base.FindByID(ctx, tid2)
+	assert.NoError(t, err)
+	assert.NotNil(t, got)
 }
 
 func TestTrigger_DeploymentUpdates(t *testing.T) {
