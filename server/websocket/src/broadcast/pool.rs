@@ -43,8 +43,11 @@ impl BroadcastGroupManager {
                 drop(entry);
 
                 let doc_name = group_clone.get_doc_name();
-                let valid =
-                    self.redis_store.check_stream_exists(&doc_name).await.unwrap_or(false);
+                let valid = self
+                    .redis_store
+                    .check_stream_exists(&doc_name)
+                    .await
+                    .unwrap_or(false);
 
                 if !valid {
                     self.doc_to_id_map.remove(doc_id);

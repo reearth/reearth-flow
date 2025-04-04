@@ -528,8 +528,7 @@ impl BroadcastGroup {
     }
 
     pub async fn shutdown(&self) -> Result<()> {
-        self.shutdown_complete
-            .store(true, Ordering::SeqCst);
+        self.shutdown_complete.store(true, Ordering::SeqCst);
 
         if self.connection_count() == 0 {
             if let Err(e) = self
@@ -668,8 +667,7 @@ impl Drop for BroadcastGroup {
             drop(sub);
         }
 
-        self.shutdown_complete
-            .store(true, Ordering::SeqCst);
+        self.shutdown_complete.store(true, Ordering::SeqCst);
 
         let background_tasks = self.background_tasks.clone();
         tokio::spawn(async move {
