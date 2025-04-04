@@ -98,7 +98,7 @@ impl BroadcastGroupManager {
             let doc_id_clone = doc_id.to_string();
             let store_clone = Arc::clone(&self.store);
             let awareness_clone = Arc::clone(&awareness);
-
+            let redis_store_clone = Arc::clone(&self.redis_store);
             tokio::spawn(async move {
                 tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
 
@@ -108,7 +108,9 @@ impl BroadcastGroupManager {
                 let update = txn.encode_diff_v1(&StateVector::default());
                 let update_bytes = bytes::Bytes::from(update);
 
-                let _ = store_clone.push_update(&doc_id_clone, &update_bytes).await;
+                let _ = store_clone
+                    .push_update(&doc_id_clone, &update_bytes, &redis_store_clone)
+                    .await;
             });
         }
 
@@ -337,12 +339,16 @@ impl BroadcastPool {
                     let awareness = group.awareness().read().await;
                     let awareness_doc = awareness.doc();
                     let awareness_txn = awareness_doc.transact();
+                    let redis_store_clone = Arc::clone(&self.manager.redis_store);
 
                     let update = awareness_txn.encode_diff_v1(&gcs_state);
 
                     if !update.is_empty() {
                         let update_bytes = bytes::Bytes::from(update);
-                        if let Err(e) = store.push_update(&doc_name, &update_bytes).await {
+                        if let Err(e) = store
+                            .push_update(&doc_name, &update_bytes, &redis_store_clone)
+                            .await
+                        {
                             error!(
                                 "Failed to flush websocket changes to GCS for '{}': {}",
                                 doc_id, e
