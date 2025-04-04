@@ -645,13 +645,9 @@ impl BroadcastGroup {
             background_tasks.stop_all();
         }
 
-        if let Err(e) = self
-            .redis_store
+        self.redis_store
             .safe_delete_stream(&self.doc_name, &self.instance_id)
-            .await
-        {
-            warn!("Failed to delete Redis stream: {}", e);
-        }
+            .await?;
 
         Ok(())
     }
