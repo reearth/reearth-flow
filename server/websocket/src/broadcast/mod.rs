@@ -1,5 +1,6 @@
 pub mod group;
+mod heartbeat;
 pub mod pool;
 mod redis_pub;
-pub mod tasks;
+mod redis_sub;
 pub mod types;
