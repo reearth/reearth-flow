@@ -112,7 +112,7 @@ const Portal: React.FC<BottomPortalProps> = ({
 
   return ReactDOM.createPortal(
     <div
-      className="fixed inset-0 z-[1000] flex items-end justify-center"
+      className="fixed inset-0 z-1000 flex items-end justify-center"
       onClick={onClose}>
       {children}
     </div>,

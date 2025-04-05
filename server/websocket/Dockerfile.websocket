@@ -2,8 +2,6 @@ FROM rust:1.85.1-slim as builder
 
 RUN apt-get update && \
     apt-get install -y \
-    protobuf-compiler \
-    thrift-compiler \
     pkg-config \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -11,7 +9,11 @@ RUN apt-get update && \
 WORKDIR /usr/src/app
 COPY . .
 
-RUN cargo build --release --no-default-features 
+RUN cargo build --release --no-default-features \
+    --config "profile.release.codegen-units=1" \
+    --config "profile.release.lto=true" \
+    --config "profile.release.opt-level=3" \
+    --config "profile.release.strip=true"
 
 FROM gcr.io/distroless/cc-debian12
 

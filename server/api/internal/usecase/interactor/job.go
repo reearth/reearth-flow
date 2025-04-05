@@ -54,7 +54,6 @@ func NewJob(r *repo.Container, gr *gateway.Container, permissionChecker gateway.
 		subscriptions:     subscription.NewJobManager(),
 		notifier:          notification.NewHTTPNotifier(),
 		permissionChecker: permissionChecker,
-		watchersMu:        sync.Mutex{},
 		activeWatchers:    make(map[string]bool),
 	}
 }
@@ -116,11 +115,7 @@ func (i *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
 		return nil, err
 	}
 
-	j, err := i.jobRepo.FindByID(ctx, id)
-	if err != nil {
-		return nil, err
-	}
-	return j, nil
+	return i.jobRepo.FindByID(ctx, id)
 }
 
 func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
@@ -128,11 +123,7 @@ func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
 		return nil, err
 	}
 
-	jobs, err := i.jobRepo.FindByIDs(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-	return jobs, nil
+	return i.jobRepo.FindByIDs(ctx, ids)
 }
 
 func (i *Job) FindByWorkspace(ctx context.Context, wsID accountdomain.WorkspaceID, p *interfaces.PaginationParam) ([]*job.Job, *interfaces.PageBasedInfo, error) {
@@ -160,7 +151,7 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 		return err
 	}
 
-	log.Infof("starting monitoring for job ID %s with workspace %s", j.ID(), j.Workspace())
+	log.Debugfc(ctx, "job: starting monitoring for jobID=%s workspace=%s", j.ID(), j.Workspace())
 
 	monitorCtx, cancel := context.WithCancel(context.Background())
 
@@ -179,23 +170,37 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 	defer ticker.Stop()
 
 	jobID := j.ID().String()
+	log.Infof("Starting continuous monitoring for job ID %s", jobID)
+
+	maxDuration := 24 * time.Hour
+	startTime := time.Now()
 
 	for {
 		select {
 		case <-ctx.Done():
+			log.Infof("Monitoring stopped by context cancellation for job ID %s", jobID)
 			return
 		case <-ticker.C:
-			i.watchersMu.Lock()
-			if i.subscriptions.CountSubscribers(jobID) == 0 {
-				delete(i.activeWatchers, jobID)
-				i.watchersMu.Unlock()
-
+			if time.Since(startTime) > maxDuration {
+				log.Warnf("Exceeded maximum monitoring duration for job ID %s", jobID)
 				i.monitor.Remove(jobID)
 				return
 			}
-			i.watchersMu.Unlock()
 
-			if err := i.checkJobStatus(ctx, j); err != nil {
+			currentJob, err := i.jobRepo.FindByID(context.Background(), j.ID())
+			if err != nil {
+				log.Errorf("Failed to fetch current job state for job ID %s: %v", jobID, err)
+				continue
+			}
+
+			status := currentJob.Status()
+			if status == job.StatusCompleted || status == job.StatusFailed || status == job.StatusCancelled {
+				log.Infof("Job ID %s already in terminal state %s, stopping monitoring", jobID, status)
+				i.monitor.Remove(jobID)
+				return
+			}
+
+			if err := i.checkJobStatus(ctx, currentJob); err != nil {
 				log.Errorfc(ctx, "job: status check failed: %v", err)
 			}
 		}
@@ -203,10 +208,6 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 }
 
 func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-		return err
-	}
-
 	status, err := i.batch.GetJobStatus(ctx, j.GCPJobID())
 	if err != nil {
 		return err
@@ -215,37 +216,21 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 	newStatus := job.Status(status)
 	statusChanged := j.Status() != newStatus
 
-	if status == gateway.JobStatusCompleted || status == gateway.JobStatusFailed {
-		if statusChanged {
-			log.Infof("job status changing to terminal state %s from %s for job ID %s",
-				newStatus, j.Status(), j.ID())
+	isTerminalState := status == gateway.JobStatusCompleted || status == gateway.JobStatusFailed
+	isNewTerminalState := isTerminalState && statusChanged
 
-			if err := i.updateJobStatus(ctx, j, newStatus); err != nil {
-				return err
-			}
-
-			if err := i.handleJobCompletion(ctx, j); err != nil {
-				log.Errorfc(ctx, "job: completion handling failed: %v", err)
-			}
-
-			i.monitor.Remove(j.ID().String())
-		} else {
-			if len(j.OutputURLs()) == 0 {
-				log.Infof("job already in terminal state %s but has no outputs, checking artifacts for job ID %s",
-					j.Status(), j.ID())
-
-				if err := i.handleJobCompletion(ctx, j); err != nil {
-					log.Errorfc(ctx, "job: completion handling failed: %v", err)
-				}
-			}
-		}
-	} else if statusChanged {
-		log.Infof("job status changing from %s to %s for job ID %s",
-			j.Status(), newStatus, j.ID())
-
+	if statusChanged {
 		if err := i.updateJobStatus(ctx, j, newStatus); err != nil {
 			return err
 		}
+	}
+
+	if isNewTerminalState {
+		log.Infof("Job %s transitioning to terminal state %s, handling completion", j.ID(), newStatus)
+		if err := i.handleJobCompletion(ctx, j); err != nil {
+			log.Errorfc(ctx, "job: completion handling failed: %v", err)
+		}
+		i.monitor.Remove(j.ID().String())
 	}
 
 	return nil
@@ -286,25 +271,12 @@ func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 	}
 
 	jobID := j.ID().String()
-	log.Infof("handling job completion for ID %s with status %s", jobID, j.Status())
+	log.Debugfc(ctx, "job: handling completion for jobID=%s with status=%s", jobID, j.Status())
 
 	config := i.monitor.Get(jobID)
 
-	var artifactErr error
-	for retries := 0; retries < 3; retries++ {
-		if retries > 0 {
-			log.Infof("retry %d: updating artifacts for job ID %s", retries, jobID)
-			time.Sleep(2 * time.Second)
-		}
-
-		artifactErr = i.updateJobArtifacts(ctx, j)
-		if artifactErr == nil && len(j.OutputURLs()) > 0 {
-			break
-		}
-	}
-
-	if artifactErr != nil {
-		log.Errorfc(ctx, "job: failed to update artifacts after retries for jobID=%s: %v", jobID, artifactErr)
+	if err := i.updateJobArtifacts(ctx, j); err != nil {
+		log.Errorfc(ctx, "job: failed to update artifacts for jobID=%s: %v", jobID, err)
 	}
 
 	if err := i.saveJobState(ctx, j); err != nil {
@@ -398,6 +370,8 @@ func (i *Job) sendCompletionNotification(ctx context.Context, j *job.Job, notifi
 		Outputs:      j.OutputURLs(),
 	}
 
+	log.Debugfc(ctx, "job: sending notification for jobID=%s to URL=%s", jobID, notificationURL)
+
 	return i.notifier.Send(notificationURL, payload)
 }
 
@@ -451,4 +425,10 @@ func (i *Job) startMonitoringIfNeeded(jobID id.JobID) {
 
 func (i *Job) Unsubscribe(jobID id.JobID, ch chan job.Status) {
 	i.subscriptions.Unsubscribe(jobID.String(), ch)
+
+	if i.subscriptions.CountSubscribers(jobID.String()) == 0 {
+		i.watchersMu.Lock()
+		delete(i.activeWatchers, jobID.String())
+		i.watchersMu.Unlock()
+	}
 }

@@ -13,7 +13,6 @@ const VersionHistoryChangeDialog: React.FC<Props> = ({
   onRollbackProject,
 }) => {
   const t = useT();
-  console.log("selectedProjectSnapshotVersion", selectedProjectSnapshotVersion);
   return (
     <ConfirmationDialog
       title={t("Are you sure you want to revert to this version?")}

@@ -12,7 +12,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
-	thriftserver "github.com/reearth/reearth-flow/api/internal/infrastructure/thrift"
+	authserver "github.com/reearth/reearth-flow/api/internal/infrastructure/auth"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -71,11 +71,11 @@ func Start(debug bool, version string) {
 	}
 
 	httpServer := NewServer(ctx, serverCfg)
-	thriftServer := thriftserver.NewServer("", conf.JWTProviders())
+	authService := authserver.NewServer(conf.JWTProviders())
 
 	mainHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if strings.HasPrefix(r.URL.Path, "/AuthService") {
-			thriftServer.ServeHTTP(w, r)
+		if strings.HasPrefix(r.URL.Path, "/auth") {
+			authService.ServeHTTP(w, r)
 			return
 		}
 		httpServer.ServeHTTP(w, r)

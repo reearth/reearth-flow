@@ -17,7 +17,7 @@ const DebugLogs: React.FC = () => {
       <div className="flex items-center p-1" onClick={handleExpand}>
         <div className="flex flex-1 items-center justify-center gap-2">
           <Terminal />
-          <p className="text-sm font-thin">{t("Workflow Logs")}</p>
+          <p className="select-none text-sm font-thin">{t("Workflow Logs")}</p>
         </div>
         <div className="flex items-center gap-2">
           <div

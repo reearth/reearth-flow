@@ -4,8 +4,9 @@ import {
   NodeChange,
   XYPosition,
 } from "@xyflow/react";
-import { MouseEvent } from "react";
+import { MouseEvent, useCallback, useRef, useState } from "react";
 
+import type { ContextMenuMeta } from "@flow/components";
 import { useEdges, useNodes } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
@@ -77,6 +78,64 @@ export default ({
     onEdgesChange,
   });
 
+  const [contextMenu, setContextMenu] = useState<ContextMenuMeta | null>(null);
+
+  const paneRef = useRef<HTMLDivElement>(null);
+  const getContextMenuPosition = (event: MouseEvent) => {
+    if (!paneRef.current) return;
+    const pane = paneRef.current.getBoundingClientRect();
+    const localX = event.clientX - pane.left;
+    const localY = event.clientY - pane.top;
+    const styles: React.CSSProperties = {};
+
+    if (localY < pane.height - 200) {
+      styles.top = localY;
+    } else {
+      styles.bottom = pane.height - localY;
+    }
+
+    if (localX < pane.width - 200) {
+      styles.left = localX;
+    } else {
+      styles.right = pane.width - localX;
+    }
+    return styles;
+  };
+
+  const handleNodeContextMenu = useCallback(
+    (event: MouseEvent, node: Node) => {
+      event.preventDefault();
+      const styles = getContextMenuPosition(event);
+      if (!styles) return;
+
+      setContextMenu({
+        type: "node",
+        data: node,
+        styles,
+      });
+    },
+    [setContextMenu],
+  );
+
+  const handleSelectionContextMenu = useCallback(
+    (event: MouseEvent, nodes: Node[]) => {
+      event.preventDefault();
+      const styles = getContextMenuPosition(event);
+      if (!styles) return;
+
+      setContextMenu({
+        type: "selection",
+        data: nodes,
+        styles,
+      });
+    },
+    [setContextMenu],
+  );
+
+  const handleCloseContextmenu = () => {
+    setContextMenu(null);
+  };
+
   return {
     handleNodesChange,
     handleNodesDelete,
@@ -87,5 +146,10 @@ export default ({
     handleEdgesChange,
     handleConnect,
     handleReconnect,
+    handleNodeContextMenu,
+    handleSelectionContextMenu,
+    handleCloseContextmenu,
+    contextMenu,
+    paneRef,
   };
 };

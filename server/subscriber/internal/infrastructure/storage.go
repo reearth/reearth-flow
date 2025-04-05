@@ -6,8 +6,8 @@ import (
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure/mongo"
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
-	"github.com/reearth/reearth-flow/subscriber/pkg/edge"
 	domainLog "github.com/reearth/reearth-flow/subscriber/pkg/log"
+	"github.com/reearth/reearth-flow/subscriber/pkg/node"
 )
 
 type logStorageImpl struct {
@@ -24,30 +24,22 @@ func (s *logStorageImpl) SaveToRedis(ctx context.Context, event *domainLog.LogEv
 	return s.redis.SaveLogToRedis(ctx, event)
 }
 
-type edgeStorageImpl struct {
+type nodeStorageImpl struct {
 	redis *redis.RedisStorage
 	mongo *mongo.MongoStorage
 }
 
-func NewEdgeStorageImpl(r *redis.RedisStorage, m *mongo.MongoStorage) gateway.EdgeStorage {
-	return &edgeStorageImpl{
+func NewNodeStorageImpl(r *redis.RedisStorage, m *mongo.MongoStorage) gateway.NodeStorage {
+	return &nodeStorageImpl{
 		redis: r,
 		mongo: m,
 	}
 }
 
-func (s *edgeStorageImpl) ConstructIntermediateDataURL(jobID, edgeID string) string {
-	return s.mongo.ConstructIntermediateDataURL(jobID, edgeID)
+func (s *nodeStorageImpl) SaveToMongo(ctx context.Context, jobID string, nodeExecution *node.NodeExecution) error {
+	return s.mongo.SaveNodeExecutionToMongo(ctx, jobID, nodeExecution)
 }
 
-func (s *edgeStorageImpl) FindEdgeExecution(ctx context.Context, jobID string, edgeID string) (*edge.EdgeExecution, error) {
-	return s.mongo.FindEdgeExecution(ctx, jobID, edgeID)
-}
-
-func (s *edgeStorageImpl) SaveToRedis(ctx context.Context, event *edge.PassThroughEvent) error {
-	return s.redis.SaveEdgeEventToRedis(ctx, event)
-}
-
-func (s *edgeStorageImpl) UpdateEdgeStatusInMongo(ctx context.Context, jobID string, edge *edge.EdgeExecution) error {
-	return s.mongo.UpdateEdgeStatusInMongo(ctx, jobID, edge)
+func (s *nodeStorageImpl) SaveToRedis(ctx context.Context, event *node.NodeStatusEvent) error {
+	return s.redis.SaveNodeEventToRedis(ctx, event)
 }

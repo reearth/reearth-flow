@@ -40,10 +40,6 @@ func (r *queryResolver) DeploymentVersions(ctx context.Context, workspaceID gqlm
 	return loaders(ctx).Deployment.FindVersions(ctx, workspaceID, projectID)
 }
 
-func (r *queryResolver) EdgeExecution(ctx context.Context, jobID gqlmodel.ID, edgeID string) (*gqlmodel.EdgeExecution, error) {
-	return loaders(ctx).Edge.FindByJobEdgeID(ctx, jobID, edgeID)
-}
-
 func (r *queryResolver) Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error) {
 	return loaders(ctx).Job.FindByID(ctx, id)
 }
@@ -129,6 +125,10 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []gqlmodel.ID, typeArg gq
 	default:
 		return nil, nil
 	}
+}
+
+func (r *queryResolver) NodeExecution(ctx context.Context, jobID gqlmodel.ID, nodeID string) (*gqlmodel.NodeExecution, error) {
+	return loaders(ctx).Node.FindByJobNodeID(ctx, jobID, nodeID)
 }
 
 func (r *queryResolver) Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {

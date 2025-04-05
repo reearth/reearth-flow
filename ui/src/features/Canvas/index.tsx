@@ -20,6 +20,7 @@ import {
 } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
+import { NodeContextMenu, SelectionContextMenu } from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
@@ -33,6 +34,7 @@ const proOptions: ProOptions = { hideAttribution: true };
 type Props = {
   nodes: Node[];
   edges: Edge[];
+  selectedEdgeIds?: string[];
   canvasLock: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onNodesAdd?: (newNode: Node[]) => void;
@@ -53,6 +55,7 @@ const Canvas: React.FC<Props> = ({
   canvasLock,
   nodes,
   edges,
+  selectedEdgeIds,
   onWorkflowAdd,
   onNodesAdd,
   onNodesChange,
@@ -73,6 +76,11 @@ const Canvas: React.FC<Props> = ({
     handleEdgesChange,
     handleConnect,
     handleReconnect,
+    handleNodeContextMenu,
+    handleSelectionContextMenu,
+    handleCloseContextmenu,
+    contextMenu,
+    paneRef,
   } = useHooks({
     nodes,
     edges,
@@ -98,7 +106,7 @@ const Canvas: React.FC<Props> = ({
       // selectNodesOnDrag={false}
       // fitViewOptions={{ padding: 0.5 }}
       // fitView
-
+      ref={paneRef}
       // Locking props START
       nodesDraggable={!canvasLock}
       nodesConnectable={!canvasLock}
@@ -131,10 +139,14 @@ const Canvas: React.FC<Props> = ({
       onNodesChange={handleNodesChange}
       onEdgesChange={handleEdgesChange}
       onNodeDoubleClick={handleNodeDoubleClick}
+      onNodeDragStart={handleCloseContextmenu}
       onNodeDragStop={handleNodeDragStop}
       onNodesDelete={handleNodesDelete}
       onNodeMouseEnter={onNodeHover}
       onNodeMouseLeave={onNodeHover}
+      onNodeContextMenu={handleNodeContextMenu}
+      onSelectionContextMenu={handleSelectionContextMenu}
+      onMoveStart={handleCloseContextmenu}
       onDrop={handleNodeDrop}
       onDragOver={handleNodeDragOver}
       onEdgeMouseEnter={onEdgeHover}
@@ -148,6 +160,26 @@ const Canvas: React.FC<Props> = ({
         gap={gridSize}
         color="rgba(63, 63, 70, 0.3)"
       />
+
+      {contextMenu?.type === "node" && (
+        <NodeContextMenu
+          node={contextMenu.data}
+          contextMenu={contextMenu}
+          onNodesChange={handleNodesChange}
+          onSecondaryNodeAction={onNodeDoubleClick}
+          onClose={handleCloseContextmenu}
+        />
+      )}
+      {contextMenu?.type === "selection" && (
+        <SelectionContextMenu
+          nodes={contextMenu.data}
+          selectedEdgeIds={selectedEdgeIds}
+          contextMenu={contextMenu}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={handleEdgesChange}
+          onClose={handleCloseContextmenu}
+        />
+      )}
     </ReactFlow>
   );
 };

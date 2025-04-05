@@ -166,21 +166,6 @@ type DeploymentPayload struct {
 	Deployment *Deployment `json:"deployment"`
 }
 
-type EdgeExecution struct {
-	ID                  ID         `json:"id"`
-	EdgeID              string     `json:"edgeId"`
-	JobID               ID         `json:"jobId"`
-	Status              EdgeStatus `json:"status"`
-	CreatedAt           *time.Time `json:"createdAt,omitempty"`
-	StartedAt           *time.Time `json:"startedAt,omitempty"`
-	CompletedAt         *time.Time `json:"completedAt,omitempty"`
-	FeatureID           *ID        `json:"featureId,omitempty"`
-	IntermediateDataURL *string    `json:"intermediateDataUrl,omitempty"`
-}
-
-func (EdgeExecution) IsNode()        {}
-func (this EdgeExecution) GetID() ID { return this.ID }
-
 type ExecuteDeploymentInput struct {
 	DeploymentID ID `json:"deploymentId"`
 }
@@ -246,6 +231,19 @@ type Me struct {
 
 type Mutation struct {
 }
+
+type NodeExecution struct {
+	ID          ID         `json:"id"`
+	JobID       ID         `json:"jobId"`
+	NodeID      ID         `json:"nodeId"`
+	Status      NodeStatus `json:"status"`
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	StartedAt   *time.Time `json:"startedAt,omitempty"`
+	CompletedAt *time.Time `json:"completedAt,omitempty"`
+}
+
+func (NodeExecution) IsNode()        {}
+func (this NodeExecution) GetID() ID { return this.ID }
 
 type PageBasedPagination struct {
 	Page     int             `json:"page"`
@@ -328,6 +326,11 @@ type ProjectSharingInfoPayload struct {
 type ProjectSnapshot struct {
 	Timestamp time.Time `json:"timestamp"`
 	Updates   []int     `json:"updates"`
+	Version   int       `json:"version"`
+}
+
+type ProjectSnapshotMetadata struct {
+	Timestamp time.Time `json:"timestamp"`
 	Version   int       `json:"version"`
 }
 
@@ -568,49 +571,6 @@ func (e AssetSortType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
-type EdgeStatus string
-
-const (
-	EdgeStatusInProgress EdgeStatus = "IN_PROGRESS"
-	EdgeStatusCompleted  EdgeStatus = "COMPLETED"
-	EdgeStatusFailed     EdgeStatus = "FAILED"
-)
-
-var AllEdgeStatus = []EdgeStatus{
-	EdgeStatusInProgress,
-	EdgeStatusCompleted,
-	EdgeStatusFailed,
-}
-
-func (e EdgeStatus) IsValid() bool {
-	switch e {
-	case EdgeStatusInProgress, EdgeStatusCompleted, EdgeStatusFailed:
-		return true
-	}
-	return false
-}
-
-func (e EdgeStatus) String() string {
-	return string(e)
-}
-
-func (e *EdgeStatus) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = EdgeStatus(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid EdgeStatus", str)
-	}
-	return nil
-}
-
-func (e EdgeStatus) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
 type EventSourceType string
 
 const (
@@ -743,6 +703,53 @@ func (e *LogLevel) UnmarshalGQL(v interface{}) error {
 }
 
 func (e LogLevel) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type NodeStatus string
+
+const (
+	NodeStatusPending    NodeStatus = "PENDING"
+	NodeStatusStarting   NodeStatus = "STARTING"
+	NodeStatusProcessing NodeStatus = "PROCESSING"
+	NodeStatusCompleted  NodeStatus = "COMPLETED"
+	NodeStatusFailed     NodeStatus = "FAILED"
+)
+
+var AllNodeStatus = []NodeStatus{
+	NodeStatusPending,
+	NodeStatusStarting,
+	NodeStatusProcessing,
+	NodeStatusCompleted,
+	NodeStatusFailed,
+}
+
+func (e NodeStatus) IsValid() bool {
+	switch e {
+	case NodeStatusPending, NodeStatusStarting, NodeStatusProcessing, NodeStatusCompleted, NodeStatusFailed:
+		return true
+	}
+	return false
+}
+
+func (e NodeStatus) String() string {
+	return string(e)
+}
+
+func (e *NodeStatus) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = NodeStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid NodeStatus", str)
+	}
+	return nil
+}
+
+func (e NodeStatus) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

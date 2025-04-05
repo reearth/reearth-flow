@@ -3,9 +3,8 @@ import { useMemo } from "react";
 import type { NodeData } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
-// import { getPropsFrom } from "../utils";
-
 import { getNodeColors } from "./nodeColors";
+// import useNodeStatus from "./useNodeStatus";
 
 export default ({ data, type }: { data: NodeData; type: string }) => {
   const {
@@ -14,6 +13,8 @@ export default ({ data, type }: { data: NodeData; type: string }) => {
     inputs: defaultInputs,
     outputs: defaultOutputs,
   } = data;
+
+  // const { nodeStatus } = useNodeStatus();
 
   const inputs: string[] = useMemo(() => {
     if (data.params?.conditions) {
@@ -35,8 +36,6 @@ export default ({ data, type }: { data: NodeData; type: string }) => {
     return defaultOutputs;
   }, [data.params?.conditions, defaultOutputs]);
 
-  // const metaProps = getPropsFrom(status);
-
   const [borderColor, selectedColor, selectedBackgroundColor] =
     getNodeColors(type);
 
@@ -45,7 +44,7 @@ export default ({ data, type }: { data: NodeData; type: string }) => {
     customName,
     inputs,
     outputs,
-    // metaProps,
+    // status: nodeStatus,
     borderColor,
     selectedColor,
     selectedBackgroundColor,

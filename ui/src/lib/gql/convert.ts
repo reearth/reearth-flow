@@ -3,27 +3,26 @@ import type {
   ProjectFragment,
   JobFragment,
   JobStatus as GraphqlJobStatus,
-  EdgeStatus as GraphqlEdgeStatus,
+  NodeStatus as GraphqlNodeStatus,
   TriggerFragment,
   LogFragment,
-  ProjectSnapshotFragment,
   ProjectDocumentFragment,
+  NodeExecutionFragment,
+  ProjectSnapshotMetadataFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
-import {
+import type {
   Log,
-  type Deployment,
-  type Job,
-  type JobStatus,
-  type Project,
-  type Trigger,
-  type ProjectSnapshot,
-  type ProjectDocument,
-  EdgeStatus,
-  EdgeExecution,
+  Deployment,
+  Job,
+  JobStatus,
+  Project,
+  Trigger,
+  ProjectDocument,
+  NodeExecution,
+  NodeStatus,
+  ProjectSnapshotMeta,
 } from "@flow/types";
 import { formatDate } from "@flow/utils";
-
-import { EdgeExecutionFragment } from "./__gen__/graphql";
 
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
@@ -61,18 +60,15 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   description: trigger.description ?? undefined,
 });
 
-export const toEdgeExecution = (
-  edge: EdgeExecutionFragment,
-): EdgeExecution => ({
-  id: edge.id,
-  jobId: edge.jobId,
-  edgeId: edge.edgeId,
-  status: toEdgeStatus(edge.status),
-  createdAt: edge.createdAt,
-  startedAt: edge.startedAt,
-  completedAt: edge.completedAt,
-  featureId: edge.featureId ?? undefined,
-  intermediateDataUrl: edge.intermediateDataUrl ?? undefined,
+export const toNodeExecution = (
+  node: NodeExecutionFragment,
+): NodeExecution => ({
+  id: node.id,
+  jobId: node.jobId,
+  nodeId: node.nodeId,
+  status: toNodeStatus(node.status),
+  startedAt: node.startedAt,
+  completedAt: node.completedAt,
 });
 
 export const toJob = (job: JobFragment): Job => ({
@@ -95,12 +91,11 @@ export const toLog = (log: LogFragment): Log => ({
   message: log.message,
 });
 
-export const toProjectSnapShot = (
-  projectSnapshot: ProjectSnapshotFragment,
-): ProjectSnapshot => ({
+export const toProjectSnapShotMeta = (
+  projectSnapshot: ProjectSnapshotMetadataFragment,
+): ProjectSnapshotMeta => ({
   timestamp: projectSnapshot.timestamp,
   version: projectSnapshot.version,
-  updates: projectSnapshot.updates,
 });
 
 export const toProjectDocument = (
@@ -128,12 +123,16 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
   }
 };
 
-export const toEdgeStatus = (
-  status: GraphqlEdgeStatus,
-): EdgeStatus | undefined => {
+export const toNodeStatus = (
+  status: GraphqlNodeStatus,
+): NodeStatus | undefined => {
   switch (status) {
-    case "IN_PROGRESS":
-      return "inProgress";
+    case "STARTING":
+      return "starting";
+    case "PENDING":
+      return "pending";
+    case "PROCESSING":
+      return "processing";
     case "COMPLETED":
       return "completed";
     case "FAILED":

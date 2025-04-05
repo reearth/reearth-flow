@@ -112,7 +112,7 @@ const ProjectCard: React.FC<Props> = ({
       <div
         className={`absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-lg group-hover:flex group-hover:flex-col`}>
         <div
-          className={`flex h-[120px] items-center justify-center rounded-t-lg bg-black/30 p-4 ${description ? "backdrop-blur-sm" : ""}`}>
+          className={`flex h-[120px] items-center justify-center rounded-t-lg bg-black/30 p-4 ${description ? "backdrop-blur-xs" : ""}`}>
           <p className="line-clamp-4 overflow-hidden text-ellipsis whitespace-normal break-words text-center text-sm text-secondary dark:font-light dark:text-foreground">
             {description}
           </p>

@@ -28,6 +28,14 @@ type fileRepo struct {
 	workflowUrlBase *url.URL
 }
 
+func (f *fileRepo) CheckIntermediateDataExists(context.Context, string, string) (bool, error) {
+	panic("unimplemented")
+}
+
+func (f *fileRepo) GetIntermediateDataURL(context.Context, string, string) string {
+	panic("unimplemented")
+}
+
 func (f *fileRepo) CheckJobLogExists(ctx context.Context, jobID string) (bool, error) {
 	logPath := filepath.Join(metadataDir, fmt.Sprintf("job-%s.log", jobID))
 	exists, err := afero.Exists(f.fs, logPath)

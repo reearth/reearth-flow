@@ -35,15 +35,6 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Install Protocol Buffers Compiler
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y protobuf-compiler
-
-      - name: Install Thrift Compiler
-        run: |
-          sudo apt-get install -y thrift-compiler
-
       - name: Build Websocket
         run: |
           cd server/websocket
@@ -52,7 +43,7 @@ jobs:
       - name: Create distribution directory
         run: |
           mkdir -p server/websocket/dist
-          cp server/target/release/websocket server/websocket/dist/reearth-flow-websocket
+          cp server/websocket/target/release/websocket server/websocket/dist/reearth-flow-websocket
 
       - name: Rename Artifacts
         if: ${{ inputs.name != 'blank' }}

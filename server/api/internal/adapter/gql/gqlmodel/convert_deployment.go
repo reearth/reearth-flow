@@ -2,7 +2,6 @@ package gqlmodel
 
 import (
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
-	"github.com/reearth/reearth-flow/api/pkg/edge"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 )
 
@@ -69,33 +68,5 @@ func ToJobStatus(status job.Status) JobStatus {
 		return JobStatusFailed
 	default:
 		return JobStatusPending
-	}
-}
-
-func ToEdgeExecution(e *edge.EdgeExecution) *EdgeExecution {
-	if e == nil {
-		return nil
-	}
-
-	return &EdgeExecution{
-		ID:                  ID(e.ID()),
-		EdgeID:              e.EdgeID(),
-		JobID:               ID(e.JobID().String()),
-		Status:              ToEdgeStatus(e.Status()),
-		StartedAt:           e.StartedAt(),
-		CompletedAt:         e.CompletedAt(),
-		FeatureID:           (*ID)(e.FeatureID()),
-		IntermediateDataURL: e.IntermediateDataURL(),
-	}
-}
-
-func ToEdgeStatus(status edge.Status) EdgeStatus {
-	switch status {
-	case edge.StatusCompleted:
-		return EdgeStatusCompleted
-	case edge.StatusFailed:
-		return EdgeStatusFailed
-	default:
-		return EdgeStatusInProgress
 	}
 }

@@ -7,7 +7,8 @@ import { config } from "@flow/config";
 export enum SubscriptionKeys {
   GetSubscribedLogs = "getSubscribedLogs",
   GetSubscribedJobStatus = "getSubscribedJobStatus",
-  GetSubscribedEdgeStatus = "getSubscribedEdgeStatus",
+  GetSubscribedEdgeStatus = "getSubscribedEdgeStatus", // TODO: Delete
+  GetSubscribedNodeStatus = "getSubscribedNodeStatus",
 }
 
 export type PossibleSubscriptionKeys = keyof typeof SubscriptionKeys;
@@ -34,11 +35,18 @@ const EDGE_STATUS_SUBSCRIPTION = `
   subscription OnEdgeStatusChange($jobId: ID!, $edgeId: String!) {
     edgeStatus(jobId: $jobId, edgeId: $edgeId)
   }
+`; // TODO: Delete
+
+const Node_STATUS_SUBSCRIPTION = `
+  subscription OnNodeStatusChange($jobId: ID!, $nodeId: String!) {
+    nodeStatus(jobId: $jobId, nodeId: $nodeId)
+  }
 `;
 
 const SubscriptionStrings: Record<PossibleSubscriptionKeys, string> = {
   GetSubscribedJobStatus: JOB_STATUS_SUBSCRIPTION,
-  GetSubscribedEdgeStatus: EDGE_STATUS_SUBSCRIPTION,
+  GetSubscribedEdgeStatus: EDGE_STATUS_SUBSCRIPTION, // TODO: Delete
+  GetSubscribedNodeStatus: Node_STATUS_SUBSCRIPTION,
   GetSubscribedLogs: LOG_SUBSCRIPTION,
 };
 
