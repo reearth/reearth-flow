@@ -47,3 +47,8 @@ func (b *Builder) Token(token string) *Builder {
 	b.pa.token = token
 	return b
 }
+
+func (b *Builder) UserRoles(userRoles UserRoleList) *Builder {
+	b.pa.userRoles = userRoles
+	return b
+}
