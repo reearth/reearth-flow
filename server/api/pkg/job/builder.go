@@ -86,3 +86,8 @@ func (b *JobBuilder) LogsURL(logsURL string) *JobBuilder {
 	b.j.logsURL = logsURL
 	return b
 }
+
+func (b *JobBuilder) WorkerLogsURL(workerLogsURL string) *JobBuilder {
+	b.j.workerLogsURL = workerLogsURL
+	return b
+}

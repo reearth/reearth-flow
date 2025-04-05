@@ -308,6 +308,11 @@ func (i *Job) updateJobArtifacts(ctx context.Context, j *job.Job) error {
 		j.SetLogsURL(logURL)
 	}
 
+	workerLogURL := i.file.GetJobWorkerLogURL(jobID)
+	if workerLogURL != "" {
+		j.SetWorkerLogsURL(workerLogURL)
+	}
+
 	return nil
 }
 
@@ -348,6 +353,13 @@ func (i *Job) sendCompletionNotification(ctx context.Context, j *job.Job, notifi
 		log.Warnfc(ctx, "job: failed to check log existence for jobID=%s: %v", jobID, err)
 	} else if logExists {
 		logs = append(logs, j.LogsURL())
+	}
+
+	workerLogExists, err := i.file.CheckJobWorkerLogExists(ctx, jobID)
+	if err != nil {
+		log.Warnfc(ctx, "job: failed to check worker log existence for jobID=%s: %v", jobID, err)
+	} else if workerLogExists {
+		logs = append(logs, j.WorkerLogsURL())
 	}
 
 	payload := notification.Payload{

@@ -182,18 +182,19 @@ type GetHeadInput struct {
 }
 
 type Job struct {
-	CompletedAt  *time.Time  `json:"completedAt,omitempty"`
-	Deployment   *Deployment `json:"deployment,omitempty"`
-	DeploymentID ID          `json:"deploymentId"`
-	Debug        *bool       `json:"debug,omitempty"`
-	ID           ID          `json:"id"`
-	LogsURL      *string     `json:"logsURL,omitempty"`
-	OutputURLs   []string    `json:"outputURLs,omitempty"`
-	StartedAt    time.Time   `json:"startedAt"`
-	Status       JobStatus   `json:"status"`
-	Workspace    *Workspace  `json:"workspace,omitempty"`
-	WorkspaceID  ID          `json:"workspaceId"`
-	Logs         []*Log      `json:"logs,omitempty"`
+	CompletedAt   *time.Time  `json:"completedAt,omitempty"`
+	Deployment    *Deployment `json:"deployment,omitempty"`
+	DeploymentID  ID          `json:"deploymentId"`
+	Debug         *bool       `json:"debug,omitempty"`
+	ID            ID          `json:"id"`
+	LogsURL       *string     `json:"logsURL,omitempty"`
+	WorkerLogsURL *string     `json:"workerLogsURL,omitempty"`
+	OutputURLs    []string    `json:"outputURLs,omitempty"`
+	StartedAt     time.Time   `json:"startedAt"`
+	Status        JobStatus   `json:"status"`
+	Workspace     *Workspace  `json:"workspace,omitempty"`
+	WorkspaceID   ID          `json:"workspaceId"`
+	Logs          []*Log      `json:"logs,omitempty"`
 }
 
 func (Job) IsNode()        {}

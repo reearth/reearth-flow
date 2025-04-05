@@ -33,6 +33,8 @@ type File interface {
 	ListJobArtifacts(context.Context, string) ([]string, error)
 	GetJobLogURL(string) string
 	CheckJobLogExists(context.Context, string) (bool, error)
+	GetJobWorkerLogURL(string) string
+	CheckJobWorkerLogExists(context.Context, string) (bool, error)
 	GetIntermediateDataURL(context.Context, string, string) string
 	CheckIntermediateDataExists(context.Context, string, string) (bool, error)
 }
