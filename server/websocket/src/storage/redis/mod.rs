@@ -70,6 +70,34 @@ impl RedisStore {
         Ok(())
     }
 
+    pub async fn publish_batch_updates(
+        &self,
+        stream_key: &str,
+        updates: &[Vec<u8>],
+        conn: &mut Connection,
+    ) -> Result<()> {
+        let script = redis::Script::new(
+            r#"
+            local stream_key = KEYS[1]
+            local updates = ARGV[1]
+
+            for i, update in ipairs(updates) do
+                redis.call('XADD', stream_key, '*', 'update', update)
+            end
+            
+            return #updates
+            "#,
+        );
+
+        let _: () = script
+            .key(stream_key)
+            .arg(updates)
+            .invoke_async(&mut *conn)
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn acquire_lock(
         &self,
         lock_key: &str,
