@@ -10,7 +10,7 @@ use tokio::time::interval;
 use tracing::error;
 
 const DEFAULT_CAPACITY: usize = 8;
-const DEFAULT_FLUSH_INTERVAL_MS: u64 = 1;
+const DEFAULT_FLUSH_INTERVAL_MS: u64 = 10;
 
 pub struct UpdateCache {
     stream_key: String,

@@ -56,28 +56,12 @@ impl std::fmt::Debug for BroadcastGroup {
 }
 
 impl BroadcastGroup {
-    pub async fn increment_connections(&self) -> Result<()> {
-        let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
-        let new_count = prev_count + 1;
-
-        debug!(
-            "Connection count increased: {} -> {}",
-            prev_count, new_count
-        );
-
-        Ok(())
+    pub async fn increment_connections(&self) -> usize {
+        self.connections.fetch_add(1, Ordering::Relaxed)
     }
 
     pub async fn decrement_connections(&self) -> usize {
-        let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
-        let new_count = prev_count - 1;
-
-        debug!(
-            "Connection count decreased: {} -> {}",
-            prev_count, new_count
-        );
-
-        new_count
+        self.connections.fetch_sub(1, Ordering::Relaxed)
     }
 
     pub fn connection_count(&self) -> usize {
@@ -379,9 +363,7 @@ impl BroadcastGroup {
         let subscription = self.listen(sink, stream, DefaultProtocol);
         let (tx, rx) = tokio::sync::oneshot::channel();
 
-        if let Err(e) = self.increment_connections().await {
-            error!("Failed to increment connections: {}", e);
-        }
+        self.increment_connections().await;
         let _ = tx.send(());
 
         Subscription {
