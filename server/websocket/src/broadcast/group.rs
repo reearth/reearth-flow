@@ -40,7 +40,7 @@ pub struct BroadcastGroup {
     doc_name: String,
     shutdown_complete: AtomicBool,
     instance_id: String,
-    last_read_id: Arc<tokio::sync::Mutex<String>>,
+    last_read_id: Arc<Mutex<String>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -184,7 +184,7 @@ impl BroadcastGroup {
             doc_name,
             shutdown_complete: AtomicBool::new(false),
             instance_id,
-            last_read_id: Arc::new(tokio::sync::Mutex::new("0".to_string())),
+            last_read_id: Arc::new(Mutex::new("0".to_string())),
         };
 
         Ok(result)
@@ -210,6 +210,10 @@ impl BroadcastGroup {
             doc_name.clone(),
         )
         .await?;
+
+        redis_store
+            .create_empty_stream_with_ttl(&doc_name, 86400)
+            .await?;
 
         let awareness_for_sub = group.awareness_ref.clone();
         let sender_for_sub = group.sender.clone();
@@ -479,12 +483,10 @@ impl BroadcastGroup {
                 };
 
                 if !update_bytes.is_empty() {
-                    if let Err(e) = redis_store
+                    redis_store
                         .publish_update(stream_key, &update_bytes, conn)
                         .await
-                    {
-                        error!("Redis Stream update failed: {}", e);
-                    }
+                        .map_err(|e| Error::Other(e.into()))?;
                 }
 
                 match msg {
@@ -524,8 +526,7 @@ impl BroadcastGroup {
     }
 
     pub async fn shutdown(&self) -> Result<()> {
-        self.shutdown_complete
-            .store(true, std::sync::atomic::Ordering::SeqCst);
+        self.shutdown_complete.store(true, Ordering::SeqCst);
 
         if self.connection_count() == 0 {
             if let Err(e) = self
@@ -642,13 +643,9 @@ impl BroadcastGroup {
             background_tasks.stop_all();
         }
 
-        if let Err(e) = self
-            .redis_store
+        self.redis_store
             .safe_delete_stream(&self.doc_name, &self.instance_id)
-            .await
-        {
-            warn!("Failed to delete Redis stream: {}", e);
-        }
+            .await?;
 
         Ok(())
     }
@@ -664,8 +661,7 @@ impl Drop for BroadcastGroup {
             drop(sub);
         }
 
-        self.shutdown_complete
-            .store(true, std::sync::atomic::Ordering::SeqCst);
+        self.shutdown_complete.store(true, Ordering::SeqCst);
 
         let background_tasks = self.background_tasks.clone();
         tokio::spawn(async move {

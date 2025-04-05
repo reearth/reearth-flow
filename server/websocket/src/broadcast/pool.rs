@@ -3,19 +3,18 @@ use crate::storage::gcs::GcsStore;
 use crate::storage::kv::DocOps;
 use crate::storage::redis::RedisStore;
 use crate::AwarenessRef;
-use anyhow::{Error, Result};
+use anyhow::Result;
 use bytes;
 use dashmap::DashMap;
-use deadpool::managed::{self, Manager, Metrics, RecycleResult};
 use rand;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, warn};
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
-use super::types::{BroadcastConfig, BroadcastGroupContext};
+use super::types::BroadcastConfig;
 
 const DEFAULT_DOC_ID: &str = "01jpjfpw0qtw17kbrcdbgefakg";
 
@@ -44,8 +43,11 @@ impl BroadcastGroupManager {
                 drop(entry);
 
                 let doc_name = group_clone.get_doc_name();
-                let valid =
-                    (self.redis_store.check_stream_exists(&doc_name).await).unwrap_or(false);
+                let valid = self
+                    .redis_store
+                    .check_stream_exists(&doc_name)
+                    .await
+                    .unwrap_or(false);
 
                 if !valid {
                     self.doc_to_id_map.remove(doc_id);
@@ -100,7 +102,7 @@ impl BroadcastGroupManager {
             let awareness_clone = Arc::clone(&awareness);
             let redis_store_clone = Arc::clone(&self.redis_store);
             tokio::spawn(async move {
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                tokio::time::sleep(Duration::from_secs(1)).await;
 
                 let awareness_guard = awareness_clone.read().await;
                 let doc = awareness_guard.doc();
@@ -137,49 +139,6 @@ impl BroadcastGroupManager {
                 let new_group = entry.insert(Arc::clone(&group)).clone();
                 Ok(new_group)
             }
-        }
-    }
-}
-
-impl Manager for BroadcastGroupManager {
-    type Type = BroadcastGroupContext;
-    type Error = Error;
-
-    async fn create(&self) -> Result<Self::Type, Self::Error> {
-        let group = self.create_group(DEFAULT_DOC_ID).await?;
-
-        Ok(BroadcastGroupContext { group })
-    }
-
-    fn recycle(
-        &self,
-        obj: &mut Self::Type,
-        _metrics: &Metrics,
-    ) -> impl std::future::Future<Output = RecycleResult<Self::Error>> + Send {
-        let doc_to_id_map = self.doc_to_id_map.clone();
-        let group = obj.group.clone();
-
-        async move {
-            if group.connection_count() == 0 {
-                let doc_id = group.get_doc_name();
-                info!("Recycling empty broadcast group for document '{}'", doc_id);
-
-                doc_to_id_map.remove(&doc_id);
-
-                if let Err(e) = group.shutdown().await {
-                    warn!("Error shutting down empty group for '{}': {}", doc_id, e);
-                    return Err(managed::RecycleError::Message(
-                        format!("Failed to shutdown: {}", e).into(),
-                    ));
-                }
-
-                return Err(managed::RecycleError::Message(
-                    "Group has no connections".into(),
-                ));
-            }
-            let doc_id = group.get_doc_name();
-            info!("Recycling broadcast group for document '{}'", doc_id);
-            Ok(())
         }
     }
 }
@@ -278,11 +237,6 @@ impl BroadcastPool {
                     .await
                 {
                     Ok(updates) if !updates.is_empty() => {
-                        info!(
-                            "Found {} updates in Redis stream for '{}', applying before GCS flush",
-                            updates.len(),
-                            doc_id
-                        );
                         let awareness = group.awareness().write().await;
                         let mut txn = awareness.doc().transact_mut();
 
@@ -358,9 +312,7 @@ impl BroadcastPool {
                     }
 
                     if let Some((redis, lock_id, instance_id)) = lock_acquired {
-                        if let Err(e) = redis.release_doc_lock(&lock_id, &instance_id).await {
-                            warn!("Failed to release GCS lock: {}", e);
-                        }
+                        redis.release_doc_lock(&lock_id, &instance_id).await?;
                     }
                 }
             }

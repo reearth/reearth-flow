@@ -19,6 +19,7 @@ use tracing::info;
 #[cfg(feature = "auth")]
 use crate::AuthQuery;
 use crate::{doc::document_routes, AppState};
+use anyhow::Result;
 #[cfg(feature = "auth")]
 use axum::extract::Query;
 
@@ -27,7 +28,7 @@ struct ServerState {
     app_state: Arc<AppState>,
 }
 
-pub async fn ensure_bucket(client: &Client, bucket_name: &str) -> Result<(), anyhow::Error> {
+pub async fn ensure_bucket(client: &Client, bucket_name: &str) -> Result<()> {
     let bucket = BucketCreationConfig {
         location: "US".to_string(),
         ..Default::default()
@@ -45,7 +46,7 @@ pub async fn ensure_bucket(client: &Client, bucket_name: &str) -> Result<(), any
     }
 }
 
-pub async fn start_server(state: Arc<AppState>, port: &str) -> Result<(), anyhow::Error> {
+pub async fn start_server(state: Arc<AppState>, port: &str) -> Result<()> {
     let addr = format!("0.0.0.0:{}", port);
     let listener = TcpListener::bind(&addr).await?;
 
