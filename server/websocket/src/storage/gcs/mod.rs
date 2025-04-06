@@ -467,12 +467,14 @@ impl KVStore for GcsStore {
             ..Default::default()
         };
 
-        let data = self
+        match self
             .client
             .download_object(&request, &Range::default())
-            .await?;
-
-        Ok(Some(data))
+            .await
+        {
+            Ok(data) => Ok(Some(data)),
+            Err(_) => Ok(None),
+        }
     }
 
     async fn upsert(&self, key: &[u8], value: &[u8]) -> Result<(), Self::Error> {
