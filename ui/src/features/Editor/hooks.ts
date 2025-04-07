@@ -309,5 +309,7 @@ export default ({
     handleEdgeHover,
     handleDebugRunStart,
     handleDebugRunStop,
+    handleCopy,
+    handlePaste,
   };
 };
