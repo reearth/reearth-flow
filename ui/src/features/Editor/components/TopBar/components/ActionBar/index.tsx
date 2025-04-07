@@ -61,10 +61,10 @@ const ActionBar: React.FC<Props> = ({
 
   return (
     <>
-      <div className="flex rounded-md border bg-secondary">
-        <div className="flex align-middle">
+      <div className="flex rounded-md bg-secondary">
+        <div className="flex align-middle gap-1">
           <IconButton
-            className="rounded-l-[4px] rounded-r-none"
+            className="rounded-l-[4px] rounded"
             tooltipText={t("Start debug run of workflow")}
             tooltipOffset={tooltipOffset}
             disabled={
@@ -76,7 +76,6 @@ const ActionBar: React.FC<Props> = ({
             onClick={handleDebugRunStart}
           />
           <IconButton
-            className="rounded-none"
             tooltipText={t("Stop debug run of workflow")}
             tooltipOffset={tooltipOffset}
             disabled={
@@ -86,7 +85,6 @@ const ActionBar: React.FC<Props> = ({
             onClick={handleShowDebugStopDialog}
           />
           <IconButton
-            className="rounded-none"
             tooltipText={t("Clear debug run and results")}
             tooltipOffset={tooltipOffset}
             disabled={
@@ -99,7 +97,6 @@ const ActionBar: React.FC<Props> = ({
             onClick={handleDebugRunReset}
           />
           <IconButton
-            className="rounded-none"
             tooltipText={t("Deploy project's workflow")}
             tooltipOffset={tooltipOffset}
             icon={<RocketLaunch weight="thin" />}
@@ -108,13 +105,17 @@ const ActionBar: React.FC<Props> = ({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <IconButton
-                className="w-[25px] rounded-l-none rounded-r-[4px]"
+                className="w-[25px]"
                 tooltipText={t("Additional actions")}
                 tooltipOffset={tooltipOffset}
                 icon={<DotsThreeVertical />}
               />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent
+              className="flex flex-col gap-2"
+              align="end"
+              sideOffset={10}
+              alignOffset={2}>
               <DropdownMenuItem
                 className="flex justify-between gap-4"
                 onClick={handleShowShareDialog}>

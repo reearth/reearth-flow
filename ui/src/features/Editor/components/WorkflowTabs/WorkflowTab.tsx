@@ -1,4 +1,4 @@
-import { X } from "@phosphor-icons/react";
+import { Graph, X } from "@phosphor-icons/react";
 
 import { Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -33,7 +33,7 @@ const WorkflowTab: React.FC<Props> = ({
 
   return (
     <div
-      className={`relative flex h-4/5 w-[150px] shrink-0 items-center justify-center rounded transition-colors ${currentWorkflowId === id ? "bg-node-entrance/60" : "bg-node-entrance/30 hover:bg-node-entrance/60"} group cursor-pointer`}
+      className={`relative rounded-t flex h-4/5 w-[150px] shrink-0 items-end justify-center transition-colors ${currentWorkflowId === id ? "bg-node-subworkflow" : "bg-node-subworkflow/50 hover:bg-node-subworkflow"} group cursor-pointer`}
       onClick={() => onWorkflowChange(id)}
       onDoubleClick={() => onDoubleClick?.(id, name)}
       key={id}>
@@ -48,22 +48,20 @@ const WorkflowTab: React.FC<Props> = ({
           onBlur={onSubmit}
         />
       ) : (
-        <p
-          className={`ml-[15px] mr-[19px] select-none truncate text-center text-xs group-hover:text-white dark:font-extralight ${currentWorkflowId !== id && "text-accent-foreground"}`}>
-          {name}
-        </p>
+        <div
+          className={`h-full flex gap-2 items-center justify-center ml-[15px] mr-[19px] group-hover:text-white dark:font-extralight ${currentWorkflowId !== id && "text-accent-foreground"}`}>
+          <Graph weight="light" />
+          <p className="select-none truncate text-center text-xs">{name}</p>
+        </div>
       )}
       {!isEditing && (
-        <div className="absolute right-0 flex h-full justify-end rounded">
-          <div
-            className="group flex h-full w-[20px] items-center justify-self-end overflow-hidden rounded px-1 hover:w-[150px] hover:bg-node-exit hover:transition-all hover:delay-200"
-            onClick={onWorkflowClose(id)}>
-            <div className="flex-1 overflow-hidden">
-              <p className="rounded-l text-center text-xs opacity-0 transition-all delay-200 group-hover:opacity-100 dark:font-extralight">
-                {t("Close canvas")}
-              </p>
+        <div className="bg-secondary h-full w-[35px] absolute right-0 flex group-hover:delay-200 group-hover:opacity-100 opacity-0 delay-0 transition-all shadow-[-8px_0_8px_rgba(0,0,0,0.1)]">
+          <div className="bg-node-entrance/60 w-full flex items-center justify-center">
+            <div
+              className="transition-all p-1 rounded hover:bg-node-entrance/40"
+              onClick={onWorkflowClose(id)}>
+              <X />
             </div>
-            <X className="size-[12px] opacity-0 group-hover:opacity-100" />
           </div>
         </div>
       )}

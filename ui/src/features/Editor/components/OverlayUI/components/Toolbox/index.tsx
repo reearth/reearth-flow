@@ -164,11 +164,11 @@ const Toolbox: React.FC<Props> = ({
     }, 0);
   };
   return (
-    <div className="self-start rounded-md bg-secondary">
-      <div className="flex flex-col flex-wrap rounded-md border transition-all">
+    <div className="self-start rounded-md bg-secondary p-1">
+      <div className="flex flex-col flex-wrap gap-1 rounded-md transition-all">
         {availableTools.map((tool, idx) =>
           tool.id === "break" ? (
-            <div key={tool.id + idx} className="w-full border-t" />
+            <div key={tool.id + idx} className="border-t mx-1 box-border" />
           ) : (
             <IconButton
               key={tool.id}
@@ -182,10 +182,10 @@ const Toolbox: React.FC<Props> = ({
             />
           ),
         )}
-        <div className="w-full border-t" />
+        <div className="border-t mx-1 box-border" />
         {availableActions.map((action, idx) =>
           action.id === "break" ? (
-            <div key={action.id + idx} className="w-full border-t" />
+            <div key={action.id + idx} className="border-t mx-1 box-border" />
           ) : (
             <IconButton
               key={action.id}
