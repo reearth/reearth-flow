@@ -70,7 +70,7 @@ export default ({
           ? { x: mousePosition.x, y: mousePosition.y }
           : n.parentId
             ? { x: n.position.x, y: n.position.y }
-            : { x: n.position.x + 40, y: n.position.y + 20 };
+            : { x: n.position.x + 25, y: n.position.y + 25 };
 
         const newNode: Node = {
           ...n,
