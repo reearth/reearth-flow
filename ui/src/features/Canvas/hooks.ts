@@ -99,14 +99,15 @@ export default ({
     } else {
       styles.right = pane.width - localX;
     }
-    return styles;
+    return { styles, mousePosition: { x: localX, y: localY } };
   };
 
   const handleNodeContextMenu = useCallback(
     (event: MouseEvent, node: Node) => {
       event.preventDefault();
-      const styles = getContextMenuPosition(event);
-      if (!styles) return;
+      const position = getContextMenuPosition(event);
+      if (!position) return;
+      const { styles } = position;
 
       setContextMenu({
         type: "node",
@@ -120,8 +121,9 @@ export default ({
   const handleSelectionContextMenu = useCallback(
     (event: MouseEvent, nodes: Node[]) => {
       event.preventDefault();
-      const styles = getContextMenuPosition(event);
-      if (!styles) return;
+      const position = getContextMenuPosition(event);
+      if (!position) return;
+      const { styles } = position;
 
       setContextMenu({
         type: "selection",
@@ -135,11 +137,12 @@ export default ({
   const handlePaneContextMenu = useCallback(
     (event: MouseEvent | globalThis.MouseEvent) => {
       event.preventDefault();
-      const styles = getContextMenuPosition(event as MouseEvent);
-      if (!styles) return;
-
+      const position = getContextMenuPosition(event as MouseEvent);
+      if (!position) return;
+      const { styles, mousePosition } = position;
       setContextMenu({
         type: "pane",
+        mousePosition,
         styles,
       });
     },

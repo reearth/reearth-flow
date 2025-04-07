@@ -1,7 +1,10 @@
+import { XYPosition } from "@xyflow/react";
+
 import type { Node } from "@flow/types";
 
 type ContextMenuStyles = {
   styles: React.CSSProperties;
+  mousePosition?: XYPosition;
 };
 
 type NodeContextMenuMeta = {
@@ -69,22 +72,20 @@ const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
   onCallback,
 }) => {
   return (
-    <>
-      <div
-        className={`flex items-center justify-between gap-4 rounded-sm px-2 py-1.5 text-xs ${destructive ? "text-destructive" : ""} ${
-          disabled
-            ? "pointer-events-none opacity-50 text-muted-foreground"
-            : "hover:bg-accent cursor-pointer"
-        } hover:bg-accent ${className}`}
-        onClick={() => {
-          if (!disabled) {
-            onCallback();
-          }
-        }}>
-        <p>{label}</p>
-        {icon}
-      </div>
-    </>
+    <div
+      className={`flex items-center justify-between gap-4 rounded-sm px-2 py-1.5 text-xs ${destructive ? "text-destructive" : ""} ${
+        disabled
+          ? "pointer-events-none opacity-50 text-muted-foreground"
+          : "hover:bg-accent cursor-pointer"
+      } hover:bg-accent ${className}`}
+      onClick={() => {
+        if (!disabled) {
+          onCallback();
+        }
+      }}>
+      <p>{label}</p>
+      {icon}
+    </div>
   );
 };
 

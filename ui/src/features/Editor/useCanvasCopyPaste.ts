@@ -1,4 +1,4 @@
-import { addEdge } from "@xyflow/react";
+import { addEdge, XYPosition } from "@xyflow/react";
 import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
@@ -61,14 +61,16 @@ export default ({
   );
 
   const newNodeCreation = useCallback(
-    (pastedNodes: Node[]): Node[] => {
+    (pastedNodes: Node[], mousePosition?: XYPosition): Node[] => {
       const newNodes: Node[] = [];
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
       for (const n of pastedNodes) {
         // if NOT a child of a batch, offset position for user's benefit
-        const newPosition = n.parentId
-          ? { x: n.position.x, y: n.position.y }
-          : { x: n.position.x + 40, y: n.position.y + 20 };
+        const newPosition = mousePosition
+          ? { x: mousePosition.x, y: mousePosition.y }
+          : n.parentId
+            ? { x: n.position.x, y: n.position.y }
+            : { x: n.position.x + 40, y: n.position.y + 20 };
 
         const newNode: Node = {
           ...n,
@@ -223,59 +225,62 @@ export default ({
     });
   }, [nodes, edges, collectSubworkflows, copy, rawWorkflows, toast, t]);
 
-  const handlePaste = useCallback(async () => {
-    const {
-      nodes: pastedNodes,
-      edges: pastedEdges,
-      workflows: pastedWorkflows,
-    } = (await paste()) || {
-      nodes: [],
-      edges: [],
-    };
+  const handlePaste = useCallback(
+    async (mousePosition?: XYPosition) => {
+      const {
+        nodes: pastedNodes,
+        edges: pastedEdges,
+        workflows: pastedWorkflows,
+      } = (await paste()) || {
+        nodes: [],
+        edges: [],
+      };
 
-    const newNodes = newNodeCreation(pastedNodes);
-    const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
-    const { newWorkflows, processedNewNodes } = newWorkflowCreation(
-      newNodes,
-      pastedWorkflows,
-    );
+      const newNodes = newNodeCreation(pastedNodes, mousePosition);
+      const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
+      const { newWorkflows, processedNewNodes } = newWorkflowCreation(
+        newNodes,
+        pastedWorkflows,
+      );
 
-    // deselect all previously selected nodes
-    const nodeChanges: NodeChange[] = nodes.map((n) => ({
-      id: n.id,
-      type: "select",
-      selected: false,
-    }));
+      // deselect all previously selected nodes
+      const nodeChanges: NodeChange[] = nodes.map((n) => ({
+        id: n.id,
+        type: "select",
+        selected: false,
+      }));
 
-    handleNodesChange(nodeChanges);
+      handleNodesChange(nodeChanges);
 
-    handleNodesAdd([...processedNewNodes]);
+      handleNodesAdd([...processedNewNodes]);
 
-    handleEdgesAdd(newEdges);
+      handleEdgesAdd(newEdges);
 
-    newWorkflows.forEach((w) => {
-      handleWorkflowUpdate(w.id, w.nodes, w.edges);
-    });
+      newWorkflows.forEach((w) => {
+        handleWorkflowUpdate(w.id, w.nodes, w.edges);
+      });
 
-    copy({
-      nodes: processedNewNodes,
-      edges: newEdges,
-      workflows: newWorkflows,
-    });
+      copy({
+        nodes: processedNewNodes,
+        edges: newEdges,
+        workflows: newWorkflows,
+      });
 
-    return pastedNodes;
-  }, [
-    nodes,
-    copy,
-    paste,
-    handleNodesAdd,
-    handleNodesChange,
-    handleEdgesAdd,
-    newNodeCreation,
-    newEdgeCreation,
-    newWorkflowCreation,
-    handleWorkflowUpdate,
-  ]);
+      return pastedNodes;
+    },
+    [
+      nodes,
+      copy,
+      paste,
+      handleNodesAdd,
+      handleNodesChange,
+      handleEdgesAdd,
+      newNodeCreation,
+      newEdgeCreation,
+      newWorkflowCreation,
+      handleWorkflowUpdate,
+    ],
+  );
 
   return {
     handleCopy,

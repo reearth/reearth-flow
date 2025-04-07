@@ -46,13 +46,13 @@ const PaneContextMenu: React.FC<Props> = ({
           label: t("Paste"),
           icon: <Clipboard weight="light" />,
 
-          onCallback: wrapWithClose(onPaste ?? (() => {})),
+          onCallback: wrapWithClose(() => onPaste?.(contextMenu.mousePosition)),
         },
       },
     ];
 
     return items;
-  }, [t, onCopy, onPaste, onClose]);
+  }, [t, onCopy, onPaste, onClose, contextMenu.mousePosition]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;
 };
