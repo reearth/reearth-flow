@@ -591,7 +591,6 @@ impl BroadcastGroup {
                 if lock_acquired.is_some() {
                     let awareness = self.awareness_ref.write().await;
                     let awareness_doc = awareness.doc();
-                    let _awareness_state = awareness_doc.transact().state_vector();
 
                     let gcs_doc = Doc::new();
                     let mut gcs_txn = gcs_doc.transact_mut();
