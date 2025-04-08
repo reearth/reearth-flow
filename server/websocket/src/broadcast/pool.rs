@@ -84,6 +84,8 @@ impl BroadcastGroupManager {
         };
 
         if let Ok(updates) = self.redis_store.read_all_stream_data(doc_id).await {
+            // tracing::info!("updates length: {:?}", updates.len());
+            // tracing::info!("--------------------------------read_all_stream_data--------------------------------");
             if !updates.is_empty() {
                 let awareness_guard = awareness.write().await;
                 let mut txn = awareness_guard.doc().transact_mut();
@@ -154,7 +156,7 @@ impl BroadcastPool {
 
         let doc_to_id_map = manager.doc_to_id_map.clone();
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(4));
+            let mut interval = tokio::time::interval(Duration::from_secs(3));
             loop {
                 interval.tick().await;
 
@@ -164,12 +166,16 @@ impl BroadcastPool {
                     let group = entry.value().clone();
 
                     if group.connection_count() == 0 {
-                        empty_groups.push((doc_id, group));
+                        tokio::time::sleep(Duration::from_secs(2)).await;
+                        if group.connection_count() == 0 {
+                            empty_groups.push((doc_id, group));
+                        }
                     }
                 }
 
                 for (doc_id, group) in empty_groups {
                     doc_to_id_map.remove(&doc_id);
+                    // tracing::info!("Shutting down empty group for doc_id: {}", doc_id);
 
                     if let Err(e) = group.shutdown().await {
                         warn!("Error shutting down empty group for '{}': {}", doc_id, e);
@@ -187,10 +193,12 @@ impl BroadcastPool {
 
     pub async fn get_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
+            // tracing::info!("Using cached broadcast group for doc_id: {}", doc_id);
             return Ok(group.clone());
         }
 
-        let group = self.manager.create_group(doc_id).await?;
+        // tracing::info!("Creating new broadcast group for doc_id: {}", doc_id);
+        let group: Arc<BroadcastGroup> = self.manager.create_group(doc_id).await?;
         Ok(group)
     }
 

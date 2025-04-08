@@ -6,7 +6,6 @@ use crate::AwarenessRef;
 
 use anyhow::Result;
 use bytes::Bytes;
-use deadpool_redis::Connection;
 use futures_util::{SinkExt, StreamExt};
 use rand;
 use tracing::{debug, error, warn};
@@ -254,11 +253,12 @@ impl BroadcastGroup {
         let redis_subscriber_task = tokio::spawn(async move {
             let stream_key = format!("yjs:stream:{}", doc_name_for_sub);
 
-            let mut conn = if let Ok(conn) = redis_store_for_sub.get_pool().get().await {
-                conn
-            } else {
-                error!("Failed to get Redis connection");
-                return;
+            let mut conn = match redis_store_for_sub.create_dedicated_connection().await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    error!("Failed to create dedicated Redis connection: {}", e);
+                    return;
+                }
             };
 
             loop {
@@ -268,7 +268,7 @@ impl BroadcastGroup {
                     },
                     _ = async {
                         let result = redis_store_for_sub
-                            .read_and_ack(
+                            .read_and_ack_dedicated(
                                 &mut conn,
                                 &stream_key,
                                 512,
@@ -300,6 +300,10 @@ impl BroadcastGroup {
                                             warn!("Failed to apply update from Redis: {}", e);
                                         }
                                     }
+                                }
+
+                                if update_count == 1  {
+                                    tokio::time::sleep(tokio::time::Duration::from_millis(22)).await;
                                 }
 
                             },
@@ -417,7 +421,6 @@ impl BroadcastGroup {
             let doc_name = self.doc_name.clone();
             let stream_key = format!("yjs:stream:{}", doc_name);
             tokio::spawn(async move {
-                let mut conn = redis_store.get_pool().get().await.unwrap();
                 while let Some(res) = stream.next().await {
                     let data = match res.map_err(anyhow::Error::from) {
                         Ok(data) => data,
@@ -435,15 +438,8 @@ impl BroadcastGroup {
                         }
                     };
 
-                    match Self::handle_msg(
-                        &protocol,
-                        &awareness,
-                        msg,
-                        &redis_store,
-                        &stream_key,
-                        &mut conn,
-                    )
-                    .await
+                    match Self::handle_msg(&protocol, &awareness, msg, &redis_store, &stream_key)
+                        .await
                     {
                         Ok(Some(reply)) => {
                             let mut sink_lock = sink.lock().await;
@@ -472,7 +468,6 @@ impl BroadcastGroup {
         msg: Message,
         redis_store: &Arc<RedisStore>,
         stream_key: &str,
-        conn: &mut Connection,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
@@ -484,7 +479,7 @@ impl BroadcastGroup {
 
                 if !update_bytes.is_empty() {
                     redis_store
-                        .publish_update(stream_key, &update_bytes, conn)
+                        .publish_update(stream_key, &update_bytes)
                         .await
                         .map_err(|e| Error::Other(e.into()))?;
                 }

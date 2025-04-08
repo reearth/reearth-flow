@@ -1,7 +1,7 @@
 use anyhow::Result;
 use bytes::Bytes;
 use deadpool::Runtime;
-use deadpool_redis::{Config, Connection, Pool};
+use deadpool_redis::{Config, Pool};
 use redis::AsyncCommands;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -45,12 +45,14 @@ impl RedisStore {
         self.config.clone()
     }
 
-    pub async fn publish_update(
-        &self,
-        stream_key: &str,
-        update: &[u8],
-        conn: &mut Connection,
-    ) -> Result<()> {
+    pub async fn create_dedicated_connection(&self) -> Result<redis::aio::MultiplexedConnection> {
+        let client = redis::Client::open(self.config.url.clone())?;
+        let conn = client.get_multiplexed_async_connection().await?;
+        Ok(conn)
+    }
+
+    pub async fn publish_update(&self, stream_key: &str, update: &[u8]) -> Result<()> {
+        let mut conn = self.pool.get().await?;
         let script = redis::Script::new(
             r#"
             local stream_key = KEYS[1]
@@ -182,9 +184,9 @@ impl RedisStore {
         Ok(result)
     }
 
-    pub async fn read_and_ack(
+    pub async fn read_and_ack_dedicated(
         &self,
-        conn: &mut Connection,
+        conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
         count: usize,
         last_read_id: &Arc<Mutex<String>>,
@@ -204,7 +206,7 @@ impl RedisStore {
             .arg("STREAMS")
             .arg(stream_key)
             .arg(read_id)
-            .query_async(&mut *conn)
+            .query_async(conn)
             .await?;
 
         if result.is_empty() || result[0].1.is_empty() {
@@ -212,6 +214,8 @@ impl RedisStore {
         }
 
         let mut updates = Vec::with_capacity(result[0].1.len());
+        // tracing::info!("result: {:?}", result);
+        // tracing::info!("result length: {:?}", result.len());
         let mut last_msg_id = String::new();
 
         for (msg_id, fields) in result[0].1.iter() {
@@ -226,6 +230,7 @@ impl RedisStore {
             *last_id = last_msg_id;
         }
 
+        // tracing::info!("updates length: {:?}", updates.len());
         Ok(updates)
     }
 
