@@ -4,7 +4,7 @@ import {
   DotsThreeVertical,
   Export,
   PencilSimple,
-  ShareFat,
+  PaperPlaneTilt,
   Trash,
 } from "@phosphor-icons/react";
 import { MouseEvent, useState } from "react";
@@ -175,7 +175,7 @@ const ProjectCard: React.FC<Props> = ({
           <TooltipTrigger
             className="absolute right-1 top-1 rounded p-1 text-muted-foreground hover:bg-primary group-hover:text-white"
             onClick={handleOpenSharedProject}>
-            <ShareFat />
+            <PaperPlaneTilt />
           </TooltipTrigger>
           <TooltipContent>{t("Public Read Access")}</TooltipContent>
         </Tooltip>

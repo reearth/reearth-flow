@@ -1,6 +1,7 @@
 pub use super::kv as store;
 use super::kv::keys::{KEYSPACE_DOC, SUB_UPDATE, V1};
 use super::kv::{get_oid, DocOps, KVEntry, KVStore};
+use super::redis::RedisStore;
 use futures::future::join_all;
 use google_cloud_storage::{
     client::{Client, ClientConfig},
@@ -101,9 +102,10 @@ impl GcsStore {
         &self,
         doc_id: &str,
         update: &bytes::Bytes,
+        redis: &RedisStore,
     ) -> Result<u32, store::error::Error> {
         use super::kv::DocOps;
-        DocOps::push_update(self, doc_id, update).await
+        DocOps::push_update(self, doc_id, update, redis).await
     }
 
     pub async fn get_updates(&self, doc_id: &str) -> Result<Vec<UpdateInfo>, anyhow::Error> {

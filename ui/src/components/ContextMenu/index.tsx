@@ -14,9 +14,14 @@ type SelectionContextMenuMeta = {
   data: Node[];
 };
 
+type PaneContextMenuMeta = {
+  type: "pane";
+};
+
 export type ContextMenuMeta =
   | (ContextMenuStyles & NodeContextMenuMeta)
-  | (ContextMenuStyles & SelectionContextMenuMeta);
+  | (ContextMenuStyles & SelectionContextMenuMeta)
+  | (ContextMenuStyles & PaneContextMenuMeta);
 
 type ContextMenuProps = {
   items: ContextMenuItemType[];

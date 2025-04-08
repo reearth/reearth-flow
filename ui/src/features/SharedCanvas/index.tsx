@@ -29,6 +29,7 @@ const SharedCanvas: React.FC<Props> = ({
   const t = useT();
   const {
     currentWorkflowId,
+    isSubworkflow,
     nodes,
     edges,
     openWorkflows,
@@ -57,6 +58,7 @@ const SharedCanvas: React.FC<Props> = ({
     <div className="relative flex size-full flex-col">
       <EditorProvider value={editorContext}>
         <Canvas
+          isSubworkflow={isSubworkflow}
           nodes={nodes}
           edges={edges}
           canvasLock
@@ -66,7 +68,6 @@ const SharedCanvas: React.FC<Props> = ({
           // onEdgeHover={handleEdgeHover}
         />
         <WorkflowTabs
-          className="max-w-full bg-secondary px-1"
           openWorkflows={openWorkflows}
           currentWorkflowId={currentWorkflowId}
           onWorkflowClose={handleWorkflowClose}
