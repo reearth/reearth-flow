@@ -1,4 +1,4 @@
-import { CLIPBOARD_REFRESH } from "@flow/global-constants";
+import { CLIPBOARD_EXPIRATION_TIME } from "@flow/global-constants";
 import { JobStatus, NodeExecution } from "@flow/types";
 
 export type GeneralState = {
@@ -94,7 +94,7 @@ async function isClipboardTimeoutExpired(
   }
   if (
     state?.clipboard?.copiedAt &&
-    Date.now() - state.clipboard.copiedAt > CLIPBOARD_REFRESH
+    Date.now() - state.clipboard.copiedAt > CLIPBOARD_EXPIRATION_TIME
   ) {
     return true;
   }
