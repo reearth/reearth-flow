@@ -6,6 +6,7 @@ import { cn } from "@flow/lib/utils";
 import { FlowLogo } from "..";
 
 import "./styles.css";
+import LoadingDots from "./LoadingDots";
 
 const Loading: React.FC<{ show?: boolean; className?: string }> = ({
   show = true,
@@ -23,12 +24,13 @@ const Loading: React.FC<{ show?: boolean; className?: string }> = ({
         "fixed left-0 top-0 z-50 flex h-screen w-screen justify-center items-center bg-secondary",
         className,
       )}>
-      <div className="flex flex-col items-center gap-8">
-        <FlowLogo
-          className="loading-pulse"
-          style={{ height: "110px", width: "110px" }}
-        />
-        <p className="text-2xl font-thin">{brandName || "Flow"}</p>
+      <div className="flex items-center gap-8">
+        <FlowLogo className="size-[85px]" />
+        {/* <FlowLogo className="loading-pulse size-[85px]" /> */}
+        <div className="flex flex-col items-center gap-4">
+          <p className="text-2xl font-thin">{brandName || "Flow"}</p>
+          <LoadingDots />
+        </div>
       </div>
     </div>
   );
