@@ -83,7 +83,7 @@ mod logarithmic_retention_tests {
             println!(
                 "density_shift={}: retained {} snapshots out of 200 (approximately {:.1}% of total)", 
                 density_shift,
-                retained.len(), 
+                retained.len(),
                 retained.len() as f64 / 200.0 * 100.0
             );
         }
