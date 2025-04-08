@@ -621,6 +621,14 @@ impl BroadcastGroup {
                         if let Err(e) = update_result {
                             warn!("Failed to update document in storage: {}", e);
                         }
+
+                        if let Err(e) = self
+                            .storage
+                            .trim_updates_logarithmic(&self.doc_name, 1)
+                            .await
+                        {
+                            warn!("Failed to trim updates: {}", e);
+                        }
                     }
                 }
 
