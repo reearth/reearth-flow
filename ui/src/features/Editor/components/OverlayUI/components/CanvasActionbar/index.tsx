@@ -20,15 +20,15 @@ const CanvasActionBar = () => {
   const { isFullscreen, handleFullscreenToggle } = useFullscreen();
 
   return (
-    <div className="pointer-events-auto rounded-md border bg-secondary">
+    <div className="pointer-events-auto rounded-md bg-secondary/80 p-1 backdrop-blur-xs shadow-md">
       <div className="flex rounded-md">
-        <div className="flex flex-1 flex-col justify-end align-middle">
+        <div className="flex flex-1 flex-col justify-end align-middle gap-1">
           <IconButton
             className="rounded-[4px]"
             tooltipText={t("Zoom in")}
             tooltipPosition="left"
             tooltipOffset={tooltipOffset}
-            icon={<MagnifyingGlassPlus weight="thin" />}
+            icon={<MagnifyingGlassPlus weight="thin" size={16} />}
             onClick={() => zoomIn({ duration: 400 })}
           />
           <IconButton
@@ -36,7 +36,7 @@ const CanvasActionBar = () => {
             tooltipText={t("Zoom out")}
             tooltipOffset={tooltipOffset}
             tooltipPosition="left"
-            icon={<MagnifyingGlassMinus weight="thin" />}
+            icon={<MagnifyingGlassMinus weight="thin" size={16} />}
             onClick={() => zoomOut({ duration: 400 })}
           />
           <IconButton
@@ -44,7 +44,7 @@ const CanvasActionBar = () => {
             tooltipText={t("All nodes in viewport")}
             tooltipOffset={tooltipOffset}
             tooltipPosition="left"
-            icon={<FrameCorners weight="thin" />}
+            icon={<FrameCorners weight="thin" size={16} />}
             onClick={() => fitView({ duration: 400, padding: 0.5 })}
           />
           <IconButton
@@ -56,27 +56,14 @@ const CanvasActionBar = () => {
             tooltipPosition="left"
             icon={
               isFullscreen ? (
-                <CornersIn weight="thin" />
+                <CornersIn weight="thin" size={16} />
               ) : (
-                <CornersOut weight="thin" />
+                <CornersOut weight="thin" size={16} />
               )
             }
             onClick={handleFullscreenToggle}
           />
-          {/* <div className="border-l  mx-3" /> */}
         </div>
-        {/* <div className="flex align-middle">
-          <IconButton
-            tooltipText={t("Publish workflow")}
-            tooltipOffset={tooltipOffset}
-            icon={<Link2Icon />}
-          />
-          <IconButton
-            tooltipText={t("Download workflow")}
-            tooltipOffset={tooltipOffset}
-            icon={<DownloadIcon />}
-          />
-        </div> */}
       </div>
     </div>
   );

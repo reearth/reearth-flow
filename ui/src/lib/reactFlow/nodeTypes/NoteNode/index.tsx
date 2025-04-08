@@ -23,7 +23,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
             background: "none",
             zIndex: 0,
           }}
-          lineClassName="border border-border rounded"
+          lineClassName="border-none rounded"
           handleStyle={{
             background: "none",
             width: 8,
@@ -40,7 +40,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
         />
       )}
       <div
-        className="z-0 h-full rounded-b-sm bg-secondary/50 p-2"
+        className={`relative z-0 h-full rounded-b-md bg-secondary/50 p-2 border ${props.selected ? "border-border" : "border-transparent"}`}
         ref={(element) => {
           if (element) {
             element.style.setProperty(
@@ -55,7 +55,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
           minHeight: minSize.height,
         }}>
         <div
-          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-sm border-x border-t bg-accent/50 px-2 py-1 ${props.selected ? "border-border" : "border-transparent"}`}
+          className={`absolute inset-x-[-0.8px] top-[-26px] flex items-center gap-2 rounded-t-md border-x border-t bg-accent/50 px-2 ${props.selected ? "border-border" : "border-transparent"}`}
           ref={(element) => {
             if (element)
               element.style.setProperty(
@@ -68,6 +68,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
           <p>{data.customizations?.customName ?? data.officialName}</p>
         </div>
         <div
+          className=""
           ref={(element) => {
             if (element) {
               if (element)
