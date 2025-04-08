@@ -271,7 +271,7 @@ impl BroadcastGroup {
                             .read_and_ack_dedicated(
                                 &mut conn,
                                 &stream_key,
-                                512,
+                                1024,
                                 &last_read_id_for_sub,
                             )
                             .await;
