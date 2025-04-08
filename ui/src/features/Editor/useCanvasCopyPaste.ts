@@ -228,7 +228,6 @@ export default ({
       nodes: pastedNodes,
       edges: pastedEdges,
       workflows: pastedWorkflows,
-      copiedAt,
     } = (await paste()) || {
       nodes: [],
       edges: [],
@@ -262,7 +261,7 @@ export default ({
       nodes: processedNewNodes,
       edges: newEdges,
       workflows: newWorkflows,
-      copiedAt,
+      copiedAt: Date.now(),
     });
 
     return pastedNodes;

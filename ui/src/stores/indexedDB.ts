@@ -75,8 +75,7 @@ export async function openDatabase(): Promise<IDBDatabase> {
       const shouldClearClipboard = await isClipboardTimeoutExpired(general);
 
       if (shouldClearClipboard && general?.clipboard) {
-        general.clipboard = undefined;
-        saveStateToIndexedDB({ clipboard: general.clipboard }, "general");
+        saveStateToIndexedDB({ clipboard: undefined }, "general");
       }
 
       resolve(db);
