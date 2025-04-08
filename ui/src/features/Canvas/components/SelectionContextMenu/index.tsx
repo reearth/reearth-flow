@@ -64,7 +64,7 @@ const SelectionContextMenu: React.FC<Props> = ({
         props: {
           label: t("Paste"),
           icon: <Clipboard weight="light" />,
-          disabled: !value?.clipboard?.copiedAt,
+          disabled: !value?.clipboard,
           onCallback: wrapWithClose(onPaste ?? (() => {})),
         },
       },

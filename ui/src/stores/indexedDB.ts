@@ -1,3 +1,4 @@
+import { CLIPBOARD_REFRESH } from "@flow/global-constants";
 import { JobStatus, NodeExecution } from "@flow/types";
 
 export type GeneralState = {
@@ -71,15 +72,10 @@ export async function openDatabase(): Promise<IDBDatabase> {
       const db = (event.target as IDBOpenDBRequest).result;
       await ensureInitialState(db);
       const general = await loadStateFromIndexedDB("general", db);
-      const shouldClearClipboard = await checkClipboardTimeout(general);
+      const shouldClearClipboard = await isClipboardTimeoutExpired(general);
 
       if (shouldClearClipboard && general?.clipboard) {
-        general.clipboard = {
-          nodes: [],
-          edges: [],
-          workflows: [],
-          copiedAt: null,
-        };
+        general.clipboard = undefined;
         saveStateToIndexedDB({ clipboard: general.clipboard }, "general");
       }
 
@@ -90,7 +86,7 @@ export async function openDatabase(): Promise<IDBDatabase> {
   });
 }
 
-async function checkClipboardTimeout(
+async function isClipboardTimeoutExpired(
   state: GeneralState | null,
 ): Promise<boolean> {
   if (!state) {
@@ -98,7 +94,7 @@ async function checkClipboardTimeout(
   }
   if (
     state?.clipboard?.copiedAt &&
-    Date.now() - state.clipboard.copiedAt > 1000 * 60 * 5
+    Date.now() - state.clipboard.copiedAt > CLIPBOARD_REFRESH
   ) {
     return true;
   }
