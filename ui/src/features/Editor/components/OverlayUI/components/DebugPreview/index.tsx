@@ -55,7 +55,7 @@ const DebugPreview: React.FC = () => {
 
   return debugJobState && dataURLs ? (
     <Tabs
-      className={`pointer-events-auto w-[45vw] min-w-[700px] rounded border bg-secondary transition-all ${minimized ? "h-[36px]" : expanded ? "h-[90vh] w-[90vw]" : "h-[500px]"}`}
+      className={`pointer-events-auto w-[45vw] min-w-[700px] rounded-md p-1 bg-secondary transition-all ${minimized ? "h-[36px]" : expanded ? "h-[90vh] w-[90vw]" : "h-[500px]"}`}
       defaultValue="data-viewer">
       <div className="relative flex items-center p-1">
         <div className="absolute left-1 top-1">
@@ -75,7 +75,7 @@ const DebugPreview: React.FC = () => {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex w-full items-center justify-center gap-1">
+        <div className="flex w-full items-center justify-center gap-1 p-1">
           <TabsList className="gap-2">
             <TabsTrigger
               className="gap-1 bg-card font-thin"

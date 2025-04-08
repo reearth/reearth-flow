@@ -4,13 +4,7 @@ import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 import Canvas from "@flow/features/Canvas";
 import { YWorkflow } from "@flow/lib/yjs/types";
 
-import {
-  TopBar,
-  LeftPanel,
-  OverlayUI,
-  ParamsPanel,
-  RightPanel,
-} from "./components";
+import { TopBar, OverlayUI, ParamsPanel, RightPanel } from "./components";
 import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
 
@@ -42,7 +36,6 @@ export default function Editor({
     locallyLockedNode,
     hoveredDetails,
     nodePickerOpen,
-    openPanel,
     canUndo,
     canRedo,
     allowedToDeploy,
@@ -53,7 +46,6 @@ export default function Editor({
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
-    handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowChange,
     handleNodesAdd,
@@ -99,17 +91,6 @@ export default function Editor({
           onDebugRunStop={handleDebugRunStop}
         />
         <div className="relative flex flex-1">
-          <LeftPanel
-            nodes={nodes}
-            isOpen={openPanel === "left"}
-            onOpen={handlePanelOpen}
-            onNodesAdd={handleNodesAdd}
-            isMainWorkflow={isMainWorkflow}
-            hasReader={hasReader}
-            onNodesChange={handleNodesChange}
-            onNodeDoubleClick={handleNodeDoubleClick}
-            selected={locallyLockedNode}
-          />
           <div className="flex flex-1 flex-col">
             <OverlayUI
               hoveredDetails={hoveredDetails}

@@ -1,11 +1,8 @@
-import { useNavigate, useParams } from "@tanstack/react-router";
-import { memo, useCallback } from "react";
-
-import { FlowLogo } from "@flow/components";
+import { memo } from "react";
 
 import { WorkflowTabs } from "..";
 
-import { ActionBar, Breadcrumb } from "./components";
+import { ActionBar, Breadcrumb, DebugActionBar, HomeMenu } from "./components";
 
 type Props = {
   currentWorkflowId: string;
@@ -40,21 +37,15 @@ const TopBar: React.FC<Props> = ({
   onWorkflowChange,
   onWorkflowRename,
 }) => {
-  const navigate = useNavigate();
-  const { workspaceId } = useParams({ strict: false });
-
-  const handleNavigationToDashboard = useCallback(() => {
-    navigate({ to: `/workspaces/${workspaceId}/projects` });
-  }, [workspaceId, navigate]);
   return (
     <div className="flex shrink-0 justify-between gap-2 bg-secondary w-[100vw]">
-      <div className="flex gap-2 h-full">
-        <div
-          className="flex items-center gap-6 px-4"
-          onClick={handleNavigationToDashboard}>
-          <div className="box-content">
-            <FlowLogo className="size-6 transition-all hover:text-[#46ce7c] cursor-pointer" />
-          </div>
+      <div className="flex items-center gap-1">
+        <HomeMenu
+          dropdownPosition="bottom"
+          dropdownAlign="end"
+          dropdownAlignOffset={-140}
+        />
+        <div className="pr-4">
           <Breadcrumb />
         </div>
       </div>
@@ -69,12 +60,15 @@ const TopBar: React.FC<Props> = ({
       </div>
       <div className="flex select-none items-center h-full justify-center gap-2 self-center p-1">
         <div className="border-r h-4/5" />
+        <DebugActionBar
+          onDebugRunStart={onDebugRunStart}
+          onDebugRunStop={onDebugRunStop}
+        />
+        <div className="border-r h-4/5" />
         <ActionBar
           allowedToDeploy={allowedToDeploy}
           onProjectShare={onProjectShare}
           onWorkflowDeployment={onWorkflowDeployment}
-          onDebugRunStart={onDebugRunStart}
-          onDebugRunStop={onDebugRunStop}
           onRightPanelOpen={onRightPanelOpen}
         />
       </div>

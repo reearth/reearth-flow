@@ -55,34 +55,34 @@ const Toolbox: React.FC<Props> = ({
     {
       id: "reader" as const,
       name: t("Reader Node"),
-      icon: <Database weight="thin" />,
+      icon: <Database weight="thin" size={16} />,
       disabled: !isMainWorkflow || hasReader,
     },
     {
       id: "transformer" as const,
       name: t("Transformer Node"),
-      icon: <Lightning weight="thin" />,
+      icon: <Lightning weight="thin" size={16} />,
     },
     {
       id: "writer" as const,
       name: t("Writer Node"),
-      icon: <Disc weight="thin" />,
+      icon: <Disc weight="thin" size={16} />,
       disabled: !isMainWorkflow,
     },
     {
       id: "note" as const,
       name: t("Note"),
-      icon: <Note weight="thin" />,
+      icon: <Note weight="thin" size={16} />,
     },
     {
       id: "batch" as const,
       name: t("Batch Node"),
-      icon: <RectangleDashed weight="thin" />,
+      icon: <RectangleDashed weight="thin" size={16} />,
     },
     {
       id: "subworkflow" as const,
       name: t("Subworkflow Node"),
-      icon: <Graph weight="thin" />,
+      icon: <Graph weight="thin" size={16} />,
     },
   ];
 
@@ -90,21 +90,21 @@ const Toolbox: React.FC<Props> = ({
     {
       id: "layout",
       name: t("Auto layout"),
-      icon: <Layout className="size-4" weight="thin" />,
+      icon: <Layout weight="thin" size={16} />,
       onClick: onLayoutChange,
     },
     { id: "break" },
     {
       id: "undo",
       name: t("Undo last action"),
-      icon: <ArrowArcLeft className="size-4" weight="thin" />,
+      icon: <ArrowArcLeft weight="thin" size={16} />,
       disabled: !canUndo,
       onClick: onUndo,
     },
     {
       id: "redo",
       name: t("Redo action"),
-      icon: <ArrowArcRight className="size-4" weight="thin" />,
+      icon: <ArrowArcRight weight="thin" size={16} />,
       disabled: !canRedo,
       onClick: onRedo,
     },
@@ -122,10 +122,10 @@ const Toolbox: React.FC<Props> = ({
 
     const root = createRoot(dragPreviewContainer);
     root.render(
-      <div className="flex size-12 rounded bg-secondary">
+      <div className="bg-secondary rounded">
         <div
           className={`
-          flex w-full justify-center rounded align-middle
+          flex justify-center rounded align-middle size-9
           ${
             nodeType === "reader"
               ? "bg-node-reader/60"
@@ -163,23 +163,38 @@ const Toolbox: React.FC<Props> = ({
       document.body.removeChild(dragPreviewContainer);
     }, 0);
   };
+
   return (
-    <div className="self-start rounded-md bg-secondary p-1">
+    <div className="self-start rounded-md bg-secondary/80 p-1 backdrop-blur-xs shadow-md">
       <div className="flex flex-col flex-wrap gap-1 rounded-md transition-all">
         {availableTools.map((tool, idx) =>
           tool.id === "break" ? (
             <div key={tool.id + idx} className="border-t mx-1 box-border" />
           ) : (
-            <IconButton
-              key={tool.id}
-              className={`dndnode-${tool.id} rounded-[4px]`}
-              tooltipPosition="right"
-              tooltipText={tool.name}
-              icon={tool.icon}
-              onDragStart={(event) => onDragStart(event, tool.id)}
-              draggable
-              disabled={tool.disabled}
-            />
+            <div className="bg-secondary rounded-md">
+              <IconButton
+                key={tool.id}
+                className={`dndnode-${tool.id} cursor-grab  ${
+                  tool.id === "reader"
+                    ? "bg-node-reader/30 hover:bg-node-reader/60"
+                    : tool.id === "writer"
+                      ? "bg-node-writer/30 hover:bg-node-writer"
+                      : tool.id === "subworkflow"
+                        ? "bg-node-subworkflow/30 hover:bg-node-subworkflow/60"
+                        : tool.id === "note" || tool.id === "batch"
+                          ? "bg-primary/30 hover:bg-primary/60"
+                          : "bg-node-transformer/30 hover:bg-node-transformer/60"
+                }`}
+                tooltipPosition="right"
+                tooltipOffset={4}
+                showArrow
+                tooltipText={tool.name}
+                icon={tool.icon}
+                onDragStart={(event) => onDragStart(event, tool.id)}
+                draggable
+                disabled={tool.disabled}
+              />
+            </div>
           ),
         )}
         <div className="border-t mx-1 box-border" />
@@ -189,9 +204,11 @@ const Toolbox: React.FC<Props> = ({
           ) : (
             <IconButton
               key={action.id}
-              className="gap-0 rounded-[4px]"
+              className="gap-0 rounded-[4px] hover:bg-primary/60"
               tooltipPosition="right"
               tooltipText={action.name}
+              tooltipOffset={4}
+              showArrow
               icon={action.icon}
               disabled={action.disabled}
               onClick={action.onClick}

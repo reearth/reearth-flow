@@ -74,7 +74,7 @@ const WorkflowTabs: React.FC<Props> = ({
   return (
     <div className="flex gap-1 h-full flex-1 items-end w-full overflow-hidden">
       <div
-        className={`rounded-t group flex h-4/5 w-[135px] shrink-0 cursor-pointer items-center justify-center px-[6px]  ${currentWorkflowId === mainWorkflow?.id ? "bg-card" : "bg-inherit hover:bg-card"}`}
+        className={`rounded-t group flex h-4/5 w-[135px] shrink-0 cursor-pointer items-center justify-center px-[6px]  ${currentWorkflowId === mainWorkflow?.id ? "bg-card" : "bg-card/70 hover:bg-card"}`}
         onClick={() => onWorkflowChange(mainWorkflow?.id)}>
         <p
           className={`select-none truncate text-center text-xs group-hover:text-white dark:font-extralight ${currentWorkflowId !== mainWorkflow?.id && "text-accent-foreground"}`}>

@@ -182,13 +182,11 @@ export default ({
   });
 
   const {
-    openPanel,
     nodePickerOpen,
     rightPanelContent,
     hoveredDetails,
     handleNodeHover,
     handleEdgeHover,
-    handlePanelOpen,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleRightPanelOpen,
@@ -286,7 +284,6 @@ export default ({
     locallyLockedNode,
     hoveredDetails,
     nodePickerOpen,
-    openPanel,
     allowedToDeploy,
     rightPanelContent,
     canUndo,
@@ -297,7 +294,6 @@ export default ({
     handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
-    handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowChange: handleCurrentWorkflowIdChange,
     handleWorkflowRedo: handleYWorkflowRedo,

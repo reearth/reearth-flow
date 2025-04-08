@@ -69,12 +69,13 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         {canvas}
         <div
           id="top-middle"
-          className="pointer-events-none absolute inset-x-0 top-0 flex shrink-0 justify-center *:pointer-events-auto"
-        />
+          className="pointer-events-none absolute inset-x-0 top-2 flex shrink-0 justify-center *:pointer-events-auto">
+          <JobStatus />
+        </div>
         <div
           id="left-top"
-          className="pointer-events-none absolute bottom-1 left-2 top-2 flex flex-col shrink-0 gap-4 *:pointer-events-auto">
-          <div className="ml-2 self-start">
+          className="pointer-events-none absolute bottom-1 left-4 top-4 flex flex-col shrink-0 gap-4 *:pointer-events-auto">
+          <div className="self-start">
             <Toolbox
               canUndo={canUndo}
               canRedo={canRedo}
@@ -86,13 +87,11 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             />
           </div>
         </div>
-        <div id="right-top" className="absolute right-4 top-4">
-          <JobStatus />
-        </div>
-        <div className="pointer-events-none absolute inset-y-2 left-2 flex items-end">
+        <div id="right-top" className="absolute right-4 top-4" />
+        <div className="pointer-events-none absolute inset-y-2 left-4 bottom-4 flex items-end">
           <DebugLogs />
         </div>
-        <div className="pointer-events-none absolute bottom-4 right-4 flex flex-row-reverse items-end gap-2">
+        <div className="pointer-events-none absolute bottom-4 right-4 flex flex-row-reverse items-end gap-4">
           <CanvasActionBar />
           <DebugPreview />
         </div>

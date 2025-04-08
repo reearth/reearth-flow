@@ -56,7 +56,7 @@ const WorkflowTab: React.FC<Props> = ({
       )}
       {!isEditing && (
         <div className="bg-secondary h-full w-[35px] absolute right-0 flex group-hover:delay-200 group-hover:opacity-100 opacity-0 delay-0 transition-all shadow-[-8px_0_8px_rgba(0,0,0,0.1)]">
-          <div className="bg-node-entrance/60 w-full flex items-center justify-center">
+          <div className="bg-node-entrance/60 w-full flex items-center justify-center rounded-tr">
             <div
               className="transition-all p-1 rounded hover:bg-node-entrance/40"
               onClick={onWorkflowClose(id)}>
