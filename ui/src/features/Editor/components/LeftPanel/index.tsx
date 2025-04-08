@@ -7,7 +7,6 @@ import {
   RectangleDashed,
   TreeView,
 } from "@phosphor-icons/react";
-import { useNavigate, useParams } from "@tanstack/react-router";
 import { memo, useCallback, useEffect, useState } from "react";
 
 import { FlowLogo, Tree, TreeDataItem, IconButton } from "@flow/components";
@@ -49,14 +48,8 @@ const LeftPanel: React.FC<Props> = ({
   onNodeDoubleClick,
 }) => {
   const t = useT();
-  const navigate = useNavigate();
-  const { workspaceId } = useParams({ strict: false });
   const [selectedTab, setSelectedTab] = useState<Tab | undefined>();
   const [nodeId, setNodeId] = useState<string | undefined>(undefined);
-
-  const handleNavigationToDashboard = useCallback(() => {
-    navigate({ to: `/workspaces/${workspaceId}/projects` });
-  }, [workspaceId, navigate]);
 
   useEffect(() => {
     if (!isOpen && nodeId) {
@@ -179,31 +172,26 @@ const LeftPanel: React.FC<Props> = ({
   return (
     <>
       <div
-        className="absolute left-12 top-0 z-10 flex h-[calc(100vh-30px)] w-[300px] flex-1 flex-col gap-3 overflow-auto border-r bg-background transition-all"
+        className="absolute left-[55px] bottom-[8px] top-[35px] z-10 flex w-[350px] flex-1 flex-col gap-3 p-2 overflow-auto rounded-md bg-secondary transition-all"
         style={{
           transform: `translateX(${isOpen ? "8px" : "-100%"})`,
           transitionDuration: isOpen ? "500ms" : "300ms",
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
         }}>
-        <div className="flex flex-col gap-2 border-b px-4 py-2">
+        <div className="flex items-center gap-2">
+          {tabs?.find((tc) => tc.id === selectedTab)?.icon}
           <p className="text-lg dark:font-thin">
             {tabs?.find((tc) => tc.id === selectedTab)?.title}
           </p>
         </div>
-        <div className="flex flex-col gap-2 overflow-auto">
+        <div className="flex flex-col gap-2 overflow-auto bg-card rounded">
           {tabs?.find((tc) => tc.id === selectedTab)?.component}
         </div>
       </div>
-      <aside className="relative z-10 w-14 border-r bg-secondary">
+      <aside className="relative z-10 w-14 bg-secondary">
         <div className="flex h-full flex-col">
           <nav className="flex flex-col items-center gap-5 p-3">
-            <div
-              className="flex shrink-0 items-center justify-center gap-2 text-lg font-semibold md:size-8 md:text-base"
-              onClick={handleNavigationToDashboard}>
-              <FlowLogo className="size-7 transition-all hover:size-[30px] hover:text-[#46ce7c]" />
-              <span className="sr-only">{t("Dashboard")}</span>
-            </div>
             {tabs.map((tab) => (
               <IconButton
                 key={tab.id}
@@ -227,6 +215,7 @@ const LeftPanel: React.FC<Props> = ({
             <UserMenu
               className="flex w-full justify-center"
               dropdownAlign="end"
+              dropdownOffset={25}
             />
           </nav>
         </div>

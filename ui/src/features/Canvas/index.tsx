@@ -36,6 +36,7 @@ const snapGrid: SnapGrid = [gridSize, gridSize];
 const proOptions: ProOptions = { hideAttribution: true };
 
 type Props = {
+  isSubworkflow: boolean;
   nodes: Node[];
   edges: Edge[];
   selectedEdgeIds?: string[];
@@ -58,6 +59,7 @@ type Props = {
 };
 
 const Canvas: React.FC<Props> = ({
+  isSubworkflow,
   canvasLock,
   nodes,
   edges,
@@ -104,6 +106,7 @@ const Canvas: React.FC<Props> = ({
 
   return (
     <ReactFlow
+      className={`${isSubworkflow ? "border-node-subworkflow border" : ""}`}
       // minZoom={0.7}
       // maxZoom={1}
       // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
@@ -168,7 +171,7 @@ const Canvas: React.FC<Props> = ({
         className="bg-background"
         variant={BackgroundVariant["Lines"]}
         gap={gridSize}
-        color="rgba(63, 63, 70, 0.3)"
+        color="rgba(63, 63, 70, 0.4)"
       />
 
       {contextMenu?.type === "node" && (

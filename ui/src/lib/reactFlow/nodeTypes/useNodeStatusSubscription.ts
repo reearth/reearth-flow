@@ -8,6 +8,7 @@ import { useSubscriptionSetup } from "@flow/lib/gql/subscriptions/useSubscriptio
 import { JobState } from "@flow/stores";
 import type { Job } from "@flow/types";
 
+// TODO: Note that this might be unnecessary eventually, so delete if deemed so @KaWaite
 export default ({
   id,
   debugJobState,

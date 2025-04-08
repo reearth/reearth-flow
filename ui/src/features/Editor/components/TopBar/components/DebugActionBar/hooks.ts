@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { useProjectExport } from "@flow/hooks";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useIndexedDB } from "@flow/lib/indexedDB";
@@ -13,14 +12,10 @@ export default ({
 }) => {
   const [currentProject] = useCurrentProject();
 
-  const { handleProjectExport } = useProjectExport(currentProject);
-
   const [showDialog, setShowDialog] = useState<
     "deploy" | "share" | "debugStop" | undefined
   >(undefined);
 
-  const handleShowDeployDialog = () => setShowDialog("deploy");
-  const handleShowShareDialog = () => setShowDialog("share");
   const handleShowDebugStopDialog = () => setShowDialog("debugStop");
   const handleDialogClose = () => setShowDialog(undefined);
 
@@ -84,11 +79,8 @@ export default ({
     jobStatus,
     debugJob,
     handleDebugRunStart,
-    handleShowDeployDialog,
-    handleShowShareDialog,
     handleShowDebugStopDialog,
     handleDialogClose,
     handleDebugRunReset,
-    handleProjectExport,
   };
 };

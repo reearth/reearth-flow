@@ -78,6 +78,12 @@ export default ({
     undoTrackerActionWrapper,
   });
 
+  const isSubworkflow = useMemo(() => {
+    if (!currentYWorkflow) return false;
+    const workflowId = currentYWorkflow.get("id")?.toJSON();
+    return workflowId !== DEFAULT_ENTRY_GRAPH_ID;
+  }, [currentYWorkflow]);
+
   const rawNodes = useY(currentYWorkflow?.get("nodes") ?? new YMap()) as Record<
     string,
     Node
@@ -176,13 +182,11 @@ export default ({
   });
 
   const {
-    openPanel,
     nodePickerOpen,
     rightPanelContent,
     hoveredDetails,
     handleNodeHover,
     handleEdgeHover,
-    handlePanelOpen,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleRightPanelOpen,
@@ -269,6 +273,7 @@ export default ({
   ]);
 
   return {
+    isSubworkflow,
     currentWorkflowId,
     openWorkflows,
     currentProject,
@@ -279,7 +284,6 @@ export default ({
     locallyLockedNode,
     hoveredDetails,
     nodePickerOpen,
-    openPanel,
     allowedToDeploy,
     rightPanelContent,
     canUndo,
@@ -290,7 +294,6 @@ export default ({
     handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
-    handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowChange: handleCurrentWorkflowIdChange,
     handleWorkflowRedo: handleYWorkflowRedo,
