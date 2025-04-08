@@ -45,7 +45,7 @@ const TopBar: React.FC<Props> = ({
           dropdownAlign="end"
           dropdownAlignOffset={-140}
         />
-        <div className="pr-4">
+        <div className="pr-4 pl-2">
           <Breadcrumb />
         </div>
       </div>
