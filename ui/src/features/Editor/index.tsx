@@ -64,6 +64,8 @@ export default function Editor({
     handleDebugRunStart,
     handleDebugRunStop,
     handleLayoutChange,
+    handleCopy,
+    handlePaste,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
 
   const editorContext = useMemo(
@@ -119,6 +121,8 @@ export default function Editor({
                 onEdgesAdd={handleEdgesAdd}
                 onEdgesChange={handleEdgesChange}
                 onEdgeHover={handleEdgeHover}
+                onCopy={handleCopy}
+                onPaste={handlePaste}
               />
             </OverlayUI>
           </div>
