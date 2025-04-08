@@ -99,7 +99,7 @@ export default ({
     } else {
       styles.right = pane.width - localX;
     }
-    return { styles, mousePosition: { x: localX, y: localY } };
+    return { styles, mousePosition: { x: event.clientX, y: event.clientY } };
   };
 
   const handleNodeContextMenu = useCallback(

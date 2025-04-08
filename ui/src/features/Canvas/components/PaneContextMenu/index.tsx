@@ -8,6 +8,7 @@ import {
   ContextMenuMeta,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { useIndexedDB } from "@flow/lib/indexedDB";
 
 type Props = {
   contextMenu: ContextMenuMeta;
@@ -23,6 +24,7 @@ const PaneContextMenu: React.FC<Props> = ({
   onClose,
 }) => {
   const t = useT();
+  const { value } = useIndexedDB("general");
 
   const menuItems = useMemo(() => {
     const wrapWithClose = (callback: () => void) => () => {
@@ -45,6 +47,7 @@ const PaneContextMenu: React.FC<Props> = ({
         props: {
           label: t("Paste"),
           icon: <Clipboard weight="light" />,
+          disabled: !value?.clipboard,
 
           onCallback: wrapWithClose(() => onPaste?.(contextMenu.mousePosition)),
         },
@@ -52,7 +55,7 @@ const PaneContextMenu: React.FC<Props> = ({
     ];
 
     return items;
-  }, [t, onCopy, onPaste, onClose, contextMenu.mousePosition]);
+  }, [t, onCopy, onPaste, onClose, contextMenu.mousePosition, value]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;
 };
