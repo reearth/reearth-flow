@@ -1,5 +1,5 @@
 pub use super::kv as store;
-use super::kv::keys::{KEYSPACE_DOC, SUB_UPDATE, V1};
+use super::kv::keys::{KEYSPACE_DOC, SUB_DOC, SUB_STATE_VEC, SUB_UPDATE, V1};
 use super::kv::{get_oid, DocOps, KVEntry, KVStore};
 use super::redis::RedisStore;
 use anyhow::Result;
@@ -17,7 +17,9 @@ use hex;
 use serde::Deserialize;
 use time::OffsetDateTime;
 use tracing::{debug, error};
-use yrs::{updates::decoder::Decode, Doc, Transact, Update};
+use yrs::{
+    updates::decoder::Decode, updates::encoder::Encode, Doc, ReadTxn, StateVector, Transact, Update,
+};
 
 const BATCH_SIZE: usize = 50;
 
@@ -447,6 +449,188 @@ impl GcsStore {
         metadata.sort_by_key(|(clock, _)| std::cmp::Reverse(*clock));
 
         Ok(metadata)
+    }
+
+    pub async fn trim_updates_logarithmic(
+        &self,
+        doc_id: &str,
+        density_shift: u32,
+    ) -> Result<Option<Doc>> {
+        let oid = match get_oid(self, doc_id.as_bytes()).await? {
+            Some(oid) => oid,
+            None => return Ok(None),
+        };
+
+        let prefix_bytes = [V1, KEYSPACE_DOC]
+            .iter()
+            .chain(&oid.to_be_bytes())
+            .chain(&[SUB_UPDATE])
+            .copied()
+            .collect::<Vec<_>>();
+        let prefix_str = hex::encode(&prefix_bytes);
+
+        let request = ListObjectsRequest {
+            bucket: self.bucket.clone(),
+            prefix: Some(prefix_str),
+            ..Default::default()
+        };
+
+        let objects = self
+            .client
+            .list_objects(&request)
+            .await?
+            .items
+            .unwrap_or_default();
+
+        if objects.is_empty() {
+            return Ok(None);
+        }
+
+        let mut clocks = Vec::new();
+        for obj in &objects {
+            if let Ok(key_bytes) = hex::decode(&obj.name) {
+                if key_bytes.len() >= 12 {
+                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into()?;
+                    let clock = u32::from_be_bytes(clock_bytes);
+                    clocks.push((clock, obj.name.clone()));
+                }
+            }
+        }
+
+        if clocks.is_empty() {
+            return Ok(None);
+        }
+
+        clocks.sort_by_key(|(clock, _)| *clock);
+        let n = clocks.last().unwrap().0;
+
+        fn first_zero_bit(x: u32) -> u32 {
+            (x + 1) & !x
+        }
+
+        let to_delete = if n > 0 {
+            let bit = first_zero_bit(n);
+            let delete_offset = bit << density_shift;
+            n.saturating_sub(delete_offset)
+        } else {
+            0
+        };
+
+        if to_delete == 0 {
+            return Ok(None);
+        }
+
+        let mut to_delete_obj = None;
+        for (clock, name) in clocks {
+            if clock == to_delete {
+                to_delete_obj = Some(name);
+                break;
+            }
+        }
+
+        let Some(obj_to_delete) = to_delete_obj else {
+            return Ok(None);
+        };
+
+        let doc = Doc::new();
+        let mut found = false;
+
+        let doc_key_bytes = [V1, KEYSPACE_DOC]
+            .iter()
+            .chain(&oid.to_be_bytes())
+            .chain(&[SUB_DOC])
+            .copied()
+            .collect::<Vec<_>>();
+        let doc_key_str = hex::encode(&doc_key_bytes);
+
+        let doc_request = GetObjectRequest {
+            bucket: self.bucket.clone(),
+            object: doc_key_str,
+            ..Default::default()
+        };
+
+        if let Ok(data) = self
+            .client
+            .download_object(&doc_request, &Range::default())
+            .await
+        {
+            if let Ok(update) = Update::decode_v1(&data) {
+                let _ = doc.transact_mut().apply_update(update);
+                found = true;
+            }
+        }
+
+        let request = GetObjectRequest {
+            bucket: self.bucket.clone(),
+            object: obj_to_delete.clone(),
+            ..Default::default()
+        };
+
+        if let Ok(data) = self
+            .client
+            .download_object(&request, &Range::default())
+            .await
+        {
+            if let Ok(update) = Update::decode_v1(&data) {
+                let _ = doc.transact_mut().apply_update(update);
+                found = true;
+            }
+        }
+
+        let delete_request = DeleteObjectRequest {
+            bucket: self.bucket.clone(),
+            object: obj_to_delete,
+            ..Default::default()
+        };
+
+        self.client.delete_object(&delete_request).await?;
+
+        if found {
+            let doc_state;
+            let state_vector;
+            {
+                let txn = doc.transact();
+                doc_state = txn.encode_state_as_update_v1(&StateVector::default());
+                state_vector = txn.state_vector().encode_v1();
+            }
+
+            let doc_state_key = hex::encode(&doc_key_bytes);
+            let upload_type = UploadType::Simple(Media::new(doc_state_key.clone()));
+            self.client
+                .upload_object(
+                    &UploadObjectRequest {
+                        bucket: self.bucket.clone(),
+                        ..Default::default()
+                    },
+                    doc_state.to_vec(),
+                    &upload_type,
+                )
+                .await?;
+
+            let sv_key_bytes = [V1, KEYSPACE_DOC]
+                .iter()
+                .chain(&oid.to_be_bytes())
+                .chain(&[SUB_STATE_VEC])
+                .copied()
+                .collect::<Vec<_>>();
+            let sv_key = hex::encode(&sv_key_bytes);
+
+            let sv_upload_type = UploadType::Simple(Media::new(sv_key.clone()));
+            self.client
+                .upload_object(
+                    &UploadObjectRequest {
+                        bucket: self.bucket.clone(),
+                        ..Default::default()
+                    },
+                    state_vector.to_vec(),
+                    &sv_upload_type,
+                )
+                .await?;
+
+            return Ok(Some(doc));
+        }
+
+        Ok(None)
     }
 }
 

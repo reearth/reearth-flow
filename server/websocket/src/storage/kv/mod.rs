@@ -179,7 +179,7 @@ where
     async fn trim_updates<K: AsRef<[u8]> + ?Sized + Sync>(
         &self,
         name: &K,
-        keep_recent: u32,
+        density_shift: u32,
     ) -> Result<Option<Doc>, Error> {
         if let Some(oid) = get_oid(self, name.as_ref()).await? {
             let update_range_start = key_update(oid, 0)?;
@@ -197,11 +197,26 @@ where
                 updates.push(seq_nr);
             }
 
-            if updates.len() > keep_recent as usize {
-                updates.sort_unstable();
+            if updates.is_empty() {
+                return Ok(None);
+            }
 
-                let cutoff = updates[updates.len() - keep_recent as usize];
+            updates.sort_unstable();
+            let n = *updates.last().unwrap();
 
+            fn first_zero_bit(x: u32) -> u32 {
+                (x + 1) & !x
+            }
+
+            let to_delete = if n > 0 {
+                let bit = first_zero_bit(n);
+                let delete_offset = bit << density_shift;
+                n.saturating_sub(delete_offset)
+            } else {
+                0
+            };
+
+            if to_delete > 0 && updates.contains(&to_delete) {
                 let doc = Doc::new();
                 let mut found = false;
 
@@ -214,20 +229,16 @@ where
                     }
                 }
 
-                let mut applied = false;
-                for seq_nr in &updates {
-                    if *seq_nr < cutoff {
-                        let update_key = key_update(oid, *seq_nr)?;
-                        if let Some(data) = self.get(&update_key).await? {
-                            let update = Update::decode_v1(data.as_ref())?;
-                            let _ = doc.transact_mut().apply_update(update);
-                            applied = true;
-                            self.remove(&update_key).await?;
-                        }
-                    }
+                let update_key = key_update(oid, to_delete)?;
+                if let Some(data) = self.get(&update_key).await? {
+                    let update = Update::decode_v1(data.as_ref())?;
+                    let _ = doc.transact_mut().apply_update(update);
+                    found = true;
                 }
 
-                if found || applied {
+                self.remove(&update_key).await?;
+
+                if found {
                     let txn = doc.transact();
                     let doc_state = txn.encode_state_as_update_v1(&StateVector::default());
                     let state_vec = txn.state_vector().encode_v1();
