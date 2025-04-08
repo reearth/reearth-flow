@@ -171,9 +171,8 @@ const Toolbox: React.FC<Props> = ({
           tool.id === "break" ? (
             <div key={tool.id + idx} className="border-t mx-1 box-border" />
           ) : (
-            <div className="bg-secondary rounded-md">
+            <div key={tool.id} className="bg-secondary rounded-md">
               <IconButton
-                key={tool.id}
                 className={`dndnode-${tool.id} cursor-grab  ${
                   tool.id === "reader"
                     ? "bg-node-reader/30 hover:bg-node-reader/60"

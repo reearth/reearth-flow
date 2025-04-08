@@ -26,6 +26,7 @@ import { config } from "@flow/config";
 import { AccountUpdateDialog } from "@flow/features/common/UserMenu/AccountUpdateDialog";
 import KeyboardShortcutDialog from "@flow/features/KeyboardShortcutDialog";
 import { useShortcuts } from "@flow/hooks";
+import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
 import { openLinkInNewTab } from "@flow/utils";
 
@@ -47,6 +48,8 @@ const HomeMenu: React.FC<Props> = ({
   const t = useT();
   const navigate = useNavigate();
   const { workspaceId } = useParams({ strict: false });
+
+  const { logout: handleLogout } = useAuth();
 
   const handleNavigationToDashboard = useCallback(
     (page: "projects" | "deployments" | "triggers" | "jobs") => () => {
@@ -145,7 +148,7 @@ const HomeMenu: React.FC<Props> = ({
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="gap-3 text-warning"
-            onClick={() => console.log("asldfkjsadf")}>
+            onClick={handleLogout}>
             <SignOut weight="light" />
             <p>{t("Log Out")}</p>
           </DropdownMenuItem>
