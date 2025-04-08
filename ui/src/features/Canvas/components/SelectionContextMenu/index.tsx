@@ -8,6 +8,7 @@ import {
   ContextMenuMeta,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { useIndexedDB } from "@flow/lib/indexedDB";
 import type { Node, NodeChange } from "@flow/types";
 
 type Props = {
@@ -32,6 +33,7 @@ const SelectionContextMenu: React.FC<Props> = ({
   onClose,
 }) => {
   const t = useT();
+  const { value } = useIndexedDB("general");
 
   const handleNodeDelete = useCallback(() => {
     nodes.forEach((node) => {
@@ -62,7 +64,7 @@ const SelectionContextMenu: React.FC<Props> = ({
         props: {
           label: t("Paste"),
           icon: <Clipboard weight="light" />,
-          disabled: true,
+          disabled: !value?.clipboard,
           onCallback: wrapWithClose(onPaste ?? (() => {})),
         },
       },
@@ -78,7 +80,7 @@ const SelectionContextMenu: React.FC<Props> = ({
     ];
 
     return items;
-  }, [t, handleNodeDelete, onCopy, onClose, onPaste]);
+  }, [t, handleNodeDelete, onCopy, onClose, onPaste, value]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;
 };

@@ -264,6 +264,7 @@ export default ({
         nodes: processedNewNodes,
         edges: newEdges,
         workflows: newWorkflows,
+        copiedAt: Date.now(),
       });
 
       return pastedNodes;
