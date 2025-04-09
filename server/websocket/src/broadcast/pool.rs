@@ -156,7 +156,7 @@ impl BroadcastPool {
 
         let doc_to_id_map = manager.doc_to_id_map.clone();
         tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(30000));
+            let mut interval = tokio::time::interval(Duration::from_secs(1));
             loop {
                 interval.tick().await;
 
@@ -166,8 +166,9 @@ impl BroadcastPool {
                     let group = entry.value().clone();
 
                     if group.connection_count() == 0 {
-                        tokio::time::sleep(Duration::from_secs(1)).await;
+                        tokio::time::sleep(Duration::from_secs(5)).await;
                         if group.connection_count() == 0 {
+                            tracing::info!("Shutting down empty group for doc_id: {}", doc_id);
                             empty_groups.push((doc_id, group));
                         }
                     }
