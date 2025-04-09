@@ -302,9 +302,9 @@ impl BroadcastGroup {
                                     }
                                 }
 
-                                if update_count == 1  {
-                                    tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
-                                }
+                                // if update_count == 1  {
+                                //     tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
+                                // }
 
                             },
                             Err(e) => {
