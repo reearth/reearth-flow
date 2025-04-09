@@ -43,14 +43,7 @@ mod logarithmic_retention_tests {
             }
         }
 
-        println!(
-            "Retained snapshots (density_shift={}): {:?}",
-            density_shift, retained
-        );
-        println!("Retained {} out of 100 snapshots", retained.len());
-
         let expected_count = 2.0 * 100_f64.log2();
-        println!("Theoretical count: approximately {}", expected_count);
 
         assert!(retained.len() <= 100);
         assert!(retained.len() as f64 <= expected_count * 1.5);
@@ -79,13 +72,6 @@ mod logarithmic_retention_tests {
                     }
                 }
             }
-
-            println!(
-                "density_shift={}: retained {} snapshots out of 200 (approximately {:.1}% of total)", 
-                density_shift,
-                retained.len(),
-                retained.len() as f64 / 200.0 * 100.0
-            );
         }
     }
 
