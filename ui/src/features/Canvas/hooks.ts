@@ -87,7 +87,6 @@ export default ({
     const localX = event.clientX - pane.left;
     const localY = event.clientY - pane.top;
     const styles: React.CSSProperties = {};
-
     if (localY < pane.height - 200) {
       styles.top = localY;
     } else {
@@ -99,7 +98,7 @@ export default ({
     } else {
       styles.right = pane.width - localX;
     }
-    return { styles, mousePosition: { x: event.clientX, y: event.clientY } };
+    return { styles, mousePosition: { x: localX, y: localY } };
   };
 
   const handleNodeContextMenu = useCallback(
