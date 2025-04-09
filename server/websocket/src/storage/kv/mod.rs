@@ -51,6 +51,8 @@ use std::convert::TryInto;
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, TransactionMut, Update};
+
+use super::first_zero_bit;
 /// A trait to be implemented by the specific key-value store transaction equivalent in order to
 /// auto-implement features provided by [DocOps] trait.
 
@@ -203,10 +205,6 @@ where
 
             updates.sort_unstable();
             let n = *updates.last().unwrap();
-
-            fn first_zero_bit(x: u32) -> u32 {
-                (x + 1) & !x
-            }
 
             let to_delete = if n > 0 {
                 let bit = first_zero_bit(n);

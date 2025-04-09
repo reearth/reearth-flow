@@ -21,6 +21,8 @@ use yrs::{
     updates::decoder::Decode, updates::encoder::Encode, Doc, ReadTxn, StateVector, Transact, Update,
 };
 
+use super::first_zero_bit;
+
 const BATCH_SIZE: usize = 50;
 
 fn find_common_prefix(a: &str, b: &str) -> String {
@@ -503,10 +505,6 @@ impl GcsStore {
 
         clocks.sort_by_key(|(clock, _)| *clock);
         let n = clocks.last().unwrap().0;
-
-        fn first_zero_bit(x: u32) -> u32 {
-            (x + 1) & !x
-        }
 
         let to_delete = if n > 0 {
             let bit = first_zero_bit(n);
