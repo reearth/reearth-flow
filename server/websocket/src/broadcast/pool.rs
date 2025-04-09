@@ -166,7 +166,7 @@ impl BroadcastPool {
                     let group = entry.value().clone();
 
                     if group.connection_count() == 0 {
-                        tokio::time::sleep(Duration::from_secs(2)).await;
+                        tokio::time::sleep(Duration::from_secs(1)).await;
                         if group.connection_count() == 0 {
                             empty_groups.push((doc_id, group));
                         }
