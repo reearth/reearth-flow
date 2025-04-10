@@ -1,4 +1,4 @@
-import { Clipboard, Copy } from "@phosphor-icons/react";
+import { Clipboard, Copy, Scissors } from "@phosphor-icons/react";
 import { XYPosition } from "@xyflow/react";
 import { useMemo } from "react";
 
@@ -12,6 +12,7 @@ import { useT } from "@flow/lib/i18n";
 type Props = {
   contextMenu: ContextMenuMeta;
   onCopy?: () => void;
+  onCut?: () => void;
   onPaste?: (menuPosition?: XYPosition) => void;
   onClose: () => void;
 };
@@ -19,6 +20,7 @@ type Props = {
 const PaneContextMenu: React.FC<Props> = ({
   contextMenu,
   onCopy,
+  onCut,
   onPaste,
   onClose,
 }) => {
@@ -43,6 +45,15 @@ const PaneContextMenu: React.FC<Props> = ({
       {
         type: "action",
         props: {
+          label: t("Cut"),
+          icon: <Scissors weight="light" />,
+          disabled: true,
+          onCallback: wrapWithClose(onCut ?? (() => {})),
+        },
+      },
+      {
+        type: "action",
+        props: {
           label: t("Paste"),
           icon: <Clipboard weight="light" />,
 
@@ -52,7 +63,7 @@ const PaneContextMenu: React.FC<Props> = ({
     ];
 
     return items;
-  }, [t, onCopy, onPaste, onClose]);
+  }, [t, onCopy, onCut, onPaste, onClose]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;
 };

@@ -51,6 +51,7 @@ type Props = {
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onEdgeHover?: (e: MouseEvent, edge?: Edge) => void;
   onCopy?: () => void;
+  onCut?: () => void;
   onPaste?: () => void;
 };
 
@@ -70,6 +71,7 @@ const Canvas: React.FC<Props> = ({
   onEdgesChange,
   onNodePickerOpen,
   onCopy,
+  onCut,
   onPaste,
 }) => {
   const {
@@ -185,6 +187,7 @@ const Canvas: React.FC<Props> = ({
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
           onCopy={onCopy}
+          onCut={onCut}
           onPaste={onPaste}
           onClose={handleCloseContextmenu}
         />

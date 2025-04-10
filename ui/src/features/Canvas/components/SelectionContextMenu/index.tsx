@@ -1,4 +1,4 @@
-import { Clipboard, Copy, Trash } from "@phosphor-icons/react";
+import { Clipboard, Copy, Scissors, Trash } from "@phosphor-icons/react";
 import { EdgeChange } from "@xyflow/react";
 import { useCallback, useMemo } from "react";
 
@@ -18,6 +18,7 @@ type Props = {
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onCopy?: () => void;
+  onCut?: () => void;
   onPaste?: () => void;
   onClose: () => void;
 };
@@ -29,6 +30,7 @@ const SelectionContextMenu: React.FC<Props> = ({
   onNodesChange,
   onEdgesChange,
   onCopy,
+  onCut,
   onPaste,
   onClose,
 }) => {
@@ -62,6 +64,14 @@ const SelectionContextMenu: React.FC<Props> = ({
       {
         type: "action",
         props: {
+          label: t("Cut"),
+          icon: <Scissors weight="light" />,
+          onCallback: wrapWithClose(onCut ?? (() => {})),
+        },
+      },
+      {
+        type: "action",
+        props: {
           label: t("Paste"),
           icon: <Clipboard weight="light" />,
           disabled: !value?.clipboard,
@@ -80,7 +90,7 @@ const SelectionContextMenu: React.FC<Props> = ({
     ];
 
     return items;
-  }, [t, handleNodeDelete, onCopy, onClose, onPaste, value]);
+  }, [t, handleNodeDelete, onCopy, onCut, onClose, onPaste, value]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;
 };
