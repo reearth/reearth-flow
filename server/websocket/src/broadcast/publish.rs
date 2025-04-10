@@ -33,7 +33,7 @@ impl Publish {
             .last_flush
             .map_or(Duration::from_secs(0), |t| t.elapsed());
 
-        if time_since_last_flush > Duration::from_millis(20) || self.count >= 4 {
+        if time_since_last_flush > Duration::from_millis(20) || self.count > 4 {
             self.flush().await?;
         }
         Ok(())
