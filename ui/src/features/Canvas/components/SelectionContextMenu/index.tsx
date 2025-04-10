@@ -6,6 +6,7 @@ import {
   ContextMenu,
   ContextMenuItemType,
   ContextMenuMeta,
+  ContextMenuShortcut,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
@@ -56,6 +57,9 @@ const SelectionContextMenu: React.FC<Props> = ({
         props: {
           label: t("Copy"),
           icon: <Copy weight="light" />,
+          shortcut: (
+            <ContextMenuShortcut keyBinding={{ key: "c", commandKey: true }} />
+          ),
           onCallback: wrapWithClose(onCopy ?? (() => {})),
         },
       },
@@ -64,6 +68,9 @@ const SelectionContextMenu: React.FC<Props> = ({
         props: {
           label: t("Paste"),
           icon: <Clipboard weight="light" />,
+          shortcut: (
+            <ContextMenuShortcut keyBinding={{ key: "v", commandKey: true }} />
+          ),
           disabled: !value?.clipboard,
           onCallback: wrapWithClose(onPaste ?? (() => {})),
         },
