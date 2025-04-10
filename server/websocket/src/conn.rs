@@ -80,7 +80,6 @@ impl<Sink, Stream> Future for Connection<Sink, Stream> {
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.completion_future.is_none() {
             if let Some(sub) = self.broadcast_sub.take() {
-                tracing::info!("Creating completion future from subscription");
                 self.completion_future = Some(Box::pin(sub.completed()));
             }
         }
@@ -89,10 +88,10 @@ impl<Sink, Stream> Future for Connection<Sink, Stream> {
             let poll_result = fut.as_mut().poll(cx);
             match &poll_result {
                 Poll::Ready(result) => {
-                    tracing::info!("Connection future completed with result: {:?}", result);
+                    tracing::debug!("Connection future completed with result: {:?}", result);
                 }
                 Poll::Pending => {
-                    tracing::info!("Connection future is pending");
+                    tracing::debug!("Connection future is pending");
                 }
             }
             poll_result
