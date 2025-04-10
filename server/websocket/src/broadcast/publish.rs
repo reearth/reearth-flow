@@ -28,7 +28,7 @@ impl Publish {
         let (flush_sender, mut flush_receiver) = mpsc::channel(32);
 
         let timer_task = tokio::spawn(async move {
-            let mut interval = interval(Duration::from_millis(20));
+            let mut interval = interval(Duration::from_millis(22));
 
             loop {
                 tokio::select! {
@@ -90,7 +90,7 @@ impl Publish {
             let mut count = self.count.lock().await;
             *count += 1;
 
-            if *count > 4 {
+            if *count > 5 {
                 let _ = self.flush_sender.send(()).await;
             }
         }

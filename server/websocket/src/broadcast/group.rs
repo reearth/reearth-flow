@@ -113,8 +113,8 @@ impl BroadcastGroup {
             changed.extend_from_slice(updated);
             changed.extend_from_slice(removed);
 
-            if tx.send(changed).is_err() {
-                warn!("failed to send awareness update");
+            if let Err(e) = tx.send(changed) {
+                warn!("failed to send awareness update: {}", e);
             }
         });
         drop(lock);
