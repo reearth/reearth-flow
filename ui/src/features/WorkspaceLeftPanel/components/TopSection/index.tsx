@@ -30,7 +30,7 @@ const TopSection: React.FC<Props> = ({ route }) => {
           }}>
           <div className="flex items-center gap-2">
             <FlowLogo className="size-8" />
-            <h1 className="select-none font-light">{brandName ?? "Flow"}</h1>
+            <p className="select-none font-thin">{brandName ?? "Flow"}</p>
           </div>
           <UserMenu dropdownAlign="center" dropdownPosition="bottom" />
         </div>

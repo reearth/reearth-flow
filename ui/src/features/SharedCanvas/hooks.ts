@@ -40,6 +40,12 @@ export default ({
 
   const currentYWorkflow = yWorkflows.get(currentWorkflowId);
 
+  const isSubworkflow = useMemo(() => {
+    if (!currentYWorkflow) return false;
+    const workflowId = currentYWorkflow.get("id")?.toJSON();
+    return workflowId !== DEFAULT_ENTRY_GRAPH_ID;
+  }, [currentYWorkflow]);
+
   const rawNodes = useY(currentYWorkflow?.get("nodes") ?? new YMap()) as Record<
     string,
     Node
@@ -117,6 +123,7 @@ export default ({
 
   return {
     currentWorkflowId,
+    isSubworkflow,
     nodes,
     edges,
     openWorkflows,

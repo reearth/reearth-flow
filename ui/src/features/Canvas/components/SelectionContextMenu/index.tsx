@@ -1,4 +1,4 @@
-import { Trash } from "@phosphor-icons/react";
+import { Clipboard, Copy, Trash } from "@phosphor-icons/react";
 import { EdgeChange } from "@xyflow/react";
 import { useCallback, useMemo } from "react";
 
@@ -8,6 +8,7 @@ import {
   ContextMenuMeta,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { useIndexedDB } from "@flow/lib/indexedDB";
 import type { Node, NodeChange } from "@flow/types";
 
 type Props = {
@@ -16,6 +17,8 @@ type Props = {
   contextMenu: ContextMenuMeta;
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
+  onCopy?: () => void;
+  onPaste?: () => void;
   onClose: () => void;
 };
 
@@ -25,9 +28,12 @@ const SelectionContextMenu: React.FC<Props> = ({
   selectedEdgeIds,
   onNodesChange,
   onEdgesChange,
+  onCopy,
+  onPaste,
   onClose,
 }) => {
   const t = useT();
+  const { value } = useIndexedDB("general");
 
   const handleNodeDelete = useCallback(() => {
     nodes.forEach((node) => {
@@ -48,6 +54,23 @@ const SelectionContextMenu: React.FC<Props> = ({
       {
         type: "action",
         props: {
+          label: t("Copy"),
+          icon: <Copy weight="light" />,
+          onCallback: wrapWithClose(onCopy ?? (() => {})),
+        },
+      },
+      {
+        type: "action",
+        props: {
+          label: t("Paste"),
+          icon: <Clipboard weight="light" />,
+          disabled: !value?.clipboard,
+          onCallback: wrapWithClose(onPaste ?? (() => {})),
+        },
+      },
+      {
+        type: "action",
+        props: {
           label: t("Delete Selection"),
           icon: <Trash weight="light" />,
           destructive: true,
@@ -57,7 +80,7 @@ const SelectionContextMenu: React.FC<Props> = ({
     ];
 
     return items;
-  }, [t, handleNodeDelete, onClose]);
+  }, [t, handleNodeDelete, onCopy, onClose, onPaste, value]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;
 };

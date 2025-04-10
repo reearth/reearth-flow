@@ -69,21 +69,6 @@ export default ({ hasReader }: { hasReader?: boolean }) => {
     [],
   );
 
-  const [openPanel, setOpenPanel] = useState<"left" | "right" | undefined>(
-    undefined,
-  );
-
-  const handlePanelOpen = useCallback(
-    (panel?: "left" | "right") => {
-      if (!panel || openPanel === panel) {
-        setOpenPanel(undefined);
-      } else {
-        setOpenPanel(panel);
-      }
-    },
-    [openPanel],
-  );
-
   const [rightPanelContent, setRightPanelContent] = useState<
     "version-history" | undefined
   >(undefined);
@@ -94,13 +79,11 @@ export default ({ hasReader }: { hasReader?: boolean }) => {
   );
 
   return {
-    openPanel,
     nodePickerOpen,
     rightPanelContent,
     hoveredDetails,
     handleNodeHover,
     handleEdgeHover,
-    handlePanelOpen,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleRightPanelOpen,
