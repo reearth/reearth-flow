@@ -135,6 +135,7 @@ impl BroadcastGroup {
                                         let msg_bytes = Bytes::from(Message::Awareness(update).encode_v1());
                                         if sink.send(msg_bytes).is_err() {
                                             warn!("couldn't broadcast awareness update");
+                                            return;
                                         }
                                     }
                                 } else {
