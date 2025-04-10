@@ -10,6 +10,7 @@ use futures_util::{SinkExt, StreamExt};
 use rand;
 use tracing::{debug, error, warn};
 
+use super::Publish;
 use serde_json;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -408,6 +409,7 @@ impl BroadcastGroup {
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
             let stream_key = format!("yjs:stream:{}", doc_name);
+            let mut publish = Publish::new(redis_store, stream_key);
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
                     let data = match res.map_err(anyhow::Error::from) {
@@ -426,9 +428,7 @@ impl BroadcastGroup {
                         }
                     };
 
-                    match Self::handle_msg(&protocol, &awareness, msg, &redis_store, &stream_key)
-                        .await
-                    {
+                    match Self::handle_msg(&protocol, &awareness, msg, &mut publish).await {
                         Ok(Some(reply)) => {
                             let mut sink_lock = sink.lock().await;
                             if let Err(e) = sink_lock.send(Bytes::from(reply.encode_v1())).await {
@@ -454,8 +454,7 @@ impl BroadcastGroup {
         protocol: &P,
         awareness: &AwarenessRef,
         msg: Message,
-        redis_store: &Arc<RedisStore>,
-        stream_key: &str,
+        publish: &mut Publish,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
@@ -466,8 +465,8 @@ impl BroadcastGroup {
                 };
 
                 if !update_bytes.is_empty() {
-                    redis_store
-                        .publish_update(stream_key, &update_bytes)
+                    publish
+                        .insert(Bytes::from(update_bytes))
                         .await
                         .map_err(|e| Error::Other(e.into()))?;
                 }
