@@ -28,6 +28,32 @@ struct ServerState {
     app_state: Arc<AppState>,
 }
 
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    info!("signal received, starting graceful shutdown");
+}
+
 pub async fn ensure_bucket(client: &Client, bucket_name: &str) -> Result<()> {
     let bucket = BucketCreationConfig {
         location: "US".to_string(),
@@ -71,7 +97,9 @@ pub async fn start_server(state: Arc<AppState>, port: &str) -> Result<()> {
         "HTTP API endpoints available at http://{}/api/document/...",
         addr
     );
-    axum::serve(listener, app).await?;
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
 
     Ok(())
 }
