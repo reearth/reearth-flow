@@ -61,7 +61,6 @@ impl BroadcastGroup {
 
     pub async fn decrement_connections(&self) -> usize {
         let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
-
         prev_count - 1
     }
 
@@ -367,9 +366,6 @@ impl BroadcastGroup {
 
         let (tx, rx) = tokio::sync::oneshot::channel();
 
-        if let Err(e) = self.increment_connections().await {
-            error!("Failed to increment connections: {}", e);
-        }
         let _ = tx.send(());
 
         Subscription {

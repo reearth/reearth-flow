@@ -7,6 +7,7 @@ use anyhow::Result;
 use bytes;
 use dashmap::DashMap;
 use rand;
+use scopeguard;
 use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, error, warn};
@@ -148,44 +149,16 @@ impl BroadcastGroupManager {
 #[derive(Clone, Debug)]
 pub struct BroadcastPool {
     manager: BroadcastGroupManager,
+    cleanup_locks: Arc<DashMap<String, bool>>,
 }
 
 impl BroadcastPool {
     pub fn new(store: Arc<GcsStore>, redis_store: Arc<RedisStore>) -> Self {
         let manager = BroadcastGroupManager::new(store, redis_store);
-
-        let doc_to_id_map = manager.doc_to_id_map.clone();
-        tokio::spawn(async move {
-            let mut interval = tokio::time::interval(Duration::from_secs(1));
-            loop {
-                interval.tick().await;
-
-                let mut empty_groups = vec![];
-                for entry in doc_to_id_map.iter() {
-                    let doc_id = entry.key().clone();
-                    let group = entry.value().clone();
-
-                    if group.connection_count() == 0 {
-                        tokio::time::sleep(Duration::from_secs(5)).await;
-                        if group.connection_count() == 0 {
-                            tracing::info!("Shutting down empty group for doc_id: {}", doc_id);
-                            empty_groups.push((doc_id, group));
-                        }
-                    }
-                }
-
-                for (doc_id, group) in empty_groups {
-                    doc_to_id_map.remove(&doc_id);
-                    // tracing::info!("Shutting down empty group for doc_id: {}", doc_id);
-
-                    if let Err(e) = group.shutdown().await {
-                        warn!("Error shutting down empty group for '{}': {}", doc_id, e);
-                    }
-                }
-            }
-        });
-
-        Self { manager }
+        Self {
+            manager,
+            cleanup_locks: Arc::new(DashMap::new()),
+        }
     }
 
     pub fn get_store(&self) -> Arc<GcsStore> {
@@ -325,6 +298,36 @@ impl BroadcastPool {
                     }
                 }
             }
+        }
+
+        Ok(())
+    }
+
+    pub async fn cleanup_empty_group(
+        &self,
+        doc_id: &str,
+        group: Arc<BroadcastGroup>,
+    ) -> Result<()> {
+        tokio::time::sleep(Duration::from_secs(10)).await;
+
+        match self.cleanup_locks.entry(doc_id.to_string()) {
+            dashmap::mapref::entry::Entry::Occupied(_) => {
+                return Ok(());
+            }
+            dashmap::mapref::entry::Entry::Vacant(entry) => {
+                entry.insert(true);
+            }
+        }
+
+        let _cleanup_guard = scopeguard::guard(doc_id.to_string(), |key| {
+            self.cleanup_locks.remove(&key);
+        });
+
+        let doc_to_id_map = self.manager.doc_to_id_map.clone();
+
+        if group.connection_count() == 0 {
+            doc_to_id_map.remove(doc_id);
+            group.shutdown().await?;
         }
 
         Ok(())

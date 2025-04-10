@@ -161,14 +161,17 @@ pub async fn ws_handler(
         }
     };
 
-    ws.on_upgrade(move |socket| handle_socket(socket, bcast, doc_id, user_token))
+    ws.on_upgrade(move |socket| {
+        handle_socket(socket, bcast, doc_id, user_token, Arc::clone(&state.pool))
+    })
 }
 
 async fn handle_socket(
     socket: axum::extract::ws::WebSocket,
-    bcast: Arc<crate::BroadcastGroup>,
+    bcast: Arc<super::BroadcastGroup>,
     doc_id: String,
     user_token: Option<String>,
+    pool: Arc<super::BroadcastPool>,
 ) {
     let (sender, receiver) = socket.split();
 
@@ -180,15 +183,28 @@ async fn handle_socket(
     )
     .await;
 
-    tracing::info!("WebSocket connection established for document '{}'", doc_id);
+    if let Err(e) = bcast.increment_connections().await {
+        error!("Failed to increment connections: {}", e);
+    }
+
+    // tracing::info!("WebSocket connection established for document '{}'", doc_id);
 
     let result = conn.await;
     if let Err(e) = result {
         error!("WebSocket connection error: {}", e);
     }
-    tracing::info!("WebSocket connection closed for document '{}'", doc_id);
+    // tracing::info!("WebSocket connection closed for document '{}'", doc_id);
 
     let _ = bcast.decrement_connections().await;
+
+    let count = bcast.connection_count();
+
+    if count == 0 {
+        if let Err(e) = pool.cleanup_empty_group(&doc_id, bcast).await {
+            error!("Failed to cleanup empty group for {}: {}", doc_id, e);
+        }
+    }
+
     debug!("Connection decreased for document '{}'", doc_id);
 }
 
