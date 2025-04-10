@@ -40,6 +40,7 @@ pub struct BroadcastGroup {
     shutdown_complete: AtomicBool,
     instance_id: String,
     last_read_id: Arc<Mutex<String>>,
+    active_subscriptions: Arc<Mutex<Vec<tokio::task::AbortHandle>>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -54,27 +55,13 @@ impl std::fmt::Debug for BroadcastGroup {
 
 impl BroadcastGroup {
     pub async fn increment_connections(&self) -> Result<()> {
-        let prev_count = self.connections.fetch_add(1, Ordering::Relaxed);
-        let new_count = prev_count + 1;
-
-        debug!(
-            "Connection count increased: {} -> {}",
-            prev_count, new_count
-        );
-
+        let _ = self.connections.fetch_add(1, Ordering::Relaxed);
         Ok(())
     }
 
     pub async fn decrement_connections(&self) -> usize {
         let prev_count = self.connections.fetch_sub(1, Ordering::Relaxed);
-        let new_count = prev_count - 1;
-
-        debug!(
-            "Connection count decreased: {} -> {}",
-            prev_count, new_count
-        );
-
-        new_count
+        prev_count - 1
     }
 
     pub fn connection_count(&self) -> usize {
@@ -184,6 +171,7 @@ impl BroadcastGroup {
             shutdown_complete: AtomicBool::new(false),
             instance_id,
             last_read_id: Arc::new(Mutex::new("0".to_string())),
+            active_subscriptions: Arc::new(Mutex::new(Vec::new())),
         };
 
         Ok(result)
@@ -287,7 +275,7 @@ impl BroadcastGroup {
                                     }
 
                                     if sender_for_sub.send(update.clone()).is_err() {
-                                        debug!("Failed to broadcast Redis update");
+                                        debug!("Failed to broadcast Redis update to clients for '{}'", stream_key);
                                     }
                                 }
 
@@ -302,13 +290,10 @@ impl BroadcastGroup {
                                     }
                                 }
 
-                                // if update_count == 1  {
-                                //     tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
-                                // }
 
                             },
                             Err(e) => {
-                                error!("Error reading from Redis Stream: {}", e);
+                                error!("Error reading from Redis Stream '{}': {}", stream_key, e);
                                 tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
                             },
                         }
@@ -317,7 +302,6 @@ impl BroadcastGroup {
                     } => {}
                 }
             }
-            debug!("Redis subscriber task exited gracefully");
         });
 
         {
@@ -373,11 +357,15 @@ impl BroadcastGroup {
         }
 
         let subscription = self.listen(sink, stream, DefaultProtocol);
+
+        {
+            let mut active_subscriptions = self.active_subscriptions.lock().await;
+            active_subscriptions.push(subscription.sink_task.abort_handle());
+            active_subscriptions.push(subscription.stream_task.abort_handle());
+        }
+
         let (tx, rx) = tokio::sync::oneshot::channel();
 
-        if let Err(e) = self.increment_connections().await {
-            error!("Failed to increment connections: {}", e);
-        }
         let _ = tx.send(());
 
         Subscription {
@@ -426,7 +414,7 @@ impl BroadcastGroup {
                         Ok(data) => data,
                         Err(e) => {
                             warn!("Error receiving message: {}", e);
-                            continue;
+                            break;
                         }
                     };
 
@@ -524,6 +512,14 @@ impl BroadcastGroup {
         self.shutdown_complete.store(true, Ordering::SeqCst);
 
         if self.connection_count() == 0 {
+            {
+                let mut active_subscriptions = self.active_subscriptions.lock().await;
+                for abort_handle in active_subscriptions.iter() {
+                    abort_handle.abort();
+                }
+                active_subscriptions.clear();
+            }
+
             if let Err(e) = self
                 .redis_store
                 .remove_instance_heartbeat(&self.doc_name, &self.instance_id)
