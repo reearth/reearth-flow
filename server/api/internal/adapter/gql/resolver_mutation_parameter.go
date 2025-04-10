@@ -66,7 +66,7 @@ func (r *mutationResolver) UpdateParameterOrder(ctx context.Context, projectID g
 		return nil, err
 	}
 
-	return gqlmodel.ToParameters(*res), nil
+	return gqlmodel.ToParameters(res), nil
 }
 
 func (r *mutationResolver) RemoveParameter(ctx context.Context, input gqlmodel.RemoveParameterInput) (bool, error) {

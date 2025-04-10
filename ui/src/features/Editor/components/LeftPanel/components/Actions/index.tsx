@@ -122,27 +122,25 @@ const ActionsList: React.FC<Props> = ({
   }, [searchTerm, searchDone, handleSearch]);
 
   return (
-    <Tabs defaultValue={tabs[0].order}>
-      <div className="absolute w-full bg-background px-2">
+    <Tabs defaultValue={tabs[0].order} className="relative bg-card">
+      <div className="sticky top-0 w-full p-2 bg-inherit">
         <TabsList className="flex justify-between">
           {tabs.map(({ title, order }) => (
-            <TabsTrigger key={order} value={order} className="w-full">
+            <TabsTrigger key={order} value={order} className="">
               {title}
             </TabsTrigger>
           ))}
         </TabsList>
-        <div>
-          <Input
-            className="mx-auto my-2 h-7 w-full"
-            placeholder={t("Search")}
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-            }}
-          />
-        </div>
+        <Input
+          className="mx-auto mt-2 h-7"
+          placeholder={t("Search")}
+          value={searchTerm}
+          onChange={(e) => {
+            setSearchTerm(e.target.value);
+          }}
+        />
       </div>
-      <div className="mt-[52px] p-2">
+      <div className="p-2">
         {tabs.map(({ order, actions }) => (
           <TabsContent
             className="flex flex-col gap-1"
