@@ -2,54 +2,107 @@ use crate::storage::redis::RedisStore;
 use anyhow::Result;
 use bytes::Bytes;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use tokio::sync::mpsc;
+use tokio::sync::Mutex;
+use tokio::time::interval;
+use tracing::warn;
 use yrs::{updates::decoder::Decode, Doc, ReadTxn, StateVector, Transact, Update};
 
 pub struct Publish {
-    redis_store: Arc<RedisStore>,
-    stream_key: String,
-    count: u32,
-    doc: Doc,
-    last_flush: Option<Instant>,
+    count: Arc<Mutex<u32>>,
+    doc: Arc<Mutex<Doc>>,
+    flush_sender: mpsc::Sender<()>,
+    _timer_task: Option<tokio::task::JoinHandle<()>>,
 }
 
 impl Publish {
     pub fn new(redis_store: Arc<RedisStore>, stream_key: String) -> Self {
+        let doc = Arc::new(Mutex::new(Doc::new()));
+        let doc_clone = doc.clone();
+        let redis_clone = redis_store.clone();
+        let stream_key_clone = stream_key.clone();
+        let count = Arc::new(Mutex::new(0));
+        let count_clone = count.clone();
+
+        let (flush_sender, mut flush_receiver) = mpsc::channel(32);
+
+        let timer_task = tokio::spawn(async move {
+            let mut interval = interval(Duration::from_millis(20));
+
+            loop {
+                tokio::select! {
+                    _ = interval.tick() => {
+                        let mut doc_lock = doc_clone.lock().await;
+                        if doc_lock.transact().encode_state_as_update_v1(&StateVector::default()).len() > 2 {
+                            let update = {
+                                let txn = doc_lock.transact_mut();
+                                txn.encode_state_as_update_v1(&StateVector::default())
+                            };
+
+                            if let Err(e) = redis_clone.publish_update(&stream_key_clone, &update).await {
+                                warn!("Failed to flush document: {}", e);
+                            }
+
+                            *doc_lock = Doc::new();
+                            let mut count = count_clone.lock().await;
+                            *count = 0;
+                        }
+                    }
+                    _ = flush_receiver.recv() => {
+                        let mut doc_lock = doc_clone.lock().await;
+                        if doc_lock.transact().encode_state_as_update_v1(&StateVector::default()).len() > 2 {
+                            let update = {
+                                let txn = doc_lock.transact_mut();
+                                txn.encode_state_as_update_v1(&StateVector::default())
+                            };
+
+                            if let Err(e) = redis_clone.publish_update(&stream_key_clone, &update).await {
+                                warn!("Failed to flush document: {}", e);
+                            }
+
+                            *doc_lock = Doc::new();
+                            let mut count = count_clone.lock().await;
+                            *count = 0;
+                        }
+                    }
+                }
+            }
+        });
+
         Self {
-            redis_store,
-            stream_key,
-            count: 0,
-            doc: Doc::new(),
-            last_flush: None,
+            count,
+            doc,
+            flush_sender,
+            _timer_task: Some(timer_task),
         }
     }
 
     pub async fn insert(&mut self, bytes: Bytes) -> Result<()> {
         let update = Update::decode_v1(&bytes)?;
 
-        self.doc.transact_mut().apply_update(update)?;
-        self.count += 1;
-        let time_since_last_flush = self
-            .last_flush
-            .map_or(Duration::from_secs(0), |t| t.elapsed());
-
-        if time_since_last_flush > Duration::from_millis(20) || self.count > 4 {
-            self.flush().await?;
+        {
+            let doc = self.doc.lock().await;
+            doc.transact_mut().apply_update(update)?;
         }
+
+        {
+            let mut count = self.count.lock().await;
+            *count += 1;
+
+            if *count > 4 {
+                let _ = self.flush_sender.send(()).await;
+            }
+        }
+
         Ok(())
     }
+}
 
-    pub async fn flush(&mut self) -> Result<()> {
-        let update = {
-            let txn = self.doc.transact_mut();
-            txn.encode_state_as_update_v1(&StateVector::default())
-        };
-        self.redis_store
-            .publish_update(&self.stream_key, &update)
-            .await?;
-        self.doc = Doc::new();
-        self.last_flush = Some(Instant::now());
-        self.count = 0;
-        Ok(())
+impl Drop for Publish {
+    fn drop(&mut self) {
+        if let Some(task) = self._timer_task.take() {
+            task.abort();
+        }
     }
 }
