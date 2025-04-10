@@ -6,7 +6,6 @@ use crate::AwarenessRef;
 
 use anyhow::Result;
 use bytes::Bytes;
-use deadpool_redis::Connection;
 use futures_util::{SinkExt, StreamExt};
 use rand;
 use tracing::{debug, error, warn};
@@ -40,7 +39,7 @@ pub struct BroadcastGroup {
     doc_name: String,
     shutdown_complete: AtomicBool,
     instance_id: String,
-    last_read_id: Arc<tokio::sync::Mutex<String>>,
+    last_read_id: Arc<Mutex<String>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -184,7 +183,7 @@ impl BroadcastGroup {
             doc_name,
             shutdown_complete: AtomicBool::new(false),
             instance_id,
-            last_read_id: Arc::new(tokio::sync::Mutex::new("0".to_string())),
+            last_read_id: Arc::new(Mutex::new("0".to_string())),
         };
 
         Ok(result)
@@ -210,6 +209,10 @@ impl BroadcastGroup {
             doc_name.clone(),
         )
         .await?;
+
+        redis_store
+            .create_empty_stream_with_ttl(&doc_name, 86400)
+            .await?;
 
         let awareness_for_sub = group.awareness_ref.clone();
         let sender_for_sub = group.sender.clone();
@@ -250,11 +253,12 @@ impl BroadcastGroup {
         let redis_subscriber_task = tokio::spawn(async move {
             let stream_key = format!("yjs:stream:{}", doc_name_for_sub);
 
-            let mut conn = if let Ok(conn) = redis_store_for_sub.get_pool().get().await {
-                conn
-            } else {
-                error!("Failed to get Redis connection");
-                return;
+            let mut conn = match redis_store_for_sub.create_dedicated_connection().await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    error!("Failed to create dedicated Redis connection: {}", e);
+                    return;
+                }
             };
 
             loop {
@@ -264,10 +268,10 @@ impl BroadcastGroup {
                     },
                     _ = async {
                         let result = redis_store_for_sub
-                            .read_and_ack(
+                            .read_and_ack_dedicated(
                                 &mut conn,
                                 &stream_key,
-                                512,
+                                1024,
                                 &last_read_id_for_sub,
                             )
                             .await;
@@ -297,6 +301,10 @@ impl BroadcastGroup {
                                         }
                                     }
                                 }
+
+                                // if update_count == 1  {
+                                //     tokio::time::sleep(tokio::time::Duration::from_millis(20)).await;
+                                // }
 
                             },
                             Err(e) => {
@@ -413,7 +421,6 @@ impl BroadcastGroup {
             let doc_name = self.doc_name.clone();
             let stream_key = format!("yjs:stream:{}", doc_name);
             tokio::spawn(async move {
-                let mut conn = redis_store.get_pool().get().await.unwrap();
                 while let Some(res) = stream.next().await {
                     let data = match res.map_err(anyhow::Error::from) {
                         Ok(data) => data,
@@ -431,15 +438,8 @@ impl BroadcastGroup {
                         }
                     };
 
-                    match Self::handle_msg(
-                        &protocol,
-                        &awareness,
-                        msg,
-                        &redis_store,
-                        &stream_key,
-                        &mut conn,
-                    )
-                    .await
+                    match Self::handle_msg(&protocol, &awareness, msg, &redis_store, &stream_key)
+                        .await
                     {
                         Ok(Some(reply)) => {
                             let mut sink_lock = sink.lock().await;
@@ -468,7 +468,6 @@ impl BroadcastGroup {
         msg: Message,
         redis_store: &Arc<RedisStore>,
         stream_key: &str,
-        conn: &mut Connection,
     ) -> Result<Option<Message>, Error> {
         match msg {
             Message::Sync(msg) => {
@@ -479,12 +478,10 @@ impl BroadcastGroup {
                 };
 
                 if !update_bytes.is_empty() {
-                    if let Err(e) = redis_store
-                        .publish_update(stream_key, &update_bytes, conn)
+                    redis_store
+                        .publish_update(stream_key, &update_bytes)
                         .await
-                    {
-                        error!("Redis Stream update failed: {}", e);
-                    }
+                        .map_err(|e| Error::Other(e.into()))?;
                 }
 
                 match msg {
@@ -524,8 +521,7 @@ impl BroadcastGroup {
     }
 
     pub async fn shutdown(&self) -> Result<()> {
-        self.shutdown_complete
-            .store(true, std::sync::atomic::Ordering::SeqCst);
+        self.shutdown_complete.store(true, Ordering::SeqCst);
 
         if self.connection_count() == 0 {
             if let Err(e) = self
@@ -590,7 +586,6 @@ impl BroadcastGroup {
                 if lock_acquired.is_some() {
                     let awareness = self.awareness_ref.write().await;
                     let awareness_doc = awareness.doc();
-                    let _awareness_state = awareness_doc.transact().state_vector();
 
                     let gcs_doc = Doc::new();
                     let mut gcs_txn = gcs_doc.transact_mut();
@@ -642,13 +637,9 @@ impl BroadcastGroup {
             background_tasks.stop_all();
         }
 
-        if let Err(e) = self
-            .redis_store
+        self.redis_store
             .safe_delete_stream(&self.doc_name, &self.instance_id)
-            .await
-        {
-            warn!("Failed to delete Redis stream: {}", e);
-        }
+            .await?;
 
         Ok(())
     }
@@ -664,8 +655,7 @@ impl Drop for BroadcastGroup {
             drop(sub);
         }
 
-        self.shutdown_complete
-            .store(true, std::sync::atomic::Ordering::SeqCst);
+        self.shutdown_complete.store(true, Ordering::SeqCst);
 
         let background_tasks = self.background_tasks.clone();
         tokio::spawn(async move {
@@ -686,8 +676,6 @@ impl Subscription {
         if let Some(sync_complete) = self.sync_complete.take() {
             let _ = sync_complete.await;
         }
-
-        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
 
         let res = select! {
             r1 = self.sink_task => r1,

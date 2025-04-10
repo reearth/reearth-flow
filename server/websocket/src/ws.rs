@@ -180,10 +180,13 @@ async fn handle_socket(
     )
     .await;
 
+    // tracing::info!("WebSocket connection established for document '{}'", doc_id);
+
     let result = conn.await;
     if let Err(e) = result {
         error!("WebSocket connection error: {}", e);
     }
+    // tracing::info!("WebSocket connection closed for document '{}'", doc_id);
 
     let _ = bcast.decrement_connections().await;
     debug!("Connection decreased for document '{}'", doc_id);

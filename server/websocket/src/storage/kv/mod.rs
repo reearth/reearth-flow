@@ -513,7 +513,7 @@ where
     }
 
     let mut lock_value = None;
-    let max_retries = 5;
+    let max_retries = 10;
     let retry_delay_ms = 500;
 
     for attempt in 0..max_retries {
@@ -581,8 +581,6 @@ where
         (last_oid_key.as_ref(), &new_oid_bytes[..]),
     ];
     db.batch_upsert(&batch).await?;
-
-    tokio::time::sleep(std::time::Duration::from_millis(1000)).await;
 
     let _ = redis.release_oid_lock(&lock_value).await;
 
