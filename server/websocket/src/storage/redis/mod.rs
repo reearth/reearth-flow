@@ -498,34 +498,36 @@ impl RedisStore {
 
     pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<(Vec<Bytes>, Option<String>)> {
         let stream_key = format!("yjs:stream:{}", doc_id);
-
         let mut conn = self.pool.get().await?;
-        let result: RedisStreamResults = redis::cmd("XRANGE")
-            .arg(&stream_key)
-            .arg("-")
-            .arg("+")
-            .query_async(&mut *conn)
-            .await?;
 
-        let last_id = if !result.is_empty() && !result[0].1.is_empty() {
-            Some(result[0].1.last().unwrap().0.clone())
-        } else {
-            None
-        };
+        let script = redis::Script::new(
+            r#"
+            if redis.call('EXISTS', KEYS[1]) == 0 then
+                return {updates={}, last_id=false}
+            end
+            
+            local result = redis.call('XRANGE', KEYS[1], '-', '+')
+            local updates = {}
+            local last_id = false
+            
+            if #result > 0 then
+                last_id = result[#result][1]
+                for i, entry in ipairs(result) do
+                    local fields = entry[2]
+                    for j = 1, #fields, 2 do
+                        table.insert(updates, fields[j+1])
+                    end
+                end
+            end
+            
+            return {updates=updates, last_id=last_id}
+            "#,
+        );
 
-        let mut updates = Vec::new();
+        let result: (Vec<Bytes>, Option<String>) =
+            script.key(&stream_key).invoke_async(&mut *conn).await?;
 
-        if !result.is_empty() {
-            for (_, messages) in result {
-                for (_, fields) in messages {
-                    for (_, value) in fields {
-                        updates.push(value);
-                    }
-                }
-            }
-        }
-
-        Ok((updates, last_id))
+        Ok(result)
     }
 
     pub async fn acquire_oid_lock(&self, ttl_seconds: u64) -> Result<String> {
