@@ -25,17 +25,17 @@ impl Publish {
     ) -> Self {
         let doc = Arc::new(Mutex::new(Doc::new()));
         let doc_clone = doc.clone();
-        let redis_clone = redis_store.clone();
         let stream_key_clone = stream_key.clone();
         let count = Arc::new(Mutex::new(0));
         let count_clone = count.clone();
         let instance_id_clone = instance_id.clone();
         let mut conn_clone = conn.clone();
+        let mut first_publish = true;
 
         let (flush_sender, mut flush_receiver) = mpsc::channel(32);
 
         let timer_task = tokio::spawn(async move {
-            let mut interval = interval(Duration::from_millis(40));
+            let mut interval = interval(Duration::from_millis(50));
 
             loop {
                 tokio::select! {
@@ -48,7 +48,12 @@ impl Publish {
                                 txn.encode_state_as_update_v1(&StateVector::default())
                             };
 
-                            if let Err(e) = redis_clone.publish_update_with_origin(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone).await {
+                            if first_publish {
+                                first_publish = false;
+                                if let Err(e) = redis_store.publish_update_with_ttl(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone, 43200).await {
+                                    warn!("Failed to flush first document: {}", e);
+                                }
+                            } else if let Err(e) = redis_store.publish_update(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone).await {
                                 warn!("Failed to flush document: {}", e);
                             }
 
@@ -66,7 +71,7 @@ impl Publish {
                                 txn.encode_state_as_update_v1(&StateVector::default())
                             };
 
-                            if let Err(e) = redis_clone.publish_update_with_origin(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone).await {
+                            if let Err(e) = redis_store.publish_update(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone).await {
                                 warn!("Failed to flush document: {}", e);
                             }
 

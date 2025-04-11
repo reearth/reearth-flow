@@ -84,21 +84,6 @@ impl BroadcastGroupManager {
             }
         };
 
-        if let Ok(updates) = self.redis_store.read_all_stream_data(doc_id).await {
-            // tracing::info!("updates length: {:?}", updates.len());
-            // tracing::info!("--------------------------------read_all_stream_data--------------------------------");
-            if !updates.is_empty() {
-                let awareness_guard = awareness.write().await;
-                let mut txn = awareness_guard.doc().transact_mut();
-
-                for update_data in &updates {
-                    if let Ok(update) = Update::decode_v1(update_data) {
-                        let _ = txn.apply_update(update);
-                    }
-                }
-            }
-        }
-
         if need_initial_save {
             let doc_id_clone = doc_id.to_string();
             let store_clone = Arc::clone(&self.store);
