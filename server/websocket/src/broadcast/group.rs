@@ -205,7 +205,6 @@ impl BroadcastGroup {
             .await?;
 
         let awareness_for_sub = group.awareness_ref.clone();
-        let sender_for_sub = group.sender.clone();
         let doc_name_for_sub = doc_name.clone();
         let redis_store_for_sub = redis_store.clone();
         let last_read_id_for_sub = group.last_read_id.clone();
