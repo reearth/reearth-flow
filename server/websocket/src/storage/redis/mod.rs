@@ -72,6 +72,34 @@ impl RedisStore {
         Ok(())
     }
 
+    pub async fn publish_update_with_origin(
+        &self,
+        stream_key: &str,
+        update: &[u8],
+        instance_id: &str,
+    ) -> Result<()> {
+        let mut conn = self.pool.get().await?;
+        let script = redis::Script::new(
+            r#"
+            local stream_key = KEYS[1]
+            local update = ARGV[1]
+            local instance_id = ARGV[2]
+            
+            redis.call('XADD', stream_key, '*', 'update', update, 'origin', instance_id)
+            return 1
+            "#,
+        );
+
+        let _: () = script
+            .key(stream_key)
+            .arg(update)
+            .arg(instance_id)
+            .invoke_async(&mut *conn)
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn acquire_lock(
         &self,
         lock_key: &str,
@@ -190,7 +218,7 @@ impl RedisStore {
         stream_key: &str,
         count: usize,
         last_read_id: &Arc<Mutex<String>>,
-    ) -> Result<Vec<Bytes>> {
+    ) -> Result<(Vec<Bytes>, Vec<String>)> {
         let block_ms = 1600;
 
         let read_id = {
@@ -210,17 +238,24 @@ impl RedisStore {
             .await?;
 
         if result.is_empty() || result[0].1.is_empty() {
-            return Ok(vec![]);
+            return Ok((vec![], vec![]));
         }
 
         let mut updates = Vec::with_capacity(result[0].1.len());
-        // tracing::info!("result: {:?}", result);
-        // tracing::info!("result length: {:?}", result.len());
+        let mut origins = Vec::with_capacity(result[0].1.len());
         let mut last_msg_id = String::new();
 
         for (msg_id, fields) in result[0].1.iter() {
             if let Some((_, update)) = fields.iter().find(|(name, _)| name == "update") {
                 updates.push(update.clone());
+
+                let origin = fields
+                    .iter()
+                    .find(|(name, _)| name == "origin")
+                    .map(|(_, value)| String::from_utf8(value.to_vec()).unwrap_or_default())
+                    .unwrap_or_default();
+
+                origins.push(origin);
             }
             last_msg_id = msg_id.clone();
         }
@@ -230,8 +265,7 @@ impl RedisStore {
             *last_id = last_msg_id;
         }
 
-        // tracing::info!("updates length: {:?}", updates.len());
-        Ok(updates)
+        Ok((updates, origins))
     }
 
     pub async fn delete_stream(&self, doc_id: &str) -> Result<()> {

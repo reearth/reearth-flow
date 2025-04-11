@@ -17,13 +17,14 @@ pub struct Publish {
 }
 
 impl Publish {
-    pub fn new(redis_store: Arc<RedisStore>, stream_key: String) -> Self {
+    pub fn new(redis_store: Arc<RedisStore>, stream_key: String, instance_id: String) -> Self {
         let doc = Arc::new(Mutex::new(Doc::new()));
         let doc_clone = doc.clone();
         let redis_clone = redis_store.clone();
         let stream_key_clone = stream_key.clone();
         let count = Arc::new(Mutex::new(0));
         let count_clone = count.clone();
+        let instance_id_clone = instance_id.clone();
 
         let (flush_sender, mut flush_receiver) = mpsc::channel(32);
 
@@ -40,7 +41,7 @@ impl Publish {
                                 txn.encode_state_as_update_v1(&StateVector::default())
                             };
 
-                            if let Err(e) = redis_clone.publish_update(&stream_key_clone, &update).await {
+                            if let Err(e) = redis_clone.publish_update_with_origin(&stream_key_clone, &update, &instance_id_clone).await {
                                 warn!("Failed to flush document: {}", e);
                             }
 
@@ -57,7 +58,7 @@ impl Publish {
                                 txn.encode_state_as_update_v1(&StateVector::default())
                             };
 
-                            if let Err(e) = redis_clone.publish_update(&stream_key_clone, &update).await {
+                            if let Err(e) = redis_clone.publish_update_with_origin(&stream_key_clone, &update, &instance_id_clone).await {
                                 warn!("Failed to flush document: {}", e);
                             }
 
