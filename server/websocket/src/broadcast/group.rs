@@ -200,13 +200,6 @@ impl BroadcastGroup {
         )
         .await?;
 
-        if let Err(e) = redis_store
-            .create_empty_stream_with_ttl(&doc_name, 86400)
-            .await
-        {
-            warn!("Failed to create Redis stream for '{}': {}", doc_name, e);
-        }
-
         let awareness_for_sub = group.awareness_ref.clone();
         let doc_name_for_sub = doc_name.clone();
         let redis_store_for_sub = redis_store.clone();

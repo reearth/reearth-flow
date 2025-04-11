@@ -79,6 +79,36 @@ impl RedisStore {
         Ok(())
     }
 
+    pub async fn publish_update_with_ttl(
+        &self,
+        conn: &mut redis::aio::MultiplexedConnection,
+        stream_key: &str,
+        update: &[u8],
+        instance_id: &str,
+        ttl: u64,
+    ) -> Result<()> {
+        let script = redis::Script::new(
+            r#"
+            local stream_key = KEYS[1]
+            local update = ARGV[1]
+            local instance_id = ARGV[2]
+            local ttl = ARGV[3]
+            redis.call('XADD', stream_key, '*', 'instance_id', update)
+            redis.call('EXPIRE', stream_key, ttl)
+            return 1
+            "#,
+        );
+        let _: () = script
+            .key(stream_key)
+            .arg(update)
+            .arg(instance_id)
+            .arg(ttl)
+            .invoke_async(&mut *conn)
+            .await?;
+
+        Ok(())
+    }
+
     pub async fn acquire_lock(
         &self,
         lock_key: &str,
@@ -225,10 +255,7 @@ impl RedisStore {
         let mut last_msg_id = String::new();
 
         for (msg_id, fields) in result[0].1.iter() {
-            if let Some((_, value)) = fields
-                .iter()
-                .find(|(name, _)| name != instance_id && name != "init")
-            {
+            if let Some((_, value)) = fields.iter().find(|(name, _)| name != instance_id) {
                 updates.push(value.clone());
             }
             last_msg_id = msg_id.clone();
@@ -451,31 +478,6 @@ impl RedisStore {
         Ok(())
     }
 
-    pub async fn create_empty_stream_with_ttl(&self, doc_id: &str, ttl_seconds: u64) -> Result<()> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        let mut conn = self.pool.get().await?;
-
-        let script = redis::Script::new(
-            r#"
-            if redis.call('EXISTS', KEYS[1]) == 0 then
-                redis.call('XADD', KEYS[1], '*', 'init', 'true')
-                redis.call('EXPIRE', KEYS[1], ARGV[1])
-                return 1
-            else
-                return redis.call('EXPIRE', KEYS[1], ARGV[1])
-            end
-            "#,
-        );
-
-        let _: redis::Value = script
-            .key(&stream_key)
-            .arg(ttl_seconds)
-            .invoke_async(&mut *conn)
-            .await?;
-
-        Ok(())
-    }
-
     pub async fn check_stream_exists(&self, doc_id: &str) -> Result<bool> {
         let stream_key = format!("yjs:stream:{}", doc_id);
 
@@ -516,10 +518,8 @@ impl RedisStore {
         if !result.is_empty() {
             for (_, messages) in result {
                 for (_, fields) in messages {
-                    for (field_name, value) in fields {
-                        if field_name != "init" {
-                            updates.push(value);
-                        }
+                    for (_, value) in fields {
+                        updates.push(value);
                     }
                 }
             }
