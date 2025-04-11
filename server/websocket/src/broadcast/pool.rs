@@ -84,21 +84,6 @@ impl BroadcastGroupManager {
             }
         };
 
-        let updates = self.redis_store.read_all_stream_data(doc_id).await?;
-
-        let last_id = updates.1.clone();
-
-        if !updates.0.is_empty() {
-            let awareness_guard = awareness.write().await;
-            let mut txn = awareness_guard.doc().transact_mut();
-
-            for update_data in &updates.0 {
-                if let Ok(update) = Update::decode_v1(update_data) {
-                    let _ = txn.apply_update(update);
-                }
-            }
-        }
-
         if need_initial_save {
             let doc_id_clone = doc_id.to_string();
             let store_clone = Arc::clone(&self.store);
@@ -132,10 +117,6 @@ impl BroadcastGroupManager {
             )
             .await?,
         );
-
-        if let Some(id) = last_id {
-            group.set_last_read_id(id).await?;
-        }
 
         match self.doc_to_id_map.entry(doc_id.to_string()) {
             dashmap::mapref::entry::Entry::Occupied(entry) => {
@@ -222,7 +203,7 @@ impl BroadcastPool {
                     .read_all_stream_data(&doc_name)
                     .await
                 {
-                    Ok((updates, _last_id)) if !updates.is_empty() => {
+                    Ok(updates) if !updates.is_empty() => {
                         let awareness = group.awareness().write().await;
                         let mut txn = awareness.doc().transact_mut();
 

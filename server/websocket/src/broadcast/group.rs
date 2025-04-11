@@ -321,12 +321,6 @@ impl BroadcastGroup {
         self.doc_name.clone()
     }
 
-    pub async fn set_last_read_id(&self, id: String) -> Result<()> {
-        let mut last_id = self.last_read_id.lock().await;
-        *last_id = id;
-        Ok(())
-    }
-
     pub async fn subscribe<Sink, Stream, E>(
         self: Arc<Self>,
         sink: Arc<Mutex<Sink>>,

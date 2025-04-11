@@ -496,22 +496,18 @@ impl RedisStore {
         Ok(exists)
     }
 
-    pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<(Vec<Bytes>, Option<String>)> {
+    pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<Vec<Bytes>> {
         let stream_key = format!("yjs:stream:{}", doc_id);
         let mut conn = self.pool.get().await?;
 
         let script = redis::Script::new(
             r#"
             if redis.call('EXISTS', KEYS[1]) == 0 then
-                return {updates={}, last_id=false}
+                return {}
             end
-            
             local result = redis.call('XRANGE', KEYS[1], '-', '+')
             local updates = {}
-            local last_id = false
-            
             if #result > 0 then
-                last_id = result[#result][1]
                 for i, entry in ipairs(result) do
                     local fields = entry[2]
                     for j = 1, #fields, 2 do
@@ -519,13 +515,11 @@ impl RedisStore {
                     end
                 end
             end
-            
-            return {updates=updates, last_id=last_id}
+            return updates
             "#,
         );
 
-        let result: (Vec<Bytes>, Option<String>) =
-            script.key(&stream_key).invoke_async(&mut *conn).await?;
+        let result: Vec<Bytes> = script.key(&stream_key).invoke_async(&mut *conn).await?;
 
         Ok(result)
     }
