@@ -460,14 +460,14 @@ impl RedisStore {
             if redis.call('EXISTS', KEYS[1]) == 0 then
                 redis.call('XADD', KEYS[1], '*', 'init', 'true')
                 redis.call('EXPIRE', KEYS[1], ARGV[1])
-                return 1
+                return true
             else
                 return redis.call('EXPIRE', KEYS[1], ARGV[1])
             end
             "#,
         );
 
-        let _: () = script
+        let _: redis::Value = script
             .key(&stream_key)
             .arg(ttl_seconds)
             .invoke_async(&mut *conn)
