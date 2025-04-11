@@ -303,13 +303,7 @@ impl BroadcastPool {
         Ok(())
     }
 
-    pub async fn cleanup_empty_group(
-        &self,
-        doc_id: &str,
-        group: Arc<BroadcastGroup>,
-    ) -> Result<()> {
-        tokio::time::sleep(Duration::from_secs(10)).await;
-
+    pub async fn cleanup_empty_group(&self, doc_id: &str) -> Result<()> {
         match self.cleanup_locks.entry(doc_id.to_string()) {
             dashmap::mapref::entry::Entry::Occupied(_) => {
                 return Ok(());
@@ -323,11 +317,23 @@ impl BroadcastPool {
             self.cleanup_locks.remove(&key);
         });
 
-        let doc_to_id_map = self.manager.doc_to_id_map.clone();
+        let group_to_shutdown: Option<Arc<BroadcastGroup>> = {
+            match self.manager.doc_to_id_map.entry(doc_id.to_string()) {
+                dashmap::mapref::entry::Entry::Occupied(entry) => {
+                    if entry.get().connection_count() == 0 {
+                        Some(entry.remove())
+                    } else {
+                        None
+                    }
+                }
+                dashmap::mapref::entry::Entry::Vacant(_) => None,
+            }
+        };
 
-        if group.connection_count() == 0 {
-            doc_to_id_map.remove(doc_id);
-            group.shutdown().await?;
+        if let Some(group) = group_to_shutdown {
+            if let Err(e) = group.shutdown().await {
+                error!("Error shutting down group for doc_id {}: {}", doc_id, e);
+            }
         }
 
         Ok(())
