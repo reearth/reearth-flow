@@ -281,9 +281,6 @@ impl BroadcastGroup {
                                         decoded_updates.push(decoded);
                                     }
 
-                                    if sender_for_sub.send(update.clone()).is_err() {
-                                        debug!("Failed to broadcast Redis update to clients for '{}'", stream_key);
-                                    }
                                 }
 
                                 if !decoded_updates.is_empty() {
