@@ -17,7 +17,12 @@ pub struct Publish {
 }
 
 impl Publish {
-    pub fn new(redis_store: Arc<RedisStore>, stream_key: String, instance_id: String) -> Self {
+    pub fn new(
+        redis_store: Arc<RedisStore>,
+        stream_key: String,
+        instance_id: String,
+        conn: &mut redis::aio::MultiplexedConnection,
+    ) -> Self {
         let doc = Arc::new(Mutex::new(Doc::new()));
         let doc_clone = doc.clone();
         let redis_clone = redis_store.clone();
@@ -25,6 +30,7 @@ impl Publish {
         let count = Arc::new(Mutex::new(0));
         let count_clone = count.clone();
         let instance_id_clone = instance_id.clone();
+        let mut conn_clone = conn.clone();
 
         let (flush_sender, mut flush_receiver) = mpsc::channel(32);
 
@@ -35,13 +41,14 @@ impl Publish {
                 tokio::select! {
                     _ = interval.tick() => {
                         let mut doc_lock = doc_clone.lock().await;
-                        if doc_lock.transact().encode_state_as_update_v1(&StateVector::default()).len() > 2 {
+                        let count_value = *count_clone.lock().await;
+                        if count_value > 0 {
                             let update = {
                                 let txn = doc_lock.transact_mut();
                                 txn.encode_state_as_update_v1(&StateVector::default())
                             };
 
-                            if let Err(e) = redis_clone.publish_update_with_origin(&stream_key_clone, &update, &instance_id_clone).await {
+                            if let Err(e) = redis_clone.publish_update_with_origin(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone).await {
                                 warn!("Failed to flush document: {}", e);
                             }
 
@@ -52,13 +59,14 @@ impl Publish {
                     }
                     _ = flush_receiver.recv() => {
                         let mut doc_lock = doc_clone.lock().await;
-                        if doc_lock.transact().encode_state_as_update_v1(&StateVector::default()).len() > 2 {
+                        let count_value = *count_clone.lock().await;
+                        if count_value > 0 {
                             let update = {
                                 let txn = doc_lock.transact_mut();
                                 txn.encode_state_as_update_v1(&StateVector::default())
                             };
 
-                            if let Err(e) = redis_clone.publish_update_with_origin(&stream_key_clone, &update, &instance_id_clone).await {
+                            if let Err(e) = redis_clone.publish_update_with_origin(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone).await {
                                 warn!("Failed to flush document: {}", e);
                             }
 

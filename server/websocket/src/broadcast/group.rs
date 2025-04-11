@@ -359,7 +359,7 @@ impl BroadcastGroup {
             }
         }
 
-        let subscription = self.listen(sink, stream, DefaultProtocol);
+        let subscription = self.listen(sink, stream, DefaultProtocol).await;
 
         {
             let mut active_subscriptions = self.active_subscriptions.lock().await;
@@ -378,7 +378,7 @@ impl BroadcastGroup {
         }
     }
 
-    pub fn listen<Sink, Stream, E, P>(
+    pub async fn listen<Sink, Stream, E, P>(
         &self,
         sink: Arc<Mutex<Sink>>,
         mut stream: Stream,
@@ -412,7 +412,8 @@ impl BroadcastGroup {
             let doc_name = self.doc_name.clone();
             let stream_key = format!("yjs:stream:{}", doc_name);
             let instance_id = self.instance_id.clone();
-            let mut publish = Publish::new(redis_store, stream_key, instance_id);
+            let mut conn = redis_store.create_dedicated_connection().await.unwrap();
+            let mut publish = Publish::new(redis_store, stream_key, instance_id, &mut conn);
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
                     let data = match res.map_err(anyhow::Error::from) {
