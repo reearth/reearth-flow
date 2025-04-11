@@ -44,7 +44,7 @@ where
                 .await,
         );
 
-        let ping_interval = Duration::from_secs(15);
+        let ping_interval = Duration::from_secs(30);
         let ping_task = Some(Self::start_ping_task(sink, ping_interval));
 
         Connection {

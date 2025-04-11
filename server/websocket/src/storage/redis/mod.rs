@@ -74,11 +74,11 @@ impl RedisStore {
 
     pub async fn publish_update_with_origin(
         &self,
+        conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
         update: &[u8],
         instance_id: &str,
     ) -> Result<()> {
-        let mut conn = self.pool.get().await?;
         let script = redis::Script::new(
             r#"
             local stream_key = KEYS[1]
