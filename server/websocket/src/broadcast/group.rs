@@ -132,10 +132,10 @@ impl BroadcastGroup {
                                 if let Some(awareness) = awareness_c.upgrade() {
                                     let awareness = awareness.read().await;
                                     if let Ok(update) = awareness.update_with_clients(changed_clients) {
-                                        let msg_bytes = Bytes::from(Message::Awareness(update).encode_v1());
-                                        if sink.send(msg_bytes).is_err() {
-                                            warn!("couldn't broadcast awareness update");
-                                            return;
+                                            let msg_bytes = Bytes::from(Message::Awareness(update).encode_v1());
+                                            if sink.send(msg_bytes).is_err() {
+                                                warn!("couldn't broadcast awareness update");
+                                                return;
                                         }
                                     }
                                 } else {
@@ -205,10 +205,10 @@ impl BroadcastGroup {
             .await?;
 
         let awareness_for_sub = group.awareness_ref.clone();
-        let sender_for_sub = group.sender.clone();
         let doc_name_for_sub = doc_name.clone();
         let redis_store_for_sub = redis_store.clone();
         let last_read_id_for_sub = group.last_read_id.clone();
+        let instance_id_for_sub = group.instance_id.clone();
 
         let (heartbeat_shutdown_tx, mut heartbeat_shutdown_rx) = tokio::sync::mpsc::channel(1);
         let instance_id = group.instance_id.clone();
@@ -267,18 +267,19 @@ impl BroadcastGroup {
                             .await;
 
                         match result {
-                            Ok(updates) => {
+                            Ok((updates, origins)) => {
                                 let update_count = updates.len();
                                 let mut decoded_updates = Vec::with_capacity(update_count);
 
-                                for update in &updates {
+                                for (i, update) in updates.iter().enumerate() {
+                                    if i < origins.len() && origins[i] == instance_id_for_sub {
+                                        continue;
+                                    }
+
                                     if let Ok(decoded) = Update::decode_v1(update) {
                                         decoded_updates.push(decoded);
                                     }
 
-                                    if sender_for_sub.send(update.clone()).is_err() {
-                                        debug!("Failed to broadcast Redis update to clients for '{}'", stream_key);
-                                    }
                                 }
 
                                 if !decoded_updates.is_empty() {
@@ -410,7 +411,8 @@ impl BroadcastGroup {
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
             let stream_key = format!("yjs:stream:{}", doc_name);
-            let mut publish = Publish::new(redis_store, stream_key);
+            let instance_id = self.instance_id.clone();
+            let mut publish = Publish::new(redis_store, stream_key, instance_id);
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
                     let data = match res.map_err(anyhow::Error::from) {
