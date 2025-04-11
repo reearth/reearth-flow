@@ -70,6 +70,9 @@ const SelectionContextMenu: React.FC<Props> = ({
         props: {
           label: t("Cut"),
           icon: <Scissors weight="light" />,
+          shortcut: (
+            <ContextMenuShortcut keyBinding={{ key: "x", commandKey: true }} />
+          ),
           onCallback: wrapWithClose(onCut ?? (() => {})),
         },
       },
