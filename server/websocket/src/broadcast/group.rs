@@ -412,7 +412,17 @@ impl BroadcastGroup {
             let doc_name = self.doc_name.clone();
             let stream_key = format!("yjs:stream:{}", doc_name);
             let instance_id = self.instance_id.clone();
-            let mut conn = redis_store.create_dedicated_connection().await.unwrap();
+            let mut conn = match redis_store.create_dedicated_connection().await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    error!("Failed to create dedicated Redis connection: {}", e);
+                    return Subscription {
+                        sink_task: tokio::spawn(async { Ok(()) }),
+                        stream_task: tokio::spawn(async { Ok(()) }),
+                        sync_complete: None,
+                    };
+                }
+            };
             let mut publish = Publish::new(redis_store, stream_key, instance_id, &mut conn);
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
