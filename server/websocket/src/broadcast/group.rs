@@ -258,23 +258,21 @@ impl BroadcastGroup {
                     },
                     _ = async {
                         let result = redis_store_for_sub
-                            .read_and_ack_dedicated(
+                            .read_and_filter(
                                 &mut conn,
                                 &stream_key,
                                 1024,
+                                &instance_id_for_sub,
                                 &last_read_id_for_sub,
                             )
                             .await;
 
                         match result {
-                            Ok((updates, origins)) => {
+                            Ok(updates) => {
                                 let update_count = updates.len();
                                 let mut decoded_updates = Vec::with_capacity(update_count);
 
-                                for (i, update) in updates.iter().enumerate() {
-                                    if i < origins.len() && origins[i] == instance_id_for_sub {
-                                        continue;
-                                    }
+                                for update in updates.iter() {
 
                                     if let Ok(decoded) = Update::decode_v1(update) {
                                         decoded_updates.push(decoded);
@@ -297,7 +295,7 @@ impl BroadcastGroup {
                             },
                             Err(e) => {
                                 error!("Error reading from Redis Stream '{}': {}", stream_key, e);
-                                tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
+                                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
                             },
                         }
 
@@ -325,6 +323,12 @@ impl BroadcastGroup {
 
     pub fn get_doc_name(&self) -> String {
         self.doc_name.clone()
+    }
+
+    pub async fn set_last_read_id(&self, id: String) -> Result<()> {
+        let mut last_id = self.last_read_id.lock().await;
+        *last_id = id;
+        Ok(())
     }
 
     pub async fn subscribe<Sink, Stream, E>(

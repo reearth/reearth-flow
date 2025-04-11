@@ -48,7 +48,7 @@ impl Publish {
                                 txn.encode_state_as_update_v1(&StateVector::default())
                             };
 
-                            if let Err(e) = redis_clone.publish_update_with_origin(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone).await {
+                            if let Err(e) = redis_clone.publish_update(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone).await {
                                 warn!("Failed to flush document: {}", e);
                             }
 
@@ -66,7 +66,7 @@ impl Publish {
                                 txn.encode_state_as_update_v1(&StateVector::default())
                             };
 
-                            if let Err(e) = redis_clone.publish_update_with_origin(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone).await {
+                            if let Err(e) = redis_clone.publish_update(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone).await {
                                 warn!("Failed to flush document: {}", e);
                             }
 

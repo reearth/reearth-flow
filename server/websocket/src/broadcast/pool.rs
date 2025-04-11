@@ -84,17 +84,17 @@ impl BroadcastGroupManager {
             }
         };
 
-        if let Ok(updates) = self.redis_store.read_all_stream_data(doc_id).await {
-            // tracing::info!("updates length: {:?}", updates.len());
-            // tracing::info!("--------------------------------read_all_stream_data--------------------------------");
-            if !updates.is_empty() {
-                let awareness_guard = awareness.write().await;
-                let mut txn = awareness_guard.doc().transact_mut();
+        let updates = self.redis_store.read_all_stream_data(doc_id).await?;
 
-                for update_data in &updates {
-                    if let Ok(update) = Update::decode_v1(update_data) {
-                        let _ = txn.apply_update(update);
-                    }
+        let last_id = updates.1.clone();
+
+        if !updates.0.is_empty() {
+            let awareness_guard = awareness.write().await;
+            let mut txn = awareness_guard.doc().transact_mut();
+
+            for update_data in &updates.0 {
+                if let Ok(update) = Update::decode_v1(update_data) {
+                    let _ = txn.apply_update(update);
                 }
             }
         }
@@ -132,6 +132,10 @@ impl BroadcastGroupManager {
             )
             .await?,
         );
+
+        if let Some(id) = last_id {
+            group.set_last_read_id(id).await?;
+        }
 
         match self.doc_to_id_map.entry(doc_id.to_string()) {
             dashmap::mapref::entry::Entry::Occupied(entry) => {
@@ -218,7 +222,7 @@ impl BroadcastPool {
                     .read_all_stream_data(&doc_name)
                     .await
                 {
-                    Ok(updates) if !updates.is_empty() => {
+                    Ok((updates, _last_id)) if !updates.is_empty() => {
                         let awareness = group.awareness().write().await;
                         let mut txn = awareness.doc().transact_mut();
 

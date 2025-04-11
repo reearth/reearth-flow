@@ -51,28 +51,7 @@ impl RedisStore {
         Ok(conn)
     }
 
-    pub async fn publish_update(&self, stream_key: &str, update: &[u8]) -> Result<()> {
-        let mut conn = self.pool.get().await?;
-        let script = redis::Script::new(
-            r#"
-            local stream_key = KEYS[1]
-            local update = ARGV[1]
-            
-            redis.call('XADD', stream_key, '*', 'update', update)
-            return 1
-            "#,
-        );
-
-        let _: () = script
-            .key(stream_key)
-            .arg(update)
-            .invoke_async(&mut *conn)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn publish_update_with_origin(
+    pub async fn publish_update(
         &self,
         conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
@@ -85,7 +64,7 @@ impl RedisStore {
             local update = ARGV[1]
             local instance_id = ARGV[2]
             
-            redis.call('XADD', stream_key, '*', 'update', update, 'origin', instance_id)
+            redis.call('XADD', stream_key, '*', 'instance_id', update)
             return 1
             "#,
         );
@@ -212,13 +191,14 @@ impl RedisStore {
         Ok(result)
     }
 
-    pub async fn read_and_ack_dedicated(
+    pub async fn read_and_filter(
         &self,
         conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
         count: usize,
+        instance_id: &str,
         last_read_id: &Arc<Mutex<String>>,
-    ) -> Result<(Vec<Bytes>, Vec<String>)> {
+    ) -> Result<Vec<Bytes>> {
         let block_ms = 1600;
 
         let read_id = {
@@ -238,24 +218,18 @@ impl RedisStore {
             .await?;
 
         if result.is_empty() || result[0].1.is_empty() {
-            return Ok((vec![], vec![]));
+            return Ok(vec![]);
         }
 
         let mut updates = Vec::with_capacity(result[0].1.len());
-        let mut origins = Vec::with_capacity(result[0].1.len());
         let mut last_msg_id = String::new();
 
         for (msg_id, fields) in result[0].1.iter() {
-            if let Some((_, update)) = fields.iter().find(|(name, _)| name == "update") {
-                updates.push(update.clone());
-
-                let origin = fields
-                    .iter()
-                    .find(|(name, _)| name == "origin")
-                    .map(|(_, value)| String::from_utf8(value.to_vec()).unwrap_or_default())
-                    .unwrap_or_default();
-
-                origins.push(origin);
+            if let Some((_, value)) = fields
+                .iter()
+                .find(|(name, _)| name != instance_id && name != "init")
+            {
+                updates.push(value.clone());
             }
             last_msg_id = msg_id.clone();
         }
@@ -265,7 +239,7 @@ impl RedisStore {
             *last_id = last_msg_id;
         }
 
-        Ok((updates, origins))
+        Ok(updates)
     }
 
     pub async fn delete_stream(&self, doc_id: &str) -> Result<()> {
@@ -520,35 +494,38 @@ impl RedisStore {
         Ok(exists)
     }
 
-    pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<Vec<Bytes>> {
+    pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<(Vec<Bytes>, Option<String>)> {
         let stream_key = format!("yjs:stream:{}", doc_id);
 
         let mut conn = self.pool.get().await?;
-        let script = redis::Script::new(
-            r#"
-            if redis.call('EXISTS', KEYS[1]) == 0 then
-                return {}
-            end
-            
-            local result = redis.call('XRANGE', KEYS[1], '-', '+')
-            local updates = {}
-            
-            for i, entry in ipairs(result) do
-                local fields = entry[2]
-                for j = 1, #fields, 2 do
-                    if fields[j] == "update" then
-                        table.insert(updates, fields[j+1])
-                    end
-                end
-            end
-            
-            return updates
-        "#,
-        );
+        let result: RedisStreamResults = redis::cmd("XRANGE")
+            .arg(&stream_key)
+            .arg("-")
+            .arg("+")
+            .query_async(&mut *conn)
+            .await?;
 
-        let updates: Vec<Bytes> = script.key(&stream_key).invoke_async(&mut *conn).await?;
+        let last_id = if !result.is_empty() && !result[0].1.is_empty() {
+            Some(result[0].1.last().unwrap().0.clone())
+        } else {
+            None
+        };
 
-        Ok(updates)
+        let mut updates = Vec::new();
+
+        if !result.is_empty() {
+            for (_, messages) in result {
+                for (_, fields) in messages {
+                    for (field_name, value) in fields {
+                        if field_name != "init" {
+                            updates.push(value);
+                        }
+                    }
+                }
+            }
+        }
+
+        Ok((updates, last_id))
     }
 
     pub async fn acquire_oid_lock(&self, ttl_seconds: u64) -> Result<String> {
