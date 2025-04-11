@@ -7,8 +7,8 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
-use tokio::time::{interval, Duration};
+// use tokio::task::JoinHandle;
+// use tokio::time::{interval, Duration};
 use yrs::sync::Error;
 
 use crate::group::{BroadcastGroup, Subscription};
@@ -19,8 +19,8 @@ pub struct Connection<Sink, Stream> {
     broadcast_sub: Option<Subscription>,
     completion_future: Option<CompletionFuture>,
     user_token: Option<String>,
-    ping_interval: Duration,
-    ping_task: Option<JoinHandle<()>>,
+    // ping_interval: Duration,
+    // ping_task: Option<JoinHandle<()>>,
     _sink: PhantomData<Sink>,
     _stream: PhantomData<Stream>,
 }
@@ -44,34 +44,34 @@ where
                 .await,
         );
 
-        let ping_interval = Duration::from_secs(15);
-        let ping_task = Some(Self::start_ping_task(sink, ping_interval));
+        // let ping_interval = Duration::from_secs(15);
+        // let ping_task = Some(Self::start_ping_task(sink, ping_interval));
 
         Connection {
             broadcast_sub,
             completion_future: None,
             user_token,
-            ping_interval,
-            ping_task,
+            // ping_interval,
+            // ping_task,
             _sink: PhantomData,
             _stream: PhantomData,
         }
     }
 
-    fn start_ping_task(sink: Arc<Mutex<Sink>>, ping_interval: Duration) -> JoinHandle<()> {
-        tokio::spawn(async move {
-            let mut interval = interval(ping_interval);
-            loop {
-                interval.tick().await;
-                let ping_message = Bytes::from("ping");
-                let mut sink_lock = sink.lock().await;
-                if let Err(e) = sink_lock.send(ping_message).await {
-                    tracing::warn!("Failed to send ping: {:?}", e);
-                    break;
-                }
-            }
-        })
-    }
+    // fn start_ping_task(sink: Arc<Mutex<Sink>>, ping_interval: Duration) -> JoinHandle<()> {
+    //     tokio::spawn(async move {
+    //         let mut interval = interval(ping_interval);
+    //         loop {
+    //             interval.tick().await;
+    //             let ping_message = Bytes::from("ping");
+    //             let mut sink_lock = sink.lock().await;
+    //             if let Err(e) = sink_lock.send(ping_message).await {
+    //                 tracing::warn!("Failed to send ping: {:?}", e);
+    //                 break;
+    //             }
+    //         }
+    //     })
+    // }
 }
 
 impl<Sink, Stream> Future for Connection<Sink, Stream> {
@@ -107,9 +107,9 @@ impl<Sink, Stream> Drop for Connection<Sink, Stream> {
             drop(sub);
         }
 
-        if let Some(task) = self.ping_task.take() {
-            task.abort();
-        }
+        // if let Some(task) = self.ping_task.take() {
+        //     task.abort();
+        // }
     }
 }
 
