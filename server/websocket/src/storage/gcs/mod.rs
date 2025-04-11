@@ -1,7 +1,8 @@
 pub use super::kv as store;
-use super::kv::keys::{KEYSPACE_DOC, SUB_UPDATE, V1};
+use super::kv::keys::{KEYSPACE_DOC, SUB_DOC, SUB_STATE_VEC, SUB_UPDATE, V1};
 use super::kv::{get_oid, DocOps, KVEntry, KVStore};
 use super::redis::RedisStore;
+use anyhow::Result;
 use futures::future::join_all;
 use google_cloud_storage::{
     client::{Client, ClientConfig},
@@ -16,7 +17,11 @@ use hex;
 use serde::Deserialize;
 use time::OffsetDateTime;
 use tracing::{debug, error};
-use yrs::{updates::decoder::Decode, Doc, Transact, Update};
+use yrs::{
+    updates::decoder::Decode, updates::encoder::Encode, Doc, ReadTxn, StateVector, Transact, Update,
+};
+
+use super::first_zero_bit;
 
 const BATCH_SIZE: usize = 50;
 
@@ -77,7 +82,7 @@ impl GcsStore {
         Ok(Self { client, bucket })
     }
 
-    pub async fn new_with_config(config: GcsConfig) -> Result<Self, anyhow::Error> {
+    pub async fn new_with_config(config: GcsConfig) -> Result<Self> {
         let client_config = if let Some(endpoint) = &config.endpoint {
             let mut client_config = ClientConfig::default().anonymous();
             client_config.storage_endpoint = endpoint.clone();
@@ -108,7 +113,7 @@ impl GcsStore {
         DocOps::push_update(self, doc_id, update, redis).await
     }
 
-    pub async fn get_updates(&self, doc_id: &str) -> Result<Vec<UpdateInfo>, anyhow::Error> {
+    pub async fn get_updates(&self, doc_id: &str) -> Result<Vec<UpdateInfo>> {
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => return Ok(Vec::new()),
@@ -143,29 +148,26 @@ impl GcsStore {
                 ..Default::default()
             };
 
-            if let Ok(data) = self
+            let data = self
                 .client
                 .download_object(&request, &Range::default())
-                .await
-            {
-                if let Ok(update) = Update::decode_v1(&data) {
-                    if let Ok(key_bytes) = hex::decode(&obj.name) {
-                        if key_bytes.len() >= 12 {
-                            let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
-                            let clock = u32::from_be_bytes(clock_bytes);
+                .await?;
 
-                            let timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
+            if let Ok(update) = Update::decode_v1(&data) {
+                if let Ok(key_bytes) = hex::decode(&obj.name) {
+                    if key_bytes.len() >= 12 {
+                        let clock_bytes: [u8; 4] = key_bytes[7..11].try_into()?;
+                        let clock = u32::from_be_bytes(clock_bytes);
 
-                            updates.push(UpdateInfo {
-                                clock,
-                                timestamp,
-                                update,
-                            });
-                        }
+                        let timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
+
+                        updates.push(UpdateInfo {
+                            clock,
+                            timestamp,
+                            update,
+                        });
                     }
                 }
-            } else {
-                error!("Failed to download update from {}", obj.name);
             }
         }
 
@@ -178,7 +180,7 @@ impl GcsStore {
         &self,
         doc_id: &str,
         version: u32,
-    ) -> Result<Option<UpdateInfo>, anyhow::Error> {
+    ) -> Result<Option<UpdateInfo>> {
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => return Ok(None),
@@ -231,8 +233,6 @@ impl GcsStore {
                                     update,
                                 }));
                             }
-                        } else {
-                            error!("Failed to download update from {}", obj.name);
                         }
                     }
                 }
@@ -242,7 +242,7 @@ impl GcsStore {
         Ok(None)
     }
 
-    pub async fn rollback_to(&self, doc_id: &str, target_clock: u32) -> anyhow::Result<Doc> {
+    pub async fn rollback_to(&self, doc_id: &str, target_clock: u32) -> Result<Doc> {
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => anyhow::bail!("Document not found"),
@@ -278,22 +278,15 @@ impl GcsStore {
             }
         }
 
-        debug!(
-            "Found {} objects for rollback for doc: {}",
-            all_objects.len(),
-            doc_id
-        );
-
         let mut filtered_objects = Vec::new();
         for obj in all_objects {
-            let key_bytes = hex::decode(&obj.name)
-                .map_err(|e| anyhow::anyhow!("Failed to decode hex: {}", e))?;
+            let key_bytes = hex::decode(&obj.name)?;
 
             if key_bytes.len() < 12 {
                 continue;
             }
 
-            let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+            let clock_bytes: [u8; 4] = key_bytes[7..11].try_into()?;
             let clock = u32::from_be_bytes(clock_bytes);
 
             if clock <= target_clock {
@@ -303,13 +296,6 @@ impl GcsStore {
 
         filtered_objects.sort_by_key(|(_, clock)| *clock);
 
-        debug!(
-            "Applying {} updates for rollback to clock {} for doc: {}",
-            filtered_objects.len(),
-            target_clock,
-            doc_id
-        );
-
         let doc = Doc::new();
         let mut txn = doc.transact_mut();
 
@@ -317,7 +303,6 @@ impl GcsStore {
             let chunk_futures = chunk.iter().map(|(obj, clock)| {
                 let bucket = self.bucket.clone();
                 let object = obj.name.clone();
-                let doc_id = doc_id.to_string();
                 let clock = *clock;
 
                 async move {
@@ -334,18 +319,14 @@ impl GcsStore {
                     {
                         Ok(data) => {
                             if let Ok(update) = Update::decode_v1(&data) {
-                                debug!(
-                                    "Downloaded update with clock: {} for doc: {}",
-                                    clock, doc_id
-                                );
                                 Some((clock, update))
                             } else {
-                                debug!("Failed to decode update from object: {}", object);
+                                error!("Failed to decode update from object: {}", object);
                                 None
                             }
                         }
                         Err(e) => {
-                            debug!("Failed to download object {}: {:?}", object, e);
+                            error!("Failed to download object {}: {:?}", object, e);
                             None
                         }
                     }
@@ -355,8 +336,7 @@ impl GcsStore {
             let batch_results = join_all(chunk_futures).await;
 
             for result in batch_results.into_iter().flatten() {
-                let (clock, update) = result;
-                debug!("Applying update with clock: {} for doc: {}", clock, doc_id);
+                let (_, update) = result;
                 let _ = txn.apply_update(update);
             }
         }
@@ -368,7 +348,7 @@ impl GcsStore {
     pub async fn get_latest_update_metadata(
         &self,
         doc_id: &str,
-    ) -> Result<Option<(u32, OffsetDateTime)>, anyhow::Error> {
+    ) -> Result<Option<(u32, OffsetDateTime)>> {
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => return Ok(None),
@@ -405,7 +385,7 @@ impl GcsStore {
         for obj in objects {
             if let Ok(key_bytes) = hex::decode(&obj.name) {
                 if key_bytes.len() >= 12 {
-                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into()?;
                     let clock = u32::from_be_bytes(clock_bytes);
 
                     if clock > latest_clock {
@@ -419,10 +399,7 @@ impl GcsStore {
         Ok(Some((latest_clock, latest_timestamp)))
     }
 
-    pub async fn get_updates_metadata(
-        &self,
-        doc_id: &str,
-    ) -> Result<Vec<(u32, OffsetDateTime)>, anyhow::Error> {
+    pub async fn get_updates_metadata(&self, doc_id: &str) -> Result<Vec<(u32, OffsetDateTime)>> {
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => return Ok(Vec::new()),
@@ -458,17 +435,11 @@ impl GcsStore {
             }
         }
 
-        debug!(
-            "Found {} update objects for doc: {}",
-            all_objects.len(),
-            doc_id
-        );
-
         let mut metadata = Vec::new();
         for obj in all_objects {
             if let Ok(key_bytes) = hex::decode(&obj.name) {
                 if key_bytes.len() >= 12 {
-                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into().unwrap();
+                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into()?;
                     let clock = u32::from_be_bytes(clock_bytes);
                     let timestamp = obj.updated.unwrap_or_else(OffsetDateTime::now_utc);
 
@@ -480,6 +451,184 @@ impl GcsStore {
         metadata.sort_by_key(|(clock, _)| std::cmp::Reverse(*clock));
 
         Ok(metadata)
+    }
+
+    pub async fn trim_updates_logarithmic(
+        &self,
+        doc_id: &str,
+        density_shift: u32,
+    ) -> Result<Option<Doc>> {
+        let oid = match get_oid(self, doc_id.as_bytes()).await? {
+            Some(oid) => oid,
+            None => return Ok(None),
+        };
+
+        let prefix_bytes = [V1, KEYSPACE_DOC]
+            .iter()
+            .chain(&oid.to_be_bytes())
+            .chain(&[SUB_UPDATE])
+            .copied()
+            .collect::<Vec<_>>();
+        let prefix_str = hex::encode(&prefix_bytes);
+
+        let request = ListObjectsRequest {
+            bucket: self.bucket.clone(),
+            prefix: Some(prefix_str),
+            ..Default::default()
+        };
+
+        let objects = self
+            .client
+            .list_objects(&request)
+            .await?
+            .items
+            .unwrap_or_default();
+
+        if objects.is_empty() {
+            return Ok(None);
+        }
+
+        let mut clocks = Vec::new();
+        for obj in &objects {
+            if let Ok(key_bytes) = hex::decode(&obj.name) {
+                if key_bytes.len() >= 12 {
+                    let clock_bytes: [u8; 4] = key_bytes[7..11].try_into()?;
+                    let clock = u32::from_be_bytes(clock_bytes);
+                    clocks.push((clock, obj.name.clone()));
+                }
+            }
+        }
+
+        if clocks.is_empty() {
+            return Ok(None);
+        }
+
+        clocks.sort_by_key(|(clock, _)| *clock);
+        let n = clocks.last().unwrap().0;
+
+        let to_delete = if n > 0 {
+            let bit = first_zero_bit(n);
+            let delete_offset = bit << density_shift;
+            n.saturating_sub(delete_offset)
+        } else {
+            0
+        };
+
+        if to_delete == 0 {
+            return Ok(None);
+        }
+
+        let mut to_delete_obj = None;
+        for (clock, name) in clocks {
+            if clock == to_delete {
+                to_delete_obj = Some(name);
+                break;
+            }
+        }
+
+        let Some(obj_to_delete) = to_delete_obj else {
+            return Ok(None);
+        };
+
+        let doc = Doc::new();
+        let mut found = false;
+
+        let doc_key_bytes = [V1, KEYSPACE_DOC]
+            .iter()
+            .chain(&oid.to_be_bytes())
+            .chain(&[SUB_DOC])
+            .copied()
+            .collect::<Vec<_>>();
+        let doc_key_str = hex::encode(&doc_key_bytes);
+
+        let doc_request = GetObjectRequest {
+            bucket: self.bucket.clone(),
+            object: doc_key_str,
+            ..Default::default()
+        };
+
+        if let Ok(data) = self
+            .client
+            .download_object(&doc_request, &Range::default())
+            .await
+        {
+            if let Ok(update) = Update::decode_v1(&data) {
+                let _ = doc.transact_mut().apply_update(update);
+                found = true;
+            }
+        }
+
+        let request = GetObjectRequest {
+            bucket: self.bucket.clone(),
+            object: obj_to_delete.clone(),
+            ..Default::default()
+        };
+
+        if let Ok(data) = self
+            .client
+            .download_object(&request, &Range::default())
+            .await
+        {
+            if let Ok(update) = Update::decode_v1(&data) {
+                let _ = doc.transact_mut().apply_update(update);
+                found = true;
+            }
+        }
+
+        let delete_request = DeleteObjectRequest {
+            bucket: self.bucket.clone(),
+            object: obj_to_delete,
+            ..Default::default()
+        };
+
+        self.client.delete_object(&delete_request).await?;
+
+        if found {
+            let doc_state;
+            let state_vector;
+            {
+                let txn = doc.transact();
+                doc_state = txn.encode_state_as_update_v1(&StateVector::default());
+                state_vector = txn.state_vector().encode_v1();
+            }
+
+            let doc_state_key = hex::encode(&doc_key_bytes);
+            let upload_type = UploadType::Simple(Media::new(doc_state_key.clone()));
+            self.client
+                .upload_object(
+                    &UploadObjectRequest {
+                        bucket: self.bucket.clone(),
+                        ..Default::default()
+                    },
+                    doc_state.to_vec(),
+                    &upload_type,
+                )
+                .await?;
+
+            let sv_key_bytes = [V1, KEYSPACE_DOC]
+                .iter()
+                .chain(&oid.to_be_bytes())
+                .chain(&[SUB_STATE_VEC])
+                .copied()
+                .collect::<Vec<_>>();
+            let sv_key = hex::encode(&sv_key_bytes);
+
+            let sv_upload_type = UploadType::Simple(Media::new(sv_key.clone()));
+            self.client
+                .upload_object(
+                    &UploadObjectRequest {
+                        bucket: self.bucket.clone(),
+                        ..Default::default()
+                    },
+                    state_vector.to_vec(),
+                    &sv_upload_type,
+                )
+                .await?;
+
+            return Ok(Some(doc));
+        }
+
+        Ok(None)
     }
 }
 
@@ -500,19 +649,12 @@ impl KVStore for GcsStore {
             ..Default::default()
         };
 
-        debug!("Getting from GCS storage - key: {:?}", key);
-
         match self
             .client
             .download_object(&request, &Range::default())
             .await
         {
-            Ok(data) => {
-                debug!("Got from GCS storage - key: {:?}", key);
-                debug!("Value length: {} bytes", data.len());
-                debug!("Value: {:?}", data);
-                Ok(Some(data))
-            }
+            Ok(data) => Ok(Some(data)),
             Err(_) => Ok(None),
         }
     }
@@ -541,10 +683,8 @@ impl KVStore for GcsStore {
             ..Default::default()
         };
 
-        match self.client.delete_object(&request).await {
-            Ok(_) => Ok(()),
-            Err(_) => Ok(()),
-        }
+        self.client.delete_object(&request).await?;
+        Ok(())
     }
 
     async fn remove_range(&self, from: &[u8], to: &[u8]) -> Result<(), Self::Error> {
@@ -552,10 +692,6 @@ impl KVStore for GcsStore {
         let to_hex = hex::encode(to);
 
         let common_prefix = find_common_prefix(&from_hex, &to_hex);
-        debug!(
-            "Remove range from: {:?} to: {:?} with prefix: {}",
-            from_hex, to_hex, common_prefix
-        );
 
         let mut all_objects = Vec::new();
         let mut page_token = None;
@@ -584,8 +720,6 @@ impl KVStore for GcsStore {
             }
         }
 
-        debug!("Removing {} objects in range", all_objects.len());
-
         let delete_futures = all_objects.into_iter().map(|obj| {
             let bucket = self.bucket.clone();
             async move {
@@ -594,7 +728,6 @@ impl KVStore for GcsStore {
                     object: obj.name.clone(),
                     ..Default::default()
                 };
-                debug!("Deleting object: {}", obj.name);
                 self.client.delete_object(&delete_request).await
             }
         });
@@ -609,10 +742,6 @@ impl KVStore for GcsStore {
         let to_hex = hex::encode(to);
 
         let common_prefix = find_common_prefix(&from_hex, &to_hex);
-        debug!(
-            "Range query from: {:?} to: {:?} with prefix: {}",
-            from_hex, to_hex, common_prefix
-        );
 
         let mut all_objects = Vec::new();
         let mut page_token = None;
@@ -629,7 +758,6 @@ impl KVStore for GcsStore {
             let items = response.items.unwrap_or_default();
 
             let filtered_items = items.into_iter().filter(|obj| {
-                debug!("Checking object: {:?}", obj.name.as_str());
                 obj.name.as_str() >= from_hex.as_str() && obj.name.as_str() <= to_hex.as_str()
             });
 
@@ -681,13 +809,6 @@ impl KVStore for GcsStore {
             }
         }
 
-        debug!(
-            "Got range from GCS storage using batched download - from: {:?}, to: {:?}, count: {}",
-            from,
-            to,
-            all_objects.len()
-        );
-
         Ok(GcsRange {
             objects: all_objects,
             values: all_values,
@@ -697,10 +818,6 @@ impl KVStore for GcsStore {
 
     async fn peek_back(&self, key: &[u8]) -> Result<Option<Self::Entry>, Self::Error> {
         let key_hex = hex::encode(key);
-        debug!(
-            "Peeking back in GCS storage - key: {:?}, hex: {}",
-            key, key_hex
-        );
 
         let prefix = if key_hex.len() > 2 {
             key_hex.chars().take(2).collect::<String>()
@@ -748,8 +865,6 @@ impl KVStore for GcsStore {
                 .client
                 .download_object(&get_request, &Range::default())
                 .await?;
-
-            debug!("Found peek_back object: {}", obj.name);
 
             Ok(Some(GcsEntry {
                 key: hex::decode(&obj.name).unwrap_or_default(),
