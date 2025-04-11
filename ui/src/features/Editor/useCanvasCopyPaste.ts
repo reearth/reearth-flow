@@ -65,7 +65,6 @@ export default ({
     (pastedNodes: Node[], mousePosition?: XYPosition): Node[] => {
       const newNodes: Node[] = [];
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
-      const pastedNodeIds = new Set(pastedNodes.map((node) => node.id));
 
       let offsetX = 0;
       let offsetY = 0;
@@ -107,28 +106,20 @@ export default ({
           selected: true,
           data: { ...n.data },
         };
-
         if (n.type === "batch") {
           parentIdMapArray.push({ prevId: n.id, newId });
-          const batchMapping = parentIdMapArray.find(
-            (mapping) => mapping.prevId === n.id,
-          );
 
-          if (batchMapping) {
-            nodes.forEach((child) => {
-              if (child.parentId === n.id && !pastedNodeIds.has(child.id)) {
-                const childNewNode = {
-                  ...child,
-                  id: generateUUID(),
-                  parentId: batchMapping.newId,
-                  position: child.position,
-                  selected: true,
-                };
+          nodes.forEach((child) => {
+            if (child.parentId === n.id) {
+              const childNewNode = {
+                ...child,
+                id: generateUUID(),
+                parentId: newId,
+              };
 
-                newNodes.push(childNewNode);
-              }
-            });
-          }
+              newNodes.push(childNewNode);
+            }
+          });
         }
 
         newNodes.push(newNode);
