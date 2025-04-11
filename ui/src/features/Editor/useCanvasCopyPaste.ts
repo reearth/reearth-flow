@@ -1,4 +1,4 @@
-import { addEdge, getNodesBounds, XYPosition } from "@xyflow/react";
+import { addEdge, useViewport, XYPosition } from "@xyflow/react";
 import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
@@ -32,6 +32,7 @@ export default ({
   const { copy, paste } = useCopyPaste();
   const { toast } = useToast();
   const t = useT();
+  const { x, y, zoom } = useViewport();
 
   const newEdgeCreation = useCallback(
     (pastedEdges: Edge[], oldNodes: Node[], newNodes: Node[]): Edge[] => {
@@ -64,51 +65,55 @@ export default ({
     (pastedNodes: Node[], mousePosition?: XYPosition): Node[] => {
       const newNodes: Node[] = [];
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
-
       const pastedNodeIds = new Set(pastedNodes.map((node) => node.id));
-
-      const bounds = mousePosition ? getNodesBounds(pastedNodes) : null;
 
       let offsetX = 0;
       let offsetY = 0;
 
-      if (mousePosition && bounds) {
-        offsetX = mousePosition.x - bounds.x;
-        offsetY = mousePosition.y - bounds.y;
-      } else if (!mousePosition) {
+      if (mousePosition) {
+        const reactFlowPosition = {
+          x: (mousePosition.x - x) / zoom,
+          y: (mousePosition.y - y) / zoom,
+        };
+
+        let minX = Infinity;
+        let minY = Infinity;
+
+        for (const node of pastedNodes) {
+          if (!node.parentId) {
+            if (node.position.x < minX) minX = node.position.x;
+            if (node.position.y < minY) minY = node.position.y;
+          }
+        }
+
+        offsetX = reactFlowPosition.x - minX;
+        offsetY = reactFlowPosition.y - minY;
+      } else {
         offsetX = 25;
         offsetY = 25;
       }
 
       for (const n of pastedNodes) {
         // if NOT a child of a batch, offset position for user's benefit
-        const newPosition: XYPosition = n.parentId
+        const newId = generateUUID();
+        const newPosition = n.parentId
           ? { x: n.position.x, y: n.position.y }
           : { x: n.position.x + offsetX, y: n.position.y + offsetY };
 
-        const newId = generateUUID();
-        const newNode: Node = {
+        const newNode = {
           ...n,
           id: newId,
           position: newPosition,
-          selected: true, // select pasted nodes
-          data: {
-            ...n.data,
-          },
+          selected: true,
+          data: { ...n.data },
         };
 
-        newNodes.push(newNode);
-
-        if (newNode.type === "batch") {
-          parentIdMapArray.push({ prevId: n.id, newId: newId });
-        }
-      }
-
-      for (const n of pastedNodes) {
         if (n.type === "batch") {
+          parentIdMapArray.push({ prevId: n.id, newId });
           const batchMapping = parentIdMapArray.find(
             (mapping) => mapping.prevId === n.id,
           );
+
           if (batchMapping) {
             nodes.forEach((child) => {
               if (child.parentId === n.id && !pastedNodeIds.has(child.id)) {
@@ -125,6 +130,8 @@ export default ({
             });
           }
         }
+
+        newNodes.push(newNode);
       }
 
       // Update parentIds for nodes that are batched
@@ -141,7 +148,7 @@ export default ({
 
       return reBatchedNodes;
     },
-    [nodes],
+    [nodes, x, y, zoom],
   );
   const newWorkflowCreation = useCallback(
     (nodes: Node[], pastedWorkflows: Workflow[]) => {
