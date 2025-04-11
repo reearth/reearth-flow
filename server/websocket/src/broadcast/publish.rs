@@ -35,7 +35,7 @@ impl Publish {
         let (flush_sender, mut flush_receiver) = mpsc::channel(32);
 
         let timer_task = tokio::spawn(async move {
-            let mut interval = interval(Duration::from_millis(22));
+            let mut interval = interval(Duration::from_millis(40));
 
             loop {
                 tokio::select! {
