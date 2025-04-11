@@ -180,6 +180,8 @@ const Canvas: React.FC<Props> = ({
         <NodeContextMenu
           node={contextMenu.data}
           contextMenu={contextMenu}
+          onCopy={onCopy}
+          onCut={onCut}
           onNodesChange={handleNodesChange}
           onSecondaryNodeAction={onNodeDoubleClick}
           onClose={handleCloseContextmenu}

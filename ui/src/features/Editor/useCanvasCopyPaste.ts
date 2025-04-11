@@ -257,12 +257,6 @@ export default ({
       edges: edges.filter((e) => e.selected),
     };
     let referencedWorkflows: Workflow[] = [];
-    if (selected.nodes.some((n) => n.type === "reader"))
-      return toast({
-        title: t("Reader node cannot be copied"),
-        description: t("Only one reader can be present in any project."),
-        variant: "default",
-      });
 
     if (selected.nodes.length === 0 && selected.edges.length === 0) return;
 
@@ -295,8 +289,6 @@ export default ({
     collectSubworkflows,
     copy,
     rawWorkflows,
-    toast,
-    t,
   ]);
 
   const handlePaste = useCallback(
@@ -309,6 +301,17 @@ export default ({
         nodes: [],
         edges: [],
       };
+      // Check for cut to ensure only one reader can be pasted
+      if (
+        pastedNodes.some((p: Node) => p.type === "reader") &&
+        nodes.some((n) => n.type === "reader")
+      ) {
+        return toast({
+          title: t("Reader node cannot be pasted"),
+          description: t("Only one reader can be present in any project."),
+          variant: "default",
+        });
+      }
 
       const newNodes = newNodeCreation(pastedNodes, mousePosition);
       const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
@@ -354,6 +357,8 @@ export default ({
       newEdgeCreation,
       newWorkflowCreation,
       handleWorkflowUpdate,
+      t,
+      toast,
     ],
   );
 
