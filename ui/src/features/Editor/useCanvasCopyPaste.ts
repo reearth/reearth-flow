@@ -1,4 +1,4 @@
-import { addEdge, useViewport, XYPosition } from "@xyflow/react";
+import { addEdge, EdgeChange, useViewport, XYPosition } from "@xyflow/react";
 import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
@@ -16,6 +16,7 @@ export default ({
   handleNodesAdd,
   handleNodesChange,
   handleEdgesAdd,
+  handleEdgesChange,
 }: {
   nodes: Node[];
   edges: Edge[];
@@ -28,6 +29,7 @@ export default ({
   handleNodesAdd: (newNodes: Node[]) => void;
   handleNodesChange: (changes: NodeChange[]) => void;
   handleEdgesAdd: (newEdges: Edge[]) => void;
+  handleEdgesChange: (changes: EdgeChange[]) => void;
 }) => {
   const { copy, paste } = useCopyPaste();
   const { toast } = useToast();
@@ -249,6 +251,46 @@ export default ({
     });
   }, [nodes, edges, collectSubworkflows, copy, rawWorkflows, toast, t]);
 
+  const handleCut = useCallback(async () => {
+    const selected: { nodes: Node[]; edges: Edge[] } | undefined = {
+      nodes: nodes.filter((n) => n.selected),
+      edges: edges.filter((e) => e.selected),
+    };
+    let referencedWorkflows: Workflow[] = [];
+
+    if (selected.nodes.length === 0 && selected.edges.length === 0) return;
+
+    if (selected.nodes.some((n) => n.type === "subworkflow")) {
+      referencedWorkflows = collectSubworkflows(selected.nodes, rawWorkflows);
+      if (referencedWorkflows.length === 0) return;
+    }
+
+    await copy({
+      nodes: selected.nodes,
+      edges: selected.edges,
+      workflows: referencedWorkflows,
+      copiedAt: Date.now(),
+    });
+    const nodeChanges: NodeChange[] = selected.nodes.map((n) => ({
+      id: n.id,
+      type: "remove",
+    }));
+    const edgeChanges: EdgeChange[] = selected.edges.map((e) => ({
+      id: e.id,
+      type: "remove",
+    }));
+    handleNodesChange(nodeChanges);
+    handleEdgesChange(edgeChanges);
+  }, [
+    nodes,
+    edges,
+    handleNodesChange,
+    handleEdgesChange,
+    collectSubworkflows,
+    copy,
+    rawWorkflows,
+  ]);
+
   const handlePaste = useCallback(
     async (mousePosition?: XYPosition) => {
       const {
@@ -259,6 +301,17 @@ export default ({
         nodes: [],
         edges: [],
       };
+      // Check for cut to ensure only one reader can be pasted
+      if (
+        pastedNodes.some((p: Node) => p.type === "reader") &&
+        nodes.some((n) => n.type === "reader")
+      ) {
+        return toast({
+          title: t("Reader node cannot be pasted"),
+          description: t("Only one reader can be present in any project."),
+          variant: "default",
+        });
+      }
 
       const newNodes = newNodeCreation(pastedNodes, mousePosition);
       const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
@@ -304,11 +357,14 @@ export default ({
       newEdgeCreation,
       newWorkflowCreation,
       handleWorkflowUpdate,
+      t,
+      toast,
     ],
   );
 
   return {
     handleCopy,
+    handleCut,
     handlePaste,
   };
 };

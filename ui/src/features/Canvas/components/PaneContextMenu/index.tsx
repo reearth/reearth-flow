@@ -1,4 +1,4 @@
-import { Clipboard, Copy } from "@phosphor-icons/react";
+import { Clipboard, Copy, Scissors } from "@phosphor-icons/react";
 import { XYPosition } from "@xyflow/react";
 import { useMemo } from "react";
 
@@ -14,6 +14,7 @@ import { useIndexedDB } from "@flow/lib/indexedDB";
 type Props = {
   contextMenu: ContextMenuMeta;
   onCopy?: () => void;
+  onCut?: () => void;
   onPaste?: (menuPosition?: XYPosition) => void;
   onClose: () => void;
 };
@@ -21,6 +22,7 @@ type Props = {
 const PaneContextMenu: React.FC<Props> = ({
   contextMenu,
   onCopy,
+  onCut,
   onPaste,
   onClose,
 }) => {
@@ -42,9 +44,20 @@ const PaneContextMenu: React.FC<Props> = ({
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "c", commandKey: true }} />
           ),
-
           disabled: true,
           onCallback: wrapWithClose(onCopy ?? (() => {})),
+        },
+      },
+      {
+        type: "action",
+        props: {
+          label: t("Cut"),
+          icon: <Scissors weight="light" />,
+          shortcut: (
+            <ContextMenuShortcut keyBinding={{ key: "x", commandKey: true }} />
+          ),
+          disabled: true,
+          onCallback: wrapWithClose(onCut ?? (() => {})),
         },
       },
       {
@@ -63,7 +76,7 @@ const PaneContextMenu: React.FC<Props> = ({
     ];
 
     return items;
-  }, [t, onCopy, onPaste, onClose, contextMenu.mousePosition, value]);
+  }, [t, onCopy, onCut, onPaste, onClose, contextMenu.mousePosition, value]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;
 };

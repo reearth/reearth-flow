@@ -65,6 +65,7 @@ export default function Editor({
     handleDebugRunStop,
     handleLayoutChange,
     handleCopy,
+    handleCut,
     handlePaste,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
 
@@ -122,6 +123,7 @@ export default function Editor({
                 onEdgesChange={handleEdgesChange}
                 onEdgeHover={handleEdgeHover}
                 onCopy={handleCopy}
+                onCut={handleCut}
                 onPaste={handlePaste}
               />
             </OverlayUI>
