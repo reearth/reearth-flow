@@ -11,7 +11,8 @@ use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
 use yrs::sync::Error;
 
-use crate::group::{BroadcastGroup, Subscription};
+use crate::broadcast::sub::Subscription;
+use crate::group::BroadcastGroup;
 
 type CompletionFuture = Pin<Box<dyn Future<Output = Result<(), Error>> + Send>>;
 
@@ -21,8 +22,8 @@ pub struct Connection<Sink, Stream> {
     user_token: Option<String>,
     ping_interval: Duration,
     ping_task: Option<JoinHandle<()>>,
-    _sink: PhantomData<Sink>,
-    _stream: PhantomData<Stream>,
+    sink: PhantomData<Sink>,
+    stream: PhantomData<Stream>,
 }
 
 impl<Sink, Stream, E> Connection<Sink, Stream>
@@ -38,23 +39,21 @@ where
         user_token: Option<String>,
     ) -> Self {
         let sink = Arc::new(Mutex::new(sink));
-        let broadcast_sub = Some(
-            broadcast_group
-                .subscribe(sink.clone(), stream, user_token.clone())
-                .await,
-        );
+        let broadcast_sub = broadcast_group
+            .subscribe(sink.clone(), stream, user_token.clone())
+            .await;
 
         let ping_interval = Duration::from_secs(30);
         let ping_task = Some(Self::start_ping_task(sink, ping_interval));
 
         Connection {
-            broadcast_sub,
+            broadcast_sub: Some(broadcast_sub),
             completion_future: None,
             user_token,
             ping_interval,
             ping_task,
-            _sink: PhantomData,
-            _stream: PhantomData,
+            sink: PhantomData,
+            stream: PhantomData,
         }
     }
 
@@ -79,8 +78,8 @@ impl<Sink, Stream> Future for Connection<Sink, Stream> {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.completion_future.is_none() {
-            if let Some(sub) = self.broadcast_sub.take() {
-                self.completion_future = Some(Box::pin(sub.completed()));
+            if let Some(broadcast_sub) = self.as_mut().get_mut().broadcast_sub.take() {
+                self.completion_future = Some(Box::pin(broadcast_sub.completed()));
             }
         }
 
@@ -103,10 +102,6 @@ impl<Sink, Stream> Future for Connection<Sink, Stream> {
 
 impl<Sink, Stream> Drop for Connection<Sink, Stream> {
     fn drop(&mut self) {
-        if let Some(sub) = self.broadcast_sub.take() {
-            drop(sub);
-        }
-
         if let Some(task) = self.ping_task.take() {
             task.abort();
         }

@@ -1,8 +1,9 @@
+#![allow(dead_code)]
 use crate::broadcast::tasks::BackgroundTasks;
 use crate::storage::gcs::GcsStore;
 use crate::storage::kv::DocOps;
 use crate::storage::redis::RedisStore;
-use crate::AwarenessRef;
+use crate::{AwarenessRef, Subscription};
 
 use anyhow::Result;
 use bytes::Bytes;
@@ -12,13 +13,11 @@ use tracing::{debug, error, warn};
 
 use super::Publish;
 use serde_json;
-use std::sync::atomic::AtomicBool;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use tokio::select;
 use tokio::sync::broadcast::{channel, Sender};
 use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
 use yrs::encoding::write::Write;
 use yrs::sync::protocol::{MSG_SYNC, MSG_SYNC_UPDATE};
 use yrs::sync::{DefaultProtocol, Error, Message, Protocol, SyncMessage};
@@ -33,15 +32,13 @@ pub struct BroadcastGroup {
     awareness_ref: AwarenessRef,
     sender: Sender<Bytes>,
     background_tasks: Arc<Mutex<BackgroundTasks>>,
-    doc_sub: Option<yrs::Subscription>,
-    awareness_sub: Option<yrs::Subscription>,
+    doc_sub: yrs::Subscription,
+    awareness_sub: yrs::Subscription,
     storage: Arc<GcsStore>,
     redis_store: Arc<RedisStore>,
     doc_name: String,
-    shutdown_complete: AtomicBool,
     instance_id: String,
     last_read_id: Arc<Mutex<String>>,
-    active_subscriptions: Arc<Mutex<Vec<tokio::task::AbortHandle>>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -165,15 +162,13 @@ impl BroadcastGroup {
             awareness_ref: awareness,
             sender,
             background_tasks,
-            doc_sub: Some(doc_sub),
-            awareness_sub: Some(awareness_sub),
+            doc_sub,
+            awareness_sub,
             storage,
             redis_store,
             doc_name,
-            shutdown_complete: AtomicBool::new(false),
             instance_id,
             last_read_id: Arc::new(Mutex::new("0".to_string())),
-            active_subscriptions: Arc::new(Mutex::new(Vec::new())),
         };
 
         Ok(result)
@@ -355,20 +350,13 @@ impl BroadcastGroup {
 
         let subscription = self.listen(sink, stream, DefaultProtocol).await;
 
-        {
-            let mut active_subscriptions = self.active_subscriptions.lock().await;
-            active_subscriptions.push(subscription.sink_task.abort_handle());
-            active_subscriptions.push(subscription.stream_task.abort_handle());
-        }
-
-        let (tx, rx) = tokio::sync::oneshot::channel();
+        let (tx, _) = tokio::sync::oneshot::channel();
 
         let _ = tx.send(());
 
         Subscription {
             sink_task: subscription.sink_task,
             stream_task: subscription.stream_task,
-            sync_complete: Some(rx),
         }
     }
 
@@ -413,7 +401,6 @@ impl BroadcastGroup {
                     return Subscription {
                         sink_task: tokio::spawn(async { Ok(()) }),
                         stream_task: tokio::spawn(async { Ok(()) }),
-                        sync_complete: None,
                     };
                 }
             };
@@ -454,7 +441,6 @@ impl BroadcastGroup {
         Subscription {
             sink_task,
             stream_task,
-            sync_complete: None,
         }
     }
 
@@ -516,17 +502,7 @@ impl BroadcastGroup {
     }
 
     pub async fn shutdown(&self) -> Result<()> {
-        self.shutdown_complete.store(true, Ordering::SeqCst);
-
         if self.connection_count() == 0 {
-            {
-                let mut active_subscriptions = self.active_subscriptions.lock().await;
-                for abort_handle in active_subscriptions.iter() {
-                    abort_handle.abort();
-                }
-                active_subscriptions.clear();
-            }
-
             if let Err(e) = self
                 .redis_store
                 .remove_instance_heartbeat(&self.doc_name, &self.instance_id)
@@ -658,40 +634,10 @@ impl BroadcastGroup {
 
 impl Drop for BroadcastGroup {
     fn drop(&mut self) {
-        if let Some(sub) = self.doc_sub.take() {
-            drop(sub);
-        }
-
-        if let Some(sub) = self.awareness_sub.take() {
-            drop(sub);
-        }
-
-        self.shutdown_complete.store(true, Ordering::SeqCst);
-
         let background_tasks = self.background_tasks.clone();
         tokio::spawn(async move {
             let mut tasks = background_tasks.lock().await;
             tasks.stop_all();
         });
-    }
-}
-
-pub struct Subscription {
-    sink_task: JoinHandle<Result<(), Error>>,
-    stream_task: JoinHandle<Result<(), Error>>,
-    sync_complete: Option<tokio::sync::oneshot::Receiver<()>>,
-}
-
-impl Subscription {
-    pub async fn completed(mut self) -> Result<(), Error> {
-        if let Some(sync_complete) = self.sync_complete.take() {
-            let _ = sync_complete.await;
-        }
-
-        let res = select! {
-            r1 = self.sink_task => r1,
-            r2 = self.stream_task => r2,
-        };
-        res.map_err(|e| Error::Other(e.into()))?
     }
 }
