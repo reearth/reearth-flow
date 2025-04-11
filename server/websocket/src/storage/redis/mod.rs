@@ -498,30 +498,31 @@ impl RedisStore {
 
     pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<Vec<Bytes>> {
         let stream_key = format!("yjs:stream:{}", doc_id);
-        let mut conn = self.pool.get().await?;
 
+        let mut conn = self.pool.get().await?;
         let script = redis::Script::new(
             r#"
             if redis.call('EXISTS', KEYS[1]) == 0 then
                 return {}
             end
+            
             local result = redis.call('XRANGE', KEYS[1], '-', '+')
             local updates = {}
-            if #result > 0 then
-                for i, entry in ipairs(result) do
-                    local fields = entry[2]
-                    for j = 1, #fields, 2 do
-                        table.insert(updates, fields[j+1])
-                    end
+            
+            for i, entry in ipairs(result) do
+                local fields = entry[2]
+                for j = 1, #fields, 2 do
+                    table.insert(updates, fields[j+1])
                 end
             end
+            
             return updates
-            "#,
+        "#,
         );
 
-        let result: Vec<Bytes> = script.key(&stream_key).invoke_async(&mut *conn).await?;
+        let updates: Vec<Bytes> = script.key(&stream_key).invoke_async(&mut *conn).await?;
 
-        Ok(result)
+        Ok(updates)
     }
 
     pub async fn acquire_oid_lock(&self, ttl_seconds: u64) -> Result<String> {
