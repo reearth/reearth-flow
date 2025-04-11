@@ -20,7 +20,11 @@ import {
 } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
-import { NodeContextMenu, SelectionContextMenu } from "./components";
+import {
+  NodeContextMenu,
+  PaneContextMenu,
+  SelectionContextMenu,
+} from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
@@ -86,6 +90,7 @@ const Canvas: React.FC<Props> = ({
     handleReconnect,
     handleNodeContextMenu,
     handleSelectionContextMenu,
+    handlePaneContextMenu,
     handleCloseContextmenu,
     contextMenu,
     paneRef,
@@ -155,6 +160,7 @@ const Canvas: React.FC<Props> = ({
       onNodeMouseLeave={onNodeHover}
       onNodeContextMenu={handleNodeContextMenu}
       onSelectionContextMenu={handleSelectionContextMenu}
+      onPaneContextMenu={handlePaneContextMenu}
       onMoveStart={handleCloseContextmenu}
       onDrop={handleNodeDrop}
       onDragOver={handleNodeDragOver}
@@ -188,6 +194,14 @@ const Canvas: React.FC<Props> = ({
           onEdgesChange={handleEdgesChange}
           onCopy={onCopy}
           onCut={onCut}
+          onPaste={onPaste}
+          onClose={handleCloseContextmenu}
+        />
+      )}
+      {contextMenu?.type === "pane" && (
+        <PaneContextMenu
+          contextMenu={contextMenu}
+          onCopy={onCopy}
           onPaste={onPaste}
           onClose={handleCloseContextmenu}
         />

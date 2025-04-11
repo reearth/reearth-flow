@@ -1,4 +1,4 @@
-import { addEdge, EdgeChange } from "@xyflow/react";
+import { addEdge, EdgeChange, useViewport, XYPosition } from "@xyflow/react";
 import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
@@ -34,6 +34,7 @@ export default ({
   const { copy, paste } = useCopyPaste();
   const { toast } = useToast();
   const t = useT();
+  const { x, y, zoom } = useViewport();
 
   const newEdgeCreation = useCallback(
     (pastedEdges: Edge[], oldNodes: Node[], newNodes: Node[]): Edge[] => {
@@ -63,33 +64,59 @@ export default ({
   );
 
   const newNodeCreation = useCallback(
-    (pastedNodes: Node[]): Node[] => {
+    (pastedNodes: Node[], mousePosition?: XYPosition): Node[] => {
       const newNodes: Node[] = [];
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
-      for (const n of pastedNodes) {
-        // if NOT a child of a batch, offset position for user's benefit
-        const newPosition = n.parentId
-          ? { x: n.position.x, y: n.position.y }
-          : { x: n.position.x + 40, y: n.position.y + 20 };
 
-        const newNode: Node = {
-          ...n,
-          id: generateUUID(),
-          position: newPosition,
-          selected: true, // select pasted nodes
-          data: {
-            ...n.data,
-          },
+      let offsetX = 0;
+      let offsetY = 0;
+
+      if (mousePosition) {
+        const reactFlowPosition = {
+          x: (mousePosition.x - x) / zoom,
+          y: (mousePosition.y - y) / zoom,
         };
 
-        if (newNode.type === "batch") {
-          parentIdMapArray.push({ prevId: n.id, newId: newNode.id });
+        let minX = Infinity;
+        let minY = Infinity;
+
+        for (const node of pastedNodes) {
+          if (!node.parentId) {
+            if (node.position.x < minX) minX = node.position.x;
+            if (node.position.y < minY) minY = node.position.y;
+          }
+        }
+
+        offsetX = reactFlowPosition.x - minX;
+        offsetY = reactFlowPosition.y - minY;
+      } else {
+        offsetX = 25;
+        offsetY = 25;
+      }
+
+      for (const n of pastedNodes) {
+        // if NOT a child of a batch, offset position for user's benefit
+        const newId = generateUUID();
+        const newPosition = n.parentId
+          ? { x: n.position.x, y: n.position.y }
+          : { x: n.position.x + offsetX, y: n.position.y + offsetY };
+
+        const newNode = {
+          ...n,
+          id: newId,
+          position: newPosition,
+          selected: true,
+          data: { ...n.data },
+        };
+        if (n.type === "batch") {
+          parentIdMapArray.push({ prevId: n.id, newId });
 
           nodes.forEach((child) => {
             if (child.parentId === n.id) {
               const childNewNode = {
                 ...child,
                 id: generateUUID(),
+                parentId: newId,
               };
 
               newNodes.push(childNewNode);
@@ -114,9 +141,8 @@ export default ({
 
       return reBatchedNodes;
     },
-    [nodes],
+    [nodes, x, y, zoom],
   );
-
   const newWorkflowCreation = useCallback(
     (nodes: Node[], pastedWorkflows: Workflow[]) => {
       const newWorkflows: Workflow[] = [];
@@ -273,60 +299,63 @@ export default ({
     t,
   ]);
 
-  const handlePaste = useCallback(async () => {
-    const {
-      nodes: pastedNodes,
-      edges: pastedEdges,
-      workflows: pastedWorkflows,
-    } = (await paste()) || {
-      nodes: [],
-      edges: [],
-    };
+  const handlePaste = useCallback(
+    async (mousePosition?: XYPosition) => {
+      const {
+        nodes: pastedNodes,
+        edges: pastedEdges,
+        workflows: pastedWorkflows,
+      } = (await paste()) || {
+        nodes: [],
+        edges: [],
+      };
 
-    const newNodes = newNodeCreation(pastedNodes);
-    const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
-    const { newWorkflows, processedNewNodes } = newWorkflowCreation(
-      newNodes,
-      pastedWorkflows,
-    );
+      const newNodes = newNodeCreation(pastedNodes, mousePosition);
+      const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
+      const { newWorkflows, processedNewNodes } = newWorkflowCreation(
+        newNodes,
+        pastedWorkflows,
+      );
 
-    // deselect all previously selected nodes
-    const nodeChanges: NodeChange[] = nodes.map((n) => ({
-      id: n.id,
-      type: "select",
-      selected: false,
-    }));
+      // deselect all previously selected nodes
+      const nodeChanges: NodeChange[] = nodes.map((n) => ({
+        id: n.id,
+        type: "select",
+        selected: false,
+      }));
 
-    handleNodesChange(nodeChanges);
+      handleNodesChange(nodeChanges);
 
-    handleNodesAdd([...processedNewNodes]);
+      handleNodesAdd([...processedNewNodes]);
 
-    handleEdgesAdd(newEdges);
+      handleEdgesAdd(newEdges);
 
-    newWorkflows.forEach((w) => {
-      handleWorkflowUpdate(w.id, w.nodes, w.edges);
-    });
+      newWorkflows.forEach((w) => {
+        handleWorkflowUpdate(w.id, w.nodes, w.edges);
+      });
 
-    copy({
-      nodes: processedNewNodes,
-      edges: newEdges,
-      workflows: newWorkflows,
-      copiedAt: Date.now(),
-    });
+      copy({
+        nodes: processedNewNodes,
+        edges: newEdges,
+        workflows: newWorkflows,
+        copiedAt: Date.now(),
+      });
 
-    return pastedNodes;
-  }, [
-    nodes,
-    copy,
-    paste,
-    handleNodesAdd,
-    handleNodesChange,
-    handleEdgesAdd,
-    newNodeCreation,
-    newEdgeCreation,
-    newWorkflowCreation,
-    handleWorkflowUpdate,
-  ]);
+      return pastedNodes;
+    },
+    [
+      nodes,
+      copy,
+      paste,
+      handleNodesAdd,
+      handleNodesChange,
+      handleEdgesAdd,
+      newNodeCreation,
+      newEdgeCreation,
+      newWorkflowCreation,
+      handleWorkflowUpdate,
+    ],
+  );
 
   return {
     handleCopy,
