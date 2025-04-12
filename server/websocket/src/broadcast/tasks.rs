@@ -7,6 +7,8 @@ pub struct BackgroundTasks {
     redis_subscriber_shutdown_tx: Option<tokio::sync::mpsc::Sender<()>>,
     heartbeat_task: Option<JoinHandle<()>>,
     heartbeat_shutdown_tx: Option<tokio::sync::mpsc::Sender<()>>,
+    sync_task: Option<JoinHandle<()>>,
+    sync_shutdown_tx: Option<tokio::sync::mpsc::Sender<()>>,
 }
 
 impl BackgroundTasks {
@@ -21,6 +23,8 @@ impl BackgroundTasks {
             redis_subscriber_shutdown_tx: None,
             heartbeat_task: None,
             heartbeat_shutdown_tx: None,
+            sync_task: None,
+            sync_shutdown_tx: None,
         }
     }
 
@@ -40,6 +44,11 @@ impl BackgroundTasks {
     ) {
         self.heartbeat_task = Some(task);
         self.heartbeat_shutdown_tx = Some(shutdown_tx);
+    }
+
+    pub fn set_sync(&mut self, task: JoinHandle<()>, shutdown_tx: tokio::sync::mpsc::Sender<()>) {
+        self.sync_task = Some(task);
+        self.sync_shutdown_tx = Some(shutdown_tx);
     }
 
     pub fn stop_redis_subscriber(&mut self) {
@@ -64,6 +73,17 @@ impl BackgroundTasks {
         }
     }
 
+    pub fn stop_sync(&mut self) {
+        if let Some(tx) = self.sync_shutdown_tx.take() {
+            let _ = tx.try_send(());
+            if let Some(task) = self.sync_task.take() {
+                task.abort();
+            }
+        } else if let Some(task) = self.sync_task.take() {
+            task.abort();
+        }
+    }
+
     pub fn stop_awareness_updater(&mut self) {
         let _ = self.awareness_shutdown_tx.try_send(());
         self.awareness_updater.abort();
@@ -73,6 +93,7 @@ impl BackgroundTasks {
         self.stop_redis_subscriber();
         self.stop_heartbeat();
         self.stop_awareness_updater();
+        self.stop_sync();
     }
 }
 

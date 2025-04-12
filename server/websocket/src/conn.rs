@@ -7,8 +7,6 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 use tokio::sync::Mutex;
-use tokio::task::JoinHandle;
-use tokio::time::{interval, Duration};
 use yrs::sync::Error;
 
 use crate::broadcast::sub::Subscription;
@@ -20,8 +18,6 @@ pub struct Connection<Sink, Stream> {
     broadcast_sub: Option<Subscription>,
     completion_future: Option<CompletionFuture>,
     user_token: Option<String>,
-    ping_interval: Duration,
-    ping_task: Option<JoinHandle<()>>,
     sink: PhantomData<Sink>,
     stream: PhantomData<Stream>,
 }
@@ -43,33 +39,13 @@ where
             .subscribe(sink.clone(), stream, user_token.clone())
             .await;
 
-        let ping_interval = Duration::from_secs(30);
-        let ping_task = Some(Self::start_ping_task(sink, ping_interval));
-
         Connection {
             broadcast_sub: Some(broadcast_sub),
             completion_future: None,
             user_token,
-            ping_interval,
-            ping_task,
             sink: PhantomData,
             stream: PhantomData,
         }
-    }
-
-    fn start_ping_task(sink: Arc<Mutex<Sink>>, ping_interval: Duration) -> JoinHandle<()> {
-        tokio::spawn(async move {
-            let mut interval = interval(ping_interval);
-            loop {
-                interval.tick().await;
-                let ping_message = Bytes::from("ping");
-                let mut sink_lock = sink.lock().await;
-                if let Err(e) = sink_lock.send(ping_message).await {
-                    tracing::warn!("Failed to send ping: {:?}", e);
-                    break;
-                }
-            }
-        })
     }
 }
 
@@ -96,14 +72,6 @@ impl<Sink, Stream> Future for Connection<Sink, Stream> {
             poll_result
         } else {
             Poll::Ready(Ok(()))
-        }
-    }
-}
-
-impl<Sink, Stream> Drop for Connection<Sink, Stream> {
-    fn drop(&mut self) {
-        if let Some(task) = self.ping_task.take() {
-            task.abort();
         }
     }
 }

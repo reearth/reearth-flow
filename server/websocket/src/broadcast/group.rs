@@ -301,6 +301,40 @@ impl BroadcastGroup {
             background_tasks.set_redis_subscriber(redis_subscriber_task, redis_shutdown_tx);
         }
 
+        let (sync_shutdown_tx, mut sync_shutdown_rx) = tokio::sync::mpsc::channel(1);
+        let sender = group.sender.clone();
+        let awareness_for_sync = group.awareness_ref.clone();
+
+        let sync_task = tokio::spawn(async move {
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(1));
+
+            loop {
+                select! {
+                    _ = sync_shutdown_rx.recv() => {
+                        break;
+                    },
+                    _ = interval.tick() => {
+                        let awareness = awareness_for_sync.read().await;
+                        let txn = awareness.doc().transact();
+                        let state_vector = txn.state_vector();
+
+                        let sync_msg = Message::Sync(SyncMessage::SyncStep1(state_vector));
+                        let encoded_msg = sync_msg.encode_v1();
+
+                        let msg = Bytes::from(encoded_msg);
+                        if let Err(e) = sender.send(msg) {
+                            warn!("Failed to send periodic sync message: {}", e);
+                        }
+                    }
+                }
+            }
+        });
+
+        {
+            let mut background_tasks = group.background_tasks.lock().await;
+            background_tasks.set_sync(sync_task, sync_shutdown_tx);
+        }
+
         Ok(group)
     }
 
