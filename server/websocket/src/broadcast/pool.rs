@@ -105,11 +105,11 @@ impl BroadcastGroupManager {
         }
 
         let group = Arc::new(
-            BroadcastGroup::with_storage(
+            BroadcastGroup::new(
                 awareness,
                 self.buffer_capacity,
+                Arc::clone(&self.redis_store),
                 Arc::clone(&self.store),
-                self.redis_store.clone(),
                 BroadcastConfig {
                     storage_enabled: true,
                     doc_name: Some(doc_id.to_string()),
