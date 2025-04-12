@@ -630,6 +630,7 @@ impl BroadcastGroup {
 
         if let Err(e) = self.heartbeat_shutdown_tx.send(()).await {
             warn!("Failed to send shutdown signal to heartbeat task: {}", e);
+            self.heartbeat_task.abort();
         }
 
         if let Err(e) = self.redis_subscriber_shutdown_tx.send(()).await {
@@ -637,14 +638,17 @@ impl BroadcastGroup {
                 "Failed to send shutdown signal to redis subscriber task: {}",
                 e
             );
+            self.redis_subscriber_task.abort();
         }
 
         if let Err(e) = self.sync_shutdown_tx.send(()).await {
             warn!("Failed to send shutdown signal to sync task: {}", e);
+            self.sync_task.abort();
         }
 
         if let Err(e) = self.awareness_shutdown_tx.send(()).await {
             warn!("Failed to send shutdown signal to awareness task: {}", e);
+            self.awareness_updater.abort();
         }
 
         self.redis_store
@@ -657,30 +661,9 @@ impl BroadcastGroup {
 
 impl Drop for BroadcastGroup {
     fn drop(&mut self) {
-        let heartbeat_shutdown_tx = self.heartbeat_shutdown_tx.clone();
-        let redis_subscriber_shutdown_tx = self.redis_subscriber_shutdown_tx.clone();
-        let sync_shutdown_tx = self.sync_shutdown_tx.clone();
-        let awareness_shutdown_tx = self.awareness_shutdown_tx.clone();
-
-        tokio::spawn(async move {
-            if let Err(e) = heartbeat_shutdown_tx.send(()).await {
-                warn!("Failed to send shutdown signal to heartbeat task: {}", e);
-            }
-
-            if let Err(e) = redis_subscriber_shutdown_tx.send(()).await {
-                warn!(
-                    "Failed to send shutdown signal to redis subscriber task: {}",
-                    e
-                );
-            }
-
-            if let Err(e) = sync_shutdown_tx.send(()).await {
-                warn!("Failed to send shutdown signal to sync task: {}", e);
-            }
-
-            if let Err(e) = awareness_shutdown_tx.send(()).await {
-                warn!("Failed to send shutdown signal to awareness task: {}", e);
-            }
-        });
+        self.awareness_updater.abort();
+        self.heartbeat_task.abort();
+        self.redis_subscriber_task.abort();
+        self.sync_task.abort();
     }
 }
