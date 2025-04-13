@@ -208,7 +208,7 @@ async fn handle_socket(
         error!("Failed to increment connections: {}", e);
     }
 
-    tracing::info!("WebSocket connection established for document '{}'", doc_id);
+    // tracing::info!("WebSocket connection established for document '{}'", doc_id);
 
     if let Err(e) = conn.await {
         error!(
@@ -217,7 +217,7 @@ async fn handle_socket(
         );
     }
 
-    tracing::info!("WebSocket connection closed for document '{}'", doc_id);
+    // tracing::info!("WebSocket connection closed for document '{}'", doc_id);
 
     let _ = bcast.decrement_connections().await;
 

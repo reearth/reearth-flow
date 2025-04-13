@@ -127,7 +127,6 @@ impl BroadcastGroup {
             loop {
                 select! {
                     _ = awareness_shutdown_rx.recv() => {
-                        debug!("Awareness updater received shutdown signal");
                         break;
                     },
                     client_update = rx.recv() => {
@@ -137,8 +136,8 @@ impl BroadcastGroup {
                                     let awareness = awareness.read().await;
                                     if let Ok(update) = awareness.update_with_clients(changed_clients) {
                                             let msg_bytes = Bytes::from(Message::Awareness(update).encode_v1());
-                                            if sink.send(msg_bytes).is_err() {
-                                                warn!("couldn't broadcast awareness update");
+                                            if let Err(e) = sink.send(msg_bytes) {
+                                                error!("couldn't broadcast awareness update {}", e);
                                                 return;
                                         }
                                     }
@@ -154,7 +153,6 @@ impl BroadcastGroup {
                     }
                 }
             }
-            debug!("Awareness updater task exited gracefully");
         });
 
         let instance_id = format!("instance-{}", rand::random::<u64>());
