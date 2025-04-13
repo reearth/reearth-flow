@@ -51,41 +51,20 @@ impl RedisStore {
         Ok(conn)
     }
 
-    pub async fn publish_update(&self, stream_key: &str, update: &[u8]) -> Result<()> {
-        let mut conn = self.pool.get().await?;
-        let script = redis::Script::new(
-            r#"
-            local stream_key = KEYS[1]
-            local update = ARGV[1]
-            
-            redis.call('XADD', stream_key, '*', 'update', update)
-            return 1
-            "#,
-        );
-
-        let _: () = script
-            .key(stream_key)
-            .arg(update)
-            .invoke_async(&mut *conn)
-            .await?;
-
-        Ok(())
-    }
-
-    pub async fn publish_update_with_origin(
+    pub async fn publish_update(
         &self,
+        conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
         update: &[u8],
         instance_id: &str,
     ) -> Result<()> {
-        let mut conn = self.pool.get().await?;
         let script = redis::Script::new(
             r#"
             local stream_key = KEYS[1]
             local update = ARGV[1]
             local instance_id = ARGV[2]
             
-            redis.call('XADD', stream_key, '*', 'update', update, 'origin', instance_id)
+            redis.call('XADD', stream_key, '*', 'instance_id', update)
             return 1
             "#,
         );
@@ -94,6 +73,36 @@ impl RedisStore {
             .key(stream_key)
             .arg(update)
             .arg(instance_id)
+            .invoke_async(&mut *conn)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn publish_update_with_ttl(
+        &self,
+        conn: &mut redis::aio::MultiplexedConnection,
+        stream_key: &str,
+        update: &[u8],
+        instance_id: &str,
+        ttl: u64,
+    ) -> Result<()> {
+        let script = redis::Script::new(
+            r#"
+            local stream_key = KEYS[1]
+            local update = ARGV[1]
+            local instance_id = ARGV[2]
+            local ttl = ARGV[3]
+            redis.call('XADD', stream_key, '*', 'instance_id', update)
+            redis.call('EXPIRE', stream_key, ttl)
+            return 1
+            "#,
+        );
+        let _: () = script
+            .key(stream_key)
+            .arg(update)
+            .arg(instance_id)
+            .arg(ttl)
             .invoke_async(&mut *conn)
             .await?;
 
@@ -212,13 +221,14 @@ impl RedisStore {
         Ok(result)
     }
 
-    pub async fn read_and_ack_dedicated(
+    pub async fn read_and_filter(
         &self,
         conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
         count: usize,
+        instance_id: &str,
         last_read_id: &Arc<Mutex<String>>,
-    ) -> Result<(Vec<Bytes>, Vec<String>)> {
+    ) -> Result<Vec<Bytes>> {
         let block_ms = 1600;
 
         let read_id = {
@@ -238,24 +248,15 @@ impl RedisStore {
             .await?;
 
         if result.is_empty() || result[0].1.is_empty() {
-            return Ok((vec![], vec![]));
+            return Ok(vec![]);
         }
 
         let mut updates = Vec::with_capacity(result[0].1.len());
-        let mut origins = Vec::with_capacity(result[0].1.len());
         let mut last_msg_id = String::new();
 
         for (msg_id, fields) in result[0].1.iter() {
-            if let Some((_, update)) = fields.iter().find(|(name, _)| name == "update") {
-                updates.push(update.clone());
-
-                let origin = fields
-                    .iter()
-                    .find(|(name, _)| name == "origin")
-                    .map(|(_, value)| String::from_utf8(value.to_vec()).unwrap_or_default())
-                    .unwrap_or_default();
-
-                origins.push(origin);
+            if let Some((_, value)) = fields.iter().find(|(name, _)| name != instance_id) {
+                updates.push(value.clone());
             }
             last_msg_id = msg_id.clone();
         }
@@ -265,7 +266,7 @@ impl RedisStore {
             *last_id = last_msg_id;
         }
 
-        Ok((updates, origins))
+        Ok(updates)
     }
 
     pub async fn delete_stream(&self, doc_id: &str) -> Result<()> {
@@ -477,31 +478,6 @@ impl RedisStore {
         Ok(())
     }
 
-    pub async fn create_empty_stream_with_ttl(&self, doc_id: &str, ttl_seconds: u64) -> Result<()> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        let mut conn = self.pool.get().await?;
-
-        let script = redis::Script::new(
-            r#"
-            if redis.call('EXISTS', KEYS[1]) == 0 then
-                redis.call('XADD', KEYS[1], '*', 'init', 'true')
-                redis.call('EXPIRE', KEYS[1], ARGV[1])
-                return 1
-            else
-                return redis.call('EXPIRE', KEYS[1], ARGV[1])
-            end
-            "#,
-        );
-
-        let _: () = script
-            .key(&stream_key)
-            .arg(ttl_seconds)
-            .invoke_async(&mut *conn)
-            .await?;
-
-        Ok(())
-    }
-
     pub async fn check_stream_exists(&self, doc_id: &str) -> Result<bool> {
         let stream_key = format!("yjs:stream:{}", doc_id);
 
@@ -536,9 +512,7 @@ impl RedisStore {
             for i, entry in ipairs(result) do
                 local fields = entry[2]
                 for j = 1, #fields, 2 do
-                    if fields[j] == "update" then
-                        table.insert(updates, fields[j+1])
-                    end
+                    table.insert(updates, fields[j+1])
                 end
             end
             

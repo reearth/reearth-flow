@@ -200,10 +200,6 @@ impl BroadcastGroup {
         )
         .await?;
 
-        redis_store
-            .create_empty_stream_with_ttl(&doc_name, 86400)
-            .await?;
-
         let awareness_for_sub = group.awareness_ref.clone();
         let doc_name_for_sub = doc_name.clone();
         let redis_store_for_sub = redis_store.clone();
@@ -258,23 +254,21 @@ impl BroadcastGroup {
                     },
                     _ = async {
                         let result = redis_store_for_sub
-                            .read_and_ack_dedicated(
+                            .read_and_filter(
                                 &mut conn,
                                 &stream_key,
                                 1024,
+                                &instance_id_for_sub,
                                 &last_read_id_for_sub,
                             )
                             .await;
 
                         match result {
-                            Ok((updates, origins)) => {
+                            Ok(updates) => {
                                 let update_count = updates.len();
                                 let mut decoded_updates = Vec::with_capacity(update_count);
 
-                                for (i, update) in updates.iter().enumerate() {
-                                    if i < origins.len() && origins[i] == instance_id_for_sub {
-                                        continue;
-                                    }
+                                for update in updates.iter() {
 
                                     if let Ok(decoded) = Update::decode_v1(update) {
                                         decoded_updates.push(decoded);
@@ -297,7 +291,7 @@ impl BroadcastGroup {
                             },
                             Err(e) => {
                                 error!("Error reading from Redis Stream '{}': {}", stream_key, e);
-                                tokio::time::sleep(tokio::time::Duration::from_millis(800)).await;
+                                tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
                             },
                         }
 
@@ -359,7 +353,7 @@ impl BroadcastGroup {
             }
         }
 
-        let subscription = self.listen(sink, stream, DefaultProtocol);
+        let subscription = self.listen(sink, stream, DefaultProtocol).await;
 
         {
             let mut active_subscriptions = self.active_subscriptions.lock().await;
@@ -378,7 +372,7 @@ impl BroadcastGroup {
         }
     }
 
-    pub fn listen<Sink, Stream, E, P>(
+    pub async fn listen<Sink, Stream, E, P>(
         &self,
         sink: Arc<Mutex<Sink>>,
         mut stream: Stream,
@@ -412,7 +406,18 @@ impl BroadcastGroup {
             let doc_name = self.doc_name.clone();
             let stream_key = format!("yjs:stream:{}", doc_name);
             let instance_id = self.instance_id.clone();
-            let mut publish = Publish::new(redis_store, stream_key, instance_id);
+            let mut conn = match redis_store.create_dedicated_connection().await {
+                Ok(conn) => conn,
+                Err(e) => {
+                    error!("Failed to create dedicated Redis connection: {}", e);
+                    return Subscription {
+                        sink_task: tokio::spawn(async { Ok(()) }),
+                        stream_task: tokio::spawn(async { Ok(()) }),
+                        sync_complete: None,
+                    };
+                }
+            };
+            let mut publish = Publish::new(redis_store, stream_key, instance_id, &mut conn);
             tokio::spawn(async move {
                 while let Some(res) = stream.next().await {
                     let data = match res.map_err(anyhow::Error::from) {
