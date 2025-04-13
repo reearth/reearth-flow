@@ -4,7 +4,7 @@ import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 import Canvas from "@flow/features/Canvas";
 import { YWorkflow } from "@flow/lib/yjs/types";
 
-import { TopBar, OverlayUI, ParamsPanel, RightPanel } from "./components";
+import { TopBar, OverlayUI, ParamsDialog, RightPanel } from "./components";
 import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
 
@@ -132,7 +132,7 @@ export default function Editor({
             project={currentProject}
             yDoc={yDoc}
           />
-          <ParamsPanel
+          <ParamsDialog
             selected={locallyLockedNode}
             onDataSubmit={handleNodeDataUpdate}
           />

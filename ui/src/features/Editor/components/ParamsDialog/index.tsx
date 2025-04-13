@@ -21,7 +21,7 @@ type Props = {
   ) => void;
 };
 
-const ParamsPanel: React.FC<Props> = ({ selected, onDataSubmit }) => {
+const ParamsDialog: React.FC<Props> = ({ selected, onDataSubmit }) => {
   const t = useT();
   // This is a little hacky, but it works. We need to dispatch a click event to the react-flow__pane
   // to unlock the node when user wants to close the right panel. - @KaWaite
@@ -83,4 +83,4 @@ const ParamsPanel: React.FC<Props> = ({ selected, onDataSubmit }) => {
   );
 };
 
-export default memo(ParamsPanel);
+export default memo(ParamsDialog);
