@@ -105,11 +105,11 @@ impl BroadcastGroupManager {
         }
 
         let group = Arc::new(
-            BroadcastGroup::with_storage(
+            BroadcastGroup::new(
                 awareness,
                 self.buffer_capacity,
+                Arc::clone(&self.redis_store),
                 Arc::clone(&self.store),
-                self.redis_store.clone(),
                 BroadcastConfig {
                     storage_enabled: true,
                     doc_name: Some(doc_id.to_string()),
@@ -152,11 +152,9 @@ impl BroadcastPool {
 
     pub async fn get_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
-            // tracing::info!("Using cached broadcast group for doc_id: {}", doc_id);
             return Ok(group.clone());
         }
 
-        // tracing::info!("Creating new broadcast group for doc_id: {}", doc_id);
         let group: Arc<BroadcastGroup> = self.manager.create_group(doc_id).await?;
         Ok(group)
     }
