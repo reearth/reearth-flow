@@ -114,8 +114,10 @@ export default ({
 
         for (const node of pastedNodes) {
           if (!node.parentId) {
-            const nodeWidth = node.width || 150;
-            const nodeHeight = node.height || 40;
+            const nodeWidth = node.measured?.width || 150;
+            const nodeHeight = node.measured?.height || 25;
+
+            console.log("NODE", node);
 
             minX = Math.min(minX, node.position.x);
             maxX = Math.max(maxX, node.position.x + nodeWidth);
