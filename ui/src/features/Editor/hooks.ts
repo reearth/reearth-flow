@@ -257,7 +257,9 @@ export default ({
     },
     {
       keyBinding: { key: "x", commandKey: true },
-      callback: handleCut,
+      callback: () => {
+        handleCut(true);
+      },
     },
     {
       keyBinding: { key: "v", commandKey: true },

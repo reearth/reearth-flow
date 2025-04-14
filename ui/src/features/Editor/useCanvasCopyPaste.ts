@@ -1,10 +1,17 @@
-import { addEdge, EdgeChange, useViewport, XYPosition } from "@xyflow/react";
+import {
+  addEdge,
+  EdgeChange,
+  useReactFlow,
+  useViewport,
+  XYPosition,
+} from "@xyflow/react";
 import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
 import { useT } from "@flow/lib/i18n";
 import type { Edge, Node, NodeChange, Workflow } from "@flow/types";
 import { generateUUID } from "@flow/utils";
+// import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
 import { useToast } from "../NotificationSystem/useToast";
 
@@ -35,6 +42,7 @@ export default ({
   const { toast } = useToast();
   const t = useT();
   const { x, y, zoom } = useViewport();
+  const { screenToFlowPosition } = useReactFlow();
 
   const newEdgeCreation = useCallback(
     (pastedEdges: Edge[], oldNodes: Node[], newNodes: Node[]): Edge[] => {
@@ -64,7 +72,11 @@ export default ({
   );
 
   const newNodeCreation = useCallback(
-    (pastedNodes: Node[], mousePosition?: XYPosition): Node[] => {
+    (
+      pastedNodes: Node[],
+      mousePosition?: XYPosition,
+      cutByShortCut?: boolean,
+    ): Node[] => {
       const newNodes: Node[] = [];
       const parentIdMapArray: { prevId: string; newId: string }[] = [];
 
@@ -89,6 +101,36 @@ export default ({
 
         offsetX = reactFlowPosition.x - minX;
         offsetY = reactFlowPosition.y - minY;
+      } else if (cutByShortCut && !mousePosition) {
+        const viewportCenter = screenToFlowPosition({
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+        });
+
+        let minX = Infinity,
+          maxX = -Infinity;
+        let minY = Infinity,
+          maxY = -Infinity;
+
+        for (const node of pastedNodes) {
+          if (!node.parentId) {
+            const nodeWidth = node.width || 150;
+            const nodeHeight = node.height || 40;
+
+            minX = Math.min(minX, node.position.x);
+            maxX = Math.max(maxX, node.position.x + nodeWidth);
+            minY = Math.min(minY, node.position.y);
+            maxY = Math.max(maxY, node.position.y + nodeHeight);
+          }
+        }
+
+        const nodesWidth = maxX - minX;
+        const nodesHeight = maxY - minY;
+        const nodesCenterX = minX + nodesWidth / 2;
+        const nodesCenterY = minY + nodesHeight / 2;
+
+        offsetX = viewportCenter.x - nodesCenterX;
+        offsetY = viewportCenter.y - nodesCenterY;
       } else {
         offsetX = 25;
         offsetY = 25;
@@ -141,7 +183,7 @@ export default ({
 
       return reBatchedNodes;
     },
-    [nodes, x, y, zoom],
+    [nodes, x, y, zoom, screenToFlowPosition],
   );
   const newWorkflowCreation = useCallback(
     (nodes: Node[], pastedWorkflows: Workflow[]) => {
@@ -251,45 +293,49 @@ export default ({
     });
   }, [nodes, edges, collectSubworkflows, copy, rawWorkflows, toast, t]);
 
-  const handleCut = useCallback(async () => {
-    const selected: { nodes: Node[]; edges: Edge[] } | undefined = {
-      nodes: nodes.filter((n) => n.selected),
-      edges: edges.filter((e) => e.selected),
-    };
-    let referencedWorkflows: Workflow[] = [];
+  const handleCut = useCallback(
+    async (isCutByShortCut?: boolean) => {
+      const selected: { nodes: Node[]; edges: Edge[] } | undefined = {
+        nodes: nodes.filter((n) => n.selected),
+        edges: edges.filter((e) => e.selected),
+      };
+      let referencedWorkflows: Workflow[] = [];
 
-    if (selected.nodes.length === 0 && selected.edges.length === 0) return;
+      if (selected.nodes.length === 0 && selected.edges.length === 0) return;
 
-    if (selected.nodes.some((n) => n.type === "subworkflow")) {
-      referencedWorkflows = collectSubworkflows(selected.nodes, rawWorkflows);
-      if (referencedWorkflows.length === 0) return;
-    }
+      if (selected.nodes.some((n) => n.type === "subworkflow")) {
+        referencedWorkflows = collectSubworkflows(selected.nodes, rawWorkflows);
+        if (referencedWorkflows.length === 0) return;
+      }
 
-    await copy({
-      nodes: selected.nodes,
-      edges: selected.edges,
-      workflows: referencedWorkflows,
-      copiedAt: Date.now(),
-    });
-    const nodeChanges: NodeChange[] = selected.nodes.map((n) => ({
-      id: n.id,
-      type: "remove",
-    }));
-    const edgeChanges: EdgeChange[] = selected.edges.map((e) => ({
-      id: e.id,
-      type: "remove",
-    }));
-    handleNodesChange(nodeChanges);
-    handleEdgesChange(edgeChanges);
-  }, [
-    nodes,
-    edges,
-    handleNodesChange,
-    handleEdgesChange,
-    collectSubworkflows,
-    copy,
-    rawWorkflows,
-  ]);
+      await copy({
+        nodes: selected.nodes,
+        edges: selected.edges,
+        workflows: referencedWorkflows,
+        copiedAt: Date.now(),
+        isCutByShortCut,
+      });
+      const nodeChanges: NodeChange[] = selected.nodes.map((n) => ({
+        id: n.id,
+        type: "remove",
+      }));
+      const edgeChanges: EdgeChange[] = selected.edges.map((e) => ({
+        id: e.id,
+        type: "remove",
+      }));
+      handleNodesChange(nodeChanges);
+      handleEdgesChange(edgeChanges);
+    },
+    [
+      nodes,
+      edges,
+      handleNodesChange,
+      handleEdgesChange,
+      collectSubworkflows,
+      copy,
+      rawWorkflows,
+    ],
+  );
 
   const handlePaste = useCallback(
     async (mousePosition?: XYPosition) => {
@@ -297,6 +343,7 @@ export default ({
         nodes: pastedNodes,
         edges: pastedEdges,
         workflows: pastedWorkflows,
+        isCutByShortCut,
       } = (await paste()) || {
         nodes: [],
         edges: [],
@@ -313,7 +360,11 @@ export default ({
         });
       }
 
-      const newNodes = newNodeCreation(pastedNodes, mousePosition);
+      const newNodes = newNodeCreation(
+        pastedNodes,
+        mousePosition,
+        isCutByShortCut,
+      );
       const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
       const { newWorkflows, processedNewNodes } = newWorkflowCreation(
         newNodes,
