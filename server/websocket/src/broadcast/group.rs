@@ -626,6 +626,8 @@ impl BroadcastGroup {
             }
         }
 
+        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+
         if self.connection_count() == 0 {
             self.redis_store
                 .safe_delete_stream(&self.doc_name, &self.instance_id)
