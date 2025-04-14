@@ -6,8 +6,10 @@ import {
   ContextMenu,
   ContextMenuItemType,
   ContextMenuMeta,
+  ContextMenuShortcut,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { useIndexedDB } from "@flow/lib/indexedDB";
 
 type Props = {
   contextMenu: ContextMenuMeta;
@@ -23,6 +25,7 @@ const PaneContextMenu: React.FC<Props> = ({
   onClose,
 }) => {
   const t = useT();
+  const { value } = useIndexedDB("general");
 
   const menuItems = useMemo(() => {
     const wrapWithClose = (callback: () => void) => () => {
@@ -36,6 +39,10 @@ const PaneContextMenu: React.FC<Props> = ({
         props: {
           label: t("Copy"),
           icon: <Copy weight="light" />,
+          shortcut: (
+            <ContextMenuShortcut keyBinding={{ key: "c", commandKey: true }} />
+          ),
+
           disabled: true,
           onCallback: wrapWithClose(onCopy ?? (() => {})),
         },
@@ -45,14 +52,18 @@ const PaneContextMenu: React.FC<Props> = ({
         props: {
           label: t("Paste"),
           icon: <Clipboard weight="light" />,
+          shortcut: (
+            <ContextMenuShortcut keyBinding={{ key: "v", commandKey: true }} />
+          ),
+          disabled: !value?.clipboard,
 
-          onCallback: wrapWithClose(onPaste ?? (() => {})),
+          onCallback: wrapWithClose(() => onPaste?.(contextMenu.mousePosition)),
         },
       },
     ];
 
     return items;
-  }, [t, onCopy, onPaste, onClose]);
+  }, [t, onCopy, onPaste, onClose, contextMenu.mousePosition, value]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;
 };

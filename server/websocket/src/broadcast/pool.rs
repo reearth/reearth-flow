@@ -84,21 +84,6 @@ impl BroadcastGroupManager {
             }
         };
 
-        if let Ok(updates) = self.redis_store.read_all_stream_data(doc_id).await {
-            // tracing::info!("updates length: {:?}", updates.len());
-            // tracing::info!("--------------------------------read_all_stream_data--------------------------------");
-            if !updates.is_empty() {
-                let awareness_guard = awareness.write().await;
-                let mut txn = awareness_guard.doc().transact_mut();
-
-                for update_data in &updates {
-                    if let Ok(update) = Update::decode_v1(update_data) {
-                        let _ = txn.apply_update(update);
-                    }
-                }
-            }
-        }
-
         if need_initial_save {
             let doc_id_clone = doc_id.to_string();
             let store_clone = Arc::clone(&self.store);
@@ -120,11 +105,11 @@ impl BroadcastGroupManager {
         }
 
         let group = Arc::new(
-            BroadcastGroup::with_storage(
+            BroadcastGroup::new(
                 awareness,
                 self.buffer_capacity,
+                Arc::clone(&self.redis_store),
                 Arc::clone(&self.store),
-                self.redis_store.clone(),
                 BroadcastConfig {
                     storage_enabled: true,
                     doc_name: Some(doc_id.to_string()),
@@ -167,11 +152,9 @@ impl BroadcastPool {
 
     pub async fn get_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
-            // tracing::info!("Using cached broadcast group for doc_id: {}", doc_id);
             return Ok(group.clone());
         }
 
-        // tracing::info!("Creating new broadcast group for doc_id: {}", doc_id);
         let group: Arc<BroadcastGroup> = self.manager.create_group(doc_id).await?;
         Ok(group)
     }
@@ -303,13 +286,7 @@ impl BroadcastPool {
         Ok(())
     }
 
-    pub async fn cleanup_empty_group(
-        &self,
-        doc_id: &str,
-        group: Arc<BroadcastGroup>,
-    ) -> Result<()> {
-        tokio::time::sleep(Duration::from_secs(10)).await;
-
+    pub async fn cleanup_empty_group(&self, doc_id: &str) -> Result<()> {
         match self.cleanup_locks.entry(doc_id.to_string()) {
             dashmap::mapref::entry::Entry::Occupied(_) => {
                 return Ok(());
@@ -323,11 +300,23 @@ impl BroadcastPool {
             self.cleanup_locks.remove(&key);
         });
 
-        let doc_to_id_map = self.manager.doc_to_id_map.clone();
+        let group_to_shutdown: Option<Arc<BroadcastGroup>> = {
+            match self.manager.doc_to_id_map.entry(doc_id.to_string()) {
+                dashmap::mapref::entry::Entry::Occupied(entry) => {
+                    if entry.get().connection_count() == 0 {
+                        Some(entry.remove())
+                    } else {
+                        None
+                    }
+                }
+                dashmap::mapref::entry::Entry::Vacant(_) => None,
+            }
+        };
 
-        if group.connection_count() == 0 {
-            doc_to_id_map.remove(doc_id);
-            group.shutdown().await?;
+        if let Some(group) = group_to_shutdown {
+            if let Err(e) = group.shutdown().await {
+                error!("Error shutting down group for doc_id {}: {}", doc_id, e);
+            }
         }
 
         Ok(())
