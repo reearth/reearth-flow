@@ -84,6 +84,72 @@ impl BroadcastGroupManager {
             }
         };
 
+        let mut start_id = "0".to_string();
+        let batch_size = 10;
+
+        let mut read_error = false;
+        let mut total_updates = 0;
+
+        let awareness_guard = awareness.write().await;
+        let mut txn = awareness_guard.doc().transact_mut();
+
+        loop {
+            match self
+                .redis_store
+                .read_stream_data_in_batches(doc_id, batch_size, &start_id)
+                .await
+            {
+                Ok((updates, last_id)) => {
+                    if updates.is_empty() {
+                        break;
+                    }
+
+                    total_updates += updates.len();
+                    println!("total_updates: {:?}", total_updates);
+
+                    for update_data in &updates {
+                        match Update::decode_v1(update_data) {
+                            Ok(update) => {
+                                if let Err(e) = txn.apply_update(update) {
+                                    warn!("Failed to apply Redis update: {}", e);
+                                }
+                            }
+                            Err(e) => {
+                                warn!("Failed to decode Redis update: {}", e);
+                            }
+                        }
+                    }
+
+                    if last_id == start_id {
+                        break;
+                    }
+
+                    start_id = last_id;
+                }
+                Err(e) => {
+                    warn!(
+                        "Failed to read updates from Redis stream for document '{}': {}",
+                        doc_id, e
+                    );
+                    read_error = true;
+                    break;
+                }
+            }
+        }
+
+        drop(txn);
+        drop(awareness_guard);
+
+        if total_updates > 0 {
+            tracing::info!(
+                "Found and applied {} Redis updates for document '{}'",
+                total_updates,
+                doc_id
+            );
+        } else if !read_error {
+            debug!("No Redis updates found for document '{}'", doc_id);
+        }
+
         if need_initial_save {
             let doc_id_clone = doc_id.to_string();
             let store_clone = Arc::clone(&self.store);
@@ -199,40 +265,69 @@ impl BroadcastPool {
                 let gcs_state = temp_txn.state_vector();
                 drop(temp_txn);
 
-                match self
-                    .manager
-                    .redis_store
-                    .read_all_stream_data(&doc_name)
-                    .await
-                {
-                    Ok(updates) if !updates.is_empty() => {
-                        let awareness = group.awareness().write().await;
-                        let mut txn = awareness.doc().transact_mut();
+                let mut start_id = "-".to_string();
+                let batch_size = 3000;
 
-                        for update_data in &updates {
-                            match Update::decode_v1(update_data) {
-                                Ok(update) => {
-                                    if let Err(e) = txn.apply_update(update) {
-                                        warn!("Failed to apply Redis update: {}", e);
+                let mut read_error = false;
+                let mut total_updates = 0;
+
+                let awareness = group.awareness().write().await;
+                let mut txn = awareness.doc().transact_mut();
+
+                loop {
+                    match self
+                        .manager
+                        .redis_store
+                        .read_stream_data_in_batches(&doc_name, batch_size, &start_id)
+                        .await
+                    {
+                        Ok((updates, last_id)) => {
+                            if updates.is_empty() {
+                                break;
+                            }
+
+                            total_updates += updates.len();
+
+                            for update_data in &updates {
+                                match Update::decode_v1(update_data) {
+                                    Ok(update) => {
+                                        if let Err(e) = txn.apply_update(update) {
+                                            warn!("Failed to apply Redis update: {}", e);
+                                        }
+                                    }
+                                    Err(e) => {
+                                        warn!("Failed to decode Redis update: {}", e);
                                     }
                                 }
-                                Err(e) => {
-                                    warn!("Failed to decode Redis update: {}", e);
-                                }
                             }
+
+                            if last_id == start_id {
+                                break;
+                            }
+
+                            start_id = last_id;
                         }
-                        drop(txn);
-                        drop(awareness);
+                        Err(e) => {
+                            warn!(
+                                "Failed to read updates from Redis stream for document '{}': {}",
+                                doc_id, e
+                            );
+                            read_error = true;
+                            break;
+                        }
                     }
-                    Ok(_) => {
-                        debug!("No Redis updates found for document '{}'", doc_id);
-                    }
-                    Err(e) => {
-                        warn!(
-                            "Failed to read updates from Redis stream for document '{}': {}",
-                            doc_id, e
-                        );
-                    }
+                }
+
+                drop(txn);
+                drop(awareness);
+
+                if total_updates > 0 {
+                    debug!(
+                        "Applied {} Redis updates for document '{}'",
+                        total_updates, doc_id
+                    );
+                } else if !read_error {
+                    debug!("No Redis updates found for document '{}'", doc_id);
                 }
 
                 let lock_id = format!("gcs:lock:{}", doc_name);
@@ -291,6 +386,7 @@ impl BroadcastPool {
     }
 
     pub async fn cleanup_empty_group(&self, doc_id: &str) -> Result<()> {
+        tokio::time::sleep(Duration::from_secs(3)).await;
         if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
             if group.connection_count() > 0 {
                 return Ok(());

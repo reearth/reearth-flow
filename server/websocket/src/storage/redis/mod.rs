@@ -411,6 +411,7 @@ impl RedisStore {
     }
 
     pub async fn safe_delete_stream(&self, doc_id: &str, instance_id: &str) -> Result<()> {
+        println!("safe_delete_stream: {:?}", doc_id);
         let stream_key = format!("yjs:stream:{}", doc_id);
         let instances_key = format!("doc:instances:{}", doc_id);
         let now = std::time::SystemTime::now()
@@ -523,6 +524,71 @@ impl RedisStore {
         let updates: Vec<Bytes> = script.key(&stream_key).invoke_async(&mut *conn).await?;
 
         Ok(updates)
+    }
+
+    pub async fn read_stream_data_in_batches(
+        &self,
+        doc_id: &str,
+        batch_size: usize,
+        start_id: &str,
+    ) -> Result<(Vec<Bytes>, String)> {
+        let stream_key = format!("yjs:stream:{}", doc_id);
+        let mut conn = self.pool.get().await?;
+
+        let script = redis::Script::new(
+            r#"
+            if redis.call('EXISTS', KEYS[1]) == 0 then
+                return {entries={}, last_id=""}
+            end
+            
+            local result = redis.call('XRANGE', KEYS[1], ARGV[1], '+', 'COUNT', ARGV[2])
+            local updates = {}
+            local last_id = ARGV[1]
+            
+            if #result > 0 then
+                last_id = result[#result][1]
+                
+                for i, entry in ipairs(result) do
+                    local fields = entry[2]
+                    for j = 1, #fields, 2 do
+                        table.insert(updates, fields[j+1])
+                    end
+                end
+            end
+            
+            return {updates, last_id}
+            "#,
+        );
+
+        let result: redis::Value = script
+            .key(&stream_key)
+            .arg(start_id)
+            .arg(batch_size)
+            .invoke_async(&mut *conn)
+            .await?;
+
+        let mut updates = Vec::new();
+        let mut last_id = start_id.to_string();
+
+        if let redis::Value::Array(array) = result {
+            if array.len() >= 2 {
+                if let redis::Value::Array(entries) = &array[0] {
+                    for entry in entries {
+                        if let redis::Value::BulkString(bytes) = entry {
+                            updates.push(Bytes::from(bytes.clone()));
+                        }
+                    }
+                }
+
+                if let redis::Value::BulkString(id_bytes) = &array[1] {
+                    if let Ok(id_str) = std::str::from_utf8(id_bytes) {
+                        last_id = id_str.to_string();
+                    }
+                }
+            }
+        }
+
+        Ok((updates, last_id))
     }
 
     pub async fn acquire_oid_lock(&self, ttl_seconds: u64) -> Result<String> {
