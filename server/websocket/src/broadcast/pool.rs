@@ -51,7 +51,19 @@ impl BroadcastGroupManager {
                     .unwrap_or(false);
 
                 if !valid {
-                    self.doc_to_id_map.remove(doc_id);
+                    tokio::time::sleep(Duration::from_millis(500)).await;
+
+                    let valid_recheck = self
+                        .redis_store
+                        .check_stream_exists(&doc_name)
+                        .await
+                        .unwrap_or(false);
+
+                    if !valid_recheck {
+                        self.doc_to_id_map.remove(doc_id);
+                    } else {
+                        return Ok(group_clone);
+                    }
                 } else {
                     return Ok(group_clone);
                 }
@@ -96,11 +108,17 @@ impl BroadcastGroupManager {
         loop {
             match self
                 .redis_store
-                .read_stream_data_in_batches(doc_id, batch_size, &start_id)
+                .read_stream_data_in_batches(doc_id, batch_size, &start_id, start_id == "0", false)
                 .await
             {
-                Ok((updates, last_id)) => {
+                Ok((updates, last_id, _lock_value)) => {
                     if updates.is_empty() {
+                        if start_id != "0" {
+                            let _ = self
+                                .redis_store
+                                .read_stream_data_in_batches(doc_id, 1, &last_id, false, true)
+                                .await;
+                        }
                         break;
                     }
 
@@ -121,6 +139,10 @@ impl BroadcastGroupManager {
                     }
 
                     if last_id == start_id {
+                        let _ = self
+                            .redis_store
+                            .read_stream_data_in_batches(doc_id, 1, &last_id, false, true)
+                            .await;
                         break;
                     }
 
@@ -278,11 +300,26 @@ impl BroadcastPool {
                     match self
                         .manager
                         .redis_store
-                        .read_stream_data_in_batches(&doc_name, batch_size, &start_id)
+                        .read_stream_data_in_batches(
+                            &doc_name,
+                            batch_size,
+                            &start_id,
+                            start_id == "-",
+                            false,
+                        )
                         .await
                     {
-                        Ok((updates, last_id)) => {
+                        Ok((updates, last_id, _lock_value)) => {
                             if updates.is_empty() {
+                                if start_id != "-" {
+                                    let _ = self
+                                        .manager
+                                        .redis_store
+                                        .read_stream_data_in_batches(
+                                            &doc_name, 1, &last_id, false, true,
+                                        )
+                                        .await;
+                                }
                                 break;
                             }
 
@@ -302,6 +339,13 @@ impl BroadcastPool {
                             }
 
                             if last_id == start_id {
+                                let _ = self
+                                    .manager
+                                    .redis_store
+                                    .read_stream_data_in_batches(
+                                        &doc_name, 1, &last_id, false, true,
+                                    )
+                                    .await;
                                 break;
                             }
 
