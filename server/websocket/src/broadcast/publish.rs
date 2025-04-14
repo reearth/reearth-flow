@@ -4,6 +4,7 @@ use bytes::Bytes;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
+use tokio::sync::oneshot;
 use tokio::sync::Mutex;
 use tokio::time::interval;
 use tracing::warn;
@@ -14,6 +15,7 @@ pub struct Publish {
     doc: Arc<Mutex<Doc>>,
     flush_sender: mpsc::Sender<()>,
     _timer_task: Option<tokio::task::JoinHandle<()>>,
+    shutdown_tx: Option<oneshot::Sender<()>>,
 }
 
 impl Publish {
@@ -33,12 +35,16 @@ impl Publish {
         let mut first_publish = true;
 
         let (flush_sender, mut flush_receiver) = mpsc::channel(32);
+        let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
 
         let timer_task = tokio::spawn(async move {
-            let mut interval = interval(Duration::from_millis(50));
+            let mut interval = interval(Duration::from_millis(55));
 
             loop {
                 tokio::select! {
+                    _ = &mut shutdown_rx => {
+                        break;
+                    }
                     _ = interval.tick() => {
                         let mut doc_lock = doc_clone.lock().await;
                         let count_value = *count_clone.lock().await;
@@ -89,6 +95,7 @@ impl Publish {
             doc,
             flush_sender,
             _timer_task: Some(timer_task),
+            shutdown_tx: Some(shutdown_tx),
         }
     }
 
@@ -104,7 +111,7 @@ impl Publish {
             let mut count = self.count.lock().await;
             *count += 1;
 
-            if *count > 5 {
+            if *count > 6 {
                 let _ = self.flush_sender.send(()).await;
             }
         }
@@ -115,8 +122,13 @@ impl Publish {
 
 impl Drop for Publish {
     fn drop(&mut self) {
-        if let Some(task) = self._timer_task.take() {
-            task.abort();
+        if let Some(tx) = self.shutdown_tx.take() {
+            if let Err(e) = tx.send(()) {
+                warn!("Failed to send publish timer shutdown signal: {:?}", e);
+                if let Some(task) = self._timer_task.take() {
+                    task.abort();
+                }
+            }
         }
     }
 }

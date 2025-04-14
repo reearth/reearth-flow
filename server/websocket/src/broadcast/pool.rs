@@ -98,9 +98,12 @@ impl BroadcastGroupManager {
                 let update = txn.encode_diff_v1(&StateVector::default());
                 let update_bytes = bytes::Bytes::from(update);
 
-                let _ = store_clone
+                if let Err(e) = store_clone
                     .push_update(&doc_id_clone, &update_bytes, &redis_store_clone)
-                    .await;
+                    .await
+                {
+                    error!("Failed to push initial update to Redis: {}", e);
+                }
             });
         }
 
@@ -152,6 +155,7 @@ impl BroadcastPool {
 
     pub async fn get_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
+            tracing::info!("Found group for doc_id: {}", doc_id);
             return Ok(group.clone());
         }
 
@@ -287,6 +291,13 @@ impl BroadcastPool {
     }
 
     pub async fn cleanup_empty_group(&self, doc_id: &str) -> Result<()> {
+        tokio::time::sleep(Duration::from_secs(3)).await;
+
+        if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
+            if group.connection_count() > 0 {
+                return Ok(());
+            }
+        }
         match self.cleanup_locks.entry(doc_id.to_string()) {
             dashmap::mapref::entry::Entry::Occupied(_) => {
                 return Ok(());
