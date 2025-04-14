@@ -308,7 +308,6 @@ impl BroadcastPool {
                 let mut start_id = "0".to_string();
                 let batch_size = 3000;
 
-                let mut read_error = false;
                 let mut total_updates = 0;
                 let mut lock_value: Option<String> = None;
 
@@ -323,7 +322,7 @@ impl BroadcastPool {
                             &doc_name,
                             batch_size,
                             &start_id,
-                            start_id == "-",
+                            start_id == "0",
                             false,
                             &mut lock_value,
                         )
@@ -392,7 +391,6 @@ impl BroadcastPool {
                                 "Failed to read updates from Redis stream for document '{}': {}",
                                 doc_id, e
                             );
-                            read_error = true;
                             break;
                         }
                     }
@@ -406,8 +404,6 @@ impl BroadcastPool {
                         "Applied {} Redis updates for document '{}'",
                         total_updates, doc_id
                     );
-                } else if !read_error {
-                    debug!("No Redis updates found for document '{}'", doc_id);
                 }
 
                 let lock_id = format!("gcs:lock:{}", doc_name);

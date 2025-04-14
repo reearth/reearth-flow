@@ -5,7 +5,7 @@ use deadpool_redis::{Config, Pool};
 use redis::AsyncCommands;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::{debug, error, info};
+use tracing::{debug, error};
 use uuid;
 
 type RedisField = (String, Bytes);
