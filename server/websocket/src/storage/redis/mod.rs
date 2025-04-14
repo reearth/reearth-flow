@@ -551,7 +551,7 @@ impl RedisStore {
         is_first_batch: bool,
         is_final_batch: bool,
         lock_value: &mut Option<String>,
-    ) -> Result<(Vec<Bytes>, String, Option<String>)> {
+    ) -> Result<(Vec<Bytes>, String)> {
         let stream_key = format!("yjs:stream:{}", doc_id);
         let protection_lock_key = format!("read:lock:{}", doc_id);
 
@@ -628,10 +628,10 @@ impl RedisStore {
                     lock_id, doc_id, e
                 );
             }
-            return Ok((updates, last_id, None));
+            return Ok((updates, last_id));
         }
 
-        Ok((updates, last_id, lock_value.clone()))
+        Ok((updates, last_id))
     }
 
     pub async fn acquire_oid_lock(&self, ttl_seconds: u64) -> Result<String> {

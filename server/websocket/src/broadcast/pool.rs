@@ -118,7 +118,7 @@ impl BroadcastGroupManager {
                 )
                 .await
             {
-                Ok((updates, last_id, new_lock_value)) => {
+                Ok((updates, last_id)) => {
                     if updates.is_empty() {
                         if start_id != "0" {
                             if let Err(e) = self
@@ -140,10 +140,6 @@ impl BroadcastGroupManager {
                     }
 
                     total_updates += updates.len();
-
-                    if lock_value.is_none() && new_lock_value.is_some() {
-                        lock_value = new_lock_value;
-                    }
 
                     for update_data in &updates {
                         if let Ok(update) = Update::decode_v1(update_data) {
@@ -309,7 +305,7 @@ impl BroadcastPool {
                 let gcs_state = temp_txn.state_vector();
                 drop(temp_txn);
 
-                let mut start_id = "-".to_string();
+                let mut start_id = "0".to_string();
                 let batch_size = 3000;
 
                 let mut read_error = false;
@@ -333,7 +329,7 @@ impl BroadcastPool {
                         )
                         .await
                     {
-                        Ok((updates, last_id, new_lock_value)) => {
+                        Ok((updates, last_id)) => {
                             if updates.is_empty() {
                                 if start_id != "0" {
                                     if let Err(e) = self
@@ -353,10 +349,6 @@ impl BroadcastPool {
                                     }
                                 }
                                 break;
-                            }
-
-                            if lock_value.is_none() && new_lock_value.is_some() {
-                                lock_value = new_lock_value;
                             }
 
                             total_updates += updates.len();
