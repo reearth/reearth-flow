@@ -99,7 +99,6 @@ impl BroadcastGroupManager {
         let mut start_id = "0".to_string();
         let batch_size = 2048;
 
-        let mut total_updates = 0;
         let mut lock_value: Option<String> = None;
 
         let awareness_guard = awareness.write().await;
@@ -138,8 +137,6 @@ impl BroadcastGroupManager {
                         }
                         break;
                     }
-
-                    total_updates += updates.len();
 
                     for update_data in &updates {
                         if let Ok(update) = Update::decode_v1(update_data) {
@@ -181,14 +178,6 @@ impl BroadcastGroupManager {
 
         drop(txn);
         drop(awareness_guard);
-
-        if total_updates > 0 {
-            tracing::info!(
-                "Found and applied {} Redis updates for document '{}'",
-                total_updates,
-                doc_id
-            );
-        }
 
         if need_initial_save {
             let doc_id_clone = doc_id.to_string();
