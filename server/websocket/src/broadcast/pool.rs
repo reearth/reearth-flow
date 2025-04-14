@@ -297,7 +297,6 @@ impl BroadcastPool {
                 let mut start_id = "0".to_string();
                 let batch_size = 3000;
 
-                let mut total_updates = 0;
                 let mut lock_value: Option<String> = None;
 
                 let awareness = group.awareness().write().await;
@@ -338,8 +337,6 @@ impl BroadcastPool {
                                 }
                                 break;
                             }
-
-                            total_updates += updates.len();
 
                             for update_data in &updates {
                                 match Update::decode_v1(update_data) {
@@ -387,13 +384,6 @@ impl BroadcastPool {
 
                 drop(txn);
                 drop(awareness);
-
-                if total_updates > 0 {
-                    debug!(
-                        "Applied {} Redis updates for document '{}'",
-                        total_updates, doc_id
-                    );
-                }
 
                 let lock_id = format!("gcs:lock:{}", doc_name);
                 let instance_id = format!("sync-{}", rand::random::<u64>());
