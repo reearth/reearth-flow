@@ -1,6 +1,7 @@
 import {
   addEdge,
   EdgeChange,
+  getNodesBounds,
   useReactFlow,
   useViewport,
   XYPosition,
@@ -71,65 +72,31 @@ export default ({
     [],
   );
 
-  const newNodeCreation = useCallback(
+  const calculateOffset = useCallback(
     (
-      pastedNodes: Node[],
+      topLevelNodes: Node[],
       mousePosition?: XYPosition,
-      cutByShortCut?: boolean,
-    ): Node[] => {
-      const newNodes: Node[] = [];
-      const parentIdMapArray: { prevId: string; newId: string }[] = [];
-
+      isCutByShortCut?: boolean,
+    ) => {
       let offsetX = 0;
       let offsetY = 0;
-
+      const bounds = getNodesBounds(topLevelNodes);
       if (mousePosition) {
         const reactFlowPosition = {
           x: (mousePosition.x - x) / zoom,
           y: (mousePosition.y - y) / zoom,
         };
 
-        let minX = Infinity;
-        let minY = Infinity;
-
-        for (const node of pastedNodes) {
-          if (!node.parentId) {
-            if (node.position.x < minX) minX = node.position.x;
-            if (node.position.y < minY) minY = node.position.y;
-          }
-        }
-
-        offsetX = reactFlowPosition.x - minX;
-        offsetY = reactFlowPosition.y - minY;
-      } else if (cutByShortCut && !mousePosition) {
+        offsetX = reactFlowPosition.x - bounds.x;
+        offsetY = reactFlowPosition.y - bounds.y;
+      } else if (isCutByShortCut && !mousePosition) {
         const viewportCenter = screenToFlowPosition({
           x: window.innerWidth / 2,
           y: window.innerHeight / 2,
         });
 
-        let minX = Infinity,
-          maxX = -Infinity;
-        let minY = Infinity,
-          maxY = -Infinity;
-
-        for (const node of pastedNodes) {
-          if (!node.parentId) {
-            const nodeWidth = node.measured?.width || 150;
-            const nodeHeight = node.measured?.height || 25;
-
-            console.log("NODE", node);
-
-            minX = Math.min(minX, node.position.x);
-            maxX = Math.max(maxX, node.position.x + nodeWidth);
-            minY = Math.min(minY, node.position.y);
-            maxY = Math.max(maxY, node.position.y + nodeHeight);
-          }
-        }
-
-        const nodesWidth = maxX - minX;
-        const nodesHeight = maxY - minY;
-        const nodesCenterX = minX + nodesWidth / 2;
-        const nodesCenterY = minY + nodesHeight / 2;
+        const nodesCenterX = bounds.x + bounds.width / 2;
+        const nodesCenterY = bounds.y + bounds.height / 2;
 
         offsetX = viewportCenter.x - nodesCenterX;
         offsetY = viewportCenter.y - nodesCenterY;
@@ -138,12 +105,39 @@ export default ({
         offsetY = 25;
       }
 
+      return { offsetX, offsetY };
+    },
+    [screenToFlowPosition, x, y, zoom],
+  );
+
+  const newNodeCreation = useCallback(
+    (
+      pastedNodes: Node[],
+      mousePosition?: XYPosition,
+      isCutByShortCut?: boolean,
+    ): Node[] => {
+      const newNodes: Node[] = [];
+      const parentIdMapArray: { prevId: string; newId: string }[] = [];
+
+      const nodesToCalculateOffset = pastedNodes.filter(
+        (node) => !node.parentId,
+      );
+
+      const positionOffset = calculateOffset(
+        nodesToCalculateOffset,
+        mousePosition,
+        isCutByShortCut,
+      );
+
       for (const n of pastedNodes) {
         // if NOT a child of a batch, offset position for user's benefit
         const newId = generateUUID();
         const newPosition = n.parentId
           ? { x: n.position.x, y: n.position.y }
-          : { x: n.position.x + offsetX, y: n.position.y + offsetY };
+          : {
+              x: n.position.x + positionOffset.offsetX,
+              y: n.position.y + positionOffset.offsetY,
+            };
 
         const newNode = {
           ...n,
@@ -185,7 +179,7 @@ export default ({
 
       return reBatchedNodes;
     },
-    [nodes, x, y, zoom, screenToFlowPosition],
+    [nodes, calculateOffset],
   );
   const newWorkflowCreation = useCallback(
     (nodes: Node[], pastedWorkflows: Workflow[]) => {
