@@ -97,10 +97,10 @@ impl BroadcastGroupManager {
         };
 
         let mut start_id = "0".to_string();
-        let batch_size = 10;
+        let batch_size = 2048;
 
-        let mut read_error = false;
         let mut total_updates = 0;
+        let mut lock_value: Option<String> = None;
 
         let awareness_guard = awareness.write().await;
         let mut txn = awareness_guard.doc().transact_mut();
@@ -108,41 +108,66 @@ impl BroadcastGroupManager {
         loop {
             match self
                 .redis_store
-                .read_stream_data_in_batches(doc_id, batch_size, &start_id, start_id == "0", false)
+                .read_stream_data_in_batches(
+                    doc_id,
+                    batch_size,
+                    &start_id,
+                    start_id == "0",
+                    false,
+                    &mut lock_value,
+                )
                 .await
             {
-                Ok((updates, last_id, _lock_value)) => {
+                Ok((updates, last_id, new_lock_value)) => {
                     if updates.is_empty() {
                         if start_id != "0" {
-                            let _ = self
+                            if let Err(e) = self
                                 .redis_store
-                                .read_stream_data_in_batches(doc_id, 1, &last_id, false, true)
-                                .await;
+                                .read_stream_data_in_batches(
+                                    doc_id,
+                                    1,
+                                    &last_id,
+                                    false,
+                                    true,
+                                    &mut lock_value,
+                                )
+                                .await
+                            {
+                                warn!("Failed to release lock in final batch: {}", e);
+                            }
                         }
                         break;
                     }
 
                     total_updates += updates.len();
-                    println!("total_updates: {:?}", total_updates);
+
+                    if lock_value.is_none() && new_lock_value.is_some() {
+                        lock_value = new_lock_value;
+                    }
 
                     for update_data in &updates {
-                        match Update::decode_v1(update_data) {
-                            Ok(update) => {
-                                if let Err(e) = txn.apply_update(update) {
-                                    warn!("Failed to apply Redis update: {}", e);
-                                }
-                            }
-                            Err(e) => {
-                                warn!("Failed to decode Redis update: {}", e);
+                        if let Ok(update) = Update::decode_v1(update_data) {
+                            if let Err(e) = txn.apply_update(update) {
+                                warn!("Failed to apply Redis update: {}", e);
                             }
                         }
                     }
 
                     if last_id == start_id {
-                        let _ = self
+                        if let Err(e) = self
                             .redis_store
-                            .read_stream_data_in_batches(doc_id, 1, &last_id, false, true)
-                            .await;
+                            .read_stream_data_in_batches(
+                                doc_id,
+                                1,
+                                &last_id,
+                                false,
+                                true,
+                                &mut lock_value,
+                            )
+                            .await
+                        {
+                            warn!("Failed to release lock in final batch: {}", e);
+                        }
                         break;
                     }
 
@@ -153,7 +178,6 @@ impl BroadcastGroupManager {
                         "Failed to read updates from Redis stream for document '{}': {}",
                         doc_id, e
                     );
-                    read_error = true;
                     break;
                 }
             }
@@ -168,8 +192,6 @@ impl BroadcastGroupManager {
                 total_updates,
                 doc_id
             );
-        } else if !read_error {
-            debug!("No Redis updates found for document '{}'", doc_id);
         }
 
         if need_initial_save {
@@ -292,6 +314,7 @@ impl BroadcastPool {
 
                 let mut read_error = false;
                 let mut total_updates = 0;
+                let mut lock_value: Option<String> = None;
 
                 let awareness = group.awareness().write().await;
                 let mut txn = awareness.doc().transact_mut();
@@ -306,21 +329,34 @@ impl BroadcastPool {
                             &start_id,
                             start_id == "-",
                             false,
+                            &mut lock_value,
                         )
                         .await
                     {
-                        Ok((updates, last_id, _lock_value)) => {
+                        Ok((updates, last_id, new_lock_value)) => {
                             if updates.is_empty() {
-                                if start_id != "-" {
-                                    let _ = self
+                                if start_id != "0" {
+                                    if let Err(e) = self
                                         .manager
                                         .redis_store
                                         .read_stream_data_in_batches(
-                                            &doc_name, 1, &last_id, false, true,
+                                            &doc_name,
+                                            1,
+                                            &last_id,
+                                            false,
+                                            true,
+                                            &mut lock_value,
                                         )
-                                        .await;
+                                        .await
+                                    {
+                                        warn!("Failed to release lock in final batch: {}", e);
+                                    }
                                 }
                                 break;
+                            }
+
+                            if lock_value.is_none() && new_lock_value.is_some() {
+                                lock_value = new_lock_value;
                             }
 
                             total_updates += updates.len();
@@ -339,13 +375,21 @@ impl BroadcastPool {
                             }
 
                             if last_id == start_id {
-                                let _ = self
+                                if let Err(e) = self
                                     .manager
                                     .redis_store
                                     .read_stream_data_in_batches(
-                                        &doc_name, 1, &last_id, false, true,
+                                        &doc_name,
+                                        1,
+                                        &last_id,
+                                        false,
+                                        true,
+                                        &mut lock_value,
                                     )
-                                    .await;
+                                    .await
+                                {
+                                    warn!("Failed to release lock in final batch: {}", e);
+                                }
                                 break;
                             }
 

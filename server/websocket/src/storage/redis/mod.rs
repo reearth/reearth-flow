@@ -413,7 +413,6 @@ impl RedisStore {
     }
 
     pub async fn safe_delete_stream(&self, doc_id: &str, instance_id: &str) -> Result<()> {
-        println!("safe_delete_stream: {:?}", doc_id);
         let stream_key = format!("yjs:stream:{}", doc_id);
         let instances_key = format!("doc:instances:{}", doc_id);
         let read_lock_key = format!("read:lock:{}", doc_id);
@@ -430,10 +429,6 @@ impl RedisStore {
             .await?;
 
         if read_lock_exists {
-            info!(
-                "Read operation in progress for '{}', skipping stream deletion",
-                doc_id
-            );
             return Ok(());
         }
 
@@ -555,10 +550,10 @@ impl RedisStore {
         start_id: &str,
         is_first_batch: bool,
         is_final_batch: bool,
+        lock_value: &mut Option<String>,
     ) -> Result<(Vec<Bytes>, String, Option<String>)> {
         let stream_key = format!("yjs:stream:{}", doc_id);
         let protection_lock_key = format!("read:lock:{}", doc_id);
-        let mut lock_value = None;
 
         if is_first_batch {
             let lock_id = uuid::Uuid::new_v4().to_string();
@@ -566,10 +561,7 @@ impl RedisStore {
                 .acquire_lock(&protection_lock_key, &lock_id, 30)
                 .await?;
             if acquired {
-                lock_value = Some(lock_id);
-                debug!("Acquired read lock for document '{}'", doc_id);
-            } else {
-                debug!("Failed to acquire read lock for document '{}'", doc_id);
+                *lock_value = Some(lock_id.clone());
             }
         }
 
@@ -629,20 +621,17 @@ impl RedisStore {
         }
 
         if is_final_batch && lock_value.is_some() {
-            if let Err(e) = self
-                .release_lock(&protection_lock_key, &lock_value.unwrap())
-                .await
-            {
+            let lock_id = lock_value.clone().unwrap();
+            if let Err(e) = self.release_lock(&protection_lock_key, &lock_id).await {
                 error!(
-                    "Failed to release read lock for document '{}': {}",
-                    doc_id, e
+                    "Failed to release read lock {} for document '{}': {}",
+                    lock_id, doc_id, e
                 );
             }
-            info!("Released read lock for document '{}'", doc_id);
             return Ok((updates, last_id, None));
         }
 
-        Ok((updates, last_id, lock_value))
+        Ok((updates, last_id, lock_value.clone()))
     }
 
     pub async fn acquire_oid_lock(&self, ttl_seconds: u64) -> Result<String> {
