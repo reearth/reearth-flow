@@ -291,8 +291,6 @@ impl BroadcastPool {
     }
 
     pub async fn cleanup_empty_group(&self, doc_id: &str) -> Result<()> {
-        tokio::time::sleep(Duration::from_secs(3)).await;
-
         if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
             if group.connection_count() > 0 {
                 return Ok(());
