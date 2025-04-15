@@ -302,6 +302,8 @@
   "Batch nodes are for grouping multiple nodes together.": "批处理节点用于将多个节点组合在一起。",
   "Note node": "注释节点",
   "Note nodes are for adding notes to the canvas.": "注释节点用于向画布添加注释。",
+  "Subworkflow node": "",
+  "Subworkflow nodes are for creating subworkflows and grouping those workflows together.": "",
   "(import)": "(导入)",
   "Deployment Created": "部署已创建",
   "Deployment has been successfully created.": "部署已成功创建。",

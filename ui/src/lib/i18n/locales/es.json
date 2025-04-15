@@ -302,6 +302,8 @@
   "Batch nodes are for grouping multiple nodes together.": "Los nodos por lotes son para agrupar varios nodos juntos.",
   "Note node": "Nodo de nota",
   "Note nodes are for adding notes to the canvas.": "Los nodos de nota son para agregar notas al lienzo.",
+  "Subworkflow node": "",
+  "Subworkflow nodes are for creating subworkflows and grouping those workflows together.": "",
   "(import)": "(importar)",
   "Deployment Created": "Despliegue Creado",
   "Deployment has been successfully created.": "El despliegue se ha creado con éxito.",

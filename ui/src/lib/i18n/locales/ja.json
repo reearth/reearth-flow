@@ -302,6 +302,8 @@
   "Batch nodes are for grouping multiple nodes together.": "バッチノードは複数のノードをグループ化するためのものです。",
   "Note node": "ノートノード",
   "Note nodes are for adding notes to the canvas.": "ノートノードはキャンバスにノートを追加するためのものです。",
+  "Subworkflow node": "サブワークフローノード",
+  "Subworkflow nodes are for creating subworkflows and grouping those workflows together.": "サブワークフローノードは、サブワークフローを作成し、それらのワークフローをグループ化するためのものです。",
   "(import)": "(インポート)",
   "Deployment Created": "デプロイメント作成完了",
   "Deployment has been successfully created.": "デプロイメントが正常に作成されました。",
