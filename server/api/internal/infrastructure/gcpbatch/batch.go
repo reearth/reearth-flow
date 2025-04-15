@@ -307,6 +307,8 @@ func convertGCPStatusToGatewayStatus(gcpStatus batchpb.JobStatus_State) gateway.
 		return gateway.JobStatusUnknown
 	case batchpb.JobStatus_QUEUED:
 		return gateway.JobStatusPending
+	case batchpb.JobStatus_SCHEDULED:
+		return gateway.JobStatusPending
 	case batchpb.JobStatus_RUNNING:
 		return gateway.JobStatusRunning
 	case batchpb.JobStatus_SUCCEEDED:
