@@ -148,18 +148,6 @@ export default ({
         };
         if (n.type === "batch") {
           parentIdMapArray.push({ prevId: n.id, newId });
-
-          nodes.forEach((child) => {
-            if (child.parentId === n.id) {
-              const childNewNode = {
-                ...child,
-                id: generateUUID(),
-                parentId: newId,
-              };
-
-              newNodes.push(childNewNode);
-            }
-          });
         }
 
         newNodes.push(newNode);
@@ -179,7 +167,7 @@ export default ({
 
       return reBatchedNodes;
     },
-    [nodes, calculateOffset],
+    [calculateOffset],
   );
   const newWorkflowCreation = useCallback(
     (nodes: Node[], pastedWorkflows: Workflow[]) => {
@@ -261,33 +249,96 @@ export default ({
     [],
   );
 
+  const processNodesAndEdges = useCallback(
+    (selectedNodes: Node[], selectedEdges: Edge[]) => {
+      const processedNodeIds = new Set();
+      const nodesToProcess = [...selectedNodes];
+      const edgesToProcess = [...selectedEdges];
+
+      selectedNodes.forEach((node) => {
+        processedNodeIds.add(node.id);
+      });
+
+      const batchNodeIds = selectedNodes
+        .filter((node) => node.type === "batch")
+        .map((node) => node.id);
+
+      nodes.forEach((node) => {
+        if (
+          node.parentId &&
+          batchNodeIds.includes(node.parentId) &&
+          !processedNodeIds.has(node.id)
+        ) {
+          nodesToProcess.push(node);
+          processedNodeIds.add(node.id);
+        }
+      });
+
+      const allNodeIds = new Set(nodesToProcess.map((node) => node.id));
+
+      const processedEdgeIds = new Set(selectedEdges.map((edge) => edge.id));
+
+      edges.forEach((edge) => {
+        if (
+          (allNodeIds.has(edge.source) || allNodeIds.has(edge.target)) &&
+          !processedEdgeIds.has(edge.id)
+        ) {
+          edgesToProcess.push(edge);
+          processedEdgeIds.add(edge.id);
+        }
+      });
+
+      return {
+        nodes: nodesToProcess,
+        edges: edgesToProcess,
+      };
+    },
+    [nodes, edges],
+  );
+
   const handleCopy = useCallback(async () => {
     const selected: { nodes: Node[]; edges: Edge[] } | undefined = {
       nodes: nodes.filter((n) => n.selected),
       edges: edges.filter((e) => e.selected),
     };
     let referencedWorkflows: Workflow[] = [];
-    if (selected.nodes.some((n) => n.type === "reader"))
+
+    if (selected.nodes.length === 0 && selected.edges.length === 0) return;
+
+    const { nodes: nodesToCopy, edges: edgesToCopy } = processNodesAndEdges(
+      selected.nodes,
+      selected.edges,
+    );
+
+    if (nodesToCopy.some((n) => n.type === "subworkflow")) {
+      referencedWorkflows = collectSubworkflows(nodesToCopy, rawWorkflows);
+      if (referencedWorkflows.length === 0) return;
+    }
+
+    if (nodesToCopy.some((n) => n.type === "reader")) {
       return toast({
         title: t("Reader node cannot be copied"),
         description: t("Only one reader can be present in any project."),
         variant: "default",
       });
-
-    if (selected.nodes.length === 0 && selected.edges.length === 0) return;
-
-    if (selected.nodes.some((n) => n.type === "subworkflow")) {
-      referencedWorkflows = collectSubworkflows(selected.nodes, rawWorkflows);
-      if (referencedWorkflows.length === 0) return;
     }
 
     await copy({
-      nodes: selected.nodes,
-      edges: selected.edges,
+      nodes: nodesToCopy,
+      edges: edgesToCopy,
       workflows: referencedWorkflows,
       copiedAt: Date.now(),
     });
-  }, [nodes, edges, collectSubworkflows, copy, rawWorkflows, toast, t]);
+  }, [
+    nodes,
+    edges,
+    collectSubworkflows,
+    copy,
+    processNodesAndEdges,
+    rawWorkflows,
+    toast,
+    t,
+  ]);
 
   const handleCut = useCallback(
     async (isCutByShortCut?: boolean) => {
@@ -295,36 +346,44 @@ export default ({
         nodes: nodes.filter((n) => n.selected),
         edges: edges.filter((e) => e.selected),
       };
-      let referencedWorkflows: Workflow[] = [];
-
       if (selected.nodes.length === 0 && selected.edges.length === 0) return;
 
-      if (selected.nodes.some((n) => n.type === "subworkflow")) {
-        referencedWorkflows = collectSubworkflows(selected.nodes, rawWorkflows);
+      const { nodes: nodesToCut, edges: edgesToCut } = processNodesAndEdges(
+        selected.nodes,
+        selected.edges,
+      );
+
+      let referencedWorkflows: Workflow[] = [];
+      if (nodesToCut.some((n) => n.type === "subworkflow")) {
+        referencedWorkflows = collectSubworkflows(nodesToCut, rawWorkflows);
         if (referencedWorkflows.length === 0) return;
       }
 
       await copy({
-        nodes: selected.nodes,
-        edges: selected.edges,
+        nodes: nodesToCut,
+        edges: edgesToCut,
         workflows: referencedWorkflows,
         copiedAt: Date.now(),
         isCutByShortCut,
       });
-      const nodeChanges: NodeChange[] = selected.nodes.map((n) => ({
+
+      const nodeChanges: NodeChange[] = nodesToCut.map((n) => ({
         id: n.id,
         type: "remove",
       }));
-      const edgeChanges: EdgeChange[] = selected.edges.map((e) => ({
+
+      const edgeChanges: EdgeChange[] = edgesToCut.map((e) => ({
         id: e.id,
         type: "remove",
       }));
+
       handleNodesChange(nodeChanges);
       handleEdgesChange(edgeChanges);
     },
     [
       nodes,
       edges,
+      processNodesAndEdges,
       handleNodesChange,
       handleEdgesChange,
       collectSubworkflows,
@@ -332,7 +391,6 @@ export default ({
       rawWorkflows,
     ],
   );
-
   const handlePaste = useCallback(
     async (mousePosition?: XYPosition) => {
       const {
