@@ -1,0 +1,20 @@
+name: License Check
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  server-api-license-check:
+    name: Server API License Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: reearth/actions/license-checker/go@9a0086b0f0118f107713b3d2708138ebfe06d5ad
+        with:
+          subdirectory: server/api
+  server-subscriber-license-check:
+    name: Server Subscriber License Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: reearth/actions/license-checker/go@9a0086b0f0118f107713b3d2708138ebfe06d5ad
+        with:
+          subdirectory: server/subscriber
