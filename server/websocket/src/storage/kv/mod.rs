@@ -454,10 +454,7 @@ where
         }
     }
 
-    async fn load_doc_direct<K: AsRef<[u8]> + ?Sized + Sync>(
-        &self,
-        name: &K,
-    ) -> Result<Doc, Error> {
+    async fn load_doc_v2<K: AsRef<[u8]> + ?Sized + Sync>(&self, name: &K) -> Result<Doc, Error> {
         let doc_key = format!("direct_doc:{}", hex::encode(name.as_ref()));
         let doc_key_bytes = doc_key.as_bytes();
 
@@ -478,7 +475,7 @@ where
         }
     }
 
-    async fn flush_doc_direct<K: AsRef<[u8]> + ?Sized + Sync>(
+    async fn flush_doc_v2<K: AsRef<[u8]> + ?Sized + Sync>(
         &self,
         name: &K,
         doc: &Doc,
