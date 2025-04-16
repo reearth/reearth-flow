@@ -21,7 +21,6 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
 }) => {
   const {
     officialName,
-    customName,
     inputs,
     outputs,
     // status,
@@ -51,7 +50,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
         <div
           className={`flex flex-1 items-center justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? selectedColor : borderColor}`}>
           <p className="self-center truncate text-xs dark:font-light">
-            {data.customizations?.customName || customName || officialName}
+            {data.customizations?.customName || officialName}
           </p>
           {/* {status === "failed" && <X className="size-4 text-destructive" />} */}
           {/* {status === "completed" && intermediateDataUrl && (

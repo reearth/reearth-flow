@@ -7,12 +7,7 @@ import { getNodeColors } from "./nodeColors";
 // import useNodeStatus from "./useNodeStatus";
 
 export default ({ data, type }: { data: NodeData; type: string }) => {
-  const {
-    officialName,
-    customName,
-    inputs: defaultInputs,
-    outputs: defaultOutputs,
-  } = data;
+  const { officialName, inputs: defaultInputs, outputs: defaultOutputs } = data;
 
   // const { nodeStatus } = useNodeStatus();
 
@@ -41,7 +36,6 @@ export default ({ data, type }: { data: NodeData; type: string }) => {
 
   return {
     officialName,
-    customName,
     inputs,
     outputs,
     // status: nodeStatus,
