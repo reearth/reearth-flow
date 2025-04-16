@@ -23,7 +23,6 @@ export const yNodeConstructor = (node: Node): YNode => {
     // Reference src/types/node.ts for the NodeData type
     data: toYjsMap({
       officialName: toYjsText(node.data.officialName),
-      customName: toYjsText(node.data.customName), // TODO: remove data.customName when subworkflow's renaming is re-implemented
       inputs: toYjsArray(node.data.inputs?.map((input) => toYjsText(input))),
       outputs: toYjsArray(
         node.data.outputs?.map((output) => toYjsText(output)),

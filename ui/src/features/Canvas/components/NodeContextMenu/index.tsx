@@ -46,10 +46,18 @@ const NodeContextMenu: React.FC<Props> = ({
     onNodesChange?.([{ id, type: "remove" }]);
   }, [id, onNodesChange]);
 
-  const handleSecondaryNodeAction = useCallback(() => {
-    if (!id) return;
-    onSecondaryNodeAction?.(undefined, id, node.data.subworkflowId);
-  }, [id, node.data.subworkflowId, onSecondaryNodeAction]);
+  const handleSecondaryNodeAction = useCallback(
+    (allowNodeSettings?: boolean) => {
+      if (!id) return;
+      if (allowNodeSettings) {
+        onSecondaryNodeAction?.(undefined, id, undefined);
+        return;
+      }
+
+      onSecondaryNodeAction?.(undefined, id, node.data.subworkflowId);
+    },
+    [id, node.data.subworkflowId, onSecondaryNodeAction],
+  );
 
   const menuItems = useMemo(() => {
     const wrapWithClose = (callback: () => void) => () => {
@@ -63,7 +71,6 @@ const NodeContextMenu: React.FC<Props> = ({
         props: {
           label: t("Copy"),
           icon: <Copy weight="light" />,
-          disabled: node.type === "reader",
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "c", commandKey: true }} />
           ),
@@ -81,23 +88,26 @@ const NodeContextMenu: React.FC<Props> = ({
           onCallback: wrapWithClose(onCut ?? (() => {})),
         },
       },
-      node.type === "subworkflow"
-        ? {
-            type: "action",
-            props: {
-              label: t("Open Subworkflow Canvas"),
-              icon: <Graph weight="light" />,
-              onCallback: wrapWithClose(handleSecondaryNodeAction),
+      ...(node.type === "subworkflow"
+        ? [
+            {
+              type: "action" as const,
+              props: {
+                label: t("Open Subworkflow Canvas"),
+                icon: <Graph weight="light" />,
+                onCallback: wrapWithClose(handleSecondaryNodeAction),
+              },
             },
-          }
-        : {
-            type: "action",
-            props: {
-              label: t("Node Settings"),
-              icon: <GearFine weight="light" />,
-              onCallback: wrapWithClose(handleSecondaryNodeAction),
-            },
-          },
+          ]
+        : []),
+      {
+        type: "action",
+        props: {
+          label: t("Node Settings"),
+          icon: <GearFine weight="light" />,
+          onCallback: wrapWithClose(() => handleSecondaryNodeAction(true)),
+        },
+      },
       ...(isActionNodeType(node.type)
         ? [
             {
