@@ -70,6 +70,10 @@ export default () => {
         description: t("Copy the Selected Nodes"),
       },
       {
+        keyBinding: CanvasKeyBindings["cut"],
+        description: t("Cut the Selected Nodes"),
+      },
+      {
         keyBinding: CanvasKeyBindings["paste"],
         description: t("Paste the Copied Nodes"),
       },
