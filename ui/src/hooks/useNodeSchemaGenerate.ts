@@ -108,7 +108,7 @@ export default (
           description: t(
             "Subworkflow nodes are for creating subworkflows and grouping those workflows together.",
           ),
-          type: "subwokflow",
+          type: "subworkflow",
           customizations: baseCustomizationSchema,
           inputPorts: ["input"],
           outputPorts: ["output"],
