@@ -311,4 +311,19 @@ impl DocumentHandler {
             }
         }
     }
+
+    pub async fn clear_doc(
+        Path(doc_id): Path<String>,
+        State(state): State<Arc<AppState>>,
+    ) -> Response {
+        let storage = state.pool.get_store();
+
+        match storage.clear_doc(&doc_id).await {
+            Ok(_) => StatusCode::OK.into_response(),
+            Err(err) => {
+                error!("Failed to clear document {}: {}", doc_id, err);
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+        }
+    }
 }

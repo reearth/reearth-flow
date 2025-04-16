@@ -339,3 +339,30 @@ func (c *Client) FlushToGCS(ctx context.Context, id string) error {
 
 	return nil
 }
+
+func (c *Client) ClearDoc(ctx context.Context, id string) error {
+	url := fmt.Sprintf("%s/api/document/%s/clear", c.config.ServerURL, id)
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to clear document: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
+	}
+
+	return nil
+}
