@@ -12,7 +12,6 @@ import { useCopyPaste } from "@flow/hooks/useCopyPaste";
 import { useT } from "@flow/lib/i18n";
 import type { Edge, Node, NodeChange, Workflow } from "@flow/types";
 import { generateUUID } from "@flow/utils";
-// import { getRandomNumberInRange } from "@flow/utils/getRandomNumberInRange";
 
 import { useToast } from "../NotificationSystem/useToast";
 
@@ -274,13 +273,12 @@ export default ({
         }
       });
 
-      const allNodeIds = new Set(nodesToProcess.map((node) => node.id));
-
       const processedEdgeIds = new Set(selectedEdges.map((edge) => edge.id));
 
       edges.forEach((edge) => {
         if (
-          (allNodeIds.has(edge.source) || allNodeIds.has(edge.target)) &&
+          (processedNodeIds.has(edge.source) ||
+            processedNodeIds.has(edge.target)) &&
           !processedEdgeIds.has(edge.id)
         ) {
           edgesToProcess.push(edge);
@@ -346,6 +344,8 @@ export default ({
         nodes: nodes.filter((n) => n.selected),
         edges: edges.filter((e) => e.selected),
       };
+      let referencedWorkflows: Workflow[] = [];
+
       if (selected.nodes.length === 0 && selected.edges.length === 0) return;
 
       const { nodes: nodesToCut, edges: edgesToCut } = processNodesAndEdges(
@@ -353,7 +353,6 @@ export default ({
         selected.edges,
       );
 
-      let referencedWorkflows: Workflow[] = [];
       if (nodesToCut.some((n) => n.type === "subworkflow")) {
         referencedWorkflows = collectSubworkflows(nodesToCut, rawWorkflows);
         if (referencedWorkflows.length === 0) return;
