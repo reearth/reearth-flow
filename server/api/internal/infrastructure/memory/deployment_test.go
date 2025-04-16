@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -108,10 +109,10 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 	wsID := accountdomain.NewWorkspaceID()
 	wsID2 := accountdomain.NewWorkspaceID()
 
-	// Create test data
-	d1 := deployment.New().NewID().Workspace(wsID).Version("v1").MustBuild()
-	d2 := deployment.New().NewID().Workspace(wsID).Version("v2").MustBuild()
-	d3 := deployment.New().NewID().Workspace(wsID).Version("v3").MustBuild()
+	now := time.Now()
+	d1 := deployment.New().NewID().Workspace(wsID).Version("v1").UpdatedAt(now.Add(-2 * time.Hour)).MustBuild()
+	d2 := deployment.New().NewID().Workspace(wsID).Version("v2").UpdatedAt(now.Add(-1 * time.Hour)).MustBuild()
+	d3 := deployment.New().NewID().Workspace(wsID).Version("v3").UpdatedAt(now).MustBuild()
 	d4 := deployment.New().NewID().Workspace(wsID2).Version("v1").MustBuild()
 
 	tests := []struct {
@@ -137,7 +138,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 					PageSize: 2,
 				},
 			},
-			want:     []*deployment.Deployment{d1, d2},
+			want:     []*deployment.Deployment{d3, d2},
 			wantInfo: interfaces.NewPageBasedInfo(3, 1, 2),
 		},
 		{
@@ -154,7 +155,7 @@ func TestDeployment_FindByWorkspace(t *testing.T) {
 					PageSize: 2,
 				},
 			},
-			want:     []*deployment.Deployment{d3},
+			want:     []*deployment.Deployment{d1},
 			wantInfo: interfaces.NewPageBasedInfo(3, 2, 2),
 		},
 		{
