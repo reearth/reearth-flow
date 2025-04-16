@@ -30,4 +30,5 @@ pub fn document_routes() -> Router<Arc<AppState>> {
             "/document/{doc_id}/flush",
             post(DocumentHandler::flush_to_gcs),
         )
+        .route("/document/{doc_id}/clear", post(DocumentHandler::clear_doc))
 }

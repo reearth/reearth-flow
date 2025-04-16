@@ -85,3 +85,11 @@ func FlushToGCS(ctx context.Context, id string) error {
 	}
 	return client.FlushToGCS(ctx, id)
 }
+
+func ClearDoc(ctx context.Context, id string) error {
+	client := getDefaultWebsocketClient()
+	if client == nil {
+		return fmt.Errorf("websocket client is not initialized")
+	}
+	return client.ClearDoc(ctx, id)
+}
