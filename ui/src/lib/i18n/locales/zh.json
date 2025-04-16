@@ -146,7 +146,6 @@
   "Unable to rename workflow": "无法重命名工作流",
   "Renaming workflow failed. Please try again later.": "重命名工作流失败。请稍后再试。",
   "Main Workflow": "主工作流",
-  "Set Workflow name": "设置工作流名称",
   "Reader node cannot be copied": "读者节点无法复制",
   "Only one reader can be present in any project.": "任何项目中只能存在一个读者。",
   "Empty workflow detected": "检测到空工作流",

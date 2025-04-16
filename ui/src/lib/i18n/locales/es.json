@@ -146,7 +146,6 @@
   "Unable to rename workflow": "No se puede renombrar el flujo de trabajo",
   "Renaming workflow failed. Please try again later.": "Renombrar el flujo de trabajo falló. Por favor, inténtalo de nuevo más tarde.",
   "Main Workflow": "Flujo de trabajo principal",
-  "Set Workflow name": "Establecer nombre del flujo de trabajo",
   "Reader node cannot be copied": "El nodo lector no se puede copiar",
   "Only one reader can be present in any project.": "Solo puede haber un lector en cualquier proyecto.",
   "Empty workflow detected": "Se detectó un flujo de trabajo vacío",

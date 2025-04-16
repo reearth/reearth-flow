@@ -40,7 +40,6 @@ describe("useYNode", () => {
         measured: { width: 0, height: 0 },
         data: {
           officialName: "officialName",
-          customName: "",
           inputs: ["input1"],
           outputs: ["output1"],
           params: {},
@@ -62,7 +61,7 @@ describe("useYNode", () => {
       ...node,
       dragging: false,
       data: {
-        // NOTE: we expect the empty fields to be omitted (customName, pseudoInputs, pseudoOutputs)
+        // NOTE: we expect the empty fields to be omitted (pseudoInputs, pseudoOutputs)
         officialName: node.data.officialName,
         inputs: node.data.inputs,
         outputs: node.data.outputs,
