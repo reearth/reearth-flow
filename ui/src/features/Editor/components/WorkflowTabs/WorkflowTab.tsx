@@ -2,16 +2,12 @@ import { Graph, X } from "@phosphor-icons/react";
 
 type Props = {
   currentWorkflowId?: string;
-  editId?: string;
   id: string;
   name?: string;
-  setName: (name: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
   onWorkflowClose: (
     workflowId: string,
   ) => (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
-  onDoubleClick?: (workflowId: string, name: string | undefined) => void;
-  onSubmit: () => void;
 };
 
 const WorkflowTab: React.FC<Props> = ({
@@ -20,13 +16,11 @@ const WorkflowTab: React.FC<Props> = ({
   name,
   onWorkflowChange,
   onWorkflowClose,
-  onDoubleClick,
 }) => {
   return (
     <div
       className={`relative rounded-t flex h-4/5 w-[150px] shrink-0 items-end justify-center transition-colors ${currentWorkflowId === id ? "bg-node-subworkflow" : "bg-node-subworkflow/50 hover:bg-node-subworkflow"} group cursor-pointer`}
       onClick={() => onWorkflowChange(id)}
-      onDoubleClick={() => onDoubleClick?.(id, name)}
       key={id}>
       <div
         className={`h-full flex gap-2 items-center justify-center ml-[15px] mr-[19px] group-hover:text-white dark:font-extralight ${currentWorkflowId !== id && "text-accent-foreground"}`}>

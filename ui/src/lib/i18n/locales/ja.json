@@ -146,8 +146,6 @@
   "Deployments": "デプロイ",
   "Triggers": "トリガー",
   "Jobs": "ジョブ",
-  "Unable to rename workflow": "ワークフローの名前を変更できません",
-  "Renaming workflow failed. Please try again later.": "ワークフローの名前変更に失敗しました。後でもう一度お試しください。",
   "Main Workflow": "メインワークフロー",
   "Reader node cannot be copied": "リーダーノードはコピーできません",
   "Only one reader can be present in any project.": "プロジェクトには1つのリーダーしか存在できません。",

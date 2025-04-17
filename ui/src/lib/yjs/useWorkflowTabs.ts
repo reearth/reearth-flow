@@ -18,6 +18,11 @@ export default ({
     [currentWorkflowId],
   );
 
+  const workflowName = useMemo(
+    () => rawWorkflows.map((w) => w.name),
+    [rawWorkflows],
+  );
+
   // This works as a semi-static base for the rest of the state in this hook.
   // Without this state (aka using rawWorkflows directly), performance drops
   // due to the state updating on every change to a node (which is a lot)
@@ -27,7 +32,7 @@ export default ({
         id: w2.id as string,
         name: w2.name as string,
       })),
-    [rawWorkflows.length], // eslint-disable-line react-hooks/exhaustive-deps
+    [rawWorkflows.length, workflowName], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const handleCurrentWorkflowIdChange = useCallback(
