@@ -30,7 +30,7 @@ type Props = {
     data: any,
     type: "params" | "customizations",
   ) => Promise<void>;
-  onWorkflowRename: (id: string, name: string) => void;
+  onWorkflowRename?: (id: string, name: string) => void;
 };
 
 const ParamEditor: React.FC<Props> = ({
@@ -83,7 +83,7 @@ const ParamEditor: React.FC<Props> = ({
       onUpdate(nodeId, updatedParams, "params");
     } else if (nodeType === "subworkflow" && nodeMeta.subworkflowId) {
       onUpdate(nodeId, updatedCustomization, "customizations");
-      onWorkflowRename(
+      onWorkflowRename?.(
         nodeMeta?.subworkflowId,
         updatedCustomization?.customName || nodeMeta?.officialName,
       );

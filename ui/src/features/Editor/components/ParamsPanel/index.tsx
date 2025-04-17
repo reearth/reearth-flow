@@ -19,7 +19,7 @@ type Props = {
     dataField: "params" | "customizations",
     updatedValue: any,
   ) => void;
-  onWorkflowRename: (id: string, name: string) => void;
+  onWorkflowRename?: (id: string, name: string) => void;
 };
 
 const ParamsPanel: React.FC<Props> = ({
