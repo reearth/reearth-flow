@@ -329,23 +329,11 @@ export default ({
         if (!name.trim()) {
           throw new Error("Workflow name cannot be empty");
         }
-
-        // Update subworkflow node in main workflow if this is a subworkflow
-        const mainWorkflow = yWorkflows.get(DEFAULT_ENTRY_GRAPH_ID);
-        const mainWorkflowNodes = mainWorkflow?.get("nodes") as YNodesMap;
-
-        mainWorkflowNodes.forEach((node) => {
-          // Get the id from the YNode
-          const nodeId = (node.get("id") as Y.Text).toString();
-
-          if (nodeId === id) {
-            // Get existing data as YMap
-            const nodeData = node.get("data") as Y.Map<unknown>;
-
-            if (nodeData.get("customName")?.toString() === name) return;
-            nodeData.set("customName", name);
-          }
-        });
+        const yWorkflow = yWorkflows.get(id);
+        if (!yWorkflow) return;
+        const yName = new Y.Text();
+        yName.insert(0, name.trim());
+        yWorkflow.set("name", yName);
       }),
     [undoTrackerActionWrapper, yWorkflows],
   );

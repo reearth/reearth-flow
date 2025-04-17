@@ -89,7 +89,6 @@ export default function Editor({
           onWorkflowDeployment={handleWorkflowDeployment}
           onWorkflowClose={handleWorkflowClose}
           onWorkflowChange={handleWorkflowChange}
-          onWorkflowRename={handleWorkflowRename}
           onDebugRunStart={handleDebugRunStart}
           onDebugRunStop={handleDebugRunStop}
         />
@@ -137,6 +136,7 @@ export default function Editor({
           <ParamsPanel
             selected={locallyLockedNode}
             onDataSubmit={handleNodeDataUpdate}
+            onWorkflowRename={handleWorkflowRename}
           />
         </div>
       </EditorProvider>
