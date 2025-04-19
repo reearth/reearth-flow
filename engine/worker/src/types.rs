@@ -3,3 +3,4 @@ pub(crate) mod job_complete_event;
 pub(crate) mod log_stream_event;
 pub(crate) mod metadata;
 pub(crate) mod node_status_event;
+pub(crate) mod stdout_log_event;
