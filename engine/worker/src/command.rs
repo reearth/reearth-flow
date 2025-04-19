@@ -154,7 +154,8 @@ impl RunWorkerCommand {
 
         let handle = Handle::current();
 
-        set_pubsub_context(pubsub.clone(), workflow.id, meta.job_id, handle);
+        set_pubsub_context(pubsub.clone(), workflow.id, meta.job_id, handle)
+            .map_err(crate::errors::Error::init)?;
 
         let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match &pubsub {
             PubSubBackend::Google(p) => {
@@ -189,10 +190,7 @@ impl RunWorkerCommand {
             Err(_) => JobResult::Failed,
         };
         self.cleanup(&meta, &storage_resolver).await?;
-        let final_pubsub = PubSubBackend::try_from(self.pubsub_backend.as_str())
-            .await
-            .map_err(crate::errors::Error::init)?;
-        match final_pubsub {
+        match &pubsub {
             PubSubBackend::Google(p) => p
                 .publish(JobCompleteEvent::new(
                     workflow_id,

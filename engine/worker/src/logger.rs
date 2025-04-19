@@ -8,8 +8,7 @@ use crate::errors::Error;
 use crate::pubsub::backend::PubSubBackend;
 use crate::pubsub::publisher::Publisher;
 use crate::types::stdout_log_event::StdoutLogEvent;
-use once_cell::sync::Lazy;
-use parking_lot::RwLock as ParkingRwLock;
+use once_cell::sync::{Lazy, OnceCell};
 use tokio::runtime::Handle;
 use tracing::field::{Field, Visit};
 use tracing::Level;
@@ -33,24 +32,31 @@ static ENABLE_JSON_LOG: Lazy<bool> = Lazy::new(|| {
 static WORKER_FILE_WRITER: Lazy<RwLock<Option<NonBlocking>>> = Lazy::new(|| RwLock::new(None));
 static WORKER_FILE_GUARD: Lazy<RwLock<Option<WorkerGuard>>> = Lazy::new(|| RwLock::new(None));
 
-static PUBSUB_PUBLISHER: Lazy<ParkingRwLock<Option<PubSubBackend>>> =
-    Lazy::new(|| ParkingRwLock::new(None));
-static WORKFLOW_ID: Lazy<ParkingRwLock<Option<Uuid>>> = Lazy::new(|| ParkingRwLock::new(None));
-static JOB_ID: Lazy<ParkingRwLock<Option<Uuid>>> = Lazy::new(|| ParkingRwLock::new(None));
-static TOKIO_RUNTIME_HANDLE: Lazy<ParkingRwLock<Option<Handle>>> =
-    Lazy::new(|| ParkingRwLock::new(None));
+static PUBSUB_PUBLISHER: OnceCell<PubSubBackend> = OnceCell::new();
+static WORKFLOW_ID: OnceCell<Uuid> = OnceCell::new();
+static JOB_ID: OnceCell<Uuid> = OnceCell::new();
+static TOKIO_RUNTIME_HANDLE: OnceCell<Handle> = OnceCell::new();
 
 pub fn set_pubsub_context(
     publisher: PubSubBackend,
     workflow_id: Uuid,
     job_id: Uuid,
     handle: Handle,
-) {
-    *PUBSUB_PUBLISHER.write() = Some(publisher);
-    *WORKFLOW_ID.write() = Some(workflow_id);
-    *JOB_ID.write() = Some(job_id);
-    *TOKIO_RUNTIME_HANDLE.write() = Some(handle);
+) -> Result<(), &'static str> {
+    PUBSUB_PUBLISHER
+        .set(publisher)
+        .map_err(|_| "PubSub context already initialized")?;
+    WORKFLOW_ID
+        .set(workflow_id)
+        .map_err(|_| "Workflow ID already initialized")?;
+    JOB_ID
+        .set(job_id)
+        .map_err(|_| "Job ID already initialized")?;
+    TOKIO_RUNTIME_HANDLE
+        .set(handle)
+        .map_err(|_| "Tokio handle already initialized")?;
     tracing::info!("Pub/Sub context and Tokio handle set for stdout log publishing.");
+    Ok(())
 }
 
 #[derive(Default)]
@@ -79,32 +85,17 @@ where
     S: Subscriber + for<'a> LookupSpan<'a> + Send + Sync,
 {
     fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
-        let handle_guard = TOKIO_RUNTIME_HANDLE.read();
-        let handle = match handle_guard.as_ref() {
-            Some(h) => h.clone(),
-            None => return,
-        };
-        drop(handle_guard);
-        let publisher_guard = PUBSUB_PUBLISHER.read();
-        if publisher_guard.is_none() {
-            return;
-        }
-        let maybe_publisher = publisher_guard.clone();
-        drop(publisher_guard);
-        let workflow_id_guard = WORKFLOW_ID.read();
-        let workflow_id = match workflow_id_guard.as_ref() {
-            Some(id) => *id,
-            None => return,
-        };
-        drop(workflow_id_guard);
-        let job_id_guard = JOB_ID.read();
-        let job_id = match job_id_guard.as_ref() {
-            Some(id) => *id,
-            None => return,
-        };
-        drop(job_id_guard);
+        let maybe_handle = TOKIO_RUNTIME_HANDLE.get().cloned();
+        let maybe_publisher = PUBSUB_PUBLISHER.get().cloned();
+        let maybe_workflow_id = WORKFLOW_ID.get().copied();
+        let maybe_job_id = JOB_ID.get().copied();
 
-        if let Some(publisher) = maybe_publisher {
+        if let (Some(handle), Some(publisher), Some(workflow_id), Some(job_id)) = (
+            maybe_handle,
+            maybe_publisher,
+            maybe_workflow_id,
+            maybe_job_id,
+        ) {
             let meta = event.metadata();
             let level = meta.level();
             let target = meta.target();
@@ -116,13 +107,7 @@ where
             event.record(&mut extractor);
             let core_message = extractor.0.unwrap_or_else(|| "".to_string());
 
-            let message = format!(
-                "{}  {} {}: {}",
-                timestamp_str,
-                level,
-                target,
-                core_message
-            );
+            let message = format!("{}  {} {}: {}", timestamp_str, level, target, core_message);
 
             let log_event = StdoutLogEvent {
                 workflow_id,
@@ -156,7 +141,8 @@ impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for DynamicFileWriter {
     type Writer = Box<dyn Write + Send + 'a>;
 
     fn make_writer(&'a self) -> Self::Writer {
-        if let Some(ref nb) = *WORKER_FILE_WRITER.read().unwrap() {
+        let guard = WORKER_FILE_WRITER.read().unwrap();
+        if let Some(nb) = guard.as_ref() {
             Box::new(nb.make_writer())
         } else {
             Box::new(io::sink())
