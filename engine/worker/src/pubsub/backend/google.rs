@@ -67,7 +67,6 @@ impl crate::pubsub::publisher::Publisher for CloudPubSub {
             data: data_bytes.to_vec(),
             attributes: HashMap::new(),
             ordering_key: String::new(),
-            ..Default::default()
         };
         let awaiter = publisher.publish(pubsub_msg).await;
         awaiter.get().await.map_err(CloudPubSubError::publish)?;

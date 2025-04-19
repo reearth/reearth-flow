@@ -69,10 +69,8 @@ impl Visit for MessageExtractor {
         }
     }
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
-        if field.name() == "message" {
-            if self.0.is_none() {
-                self.0 = Some(format!("{:?}", value));
-            }
+        if field.name() == "message" && self.0.is_none() {
+            self.0 = Some(format!("{:?}", value));
         }
     }
 }
