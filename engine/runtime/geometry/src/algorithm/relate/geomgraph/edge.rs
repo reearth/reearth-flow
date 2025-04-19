@@ -27,7 +27,7 @@ impl<T: GeoFloat, Z: GeoFloat> Edge<T, Z> {
     ///
     /// - `coords` a *non-empty* Vec of Coords
     /// - `label` an appropriately dimensioned topology label for the Edge. See [`TopologyPosition`]
-    /// for details
+    ///   for details
     pub(crate) fn new(mut coords: Vec<Coordinate<T, Z>>, label: Label) -> Edge<T, Z> {
         assert!(!coords.is_empty(), "Can't add empty edge");
         coords.shrink_to_fit();
