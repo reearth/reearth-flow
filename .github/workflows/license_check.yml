@@ -26,8 +26,8 @@ jobs:
         uses: step-security/changed-files@3dbe17c78367e7d60f00d78ae6781a35be47b4a1 # v45.0.1
         with:
           files: |
-            server/api/go.mod
-            server/api/go.sum
+            server/subscriber/go.mod
+            server/subscriber/go.sum
       - name: ui changes
         id: ui
         uses: step-security/changed-files@3dbe17c78367e7d60f00d78ae6781a35be47b4a1 # v45.0.1
