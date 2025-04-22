@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { Workflow } from "@flow/types";
@@ -18,22 +18,24 @@ export default ({
     [currentWorkflowId],
   );
 
-  const workflowName = useMemo(
-    () => rawWorkflows.map((w) => w.name),
-    [rawWorkflows],
+  const [workflowNames, setWorkflowsNames] = useState(
+    rawWorkflows.map((w) => ({ id: w.id, name: w.name })),
   );
-
   // This works as a semi-static base for the rest of the state in this hook.
   // Without this state (aka using rawWorkflows directly), performance drops
   // due to the state updating on every change to a node (which is a lot)
-  const workflows = useMemo(
-    () =>
-      rawWorkflows.filter(isDefined).map((w2) => ({
-        id: w2.id as string,
-        name: w2.name as string,
-      })),
-    [rawWorkflows.length, workflowName], // eslint-disable-line react-hooks/exhaustive-deps
-  );
+  useEffect(() => {
+    if (rawWorkflows.length !== workflowNames.length) {
+      setWorkflowsNames(rawWorkflows.map((w) => ({ id: w.id, name: w.name })));
+    }
+  }, [rawWorkflows.length, workflowNames.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const workflows = useMemo(() => {
+    return workflowNames.filter(isDefined).map((w2) => ({
+      id: w2.id as string,
+      name: w2.name as string,
+    }));
+  }, [workflowNames]);
 
   const handleCurrentWorkflowIdChange = useCallback(
     (id?: string) => {
@@ -95,5 +97,7 @@ export default ({
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
+    setWorkflowsNames,
+    workflowNames,
   };
 };

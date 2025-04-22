@@ -139,6 +139,7 @@ export default ({
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
+    setWorkflowsNames,
   } = useWorkflowTabs({
     currentWorkflowId,
     rawWorkflows,
@@ -279,6 +280,16 @@ export default ({
     // },
   ]);
 
+  const handleWorkflowRename = useCallback(
+    (id: string, newName: string) => {
+      handleYWorkflowRename(id, newName);
+      setWorkflowsNames((prevNames) =>
+        prevNames.map((w) => (w.id === id ? { ...w, name: newName } : w)),
+      );
+    },
+    [handleYWorkflowRename, setWorkflowsNames],
+  );
+
   return {
     isSubworkflow,
     currentWorkflowId,
@@ -305,7 +316,7 @@ export default ({
     handleWorkflowChange: handleCurrentWorkflowIdChange,
     handleWorkflowRedo: handleYWorkflowRedo,
     handleWorkflowUndo: handleYWorkflowUndo,
-    handleWorkflowRename: handleYWorkflowRename,
+    handleWorkflowRename,
     handleLayoutChange,
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
