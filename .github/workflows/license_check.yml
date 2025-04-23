@@ -74,7 +74,7 @@ jobs:
         with:
           subdirectory: server/api
   ui-license-check:
-    name: ui License Check
+    name: UI License Check
     needs: prepare
     if: needs.prepare.outputs.ui == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -86,8 +86,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: yarn
-          cache-dependency-path: '**/yarn.lock'
       - name: Install
         run: yarn install
       - uses: reearth/actions/license-checker/npm@e445d10332411e14f53e6abc73c966ecb49d3e57
