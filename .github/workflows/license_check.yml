@@ -74,7 +74,7 @@ jobs:
         with:
           subdirectory: server/api
   ui-license-check:
-    name: ui License Check
+    name: UI License Check
     needs: prepare
     if: needs.prepare.outputs.ui == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
