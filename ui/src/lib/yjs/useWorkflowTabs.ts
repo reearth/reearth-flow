@@ -21,6 +21,7 @@ export default ({
   const [workflowNames, setWorkflowsNames] = useState(
     rawWorkflows.map((w) => ({ id: w.id, name: w.name })),
   );
+  // Length check is used to for adding and removing workflows.
   // This works as a semi-static base for the rest of the state in this hook.
   // Without this state (aka using rawWorkflows directly), performance drops
   // due to the state updating on every change to a node (which is a lot)
