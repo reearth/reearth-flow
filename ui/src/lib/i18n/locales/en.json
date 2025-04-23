@@ -146,8 +146,6 @@
   "Deployments": "",
   "Triggers": "",
   "Jobs": "",
-  "Unable to rename workflow": "Unable to rename workflow",
-  "Renaming workflow failed. Please try again later.": "Renaming workflow failed. Please try again later.",
   "Main Workflow": "",
   "Reader node cannot be copied": "",
   "Only one reader can be present in any project.": "",
