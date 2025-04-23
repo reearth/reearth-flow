@@ -88,6 +88,6 @@ jobs:
           node-version: lts/*
       - name: Install
         run: yarn install
-      - uses: reearth/actions/license-checker/npm@e445d10332411e14f53e6abc73c966ecb49d3e57
+      - uses: reearth/actions/license-checker/npm@update-license-checker-npm
         with:
           subdirectory: ui
