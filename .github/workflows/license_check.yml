@@ -1,3 +1,7 @@
+# For now, Server API and Server Subscriber will be commented because
+# Both Server API and Server Subscriber still use non Go Modules
+# and currently, go-licenses does not support non Go Module project
+
 name: License Check
 on:
   workflow_dispatch:
@@ -8,26 +12,26 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     outputs:
-      server-api: ${{ steps.server-api.outputs.any_modified }}
-      server-subscriber: ${{ steps.server-subscriber.outputs.any_modified }}
+      # server-api: ${{ steps.server-api.outputs.any_modified }}
+      # server-subscriber: ${{ steps.server-subscriber.outputs.any_modified }}
       ui: ${{ steps.ui.outputs.any_modified }}
     steps:
       - name: checkout
         uses: actions/checkout@v4
-      - name: Server API changes
-        id: server-api
-        uses: step-security/changed-files@3dbe17c78367e7d60f00d78ae6781a35be47b4a1 # v45.0.1
-        with:
-          files: |
-            server/api/go.mod
-            server/api/go.sum
-      - name: Server Subscriber changes
-        id: server-subscriber
-        uses: step-security/changed-files@3dbe17c78367e7d60f00d78ae6781a35be47b4a1 # v45.0.1
-        with:
-          files: |
-            server/subscriber/go.mod
-            server/subscriber/go.sum
+      # - name: Server API changes
+      #   id: server-api
+      #   uses: step-security/changed-files@3dbe17c78367e7d60f00d78ae6781a35be47b4a1 # v45.0.1
+      #   with:
+      #     files: |
+      #       server/api/go.mod
+      #       server/api/go.sum
+      # - name: Server Subscriber changes
+      #   id: server-subscriber
+      #   uses: step-security/changed-files@3dbe17c78367e7d60f00d78ae6781a35be47b4a1 # v45.0.1
+      #   with:
+      #     files: |
+      #       server/subscriber/go.mod
+      #       server/subscriber/go.sum
       - name: ui changes
         id: ui
         uses: step-security/changed-files@3dbe17c78367e7d60f00d78ae6781a35be47b4a1 # v45.0.1
@@ -35,44 +39,44 @@ jobs:
           files: |
             ui/package.json
             ui/yarn.lock
-  server-subscriber-license-check:
-    name: Server Subscriber License Check
-    needs: prepare
-    if: needs.prepare.outputs.server-subscriber == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server/subscriber
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: server/subscriber/go.mod
-          check-latest: true
-          cache-dependency-path: |
-            server/subscriber/go.sum
-      - uses: reearth/actions/license-checker/go@ec26fbcf84f0e954a6ba3511859b18e3d2272c18
-        with:
-          subdirectory: server/subscriber
-  server-api-license-check:
-    name: Server API License Check
-    needs: prepare
-    if: needs.prepare.outputs.server-api == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: server/api
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: server/api/go.mod
-          check-latest: true
-          cache-dependency-path: |
-            server/api/go.sum
-      - uses: reearth/actions/license-checker/go@ec26fbcf84f0e954a6ba3511859b18e3d2272c18
-        with:
-          subdirectory: server/api
+  # server-subscriber-license-check:
+  #   name: Server Subscriber License Check
+  #   needs: prepare
+  #   if: needs.prepare.outputs.server-subscriber == 'true' || github.event_name == 'workflow_dispatch'
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: server/subscriber
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-go@v5
+  #       with:
+  #         go-version-file: server/subscriber/go.mod
+  #         check-latest: true
+  #         cache-dependency-path: |
+  #           server/subscriber/go.sum
+  #     - uses: reearth/actions/license-checker/go@ec26fbcf84f0e954a6ba3511859b18e3d2272c18
+  #       with:
+  #         subdirectory: server/subscriber
+  # server-api-license-check:
+  #   name: Server API License Check
+  #   needs: prepare
+  #   if: needs.prepare.outputs.server-api == 'true' || github.event_name == 'workflow_dispatch'
+  #   runs-on: ubuntu-latest
+  #   defaults:
+  #     run:
+  #       working-directory: server/api
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-go@v5
+  #       with:
+  #         go-version-file: server/api/go.mod
+  #         check-latest: true
+  #         cache-dependency-path: |
+  #           server/api/go.sum
+  #     - uses: reearth/actions/license-checker/go@ec26fbcf84f0e954a6ba3511859b18e3d2272c18
+  #       with:
+  #         subdirectory: server/api
   ui-license-check:
     name: UI License Check
     needs: prepare
