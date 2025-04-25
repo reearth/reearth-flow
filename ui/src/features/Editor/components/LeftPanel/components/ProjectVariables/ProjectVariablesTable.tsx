@@ -66,7 +66,7 @@ const ProjectVariablesTable: React.FC<Props> = ({
   });
 
   return (
-    <Table className={`bg-primary rounded-md ${className}`}>
+    <Table className={`bg-inherit rounded-md ${className}`}>
       <TableHeader>
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id}>
@@ -90,7 +90,7 @@ const ProjectVariablesTable: React.FC<Props> = ({
           table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
-              className="cursor-pointer hover:bg-secondary/50 data-[state=selected]:bg-secondary/50"
+              className="cursor-pointer hover:bg-primary/50 data-[state=selected]:bg-primary/50"
               data-state={row.getIsSelected() && "selected"}
               onClick={() => {
                 row.toggleSelected();

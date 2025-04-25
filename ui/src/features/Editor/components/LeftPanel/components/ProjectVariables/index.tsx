@@ -4,7 +4,8 @@ import { Button, ScrollArea } from "@flow/components";
 import { useProjectVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
-import { ProjectVariable as ProjectVariableType } from "@flow/types";
+import { ProjectVariable as ProjectVariableType, VarType } from "@flow/types";
+import { getDefaultValueForProjectVar } from "@flow/utils";
 
 import { ProjectVariable } from "./ProjectVariable";
 import { ProjectVariableDialog } from "./ProjectVariableDialog";
@@ -15,8 +16,12 @@ const ProjectVariables: React.FC = () => {
 
   const [currentProject] = useCurrentProject();
 
-  const { useGetProjectVariables, createProjectVariable } =
-    useProjectVariables();
+  const {
+    useGetProjectVariables,
+    createProjectVariable,
+    updateProjectVariable,
+    deleteProjectVariable,
+  } = useProjectVariables();
 
   const { projectVariables } = useGetProjectVariables(currentProject?.id);
 
@@ -27,37 +32,52 @@ const ProjectVariables: React.FC = () => {
   const handleDialogOpen = () => setIsOpen(true);
   const handleDialogClose = () => setIsOpen(false);
 
-  const handleSubmit = async (newProjectVariables: ProjectVariableType[]) => {
+  const handleProjectVariableAdd = async (type: VarType) => {
     if (!currentProject) return;
+    const defaultValue = getDefaultValueForProjectVar(type);
 
-    await (async () => {
-      try {
-        newProjectVariables.forEach(async (projectVar) => {
-          const { name, value, type, required } = projectVar;
-          const index = updatedProjectVariables.length;
-          const existingVariable = updatedProjectVariables.find(
-            (p) => p.name === name,
-          );
-          if (existingVariable) {
-            // Update existing parameter
-          } else {
-            await createProjectVariable(
-              currentProject.id,
-              name,
-              value,
-              type,
-              required,
-              index,
-            );
-          }
-        });
-      } catch (error) {
-        console.error("Error creating project variable", error);
-      }
-    })();
+    const res = await createProjectVariable(
+      currentProject.id,
+      t("New Project Variable"),
+      defaultValue,
+      type,
+      true,
+      true,
+      updatedProjectVariables.length,
+    );
 
-    setUpdatedProjectVariables(newProjectVariables);
-    handleDialogClose();
+    if (!res.projectVariable) return;
+
+    const newProjectVariable = res.projectVariable;
+
+    setUpdatedProjectVariables((prev) => [...prev, newProjectVariable]);
+  };
+
+  const handleProjectVariableChange = async (
+    projectVariable: ProjectVariableType,
+  ) => {
+    await updateProjectVariable(
+      projectVariable.id,
+      projectVariable.name,
+      projectVariable.defaultValue,
+      projectVariable.type,
+      projectVariable.required,
+      projectVariable.public,
+    );
+
+    setUpdatedProjectVariables((prev) =>
+      prev.map((variable) =>
+        variable.id === projectVariable.id ? projectVariable : variable,
+      ),
+    );
+  };
+
+  const handleProjectVariableDelete = async (id: string) => {
+    await deleteProjectVariable(id);
+
+    setUpdatedProjectVariables((prev) =>
+      prev.filter((variable) => variable.id !== id),
+    );
   };
 
   return (
@@ -93,9 +113,11 @@ const ProjectVariables: React.FC = () => {
       {projectVariables && (
         <ProjectVariableDialog
           isOpen={isOpen}
-          currentProjectVariable={projectVariables}
+          currentProjectVariables={projectVariables}
           onClose={handleDialogClose}
-          onSubmit={handleSubmit}
+          onAdd={handleProjectVariableAdd}
+          onChange={handleProjectVariableChange}
+          onDelete={handleProjectVariableDelete}
         />
       )}
     </>

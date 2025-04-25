@@ -1,151 +1,194 @@
-import { ArrowDown, ArrowUp, Minus, Plus } from "@phosphor-icons/react";
+import { Minus, Plus } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
+import { debounce } from "lodash-es";
 import { useState } from "react";
 
 import {
-  Button,
   Dialog,
   DialogContent,
   DialogContentSection,
-  DialogContentWrapper,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   IconButton,
+  Input,
   Switch,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { ProjectVariable } from "@flow/types";
-import { generateUUID } from "@flow/utils";
+import { ProjectVariable, VarType } from "@flow/types";
 
 import { ProjectVariablesTable } from "./ProjectVariablesTable";
 
 type Props = {
   isOpen: boolean;
-  currentProjectVariable?: ProjectVariable[];
+  currentProjectVariables?: ProjectVariable[];
   onClose: () => void;
-  onSubmit: (newProjectVariables: ProjectVariable[]) => void;
+  onAdd: (type: VarType) => Promise<void>;
+  onChange: (projectVariable: ProjectVariable) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 };
+
+const allVarTypes: VarType[] = [
+  "attribute_name",
+  "choice",
+  "color",
+  "coordinate_system",
+  "database_connection",
+  "datetime",
+  "file_folder",
+  "geometry",
+  "message",
+  "number",
+  "password",
+  "reprojection_file",
+  "text",
+  "web_connection",
+  "yes_no",
+  "unsupported",
+];
 
 const ProjectVariableDialog: React.FC<Props> = ({
   isOpen,
-  currentProjectVariable,
+  currentProjectVariables,
   onClose,
-  onSubmit,
+  onAdd,
+  onChange,
+  onDelete,
 }) => {
   const t = useT();
-  const [projectVariables, setProjectVariables] = useState<ProjectVariable[]>(
-    currentProjectVariable ?? [],
-  );
-
   const [selectedIndex, setSelectedIndex] = useState<number | undefined>();
 
-  const handleAdd = () => {
-    setProjectVariables((pvs) => {
-      if (selectedIndex !== undefined) {
-        const newProjectVariables = [...pvs];
-        newProjectVariables.splice(selectedIndex + 1, 0, {
-          id: generateUUID(),
-          name: "",
-          value: "asldfkj",
-          type: "text",
-          required: false,
-        });
-        return newProjectVariables;
-      }
-      return [
-        ...pvs,
-        {
-          id: generateUUID(),
-          name: "",
-          value: "dddd",
-          type: "text",
-          required: false,
-        },
-      ];
-    });
-  };
-
   const handleDelete = () => {
-    setProjectVariables((pvs) => {
-      if (selectedIndex !== undefined) {
-        const newProjectVariables = [...pvs];
-        newProjectVariables.splice(selectedIndex, 1);
-        setSelectedIndex(undefined);
-        return newProjectVariables;
-      }
-      return pvs;
-    });
+    if (selectedIndex === undefined || !currentProjectVariables) return;
+    const varToDelete = currentProjectVariables[selectedIndex];
+    onDelete(varToDelete.id);
   };
 
-  const handleMoveUp = () => {
-    setProjectVariables((pvs) => {
-      if (selectedIndex !== undefined && selectedIndex > 0) {
-        const newProjectVariables = [...pvs];
-        const temp = newProjectVariables[selectedIndex];
-        newProjectVariables[selectedIndex] =
-          newProjectVariables[selectedIndex - 1];
-        newProjectVariables[selectedIndex - 1] = temp;
-        setSelectedIndex(selectedIndex - 1);
-        return newProjectVariables;
-      }
-      return pvs;
-    });
-  };
+  // const handleMoveUp = () => {
+  //   setProjectVariables((pvs) => {
+  //     if (selectedIndex !== undefined && selectedIndex > 0) {
+  //       const newProjectVariables = [...pvs];
+  //       const temp = newProjectVariables[selectedIndex];
+  //       newProjectVariables[selectedIndex] =
+  //         newProjectVariables[selectedIndex - 1];
+  //       newProjectVariables[selectedIndex - 1] = temp;
+  //       setSelectedIndex(selectedIndex - 1);
+  //       return newProjectVariables;
+  //     }
+  //     return pvs;
+  //   });
+  // };
 
-  const handleMoveDown = () => {
-    setProjectVariables((pvs) => {
-      if (selectedIndex !== undefined && selectedIndex < pvs.length - 1) {
-        const newProjectVariables = [...pvs];
-        const temp = newProjectVariables[selectedIndex];
-        newProjectVariables[selectedIndex] =
-          newProjectVariables[selectedIndex + 1];
-        newProjectVariables[selectedIndex + 1] = temp;
-        setSelectedIndex(selectedIndex + 1);
-        return newProjectVariables;
-      }
-      return pvs;
-    });
-  };
+  // const handleMoveDown = () => {
+  //   setProjectVariables((pvs) => {
+  //     if (selectedIndex !== undefined && selectedIndex < pvs.length - 1) {
+  //       const newProjectVariables = [...pvs];
+  //       const temp = newProjectVariables[selectedIndex];
+  //       newProjectVariables[selectedIndex] =
+  //         newProjectVariables[selectedIndex + 1];
+  //       newProjectVariables[selectedIndex + 1] = temp;
+  //       setSelectedIndex(selectedIndex + 1);
+  //       return newProjectVariables;
+  //     }
+  //     return pvs;
+  //   });
+  // };
 
-  const handleClose = () => {
-    setProjectVariables(currentProjectVariable ?? []);
-    onClose();
+  const getUserFacingName = (type: VarType): string => {
+    switch (type) {
+      case "attribute_name":
+        return t("Attribute Name");
+      case "choice":
+        return t("Choice");
+      case "color":
+        return t("Color");
+      case "coordinate_system":
+        return t("Coordinate System");
+      case "database_connection":
+        return t("Database Connection");
+      case "datetime":
+        return t("Date and Time");
+      case "file_folder":
+        return t("File or Folder");
+      case "geometry":
+        return t("Geometry");
+      case "message":
+        return t("Message");
+      case "number":
+        return t("Number");
+      case "password":
+        return t("Password");
+      case "reprojection_file":
+        return t("Reprojection File");
+      case "text":
+        return t("Text");
+      case "web_connection":
+        return t("Web Connection");
+      case "yes_no":
+        return t("Yes/No");
+      case "unsupported":
+        return t("Unsupported");
+      default:
+        return t("Unknown");
+    }
   };
-
-  const handleSubmit = () => onSubmit(projectVariables);
 
   const columns: ColumnDef<ProjectVariable>[] = [
     {
       accessorKey: "name",
       header: t("Name"),
-      // cell: ({ getValue }) => formatTimestamp(getValue<string>()),
+      cell: ({ row }) => {
+        const value = row.getValue("name") as string;
+        return (
+          <Input
+            key={row.id}
+            defaultValue={value}
+            onChange={(e) => {
+              e.stopPropagation();
+              debounce(() => {
+                if (!currentProjectVariables) return;
+                const updatedProjectVariable = {
+                  ...currentProjectVariables[row.index],
+                };
+                updatedProjectVariable.name = e.currentTarget.value;
+                console.log("this is a test: ", updatedProjectVariable);
+                onChange(updatedProjectVariable);
+              });
+            }}
+            placeholder={t("Enter name")}
+            disabled={false}
+          />
+        );
+      },
     },
     {
-      accessorKey: "value",
-      header: t("Value"),
+      accessorKey: "defaultValue",
+      header: t("Default Value"),
     },
     {
       accessorKey: "type",
       header: t("Type"),
       // cell: ({ row }) => {
-      //   const value = row.getValue("type");
+      //   const value = row.getValue("type") as VarType;
       //   return (
       //     <Select
       //       defaultValue={value}
       //       onValueChange={(newValue) => {
-      //         const newProjectVariables = [...projectVariables];
-      //         newProjectVariables[row.index].type = newValue;
-      //         setProjectVariables(newProjectVariables);
-      //       }}
-      //     >
+      //         if (!currentProjectVariables) return;
+      //         const updatedProjectVariable = currentProjectVariables[row.index];
+      //         updatedProjectVariable.type = newValue as VarType;
+      //         onChange(updatedProjectVariable);
+      //       }}>
       //       <SelectTrigger className="w-[180px]">
       //         <SelectValue placeholder={t("Select type")} />
       //       </SelectTrigger>
       //       <SelectContent>
-      //         <SelectItem value="text">Text</SelectItem>
-      //         <SelectItem value="number">Number</SelectItem>
-      //         <SelectItem value="boolean">Boolean</SelectItem>
+      //         {allVarTypes.map((type) => (
+      //           <SelectItem value={type}>{getUserFacingName(type)}</SelectItem>
+      //         ))}
       //       </SelectContent>
       //     </Select>
       //   );
@@ -160,9 +203,11 @@ const ProjectVariableDialog: React.FC<Props> = ({
           <Switch
             checked={isChecked}
             onCheckedChange={() => {
-              const newProjectVariables = [...projectVariables];
-              newProjectVariables[row.index].required = !isChecked;
-              setProjectVariables(newProjectVariables);
+              if (!currentProjectVariables) return;
+              const projectVar = { ...currentProjectVariables[row.index] };
+              projectVar.required = !isChecked;
+              console.log(projectVar);
+              onChange(projectVar);
             }}
           />
         );
@@ -172,7 +217,9 @@ const ProjectVariableDialog: React.FC<Props> = ({
   ];
 
   const handleRowSelect = (projectVar: ProjectVariable) => {
-    const index = projectVariables.findIndex((pv) => pv.id === projectVar.id);
+    const index = currentProjectVariables?.findIndex(
+      (pv) => pv.id === projectVar.id,
+    );
     if (index !== -1) {
       setSelectedIndex(index);
     } else {
@@ -181,38 +228,45 @@ const ProjectVariableDialog: React.FC<Props> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="h-[50vh]" size="2xl" position="off-center">
         <div className="flex h-full flex-col">
           <DialogHeader>
             <DialogTitle>{t("Edit Project Variables")}</DialogTitle>
           </DialogHeader>
-          <DialogContentWrapper className="flex-1">
-            <DialogContentSection className="flex flex-row items-center gap-2">
-              <IconButton icon={<Plus />} onClick={handleAdd} />
-              <IconButton icon={<Minus />} onClick={handleDelete} />
-              <IconButton icon={<ArrowUp />} onClick={handleMoveUp} />
-              <IconButton icon={<ArrowDown />} onClick={handleMoveDown} />
+          <div className="flex h-full">
+            <DialogContentSection className="flex-3 bg-card">
+              <DialogContentSection className="flex flex-row items-center gap-2 p-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger>
+                    <IconButton icon={<Plus />} />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent>
+                    {allVarTypes.map((type) => (
+                      <DropdownMenuItem
+                        key={type}
+                        onClick={() => {
+                          onAdd(type);
+                        }}>
+                        {getUserFacingName(type)}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <IconButton icon={<Minus />} onClick={handleDelete} />
+                {/* <IconButton icon={<ArrowUp />} onClick={handleMoveUp} /> */}
+                {/* <IconButton icon={<ArrowDown />} onClick={handleMoveDown} /> */}
+              </DialogContentSection>
+              <DialogContentSection>
+                <ProjectVariablesTable
+                  projectVariables={currentProjectVariables ?? []}
+                  columns={columns}
+                  selectedRow={selectedIndex}
+                  onRowClick={handleRowSelect}
+                />
+              </DialogContentSection>
             </DialogContentSection>
-            <DialogContentSection>
-              <ProjectVariablesTable
-                projectVariables={projectVariables}
-                columns={columns}
-                selectedRow={selectedIndex}
-                onRowClick={handleRowSelect}
-              />
-            </DialogContentSection>
-          </DialogContentWrapper>
-          <DialogFooter className="flex justify-self-end">
-            {/* <Button
-              disabled={buttonDisabled}
-              variant={"outline"}
-              onClick={() => setEditProject(undefined)}
-              >
-              {t("Cancel")}
-              </Button> */}
-            <Button onClick={handleSubmit}>{t("Save")}</Button>
-          </DialogFooter>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
