@@ -68,20 +68,23 @@ func TestParameter_DeclareParameter(t *testing.T) {
 	typ := parameter.TypeText
 	val := "initial value"
 	req := true
+	pub := false
 	p, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
-		ProjectID: pid,
-		Name:      name,
-		Type:      typ,
-		Required:  req,
-		Value:     val,
-		Index:     nil, // let it auto-determine
+		ProjectID:    pid,
+		Name:         name,
+		Type:         typ,
+		Required:     req,
+		Public:       pub,
+		DefaultValue: val,
+		Index:        nil, // let it auto-determine
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
 	assert.Equal(t, name, p.Name())
 	assert.Equal(t, typ, p.Type())
 	assert.Equal(t, req, p.Required())
-	assert.Equal(t, val, p.Value())
+	assert.Equal(t, pub, p.Public())
+	assert.Equal(t, val, p.DefaultValue())
 	assert.Equal(t, 0, p.Index()) // first parameter gets index 0
 }
 
@@ -91,10 +94,10 @@ func TestParameter_DeclareParameter_NonexistentProject(t *testing.T) {
 	// Use a random project ID that doesn't exist
 	nonexistentPID := id.NewProjectID()
 	p, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
-		ProjectID: nonexistentPID,
-		Name:      "param2",
-		Type:      parameter.TypeNumber,
-		Value:     123,
+		ProjectID:    nonexistentPID,
+		Name:         "param2",
+		Type:         parameter.TypeNumber,
+		DefaultValue: 123,
 	})
 	assert.Nil(t, p)
 	assert.Same(t, rerror.ErrNotFound, err)
@@ -105,18 +108,18 @@ func TestParameter_Fetch(t *testing.T) {
 
 	// Create a few parameters
 	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
-		ProjectID: pid,
-		Name:      "param1",
-		Type:      parameter.TypeText,
-		Value:     "val1",
+		ProjectID:    pid,
+		Name:         "param1",
+		Type:         parameter.TypeText,
+		DefaultValue: "val1",
 	})
 	assert.NoError(t, err)
 
 	p2, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
-		ProjectID: pid,
-		Name:      "param2",
-		Type:      parameter.TypeNumber,
-		Value:     42,
+		ProjectID:    pid,
+		Name:         "param2",
+		Type:         parameter.TypeNumber,
+		DefaultValue: 42,
 	})
 	assert.NoError(t, err)
 
@@ -131,18 +134,18 @@ func TestParameter_FetchByProject(t *testing.T) {
 
 	// Create parameters under the project
 	_, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
-		ProjectID: pid,
-		Name:      "param1",
-		Type:      parameter.TypeText,
-		Value:     "val1",
+		ProjectID:    pid,
+		Name:         "param1",
+		Type:         parameter.TypeText,
+		DefaultValue: "val1",
 	})
 	assert.NoError(t, err)
 
 	_, err = i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
-		ProjectID: pid,
-		Name:      "param2",
-		Type:      parameter.TypeNumber,
-		Value:     100,
+		ProjectID:    pid,
+		Name:         "param2",
+		Type:         parameter.TypeNumber,
+		DefaultValue: 100,
 	})
 	assert.NoError(t, err)
 
@@ -157,18 +160,18 @@ func TestParameter_RemoveParameter(t *testing.T) {
 
 	// Create parameters for removal test
 	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
-		ProjectID: pid,
-		Name:      "param1",
-		Type:      parameter.TypeText,
-		Value:     "val1",
+		ProjectID:    pid,
+		Name:         "param1",
+		Type:         parameter.TypeText,
+		DefaultValue: "val1",
 	})
 	assert.NoError(t, err)
 
 	p2, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
-		ProjectID: pid,
-		Name:      "param2",
-		Type:      parameter.TypeText,
-		Value:     "val2",
+		ProjectID:    pid,
+		Name:         "param2",
+		Type:         parameter.TypeText,
+		DefaultValue: "val2",
 	})
 	assert.NoError(t, err)
 
@@ -190,26 +193,26 @@ func TestParameter_UpdateParameterOrder(t *testing.T) {
 
 	// Create parameters in some order: param1 (0), param2 (1), param3 (2)
 	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
-		ProjectID: pid,
-		Name:      "param1",
-		Type:      parameter.TypeText,
-		Value:     "val1",
+		ProjectID:    pid,
+		Name:         "param1",
+		Type:         parameter.TypeText,
+		DefaultValue: "val1",
 	})
 	assert.NoError(t, err)
 
 	p2, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
-		ProjectID: pid,
-		Name:      "param2",
-		Type:      parameter.TypeText,
-		Value:     "val2",
+		ProjectID:    pid,
+		Name:         "param2",
+		Type:         parameter.TypeText,
+		DefaultValue: "val2",
 	})
 	assert.NoError(t, err)
 
 	p3, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
-		ProjectID: pid,
-		Name:      "param3",
-		Type:      parameter.TypeText,
-		Value:     "val3",
+		ProjectID:    pid,
+		Name:         "param3",
+		Type:         parameter.TypeText,
+		DefaultValue: "val3",
 	})
 	assert.NoError(t, err)
 
@@ -234,26 +237,26 @@ func TestParameter_UpdateParameterOrder(t *testing.T) {
 	assert.Equal(t, 2, p2u.Index())
 }
 
-func TestParameter_UpdateParameterValue(t *testing.T) {
+func TestParameter_UpdateParameter(t *testing.T) {
 	i, ctx, _, pid := setupParameterInteractor()
 
 	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
-		ProjectID: pid,
-		Name:      "param1",
-		Type:      parameter.TypeText,
-		Value:     "old value",
+		ProjectID:    pid,
+		Name:         "param1",
+		Type:         parameter.TypeText,
+		DefaultValue: "old value",
 	})
 	assert.NoError(t, err)
 
 	// Update param1's value
 	newVal := "new value"
-	updatedParam, err := i.UpdateParameterValue(ctx, interfaces.UpdateParameterValueParam{
-		ParamID: p1.ID(),
-		Value:   newVal,
+	updatedParam, err := i.UpdateParameter(ctx, interfaces.UpdateParameterParam{
+		ParamID:      p1.ID(),
+		DefaultValue: newVal,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, updatedParam)
-	assert.Equal(t, newVal, updatedParam.Value())
+	assert.Equal(t, newVal, updatedParam.DefaultValue())
 }
 
 func TestParameter_UpdateParameterValue_NotFound(t *testing.T) {
@@ -261,9 +264,9 @@ func TestParameter_UpdateParameterValue_NotFound(t *testing.T) {
 
 	// Try updating a parameter that does not exist
 	nonexistentParamID := id.NewParameterID()
-	updatedParam, err := i.UpdateParameterValue(ctx, interfaces.UpdateParameterValueParam{
-		ParamID: nonexistentParamID,
-		Value:   "something",
+	updatedParam, err := i.UpdateParameter(ctx, interfaces.UpdateParameterParam{
+		ParamID:      nonexistentParamID,
+		DefaultValue: "something",
 	})
 	assert.Nil(t, updatedParam)
 	assert.Same(t, rerror.ErrNotFound, err)

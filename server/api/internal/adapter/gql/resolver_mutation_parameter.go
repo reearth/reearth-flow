@@ -15,12 +15,13 @@ func (r *mutationResolver) DeclareParameter(ctx context.Context, projectID gqlmo
 	}
 
 	res, err := usecases(ctx).Parameter.DeclareParameter(ctx, interfaces.DeclareParameterParam{
-		Index:     input.Index,
-		Name:      input.Name,
-		ProjectID: pid,
-		Required:  input.Required,
-		Type:      gqlmodel.FromParameterType(input.Type),
-		Value:     input.Value,
+		Index:        input.Index,
+		Name:         input.Name,
+		ProjectID:    pid,
+		Required:     input.Required,
+		Public:       input.Public,
+		Type:         gqlmodel.FromParameterType(input.Type),
+		DefaultValue: input.DefaultValue,
 	})
 	if err != nil {
 		return nil, err
@@ -29,15 +30,19 @@ func (r *mutationResolver) DeclareParameter(ctx context.Context, projectID gqlmo
 	return gqlmodel.ToParameter(res), nil
 }
 
-func (r *mutationResolver) UpdateParameterValue(ctx context.Context, paramID gqlmodel.ID, input gqlmodel.UpdateParameterValueInput) (*gqlmodel.Parameter, error) {
+func (r *mutationResolver) UpdateParameter(ctx context.Context, paramID gqlmodel.ID, input gqlmodel.UpdateParameterInput) (*gqlmodel.Parameter, error) {
 	pid, err := gqlmodel.ToID[id.Parameter](paramID)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := usecases(ctx).Parameter.UpdateParameterValue(ctx, interfaces.UpdateParameterValueParam{
-		ParamID: pid,
-		Value:   input.Value,
+	res, err := usecases(ctx).Parameter.UpdateParameter(ctx, interfaces.UpdateParameterParam{
+		ParamID:       pid,
+		DefaultValue:  &input.DefaultValue,
+		PublicValue:   input.Public,
+		RequiredValue: input.Required,
+		NameValue:     input.Name,
+		TypeValue:     gqlmodel.FromParameterType(input.Type),
 	})
 	if err != nil {
 		return nil, err

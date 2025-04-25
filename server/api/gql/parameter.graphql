@@ -5,9 +5,10 @@ type Parameter {
   name: String!
   projectId: ID!
   required: Boolean!
+  public: Boolean!
   type: ParameterType!
   updatedAt: DateTime!
-  value: Any!
+  defaultValue: Any!
 }
 
 enum ParameterType {
@@ -34,12 +35,17 @@ input DeclareParameterInput {
   name: String!
   type: ParameterType!
   required: Boolean!
-  value: Any
+  public: Boolean!
+  defaultValue: Any
   index: Int
 }
 
-input UpdateParameterValueInput {
-  value: Any!
+input UpdateParameterInput {
+  defaultValue: Any!
+  name: String!
+  required: Boolean!
+  public: Boolean!
+  type: ParameterType!
 }
 
 input UpdateParameterOrderInput {
@@ -60,10 +66,7 @@ extend type Query {
 extend type Mutation {
   declareParameter(projectId: ID!, input: DeclareParameterInput!): Parameter!
 
-  updateParameterValue(
-    paramId: ID!
-    input: UpdateParameterValueInput!
-  ): Parameter!
+  updateParameter(paramId: ID!, input: UpdateParameterInput!): Parameter!
 
   updateParameterOrder(
     projectId: ID!

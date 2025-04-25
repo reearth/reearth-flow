@@ -99,11 +99,12 @@ type CreateWorkspacePayload struct {
 }
 
 type DeclareParameterInput struct {
-	Name     string        `json:"name"`
-	Type     ParameterType `json:"type"`
-	Required bool          `json:"required"`
-	Value    interface{}   `json:"value,omitempty"`
-	Index    *int          `json:"index,omitempty"`
+	Name         string        `json:"name"`
+	Type         ParameterType `json:"type"`
+	Required     bool          `json:"required"`
+	Public       bool          `json:"public"`
+	DefaultValue interface{}   `json:"defaultValue,omitempty"`
+	Index        *int          `json:"index,omitempty"`
 }
 
 type DeleteDeploymentInput struct {
@@ -266,15 +267,16 @@ type Pagination struct {
 }
 
 type Parameter struct {
-	CreatedAt time.Time     `json:"createdAt"`
-	ID        ID            `json:"id"`
-	Index     int           `json:"index"`
-	Name      string        `json:"name"`
-	ProjectID ID            `json:"projectId"`
-	Required  bool          `json:"required"`
-	Type      ParameterType `json:"type"`
-	UpdatedAt time.Time     `json:"updatedAt"`
-	Value     interface{}   `json:"value"`
+	CreatedAt    time.Time     `json:"createdAt"`
+	ID           ID            `json:"id"`
+	Index        int           `json:"index"`
+	Name         string        `json:"name"`
+	ProjectID    ID            `json:"projectId"`
+	Required     bool          `json:"required"`
+	Public       bool          `json:"public"`
+	Type         ParameterType `json:"type"`
+	UpdatedAt    time.Time     `json:"updatedAt"`
+	DefaultValue interface{}   `json:"defaultValue"`
 }
 
 type Project struct {
@@ -464,13 +466,17 @@ type UpdateMemberOfWorkspacePayload struct {
 	Workspace *Workspace `json:"workspace"`
 }
 
+type UpdateParameterInput struct {
+	DefaultValue interface{}   `json:"defaultValue"`
+	Name         string        `json:"name"`
+	Required     bool          `json:"required"`
+	Public       bool          `json:"public"`
+	Type         ParameterType `json:"type"`
+}
+
 type UpdateParameterOrderInput struct {
 	ParamID  ID  `json:"paramId"`
 	NewIndex int `json:"newIndex"`
-}
-
-type UpdateParameterValueInput struct {
-	Value interface{} `json:"value"`
 }
 
 type UpdateProjectInput struct {

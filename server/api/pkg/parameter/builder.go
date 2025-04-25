@@ -67,7 +67,12 @@ func (b *Builder) UpdatedAt(t time.Time) *Builder {
 	return b
 }
 
-func (b *Builder) Value(value interface{}) *Builder {
-	b.p.value = value
+func (b *Builder) DefaultValue(defaultValue any) *Builder {
+	b.p.defaultValue = defaultValue
+	return b
+}
+
+func (b *Builder) Public(public bool) *Builder {
+	b.p.public = public
 	return b
 }

@@ -10,15 +10,16 @@ func ToParameter(p *parameter.Parameter) *Parameter {
 	}
 
 	return &Parameter{
-		CreatedAt: p.CreatedAt(),
-		ID:        IDFrom(p.ID()),
-		Index:     p.Index(),
-		Name:      p.Name(),
-		ProjectID: IDFrom(p.ProjectID()),
-		Required:  p.Required(),
-		Type:      ToParameterType(p.Type()),
-		UpdatedAt: p.UpdatedAt(),
-		Value:     p.Value(),
+		CreatedAt:    p.CreatedAt(),
+		ID:           IDFrom(p.ID()),
+		Index:        p.Index(),
+		Name:         p.Name(),
+		ProjectID:    IDFrom(p.ProjectID()),
+		Required:     p.Required(),
+		Public:       p.Public(),
+		Type:         ToParameterType(p.Type()),
+		UpdatedAt:    p.UpdatedAt(),
+		DefaultValue: p.DefaultValue(),
 	}
 }
 

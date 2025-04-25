@@ -79,7 +79,8 @@ func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.Decla
 		Name(param.Name).
 		Type(param.Type).
 		Required(param.Required).
-		Value(param.Value).
+		Public(param.Public).
+		DefaultValue(param.DefaultValue).
 		Index(index).
 		Build()
 	if err != nil {
@@ -212,7 +213,7 @@ func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.U
 	return params, nil
 }
 
-func (i *Parameter) UpdateParameterValue(ctx context.Context, param interfaces.UpdateParameterValueParam) (*parameter.Parameter, error) {
+func (i *Parameter) UpdateParameter(ctx context.Context, param interfaces.UpdateParameterParam) (*parameter.Parameter, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, err
 	}
@@ -237,7 +238,11 @@ func (i *Parameter) UpdateParameterValue(ctx context.Context, param interfaces.U
 		return nil, rerror.ErrNotFound
 	}
 
-	p.SetValue(param.Value)
+	p.SetDefaultValue(param.DefaultValue)
+	p.SetName(param.NameValue)
+	p.SetType(param.TypeValue)
+	p.SetRequired(param.RequiredValue)
+	p.SetPublic(param.PublicValue)
 
 	if err := i.paramRepo.Save(ctx, p); err != nil {
 		return nil, err
