@@ -1,10 +1,18 @@
-import { Eye, GearFine, Graph, Trash } from "@phosphor-icons/react";
+import {
+  Copy,
+  Eye,
+  GearFine,
+  Graph,
+  Scissors,
+  Trash,
+} from "@phosphor-icons/react";
 import { useCallback, useMemo } from "react";
 
 import {
   ContextMenu,
   ContextMenuItemType,
   ContextMenuMeta,
+  ContextMenuShortcut,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { isActionNodeType, Node, NodeChange } from "@flow/types";
@@ -18,6 +26,8 @@ type Props = {
     nodeId: string,
     subworkflowId?: string,
   ) => void;
+  onCopy?: () => void;
+  onCut?: () => void;
   onClose: () => void;
 };
 
@@ -26,6 +36,8 @@ const NodeContextMenu: React.FC<Props> = ({
   contextMenu,
   onNodesChange,
   onSecondaryNodeAction,
+  onCopy,
+  onCut,
   onClose,
 }) => {
   const t = useT();
@@ -34,10 +46,18 @@ const NodeContextMenu: React.FC<Props> = ({
     onNodesChange?.([{ id, type: "remove" }]);
   }, [id, onNodesChange]);
 
-  const handleSecondaryNodeAction = useCallback(() => {
-    if (!id) return;
-    onSecondaryNodeAction?.(undefined, id, node.data.subworkflowId);
-  }, [id, node.data.subworkflowId, onSecondaryNodeAction]);
+  const handleSecondaryNodeAction = useCallback(
+    (allowNodeSettings?: boolean) => {
+      if (!id) return;
+      if (allowNodeSettings) {
+        onSecondaryNodeAction?.(undefined, id, undefined);
+        return;
+      }
+
+      onSecondaryNodeAction?.(undefined, id, node.data.subworkflowId);
+    },
+    [id, node.data.subworkflowId, onSecondaryNodeAction],
+  );
 
   const menuItems = useMemo(() => {
     const wrapWithClose = (callback: () => void) => () => {
@@ -46,23 +66,48 @@ const NodeContextMenu: React.FC<Props> = ({
     };
 
     const items: ContextMenuItemType[] = [
-      node.type === "subworkflow"
-        ? {
-            type: "action",
-            props: {
-              label: t("Open Subworkflow Canvas"),
-              icon: <Graph weight="light" />,
-              onCallback: wrapWithClose(handleSecondaryNodeAction),
+      {
+        type: "action",
+        props: {
+          label: t("Copy"),
+          icon: <Copy weight="light" />,
+          shortcut: (
+            <ContextMenuShortcut keyBinding={{ key: "c", commandKey: true }} />
+          ),
+          onCallback: wrapWithClose(onCopy ?? (() => {})),
+        },
+      },
+      {
+        type: "action",
+        props: {
+          label: t("Cut"),
+          icon: <Scissors weight="light" />,
+          shortcut: (
+            <ContextMenuShortcut keyBinding={{ key: "x", commandKey: true }} />
+          ),
+          onCallback: wrapWithClose(onCut ?? (() => {})),
+        },
+      },
+      ...(node.type === "subworkflow"
+        ? [
+            {
+              type: "action" as const,
+              props: {
+                label: t("Open Subworkflow Canvas"),
+                icon: <Graph weight="light" />,
+                onCallback: wrapWithClose(handleSecondaryNodeAction),
+              },
             },
-          }
-        : {
-            type: "action",
-            props: {
-              label: t("Node Settings"),
-              icon: <GearFine weight="light" />,
-              onCallback: wrapWithClose(handleSecondaryNodeAction),
-            },
-          },
+          ]
+        : []),
+      {
+        type: "action",
+        props: {
+          label: t("Node Settings"),
+          icon: <GearFine weight="light" />,
+          onCallback: wrapWithClose(() => handleSecondaryNodeAction(true)),
+        },
+      },
       ...(isActionNodeType(node.type)
         ? [
             {
@@ -91,7 +136,15 @@ const NodeContextMenu: React.FC<Props> = ({
     ];
 
     return items;
-  }, [t, node, handleSecondaryNodeAction, handleNodeDelete, onClose]);
+  }, [
+    t,
+    node,
+    onCopy,
+    onCut,
+    handleSecondaryNodeAction,
+    handleNodeDelete,
+    onClose,
+  ]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;
 };

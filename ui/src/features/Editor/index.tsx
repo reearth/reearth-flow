@@ -65,6 +65,7 @@ export default function Editor({
     handleDebugRunStop,
     handleLayoutChange,
     handleCopy,
+    handleCut,
     handlePaste,
   } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
 
@@ -88,7 +89,6 @@ export default function Editor({
           onWorkflowDeployment={handleWorkflowDeployment}
           onWorkflowClose={handleWorkflowClose}
           onWorkflowChange={handleWorkflowChange}
-          onWorkflowRename={handleWorkflowRename}
           onDebugRunStart={handleDebugRunStart}
           onDebugRunStop={handleDebugRunStop}
         />
@@ -122,6 +122,7 @@ export default function Editor({
                 onEdgesChange={handleEdgesChange}
                 onEdgeHover={handleEdgeHover}
                 onCopy={handleCopy}
+                onCut={handleCut}
                 onPaste={handlePaste}
               />
             </OverlayUI>
@@ -135,6 +136,7 @@ export default function Editor({
           <ParamsDialog
             selected={locallyLockedNode}
             onDataSubmit={handleNodeDataUpdate}
+            onWorkflowRename={handleWorkflowRename}
           />
         </div>
       </EditorProvider>

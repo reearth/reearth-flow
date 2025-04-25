@@ -19,9 +19,14 @@ type Props = {
     dataField: "params" | "customizations",
     updatedValue: any,
   ) => void;
+  onWorkflowRename?: (id: string, name: string) => void;
 };
 
-const ParamsDialog: React.FC<Props> = ({ selected, onDataSubmit }) => {
+const ParamsDialog: React.FC<Props> = ({
+  selected,
+  onDataSubmit,
+  onWorkflowRename,
+}) => {
   const t = useT();
   // This is a little hacky, but it works. We need to dispatch a click event to the react-flow__pane
   // to unlock the node when user wants to close the right panel. - @KaWaite
@@ -76,6 +81,7 @@ const ParamsDialog: React.FC<Props> = ({ selected, onDataSubmit }) => {
             nodeMeta={selected.data}
             nodeType={selected.type}
             onUpdate={handleUpdate}
+            onWorkflowRename={onWorkflowRename}
           />
         )}
       </DialogContent>

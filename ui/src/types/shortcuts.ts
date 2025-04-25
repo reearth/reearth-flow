@@ -20,6 +20,7 @@ export type EditorKeys =
 
 export type CanvasKeys =
   | "c" // w CMD = Copy, wout CMD = left panel canvas navigator
+  | "x" // cut
   | "v" // paste
   | "z" // w CMD = undo, w CMD + SHIFT = redo
   | "+" // zoom in
@@ -34,6 +35,7 @@ type PossibleActions =
   | "zoomOut"
   | "fitView"
   | "copy"
+  | "cut"
   | "paste"
   | "undo"
   | "redo"
@@ -87,6 +89,7 @@ export const CanvasKeyBindings: Partial<
   Record<PossibleActions, KeyBinding<CanvasKeys>>
 > = {
   copy: { key: "c", commandKey: true },
+  cut: { key: "x", commandKey: true },
   paste: { key: "v", commandKey: true },
   undo: { key: "z", commandKey: true },
   redo: { key: "z", commandKey: true, shiftKey: true },

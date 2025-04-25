@@ -1,4 +1,11 @@
-import { addEdge, useViewport, XYPosition } from "@xyflow/react";
+import {
+  addEdge,
+  EdgeChange,
+  getNodesBounds,
+  useReactFlow,
+  useViewport,
+  XYPosition,
+} from "@xyflow/react";
 import { useCallback } from "react";
 
 import { useCopyPaste } from "@flow/hooks/useCopyPaste";
@@ -16,6 +23,7 @@ export default ({
   handleNodesAdd,
   handleNodesChange,
   handleEdgesAdd,
+  handleEdgesChange,
 }: {
   nodes: Node[];
   edges: Edge[];
@@ -28,11 +36,13 @@ export default ({
   handleNodesAdd: (newNodes: Node[]) => void;
   handleNodesChange: (changes: NodeChange[]) => void;
   handleEdgesAdd: (newEdges: Edge[]) => void;
+  handleEdgesChange: (changes: EdgeChange[]) => void;
 }) => {
   const { copy, paste } = useCopyPaste();
   const { toast } = useToast();
   const t = useT();
   const { x, y, zoom } = useViewport();
+  const { screenToFlowPosition } = useReactFlow();
 
   const newEdgeCreation = useCallback(
     (pastedEdges: Edge[], oldNodes: Node[], newNodes: Node[]): Edge[] => {
@@ -61,43 +71,72 @@ export default ({
     [],
   );
 
-  const newNodeCreation = useCallback(
-    (pastedNodes: Node[], mousePosition?: XYPosition): Node[] => {
-      const newNodes: Node[] = [];
-      const parentIdMapArray: { prevId: string; newId: string }[] = [];
-
+  const calculateOffset = useCallback(
+    (
+      topLevelNodes: Node[],
+      mousePosition?: XYPosition,
+      isCutByShortCut?: boolean,
+    ) => {
       let offsetX = 0;
       let offsetY = 0;
-
+      const bounds = getNodesBounds(topLevelNodes);
       if (mousePosition) {
         const reactFlowPosition = {
           x: (mousePosition.x - x) / zoom,
           y: (mousePosition.y - y) / zoom,
         };
 
-        let minX = Infinity;
-        let minY = Infinity;
+        offsetX = reactFlowPosition.x - bounds.x;
+        offsetY = reactFlowPosition.y - bounds.y;
+      } else if (isCutByShortCut && !mousePosition) {
+        const viewportCenter = screenToFlowPosition({
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+        });
 
-        for (const node of pastedNodes) {
-          if (!node.parentId) {
-            if (node.position.x < minX) minX = node.position.x;
-            if (node.position.y < minY) minY = node.position.y;
-          }
-        }
+        const nodesCenterX = bounds.x + bounds.width / 2;
+        const nodesCenterY = bounds.y + bounds.height / 2;
 
-        offsetX = reactFlowPosition.x - minX;
-        offsetY = reactFlowPosition.y - minY;
+        offsetX = viewportCenter.x - nodesCenterX;
+        offsetY = viewportCenter.y - nodesCenterY;
       } else {
+        // if NOT a child of a batch, offset position for user's benefit
         offsetX = 25;
         offsetY = 25;
       }
 
+      return { offsetX, offsetY };
+    },
+    [screenToFlowPosition, x, y, zoom],
+  );
+
+  const newNodeCreation = useCallback(
+    (
+      pastedNodes: Node[],
+      mousePosition?: XYPosition,
+      isCutByShortCut?: boolean,
+    ): Node[] => {
+      const newNodes: Node[] = [];
+      const parentIdMapArray: { prevId: string; newId: string }[] = [];
+
+      const nodesToCalculateOffset = pastedNodes.filter(
+        (node) => !node.parentId,
+      );
+
+      const positionOffset = calculateOffset(
+        nodesToCalculateOffset,
+        mousePosition,
+        isCutByShortCut,
+      );
+
       for (const n of pastedNodes) {
-        // if NOT a child of a batch, offset position for user's benefit
         const newId = generateUUID();
         const newPosition = n.parentId
           ? { x: n.position.x, y: n.position.y }
-          : { x: n.position.x + offsetX, y: n.position.y + offsetY };
+          : {
+              x: n.position.x + positionOffset.offsetX,
+              y: n.position.y + positionOffset.offsetY,
+            };
 
         const newNode = {
           ...n,
@@ -108,18 +147,6 @@ export default ({
         };
         if (n.type === "batch") {
           parentIdMapArray.push({ prevId: n.id, newId });
-
-          nodes.forEach((child) => {
-            if (child.parentId === n.id) {
-              const childNewNode = {
-                ...child,
-                id: generateUUID(),
-                parentId: newId,
-              };
-
-              newNodes.push(childNewNode);
-            }
-          });
         }
 
         newNodes.push(newNode);
@@ -139,7 +166,7 @@ export default ({
 
       return reBatchedNodes;
     },
-    [nodes, x, y, zoom],
+    [calculateOffset],
   );
   const newWorkflowCreation = useCallback(
     (nodes: Node[], pastedWorkflows: Workflow[]) => {
@@ -221,46 +248,134 @@ export default ({
     [],
   );
 
-  const handleCopy = useCallback(async () => {
+  const prepareCopyData = useCallback(async () => {
     const selected: { nodes: Node[]; edges: Edge[] } | undefined = {
       nodes: nodes.filter((n) => n.selected),
       edges: edges.filter((e) => e.selected),
     };
     let referencedWorkflows: Workflow[] = [];
-    if (selected.nodes.some((n) => n.type === "reader"))
+
+    if (selected.nodes.length === 0 && selected.edges.length === 0) return;
+
+    const processedNodeIds = new Set();
+    const nodesToProcess = [...selected.nodes];
+    const edgesToProcess = [...selected.edges];
+
+    selected.nodes.forEach((node) => {
+      processedNodeIds.add(node.id);
+    });
+
+    const batchNodeIds = selected.nodes
+      .filter((node) => node.type === "batch")
+      .map((node) => node.id);
+
+    nodes.forEach((node) => {
+      if (
+        node.parentId &&
+        batchNodeIds.includes(node.parentId) &&
+        !processedNodeIds.has(node.id)
+      ) {
+        nodesToProcess.push(node);
+        processedNodeIds.add(node.id);
+      }
+    });
+
+    const processedEdgeIds = new Set(selected.edges.map((edge) => edge.id));
+
+    edges.forEach((edge) => {
+      if (
+        (processedNodeIds.has(edge.source) ||
+          processedNodeIds.has(edge.target)) &&
+        !processedEdgeIds.has(edge.id)
+      ) {
+        edgesToProcess.push(edge);
+        processedEdgeIds.add(edge.id);
+      }
+    });
+
+    if (nodesToProcess.some((n) => n.type === "subworkflow")) {
+      referencedWorkflows = collectSubworkflows(nodesToProcess, rawWorkflows);
+      if (referencedWorkflows.length === 0) return;
+    }
+
+    return {
+      nodes: nodesToProcess,
+      edges: edgesToProcess,
+      workflows: referencedWorkflows,
+      copiedAt: Date.now(),
+    };
+  }, [nodes, edges, collectSubworkflows, rawWorkflows]);
+
+  const handleCopy = useCallback(async () => {
+    const copyData = await prepareCopyData();
+    if (!copyData) return;
+
+    if (copyData.nodes.some((n) => n.type === "reader")) {
       return toast({
         title: t("Reader node cannot be copied"),
         description: t("Only one reader can be present in any project."),
         variant: "default",
       });
-
-    if (selected.nodes.length === 0 && selected.edges.length === 0) return;
-
-    if (selected.nodes.some((n) => n.type === "subworkflow")) {
-      referencedWorkflows = collectSubworkflows(selected.nodes, rawWorkflows);
-      if (referencedWorkflows.length === 0) return;
     }
 
     await copy({
-      nodes: selected.nodes,
-      edges: selected.edges,
-      workflows: referencedWorkflows,
-      copiedAt: Date.now(),
+      ...copyData,
     });
-  }, [nodes, edges, collectSubworkflows, copy, rawWorkflows, toast, t]);
+  }, [copy, prepareCopyData, toast, t]);
 
+  const handleCut = useCallback(
+    async (isCutByShortCut?: boolean) => {
+      const cutData = await prepareCopyData();
+      if (!cutData) return;
+
+      await copy({
+        ...cutData,
+        isCutByShortCut,
+      });
+
+      const nodeChanges: NodeChange[] = cutData.nodes.map((n) => ({
+        id: n.id,
+        type: "remove",
+      }));
+
+      const edgeChanges: EdgeChange[] = cutData.edges.map((e) => ({
+        id: e.id,
+        type: "remove",
+      }));
+
+      handleNodesChange(nodeChanges);
+      handleEdgesChange(edgeChanges);
+    },
+    [prepareCopyData, handleNodesChange, handleEdgesChange, copy],
+  );
   const handlePaste = useCallback(
     async (mousePosition?: XYPosition) => {
       const {
         nodes: pastedNodes,
         edges: pastedEdges,
         workflows: pastedWorkflows,
+        isCutByShortCut,
       } = (await paste()) || {
         nodes: [],
         edges: [],
       };
+      // Check for cut to ensure only one reader can be pasted
+      if (
+        pastedNodes.some((p: Node) => p.type === "reader") &&
+        nodes.some((n) => n.type === "reader")
+      ) {
+        return toast({
+          title: t("Reader node cannot be pasted"),
+          description: t("Only one reader can be present in any project."),
+          variant: "default",
+        });
+      }
 
-      const newNodes = newNodeCreation(pastedNodes, mousePosition);
+      const newNodes = newNodeCreation(
+        pastedNodes,
+        mousePosition,
+        isCutByShortCut,
+      );
       const newEdges = newEdgeCreation(pastedEdges, pastedNodes, newNodes);
       const { newWorkflows, processedNewNodes } = newWorkflowCreation(
         newNodes,
@@ -304,11 +419,14 @@ export default ({
       newEdgeCreation,
       newWorkflowCreation,
       handleWorkflowUpdate,
+      t,
+      toast,
     ],
   );
 
   return {
     handleCopy,
+    handleCut,
     handlePaste,
   };
 };

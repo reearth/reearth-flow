@@ -51,7 +51,19 @@ impl BroadcastGroupManager {
                     .unwrap_or(false);
 
                 if !valid {
-                    self.doc_to_id_map.remove(doc_id);
+                    tokio::time::sleep(Duration::from_millis(500)).await;
+
+                    let valid_recheck = self
+                        .redis_store
+                        .check_stream_exists(&doc_name)
+                        .await
+                        .unwrap_or(false);
+
+                    if !valid_recheck {
+                        self.doc_to_id_map.remove(doc_id);
+                    } else {
+                        return Ok(group_clone);
+                    }
                 } else {
                     return Ok(group_clone);
                 }
@@ -84,6 +96,89 @@ impl BroadcastGroupManager {
             }
         };
 
+        let mut start_id = "0".to_string();
+        let batch_size = 2048;
+
+        let mut lock_value: Option<String> = None;
+
+        let awareness_guard = awareness.write().await;
+        let mut txn = awareness_guard.doc().transact_mut();
+
+        loop {
+            match self
+                .redis_store
+                .read_stream_data_in_batches(
+                    doc_id,
+                    batch_size,
+                    &start_id,
+                    start_id == "0",
+                    false,
+                    &mut lock_value,
+                )
+                .await
+            {
+                Ok((updates, last_id)) => {
+                    if updates.is_empty() {
+                        if start_id != "0" {
+                            if let Err(e) = self
+                                .redis_store
+                                .read_stream_data_in_batches(
+                                    doc_id,
+                                    1,
+                                    &last_id,
+                                    false,
+                                    true,
+                                    &mut lock_value,
+                                )
+                                .await
+                            {
+                                warn!("Failed to release lock in final batch: {}", e);
+                            }
+                        }
+                        break;
+                    }
+
+                    for update_data in &updates {
+                        if let Ok(update) = Update::decode_v1(update_data) {
+                            if let Err(e) = txn.apply_update(update) {
+                                warn!("Failed to apply Redis update: {}", e);
+                            }
+                        }
+                    }
+
+                    if last_id == start_id {
+                        if let Err(e) = self
+                            .redis_store
+                            .read_stream_data_in_batches(
+                                doc_id,
+                                1,
+                                &last_id,
+                                false,
+                                true,
+                                &mut lock_value,
+                            )
+                            .await
+                        {
+                            warn!("Failed to release lock in final batch: {}", e);
+                        }
+                        break;
+                    }
+
+                    start_id = last_id;
+                }
+                Err(e) => {
+                    warn!(
+                        "Failed to read updates from Redis stream for document '{}': {}",
+                        doc_id, e
+                    );
+                    break;
+                }
+            }
+        }
+
+        drop(txn);
+        drop(awareness_guard);
+
         if need_initial_save {
             let doc_id_clone = doc_id.to_string();
             let store_clone = Arc::clone(&self.store);
@@ -98,9 +193,12 @@ impl BroadcastGroupManager {
                 let update = txn.encode_diff_v1(&StateVector::default());
                 let update_bytes = bytes::Bytes::from(update);
 
-                let _ = store_clone
+                if let Err(e) = store_clone
                     .push_update(&doc_id_clone, &update_bytes, &redis_store_clone)
-                    .await;
+                    .await
+                {
+                    error!("Failed to push initial update to Redis: {}", e);
+                }
             });
         }
 
@@ -152,6 +250,7 @@ impl BroadcastPool {
 
     pub async fn get_group(&self, doc_id: &str) -> Result<Arc<BroadcastGroup>> {
         if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
+            tracing::info!("Found group for doc_id: {}", doc_id);
             return Ok(group.clone());
         }
 
@@ -195,41 +294,96 @@ impl BroadcastPool {
                 let gcs_state = temp_txn.state_vector();
                 drop(temp_txn);
 
-                match self
-                    .manager
-                    .redis_store
-                    .read_all_stream_data(&doc_name)
-                    .await
-                {
-                    Ok(updates) if !updates.is_empty() => {
-                        let awareness = group.awareness().write().await;
-                        let mut txn = awareness.doc().transact_mut();
+                let mut start_id = "0".to_string();
+                let batch_size = 3000;
 
-                        for update_data in &updates {
-                            match Update::decode_v1(update_data) {
-                                Ok(update) => {
-                                    if let Err(e) = txn.apply_update(update) {
-                                        warn!("Failed to apply Redis update: {}", e);
+                let mut lock_value: Option<String> = None;
+
+                let awareness = group.awareness().write().await;
+                let mut txn = awareness.doc().transact_mut();
+
+                loop {
+                    match self
+                        .manager
+                        .redis_store
+                        .read_stream_data_in_batches(
+                            &doc_name,
+                            batch_size,
+                            &start_id,
+                            start_id == "0",
+                            false,
+                            &mut lock_value,
+                        )
+                        .await
+                    {
+                        Ok((updates, last_id)) => {
+                            if updates.is_empty() {
+                                if start_id != "0" {
+                                    if let Err(e) = self
+                                        .manager
+                                        .redis_store
+                                        .read_stream_data_in_batches(
+                                            &doc_name,
+                                            1,
+                                            &last_id,
+                                            false,
+                                            true,
+                                            &mut lock_value,
+                                        )
+                                        .await
+                                    {
+                                        warn!("Failed to release lock in final batch: {}", e);
                                     }
                                 }
-                                Err(e) => {
-                                    warn!("Failed to decode Redis update: {}", e);
+                                break;
+                            }
+
+                            for update_data in &updates {
+                                match Update::decode_v1(update_data) {
+                                    Ok(update) => {
+                                        if let Err(e) = txn.apply_update(update) {
+                                            warn!("Failed to apply Redis update: {}", e);
+                                        }
+                                    }
+                                    Err(e) => {
+                                        warn!("Failed to decode Redis update: {}", e);
+                                    }
                                 }
                             }
+
+                            if last_id == start_id {
+                                if let Err(e) = self
+                                    .manager
+                                    .redis_store
+                                    .read_stream_data_in_batches(
+                                        &doc_name,
+                                        1,
+                                        &last_id,
+                                        false,
+                                        true,
+                                        &mut lock_value,
+                                    )
+                                    .await
+                                {
+                                    warn!("Failed to release lock in final batch: {}", e);
+                                }
+                                break;
+                            }
+
+                            start_id = last_id;
                         }
-                        drop(txn);
-                        drop(awareness);
-                    }
-                    Ok(_) => {
-                        debug!("No Redis updates found for document '{}'", doc_id);
-                    }
-                    Err(e) => {
-                        warn!(
-                            "Failed to read updates from Redis stream for document '{}': {}",
-                            doc_id, e
-                        );
+                        Err(e) => {
+                            warn!(
+                                "Failed to read updates from Redis stream for document '{}': {}",
+                                doc_id, e
+                            );
+                            break;
+                        }
                     }
                 }
+
+                drop(txn);
+                drop(awareness);
 
                 let lock_id = format!("gcs:lock:{}", doc_name);
                 let instance_id = format!("sync-{}", rand::random::<u64>());
@@ -287,6 +441,11 @@ impl BroadcastPool {
     }
 
     pub async fn cleanup_empty_group(&self, doc_id: &str) -> Result<()> {
+        if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
+            if group.connection_count() > 0 {
+                return Ok(());
+            }
+        }
         match self.cleanup_locks.entry(doc_id.to_string()) {
             dashmap::mapref::entry::Entry::Occupied(_) => {
                 return Ok(());

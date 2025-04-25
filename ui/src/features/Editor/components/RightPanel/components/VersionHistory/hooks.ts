@@ -2,7 +2,9 @@ import { useCallback, useState } from "react";
 import { Doc } from "yjs";
 import * as Y from "yjs";
 
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useDocument } from "@flow/lib/gql/document/useApi";
+import { useT } from "@flow/lib/i18n";
 
 export default ({
   projectId,
@@ -27,6 +29,8 @@ export default ({
     useState<boolean>(false);
   const [isReverting, setIsReverting] = useState<boolean>(false);
   const snapshotOrigin = "snapshot-rollback";
+  const { toast } = useToast();
+  const t = useT();
   // Note: This function comes from this forum: https://discuss.yjs.dev/t/is-there-a-way-to-revert-to-a-specific-version/379/6
   function revertUpdate(
     doc: Y.Doc,
@@ -73,6 +77,7 @@ export default ({
         projectId,
         selectedProjectSnapshotVersion,
       );
+
       const updates = rollbackData.projectDocument?.updates;
 
       if (!updates || !updates.length || !yDoc) {
@@ -99,6 +104,14 @@ export default ({
       setOpenVersionChangeDialog(false);
     } catch (error) {
       console.error("Project Rollback Failed:", error);
+      setOpenVersionChangeDialog(false);
+      return toast({
+        title: t("Project Rollback Failed"),
+        description: t(
+          "Project cannot be rollbacked to this version. An error has occured.",
+        ),
+        variant: "destructive",
+      });
     }
     setIsReverting(false);
   }, [
@@ -107,6 +120,8 @@ export default ({
     setIsReverting,
     projectId,
     yDoc,
+    t,
+    toast,
   ]);
   const latestProjectSnapshotVersion = projectDocument;
   return {

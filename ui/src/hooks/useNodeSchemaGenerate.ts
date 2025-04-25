@@ -100,6 +100,22 @@ export default (
           builtin: true,
         };
         break;
+
+      case "subworkflow":
+        resultAction = {
+          ...nodeMeta,
+          name: t("Subworkflow node"),
+          description: t(
+            "Subworkflow nodes are for creating subworkflows and grouping those workflows together.",
+          ),
+          type: "subworkflow",
+          customizations: baseCustomizationSchema,
+          inputPorts: ["input"],
+          outputPorts: ["output"],
+          categories: ["organization"],
+          builtin: true,
+        };
+        break;
     }
   }
 

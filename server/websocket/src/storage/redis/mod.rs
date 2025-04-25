@@ -5,7 +5,9 @@ use deadpool_redis::{Config, Pool};
 use redis::AsyncCommands;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tracing::debug;
+use tracing::{debug, error};
+use uuid;
+
 type RedisField = (String, Bytes);
 type RedisFields = Vec<RedisField>;
 type RedisStreamMessage = (String, RedisFields);
@@ -413,6 +415,7 @@ impl RedisStore {
     pub async fn safe_delete_stream(&self, doc_id: &str, instance_id: &str) -> Result<()> {
         let stream_key = format!("yjs:stream:{}", doc_id);
         let instances_key = format!("doc:instances:{}", doc_id);
+        let read_lock_key = format!("read:lock:{}", doc_id);
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -420,44 +423,58 @@ impl RedisStore {
 
         let mut conn = self.pool.get().await?;
 
+        let read_lock_exists: bool = redis::cmd("EXISTS")
+            .arg(&read_lock_key)
+            .query_async(&mut *conn)
+            .await?;
+
+        if read_lock_exists {
+            return Ok(());
+        }
+
         let script = redis::Script::new(
             r#"
             local lock_key = KEYS[1]
             local instances_key = KEYS[2]
             local stream_key = KEYS[3]
+            local read_lock_key = KEYS[4]
             
-                local instance_id = ARGV[1]
-                local now = tonumber(ARGV[2])
-                local timeout = tonumber(ARGV[3])
-                
-                if redis.call('GET', lock_key) ~= instance_id then
-                    if redis.call('SET', lock_key, instance_id, 'NX', 'EX', 10) == false then
-                        return {acquired=0, deleted=0, reason="lock_failed"}
-                    end
+            local instance_id = ARGV[1]
+            local now = tonumber(ARGV[2])
+            local timeout = tonumber(ARGV[3])
+            
+            if redis.call('EXISTS', read_lock_key) == 1 then
+                return {acquired=0, deleted=0, reason="read_in_progress"}
+            end
+            
+            if redis.call('GET', lock_key) ~= instance_id then
+                if redis.call('SET', lock_key, instance_id, 'NX', 'EX', 10) == false then
+                    return {acquired=0, deleted=0, reason="lock_failed"}
                 end
-                
-                local active_count = 0
-                local instances = redis.call('HGETALL', instances_key)
-                
-                for i = 1, #instances, 2 do
-                    local inst_id = instances[i]
-                    local last_seen = tonumber(instances[i+1])
-                    if now - last_seen < timeout then
-                        active_count = active_count + 1
-                    end
+            end
+            
+            local active_count = 0
+            local instances = redis.call('HGETALL', instances_key)
+            
+            for i = 1, #instances, 2 do
+                local inst_id = instances[i]
+                local last_seen = tonumber(instances[i+1])
+                if now - last_seen < timeout then
+                    active_count = active_count + 1
                 end
-                
-                if active_count <= 0 then
-                    local exists = redis.call('EXISTS', stream_key)
-                    if exists == 1 then
-                        redis.call('DEL', stream_key)
-                        return {acquired=1, deleted=1, reason="success"}
-                    else
-                        return {acquired=1, deleted=0, reason="stream_not_exists"}
-                    end
+            end
+            
+            if active_count <= 0 then
+                local exists = redis.call('EXISTS', stream_key)
+                if exists == 1 then
+                    redis.call('DEL', stream_key)
+                    return {acquired=1, deleted=1, reason="success"}
                 else
-                    return {acquired=1, deleted=0, reason="active_instances", count=active_count}
+                    return {acquired=1, deleted=0, reason="stream_not_exists"}
                 end
+            else
+                return {acquired=1, deleted=0, reason="active_instances", count=active_count}
+            end
             "#,
         );
 
@@ -467,6 +484,7 @@ impl RedisStore {
             .key(&lock_key)
             .key(&instances_key)
             .key(&stream_key)
+            .key(&read_lock_key)
             .arg(instance_id)
             .arg(now)
             .arg(60)
@@ -523,6 +541,97 @@ impl RedisStore {
         let updates: Vec<Bytes> = script.key(&stream_key).invoke_async(&mut *conn).await?;
 
         Ok(updates)
+    }
+
+    pub async fn read_stream_data_in_batches(
+        &self,
+        doc_id: &str,
+        batch_size: usize,
+        start_id: &str,
+        is_first_batch: bool,
+        is_final_batch: bool,
+        lock_value: &mut Option<String>,
+    ) -> Result<(Vec<Bytes>, String)> {
+        let stream_key = format!("yjs:stream:{}", doc_id);
+        let protection_lock_key = format!("read:lock:{}", doc_id);
+
+        if is_first_batch {
+            let lock_id = uuid::Uuid::new_v4().to_string();
+            let acquired = self
+                .acquire_lock(&protection_lock_key, &lock_id, 30)
+                .await?;
+            if acquired {
+                *lock_value = Some(lock_id.clone());
+            }
+        }
+
+        let mut conn = self.pool.get().await?;
+
+        let script = redis::Script::new(
+            r#"
+            if redis.call('EXISTS', KEYS[1]) == 0 then
+                return {updates={}, last_id=""}
+            end
+            
+            local result = redis.call('XRANGE', KEYS[1], ARGV[1], '+', 'COUNT', ARGV[2])
+            local updates = {}
+            local last_id = ARGV[1]
+            
+            if #result > 0 then
+                last_id = result[#result][1]
+                
+                for i, entry in ipairs(result) do
+                    local fields = entry[2]
+                    for j = 1, #fields, 2 do
+                        table.insert(updates, fields[j+1])
+                    end
+                end
+            end
+            
+            return {updates, last_id}
+            "#,
+        );
+
+        let result: redis::Value = script
+            .key(&stream_key)
+            .arg(start_id)
+            .arg(batch_size)
+            .invoke_async(&mut *conn)
+            .await?;
+
+        let mut updates = Vec::new();
+        let mut last_id = start_id.to_string();
+
+        if let redis::Value::Array(array) = result {
+            if array.len() >= 2 {
+                if let redis::Value::Array(entries) = &array[0] {
+                    for entry in entries {
+                        if let redis::Value::BulkString(bytes) = entry {
+                            updates.push(Bytes::from(bytes.clone()));
+                        }
+                    }
+                }
+
+                if let redis::Value::BulkString(id_bytes) = &array[1] {
+                    if let Ok(id_str) = std::str::from_utf8(id_bytes) {
+                        last_id = id_str.to_string();
+                    }
+                }
+            }
+        }
+
+        if is_final_batch && lock_value.is_some() {
+            let lock_id = lock_value.clone().unwrap();
+            if let Err(e) = self.release_lock(&protection_lock_key, &lock_id).await {
+                error!(
+                    "Failed to release read lock {} for document '{}': {}",
+                    lock_id, doc_id, e
+                );
+            }
+            return Ok((updates, last_id));
+        }
+
+        Ok((updates, last_id))
     }
 
     pub async fn acquire_oid_lock(&self, ttl_seconds: u64) -> Result<String> {

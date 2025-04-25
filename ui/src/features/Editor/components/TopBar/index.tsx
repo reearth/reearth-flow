@@ -30,7 +30,6 @@ type Props = {
   onDebugRunStop: () => Promise<void>;
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
-  onWorkflowRename: (id: string, name: string) => void;
 };
 
 const TopBar: React.FC<Props> = ({
@@ -44,7 +43,6 @@ const TopBar: React.FC<Props> = ({
   onDebugRunStop,
   onWorkflowClose,
   onWorkflowChange,
-  onWorkflowRename,
 }) => {
   const t = useT();
   const [showProjectVarsDialog, setShowProjectVarsDialog] = useState(false);
@@ -146,7 +144,6 @@ const TopBar: React.FC<Props> = ({
           openWorkflows={openWorkflows}
           onWorkflowClose={onWorkflowClose}
           onWorkflowChange={onWorkflowChange}
-          onWorkflowRename={onWorkflowRename}
         />
       </div>
       <div className="flex select-none items-center h-full justify-center gap-2 self-center p-1">

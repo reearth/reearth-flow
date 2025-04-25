@@ -30,6 +30,7 @@ type Props = {
     data: any,
     type: "params" | "customizations",
   ) => Promise<void>;
+  onWorkflowRename?: (id: string, name: string) => void;
 };
 
 const ParamEditor: React.FC<Props> = ({
@@ -38,6 +39,7 @@ const ParamEditor: React.FC<Props> = ({
   nodeType,
   // nodeParameters = [{ id: "param1", name: "Param 1", value: "Value 1", type: "string"}],
   onUpdate,
+  onWorkflowRename,
 }) => {
   const t = useT();
   const { useGetActionById } = useAction(i18n.language);
@@ -79,6 +81,12 @@ const ParamEditor: React.FC<Props> = ({
   const handleUpdate = () => {
     if (activeTab === "params") {
       onUpdate(nodeId, updatedParams, "params");
+    } else if (nodeType === "subworkflow" && nodeMeta.subworkflowId) {
+      onUpdate(nodeId, updatedCustomization, "customizations");
+      onWorkflowRename?.(
+        nodeMeta?.subworkflowId,
+        updatedCustomization?.customName || nodeMeta?.officialName,
+      );
     } else {
       onUpdate(nodeId, updatedCustomization, "customizations");
     }

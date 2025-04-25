@@ -38,14 +38,14 @@ pub struct BroadcastGroup {
     doc_name: String,
     instance_id: String,
     last_read_id: Arc<Mutex<String>>,
-    awareness_updater: JoinHandle<()>,
-    awareness_shutdown_tx: tokio::sync::mpsc::Sender<()>,
-    redis_subscriber_task: JoinHandle<()>,
-    redis_subscriber_shutdown_tx: tokio::sync::mpsc::Sender<()>,
-    heartbeat_task: JoinHandle<()>,
-    heartbeat_shutdown_tx: tokio::sync::mpsc::Sender<()>,
-    sync_task: JoinHandle<()>,
-    sync_shutdown_tx: tokio::sync::mpsc::Sender<()>,
+    awareness_updater: Option<JoinHandle<()>>,
+    awareness_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
+    redis_subscriber_task: Option<JoinHandle<()>>,
+    redis_subscriber_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
+    heartbeat_task: Option<JoinHandle<()>>,
+    heartbeat_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
+    sync_task: Option<JoinHandle<()>>,
+    sync_shutdown_tx: Option<tokio::sync::oneshot::Sender<()>>,
 }
 
 impl std::fmt::Debug for BroadcastGroup {
@@ -80,7 +80,7 @@ impl BroadcastGroup {
         storage: Arc<GcsStore>,
         config: BroadcastConfig,
     ) -> Result<Self> {
-        let (sender, _receiver) = channel(buffer_capacity);
+        let (sender, _) = channel(buffer_capacity);
         let awareness_c = Arc::downgrade(&awareness);
         let mut lock = awareness.write().await;
         let sink = sender.clone();
@@ -92,8 +92,8 @@ impl BroadcastGroup {
                 encoder.write_var(MSG_SYNC_UPDATE);
                 encoder.write_buf(&u.update);
                 let msg = Bytes::from(encoder.to_vec());
-                if let Err(_e) = sink.send(msg) {
-                    debug!("broadcast channel closed");
+                if let Err(e) = sink.send(msg) {
+                    error!("broadcast channel closed: {}", e);
                 }
             })?
         };
@@ -101,7 +101,7 @@ impl BroadcastGroup {
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
         let sink = sender.clone();
 
-        let (awareness_shutdown_tx, mut awareness_shutdown_rx) = tokio::sync::mpsc::channel(1);
+        let (awareness_shutdown_tx, mut awareness_shutdown_rx) = tokio::sync::oneshot::channel();
 
         let awareness_sub = lock.on_update(move |_awareness, event, _origin| {
             let added = event.added();
@@ -126,7 +126,7 @@ impl BroadcastGroup {
         let awareness_updater = tokio::task::spawn(async move {
             loop {
                 select! {
-                    _ = awareness_shutdown_rx.recv() => {
+                    _ = &mut awareness_shutdown_rx => {
                         break;
                     },
                     client_update = rx.recv() => {
@@ -161,14 +161,14 @@ impl BroadcastGroup {
 
         let doc_name_for_sub = doc_name.clone();
         let redis_store_for_sub = redis_store.clone();
-        let (heartbeat_shutdown_tx, mut heartbeat_shutdown_rx) = tokio::sync::mpsc::channel(1);
+        let (heartbeat_shutdown_tx, mut heartbeat_shutdown_rx) = tokio::sync::oneshot::channel();
 
         let heartbeat_task = tokio::spawn(async move {
             let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(56));
 
             loop {
                 select! {
-                    _ = heartbeat_shutdown_rx.recv() => {
+                    _ = &mut heartbeat_shutdown_rx => {
                         break;
                     },
                     _ = interval.tick() => {
@@ -190,7 +190,7 @@ impl BroadcastGroup {
         let redis_store_for_sub_clone = Arc::clone(&redis_store);
         let doc_name_for_sub_clone = doc_name.clone();
         let (redis_subscriber_shutdown_tx, mut redis_subscriber_shutdown_rx) =
-            tokio::sync::mpsc::channel(1);
+            tokio::sync::oneshot::channel();
 
         let redis_subscriber_task = tokio::spawn(async move {
             let stream_key = format!("yjs:stream:{}", doc_name_for_sub_clone);
@@ -208,7 +208,7 @@ impl BroadcastGroup {
 
             loop {
                 select! {
-                    _ = redis_subscriber_shutdown_rx.recv() => {
+                    _ = &mut redis_subscriber_shutdown_rx => {
                         break;
                     },
                     _ = async {
@@ -261,7 +261,7 @@ impl BroadcastGroup {
         });
 
         // periodic sync task to send sync messages every 15 seconds
-        let (sync_shutdown_tx, mut sync_shutdown_rx) = tokio::sync::mpsc::channel(1);
+        let (sync_shutdown_tx, mut sync_shutdown_rx) = tokio::sync::oneshot::channel();
         let sender_clone = sender.clone();
         let awareness_clone = Arc::clone(&awareness);
         let sync_task = tokio::spawn(async move {
@@ -269,7 +269,7 @@ impl BroadcastGroup {
 
             loop {
                 select! {
-                    _ = sync_shutdown_rx.recv() => {
+                    _ = &mut sync_shutdown_rx => {
                         break;
                     },
                     _ = interval.tick() => {
@@ -300,14 +300,14 @@ impl BroadcastGroup {
             doc_name,
             instance_id,
             last_read_id,
-            awareness_updater,
-            awareness_shutdown_tx,
-            redis_subscriber_task,
-            redis_subscriber_shutdown_tx,
-            heartbeat_task,
-            heartbeat_shutdown_tx,
-            sync_task,
-            sync_shutdown_tx,
+            awareness_updater: Some(awareness_updater),
+            awareness_shutdown_tx: Some(awareness_shutdown_tx),
+            redis_subscriber_task: Some(redis_subscriber_task),
+            redis_subscriber_shutdown_tx: Some(redis_subscriber_shutdown_tx),
+            heartbeat_task: Some(heartbeat_task),
+            heartbeat_shutdown_tx: Some(heartbeat_shutdown_tx),
+            sync_task: Some(sync_task),
+            sync_shutdown_tx: Some(sync_shutdown_tx),
         })
     }
 
@@ -626,32 +626,13 @@ impl BroadcastGroup {
             }
         }
 
-        if let Err(e) = self.heartbeat_shutdown_tx.send(()).await {
-            warn!("Failed to send shutdown signal to heartbeat task: {}", e);
-            self.heartbeat_task.abort();
-        }
+        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
 
-        if let Err(e) = self.redis_subscriber_shutdown_tx.send(()).await {
-            warn!(
-                "Failed to send shutdown signal to redis subscriber task: {}",
-                e
-            );
-            self.redis_subscriber_task.abort();
+        if self.connection_count() == 0 {
+            self.redis_store
+                .safe_delete_stream(&self.doc_name, &self.instance_id)
+                .await?;
         }
-
-        if let Err(e) = self.sync_shutdown_tx.send(()).await {
-            warn!("Failed to send shutdown signal to sync task: {}", e);
-            self.sync_task.abort();
-        }
-
-        if let Err(e) = self.awareness_shutdown_tx.send(()).await {
-            warn!("Failed to send shutdown signal to awareness task: {}", e);
-            self.awareness_updater.abort();
-        }
-
-        self.redis_store
-            .safe_delete_stream(&self.doc_name, &self.instance_id)
-            .await?;
 
         Ok(())
     }
@@ -659,9 +640,37 @@ impl BroadcastGroup {
 
 impl Drop for BroadcastGroup {
     fn drop(&mut self) {
-        self.awareness_updater.abort();
-        self.heartbeat_task.abort();
-        self.redis_subscriber_task.abort();
-        self.sync_task.abort();
+        if let Some(tx) = self.awareness_shutdown_tx.take() {
+            if let Err(e) = tx.send(()) {
+                warn!("Failed to send awareness shutdown signal: {:?}", e);
+                if let Some(task) = self.awareness_updater.take() {
+                    task.abort();
+                }
+            }
+        }
+        if let Some(tx) = self.heartbeat_shutdown_tx.take() {
+            if let Err(e) = tx.send(()) {
+                warn!("Failed to send heartbeat shutdown signal: {:?}", e);
+                if let Some(task) = self.heartbeat_task.take() {
+                    task.abort();
+                }
+            }
+        }
+        if let Some(tx) = self.redis_subscriber_shutdown_tx.take() {
+            if let Err(e) = tx.send(()) {
+                warn!("Failed to send redis subscriber shutdown signal: {:?}", e);
+                if let Some(task) = self.redis_subscriber_task.take() {
+                    task.abort();
+                }
+            }
+        }
+        if let Some(tx) = self.sync_shutdown_tx.take() {
+            if let Err(e) = tx.send(()) {
+                warn!("Failed to send sync shutdown signal: {:?}", e);
+                if let Some(task) = self.sync_task.take() {
+                    task.abort();
+                }
+            }
+        }
     }
 }

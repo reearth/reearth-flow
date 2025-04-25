@@ -131,6 +131,7 @@ func TestConvertGCPStatusToGatewayStatus(t *testing.T) {
 	}{
 		{"Unspecified", batchpb.JobStatus_STATE_UNSPECIFIED, gateway.JobStatusUnknown},
 		{"Queued", batchpb.JobStatus_QUEUED, gateway.JobStatusPending},
+		{"Scheduled", batchpb.JobStatus_SCHEDULED, gateway.JobStatusPending},
 		{"Running", batchpb.JobStatus_RUNNING, gateway.JobStatusRunning},
 		{"Succeeded", batchpb.JobStatus_SUCCEEDED, gateway.JobStatusCompleted},
 		{"Failed", batchpb.JobStatus_FAILED, gateway.JobStatusFailed},

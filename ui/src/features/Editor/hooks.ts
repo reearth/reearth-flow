@@ -139,6 +139,7 @@ export default ({
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
+    setWorkflowsNames,
   } = useWorkflowTabs({
     currentWorkflowId,
     rawWorkflows,
@@ -171,7 +172,7 @@ export default ({
     [],
   );
 
-  const { handleCopy, handlePaste } = useCanvasCopyPaste({
+  const { handleCopy, handleCut, handlePaste } = useCanvasCopyPaste({
     nodes,
     edges,
     rawWorkflows,
@@ -179,6 +180,7 @@ export default ({
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
     handleEdgesAdd: handleYEdgesAdd,
+    handleEdgesChange: handleYEdgesChange,
   });
 
   const {
@@ -255,6 +257,12 @@ export default ({
       callback: handleCopy,
     },
     {
+      keyBinding: { key: "x", commandKey: true },
+      callback: () => {
+        handleCut(true);
+      },
+    },
+    {
       keyBinding: { key: "v", commandKey: true },
       callback: handlePaste,
     },
@@ -271,6 +279,16 @@ export default ({
     //   callback: () => handleYWorkflowAddFromSelection(nodes, edges),
     // },
   ]);
+
+  const handleWorkflowRename = useCallback(
+    (id: string, newName: string) => {
+      handleYWorkflowRename(id, newName);
+      setWorkflowsNames((prevNames) =>
+        prevNames.map((w) => (w.id === id ? { ...w, name: newName } : w)),
+      );
+    },
+    [handleYWorkflowRename, setWorkflowsNames],
+  );
 
   return {
     isSubworkflow,
@@ -298,7 +316,7 @@ export default ({
     handleWorkflowChange: handleCurrentWorkflowIdChange,
     handleWorkflowRedo: handleYWorkflowRedo,
     handleWorkflowUndo: handleYWorkflowUndo,
-    handleWorkflowRename: handleYWorkflowRename,
+    handleWorkflowRename,
     handleLayoutChange,
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
@@ -313,6 +331,7 @@ export default ({
     handleDebugRunStart,
     handleDebugRunStop,
     handleCopy,
+    handleCut,
     handlePaste,
   };
 };
