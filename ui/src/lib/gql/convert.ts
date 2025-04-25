@@ -152,12 +152,12 @@ export const toProjectVariable = (
   id: parameter.id,
   name: parameter.name,
   type: toUserParamVarType(parameter.type),
-  value: parameter.value,
+  defaultValue: parameter.defaultValue,
   required: parameter.required,
+  public: parameter.public,
   createdAt: parameter.createdAt,
   updatedAt: parameter.updatedAt,
   projectId: parameter.projectId,
-  // defaultValue: parameter.defaultValue,
   // description: parameter.description,
 });
 

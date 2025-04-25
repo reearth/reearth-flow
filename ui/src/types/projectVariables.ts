@@ -21,14 +21,19 @@ export type VarType =
 export type ProjectVariable = {
   id: string;
   name: string;
-  value: any;
+  defaultValue: any;
   type: VarType; // TODO: use ParameterType
   required: boolean;
+  public: boolean;
   createdAt?: string;
   updatedAt?: string;
   projectId?: string;
 };
 
-export type CreateProjectVariables = {
+export type CreateProjectVariable = {
+  projectVariable?: ProjectVariable;
+} & ApiResponse;
+
+export type UpdateProjectVariable = {
   projectVariable?: ProjectVariable;
 } & ApiResponse;

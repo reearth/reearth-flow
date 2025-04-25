@@ -4,8 +4,21 @@ query GetProjectParameters($projectId: ID!) {
   }
 }
 
-mutation CreateUserParameters($projectId: ID!, $input: DeclareParameterInput!) {
+mutation CreateProjectVariable(
+  $projectId: ID!
+  $input: DeclareParameterInput!
+) {
   declareParameter(projectId: $projectId, input: $input) {
     ...Parameter
   }
+}
+
+mutation UpdateProjectVariable($paramId: ID!, $input: UpdateParameterInput!) {
+  updateParameter(paramId: $paramId, input: $input) {
+    ...Parameter
+  }
+}
+
+mutation DeleteProjectVariable($input: RemoveParameterInput!) {
+  removeParameter(input: $input)
 }

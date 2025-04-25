@@ -16,13 +16,12 @@ fragment Parameter on Parameter {
   projectId
   index
   name
-  value
+  defaultValue
   type
   required
+  public
   createdAt
   updatedAt
-  # defaultValue
-  # description
 }
 
 fragment Deployment on Deployment {
