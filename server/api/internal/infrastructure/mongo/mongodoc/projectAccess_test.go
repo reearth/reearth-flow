@@ -6,7 +6,8 @@ import (
 
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/projectAccess"
-
+	"github.com/reearth/reearthx/account/accountdomain/user"
+	"github.com/reearth/reearthx/account/accountdomain/workspace"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
@@ -15,11 +16,17 @@ import (
 func TestProjectAccessDocument_NewProjectAccessConsumer(t *testing.T) {
 	paid := id.NewProjectAccessID()
 	pid := id.NewProjectID()
+	uid := user.NewID()
+
+	userRoles := projectAccess.NewUserRoleList()
+	_ = userRoles.Add(uid, workspace.RoleWriter)
+
 	pa, _ := projectAccess.New().
 		ID(paid).
 		Project(pid).
 		IsPublic(true).
 		Token("token").
+		UserRoles(userRoles).
 		Build()
 	doc1, _ := NewProjectAccess(pa)
 	p1 := lo.Must(bson.Marshal(doc1))
@@ -74,11 +81,17 @@ func TestProjectAccessDocument_NewProjectAccessConsumer(t *testing.T) {
 func TestProjectAccessDocument_NewProjectAccess(t *testing.T) {
 	paid := id.NewProjectAccessID()
 	pid := id.NewProjectID()
+	uid := user.NewID()
+
+	userRoles := projectAccess.NewUserRoleList()
+	_ = userRoles.Add(uid, workspace.RoleWriter)
+
 	pa, _ := projectAccess.New().
 		ID(paid).
 		Project(pid).
 		IsPublic(true).
 		Token("token").
+		UserRoles(userRoles).
 		Build()
 	type args struct {
 		pa *projectAccess.ProjectAccess
@@ -100,6 +113,12 @@ func TestProjectAccessDocument_NewProjectAccess(t *testing.T) {
 				Project:  pid.String(),
 				IsPublic: true,
 				Token:    "token",
+				UserRoles: []UserRoleDocument{
+					{
+						UserID: uid.String(),
+						Role:   string(workspace.RoleWriter),
+					},
+				},
 			},
 			want1: paid.String(),
 		},
@@ -118,6 +137,7 @@ func TestProjectAccessDocument_NewProjectAccess(t *testing.T) {
 func TestProjectAccessDocument_Model(t *testing.T) {
 	paid := id.NewProjectAccessID()
 	pid := id.NewProjectID()
+	uid := user.NewID()
 
 	tests := []struct {
 		name              string
@@ -126,6 +146,7 @@ func TestProjectAccessDocument_Model(t *testing.T) {
 		expectedProjectID id.ProjectID
 		exepectIsPublic   bool
 		expectedToken     string
+		expectedUserRoles []UserRoleDocument
 		expectErr         bool
 	}{
 		{
@@ -135,11 +156,39 @@ func TestProjectAccessDocument_Model(t *testing.T) {
 				Project:  pid.String(),
 				IsPublic: true,
 				Token:    "token",
+				UserRoles: []UserRoleDocument{
+					{
+						UserID: uid.String(),
+						Role:   string(workspace.RoleWriter),
+					},
+				},
 			},
 			expectedID:        paid,
 			expectedProjectID: pid,
 			exepectIsPublic:   true,
 			expectedToken:     "token",
+			expectedUserRoles: []UserRoleDocument{
+				{
+					UserID: uid.String(),
+					Role:   string(workspace.RoleWriter),
+				},
+			},
+			expectErr: false,
+		},
+		{
+			name: "valid project access document without user roles",
+			doc: &ProjectAccessDocument{
+				ID:        paid.String(),
+				Project:   pid.String(),
+				IsPublic:  true,
+				Token:     "token",
+				UserRoles: []UserRoleDocument{},
+			},
+			expectedID:        paid,
+			expectedProjectID: pid,
+			exepectIsPublic:   true,
+			expectedToken:     "token",
+			expectedUserRoles: []UserRoleDocument{},
 			expectErr:         false,
 		},
 		{
@@ -162,6 +211,22 @@ func TestProjectAccessDocument_Model(t *testing.T) {
 			},
 			expectErr: true,
 		},
+		{
+			name: "invalid user ID in user roles",
+			doc: &ProjectAccessDocument{
+				ID:       paid.String(),
+				Project:  pid.String(),
+				IsPublic: true,
+				Token:    "token",
+				UserRoles: []UserRoleDocument{
+					{
+						UserID: "invalid-user-id",
+						Role:   string(workspace.RoleWriter),
+					},
+				},
+			},
+			expectErr: true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -178,6 +243,16 @@ func TestProjectAccessDocument_Model(t *testing.T) {
 					assert.Equal(t, tc.expectedProjectID, r.Project())
 					assert.Equal(t, tc.exepectIsPublic, r.IsPublic())
 					assert.Equal(t, tc.expectedToken, r.Token())
+
+					assert.Equal(t, len(tc.expectedUserRoles), len(r.UserRoles()))
+
+					for i, expectedUR := range tc.expectedUserRoles {
+						expectedUID, _ := user.IDFrom(expectedUR.UserID)
+						expectedRole := workspace.Role(expectedUR.Role)
+
+						assert.Equal(t, expectedUID, r.UserRoles()[i].UserID())
+						assert.Equal(t, expectedRole, r.UserRoles()[i].Role())
+					}
 				} else {
 					assert.Nil(t, r)
 				}
