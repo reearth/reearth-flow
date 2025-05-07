@@ -78,8 +78,13 @@ export default ({
     onEdgesChange,
   });
 
-  const [contextMenu, setContextMenu] = useState<ContextMenuMeta | null>(null);
+  const [showBeforeDeleteDialog, setShowOnBeforeDeleteDialog] =
+    useState<boolean>(false);
+  const deferredDeleteRef = useRef<{
+    resolve: (val: boolean) => void;
+  } | null>(null);
 
+  const [contextMenu, setContextMenu] = useState<ContextMenuMeta | null>(null);
   const paneRef = useRef<HTMLDivElement>(null);
   const getContextMenuPosition = (event: MouseEvent) => {
     if (!paneRef.current) return;
@@ -148,6 +153,28 @@ export default ({
     [setContextMenu],
   );
 
+  const handleBeforeDeleteNodes = useCallback(
+    ({ nodes }: { nodes: Node[] }) => {
+      return new Promise<boolean>((resolve) => {
+        const hasProtectedNode = nodes.some(
+          (node) =>
+            node.data.officialName === "InputRouter" ||
+            node.data.officialName === "OutputRouter",
+        );
+
+        if (hasProtectedNode) {
+          deferredDeleteRef.current = { resolve };
+          setShowOnBeforeDeleteDialog(true);
+        } else {
+          resolve(true);
+        }
+      });
+    },
+    [],
+  );
+
+  const handleDeleteDialogClose = () => setShowOnBeforeDeleteDialog(false);
+
   const handleCloseContextmenu = () => {
     setContextMenu(null);
   };
@@ -155,6 +182,7 @@ export default ({
   return {
     handleNodesChange,
     handleNodesDelete,
+    handleBeforeDeleteNodes,
     handleNodeDragStop,
     handleNodeDragOver,
     handleNodeDrop,
@@ -166,7 +194,10 @@ export default ({
     handleSelectionContextMenu,
     handlePaneContextMenu,
     handleCloseContextmenu,
+    handleDeleteDialogClose,
     contextMenu,
     paneRef,
+    showBeforeDeleteDialog,
+    deferredDeleteRef,
   };
 };

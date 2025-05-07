@@ -25,6 +25,8 @@
   "Node Settings": "",
   "Preview Intermediate Data": "",
   "Delete Node": "",
+  "Are you sure you want to delete an input or output node?": "",
+  "Input and Output nodes are required for the workflow to run. By deleting a node you may cause unexpected behavior.": "",
   "Paste": "",
   "Delete Selection": "",
   "No content to display": "",

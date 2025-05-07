@@ -22,6 +22,7 @@ import type { ActionNodeType, Edge, Node } from "@flow/types";
 
 import {
   NodeContextMenu,
+  NodeDeletionDialog,
   PaneContextMenu,
   SelectionContextMenu,
 } from "./components";
@@ -81,6 +82,7 @@ const Canvas: React.FC<Props> = ({
   const {
     handleNodesChange,
     handleNodesDelete,
+    handleBeforeDeleteNodes,
     handleNodeDragStop,
     handleNodeDragOver,
     handleNodeDrop,
@@ -94,6 +96,9 @@ const Canvas: React.FC<Props> = ({
     handleCloseContextmenu,
     contextMenu,
     paneRef,
+    showBeforeDeleteDialog,
+    handleDeleteDialogClose,
+    deferredDeleteRef,
   } = useHooks({
     nodes,
     edges,
@@ -168,6 +173,7 @@ const Canvas: React.FC<Props> = ({
       onEdgeMouseLeave={onEdgeHover}
       onConnect={handleConnect}
       onReconnect={handleReconnect}
+      onBeforeDelete={handleBeforeDeleteNodes}
       proOptions={proOptions}>
       <Background
         className="bg-background"
@@ -206,6 +212,13 @@ const Canvas: React.FC<Props> = ({
           onCopy={onCopy}
           onPaste={onPaste}
           onClose={handleCloseContextmenu}
+        />
+      )}
+      {showBeforeDeleteDialog && (
+        <NodeDeletionDialog
+          showBeforeDeleteDialog={showBeforeDeleteDialog}
+          onDialogClose={handleDeleteDialogClose}
+          deferredDeleteRef={deferredDeleteRef}
         />
       )}
     </ReactFlow>
