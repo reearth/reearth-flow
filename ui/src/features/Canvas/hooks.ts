@@ -78,7 +78,7 @@ export default ({
     onEdgesChange,
   });
 
-  const [showBeforeDeleteDialog, setShowOnBeforeDeleteDialog] =
+  const [showBeforeDeleteDialog, setShowBeforeDeleteDialog] =
     useState<boolean>(false);
   const deferredDeleteRef = useRef<{
     resolve: (val: boolean) => void;
@@ -164,7 +164,7 @@ export default ({
 
         if (hasProtectedNode) {
           deferredDeleteRef.current = { resolve };
-          setShowOnBeforeDeleteDialog(true);
+          setShowBeforeDeleteDialog(true);
         } else {
           resolve(true);
         }
@@ -173,7 +173,7 @@ export default ({
     [],
   );
 
-  const handleDeleteDialogClose = () => setShowOnBeforeDeleteDialog(false);
+  const handleDeleteDialogClose = () => setShowBeforeDeleteDialog(false);
 
   const handleCloseContextmenu = () => {
     setContextMenu(null);

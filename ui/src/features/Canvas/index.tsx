@@ -217,8 +217,8 @@ const Canvas: React.FC<Props> = ({
       {showBeforeDeleteDialog && (
         <NodeDeletionDialog
           showBeforeDeleteDialog={showBeforeDeleteDialog}
-          onDialogClose={handleDeleteDialogClose}
           deferredDeleteRef={deferredDeleteRef}
+          onDialogClose={handleDeleteDialogClose}
         />
       )}
     </ReactFlow>

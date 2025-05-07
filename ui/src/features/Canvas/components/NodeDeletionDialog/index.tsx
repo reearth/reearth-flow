@@ -24,7 +24,7 @@ const NodeDeletionDialog: React.FC<Props> = ({
     onDialogClose();
   };
 
-  const handleDialogCancel = () => {
+  const handleDialogClose = () => {
     if (deferredDeleteRef.current) {
       deferredDeleteRef.current.resolve(false);
       deferredDeleteRef.current = null;
@@ -40,7 +40,7 @@ const NodeDeletionDialog: React.FC<Props> = ({
       )}
       isOpen={!!showBeforeDeleteDialog}
       confirmDisabled={!showBeforeDeleteDialog}
-      onClose={() => handleDialogCancel()}
+      onClose={() => handleDialogClose()}
       onConfirm={() => handleDialogSubmit()}
     />
   );
