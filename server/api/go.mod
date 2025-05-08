@@ -27,7 +27,7 @@ require (
 	github.com/uber/jaeger-client-go v2.30.0+incompatible
 	github.com/uber/jaeger-lib v2.4.1+incompatible
 	github.com/vektah/dataloaden v0.3.0
-	github.com/vektah/gqlparser/v2 v2.5.11
+	github.com/vektah/gqlparser/v2 v2.5.14
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zitadel/oidc v1.13.5
 	go.mongodb.org/mongo-driver v1.15.0
