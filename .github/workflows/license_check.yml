@@ -94,6 +94,6 @@ jobs:
           cache-dependency-path: '**/yarn.lock'
       - name: Install
         run: yarn install
-      - uses: reearth/actions/license-checker/npm@update-license-checker-npm
+      - uses: reearth/actions/license-checker/npm@ecb4231198dc0992c3f69c333ee9748ec50ee8a4
         with:
           subdirectory: ui
