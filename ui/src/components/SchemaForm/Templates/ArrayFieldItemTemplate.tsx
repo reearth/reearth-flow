@@ -1,5 +1,5 @@
 import {
-  ArrayFieldTemplateItemType,
+  ArrayFieldItemTemplateType,
   FormContextType,
   RJSFSchema,
   StrictRJSFSchema,
@@ -10,26 +10,32 @@ const ArrayFieldItemTemplate = <
   S extends StrictRJSFSchema = RJSFSchema,
   F extends FormContextType = FormContextType,
 >(
-  props: ArrayFieldTemplateItemType<T, S, F>,
+  props: ArrayFieldItemTemplateType<T, S, F>,
 ) => {
   const {
     children,
     disabled,
     hasToolbar,
+    index,
+    readonly,
+    registry,
+    uiSchema,
+    buttonsProps,
+  } = props;
+
+  const { CopyButton, MoveDownButton, MoveUpButton, RemoveButton } =
+    registry.templates.ButtonTemplates;
+
+  const {
     hasCopy,
     hasMoveDown,
     hasMoveUp,
     hasRemove,
-    index,
     onCopyIndexClick,
     onDropIndexClick,
     onReorderClick,
-    readonly,
-    registry,
-    uiSchema,
-  } = props;
-  const { CopyButton, MoveDownButton, MoveUpButton, RemoveButton } =
-    registry.templates.ButtonTemplates;
+  } = buttonsProps;
+
   return (
     <div>
       <div className="mb-2 flex items-center gap-1">
@@ -59,24 +65,20 @@ const ArrayFieldItemTemplate = <
                 </div>
               )}
               {hasCopy && (
-                <div>
-                  <CopyButton
-                    disabled={disabled || readonly}
-                    onClick={onCopyIndexClick(index)}
-                    uiSchema={uiSchema}
-                    registry={registry}
-                  />
-                </div>
+                <CopyButton
+                  disabled={disabled || readonly}
+                  onClick={onCopyIndexClick(index)}
+                  uiSchema={uiSchema}
+                  registry={registry}
+                />
               )}
               {hasRemove && (
-                <div>
-                  <RemoveButton
-                    disabled={disabled || readonly}
-                    onClick={onDropIndexClick(index)}
-                    uiSchema={uiSchema}
-                    registry={registry}
-                  />
-                </div>
+                <RemoveButton
+                  disabled={disabled || readonly}
+                  onClick={onDropIndexClick(index)}
+                  uiSchema={uiSchema}
+                  registry={registry}
+                />
               )}
             </div>
           )}
