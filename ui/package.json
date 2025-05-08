@@ -71,7 +71,7 @@
     "graphql": "16.11.0",
     "graphql-request": "7.1.2",
     "graphql-ws": "6.0.4",
-    "i18next": "24.2.3",
+    "i18next": "25.1.1",
     "i18next-browser-languagedetector": "8.1.0",
     "jotai": "2.12.4",
     "js-yaml": "4.1.0",

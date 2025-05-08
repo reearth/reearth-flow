@@ -4461,7 +4461,7 @@ __metadata:
     graphql: "npm:16.11.0"
     graphql-request: "npm:7.1.2"
     graphql-ws: "npm:6.0.4"
-    i18next: "npm:24.2.3"
+    i18next: "npm:25.1.1"
     i18next-browser-languagedetector: "npm:8.1.0"
     i18next-parser: "npm:9.3.0"
     jotai: "npm:2.12.4"
@@ -10320,9 +10320,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"i18next@npm:24.2.3":
-  version: 24.2.3
-  resolution: "i18next@npm:24.2.3"
+"i18next@npm:25.1.1":
+  version: 25.1.1
+  resolution: "i18next@npm:25.1.1"
   dependencies:
     "@babel/runtime": "npm:^7.26.10"
   peerDependencies:
@@ -10330,7 +10330,7 @@ __metadata:
   peerDependenciesMeta:
     typescript:
       optional: true
-  checksum: 10c0/7ac11a67d618ec714beef303aa497c1249bf5f1977dd3ebe9ca2673dfa6cadbba9e2d39ec1337688903ae3866ce9c1bc22cd6b265e66cce54c5db3a9bbedd390
+  checksum: 10c0/0a4ce474c57bb207031bc3ab874877fb1ab9c60f740488e39d65079fb760813096f30de692b904ca39f368cada9705d32f5cdf439c088817e5285cef2bb45e37
   languageName: node
   linkType: hard
 
