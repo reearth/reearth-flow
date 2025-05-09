@@ -7,11 +7,11 @@ type ContextMenuStyles = {
   mousePosition?: XYPosition;
 };
 
-type NodeContextMenuMeta = {
+type CanvasContextMenuMeta = {
   data?: Node | Node[];
 };
 
-export type ContextMenuMeta = ContextMenuStyles & NodeContextMenuMeta;
+export type ContextMenuMeta = ContextMenuStyles & CanvasContextMenuMeta;
 type ContextMenuProps = {
   items: ContextMenuItemType[];
   contextMenuMeta: ContextMenuMeta;
