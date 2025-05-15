@@ -19,7 +19,7 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
-import { DeployDialog, ShareDialog } from "./components";
+import { DeployDialog, SharePopover } from "./components";
 import useHooks from "./hooks";
 
 const tooltipOffset = 6;
@@ -44,7 +44,7 @@ const ActionBar: React.FC<Props> = ({
   const {
     showDialog,
     handleShowDeployDialog,
-    handleShowShareDialog,
+    handleShowSharePopover,
     handleDialogClose,
     handleProjectExport,
   } = useHooks();
@@ -60,26 +60,22 @@ const ActionBar: React.FC<Props> = ({
             icon={<Rocket weight="thin" size={18} />}
             onClick={handleShowDeployDialog}
           />
-          {/* <IconButton
-            tooltipText={t("Share Project")}
-            tooltipOffset={tooltipOffset}
-            icon={<PaperPlaneTilt weight="thin" size={18} />}
-            onClick={handleShowShareDialog}
-          /> */}
           <Popover
             open={showDialog === "share"}
-            onOpenChange={handleShowDeployDialog}>
+            onOpenChange={(open) => {
+              if (!open) handleDialogClose();
+            }}>
             <PopoverTrigger>
               <IconButton
                 tooltipText={t("Share Project")}
                 tooltipOffset={tooltipOffset}
                 icon={<PaperPlaneTilt weight="thin" size={18} />}
-                onClick={handleShowShareDialog}
+                onClick={handleShowSharePopover}
               />
             </PopoverTrigger>
             <PopoverContent>
               {showDialog === "share" && (
-                <ShareDialog
+                <SharePopover
                   onDialogClose={handleDialogClose}
                   onProjectShare={onProjectShare}
                 />
