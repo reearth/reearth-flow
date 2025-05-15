@@ -1,21 +1,7 @@
+import { Paperclip } from "@phosphor-icons/react";
 import { useCallback, useState } from "react";
 
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogContentSection,
-  DialogContentWrapper,
-  DialogTitle,
-  DialogFooter,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
-  DialogDescription,
-  Label,
-} from "@flow/components";
+import { Button, Switch } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 
@@ -41,65 +27,56 @@ const ShareDialog: React.FC<Props> = ({ onProjectShare, onDialogClose }) => {
     currentProject?.sharedToken ? "sharing" : "notSharing",
   );
 
-  const handleSharingChange = useCallback((share: SharingState) => {
+  const [isSwitchOn, setIsSwitchOn] = useState<boolean>(
+    isSharing === "sharing",
+  );
+
+  const handleSharingChange = useCallback((checked: boolean) => {
+    const share = checked ? "sharing" : "notSharing";
     setIsSharing(share);
+    setIsSwitchOn(checked);
     setHasBeenEdited(true);
   }, []);
-
-  const sharingLabels = {
-    sharing: t("Sharing"),
-    notSharing: t("Not Sharing"),
-  };
 
   const handleProjectShare = useCallback(() => {
     onProjectShare(isSharing === "sharing");
     onDialogClose();
   }, [isSharing, onProjectShare, onDialogClose]);
-
   return (
-    <Dialog open={true} onOpenChange={onDialogClose}>
-      <DialogContent size="sm">
-        <DialogTitle>{t("Share Project")}</DialogTitle>
-        <DialogContentWrapper>
-          <DialogContentSection>
-            <DialogDescription>
+    <div>
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-2 justify-between border-b py-2">
+          <h4 className="text-xl dark:font-thin leading-none tracking-tight py-2 rounded-t-lg">
+            {t("Share Project")}
+          </h4>
+          <Button
+            className="flex gap-2"
+            variant="default"
+            disabled={!isSwitchOn}
+            onClick={() => navigator.clipboard.writeText(sharedUrl || "")}>
+            <Paperclip weight="thin" />
+            <p className="text-xs dark:font-light">{t("Copy URL")}</p>
+          </Button>
+        </div>
+
+        <div>
+          <div className="flex flex-col gap-2">
+            <p className="text-sm">
               {t(
                 "Share your project's workflow with anyone with the URL. This is limited access to reading the contents of the canvas.",
               )}
-            </DialogDescription>
-            <Select onValueChange={handleSharingChange}>
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    isSharing === "sharing"
-                      ? t("Currently sharing")
-                      : t("Currently not sharing")
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(sharingLabels).map(([key, label]) => (
-                  <SelectItem key={key} value={key}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </DialogContentSection>
-          {isSharing === "sharing" && sharedToken && (
-            <DialogContentSection className="break-all">
-              <Label>{t("URL: ")}</Label>
-              <p className="text-wrap font-thin">{sharedUrl}</p>
-            </DialogContentSection>
-          )}
-        </DialogContentWrapper>
-        <DialogFooter>
-          <Button disabled={!hasBeenEdited} onClick={handleProjectShare}>
-            {t("Submit")}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            </p>
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={isSwitchOn}
+                onCheckedChange={handleSharingChange}
+              />
+              <span className="text-sm">{t("Sharing")}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

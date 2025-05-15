@@ -13,6 +13,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
@@ -46,6 +49,7 @@ const ActionBar: React.FC<Props> = ({
     handleProjectExport,
   } = useHooks();
 
+  console.log("SHOW DIALOG", showDialog);
   return (
     <>
       <div className="flex rounded-md bg-secondary">
@@ -56,12 +60,32 @@ const ActionBar: React.FC<Props> = ({
             icon={<Rocket weight="thin" size={18} />}
             onClick={handleShowDeployDialog}
           />
-          <IconButton
+          {/* <IconButton
             tooltipText={t("Share Project")}
             tooltipOffset={tooltipOffset}
             icon={<PaperPlaneTilt weight="thin" size={18} />}
             onClick={handleShowShareDialog}
-          />
+          /> */}
+          <Popover
+            open={showDialog === "share"}
+            onOpenChange={handleShowDeployDialog}>
+            <PopoverTrigger>
+              <IconButton
+                tooltipText={t("Share Project")}
+                tooltipOffset={tooltipOffset}
+                icon={<PaperPlaneTilt weight="thin" size={18} />}
+                onClick={handleShowShareDialog}
+              />
+            </PopoverTrigger>
+            <PopoverContent>
+              {showDialog === "share" && (
+                <ShareDialog
+                  onDialogClose={handleDialogClose}
+                  onProjectShare={onProjectShare}
+                />
+              )}
+            </PopoverContent>
+          </Popover>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <IconButton
@@ -97,12 +121,6 @@ const ActionBar: React.FC<Props> = ({
           allowedToDeploy={allowedToDeploy}
           onDialogClose={handleDialogClose}
           onWorkflowDeployment={onWorkflowDeployment}
-        />
-      )}
-      {showDialog === "share" && (
-        <ShareDialog
-          onDialogClose={handleDialogClose}
-          onProjectShare={onProjectShare}
         />
       )}
     </>
