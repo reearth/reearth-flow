@@ -28,8 +28,10 @@ const ArrayFieldItemTemplate = <
     registry,
     uiSchema,
   } = props;
+
   const { CopyButton, MoveDownButton, MoveUpButton, RemoveButton } =
     registry.templates.ButtonTemplates;
+
   return (
     <div>
       <div className="mb-2 flex items-center gap-1">
