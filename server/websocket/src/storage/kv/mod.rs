@@ -465,7 +465,13 @@ where
             Some(data) => {
                 let doc = Doc::new();
                 let mut txn = doc.transact_mut();
-                if let Ok(update) = Update::decode_v2(data.as_ref()) {
+
+                let mut compressed_data = std::io::Cursor::new(data.as_ref());
+                let mut decompressed_data = Vec::new();
+
+                let _ = brotli::BrotliDecompress(&mut compressed_data, &mut decompressed_data);
+
+                if let Ok(update) = Update::decode_v2(&decompressed_data) {
                     txn.apply_update(update)?;
                 }
                 drop(txn);
@@ -489,7 +495,18 @@ where
         let txn = doc.transact();
         let state = txn.encode_state_as_update_v2(&StateVector::default());
 
-        self.upsert(doc_key_bytes, &state).await?;
+        let mut uncompressed_data = std::io::Cursor::new(state);
+        let mut compressed_data = Vec::new();
+
+        let params = brotli::enc::BrotliEncoderParams {
+            quality: 4,
+            lgwin: 22,
+            ..Default::default()
+        };
+
+        brotli::BrotliCompress(&mut uncompressed_data, &mut compressed_data, &params)?;
+
+        self.upsert(doc_key_bytes, &compressed_data).await?;
         Ok(())
     }
 }
