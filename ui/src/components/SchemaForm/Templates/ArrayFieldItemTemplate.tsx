@@ -1,5 +1,5 @@
 import {
-  ArrayFieldItemTemplateType,
+  ArrayFieldTemplateItemType,
   FormContextType,
   RJSFSchema,
   StrictRJSFSchema,
@@ -10,31 +10,27 @@ const ArrayFieldItemTemplate = <
   S extends StrictRJSFSchema = RJSFSchema,
   F extends FormContextType = FormContextType,
 >(
-  props: ArrayFieldItemTemplateType<T, S, F>,
+  props: ArrayFieldTemplateItemType<T, S, F>,
 ) => {
   const {
     children,
     disabled,
     hasToolbar,
-    index,
-    readonly,
-    registry,
-    uiSchema,
-    buttonsProps,
-  } = props;
-
-  const { CopyButton, MoveDownButton, MoveUpButton, RemoveButton } =
-    registry.templates.ButtonTemplates;
-
-  const {
     hasCopy,
     hasMoveDown,
     hasMoveUp,
     hasRemove,
+    index,
     onCopyIndexClick,
     onDropIndexClick,
     onReorderClick,
-  } = buttonsProps;
+    readonly,
+    registry,
+    uiSchema,
+  } = props;
+
+  const { CopyButton, MoveDownButton, MoveUpButton, RemoveButton } =
+    registry.templates.ButtonTemplates;
 
   return (
     <div>
@@ -65,20 +61,24 @@ const ArrayFieldItemTemplate = <
                 </div>
               )}
               {hasCopy && (
-                <CopyButton
-                  disabled={disabled || readonly}
-                  onClick={onCopyIndexClick(index)}
-                  uiSchema={uiSchema}
-                  registry={registry}
-                />
+                <div>
+                  <CopyButton
+                    disabled={disabled || readonly}
+                    onClick={onCopyIndexClick(index)}
+                    uiSchema={uiSchema}
+                    registry={registry}
+                  />
+                </div>
               )}
               {hasRemove && (
-                <RemoveButton
-                  disabled={disabled || readonly}
-                  onClick={onDropIndexClick(index)}
-                  uiSchema={uiSchema}
-                  registry={registry}
-                />
+                <div>
+                  <RemoveButton
+                    disabled={disabled || readonly}
+                    onClick={onDropIndexClick(index)}
+                    uiSchema={uiSchema}
+                    registry={registry}
+                  />
+                </div>
               )}
             </div>
           )}

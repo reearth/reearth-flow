@@ -4412,9 +4412,9 @@ __metadata:
     "@radix-ui/react-tabs": "npm:1.1.11"
     "@radix-ui/react-toast": "npm:1.2.13"
     "@radix-ui/react-tooltip": "npm:1.2.6"
-    "@rjsf/core": "npm:6.0.0-beta.7"
-    "@rjsf/utils": "npm:6.0.0-beta.7"
-    "@rjsf/validator-ajv8": "npm:6.0.0-beta.7"
+    "@rjsf/core": "npm:5.24.10"
+    "@rjsf/utils": "npm:5.24.10"
+    "@rjsf/validator-ajv8": "npm:5.24.10"
     "@storybook/addon-essentials": "npm:8.6.12"
     "@storybook/addon-interactions": "npm:8.6.12"
     "@storybook/addon-links": "npm:8.6.12"
@@ -4499,50 +4499,48 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@rjsf/core@npm:6.0.0-beta.7":
-  version: 6.0.0-beta.7
-  resolution: "@rjsf/core@npm:6.0.0-beta.7"
+"@rjsf/core@npm:5.24.10":
+  version: 5.24.10
+  resolution: "@rjsf/core@npm:5.24.10"
   dependencies:
     lodash: "npm:^4.17.21"
     lodash-es: "npm:^4.17.21"
-    markdown-to-jsx: "npm:^7.7.6"
-    nanoid: "npm:^5.1.5"
+    markdown-to-jsx: "npm:^7.4.1"
+    nanoid: "npm:^3.3.7"
     prop-types: "npm:^15.8.1"
   peerDependencies:
-    "@rjsf/utils": ^6.0.0-beta
-    react: ">=18"
-  checksum: 10c0/a17cc4b7b95884bde4acdba8d9e8b2d31720dbb24f40022f0d8899df4e8d8c62cd41741cf3a678dfbc47814288d040ac7f2b7cda6b8e09304e348222fab64fcf
+    "@rjsf/utils": ^5.24.x
+    react: ^16.14.0 || >=17
+  checksum: 10c0/3fd455c9ba325b15dee56675a890d851aa35d03d5a4039eb2740fa46dcad2eb36d8c999d466b1ece85c6528a58a3f79d5c5b318df8c8b9fa2f2ced129b960e0d
   languageName: node
   linkType: hard
 
-"@rjsf/utils@npm:6.0.0-beta.7":
-  version: 6.0.0-beta.7
-  resolution: "@rjsf/utils@npm:6.0.0-beta.7"
+"@rjsf/utils@npm:5.24.10":
+  version: 5.24.10
+  resolution: "@rjsf/utils@npm:5.24.10"
   dependencies:
-    fast-uri: "npm:^3.0.6"
     json-schema-merge-allof: "npm:^0.8.1"
     jsonpointer: "npm:^5.0.1"
     lodash: "npm:^4.17.21"
     lodash-es: "npm:^4.17.21"
-    nanoid: "npm:^5.1.5"
     react-is: "npm:^18.2.0"
   peerDependencies:
-    react: ">=18"
-  checksum: 10c0/459c3c8231cb683a6f5b4d0363d27e93660251ec1d25106393a562309bbaf64d9352059b582ed73a09077f1e011a43128e17e81f1b18efd8d3c63ab8cda53a38
+    react: ^16.14.0 || >=17
+  checksum: 10c0/80aee710230cf11abeefd75e3d401671ff0bb3268b5cd3f238b61c928fc152a211777980394f252fea3b6b364e795bfb8e0a8067e9a6700fb8252178fd087329
   languageName: node
   linkType: hard
 
-"@rjsf/validator-ajv8@npm:6.0.0-beta.7":
-  version: 6.0.0-beta.7
-  resolution: "@rjsf/validator-ajv8@npm:6.0.0-beta.7"
+"@rjsf/validator-ajv8@npm:5.24.10":
+  version: 5.24.10
+  resolution: "@rjsf/validator-ajv8@npm:5.24.10"
   dependencies:
     ajv: "npm:^8.12.0"
     ajv-formats: "npm:^2.1.1"
     lodash: "npm:^4.17.21"
     lodash-es: "npm:^4.17.21"
   peerDependencies:
-    "@rjsf/utils": ^6.0.0-beta
-  checksum: 10c0/418a69ce81f3f241bf3368692c6a1cf06f0e4073ede22a87f571fb84ce28cb12e397ddeecfd401fcf8b49ec50e663b8eba3b0b2fc40f7dd09d48040b7b669895
+    "@rjsf/utils": ^5.24.x
+  checksum: 10c0/3a86e5396e416a93dcfe5193235fec8df85b84862e5016575f59f4a963948b9c75266d24b35a1a3d9ff0814cd22319b191acd6450615704c620ee491f6ba4b65
   languageName: node
   linkType: hard
 
@@ -9457,7 +9455,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"fast-uri@npm:^3.0.1, fast-uri@npm:^3.0.6":
+"fast-uri@npm:^3.0.1":
   version: 3.0.6
   resolution: "fast-uri@npm:3.0.6"
   checksum: 10c0/74a513c2af0584448aee71ce56005185f81239eab7a2343110e5bad50c39ad4fb19c5a6f99783ead1cac7ccaf3461a6034fda89fffa2b30b6d99b9f21c2f9d29
@@ -11764,7 +11762,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"markdown-to-jsx@npm:^7.7.6":
+"markdown-to-jsx@npm:^7.4.1":
   version: 7.7.6
   resolution: "markdown-to-jsx@npm:7.7.6"
   peerDependencies:
@@ -12041,21 +12039,21 @@ __metadata:
   languageName: node
   linkType: hard
 
+"nanoid@npm:^3.3.7":
+  version: 3.3.11
+  resolution: "nanoid@npm:3.3.11"
+  bin:
+    nanoid: bin/nanoid.cjs
+  checksum: 10c0/40e7f70b3d15f725ca072dfc4f74e81fcf1fbb02e491cf58ac0c79093adc9b0a73b152bcde57df4b79cd097e13023d7504acb38404a4da7bc1cd8e887b82fe0b
+  languageName: node
+  linkType: hard
+
 "nanoid@npm:^3.3.8":
   version: 3.3.8
   resolution: "nanoid@npm:3.3.8"
   bin:
     nanoid: bin/nanoid.cjs
   checksum: 10c0/4b1bb29f6cfebf3be3bc4ad1f1296fb0a10a3043a79f34fbffe75d1621b4318319211cd420549459018ea3592f0d2f159247a6f874911d6d26eaaadda2478120
-  languageName: node
-  linkType: hard
-
-"nanoid@npm:^5.1.5":
-  version: 5.1.5
-  resolution: "nanoid@npm:5.1.5"
-  bin:
-    nanoid: bin/nanoid.js
-  checksum: 10c0/e6004f1ad6c7123eeb037062c4441d44982037dc043aabb162457ef6986e99964ba98c63c975f96c547403beb0bf95bc537bd7bf9a09baf381656acdc2975c3c
   languageName: node
   linkType: hard
 
