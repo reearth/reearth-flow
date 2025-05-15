@@ -550,26 +550,12 @@ impl BroadcastGroup {
                 let lock_id = format!("gcs:lock:{}", self.doc_name);
                 let instance_id = format!("instance-{}", rand::random::<u64>());
 
-                let lock_acquired = match self
+                let lock_acquired = self
                     .redis_store
                     .acquire_doc_lock(&lock_id, &instance_id)
-                    .await
-                {
-                    Ok(true) => {
-                        debug!("Acquired lock for GCS operations on {}", self.doc_name);
-                        Some((self.redis_store.clone(), lock_id, instance_id))
-                    }
-                    Ok(false) => {
-                        warn!("Could not acquire lock for GCS operations, skipping update");
-                        None
-                    }
-                    Err(e) => {
-                        warn!("Error acquiring lock for GCS operations: {}", e);
-                        None
-                    }
-                };
+                    .await?;
 
-                if lock_acquired.is_some() {
+                if lock_acquired {
                     let awareness = self.awareness_ref.write().await;
                     let awareness_doc = awareness.doc();
 
@@ -599,8 +585,7 @@ impl BroadcastGroup {
                             &update_bytes,
                             &self.redis_store,
                         );
-                        let flush_future =
-                            self.storage.flush_doc_direct(&self.doc_name, awareness_doc);
+                        let flush_future = self.storage.flush_doc_v2(&self.doc_name, awareness_doc);
 
                         let (update_result, flush_result) =
                             tokio::join!(update_future, flush_future);
@@ -613,20 +598,22 @@ impl BroadcastGroup {
                             warn!("Failed to update document in storage: {}", e);
                         }
 
-                        if let Err(e) = self
-                            .storage
-                            .trim_updates_logarithmic(&self.doc_name, 1)
-                            .await
-                        {
-                            warn!("Failed to trim updates: {}", e);
-                        }
+                        // if let Err(e) = self
+                        //     .storage
+                        //     .trim_updates_logarithmic(&self.doc_name, 1)
+                        //     .await
+                        // {
+                        //     warn!("Failed to trim updates: {}", e);
+                        // }
                     }
                 }
 
-                if let Some((redis, lock_id, instance_id)) = lock_acquired {
-                    if let Err(e) = redis.release_doc_lock(&lock_id, &instance_id).await {
-                        warn!("Failed to release GCS lock: {}", e);
-                    }
+                if let Err(e) = self
+                    .redis_store
+                    .release_doc_lock(&lock_id, &instance_id)
+                    .await
+                {
+                    warn!("Failed to release GCS lock: {}", e);
                 }
             }
         }
