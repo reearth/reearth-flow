@@ -458,7 +458,7 @@ where
         &self,
         name: &K,
     ) -> Result<Doc, Error> {
-        let doc_key = format!("direct_doc:{}", hex::encode(name.as_ref()));
+        let doc_key = format!("doc_v2:{}", hex::encode(name.as_ref()));
         let doc_key_bytes = doc_key.as_bytes();
 
         match self.get(doc_key_bytes).await? {
@@ -489,7 +489,7 @@ where
         name: &K,
         doc: &Doc,
     ) -> Result<(), Error> {
-        let doc_key = format!("direct_doc:{}", hex::encode(name.as_ref()));
+        let doc_key = format!("doc_v2:{}", hex::encode(name.as_ref()));
         let doc_key_bytes = doc_key.as_bytes();
 
         let txn = doc.transact();
