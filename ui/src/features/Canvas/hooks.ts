@@ -78,8 +78,13 @@ export default ({
     onEdgesChange,
   });
 
-  const [contextMenu, setContextMenu] = useState<ContextMenuMeta | null>(null);
+  const [showBeforeDeleteDialog, setShowBeforeDeleteDialog] =
+    useState<boolean>(false);
+  const deferredDeleteRef = useRef<{
+    resolve: (val: boolean) => void;
+  } | null>(null);
 
+  const [contextMenu, setContextMenu] = useState<ContextMenuMeta | null>(null);
   const paneRef = useRef<HTMLDivElement>(null);
   const getContextMenuPosition = (event: MouseEvent) => {
     if (!paneRef.current) return;
@@ -147,6 +152,46 @@ export default ({
     },
     [setContextMenu],
   );
+  const handleBeforeDeleteNodes = useCallback(
+    ({ nodes: nodesToDelete }: { nodes: Node[] }) => {
+      return new Promise<boolean>((resolve) => {
+        let inputRouterCount = 0;
+        let outputRouterCount = 0;
+
+        for (const node of nodes) {
+          const name = node.data.officialName;
+          if (name === "InputRouter") inputRouterCount++;
+          else if (name === "OutputRouter") outputRouterCount++;
+        }
+
+        let deletingInputRouters = 0;
+        let deletingOutputRouters = 0;
+
+        for (const node of nodesToDelete) {
+          const name = node.data.officialName;
+          if (name === "InputRouter") deletingInputRouters++;
+          else if (name === "OutputRouter") deletingOutputRouters++;
+        }
+        const isDeletingLastInputRouter =
+          deletingInputRouters >= inputRouterCount && inputRouterCount > 0;
+        const isDeletingLastOutputRouter =
+          deletingOutputRouters >= outputRouterCount && outputRouterCount > 0;
+
+        const hasProtectedNode =
+          isDeletingLastInputRouter || isDeletingLastOutputRouter;
+
+        if (hasProtectedNode) {
+          deferredDeleteRef.current = { resolve };
+          setShowBeforeDeleteDialog(true);
+        } else {
+          resolve(true);
+        }
+      });
+    },
+    [nodes],
+  );
+
+  const handleDeleteDialogClose = () => setShowBeforeDeleteDialog(false);
 
   const handleCloseContextmenu = () => {
     setContextMenu(null);
@@ -155,6 +200,7 @@ export default ({
   return {
     handleNodesChange,
     handleNodesDelete,
+    handleBeforeDeleteNodes,
     handleNodeDragStop,
     handleNodeDragOver,
     handleNodeDrop,
@@ -166,7 +212,10 @@ export default ({
     handleSelectionContextMenu,
     handlePaneContextMenu,
     handleCloseContextmenu,
+    handleDeleteDialogClose,
     contextMenu,
     paneRef,
+    showBeforeDeleteDialog,
+    deferredDeleteRef,
   };
 };

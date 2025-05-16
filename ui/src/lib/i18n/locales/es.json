@@ -25,6 +25,8 @@
   "Node Settings": "Configuración del nodo",
   "Preview Intermediate Data": "Vista previa de datos intermedios",
   "Delete Node": "Eliminar nodo",
+  "Are you sure you want to delete an input or output node?": "",
+  "Input and Output nodes are required for the workflow to run. By deleting a node you may cause unexpected behavior.": "",
   "Paste": "Pegar",
   "Delete Selection": "Eliminar selección",
   "No content to display": "No hay contenido para mostrar",
