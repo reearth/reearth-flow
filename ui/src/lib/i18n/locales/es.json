@@ -125,6 +125,8 @@
   "Give your deployment a meaningful description...": "Dale a tu despliegue una descripción significativa...",
   "Are you sure you want to proceed?": "¿Estás seguro de que deseas continuar?",
   "Deploy": "Desplegar",
+  "URL copied.": "",
+  "URL was successfully copied to your clipboard.": "",
   "Share Project": "Compartir proyecto",
   "Copy URL": "",
   "Share your project's workflow with anyone with the URL. This is limited access to reading the contents of the canvas.": "Comparte el flujo de trabajo de tu proyecto con cualquier persona con la URL. Este es un acceso limitado para leer el contenido del lienzo.",

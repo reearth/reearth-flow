@@ -125,6 +125,8 @@
   "Give your deployment a meaningful description...": "",
   "Are you sure you want to proceed?": "",
   "Deploy": "",
+  "URL copied.": "",
+  "URL was successfully copied to your clipboard.": "",
   "Share Project": "",
   "Copy URL": "",
   "Share your project's workflow with anyone with the URL. This is limited access to reading the contents of the canvas.": "",

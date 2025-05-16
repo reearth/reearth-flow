@@ -125,6 +125,8 @@
   "Give your deployment a meaningful description...": "为您的部署提供有意义的描述...",
   "Are you sure you want to proceed?": "你确定要继续吗？",
   "Deploy": "部署",
+  "URL copied.": "",
+  "URL was successfully copied to your clipboard.": "",
   "Share Project": "共享项目",
   "Copy URL": "",
   "Share your project's workflow with anyone with the URL. This is limited access to reading the contents of the canvas.": "使用URL与任何人共享项目的工作流。这是有限的访问权限，只能读取画布的内容。",
