@@ -31,8 +31,8 @@ type Props = {
     nodeId: string,
     subworkflowId?: string,
   ) => void;
-  onCopy?: () => void;
-  onCut?: () => void;
+  onCopy?: (node?: Node) => void;
+  onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: (menuPosition?: XYPosition) => void;
   onClose: () => void;
 };
@@ -69,7 +69,7 @@ const CanvasContextMenu: React.FC<Props> = ({
     },
     [onSecondaryNodeAction],
   );
-
+  console.log("NODE IN CONTEXT", node);
   const handleNodeDelete = useCallback(
     (node?: Node, nodes?: Node[]) => {
       if (!nodes && !node) return;
@@ -104,7 +104,7 @@ const CanvasContextMenu: React.FC<Props> = ({
             <ContextMenuShortcut keyBinding={{ key: "c", commandKey: true }} />
           ),
           disabled: !nodes && !node,
-          onCallback: wrapWithClose(onCopy ?? (() => {})),
+          onCallback: wrapWithClose(() => onCopy?.(node) ?? (() => {})),
         },
       },
       {
@@ -116,7 +116,7 @@ const CanvasContextMenu: React.FC<Props> = ({
             <ContextMenuShortcut keyBinding={{ key: "x", commandKey: true }} />
           ),
           disabled: !nodes && !node,
-          onCallback: wrapWithClose(onCut ?? (() => {})),
+          onCallback: wrapWithClose(() => onCut?.(false, node) ?? (() => {})),
         },
       },
       {

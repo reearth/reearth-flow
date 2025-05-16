@@ -24,7 +24,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 }) => {
   return (
     <div className="absolute z-50" style={{ ...contextMenuMeta.styles }}>
-      <div className="min-w-[160px] select-none rounded-md border bg-card p-1 text-popover-foreground shadow-md">
+      <div className="min-w-[160px] select-none rounded-md bg-primary p-1 text-popover-foreground shadow-md">
         {items.map((item, index) =>
           item.type === "action" ? (
             <ContextMenuItem key={index} {...item.props} />

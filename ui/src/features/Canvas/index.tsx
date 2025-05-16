@@ -50,8 +50,8 @@ type Props = {
   onEdgesAdd?: (newEdges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onEdgeHover?: (e: MouseEvent, edge?: Edge) => void;
-  onCopy?: () => void;
-  onCut?: () => void;
+  onCopy?: (node?: Node) => void;
+  onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: () => void;
 };
 
