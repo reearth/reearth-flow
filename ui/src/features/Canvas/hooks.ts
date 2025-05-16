@@ -152,15 +152,33 @@ export default ({
     },
     [setContextMenu],
   );
-
   const handleBeforeDeleteNodes = useCallback(
-    ({ nodes }: { nodes: Node[] }) => {
+    ({ nodes: nodesToDelete }: { nodes: Node[] }) => {
       return new Promise<boolean>((resolve) => {
-        const hasProtectedNode = nodes.some(
-          (node) =>
-            node.data.officialName === "InputRouter" ||
-            node.data.officialName === "OutputRouter",
-        );
+        let inputRouterCount = 0;
+        let outputRouterCount = 0;
+
+        for (const node of nodes) {
+          const name = node.data.officialName;
+          if (name === "InputRouter") inputRouterCount++;
+          else if (name === "OutputRouter") outputRouterCount++;
+        }
+
+        let deletingInputRouters = 0;
+        let deletingOutputRouters = 0;
+
+        for (const node of nodesToDelete) {
+          const name = node.data.officialName;
+          if (name === "InputRouter") deletingInputRouters++;
+          else if (name === "OutputRouter") deletingOutputRouters++;
+        }
+        const isDeletingLastInputRouter =
+          deletingInputRouters >= inputRouterCount && inputRouterCount > 0;
+        const isDeletingLastOutputRouter =
+          deletingOutputRouters >= outputRouterCount && outputRouterCount > 0;
+
+        const hasProtectedNode =
+          isDeletingLastInputRouter || isDeletingLastOutputRouter;
 
         if (hasProtectedNode) {
           deferredDeleteRef.current = { resolve };
@@ -170,7 +188,7 @@ export default ({
         }
       });
     },
-    [],
+    [nodes],
   );
 
   const handleDeleteDialogClose = () => setShowBeforeDeleteDialog(false);
