@@ -1,7 +1,6 @@
 import {
   Clipboard,
   Copy,
-  Eye,
   GearFine,
   Graph,
   Scissors,
@@ -18,7 +17,7 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { isActionNodeType, Node, NodeChange } from "@flow/types";
+import { Node, NodeChange } from "@flow/types";
 
 type Props = {
   contextMenu: ContextMenuMeta;
@@ -155,21 +154,6 @@ const CanvasContextMenu: React.FC<Props> = ({
                 onCallback: wrapWithClose(() =>
                   handleSecondaryNodeAction(node, true),
                 ),
-              },
-            },
-          ]
-        : []),
-      ...(node && isActionNodeType(node.type)
-        ? [
-            {
-              type: "action" as const,
-              props: {
-                label: t("Preview Intermediate Data"),
-                icon: <Eye weight="light" />,
-                onCallback: wrapWithClose(() =>
-                  handleSecondaryNodeAction(node),
-                ),
-                disabled: true,
               },
             },
           ]
