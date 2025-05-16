@@ -3,6 +3,7 @@ import { debounce } from "lodash-es";
 import { useEffect, useRef, useState } from "react";
 
 import { Button, Switch } from "@flow/components";
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
 
@@ -15,8 +16,8 @@ type SharingState = "sharing" | "notSharing";
 
 const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
   const t = useT();
+  const { toast } = useToast();
   const [currentProject] = useCurrentProject();
-
   const BASE_URL = window.location.origin;
   const sharedToken = currentProject?.sharedToken;
   const sharedUrl = sharedToken
@@ -55,6 +56,14 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
     200,
   );
 
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText(sharedUrl || "");
+    toast({
+      title: t("URL copied."),
+      description: t("URL was successfully copied to your clipboard."),
+    });
+  };
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-2 justify-between border-b pb-2">
@@ -65,7 +74,7 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
           className="flex gap-2"
           variant="default"
           disabled={!isSwitchOn && !sharedUrl}
-          onClick={() => navigator.clipboard.writeText(sharedUrl || "")}>
+          onClick={handleCopyUrl}>
           <Paperclip weight="thin" />
           <p className="text-xs dark:font-light">{t("Copy URL")}</p>
         </Button>

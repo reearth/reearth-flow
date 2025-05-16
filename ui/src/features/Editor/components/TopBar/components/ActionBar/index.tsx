@@ -49,7 +49,6 @@ const ActionBar: React.FC<Props> = ({
     handleProjectExport,
   } = useHooks();
 
-  console.log("SHOW DIALOG", showDialog);
   return (
     <>
       <div className="flex rounded-md bg-secondary">
