@@ -32,6 +32,7 @@ type BatchConfig struct {
 	PubSubLogStreamTopic            string
 	PubSubJobCompleteTopic          string
 	PubSubNodeStatusTopic           string
+	PubSubStdoutLogTopic            string
 	ProjectID                       string
 	Region                          string
 	SAEmail                         string
@@ -131,6 +132,7 @@ func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL,
 				"FLOW_WORKER_LOG_STREAM_TOPIC":                  b.config.PubSubLogStreamTopic,
 				"FLOW_WORKER_JOB_COMPLETE_TOPIC":                b.config.PubSubJobCompleteTopic,
 				"FLOW_WORKER_NODE_STATUS_TOPIC":                 b.config.PubSubNodeStatusTopic,
+				"FLOW_WORKER_STDOUT_LOG_TOPIC":                  b.config.PubSubStdoutLogTopic,
 			},
 		},
 	}
