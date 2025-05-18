@@ -26,11 +26,15 @@ export const useQueries = () => {
         return { ...data.shareProject, workspaceId: input.workspaceId };
       }
     },
-    onSuccess: (data) =>
+    onSuccess: (data) => {
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
         queryKey: [ProjectQueryKeys.GetWorkspaceProjects, data?.workspaceId],
-      }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetProject, data?.projectId],
+      });
+    },
   });
 
   const unshareProjectMutation = useMutation({
@@ -45,11 +49,15 @@ export const useQueries = () => {
         return { ...data.unshareProject, workspaceId: input.workspaceId };
       }
     },
-    onSuccess: (data) =>
+    onSuccess: (data) => {
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
         queryKey: [ProjectQueryKeys.GetWorkspaceProjects, data?.workspaceId],
-      }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetProject, data?.projectId],
+      });
+    },
   });
 
   const useGetSharedProjectQuery = (token?: string) => {
