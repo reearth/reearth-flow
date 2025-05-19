@@ -7,7 +7,7 @@ require (
 	github.com/joho/godotenv v1.5.1
 	github.com/k0kubun/pp/v3 v3.4.1
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/redis/go-redis/v9 v9.7.0
+	github.com/redis/go-redis/v9 v9.7.3
 	github.com/reearth/reearthx v0.0.0-20240403021819-5cbc45bf18eb
 	github.com/stretchr/testify v1.10.0
 	go.mongodb.org/mongo-driver v1.17.3
