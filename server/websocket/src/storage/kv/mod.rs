@@ -39,6 +39,7 @@ pub mod error;
 pub mod keys;
 
 use crate::storage::redis::RedisStore;
+use crate::tools::{compress_brotli, decompress_brotli};
 use anyhow;
 use async_trait::async_trait;
 use error::Error;
@@ -455,19 +456,22 @@ where
     }
 
     async fn load_doc_v2<K: AsRef<[u8]> + ?Sized + Sync>(&self, name: &K) -> Result<Doc, Error> {
-        let doc_key = format!("direct_doc:{}", hex::encode(name.as_ref()));
+        let doc_key = format!("doc_v2:{}", hex::encode(name.as_ref()));
         let doc_key_bytes = doc_key.as_bytes();
 
         match self.get(doc_key_bytes).await? {
             Some(data) => {
                 let doc = Doc::new();
                 let mut txn = doc.transact_mut();
-                if let Ok(update) = Update::decode_v2(data.as_ref()) {
+
+                let decompressed_data = decompress_brotli(data.as_ref())?;
+                if let Ok(update) = Update::decode_v2(&decompressed_data) {
                     txn.apply_update(update)?;
                 }
                 drop(txn);
                 Ok(doc)
             }
+
             None => Err(anyhow::anyhow!(
                 "Document not found: {}",
                 hex::encode(name.as_ref())
@@ -480,13 +484,15 @@ where
         name: &K,
         doc: &Doc,
     ) -> Result<(), Error> {
-        let doc_key = format!("direct_doc:{}", hex::encode(name.as_ref()));
+        let doc_key = format!("doc_v2:{}", hex::encode(name.as_ref()));
         let doc_key_bytes = doc_key.as_bytes();
 
         let txn = doc.transact();
         let state = txn.encode_state_as_update_v2(&StateVector::default());
 
-        self.upsert(doc_key_bytes, &state).await?;
+        let compressed_data = compress_brotli(&state, 4, 22)?;
+
+        self.upsert(doc_key_bytes, &compressed_data).await?;
         Ok(())
     }
 }
