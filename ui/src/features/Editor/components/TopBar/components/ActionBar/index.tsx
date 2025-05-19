@@ -74,10 +74,7 @@ const ActionBar: React.FC<Props> = ({
             </PopoverTrigger>
             <PopoverContent>
               {showDialog === "share" && (
-                <SharePopover
-                  onDialogClose={handleDialogClose}
-                  onProjectShare={onProjectShare}
-                />
+                <SharePopover onProjectShare={onProjectShare} />
               )}
             </PopoverContent>
           </Popover>

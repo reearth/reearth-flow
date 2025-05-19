@@ -9,7 +9,6 @@ import { useCurrentProject } from "@flow/stores";
 
 type Props = {
   onProjectShare: (share: boolean) => void;
-  onDialogClose: () => void;
 };
 
 type SharingState = "sharing" | "notSharing";
