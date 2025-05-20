@@ -11,6 +11,7 @@ import { formatDate } from "@flow/utils";
 
 import useHooks from "./hooks";
 import { Version } from "./Version";
+import { VersionConfirmationDialog } from "./VersionConfirmationDialog";
 import { VersionHistoryChangeDialog } from "./VersionHistoryChangeDialog";
 
 type Props = {
@@ -27,9 +28,13 @@ const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
     selectedProjectSnapshotVersion,
     latestProjectSnapshotVersion,
     setSelectedProjectSnapshotVersion,
+    versionPreviewYWorkflows,
     openVersionChangeDialog,
+    openVersionPreviewDialog,
     setOpenVersionChangeDialog,
+    setOpenVersionPreviewDialog,
     onRollbackProject,
+    onPreviewVersion,
   } = useHooks({ projectId: project?.id ?? "", yDoc });
 
   const previousVersions = history?.filter(
@@ -40,8 +45,11 @@ const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
     setSelectedProjectSnapshotVersion(version);
   };
 
+  console.log("PREVIOUS VERSIONS", selectedProjectSnapshotVersion);
+
   const handleDoubleClick = () => {
-    setOpenVersionChangeDialog(true);
+    setOpenVersionPreviewDialog(true);
+    onPreviewVersion();
   };
 
   return (
@@ -81,10 +89,20 @@ const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
           </div>
         ) : null}
       </ScrollArea>
+      {openVersionPreviewDialog && selectedProjectSnapshotVersion && (
+        <VersionHistoryChangeDialog
+          selectedProjectSnapshotVersion={selectedProjectSnapshotVersion}
+          versionPreviewYWorkflows={versionPreviewYWorkflows}
+          onDialogClose={() => setOpenVersionPreviewDialog(false)}
+          onVersionConfirmationDialogOpen={() =>
+            setOpenVersionChangeDialog(true)
+          }
+        />
+      )}
       {openVersionChangeDialog &&
         selectedProjectSnapshotVersion &&
         !isReverting && (
-          <VersionHistoryChangeDialog
+          <VersionConfirmationDialog
             selectedProjectSnapshotVersion={selectedProjectSnapshotVersion}
             onDialogClose={() => setOpenVersionChangeDialog(false)}
             onRollbackProject={onRollbackProject}

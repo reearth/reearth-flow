@@ -218,6 +218,7 @@ export type Job = Node & {
   outputURLs?: Maybe<Array<Scalars['String']['output']>>;
   startedAt: Scalars['DateTime']['output'];
   status: JobStatus;
+  workerLogsURL?: Maybe<Scalars['String']['output']>;
   workspace?: Maybe<Workspace>;
   workspaceId: Scalars['ID']['output'];
 };
@@ -637,7 +638,7 @@ export type Query = {
   nodes: Array<Maybe<Node>>;
   projectHistory: Array<ProjectSnapshotMetadata>;
   projectSharingInfo: ProjectSharingInfoPayload;
-  projectSnapshot: Array<ProjectSnapshot>;
+  projectSnapshot: ProjectSnapshot;
   projects: ProjectConnection;
   searchUser?: Maybe<User>;
   sharedProject: SharedProjectPayload;
@@ -1038,6 +1039,14 @@ export type GetLatestProjectSnapshotQueryVariables = Exact<{
 
 
 export type GetLatestProjectSnapshotQuery = { __typename?: 'Query', latestProjectSnapshot?: { __typename?: 'ProjectDocument', id: string, timestamp: any, updates: Array<number>, version: number } | null };
+
+export type GetProjectSnapshotQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  version: Scalars['Int']['input'];
+}>;
+
+
+export type GetProjectSnapshotQuery = { __typename?: 'Query', projectSnapshot: { __typename?: 'ProjectSnapshot', timestamp: any, updates: Array<number>, version: number } };
 
 export type GetProjectHistoryQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
@@ -1484,6 +1493,15 @@ export const GetLatestProjectSnapshotDocument = gql`
   }
 }
     `;
+export const GetProjectSnapshotDocument = gql`
+    query GetProjectSnapshot($projectId: ID!, $version: Int!) {
+  projectSnapshot(projectId: $projectId, version: $version) {
+    timestamp
+    updates
+    version
+  }
+}
+    `;
 export const GetProjectHistoryDocument = gql`
     query GetProjectHistory($projectId: ID!) {
   projectHistory(projectId: $projectId) {
@@ -1814,6 +1832,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     GetLatestProjectSnapshot(variables: GetLatestProjectSnapshotQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetLatestProjectSnapshotQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetLatestProjectSnapshotQuery>(GetLatestProjectSnapshotDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetLatestProjectSnapshot', 'query', variables);
+    },
+    GetProjectSnapshot(variables: GetProjectSnapshotQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetProjectSnapshotQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectSnapshotQuery>(GetProjectSnapshotDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetProjectSnapshot', 'query', variables);
     },
     GetProjectHistory(variables: GetProjectHistoryQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetProjectHistoryQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetProjectHistoryQuery>(GetProjectHistoryDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetProjectHistory', 'query', variables);
