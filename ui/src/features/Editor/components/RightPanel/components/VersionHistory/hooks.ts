@@ -203,16 +203,15 @@ export default ({
 
       previewDocRef.current = versionPreviewYDoc;
 
-      const maybeWorkflows = versionPreviewYDoc.share.get("workflows");
+      const versionYWorkflows =
+        versionPreviewYDoc.getMap<YWorkflow>("workflows");
 
-      if (!(maybeWorkflows instanceof Y.Map)) {
+      if (!versionYWorkflows) {
         console.error("No workflows found in version preview");
         return;
       }
 
-      const versionPreviewYWorkflows = maybeWorkflows as Y.Map<YWorkflow>;
-
-      setVersionPreviewYWorkflows(versionPreviewYWorkflows);
+      setVersionPreviewYWorkflows(versionYWorkflows);
     } catch (error) {
       console.error("Project Version Preview Creation Failed:", error);
       return toast({
