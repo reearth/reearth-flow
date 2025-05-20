@@ -109,7 +109,6 @@ export default ({
       const { styles } = position;
 
       setContextMenu({
-        type: "node",
         data: node,
         styles,
       });
@@ -125,7 +124,6 @@ export default ({
       const { styles } = position;
 
       setContextMenu({
-        type: "selection",
         data: nodes,
         styles,
       });
@@ -140,7 +138,6 @@ export default ({
       if (!position) return;
       const { styles, mousePosition } = position;
       setContextMenu({
-        type: "pane",
         mousePosition,
         styles,
       });
