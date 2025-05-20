@@ -45,8 +45,6 @@ const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
     setSelectedProjectSnapshotVersion(version);
   };
 
-  console.log("PREVIOUS VERSIONS", selectedProjectSnapshotVersion);
-
   const handleDoubleClick = () => {
     setOpenVersionPreviewDialog(true);
     onPreviewVersion();

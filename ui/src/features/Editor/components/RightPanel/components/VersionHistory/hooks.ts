@@ -99,8 +99,6 @@ export default ({
         selectedProjectSnapshotVersion,
       );
 
-      console.log("TESTING ROLLBACK DATA", rollbackData);
-
       const updates = rollbackData.projectDocument?.updates;
 
       if (!updates || !updates.length || !yDoc) {
@@ -214,7 +212,6 @@ export default ({
 
       const versionPreviewYWorkflows = maybeWorkflows as Y.Map<YWorkflow>;
 
-      console.log("Preview workflows map:", versionPreviewYWorkflows);
       setVersionPreviewYWorkflows(versionPreviewYWorkflows);
     } catch (error) {
       console.error("Project Version Preview Creation Failed:", error);

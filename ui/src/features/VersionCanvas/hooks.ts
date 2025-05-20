@@ -38,8 +38,6 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
     Node
   >;
 
-  console.log("RAW Workflows", rawWorkflows);
-
   // Non-persistant state needs to be managed here
   const nodes = useMemo(
     () =>
