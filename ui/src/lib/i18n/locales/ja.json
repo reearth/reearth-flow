@@ -22,7 +22,7 @@
   "Copy": "コピー",
   "Cut": "切り取り",
   "Paste": "貼り付け",
-  "Open Subworkflow Canvas": "サブワークフローキャンバスを開く",
+  "Open Subworkflow": "サブワークフローを開く",
   "Node Settings": "ノード設定",
   "Delete Node": "ノードを削除",
   "Delete Selection": "選択を削除",

@@ -135,7 +135,7 @@ const CanvasContextMenu: React.FC<Props> = ({
             {
               type: "action" as const,
               props: {
-                label: t("Open Subworkflow Canvas"),
+                label: t("Open Subworkflow"),
                 icon: <Graph weight="light" />,
                 onCallback: wrapWithClose(() =>
                   handleSecondaryNodeAction(node),
