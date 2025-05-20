@@ -20,12 +20,7 @@ import {
 } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
-import {
-  NodeContextMenu,
-  NodeDeletionDialog,
-  PaneContextMenu,
-  SelectionContextMenu,
-} from "./components";
+import { CanvasContextMenu, NodeDeletionDialog } from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
@@ -55,8 +50,8 @@ type Props = {
   onEdgesAdd?: (newEdges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onEdgeHover?: (e: MouseEvent, edge?: Edge) => void;
-  onCopy?: () => void;
-  onCut?: () => void;
+  onCopy?: (node?: Node) => void;
+  onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: () => void;
 };
 
@@ -181,35 +176,16 @@ const Canvas: React.FC<Props> = ({
         gap={gridSize}
         color="rgba(63, 63, 70, 0.4)"
       />
-
-      {contextMenu?.type === "node" && (
-        <NodeContextMenu
-          node={contextMenu.data}
-          contextMenu={contextMenu}
-          onCopy={onCopy}
-          onCut={onCut}
-          onNodesChange={handleNodesChange}
-          onSecondaryNodeAction={onNodeDoubleClick}
-          onClose={handleCloseContextmenu}
-        />
-      )}
-      {contextMenu?.type === "selection" && (
-        <SelectionContextMenu
-          nodes={contextMenu.data}
+      {contextMenu && (
+        <CanvasContextMenu
+          data={contextMenu.data}
           selectedEdgeIds={selectedEdgeIds}
           contextMenu={contextMenu}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
+          onSecondaryNodeAction={onNodeDoubleClick}
           onCopy={onCopy}
           onCut={onCut}
-          onPaste={onPaste}
-          onClose={handleCloseContextmenu}
-        />
-      )}
-      {contextMenu?.type === "pane" && (
-        <PaneContextMenu
-          contextMenu={contextMenu}
-          onCopy={onCopy}
           onPaste={onPaste}
           onClose={handleCloseContextmenu}
         />
