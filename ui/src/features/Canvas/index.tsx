@@ -183,6 +183,7 @@ const Canvas: React.FC<Props> = ({
           contextMenu={contextMenu}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
+          onBeforeDelete={handleBeforeDeleteNodes}
           onSecondaryNodeAction={onNodeDoubleClick}
           onCopy={onCopy}
           onCut={onCut}
