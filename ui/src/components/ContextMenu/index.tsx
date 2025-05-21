@@ -7,25 +7,11 @@ type ContextMenuStyles = {
   mousePosition?: XYPosition;
 };
 
-type NodeContextMenuMeta = {
-  type: "node";
-  data: Node;
+type CanvasContextMenuMeta = {
+  data?: Node | Node[];
 };
 
-type SelectionContextMenuMeta = {
-  type: "selection";
-  data: Node[];
-};
-
-type PaneContextMenuMeta = {
-  type: "pane";
-};
-
-export type ContextMenuMeta =
-  | (ContextMenuStyles & NodeContextMenuMeta)
-  | (ContextMenuStyles & SelectionContextMenuMeta)
-  | (ContextMenuStyles & PaneContextMenuMeta);
-
+export type ContextMenuMeta = ContextMenuStyles & CanvasContextMenuMeta;
 type ContextMenuProps = {
   items: ContextMenuItemType[];
   contextMenuMeta: ContextMenuMeta;
@@ -38,7 +24,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 }) => {
   return (
     <div className="absolute z-50" style={{ ...contextMenuMeta.styles }}>
-      <div className="min-w-[160px] select-none rounded-md border bg-card p-1 text-popover-foreground shadow-md">
+      <div className="min-w-[160px] select-none rounded-md bg-primary p-1 text-popover-foreground shadow-md">
         {items.map((item, index) =>
           item.type === "action" ? (
             <ContextMenuItem key={index} {...item.props} />
