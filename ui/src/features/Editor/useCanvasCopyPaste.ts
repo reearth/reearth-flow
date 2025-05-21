@@ -395,8 +395,8 @@ export default ({
         selected: false,
       }));
 
-      const edgeChanges: EdgeChange[] = edges.map((n) => ({
-        id: n.id,
+      const edgeChanges: EdgeChange[] = edges.map((e) => ({
+        id: e.id,
         type: "select",
         selected: false,
       }));
