@@ -20,7 +20,7 @@ import {
 } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
-import { CanvasContextMenu } from "./components";
+import { CanvasContextMenu, NodeDeletionDialog } from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
@@ -77,6 +77,7 @@ const Canvas: React.FC<Props> = ({
   const {
     handleNodesChange,
     handleNodesDelete,
+    handleBeforeDeleteNodes,
     handleNodeDragStop,
     handleNodeDragOver,
     handleNodeDrop,
@@ -90,6 +91,9 @@ const Canvas: React.FC<Props> = ({
     handleCloseContextmenu,
     contextMenu,
     paneRef,
+    showBeforeDeleteDialog,
+    handleDeleteDialogClose,
+    deferredDeleteRef,
   } = useHooks({
     nodes,
     edges,
@@ -164,6 +168,7 @@ const Canvas: React.FC<Props> = ({
       onEdgeMouseLeave={onEdgeHover}
       onConnect={handleConnect}
       onReconnect={handleReconnect}
+      onBeforeDelete={handleBeforeDeleteNodes}
       proOptions={proOptions}>
       <Background
         className="bg-background"
@@ -178,11 +183,19 @@ const Canvas: React.FC<Props> = ({
           contextMenu={contextMenu}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
+          onBeforeDelete={handleBeforeDeleteNodes}
           onSecondaryNodeAction={onNodeDoubleClick}
           onCopy={onCopy}
           onCut={onCut}
           onPaste={onPaste}
           onClose={handleCloseContextmenu}
+        />
+      )}
+      {showBeforeDeleteDialog && (
+        <NodeDeletionDialog
+          showBeforeDeleteDialog={showBeforeDeleteDialog}
+          deferredDeleteRef={deferredDeleteRef}
+          onDialogClose={handleDeleteDialogClose}
         />
       )}
     </ReactFlow>

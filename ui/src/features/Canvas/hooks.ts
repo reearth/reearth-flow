@@ -78,8 +78,13 @@ export default ({
     onEdgesChange,
   });
 
-  const [contextMenu, setContextMenu] = useState<ContextMenuMeta | null>(null);
+  const [showBeforeDeleteDialog, setShowBeforeDeleteDialog] =
+    useState<boolean>(false);
+  const deferredDeleteRef = useRef<{
+    resolve: (val: boolean) => void;
+  } | null>(null);
 
+  const [contextMenu, setContextMenu] = useState<ContextMenuMeta | null>(null);
   const paneRef = useRef<HTMLDivElement>(null);
   const getContextMenuPosition = (event: MouseEvent) => {
     if (!paneRef.current) return;
@@ -145,6 +150,50 @@ export default ({
     [setContextMenu],
   );
 
+  const handleBeforeDeleteNodes = useCallback(
+    ({ nodes: nodesToDelete }: { nodes: Node[] }) => {
+      return new Promise<boolean>((resolve) => {
+        const deletingIds = new Set(nodesToDelete.map((node) => node.id));
+
+        let totalInputRouters = 0;
+        let totalOutputRouters = 0;
+        let remainingInputRouters = 0;
+        let remainingOutputRouters = 0;
+
+        for (const node of nodes) {
+          const officalName = node.data.officialName;
+          if (officalName !== "InputRouter" && officalName !== "OutputRouter")
+            continue;
+          const isDeleting = deletingIds.has(node.id);
+
+          if (officalName === "InputRouter") {
+            totalInputRouters++;
+            if (!isDeleting) remainingInputRouters++;
+          } else if (officalName === "OutputRouter") {
+            totalOutputRouters++;
+            if (!isDeleting) remainingOutputRouters++;
+          }
+        }
+
+        const isDeletingLastInputRouter =
+          totalInputRouters > 0 && remainingInputRouters === 0;
+
+        const isDeletingLastOutputRouter =
+          totalOutputRouters > 0 && remainingOutputRouters === 0;
+
+        if (isDeletingLastInputRouter || isDeletingLastOutputRouter) {
+          deferredDeleteRef.current = { resolve };
+          setShowBeforeDeleteDialog(true);
+        } else {
+          resolve(true);
+        }
+      });
+    },
+    [nodes],
+  );
+
+  const handleDeleteDialogClose = () => setShowBeforeDeleteDialog(false);
+
   const handleCloseContextmenu = () => {
     setContextMenu(null);
   };
@@ -152,6 +201,7 @@ export default ({
   return {
     handleNodesChange,
     handleNodesDelete,
+    handleBeforeDeleteNodes,
     handleNodeDragStop,
     handleNodeDragOver,
     handleNodeDrop,
@@ -163,7 +213,10 @@ export default ({
     handleSelectionContextMenu,
     handlePaneContextMenu,
     handleCloseContextmenu,
+    handleDeleteDialogClose,
     contextMenu,
     paneRef,
+    showBeforeDeleteDialog,
+    deferredDeleteRef,
   };
 };
