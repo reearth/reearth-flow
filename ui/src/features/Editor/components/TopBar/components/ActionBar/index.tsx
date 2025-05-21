@@ -1,7 +1,7 @@
 import {
+  ClockCounterClockwise,
   DotsThreeVertical,
   Export,
-  LetterCircleV,
   PaperPlaneTilt,
   Rocket,
 } from "@phosphor-icons/react";
@@ -86,7 +86,7 @@ const ActionBar: React.FC<Props> = ({
                 className="flex justify-between gap-4"
                 onClick={() => onRightPanelOpen("version-history")}>
                 <p>{t("Version History")}</p>
-                <LetterCircleV weight="thin" size={18} />
+                <ClockCounterClockwise weight="thin" size={18} />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

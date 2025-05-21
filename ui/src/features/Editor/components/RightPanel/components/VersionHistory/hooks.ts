@@ -148,20 +148,9 @@ export default ({
   ]);
   const latestProjectSnapshotVersion = projectDocument;
 
-  function createVersionPreview(
-    snapshotUpdate: Uint8Array,
-    getMetadata: (key: string) => "Text" | "Map" | "Array",
-  ): Y.Doc {
+  function createVersionPreview(snapshotUpdate: Uint8Array): Y.Doc {
     const snapshotDoc = new Y.Doc();
     Y.applyUpdate(snapshotDoc, snapshotUpdate, snapshotOriginPreview);
-
-    for (const key of snapshotDoc.share.keys()) {
-      const type = getMetadata(key);
-      if (type === "Text") snapshotDoc.getText(key);
-      else if (type === "Map") snapshotDoc.getMap(key);
-      else if (type === "Array") snapshotDoc.getArray(key);
-    }
-
     return snapshotDoc;
   }
 
@@ -170,12 +159,14 @@ export default ({
 
     try {
       if (!projectSnapshot) {
-        console.error("No project snapshot found");
+        console.error(
+          "No project snapshot found for version: ",
+          selectedProjectSnapshotVersion,
+        );
         return;
       }
-
       const updates = projectSnapshot.updates;
-
+      // console.log("VERSION:", selectedProjectSnapshotVersion, projectSnapshot);
       if (!updates || !updates.length) {
         console.error("No updates found in snapshot");
         return;
@@ -183,35 +174,19 @@ export default ({
 
       const convertedUpdates = new Uint8Array(updates);
 
-      const getMetadata = (key: string): "Text" | "Map" | "Array" => {
-        const sharedType = yDoc?.share.get(key);
-        if (sharedType instanceof Y.Text) return "Text";
-        if (sharedType instanceof Y.Map) return "Map";
-        if (sharedType instanceof Y.Array) return "Array";
-        console.warn(`Unknown type for ${key}, defaulting to Map`);
-        return "Map";
-      };
-      if (previewDocRef.current) {
-        previewDocRef.current.destroy();
-        previewDocRef.current = null;
-      }
-
-      const versionPreviewYDoc = createVersionPreview(
-        convertedUpdates,
-        getMetadata,
-      );
+      const versionPreviewYDoc = createVersionPreview(convertedUpdates);
 
       previewDocRef.current = versionPreviewYDoc;
 
-      const versionYWorkflows =
+      const versionpreviewPreviewYWorkflows =
         versionPreviewYDoc.getMap<YWorkflow>("workflows");
 
-      if (!versionYWorkflows) {
+      if (!versionpreviewPreviewYWorkflows) {
         console.error("No workflows found in version preview");
         return;
       }
 
-      setVersionPreviewYWorkflows(versionYWorkflows);
+      setVersionPreviewYWorkflows(versionpreviewPreviewYWorkflows);
     } catch (error) {
       console.error("Project Version Preview Creation Failed:", error);
       return toast({
@@ -222,7 +197,7 @@ export default ({
         variant: "destructive",
       });
     }
-  }, [selectedProjectSnapshotVersion, projectSnapshot, yDoc, t, toast]);
+  }, [selectedProjectSnapshotVersion, projectSnapshot, t, toast]);
 
   return {
     history,
@@ -238,5 +213,6 @@ export default ({
     setOpenVersionPreviewDialog,
     onRollbackProject: handleRollbackProject,
     onPreviewVersion: handlePreviewVersion,
+    previewDocRef,
   };
 };

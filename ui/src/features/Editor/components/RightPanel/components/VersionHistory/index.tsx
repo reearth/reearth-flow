@@ -35,6 +35,7 @@ const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
     setOpenVersionPreviewDialog,
     onRollbackProject,
     onPreviewVersion,
+    previewDocRef,
   } = useHooks({ projectId: project?.id ?? "", yDoc });
 
   const previousVersions = history?.filter(
@@ -48,6 +49,14 @@ const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
   const handleDoubleClick = () => {
     setOpenVersionPreviewDialog(true);
     onPreviewVersion();
+  };
+
+  const handleCloseDialog = () => {
+    if (previewDocRef.current) {
+      previewDocRef.current.destroy();
+      previewDocRef.current = null;
+    }
+    setOpenVersionPreviewDialog(false);
   };
 
   return (
@@ -91,7 +100,7 @@ const VersionHistoryList: React.FC<Props> = ({ project, yDoc }) => {
         <VersionHistoryChangeDialog
           selectedProjectSnapshotVersion={selectedProjectSnapshotVersion}
           versionPreviewYWorkflows={versionPreviewYWorkflows}
-          onDialogClose={() => setOpenVersionPreviewDialog(false)}
+          onDialogClose={handleCloseDialog}
           onVersionConfirmationDialogOpen={() =>
             setOpenVersionChangeDialog(true)
           }
