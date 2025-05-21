@@ -149,35 +149,39 @@ export default ({
     },
     [setContextMenu],
   );
+
   const handleBeforeDeleteNodes = useCallback(
     ({ nodes: nodesToDelete }: { nodes: Node[] }) => {
       return new Promise<boolean>((resolve) => {
-        let inputRouterCount = 0;
-        let outputRouterCount = 0;
+        const deletingIds = new Set(nodesToDelete.map((node) => node.id));
+
+        let totalInputRouters = 0;
+        let totalOutputRouters = 0;
+        let remainingInputRouters = 0;
+        let remainingOutputRouters = 0;
 
         for (const node of nodes) {
-          const name = node.data.officialName;
-          if (name === "InputRouter") inputRouterCount++;
-          else if (name === "OutputRouter") outputRouterCount++;
+          const officalName = node.data.officialName;
+          if (officalName !== "InputRouter" && officalName !== "OutputRouter")
+            continue;
+          const isDeleting = deletingIds.has(node.id);
+
+          if (officalName === "InputRouter") {
+            totalInputRouters++;
+            if (!isDeleting) remainingInputRouters++;
+          } else if (officalName === "OutputRouter") {
+            totalOutputRouters++;
+            if (!isDeleting) remainingOutputRouters++;
+          }
         }
 
-        let deletingInputRouters = 0;
-        let deletingOutputRouters = 0;
-
-        for (const node of nodesToDelete) {
-          const name = node.data.officialName;
-          if (name === "InputRouter") deletingInputRouters++;
-          else if (name === "OutputRouter") deletingOutputRouters++;
-        }
         const isDeletingLastInputRouter =
-          deletingInputRouters >= inputRouterCount && inputRouterCount > 0;
+          totalInputRouters > 0 && remainingInputRouters === 0;
+
         const isDeletingLastOutputRouter =
-          deletingOutputRouters >= outputRouterCount && outputRouterCount > 0;
+          totalOutputRouters > 0 && remainingOutputRouters === 0;
 
-        const hasProtectedNode =
-          isDeletingLastInputRouter || isDeletingLastOutputRouter;
-
-        if (hasProtectedNode) {
+        if (isDeletingLastInputRouter || isDeletingLastOutputRouter) {
           deferredDeleteRef.current = { resolve };
           setShowBeforeDeleteDialog(true);
         } else {

@@ -40,8 +40,8 @@ const NodeDeletionDialog: React.FC<Props> = ({
       )}
       isOpen={!!showBeforeDeleteDialog}
       confirmDisabled={!showBeforeDeleteDialog}
-      onClose={() => handleDialogClose()}
-      onConfirm={() => handleDialogSubmit()}
+      onClose={handleDialogClose}
+      onConfirm={handleDialogSubmit}
     />
   );
 };
