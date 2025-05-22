@@ -32,10 +32,10 @@ const VersionHistoryList: React.FC<Props> = ({
   };
   return (
     <ScrollArea className="max-h-[500px] overflow-y-auto place-self-start">
-      {latestProjectSnapshotVersion && (
+      {latestProjectSnapshotVersion && !isFetching && (
         <div className="flex items-center justify-between bg-primary py-2 px-2">
-          <div>
-            <p className="text-sm font-light">{t("Current Version")}</p>
+          <div className="flex flex-col gap-1">
+            <p className="text-xs font-light">{t("Current Version")}</p>
             <p className="flex-2 text-xs font-thin">
               {formatDate(latestProjectSnapshotVersion.timestamp)}
             </p>
@@ -50,7 +50,7 @@ const VersionHistoryList: React.FC<Props> = ({
         </div>
       )}
       {isFetching ? (
-        <LoadingSkeleton className="h-[75vh] pt-12" />
+        <LoadingSkeleton className="max-h-[500px] min-w-[270px] place-self-start pt-40" />
       ) : previousVersions && previousVersions.length > 0 ? (
         <div className="flex flex-col overflow-auto">
           {previousVersions?.map((version) => (

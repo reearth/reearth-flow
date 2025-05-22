@@ -10,9 +10,11 @@ import { YWorkflow } from "@flow/lib/yjs/types";
 export default ({
   projectId,
   yDoc,
+  onDialogClose,
 }: {
   projectId: string;
   yDoc: Doc | null;
+  onDialogClose: () => void;
 }) => {
   const {
     useGetProjectHistory,
@@ -30,12 +32,10 @@ export default ({
   );
   const previewDocRef = useRef<Y.Doc | null>(null);
 
-  const [openVersionChangeDialog, setOpenVersionChangeDialog] =
-    useState<boolean>(false);
-  const [openVersionPreviewDialog, setOpenVersionPreviewDialog] =
+  const [openVersionConfirmationDialog, setOpenVersionConfirmationDialog] =
     useState<boolean>(false);
   const [isReverting, setIsReverting] = useState<boolean>(false);
-  const [versionPreviewYWorkflows, setVersionPreviewYWorkflows] =
+  const [previewDocYWorkflows, setPreviewDocYWorkflows] =
     useState<Y.Map<YWorkflow> | null>(null);
   const snapshotOriginRollback = "snapshot-rollback";
   const snapshotOriginPreview = "snapshot-preview";
@@ -122,12 +122,12 @@ export default ({
       yDoc.transact(() => {
         revertUpdate(yDoc, convertedUpdates, getMetadata);
       });
-      setOpenVersionChangeDialog(false);
-      setOpenVersionPreviewDialog(false);
+      setOpenVersionConfirmationDialog(false);
+      onDialogClose();
     } catch (error) {
       console.error("Project Rollback Failed:", error);
-      setOpenVersionChangeDialog(false);
-      setOpenVersionPreviewDialog(false);
+      setOpenVersionConfirmationDialog(false);
+      onDialogClose();
       return toast({
         title: t("Project Rollback Failed"),
         description: t(
@@ -138,13 +138,14 @@ export default ({
     }
     setIsReverting(false);
   }, [
+    projectId,
+    yDoc,
+    onDialogClose,
+    t,
+    toast,
     selectedProjectSnapshotVersion,
     useRollbackProject,
     setIsReverting,
-    projectId,
-    yDoc,
-    t,
-    toast,
   ]);
   const latestProjectSnapshotVersion = projectDocument;
 
@@ -186,7 +187,7 @@ export default ({
         return;
       }
 
-      setVersionPreviewYWorkflows(versionpreviewPreviewYWorkflows);
+      setPreviewDocYWorkflows(versionpreviewPreviewYWorkflows);
     } catch (error) {
       console.error("Project Version Preview Creation Failed:", error);
       return toast({
@@ -197,7 +198,7 @@ export default ({
         variant: "destructive",
       });
     }
-  }, [selectedProjectSnapshotVersion, projectSnapshot, t, toast]);
+  }, [t, toast, selectedProjectSnapshotVersion, projectSnapshot]);
 
   const handleVersionSelection = (version: number) => {
     setSelectedProjectSnapshotVersion(version);
@@ -205,18 +206,16 @@ export default ({
 
   return {
     history,
+    latestProjectSnapshotVersion,
+    previewDocRef,
+    previewDocYWorkflows,
+    selectedProjectSnapshotVersion,
     isFetching,
     isReverting,
-    latestProjectSnapshotVersion,
-    selectedProjectSnapshotVersion,
-    versionPreviewYWorkflows,
-    openVersionChangeDialog,
-    openVersionPreviewDialog,
-    setOpenVersionChangeDialog,
-    setOpenVersionPreviewDialog,
+    openVersionConfirmationDialog,
+    setOpenVersionConfirmationDialog,
     onRollbackProject: handleRollbackProject,
     onPreviewVersion: handlePreviewVersion,
     onVersionSelection: handleVersionSelection,
-    previewDocRef,
   };
 };
