@@ -893,6 +893,73 @@ Creates a convex hull based on a group of input features.
 ### Category
 * Geometry
 
+## CsvReader
+### Type
+* source
+### Description
+Reads features from a csv/tsv file
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CsvReaderParam",
+  "type": "object",
+  "required": [
+    "format"
+  ],
+  "properties": {
+    "dataset": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "format": {
+      "$ref": "#/definitions/CsvFormat"
+    },
+    "inline": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "offset": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint",
+      "minimum": 0.0
+    }
+  },
+  "definitions": {
+    "CsvFormat": {
+      "type": "string",
+      "enum": [
+        "csv",
+        "tsv"
+      ]
+    },
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
+### Category
+* File
+
 ## CzmlWriter
 ### Type
 * sink
@@ -2269,6 +2336,52 @@ Writes features to a file
 ### Input Ports
 * default
 ### Output Ports
+### Category
+* File
+
+## GeoJsonReader
+### Type
+* source
+### Description
+Reads features from a geojson file
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeoJsonReaderParam",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "inline": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Expr"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "Expr": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+### Output Ports
+* default
 ### Category
 * File
 
