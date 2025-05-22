@@ -199,13 +199,16 @@ export default ({
     }
   }, [selectedProjectSnapshotVersion, projectSnapshot, t, toast]);
 
+  const handleVersionSelection = (version: number) => {
+    setSelectedProjectSnapshotVersion(version);
+  };
+
   return {
     history,
     isFetching,
     isReverting,
     latestProjectSnapshotVersion,
     selectedProjectSnapshotVersion,
-    setSelectedProjectSnapshotVersion,
     versionPreviewYWorkflows,
     openVersionChangeDialog,
     openVersionPreviewDialog,
@@ -213,6 +216,7 @@ export default ({
     setOpenVersionPreviewDialog,
     onRollbackProject: handleRollbackProject,
     onPreviewVersion: handlePreviewVersion,
+    onVersionSelection: handleVersionSelection,
     previewDocRef,
   };
 };

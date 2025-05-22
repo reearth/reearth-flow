@@ -9,17 +9,19 @@ export default () => {
   const { handleProjectExport } = useProjectExport(currentProject);
 
   const [showDialog, setShowDialog] = useState<
-    "deploy" | "share" | "debugStop" | undefined
+    "deploy" | "share" | "version" | "debugStop" | undefined
   >(undefined);
 
   const handleShowDeployDialog = () => setShowDialog("deploy");
   const handleShowShareDialog = () => setShowDialog("share");
+  const handleShowVersionDialog = () => setShowDialog("version");
   const handleDialogClose = () => setShowDialog(undefined);
 
   return {
     showDialog,
     handleShowDeployDialog,
     handleShowShareDialog,
+    handleShowVersionDialog,
     handleDialogClose,
     handleProjectExport,
   };
