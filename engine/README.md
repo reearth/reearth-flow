@@ -192,6 +192,10 @@ $ yaml-include examples/plateau/testdata/workflow/xml_validator.yml | cargo run 
 
 ### Run generate action documentation
 
+The properties of actions (e.g., name, description, parameters, etc.) are defined in JSON Schema files located at schema/actions*.json.
+Whenever you add, update, or delete an action, make sure to update these schema files accordingly.
+To do so, run the following command:
+
 ```console
 $ cargo make doc-action
 ```
