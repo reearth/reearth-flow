@@ -631,9 +631,13 @@ impl GcsStore {
         Ok(None)
     }
 
-    pub async fn create_snapshot_from_version(&self, doc_id: &str, version: u64) -> Result<Option<Doc>> {
+    pub async fn create_snapshot_from_version(
+        &self,
+        doc_id: &str,
+        version: u64,
+    ) -> Result<Option<Doc>> {
         let target_version = version as u32;
-        
+
         let oid = match get_oid(self, doc_id.as_bytes()).await? {
             Some(oid) => oid,
             None => return Ok(None),
