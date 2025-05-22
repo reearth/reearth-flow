@@ -24,8 +24,7 @@ impl<S: serde::Serializer> SerdeSerializer<S> {
     /// Start serializing map of values
     fn start(ser: S, len: Option<usize>) -> result::Result<Self, slog::Error> {
         let ser_map = ser.serialize_map(len).map_err(|e| {
-            io::Error::new(
-                io::ErrorKind::Other,
+            io::Error::other(
                 format!("serde serialization error: {}", e),
             )
         })?;
@@ -119,8 +118,7 @@ where
             let mut buf = buf.borrow_mut();
 
             buf.write_fmt(*val).map_err(|e| {
-                io::Error::new(
-                    io::ErrorKind::Other,
+                io::Error::other(
                     format!("Error formatting arguments: {}", e),
                 )
             })?;
@@ -174,7 +172,7 @@ where
 
         let res = serializer.end();
 
-        res.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        res.map_err(io::Error::other)?;
 
         Ok(())
     }
@@ -193,8 +191,7 @@ where
             self.log_impl(&mut serializer, record, values)?;
             serializer.into_inner();
             let json_str = String::from_utf8(buffer).map_err(|e| {
-                io::Error::new(
-                    io::ErrorKind::Other,
+                io::Error::other(
                     format!("Invalid UTF-8 sequence: {}", e),
                 )
             })?;

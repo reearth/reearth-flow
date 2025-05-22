@@ -1,4 +1,4 @@
-use std::io::{ErrorKind, Read, Seek, SeekFrom};
+use std::io::{Read, Seek, SeekFrom};
 
 use bit_set::BitSet;
 use crc::Crc;
@@ -67,10 +67,10 @@ impl<R: Read + Seek> Seek for SeekableBoundedReader<R> {
             SeekFrom::Current(pos) => self.cur as i64 + pos,
         };
         if new_pos < 0 {
-            return Err(std::io::Error::new(ErrorKind::Other, "SeekBeforeStart"));
+            return Err(std::io::Error::other("SeekBeforeStart"));
         }
         if new_pos > self.bounds.1 as i64 {
-            return Err(std::io::Error::new(ErrorKind::Other, "SeekBeyondEnd"));
+            return Err(std::io::Error::other("SeekBeyondEnd"));
         }
         self.cur = new_pos as u64;
         self.inner.seek(SeekFrom::Start(self.cur))
@@ -137,8 +137,7 @@ impl<R: Read> Read for Crc32VerifyingReader<R> {
         if self.remaining <= 0 {
             let d = std::mem::replace(&mut self.crc_digest, CRC32.digest()).finalize();
             if d as u64 != self.expected_value {
-                return Err(std::io::Error::new(
-                    ErrorKind::Other,
+                return Err(std::io::Error::other(
                     Error::ChecksumVerificationFailed,
                 ));
             }

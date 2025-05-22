@@ -194,15 +194,13 @@ where
             .write_entry_whole(builder, &buffer)
             .await
             .map_err(|e| {
-                std::io::Error::new(
-                    std::io::ErrorKind::Other,
+                std::io::Error::other(
                     format!("Failed to write zip entry: {}", e),
                 )
             })?;
     }
     output_writer.close().await.map_err(|e| {
-        std::io::Error::new(
-            std::io::ErrorKind::Other,
+        std::io::Error::other(
             format!("Failed to close zip file: {}", e),
         )
     })?;
