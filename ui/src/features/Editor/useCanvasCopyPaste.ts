@@ -248,84 +248,90 @@ export default ({
     [],
   );
 
-  const prepareCopyData = useCallback(async () => {
-    const selected: { nodes: Node[]; edges: Edge[] } | undefined = {
-      nodes: nodes.filter((n) => n.selected),
-      edges: edges.filter((e) => e.selected),
-    };
-    let referencedWorkflows: Workflow[] = [];
+  const prepareCopyData = useCallback(
+    async (node?: Node) => {
+      const selected: { nodes: Node[]; edges: Edge[] } | undefined = {
+        nodes: node ? [node] : nodes.filter((n) => n.selected),
+        edges: edges.filter((e) => e.selected),
+      };
+      let referencedWorkflows: Workflow[] = [];
 
-    if (selected.nodes.length === 0 && selected.edges.length === 0) return;
+      if (selected.nodes.length === 0 && selected.edges.length === 0) return;
 
-    const processedNodeIds = new Set();
-    const nodesToProcess = [...selected.nodes];
-    const edgesToProcess = [...selected.edges];
+      const processedNodeIds = new Set();
+      const nodesToProcess = [...selected.nodes];
+      const edgesToProcess = [...selected.edges];
 
-    selected.nodes.forEach((node) => {
-      processedNodeIds.add(node.id);
-    });
-
-    const batchNodeIds = selected.nodes
-      .filter((node) => node.type === "batch")
-      .map((node) => node.id);
-
-    nodes.forEach((node) => {
-      if (
-        node.parentId &&
-        batchNodeIds.includes(node.parentId) &&
-        !processedNodeIds.has(node.id)
-      ) {
-        nodesToProcess.push(node);
+      selected.nodes.forEach((node) => {
         processedNodeIds.add(node.id);
-      }
-    });
-
-    const processedEdgeIds = new Set(selected.edges.map((edge) => edge.id));
-
-    edges.forEach((edge) => {
-      if (
-        (processedNodeIds.has(edge.source) ||
-          processedNodeIds.has(edge.target)) &&
-        !processedEdgeIds.has(edge.id)
-      ) {
-        edgesToProcess.push(edge);
-        processedEdgeIds.add(edge.id);
-      }
-    });
-
-    if (nodesToProcess.some((n) => n.type === "subworkflow")) {
-      referencedWorkflows = collectSubworkflows(nodesToProcess, rawWorkflows);
-      if (referencedWorkflows.length === 0) return;
-    }
-
-    return {
-      nodes: nodesToProcess,
-      edges: edgesToProcess,
-      workflows: referencedWorkflows,
-      copiedAt: Date.now(),
-    };
-  }, [nodes, edges, collectSubworkflows, rawWorkflows]);
-
-  const handleCopy = useCallback(async () => {
-    const copyData = await prepareCopyData();
-    if (!copyData) return;
-
-    if (copyData.nodes.some((n) => n.type === "reader")) {
-      return toast({
-        title: t("Reader node cannot be copied"),
-        description: t("Only one reader can be present in any project."),
-        variant: "default",
       });
-    }
 
-    await copy({
-      ...copyData,
-    });
-  }, [copy, prepareCopyData, toast, t]);
+      const batchNodeIds = selected.nodes
+        .filter((node) => node.type === "batch")
+        .map((node) => node.id);
+
+      nodes.forEach((node) => {
+        if (
+          node.parentId &&
+          batchNodeIds.includes(node.parentId) &&
+          !processedNodeIds.has(node.id)
+        ) {
+          nodesToProcess.push(node);
+          processedNodeIds.add(node.id);
+        }
+      });
+
+      const processedEdgeIds = new Set(selected.edges.map((edge) => edge.id));
+
+      edges.forEach((edge) => {
+        if (
+          (processedNodeIds.has(edge.source) ||
+            processedNodeIds.has(edge.target)) &&
+          !processedEdgeIds.has(edge.id)
+        ) {
+          edgesToProcess.push(edge);
+          processedEdgeIds.add(edge.id);
+        }
+      });
+
+      if (nodesToProcess.some((n) => n.type === "subworkflow")) {
+        referencedWorkflows = collectSubworkflows(nodesToProcess, rawWorkflows);
+        if (referencedWorkflows.length === 0) return;
+      }
+
+      return {
+        nodes: nodesToProcess,
+        edges: edgesToProcess,
+        workflows: referencedWorkflows,
+        copiedAt: Date.now(),
+      };
+    },
+    [nodes, edges, collectSubworkflows, rawWorkflows],
+  );
+
+  const handleCopy = useCallback(
+    async (node?: Node) => {
+      const copyData = await prepareCopyData(node);
+      if (!copyData) return;
+
+      if (copyData.nodes.some((n) => n.type === "reader")) {
+        return toast({
+          title: t("Reader node cannot be copied"),
+          description: t("Only one reader can be present in any project."),
+          variant: "default",
+        });
+      }
+
+      await copy({
+        ...copyData,
+      });
+    },
+    [copy, prepareCopyData, toast, t],
+  );
 
   const handleCut = useCallback(
-    async (isCutByShortCut?: boolean) => {
-      const cutData = await prepareCopyData();
+    async (isCutByShortCut?: boolean, node?: Node) => {
+      const cutData = await prepareCopyData(node);
       if (!cutData) return;
 
       await copy({
@@ -389,7 +395,14 @@ export default ({
         selected: false,
       }));
 
+      const edgeChanges: EdgeChange[] = edges.map((e) => ({
+        id: e.id,
+        type: "select",
+        selected: false,
+      }));
+
       handleNodesChange(nodeChanges);
+      handleEdgesChange(edgeChanges);
 
       handleNodesAdd([...processedNewNodes]);
 
@@ -410,11 +423,13 @@ export default ({
     },
     [
       nodes,
+      edges,
       copy,
       paste,
       handleNodesAdd,
       handleNodesChange,
       handleEdgesAdd,
+      handleEdgesChange,
       newNodeCreation,
       newEdgeCreation,
       newWorkflowCreation,
