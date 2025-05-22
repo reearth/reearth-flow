@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{
-    io::{Error, ErrorKind, Result},
+    io::{Error, Result},
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -22,7 +22,7 @@ impl State {
     pub fn new(root: &Uri, storage_resolver: &StorageResolver) -> Result<Self> {
         let storage = storage_resolver
             .resolve(root)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            .map_err(std::io::Error::other)?;
         Ok(Self {
             storage,
             root: Path::new(
@@ -42,7 +42,7 @@ impl State {
         self.storage
             .put(p.as_path(), content)
             .await
-            .map_err(|e| Error::new(ErrorKind::Other, e))
+            .map_err(Error::other)
     }
 
     pub fn save_sync<T>(&self, obj: &T, id: &str) -> Result<()>
@@ -54,7 +54,7 @@ impl State {
         let p = self.id_to_location(id, "json");
         self.storage
             .put_sync(p.as_path(), content)
-            .map_err(|e| Error::new(ErrorKind::Other, e))
+            .map_err(Error::other)
     }
 
     pub async fn append<T>(&self, obj: &T, id: &str) -> Result<()>
@@ -67,7 +67,7 @@ impl State {
         self.storage
             .append(p.as_path(), content)
             .await
-            .map_err(|e| Error::new(ErrorKind::Other, e))
+            .map_err(Error::other)
     }
 
     pub async fn append_strings(&self, all: &[String], id: &str) -> Result<()> {
@@ -80,7 +80,7 @@ impl State {
             self.storage
                 .append(p.as_path(), content)
                 .await
-                .map_err(|e| Error::new(ErrorKind::Other, e))?
+                .map_err(Error::other)?
         }
         Ok(())
     }
@@ -94,7 +94,7 @@ impl State {
         let p = self.id_to_location(id, "jsonl");
         self.storage
             .append_sync(p.as_path(), content)
-            .map_err(|e| Error::new(ErrorKind::Other, e))
+            .map_err(Error::other)
     }
 
     pub async fn get<T>(&self, id: &str) -> Result<T>
@@ -106,8 +106,7 @@ impl State {
             .get(self.id_to_location(id, "json").as_path())
             .await?;
         let byte = result.bytes().await?;
-        let content =
-            String::from_utf8(byte.to_vec()).map_err(|e| Error::new(ErrorKind::Other, e))?;
+        let content = String::from_utf8(byte.to_vec()).map_err(Error::other)?;
         self.string_to_object(content.as_str())
     }
 
@@ -115,7 +114,7 @@ impl State {
         self.storage
             .delete(self.id_to_location(id, "json").as_path())
             .await
-            .map_err(|e| Error::new(ErrorKind::Other, e))
+            .map_err(Error::other)
     }
 
     pub fn id_to_location(&self, id: &str, ext: &str) -> PathBuf {
@@ -128,11 +127,11 @@ impl State {
     where
         for<'de> T: Deserialize<'de>,
     {
-        serde_json::from_str(s).map_err(|err| Error::new(ErrorKind::Other, err))
+        serde_json::from_str(s).map_err(Error::other)
     }
 
     pub fn object_to_string<T: Serialize>(&self, obj: &T) -> Result<String> {
-        serde_json::to_string(obj).map_err(|err| Error::new(ErrorKind::Other, err))
+        serde_json::to_string(obj).map_err(Error::other)
     }
 }
 
