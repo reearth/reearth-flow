@@ -74,6 +74,26 @@ func (r *mutationResolver) FlushProjectToGcs(ctx context.Context, projectId gqlm
 	return &result, nil
 }
 
+func (r *mutationResolver) CreateHistorySnapshot(ctx context.Context, projectID gqlmodel.ID, version int, name *string) (*gqlmodel.ProjectHistorySnapshot, error) {
+	var snapshotName string
+	if name != nil {
+		snapshotName = *name
+	}
+
+	history, err := interactor.CreateSnapshot(ctx, string(projectID), version, snapshotName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &gqlmodel.ProjectHistorySnapshot{
+		ID:        projectID,
+		Updates:   history.Updates,
+		Version:   history.Version,
+		Timestamp: history.Timestamp,
+		Name:      name,
+	}, nil
+}
+
 type projectDocumentResolver struct{ *Resolver }
 
 func (r *Resolver) ProjectDocument() ProjectDocumentResolver {

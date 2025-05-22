@@ -9,11 +9,11 @@ use std::sync::Arc;
 use tracing::error;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
-use crate::doc::types::{Document, HistoryItem};
 use crate::doc::types::{
-    CreateSnapshotRequest, DocumentResponse, HistoryMetadataResponse, HistoryResponse, RollbackRequest,
-    SnapshotResponse,
+    CreateSnapshotRequest, DocumentResponse, HistoryMetadataResponse, HistoryResponse,
+    RollbackRequest, SnapshotResponse,
 };
+use crate::doc::types::{Document, HistoryItem};
 use crate::storage::kv::DocOps;
 use crate::AppState;
 
@@ -29,11 +29,13 @@ impl DocumentHandler {
         let version = request.version;
 
         let result = async {
-            let doc_result = storage.create_snapshot_from_version(&doc_id, version).await?;
-            
+            let doc_result = storage
+                .create_snapshot_from_version(&doc_id, version)
+                .await?;
+
             let doc = match doc_result {
                 Some(doc) => doc,
-                None => return Err(anyhow::anyhow!("无法创建快照，版本可能不存在")),
+                None => return Err(anyhow::anyhow!("Failed to create snapshot")),
             };
 
             let read_txn = doc.transact();
@@ -43,7 +45,7 @@ impl DocumentHandler {
             let timestamp = Utc::now();
             let document = Document {
                 id: doc_id.clone(),
-                version: version,
+                version,
                 timestamp,
                 updates: state,
             };
