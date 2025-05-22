@@ -13,6 +13,15 @@ type ProjectSnapshot {
   version: Int!
 }
 
+# Project History Snapshot
+type ProjectHistorySnapshot {
+  id: ID!
+  timestamp: DateTime!
+  updates: [Int!]!
+  version: Int!
+  name: String
+}
+
 # Project Snapshot Metadata (without updates data)
 type ProjectSnapshotMetadata {
   timestamp: DateTime!
@@ -32,4 +41,5 @@ extend type Query {
 extend type Mutation {
   rollbackProject(projectId: ID!, version: Int!): ProjectDocument
   flushProjectToGcs(projectId: ID!): Boolean
+  createHistorySnapshot(projectId: ID!, version: Int!, name: String): ProjectHistorySnapshot
 }
