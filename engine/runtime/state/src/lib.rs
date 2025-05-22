@@ -106,8 +106,7 @@ impl State {
             .get(self.id_to_location(id, "json").as_path())
             .await?;
         let byte = result.bytes().await?;
-        let content =
-            String::from_utf8(byte.to_vec()).map_err(Error::other)?;
+        let content = String::from_utf8(byte.to_vec()).map_err(Error::other)?;
         self.string_to_object(content.as_str())
     }
 
