@@ -65,20 +65,20 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2 justify-between border-b pb-2">
+      <div className="flex gap-2 justify-between border-b p-4 pb-2">
         <h4 className="text-md self-center dark:font-thin leading-none tracking-tight rounded-t-lg">
           {t("Share Project")}
         </h4>
         <Button
           className="flex gap-2"
-          variant="default"
+          variant="outline"
           disabled={!isSwitchOn && !sharedUrl}
           onClick={handleCopyUrl}>
           <Paperclip weight="thin" />
           <p className="text-xs dark:font-light">{t("Copy URL")}</p>
         </Button>
       </div>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 p-4 pt-0">
         <p className="text-xs">
           {t(
             "Share your project's workflow with anyone with the URL. This is limited access to reading the contents of the canvas.",
