@@ -20,8 +20,8 @@ use super::{citygml, csv, geojson, json};
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FileReaderCommonParam {
-    pub(super) dataset: Option<Expr>,
-    pub(super) inline: Option<Expr>,
+    pub(crate) dataset: Option<Expr>,
+    pub(crate) inline: Option<Expr>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -160,7 +160,7 @@ fn get_inline_content(
     Ok(Some(Bytes::from(content)))
 }
 
-async fn get_content(
+pub(crate) async fn get_content(
     ctx: &NodeContext,
     common_property: &FileReaderCommonParam,
     storage_resolver: Arc<StorageResolver>,
