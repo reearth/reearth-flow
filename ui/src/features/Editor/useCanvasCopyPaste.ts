@@ -299,7 +299,6 @@ export default ({
         if (referencedWorkflows.length === 0) return;
       }
 
-      console.log("TEST", nodesToProcess);
       return {
         nodes: nodesToProcess,
         edges: edgesToProcess,
@@ -396,7 +395,14 @@ export default ({
         selected: false,
       }));
 
+      const edgeChanges: EdgeChange[] = edges.map((e) => ({
+        id: e.id,
+        type: "select",
+        selected: false,
+      }));
+
       handleNodesChange(nodeChanges);
+      handleEdgesChange(edgeChanges);
 
       handleNodesAdd([...processedNewNodes]);
 
@@ -417,11 +423,13 @@ export default ({
     },
     [
       nodes,
+      edges,
       copy,
       paste,
       handleNodesAdd,
       handleNodesChange,
       handleEdgesAdd,
+      handleEdgesChange,
       newNodeCreation,
       newEdgeCreation,
       newWorkflowCreation,
