@@ -15,6 +15,7 @@ use reearth_flow_action_plateau_processor::mapping::ACTION_FACTORY_MAPPINGS as P
 use reearth_flow_action_processor::mapping::ACTION_FACTORY_MAPPINGS as PROCESSOR_MAPPINGS;
 use reearth_flow_action_sink::mapping::ACTION_FACTORY_MAPPINGS as SINK_MAPPINGS;
 use reearth_flow_action_source::mapping::ACTION_FACTORY_MAPPINGS as SOURCE_MAPPINGS;
+use reearth_flow_action_wasm_processor::mapping::ACTION_FACTORY_MAPPINGS as WASM_PROCESSOR_MAPPINGS;
 use reearth_flow_runner::runner::Runner;
 use reearth_flow_runtime::node::NodeKind;
 use reearth_flow_state::State;
@@ -37,9 +38,11 @@ pub(crate) static BUILTIN_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = La
     let sink = SINK_MAPPINGS.clone();
     let source = SOURCE_MAPPINGS.clone();
     let processor = PROCESSOR_MAPPINGS.clone();
+    let wasm_processor = WASM_PROCESSOR_MAPPINGS.clone();
     common.extend(sink);
     common.extend(source);
     common.extend(processor);
+    common.extend(wasm_processor);
     common
 });
 
