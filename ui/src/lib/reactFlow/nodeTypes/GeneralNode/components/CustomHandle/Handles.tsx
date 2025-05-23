@@ -13,7 +13,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
   return (
     <div className="flex justify-between gap-0.5">
       {nodeType !== "reader" && inputs && (
-        <div className="inset-x-0 mx-auto flex-1">
+        <div className="inset-x-0 mx-auto flex-1 min-w-0">
           {inputs.map((input, index) => (
             <div
               key={input + index}
@@ -25,9 +25,11 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
                 id={input}
                 // isConnectable={1}
               />
-              <div className="flex items-center translate-x-0.5">
-                <div className="size-1.5 bg-gray-300 rounded-full" />
-                <p className="pl-1 text-[10px] dark:font-thin italic">
+              <div className="flex items-center translate-x-0.5 w-full">
+                <div>
+                  <div className="size-1.5 bg-gray-300 rounded-full" />
+                </div>
+                <p className="pl-1 text-[10px] dark:font-thin italic break-words w-[90%]">
                   {input}
                 </p>
               </div>
@@ -36,7 +38,7 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
         </div>
       )}
       {outputs && (
-        <div className="inset-x-0 mx-auto flex-1">
+        <div className="inset-x-0 mx-auto flex-1 min-w-0 overflow-hidden">
           {outputs.map((output, index) => (
             <div
               key={output + index}
@@ -47,8 +49,8 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
                 position={Position.Right}
                 id={output}
               />
-              <div className="flex items-center -translate-x-0.5">
-                <p className="pr-1 text-end text-[10px] dark:font-thin italic">
+              <div className="flex justify-end items-center -translate-x-0.5 w-full">
+                <p className="pr-1 text-end text-[10px] dark:font-thin italic break-words w-[90%]">
                   {output}
                 </p>
                 <div className="size-1.5 bg-gray-300 rounded-full" />

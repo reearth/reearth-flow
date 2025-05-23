@@ -32,8 +32,8 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
 
   return (
     <div
-      className={`rounded-md bg-secondary border ${selected ? selectedColor : borderColor}`}>
-      <div className="relative m-1 flex items-center gap-1 h-[25px] min-w-[150px] max-w-[200px] rounded-sm">
+      className={`rounded-md bg-secondary border min-w-[150px] max-w-[200px] ${selected ? selectedColor : borderColor}`}>
+      <div className="relative m-1 flex items-center gap-1 h-[25px] rounded-sm">
         <div
           className={`flex p-1 self-center align-middle justify-center rounded-sm border ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
           {type === "reader" ? (
