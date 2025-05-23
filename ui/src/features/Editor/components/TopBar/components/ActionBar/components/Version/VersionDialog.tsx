@@ -60,14 +60,14 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
               : latestProjectSnapshotVersion?.version,
           })}
         </DialogTitle>
-        <DialogContentWrapper>
-          <DialogContentSection className="flex flex-row items-center">
+        <DialogContentWrapper className="p-0">
+          <DialogContentSection className="flex flex-row items-center gap-0">
             <VersionEditorComponent
               yDoc={yDoc}
               previewDocYWorkflows={previewDocYWorkflows}
             />
-            <div className="mx-1 my-1 h-[495px] w-px bg-border" />
-            <div className="max-h-[500px] overflow-y-auto place-self-start relative">
+            {/* <div className="min-h-[532px] w-px bg-border" /> */}
+            <div className="min-h-[500px] min-w-[327px] p-4 border-l overflow-y-auto place-self-start relative">
               <VersionHistoryList
                 latestProjectSnapshotVersion={latestProjectSnapshotVersion}
                 history={history}
@@ -76,7 +76,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
                 isFetching={isFetching}
                 onPreviewVersion={onPreviewVersion}
               />
-              <div className="flex border-t justify-end absolute w-full bg-secondary p-2 pb-0 bottom-0 left-0">
+              <div className="flex border-t justify-end absolute w-full bg-secondary p-2 bottom-0 left-0">
                 <Button
                   disabled={!selectedProjectSnapshotVersion}
                   onClick={() => setOpenVersionConfirmationDialog(true)}>
@@ -113,7 +113,7 @@ const VersionEditorComponent: React.FC<{
   previewDocYWorkflows: Y.Map<YWorkflow> | null;
 }> = ({ previewDocYWorkflows, yDoc }) => {
   return (
-    <div className="h-[500px] w-[575px]">
+    <div className="h-[532px] w-[575px]">
       {!previewDocYWorkflows && yDoc && (
         <ReactFlowProvider>
           <VersionCanvas yWorkflows={yDoc.getMap<YWorkflow>("workflows")} />
