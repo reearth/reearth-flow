@@ -10,7 +10,7 @@ use rand;
 use scopeguard;
 use std::sync::Arc;
 use std::time::Duration;
-use tracing::{debug, error, warn};
+use tracing::{error, warn};
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
@@ -72,7 +72,7 @@ impl BroadcastGroupManager {
         }
 
         let mut need_initial_save = false;
-        let awareness: AwarenessRef = match self.store.load_doc_direct(doc_id).await {
+        let awareness: AwarenessRef = match self.store.load_doc_v2(doc_id).await {
             Ok(direct_doc) => Arc::new(tokio::sync::RwLock::new(Awareness::new(direct_doc))),
             Err(_) => {
                 let doc = Doc::new();
@@ -260,180 +260,52 @@ impl BroadcastPool {
 
     pub async fn flush_to_gcs(&self, doc_id: &str) -> Result<()> {
         let broadcast_group = match self.manager.doc_to_id_map.get(doc_id) {
-            Some(group) => Some(group.clone()),
+            Some(group) => group.clone(),
             None => {
                 return Ok(());
             }
         };
 
-        if let Some(group) = broadcast_group {
-            let store = self.get_store();
-            let doc_name = group.get_doc_name();
+        let lock_id = format!("gcs:lock:{}", doc_id);
+        let instance_id = format!("sync-{}", rand::random::<u64>());
 
-            let active_connections = match self
-                .manager
-                .redis_store
-                .get_active_instances(&doc_name, 60)
-                .await
-            {
-                Ok(count) => count,
-                Err(e) => {
-                    warn!("Failed to get active instances for '{}': {}", doc_id, e);
-                    0
-                }
-            };
+        let lock_acquired = self
+            .manager
+            .redis_store
+            .acquire_doc_lock(&lock_id, &instance_id)
+            .await?;
 
-            if active_connections > 0 {
-                let temp_doc = Doc::new();
-                let mut temp_txn = temp_doc.transact_mut();
+        if lock_acquired {
+            let redis_store = self.manager.redis_store.clone();
+            let awareness = broadcast_group.awareness().read().await;
+            let awareness_doc = awareness.doc();
 
-                if let Err(e) = store.load_doc(&doc_name, &mut temp_txn).await {
-                    warn!("Failed to load current GCS state for '{}': {}", doc_id, e);
-                }
+            let gcs_doc = Doc::new();
+            let mut gcs_txn = gcs_doc.transact_mut();
 
-                let gcs_state = temp_txn.state_vector();
-                drop(temp_txn);
+            if let Err(e) = self.manager.store.load_doc(doc_id, &mut gcs_txn).await {
+                warn!("Failed to load current state from GCS: {}", e);
+            }
 
-                let mut start_id = "0".to_string();
-                let batch_size = 3000;
+            let gcs_state = gcs_txn.state_vector();
+            let awareness_txn = awareness_doc.transact();
+            let update = awareness_txn.encode_diff_v1(&gcs_state);
 
-                let mut lock_value: Option<String> = None;
+            if !update.is_empty() {
+                let update_bytes = bytes::Bytes::from(update);
+                self.manager
+                    .store
+                    .push_update(doc_id, &update_bytes, &self.manager.redis_store)
+                    .await?;
 
-                let awareness = group.awareness().write().await;
-                let mut txn = awareness.doc().transact_mut();
+                self.manager
+                    .store
+                    .flush_doc_v2(doc_id, awareness_doc)
+                    .await?;
+            }
 
-                loop {
-                    match self
-                        .manager
-                        .redis_store
-                        .read_stream_data_in_batches(
-                            &doc_name,
-                            batch_size,
-                            &start_id,
-                            start_id == "0",
-                            false,
-                            &mut lock_value,
-                        )
-                        .await
-                    {
-                        Ok((updates, last_id)) => {
-                            if updates.is_empty() {
-                                if start_id != "0" {
-                                    if let Err(e) = self
-                                        .manager
-                                        .redis_store
-                                        .read_stream_data_in_batches(
-                                            &doc_name,
-                                            1,
-                                            &last_id,
-                                            false,
-                                            true,
-                                            &mut lock_value,
-                                        )
-                                        .await
-                                    {
-                                        warn!("Failed to release lock in final batch: {}", e);
-                                    }
-                                }
-                                break;
-                            }
-
-                            for update_data in &updates {
-                                match Update::decode_v1(update_data) {
-                                    Ok(update) => {
-                                        if let Err(e) = txn.apply_update(update) {
-                                            warn!("Failed to apply Redis update: {}", e);
-                                        }
-                                    }
-                                    Err(e) => {
-                                        warn!("Failed to decode Redis update: {}", e);
-                                    }
-                                }
-                            }
-
-                            if last_id == start_id {
-                                if let Err(e) = self
-                                    .manager
-                                    .redis_store
-                                    .read_stream_data_in_batches(
-                                        &doc_name,
-                                        1,
-                                        &last_id,
-                                        false,
-                                        true,
-                                        &mut lock_value,
-                                    )
-                                    .await
-                                {
-                                    warn!("Failed to release lock in final batch: {}", e);
-                                }
-                                break;
-                            }
-
-                            start_id = last_id;
-                        }
-                        Err(e) => {
-                            warn!(
-                                "Failed to read updates from Redis stream for document '{}': {}",
-                                doc_id, e
-                            );
-                            break;
-                        }
-                    }
-                }
-
-                drop(txn);
-                drop(awareness);
-
-                let lock_id = format!("gcs:lock:{}", doc_name);
-                let instance_id = format!("sync-{}", rand::random::<u64>());
-
-                let lock_acquired = match self
-                    .manager
-                    .redis_store
-                    .acquire_doc_lock(&lock_id, &instance_id)
-                    .await
-                {
-                    Ok(true) => {
-                        debug!("Acquired lock for GCS flush operation on {}", doc_name);
-                        Some((self.manager.redis_store.clone(), lock_id, instance_id))
-                    }
-                    Ok(false) => {
-                        warn!("Could not acquire lock for GCS flush operation");
-                        None
-                    }
-                    Err(e) => {
-                        warn!("Error acquiring lock for GCS flush operation: {}", e);
-                        None
-                    }
-                };
-
-                if lock_acquired.is_some() {
-                    let awareness = group.awareness().read().await;
-                    let awareness_doc = awareness.doc();
-                    let awareness_txn = awareness_doc.transact();
-                    let redis_store_clone = Arc::clone(&self.manager.redis_store);
-
-                    let update = awareness_txn.encode_diff_v1(&gcs_state);
-
-                    if !update.is_empty() {
-                        let update_bytes = bytes::Bytes::from(update);
-                        if let Err(e) = store
-                            .push_update(&doc_name, &update_bytes, &redis_store_clone)
-                            .await
-                        {
-                            error!(
-                                "Failed to flush websocket changes to GCS for '{}': {}",
-                                doc_id, e
-                            );
-                            return Err(anyhow::anyhow!("Failed to flush changes to GCS: {}", e));
-                        }
-                    }
-
-                    if let Some((redis, lock_id, instance_id)) = lock_acquired {
-                        redis.release_doc_lock(&lock_id, &instance_id).await?;
-                    }
-                }
+            if let Err(e) = redis_store.release_doc_lock(&lock_id, &instance_id).await {
+                warn!("Failed to release GCS lock: {}", e);
             }
         }
 
