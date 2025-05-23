@@ -23,12 +23,9 @@ pub(crate) struct SerdeSerializer<S: serde::Serializer> {
 impl<S: serde::Serializer> SerdeSerializer<S> {
     /// Start serializing map of values
     fn start(ser: S, len: Option<usize>) -> result::Result<Self, slog::Error> {
-        let ser_map = ser.serialize_map(len).map_err(|e| {
-            io::Error::new(
-                io::ErrorKind::Other,
-                format!("serde serialization error: {}", e),
-            )
-        })?;
+        let ser_map = ser
+            .serialize_map(len)
+            .map_err(|e| io::Error::other(format!("serde serialization error: {}", e)))?;
         Ok(SerdeSerializer { ser_map })
     }
 
@@ -118,12 +115,8 @@ where
         TL_BUF.with(|buf| {
             let mut buf = buf.borrow_mut();
 
-            buf.write_fmt(*val).map_err(|e| {
-                io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Error formatting arguments: {}", e),
-                )
-            })?;
+            buf.write_fmt(*val)
+                .map_err(|e| io::Error::other(format!("Error formatting arguments: {}", e)))?;
 
             let res = { || impl_m!(self, key, &*buf) }();
             buf.clear();
@@ -174,7 +167,7 @@ where
 
         let res = serializer.end();
 
-        res.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+        res.map_err(io::Error::other)?;
 
         Ok(())
     }
@@ -192,12 +185,8 @@ where
             let mut serializer = serde_json::Serializer::new(&mut buffer);
             self.log_impl(&mut serializer, record, values)?;
             serializer.into_inner();
-            let json_str = String::from_utf8(buffer).map_err(|e| {
-                io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("Invalid UTF-8 sequence: {}", e),
-                )
-            })?;
+            let json_str = String::from_utf8(buffer)
+                .map_err(|e| io::Error::other(format!("Invalid UTF-8 sequence: {}", e)))?;
             writeln!(decorator, "{}", json_str)?;
             decorator.flush()?;
             Ok(())
