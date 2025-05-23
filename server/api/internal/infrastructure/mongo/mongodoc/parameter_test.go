@@ -20,7 +20,8 @@ func TestNewParameter(t *testing.T) {
 		Name("test-param").
 		Type(parameter.TypeText).
 		Required(true).
-		Value("some value").
+		Public(true).
+		DefaultValue("some value").
 		Index(5).
 		CreatedAt(now).
 		UpdatedAt(now).
@@ -50,8 +51,11 @@ func TestNewParameter(t *testing.T) {
 	if doc.Required != true {
 		t.Errorf("expected required to be true, got %v", doc.Required)
 	}
-	if doc.Value != "some value" {
-		t.Errorf("expected value 'some value', got '%v'", doc.Value)
+	if doc.Public != true {
+		t.Errorf("expected public to be true, got %v", doc.Public)
+	}
+	if doc.DefaultValue != "some value" {
+		t.Errorf("expected value 'some value', got '%v'", doc.DefaultValue)
 	}
 	if doc.Index != 5 {
 		t.Errorf("expected index 5, got %d", doc.Index)
@@ -70,15 +74,16 @@ func TestParameterDocument_Model(t *testing.T) {
 	now := time.Now().UTC()
 
 	doc := &ParameterDocument{
-		CreatedAt: now,
-		ID:        pid.String(),
-		Index:     3,
-		Name:      "my-param",
-		Project:   projID.String(),
-		Required:  false,
-		Type:      "NUMBER",
-		UpdatedAt: now,
-		Value:     123.45,
+		CreatedAt:    now,
+		ID:           pid.String(),
+		Index:        3,
+		Name:         "my-param",
+		Project:      projID.String(),
+		Required:     false,
+		Public:       true,
+		Type:         "NUMBER",
+		UpdatedAt:    now,
+		DefaultValue: 123.45,
 	}
 
 	param, err := doc.Model()
@@ -104,8 +109,11 @@ func TestParameterDocument_Model(t *testing.T) {
 	if param.Required() != false {
 		t.Errorf("expected required false, got %v", param.Required())
 	}
-	if param.Value() != 123.45 {
-		t.Errorf("expected value 123.45, got %v", param.Value())
+	if param.Public() != true {
+		t.Errorf("expected public true, got %v", param.Public())
+	}
+	if param.DefaultValue() != 123.45 {
+		t.Errorf("expected value 123.45, got %v", param.DefaultValue())
 	}
 	if param.Index() != 3 {
 		t.Errorf("expected index 3, got %d", param.Index())
@@ -129,7 +137,7 @@ func TestNewParameters(t *testing.T) {
 		ProjectID(projID).
 		Name("param1").
 		Type(parameter.TypeText).
-		Value("v1").
+		DefaultValue("v1").
 		Index(0).
 		CreatedAt(now).
 		UpdatedAt(now).
@@ -143,7 +151,7 @@ func TestNewParameters(t *testing.T) {
 		ProjectID(projID).
 		Name("param2").
 		Type(parameter.TypeNumber).
-		Value(42).
+		DefaultValue(42).
 		Index(1).
 		CreatedAt(now).
 		UpdatedAt(now).
@@ -175,10 +183,10 @@ func TestNewParameters(t *testing.T) {
 		t.Fatalf("expected doc2 to be *ParameterDocument, got %T", docs[1])
 	}
 
-	if doc1.Name != "param1" || doc1.Value != "v1" || doc1.Type != "TEXT" {
+	if doc1.Name != "param1" || doc1.DefaultValue != "v1" || doc1.Type != "TEXT" {
 		t.Errorf("doc1 did not match expected values")
 	}
-	if doc2.Name != "param2" || !reflect.DeepEqual(doc2.Value, 42) || doc2.Type != "NUMBER" {
+	if doc2.Name != "param2" || !reflect.DeepEqual(doc2.DefaultValue, 42) || doc2.Type != "NUMBER" {
 		t.Errorf("doc2 did not match expected values")
 	}
 }

@@ -99,25 +99,25 @@ const ParamEditor: React.FC<Props> = ({
           onValueChange={setActiveTab}
           value={activeTab}
           className="flex h-full">
-          <TabsList className="flex flex-col h-full justify-start rounded-none gap-2 p-2 min-w-[150px] bg-secondary">
+          <TabsList className="flex flex-col h-full justify-start rounded-none gap-2 p-2 bg-secondary">
             {createdAction?.parameter && (
               <TabsTrigger
                 className="w-full gap-2 h-[30px] justify-start"
                 value="params">
-                <PuzzlePiece />
+                <PuzzlePiece className="shrink-0" />
                 <p>{t("Parameters")}</p>
               </TabsTrigger>
             )}
             <TabsTrigger
               className="w-full gap-2 h-[30px] justify-start"
               value="customizations">
-              <Nut />
+              <Nut className="shrink-0" />
               <p>{t("Customizations")}</p>
             </TabsTrigger>
             <TabsTrigger
               className="w-full gap-2 h-[30px] justify-start"
               value="details">
-              <Info />
+              <Info className="shrink-0" />
               <p>{t("Details")}</p>
             </TabsTrigger>
           </TabsList>
