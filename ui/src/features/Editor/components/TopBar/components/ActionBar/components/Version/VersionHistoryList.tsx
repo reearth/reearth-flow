@@ -64,6 +64,7 @@ const VersionHistoryList: React.FC<Props> = ({
           ))}
         </div>
       ) : null}
+      <div className="pt-11" />
     </ScrollArea>
   );
 };

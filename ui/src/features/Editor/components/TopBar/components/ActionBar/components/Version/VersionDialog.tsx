@@ -8,7 +8,6 @@ import {
   DialogContentSection,
   DialogContentWrapper,
   DialogTitle,
-  DialogFooter,
   LoadingSplashscreen,
 } from "@flow/components";
 import VersionCanvas from "@flow/features/VersionCanvas";
@@ -54,31 +53,46 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
   return (
     <Dialog open={true} onOpenChange={handleCloseDialog}>
       <DialogContent size="2xl">
-        <DialogTitle>{t("Viewing Version")}</DialogTitle>
+        <DialogTitle>
+          {t("Viewing Version: {{version}}", {
+            version: selectedProjectSnapshotVersion
+              ? selectedProjectSnapshotVersion
+              : latestProjectSnapshotVersion?.version,
+          })}
+        </DialogTitle>
         <DialogContentWrapper>
           <DialogContentSection className="flex flex-row items-center">
             <VersionEditorComponent
               yDoc={yDoc}
               previewDocYWorkflows={previewDocYWorkflows}
             />
-            <VersionHistoryList
-              latestProjectSnapshotVersion={latestProjectSnapshotVersion}
-              history={history}
-              selectedProjectSnapshotVersion={selectedProjectSnapshotVersion}
-              onVersionSelection={onVersionSelection}
-              isFetching={isFetching}
-              onPreviewVersion={onPreviewVersion}
-            />
+            <div className="mx-1 my-1 h-[495px] w-px bg-border" />
+            <div className="max-h-[500px] overflow-y-auto place-self-start relative">
+              <VersionHistoryList
+                latestProjectSnapshotVersion={latestProjectSnapshotVersion}
+                history={history}
+                selectedProjectSnapshotVersion={selectedProjectSnapshotVersion}
+                onVersionSelection={onVersionSelection}
+                isFetching={isFetching}
+                onPreviewVersion={onPreviewVersion}
+              />
+              <div className="flex border-t justify-end absolute w-full bg-secondary p-2 pb-0 bottom-0 left-0">
+                <Button
+                  disabled={!selectedProjectSnapshotVersion}
+                  onClick={() => setOpenVersionConfirmationDialog(true)}>
+                  {t("Revert")}
+                </Button>
+              </div>
+            </div>
           </DialogContentSection>
-          <div className="border-t border-primary" />
         </DialogContentWrapper>
-        <DialogFooter>
+        {/* <DialogFooter>
           <Button
             disabled={!selectedProjectSnapshotVersion}
             onClick={() => setOpenVersionConfirmationDialog(true)}>
             {t("Revert")}
           </Button>
-        </DialogFooter>
+        </DialogFooter> */}
       </DialogContent>
       {isReverting && <LoadingSplashscreen />}
       {openVersionConfirmationDialog &&
