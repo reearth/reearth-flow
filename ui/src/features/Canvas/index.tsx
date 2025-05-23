@@ -25,7 +25,7 @@ import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
 
-const gridSize = 25;
+const gridSize = 16.5;
 
 const snapGrid: SnapGrid = [gridSize, gridSize];
 

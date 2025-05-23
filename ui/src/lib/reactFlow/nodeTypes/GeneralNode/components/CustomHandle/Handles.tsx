@@ -11,7 +11,7 @@ type Props = {
 
 const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
   return (
-    <div className="flex justify-between">
+    <div className="flex justify-between gap-0.5">
       {nodeType !== "reader" && inputs && (
         <div className="inset-x-0 mx-auto flex-1">
           {inputs.map((input, index) => (
