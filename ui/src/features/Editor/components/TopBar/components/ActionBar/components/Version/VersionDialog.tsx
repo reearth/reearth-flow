@@ -67,7 +67,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
               previewDocYWorkflows={previewDocYWorkflows}
             />
             {/* <div className="min-h-[532px] w-px bg-border" /> */}
-            <div className="min-h-[500px] min-w-[327px] p-4 border-l overflow-y-auto place-self-start relative">
+            <div className="min-h-[532px] min-w-[327px] p-4 border-l overflow-y-auto place-self-start relative">
               <VersionHistoryList
                 latestProjectSnapshotVersion={latestProjectSnapshotVersion}
                 history={history}
