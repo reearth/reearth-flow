@@ -79,7 +79,7 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
         </Button>
       </div>
       <div className="flex flex-col gap-4 p-4 pt-0">
-        <p className="text-xs">
+        <p className="text-xs dark:font-light">
           {t(
             "Share your project's workflow with anyone with the URL. This is limited access to reading the contents of the canvas.",
           )}
@@ -89,7 +89,7 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
             checked={isSwitchOn}
             onCheckedChange={debouncedHandleSharingChange}
           />
-          <span className="text-sm">{t("Sharing")}</span>
+          <span className="text-sm dark:font-light">{t("Sharing")}</span>
         </div>
       </div>
     </div>
