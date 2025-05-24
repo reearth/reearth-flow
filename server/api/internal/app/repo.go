@@ -158,6 +158,7 @@ func initBatch(ctx context.Context, conf *config.Config) (batchRepo gateway.Batc
 		PubSubLogStreamTopic:            conf.Worker_PubSubLogStreamTopic,
 		PubSubJobCompleteTopic:          conf.Worker_PubSubJobCompleteTopic,
 		PubSubNodeStatusTopic:           conf.Worker_PubSubNodeStatusTopic,
+		PubSubStdoutLogTopic:            conf.Worker_PubSubStdoutLogTopic,
 		ProjectID:                       conf.GCPProject,
 		Region:                          conf.GCPRegion,
 		SAEmail:                         conf.Worker_BatchSAEmail,
