@@ -28,12 +28,12 @@ func (s *StdoutLogSubscriber) StartListening(ctx context.Context) error {
 
 		var event stdoutlog.Event
 		if err := json.Unmarshal(msg.Data(), &event); err != nil {
-			log.Printf("ERROR: StdoutLogSubscriber: Failed to unmarshal message data. Data: %s, Error: %v", string(msg.Data()), err)
+			log.Printf("ERROR: StdoutLogSubscriber: Failed to unmarshal message data (DataLen: %d): %v", len(msg.Data()), err)
 			msg.Ack()
 			return
 		}
 
-		log.Printf("DEBUG: StdoutLogSubscriber: Successfully unmarshalled event: %+v", event)
+		log.Printf("DEBUG: StdoutLogSubscriber: Successfully unmarshalled event: WorkflowID=%s, JobID=%s, Target=%s", event.WorkflowID, event.JobID, event.Target)
 
 		if err := s.useCase.Process(ctx, &event); err != nil {
 			log.Printf("ERROR: StdoutLogSubscriber: Failed to process event (Event JobID: %s): %v", event.JobID, err)
