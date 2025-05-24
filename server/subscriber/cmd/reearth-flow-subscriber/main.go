@@ -68,6 +68,7 @@ func main() {
 	// Initialize storage components
 	redisStorage := flow_redis.NewRedisStorage(redisClient)
 	logStorage := infrastructure.NewLogStorageImpl(redisStorage)
+	stdoutLogStorage := infrastructure.NewStdoutLogStorageImpl(redisStorage)
 
 	// Initialize MongoDB client and node storage if needed
 	var mongoClient *mongo.Client
@@ -118,6 +119,27 @@ func main() {
 		}()
 	} else {
 		log.Println("Log subscription ID not provided, log subscriber will not be started")
+	}
+
+	// Set up worker stdout log subscriber if configured
+	if conf.WorkerStdoutLogSubscriptionID != "" {
+		workerStdoutLogSubGRPC := pubsubClient.Subscription(conf.WorkerStdoutLogSubscriptionID)
+		workerStdoutLogSubAdapter := flow_pubsub.NewRealSubscription(workerStdoutLogSubGRPC)
+		stdoutLogUC := interactor.NewStdoutLogUseCase(stdoutLogStorage)
+		workerStdoutLogSubscriber := flow_pubsub.NewStdoutLogSubscriber(workerStdoutLogSubAdapter, stdoutLogUC)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			log.Println("[subscriber] Starting worker stdout log subscriber...")
+			if err := workerStdoutLogSubscriber.StartListening(ctx); err != nil {
+				log.Printf("[subscriber] Worker stdout log subscriber error: %v", err)
+				cancel()
+			}
+			log.Println("[subscriber] Worker stdout log subscriber stopped")
+		}()
+	} else {
+		log.Println("Worker stdout log subscription ID not provided, worker stdout log subscriber will not be started")
 	}
 
 	// Set up node subscriber if configured
