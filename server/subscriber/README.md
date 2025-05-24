@@ -116,13 +116,18 @@ docker compose up -d
 ### Redis & Subscriber Setup
 The log_subscriber uses the following environment variables
 
-| Name                                  | Description                                             | Default                     |
-| ------------------------------------- | ------------------------------------------------------- | --------------------------- |
-| `PUBSUB_EMULATOR_HOST`                | Pub/Sub emulator endpoint                               | `""`                        |
-| `FLOW_LOG_SUBSCRIBER_PROJECT_ID`      | GCP project ID when connecting to Pub/Sub               | `local-project`             |
-| `FLOW_LOG_SUBSCRIBER_SUBSCRIPTION_ID` | The Pub/Sub subscription ID to use for the subscription | `flow-log-stream-topic-sub` |
-| `FLOW_LOG_SUBSCRIBER_REDIS_ADDR`      | The Redis address to connect to (in host:port format)   | `localhost:6379`            |
-| `FLOW_LOG_SUBSCRIBER_REDIS_PASSWORD`  | Redis password                                          | `""`                        |
+| Name                                                          | Description                                                                | Default                           |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------- | --------------------------------- |
+| `PUBSUB_EMULATOR_HOST`                                        | Pub/Sub emulator endpoint (set only for local or test environments)        | `""` (empty string)               |
+| `REEARTH_FLOW_SUBSCRIBER_GOOGLE_CLOUD_PROJECT`                | GCP project ID when connecting to Pub/Sub                                  | `local-project` (for local dev)   |
+| `REEARTH_FLOW_SUBSCRIBER_LOG_SUBSCRIPTION_ID`                 | The Pub/Sub subscription ID for general logs                               | `flow-log-stream-main`            |
+| `REEARTH_FLOW_SUBSCRIBER_NODE_STATUS_SUBSCRIPTION_ID`         | The Pub/Sub subscription ID for node status updates (optional)             | `flow-node-status-main`         |
+| `REEARTH_FLOW_SUBSCRIBER_WORKER_STDOUT_LOG_SUBSCRIPTION_ID` | The Pub/Sub subscription ID for worker stdout logs (optional)            | `flow-worker-stdout-log-main`   |
+| `REEARTH_FLOW_SUBSCRIBER_DB`                                  | MongoDB connection string (optional, used by node subscriber)              | `mongodb://localhost`             |
+| `REEARTH_FLOW_SUBSCRIBER_GCS_BUCKET`                          | GCS Bucket name (optional, used by node subscriber)                        | `""` (empty string)               |
+| `REEARTH_FLOW_SUBSCRIBER_ASSET_BASE_URL`                      | Base URL for assets (optional, used by node subscriber)                    | `http://localhost:8080/assets`    |
+| `REEARTH_FLOW_SUBSCRIBER_PORT`                                | Port for the subscriber's HTTP server (health checks, etc.)                | `8080`                            |
+| `REEARTH_FLOW_SUBSCRIBER_REDIS_URL`                           | The Redis URL to connect to (e.g., redis://localhost:6379)               | `redis://localhost:6379`          |
 
 
 ```
