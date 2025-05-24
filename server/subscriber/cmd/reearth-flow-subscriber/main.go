@@ -68,6 +68,7 @@ func main() {
 	// Initialize storage components
 	redisStorage := flow_redis.NewRedisStorage(redisClient)
 	logStorage := infrastructure.NewLogStorageImpl(redisStorage)
+	var stdoutLogStorage gateway.StdoutLogStorage = redisStorage
 
 	// Initialize MongoDB client and node storage if needed
 	var mongoClient *mongo.Client
@@ -122,10 +123,10 @@ func main() {
 
 	// Set up worker stdout log subscriber if configured
 	if conf.WorkerStdoutLogSubscriptionID != "" {
-		workerStdoutLogSub := pubsubClient.Subscription(conf.WorkerStdoutLogSubscriptionID)
-		workerStdoutLogSubAdapter := flow_pubsub.NewRealSubscription(workerStdoutLogSub)
-		logSubscriberUC := interactor.NewLogSubscriberUseCase(logStorage)
-		workerStdoutLogSubscriber := flow_pubsub.NewLogSubscriber(workerStdoutLogSubAdapter, logSubscriberUC)
+		workerStdoutLogSubGRPC := pubsubClient.Subscription(conf.WorkerStdoutLogSubscriptionID)
+		workerStdoutLogSubAdapter := flow_pubsub.NewRealSubscription(workerStdoutLogSubGRPC)
+		stdoutLogUC := interactor.NewStdoutLogUseCase(stdoutLogStorage)
+		workerStdoutLogSubscriber := flow_pubsub.NewStdoutLogSubscriber(workerStdoutLogSubAdapter, stdoutLogUC)
 
 		wg.Add(1)
 		go func() {
