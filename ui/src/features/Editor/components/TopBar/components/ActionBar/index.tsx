@@ -1,11 +1,12 @@
 import {
+  ClockCounterClockwise,
   DotsThreeVertical,
   Export,
-  LetterCircleV,
   PaperPlaneTilt,
   Rocket,
 } from "@phosphor-icons/react";
 import { memo } from "react";
+import { Doc } from "yjs";
 
 import {
   DropdownMenu,
@@ -15,13 +16,17 @@ import {
   IconButton,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { Project } from "@flow/types";
 
 import { DeployDialog, ShareDialog } from "./components";
+import { VersionDialog } from "./components/Version/VersionDialog";
 import useHooks from "./hooks";
 
 const tooltipOffset = 6;
 
 type Props = {
+  project?: Project;
+  yDoc: Doc | null;
   allowedToDeploy: boolean;
   onWorkflowDeployment: (
     description: string,
@@ -32,16 +37,18 @@ type Props = {
 };
 
 const ActionBar: React.FC<Props> = ({
+  project,
+  yDoc,
   allowedToDeploy,
   onWorkflowDeployment,
   onProjectShare,
-  onRightPanelOpen,
 }) => {
   const t = useT();
   const {
     showDialog,
     handleShowDeployDialog,
     handleShowShareDialog,
+    handleShowVersionDialog,
     handleDialogClose,
     handleProjectExport,
   } = useHooks();
@@ -84,14 +91,21 @@ const ActionBar: React.FC<Props> = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="flex justify-between gap-4"
-                onClick={() => onRightPanelOpen("version-history")}>
+                onClick={handleShowVersionDialog}>
                 <p>{t("Version History")}</p>
-                <LetterCircleV weight="thin" size={18} />
+                <ClockCounterClockwise weight="thin" size={18} />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
       </div>
+      {showDialog === "version" && (
+        <VersionDialog
+          project={project}
+          yDoc={yDoc}
+          onDialogClose={handleDialogClose}
+        />
+      )}
       {showDialog === "deploy" && (
         <DeployDialog
           allowedToDeploy={allowedToDeploy}

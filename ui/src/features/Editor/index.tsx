@@ -82,6 +82,8 @@ export default function Editor({
       <EditorProvider value={editorContext}>
         <TopBar
           currentWorkflowId={currentWorkflowId}
+          project={currentProject}
+          yDoc={yDoc}
           openWorkflows={openWorkflows}
           allowedToDeploy={allowedToDeploy}
           onProjectShare={handleProjectShare}
