@@ -8,6 +8,7 @@ import (
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
 	domainLog "github.com/reearth/reearth-flow/subscriber/pkg/log"
 	"github.com/reearth/reearth-flow/subscriber/pkg/node"
+	"github.com/reearth/reearth-flow/subscriber/pkg/stdoutlog"
 )
 
 type logStorageImpl struct {
@@ -22,6 +23,20 @@ func NewLogStorageImpl(r *redis.RedisStorage) gateway.LogStorage {
 
 func (s *logStorageImpl) SaveToRedis(ctx context.Context, event *domainLog.LogEvent) error {
 	return s.redis.SaveLogToRedis(ctx, event)
+}
+
+type stdoutLogStorageImpl struct {
+	redis *redis.RedisStorage
+}
+
+func NewStdoutLogStorageImpl(r *redis.RedisStorage) gateway.StdoutLogStorage {
+	return &stdoutLogStorageImpl{
+		redis: r,
+	}
+}
+
+func (s *stdoutLogStorageImpl) SaveToRedis(ctx context.Context, event *stdoutlog.Event) error {
+	return s.redis.SaveStdoutLogToRedis(ctx, event)
 }
 
 type nodeStorageImpl struct {

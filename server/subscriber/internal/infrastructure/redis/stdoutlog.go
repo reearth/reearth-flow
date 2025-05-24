@@ -15,7 +15,7 @@ const (
 	stdoutLogKeyExpiry = 12 * time.Hour
 )
 
-func (r *RedisStorage) Save(ctx context.Context, event *stdoutlog.Event) error {
+func (r *RedisStorage) SaveStdoutLogToRedis(ctx context.Context, event *stdoutlog.Event) error {
 	if event == nil {
 		return fmt.Errorf("cannot save nil stdout log event to Redis")
 	}

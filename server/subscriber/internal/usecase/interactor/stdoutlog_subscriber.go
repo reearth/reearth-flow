@@ -20,5 +20,5 @@ func NewStdoutLogUseCase(storage gateway.StdoutLogStorage) StdoutLogUseCase {
 }
 
 func (uc *stdoutLogSubscriberUseCaseImpl) Process(ctx context.Context, event *stdoutlog.Event) error {
-	return uc.stdoutLogStorage.Save(ctx, event)
+	return uc.stdoutLogStorage.SaveToRedis(ctx, event)
 }

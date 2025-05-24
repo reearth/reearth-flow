@@ -7,5 +7,5 @@ import (
 )
 
 type StdoutLogStorage interface {
-	Save(ctx context.Context, event *stdoutlog.Event) error
+	SaveToRedis(ctx context.Context, event *stdoutlog.Event) error
 }

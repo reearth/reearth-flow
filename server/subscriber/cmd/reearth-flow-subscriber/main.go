@@ -68,7 +68,7 @@ func main() {
 	// Initialize storage components
 	redisStorage := flow_redis.NewRedisStorage(redisClient)
 	logStorage := infrastructure.NewLogStorageImpl(redisStorage)
-	var stdoutLogStorage gateway.StdoutLogStorage = redisStorage
+	stdoutLogStorage := infrastructure.NewStdoutLogStorageImpl(redisStorage)
 
 	// Initialize MongoDB client and node storage if needed
 	var mongoClient *mongo.Client
