@@ -167,7 +167,6 @@ export default ({
         return;
       }
       const updates = projectSnapshot.updates;
-      // console.log("VERSION:", selectedProjectSnapshotVersion, projectSnapshot);
       if (!updates || !updates.length) {
         console.error("No updates found in snapshot");
         return;

@@ -9,6 +9,7 @@ import {
   DialogContentWrapper,
   DialogTitle,
   LoadingSplashscreen,
+  LoadingSkeleton,
 } from "@flow/components";
 import VersionCanvas from "@flow/features/VersionCanvas";
 import { useT } from "@flow/lib/i18n";
@@ -66,16 +67,23 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
               yDoc={yDoc}
               previewDocYWorkflows={previewDocYWorkflows}
             />
-            {/* <div className="min-h-[532px] w-px bg-border" /> */}
             <div className="min-h-[532px] min-w-[327px] p-4 border-l overflow-y-auto place-self-start relative">
-              <VersionHistoryList
-                latestProjectSnapshotVersion={latestProjectSnapshotVersion}
-                history={history}
-                selectedProjectSnapshotVersion={selectedProjectSnapshotVersion}
-                onVersionSelection={onVersionSelection}
-                isFetching={isFetching}
-                onPreviewVersion={onPreviewVersion}
-              />
+              <p className="text-md dark:font-thin pb-4">
+                {t("Version History")}
+              </p>
+              {isFetching ? (
+                <LoadingSkeleton className="max-h-[500px] min-w-[270px] place-self-start pt-40" />
+              ) : (
+                <VersionHistoryList
+                  latestProjectSnapshotVersion={latestProjectSnapshotVersion}
+                  history={history}
+                  selectedProjectSnapshotVersion={
+                    selectedProjectSnapshotVersion
+                  }
+                  onVersionSelection={onVersionSelection}
+                  onPreviewVersion={onPreviewVersion}
+                />
+              )}
               <div className="flex border-t justify-end absolute w-full bg-secondary p-2 bottom-0 left-0">
                 <Button
                   disabled={!selectedProjectSnapshotVersion}
@@ -86,13 +94,6 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
             </div>
           </DialogContentSection>
         </DialogContentWrapper>
-        {/* <DialogFooter>
-          <Button
-            disabled={!selectedProjectSnapshotVersion}
-            onClick={() => setOpenVersionConfirmationDialog(true)}>
-            {t("Revert")}
-          </Button>
-        </DialogFooter> */}
       </DialogContent>
       {isReverting && <LoadingSplashscreen />}
       {openVersionConfirmationDialog &&
@@ -113,7 +114,7 @@ const VersionEditorComponent: React.FC<{
   previewDocYWorkflows: Y.Map<YWorkflow> | null;
 }> = ({ previewDocYWorkflows, yDoc }) => {
   return (
-    <div className="h-[532px] w-[575px]">
+    <div className="h-[570px] w-[575px]">
       {!previewDocYWorkflows && yDoc && (
         <ReactFlowProvider>
           <VersionCanvas yWorkflows={yDoc.getMap<YWorkflow>("workflows")} />

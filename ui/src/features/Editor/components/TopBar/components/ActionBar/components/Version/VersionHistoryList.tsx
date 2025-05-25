@@ -1,4 +1,4 @@
-import { LoadingSkeleton, ScrollArea } from "@flow/components";
+import { ScrollArea } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { ProjectDocument, ProjectSnapshotMeta } from "@flow/types";
 import { formatDate } from "@flow/utils";
@@ -10,7 +10,6 @@ type Props = {
   history?: ProjectSnapshotMeta[];
   onVersionSelection: (version: number) => void;
   selectedProjectSnapshotVersion: number | null;
-  isFetching: boolean;
   onPreviewVersion: () => void;
 };
 
@@ -19,7 +18,6 @@ const VersionHistoryList: React.FC<Props> = ({
   history,
   selectedProjectSnapshotVersion,
   onVersionSelection,
-  isFetching,
   onPreviewVersion,
 }) => {
   const t = useT();
@@ -32,7 +30,7 @@ const VersionHistoryList: React.FC<Props> = ({
   };
   return (
     <ScrollArea className="max-h-[500px] w-full overflow-y-auto place-self-start">
-      {latestProjectSnapshotVersion && !isFetching && (
+      {latestProjectSnapshotVersion && (
         <div className="flex items-center justify-between bg-primary py-2 px-2">
           <div className="flex flex-col gap-1">
             <p className="text-xs font-light">{t("Current Version")}</p>
@@ -49,9 +47,7 @@ const VersionHistoryList: React.FC<Props> = ({
           </p>
         </div>
       )}
-      {isFetching ? (
-        <LoadingSkeleton className="max-h-[500px] min-w-[270px] place-self-start pt-40" />
-      ) : previousVersions && previousVersions.length > 0 ? (
+      {previousVersions && previousVersions.length > 0 ? (
         <div className="flex flex-col overflow-auto">
           {previousVersions?.map((version) => (
             <Version
