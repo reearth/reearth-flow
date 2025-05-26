@@ -260,3 +260,12 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* We need to set the z-index to -1 so that the nodes are rendered behind the edges */
+.react-flow__node-batch {
+  z-index: -1 !important;
+}
+
+.react-flow__node-note {
+  z-index: -1 !important;
+}

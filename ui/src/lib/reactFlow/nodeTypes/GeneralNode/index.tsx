@@ -11,7 +11,7 @@ export type GeneralNodeProps = NodeProps<Node> & {
   className?: string;
 };
 
-const typeIconClasses = "w-[10px] h-[100%]";
+const typeIconClasses = "w-[15px]";
 
 const GeneralNode: React.FC<GeneralNodeProps> = ({
   className,
@@ -31,12 +31,11 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
   } = useHooks({ data, type });
 
   return (
-    <div className="rounded-sm bg-secondary">
-      {/* <div
-          className={`rounded-sm bg-secondary ${status === "processing" ? "active-node-status-shadow" : status === "pending" ? "queued-node-status-shadow" : ""}`}> */}
-      <div className="relative z-[1001] flex h-[25px] w-[150px] rounded-sm">
+    <div
+      className={`rounded-md bg-secondary border min-w-[150px] max-w-[200px] ${selected ? selectedColor : borderColor}`}>
+      <div className="relative m-1 flex items-center gap-1 h-[25px] rounded-sm">
         <div
-          className={`flex w-4 justify-center rounded-l-sm border-y border-l ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
+          className={`flex p-1 self-center align-middle justify-center rounded-sm border ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
           {type === "reader" ? (
             <Database className={typeIconClasses} />
           ) : type === "writer" ? (
@@ -47,15 +46,10 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
             <Graph className={typeIconClasses} />
           ) : null}
         </div>
-        <div
-          className={`flex flex-1 items-center justify-between gap-2 truncate rounded-r-sm border-y border-r px-1 leading-none ${selected ? selectedColor : borderColor}`}>
-          <p className="self-center truncate text-xs dark:font-light">
+        <div className="flex flex-1 items-center justify-between gap-2 truncate rounded-r-sm px-1 leading-none">
+          <p className="self-center truncate text-xs text-gray-200">
             {data.customizations?.customName || officialName}
           </p>
-          {/* {status === "failed" && <X className="size-4 text-destructive" />} */}
-          {/* {status === "completed" && intermediateDataUrl && (
-                <Table className="size-4 text-success" />
-              )} */}
         </div>
       </div>
       <Handles nodeType={type} inputs={inputs} outputs={outputs} />
