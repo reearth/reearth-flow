@@ -49,11 +49,15 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
     (checked: boolean) => {
       const share = checked ? "sharing" : "notSharing";
       setIsSharing(share);
-      setIsSwitchOn(checked);
       onProjectShare(share === "sharing");
     },
-    200,
+    500,
   );
+
+  const handleSharingChange = (checked: boolean) => {
+    setIsSwitchOn(checked);
+    debouncedHandleSharingChange(checked);
+  };
 
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(sharedUrl || "");
@@ -72,7 +76,7 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
         <Button
           className="flex gap-2"
           variant="outline"
-          disabled={!isSwitchOn && !sharedUrl}
+          disabled={!currentProject?.sharedToken}
           onClick={handleCopyUrl}>
           <Paperclip weight="thin" />
           <p className="text-xs dark:font-light">{t("Copy URL")}</p>
@@ -85,10 +89,7 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
           )}
         </p>
         <div className="flex items-center gap-2">
-          <Switch
-            checked={isSwitchOn}
-            onCheckedChange={debouncedHandleSharingChange}
-          />
+          <Switch checked={isSwitchOn} onCheckedChange={handleSharingChange} />
           <span className="text-sm dark:font-light">{t("Sharing")}</span>
         </div>
       </div>
