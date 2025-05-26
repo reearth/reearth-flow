@@ -16,11 +16,7 @@ type Props = {
   onWorkflowAdd?: (position?: XYPosition) => void;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
-  onNodeDoubleClick?: (
-    e: MouseEvent | undefined,
-    nodeId: string,
-    subworkflowId?: string,
-  ) => void;
+  onNodeDoubleClick?: (e: MouseEvent | undefined, nodeId: string) => void;
   onEdgesAdd?: (newEdges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
