@@ -38,21 +38,23 @@ pub(crate) static BUILTIN_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = La
     let sink = SINK_MAPPINGS.clone();
     let source = SOURCE_MAPPINGS.clone();
     let processor = PROCESSOR_MAPPINGS.clone();
-    let wasm_processor = WASM_PROCESSOR_MAPPINGS.clone();
     common.extend(sink);
     common.extend(source);
     common.extend(processor);
-    common.extend(wasm_processor);
     common
 });
 
 pub(crate) static PLATEAU_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> =
     Lazy::new(|| PLATEAU_MAPPINGS.clone());
 
+pub(crate) static WASM_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> =
+    Lazy::new(|| WASM_PROCESSOR_MAPPINGS.clone());
+
 pub(crate) static ALL_ACTION_FACTORIES: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let mut all = HashMap::new();
     all.extend(BUILTIN_ACTION_FACTORIES.clone());
     all.extend(PLATEAU_ACTION_FACTORIES.clone());
+    all.extend(WASM_ACTION_FACTORIES.clone());
     all
 });
 
