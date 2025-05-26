@@ -13,7 +13,7 @@ type Props = {
 
 type SharingState = "sharing" | "notSharing";
 
-const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
+const SharePopover: React.FC<Props> = () => {
   const t = useT();
   const { toast } = useToast();
   const [currentProject] = useCurrentProject();
@@ -49,7 +49,7 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
     (checked: boolean) => {
       const share = checked ? "sharing" : "notSharing";
       setIsSharing(share);
-      onProjectShare(share === "sharing");
+      // onProjectShare(share === "sharing");
     },
     500,
   );
