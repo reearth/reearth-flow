@@ -6450,6 +6450,7 @@ dependencies = [
  "reearth-flow-action-processor",
  "reearth-flow-action-sink",
  "reearth-flow-action-source",
+ "reearth-flow-action-wasm-processor",
  "reearth-flow-common",
  "reearth-flow-runner",
  "reearth-flow-runtime",
