@@ -58,6 +58,7 @@ const SharedCanvas: React.FC<Props> = ({
     <div className="relative flex size-full flex-col">
       <EditorProvider value={editorContext}>
         <Canvas
+          isSharedCanvas={true}
           isSubworkflow={isSubworkflow}
           nodes={nodes}
           edges={edges}

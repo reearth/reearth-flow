@@ -32,6 +32,7 @@ const snapGrid: SnapGrid = [gridSize, gridSize];
 const proOptions: ProOptions = { hideAttribution: true };
 
 type Props = {
+  isSharedCanvas: boolean;
   isSubworkflow: boolean;
   nodes: Node[];
   edges: Edge[];
@@ -56,6 +57,7 @@ type Props = {
 };
 
 const Canvas: React.FC<Props> = ({
+  isSharedCanvas,
   isSubworkflow,
   canvasLock,
   nodes,
@@ -146,6 +148,7 @@ const Canvas: React.FC<Props> = ({
       connectionLineComponent={CustomConnectionLine}
       connectionLineStyle={connectionLineStyle}
       isValidConnection={isValidConnection}
+      onBeforeDelete={isSharedCanvas ? async () => false : async () => true}
       onNodesChange={handleNodesChange}
       onEdgesChange={handleEdgesChange}
       onNodeDoubleClick={handleNodeDoubleClick}
@@ -171,7 +174,7 @@ const Canvas: React.FC<Props> = ({
         gap={gridSize}
         color="rgba(63, 63, 70, 0.4)"
       />
-      {contextMenu && (
+      {contextMenu && !isSharedCanvas && (
         <CanvasContextMenu
           data={contextMenu.data}
           selectedEdgeIds={selectedEdgeIds}
