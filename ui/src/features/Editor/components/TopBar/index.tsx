@@ -126,6 +126,7 @@ const TopBar: React.FC<Props> = ({
             variant="outline"
             tooltipText={t("Project Variables")}
             icon={<ChalkboardTeacher weight="thin" size={18} />}
+            disabled
             onClick={() => setShowProjectVarsDialog(true)}
           />
           <IconButton
