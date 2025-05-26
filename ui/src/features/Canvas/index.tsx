@@ -20,16 +20,12 @@ import {
 } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
-import {
-  NodeContextMenu,
-  PaneContextMenu,
-  SelectionContextMenu,
-} from "./components";
+import { CanvasContextMenu } from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
 
-const gridSize = 25;
+const gridSize = 16.5;
 
 const snapGrid: SnapGrid = [gridSize, gridSize];
 
@@ -54,8 +50,8 @@ type Props = {
   onEdgesAdd?: (newEdges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onEdgeHover?: (e: MouseEvent, edge?: Edge) => void;
-  onCopy?: () => void;
-  onCut?: () => void;
+  onCopy?: (node?: Node) => void;
+  onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: () => void;
 };
 
@@ -108,7 +104,7 @@ const Canvas: React.FC<Props> = ({
 
   return (
     <ReactFlow
-      className={`${isSubworkflow ? "border-node-subworkflow border" : ""}`}
+      className={`${isSubworkflow ? "border-node-subworkflow border-t-2" : ""}`}
       // minZoom={0.7}
       // maxZoom={1}
       // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
@@ -175,35 +171,16 @@ const Canvas: React.FC<Props> = ({
         gap={gridSize}
         color="rgba(63, 63, 70, 0.4)"
       />
-
-      {contextMenu?.type === "node" && (
-        <NodeContextMenu
-          node={contextMenu.data}
-          contextMenu={contextMenu}
-          onCopy={onCopy}
-          onCut={onCut}
-          onNodesChange={handleNodesChange}
-          onSecondaryNodeAction={onNodeDoubleClick}
-          onClose={handleCloseContextmenu}
-        />
-      )}
-      {contextMenu?.type === "selection" && (
-        <SelectionContextMenu
-          nodes={contextMenu.data}
+      {contextMenu && (
+        <CanvasContextMenu
+          data={contextMenu.data}
           selectedEdgeIds={selectedEdgeIds}
           contextMenu={contextMenu}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
+          onSecondaryNodeAction={onNodeDoubleClick}
           onCopy={onCopy}
           onCut={onCut}
-          onPaste={onPaste}
-          onClose={handleCloseContextmenu}
-        />
-      )}
-      {contextMenu?.type === "pane" && (
-        <PaneContextMenu
-          contextMenu={contextMenu}
-          onCopy={onCopy}
           onPaste={onPaste}
           onClose={handleCloseContextmenu}
         />
