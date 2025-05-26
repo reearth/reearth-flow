@@ -25,7 +25,7 @@ import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
 
-const gridSize = 25;
+const gridSize = 16.5;
 
 const snapGrid: SnapGrid = [gridSize, gridSize];
 
@@ -102,7 +102,7 @@ const Canvas: React.FC<Props> = ({
 
   return (
     <ReactFlow
-      className={`${isSubworkflow ? "border-node-subworkflow border" : ""}`}
+      className={`${isSubworkflow ? "border-node-subworkflow border-t-2" : ""}`}
       // minZoom={0.7}
       // maxZoom={1}
       // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}

@@ -84,7 +84,7 @@ const BaseInputTemplate = <
     const defaultColor = schema.default || "#000000";
     return (
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between gap-2">
           <Input
             id={id}
             name={id}
@@ -100,18 +100,17 @@ const BaseInputTemplate = <
                 e.target.value === "" ? options.emptyValue : e.target.value,
               )
             }
-            className="h-9 w-full cursor-pointer p-1"
+            className="h-9 w-[200px] cursor-pointer p-1"
           />
-          {value !== defaultColor && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => onChange(defaultColor)}
-              className="h-9 px-2">
-              {t("Reset Color")}
-            </Button>
-          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onChange(defaultColor)}
+            disabled={value === defaultColor}
+            className="h-9 px-2">
+            {t("Reset")}
+          </Button>
         </div>
       </div>
     );
