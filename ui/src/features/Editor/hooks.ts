@@ -148,27 +148,16 @@ export default ({
 
   // Passed to editor context so needs to be a ref
   const handleNodeDoubleClickRef =
-    useRef<
-      (
-        e: MouseEvent | undefined,
-        nodeId: string,
-        subworkflowId?: string,
-      ) => void
-    >(undefined);
+    useRef<(e: MouseEvent | undefined, nodeId: string) => void>(undefined);
   handleNodeDoubleClickRef.current = (
     _e: MouseEvent | undefined,
     nodeId: string,
-    subworkflowId?: string,
   ) => {
-    if (subworkflowId) {
-      handleWorkflowOpen(subworkflowId);
-    } else {
-      handleNodeLocking(nodeId);
-    }
+    handleNodeLocking(nodeId);
   };
   const handleNodeDoubleClick = useCallback(
-    (e: MouseEvent | undefined, nodeId: string, subworkflowId?: string) =>
-      handleNodeDoubleClickRef.current?.(e, nodeId, subworkflowId),
+    (e: MouseEvent | undefined, nodeId: string) =>
+      handleNodeDoubleClickRef.current?.(e, nodeId),
     [],
   );
 
@@ -312,6 +301,7 @@ export default ({
     handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
+    handleWorkflowOpen,
     handleWorkflowClose,
     handleWorkflowChange: handleCurrentWorkflowIdChange,
     handleWorkflowRedo: handleYWorkflowRedo,
