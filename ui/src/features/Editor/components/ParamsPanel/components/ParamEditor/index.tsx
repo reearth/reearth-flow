@@ -1,3 +1,4 @@
+import { Info, Nut, PuzzlePiece } from "@phosphor-icons/react";
 import { RJSFSchema } from "@rjsf/utils";
 import { JSONSchema7Definition } from "json-schema";
 import { memo, useMemo, useState } from "react";
@@ -24,11 +25,12 @@ type Props = {
   nodeMeta: NodeData;
   nodeType: string;
   nodeParameters?: unknown; // TODO: define type
-  onSubmit: (
+  onUpdate: (
     nodeId: string,
     data: any,
     type: "params" | "customizations",
   ) => Promise<void>;
+  onWorkflowRename?: (id: string, name: string) => void;
 };
 
 const ParamEditor: React.FC<Props> = ({
@@ -36,7 +38,8 @@ const ParamEditor: React.FC<Props> = ({
   nodeMeta,
   nodeType,
   // nodeParameters = [{ id: "param1", name: "Param 1", value: "Value 1", type: "string"}],
-  onSubmit,
+  onUpdate,
+  onWorkflowRename,
 }) => {
   const t = useT();
   const { useGetActionById } = useAction(i18n.language);
@@ -75,125 +78,144 @@ const ParamEditor: React.FC<Props> = ({
     createdAction && !createdAction.parameter ? "customizations" : "params",
   );
 
-  const handleSubmit = () => {
+  const handleUpdate = () => {
     if (activeTab === "params") {
-      onSubmit(nodeId, updatedParams, "params");
+      onUpdate(nodeId, updatedParams, "params");
+    } else if (nodeType === "subworkflow" && nodeMeta.subworkflowId) {
+      onUpdate(nodeId, updatedCustomization, "customizations");
+      onWorkflowRename?.(
+        nodeMeta?.subworkflowId,
+        updatedCustomization?.customName || nodeMeta?.officialName,
+      );
     } else {
-      onSubmit(nodeId, updatedCustomization, "customizations");
+      onUpdate(nodeId, updatedCustomization, "customizations");
     }
   };
 
   return (
-    <div className="flex h-full flex-col gap-4">
-      <Tabs
-        onValueChange={setActiveTab}
-        value={activeTab}
-        className="flex h-full flex-col gap-4">
-        <TabsList className="flex justify-between gap-2">
-          {createdAction?.parameter && (
+    <div className="h-[60vh] flex flex-col gap-4 overflow-hidden">
+      <div className="flex h-full flex-col gap-4 bg-card">
+        <Tabs
+          onValueChange={setActiveTab}
+          value={activeTab}
+          className="flex h-full">
+          <TabsList className="flex flex-col h-full justify-start rounded-none gap-2 p-2 bg-secondary">
+            {createdAction?.parameter && (
+              <TabsTrigger
+                className="w-full gap-2 h-[30px] justify-start"
+                value="params">
+                <PuzzlePiece className="shrink-0" />
+                <p>{t("Parameters")}</p>
+              </TabsTrigger>
+            )}
             <TabsTrigger
-              className={`h-[30px] ${activeTab === "params" ? "flex-5" : "flex-1"}`}
-              value="params">
-              {t("Parameters")}
+              className="w-full gap-2 h-[30px] justify-start"
+              value="customizations">
+              <Nut className="shrink-0" />
+              <p>{t("Customizations")}</p>
             </TabsTrigger>
-          )}
-          <TabsTrigger
-            className={`h-[30px] ${activeTab === "customizations" ? "flex-5" : "flex-1"}`}
-            value="customizations">
-            {t("Customizations")}
-          </TabsTrigger>
-          <TabsTrigger
-            className={`h-[30px] ${activeTab === "details" ? "flex-5" : "flex-1"}`}
-            value="details">
-            {t("Details")}
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="params" asChild>
-          <>
-            <div className="min-h-0 overflow-scroll rounded border bg-card px-2 pt-1">
-              {!createdAction?.parameter && (
-                <BasicBoiler
-                  text={t("No Parameters Available")}
-                  className="size-4 pt-16 [&>div>p]:text-sm"
-                  icon={<FlowLogo className="size-12 text-accent" />}
-                />
-              )}
-              {createdAction && (
-                <SchemaForm
-                  schema={patchedSchemaParams}
-                  defaultFormData={updatedParams}
-                  onChange={handleParamChange}
-                />
-              )}
+            <TabsTrigger
+              className="w-full gap-2 h-[30px] justify-start"
+              value="details">
+              <Info className="shrink-0" />
+              <p>{t("Details")}</p>
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent className="py-4 px-6" value="params" asChild>
+            <div className="flex flex-col justify-between min-h-0 size-full gap-4">
+              <div className="min-h-0 overflow-scroll rounded px-2 pt-1">
+                {!createdAction?.parameter && (
+                  <BasicBoiler
+                    text={t("No Parameters Available")}
+                    className="size-4 pt-16 [&>div>p]:text-sm"
+                    icon={<FlowLogo className="size-12 text-accent" />}
+                  />
+                )}
+                {createdAction && (
+                  <SchemaForm
+                    schema={patchedSchemaParams}
+                    defaultFormData={updatedParams}
+                    onChange={handleParamChange}
+                  />
+                )}
+              </div>
+              <Button
+                className="self-end shrink-0"
+                size="lg"
+                onClick={handleUpdate}>
+                {t("Update")}
+              </Button>
             </div>
-            <Button onClick={handleSubmit}>{t("Submit")}</Button>
-          </>
-        </TabsContent>
-        <TabsContent value="customizations" asChild>
-          <>
-            <div className="min-h-0 overflow-scroll rounded border bg-card px-2 pt-4">
-              {!createdAction?.customizations && (
+          </TabsContent>
+          <TabsContent className="py-4 px-6" value="customizations" asChild>
+            <div className="flex flex-col justify-between min-h-0 size-full gap-4">
+              <div className="min-h-0 overflow-scroll rounded px-2 pt-4">
+                {!createdAction?.customizations && (
+                  <BasicBoiler
+                    text={t("No Customizations Available")}
+                    className="size-4 pt-16 [&>div>p]:text-sm"
+                    icon={<FlowLogo className="size-12 text-accent" />}
+                  />
+                )}
+                {createdAction && (
+                  <div className="space-y-4">
+                    <h4 className="border-b text-sm font-medium">
+                      {t("Customization Options")}
+                    </h4>
+                    <SchemaForm
+                      schema={createdAction?.customizations}
+                      defaultFormData={updatedCustomization}
+                      onChange={handleCustomizationChange}
+                    />
+                  </div>
+                )}
+              </div>
+              <Button
+                className="self-end shrink-0"
+                size="lg"
+                onClick={handleUpdate}>
+                {t("Update")}
+              </Button>
+            </div>
+          </TabsContent>
+          <TabsContent className="py-4 px-6 w-full" value="details">
+            <div className="min-h-32 w-full overflow-scroll rounded border px-2 pt-4">
+              {!createdAction && (
                 <BasicBoiler
-                  text={t("No Customizations Available")}
+                  text={t("No Details Available")}
                   className="size-4 pt-16 [&>div>p]:text-sm"
                   icon={<FlowLogo className="size-12 text-accent" />}
                 />
               )}
               {createdAction && (
                 <div className="space-y-4">
-                  <h4 className="border-b text-sm font-medium">
-                    {t("Customization Options")}
-                  </h4>
-                  <SchemaForm
-                    schema={createdAction?.customizations}
-                    defaultFormData={updatedCustomization}
-                    onChange={handleCustomizationChange}
-                  />
-                </div>
-              )}
-            </div>
-            <Button onClick={handleSubmit}>{t("Submit")}</Button>
-          </>
-        </TabsContent>
-        <TabsContent value="details">
-          <div className="min-h-32 overflow-scroll rounded border bg-card px-2 pt-4">
-            {!createdAction && (
-              <BasicBoiler
-                text={t("No Details Available")}
-                className="size-4 pt-16 [&>div>p]:text-sm"
-                icon={<FlowLogo className="size-12 text-accent" />}
-              />
-            )}
-            {createdAction && (
-              <div className="space-y-4">
-                <div className="rounded-md ">
-                  <h4 className="border-b text-sm font-medium">
-                    {t("Node Details")}
-                  </h4>
-                  <div className="my-4 flex w-full flex-col gap-4">
-                    <p className="flex items-center text-sm">
-                      <span className="mr-2 font-medium">
-                        {t("Action Name")}:
-                      </span>
-                      <span className="text-white">
-                        {nodeMeta.officialName}
-                      </span>
-                    </p>
-                    <div className="flex flex-col gap-2">
-                      <span className="mr-2 text-sm font-medium">
-                        {t("Description")}:
-                      </span>
-                      {createdAction?.description && (
-                        <p className="text-sm">{createdAction.description}</p>
-                      )}
+                  <div className="rounded-md ">
+                    <h4 className="border-b text-sm font-medium">
+                      {t("Node Details")}
+                    </h4>
+                    <div className="my-4 flex w-full flex-col gap-4">
+                      <div className="flex items-center text-sm">
+                        <p className="mr-2 font-medium w-[150px]">
+                          {t("Action Name")}:
+                        </p>
+                        <p className="text-white">{nodeMeta.officialName}</p>
+                      </div>
+                      <div className="flex items-center text-sm">
+                        <p className="mr-2 font-medium w-[150px]">
+                          {t("Description")}:
+                        </p>
+                        {createdAction?.description && (
+                          <p className="text-sm">{createdAction.description}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+              )}
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 };

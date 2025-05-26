@@ -1,3 +1,4 @@
+import { CLIPBOARD_EXPIRATION_TIME } from "@flow/global-constants";
 import { JobStatus, NodeExecution } from "@flow/types";
 
 export type GeneralState = {
@@ -70,11 +71,33 @@ export async function openDatabase(): Promise<IDBDatabase> {
     request.onsuccess = async (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
       await ensureInitialState(db);
+      const general = await loadStateFromIndexedDB("general", db);
+      const shouldClearClipboard = await isClipboardTimeoutExpired(general);
+
+      if (shouldClearClipboard && general?.clipboard) {
+        saveStateToIndexedDB({ clipboard: undefined }, "general");
+      }
+
       resolve(db);
     };
 
     request.onerror = () => reject(request.error);
   });
+}
+
+async function isClipboardTimeoutExpired(
+  state: GeneralState | null,
+): Promise<boolean> {
+  if (!state) {
+    return false;
+  }
+  if (
+    state?.clipboard?.copiedAt &&
+    Date.now() - state.clipboard.copiedAt > CLIPBOARD_EXPIRATION_TIME
+  ) {
+    return true;
+  }
+  return false;
 }
 
 async function ensureInitialState(db: IDBDatabase) {
@@ -99,41 +122,41 @@ async function ensureInitialState(db: IDBDatabase) {
   );
 }
 
-// async function saveStateToIndexedDB<T extends InitialStateKeys>(
-//   partialData: Partial<AppState[T]>,
-//   key: T,
-// ) {
-//   const db = await openDatabase();
-//   const transaction = db.transaction(STORE_NAME, "readwrite");
-//   const store = transaction.objectStore(STORE_NAME);
+async function saveStateToIndexedDB<T extends InitialStateKeys>(
+  partialData: Partial<AppState[T]>,
+  key: T,
+) {
+  const db = await openDatabase();
+  const transaction = db.transaction(STORE_NAME, "readwrite");
+  const store = transaction.objectStore(STORE_NAME);
 
-//   return new Promise<void>((resolve, reject) => {
-//     const request = store.get(key);
+  return new Promise<void>((resolve, reject) => {
+    const request = store.get(key);
 
-//     request.onsuccess = () => {
-//       const existingData = request.result || {};
-//       const newData = { ...existingData, ...partialData };
+    request.onsuccess = () => {
+      const existingData = request.result || {};
+      const newData = { ...existingData, ...partialData };
 
-//       store.put(newData, key);
+      store.put(newData, key);
 
-//       transaction.oncomplete = () => resolve();
-//       transaction.onerror = () => reject(transaction.error);
-//     };
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    };
 
-//     request.onerror = () => reject(request.error);
-//   });
-// }
+    request.onerror = () => reject(request.error);
+  });
+}
 
-// export async function loadStateFromIndexedDB<T extends InitialStateKeys>(
-//   key: T,
-// ): Promise<AppState[T] | null> {
-//   const db = await openDatabase();
-//   const transaction = db.transaction(STORE_NAME, "readonly");
-//   const store = transaction.objectStore(STORE_NAME);
+async function loadStateFromIndexedDB<T extends InitialStateKeys>(
+  key: T,
+  db: IDBDatabase,
+): Promise<AppState[T] | null> {
+  const transaction = db.transaction(STORE_NAME, "readonly");
+  const store = transaction.objectStore(STORE_NAME);
 
-//   return new Promise((resolve, reject) => {
-//     const request = store.get(key);
-//     request.onsuccess = () => resolve(request.result || null);
-//     request.onerror = () => reject(request.error);
-//   });
-// }
+  return new Promise((resolve, reject) => {
+    const request = store.get(key);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}

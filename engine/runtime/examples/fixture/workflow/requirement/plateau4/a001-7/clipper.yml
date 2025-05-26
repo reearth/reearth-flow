@@ -1,0 +1,84 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 51c63cd6-4c20-4a7d-a1fe-b8b84dbcdc25
+name: "PLATEAU4-A001-7-clipper-workflow"
+entryGraphId: 1bf3f758-2d10-4b30-b45c-df5e4e845baf
+with:
+  clipper_clipper_geojson: !include ./files/clipper_clipper.geojson.txt
+  clipper_candicate_geojson: !include ./files/clipper_candicate.geojson.txt
+graphs:
+  - id: 1bf3f758-2d10-4b30-b45c-df5e4e845baf
+    name: entry_point
+    nodes:
+      - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        name: FileReader
+        type: action
+        action: FileReader
+        with:
+          format: geojson
+          inline: |
+            env.get("clipper_clipper_geojson")
+
+      - id: 8d8477d0-d18d-47cb-bebe-d14fefb1b77a
+        name: FileReader
+        type: action
+        action: FileReader
+        with:
+          format: geojson
+          inline: |
+            env.get("clipper_candicate_geojson")
+
+      - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        name: Clipper
+        type: action
+        action: Clipper
+
+      - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        name: GeoJsonWriter
+        type: action
+        action: GeoJsonWriter
+        with:
+          output: |
+            file::join_path(env.get("currentPath"), "a001-7-clip.geojson")
+
+      - id: e6dbc2f1-554b-4651-97bb-6c2c90a4aef1
+        name: GeoJsonWriter
+        type: action
+        action: GeoJsonWriter
+        with:
+          output: |
+            file::join_path(env.get("currentPath"), "a001-7-difference.geojson")
+
+      - id: dd4d7e47-d7a2-41d6-b173-fd93560527da
+        name: GeoJsonWriter
+        type: action
+        action: GeoJsonWriter
+        with:
+          output: |
+            file::join_path(env.get("currentPath"), "a001-7-clipper-rejected.geojson")
+
+    edges:
+      - id: c064cf52-705f-443a-b2de-6795266c540d
+        from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
+        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        fromPort: default
+        toPort: clipper
+      - id: 8596d754-ebdf-4df0-8b31-bc68b69233a4
+        from: 8d8477d0-d18d-47cb-bebe-d14fefb1b77a
+        to: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        fromPort: default
+        toPort: candicate
+      - id: c81ea200-9aa1-4522-9f72-10e8b9184cb7
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
+        fromPort: inside
+        toPort: default
+      - id: b227d981-3930-4440-9b1d-977ceebf3b81
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        to: e6dbc2f1-554b-4651-97bb-6c2c90a4aef1
+        fromPort: outside
+        toPort: default
+      - id: d40706fc-38fa-47e3-a645-841d9006575a
+        from: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
+        to: dd4d7e47-d7a2-41d6-b173-fd93560527da
+        fromPort: rejected
+        toPort: default

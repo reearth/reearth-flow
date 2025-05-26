@@ -1,8 +1,12 @@
+use anyhow::Result;
 use bytes::Bytes;
 use deadpool::Runtime;
-use deadpool_redis::{Config, Connection, Pool};
+use deadpool_redis::{Config, Pool};
 use redis::AsyncCommands;
 use std::sync::Arc;
+use tokio::sync::Mutex;
+use tracing::{debug, error};
+use uuid;
 
 type RedisField = (String, Bytes);
 type RedisFields = Vec<RedisField>;
@@ -10,6 +14,8 @@ type RedisStreamMessage = (String, RedisFields);
 type RedisStreamMessages = Vec<RedisStreamMessage>;
 type RedisStreamResult = (String, RedisStreamMessages);
 type RedisStreamResults = Vec<RedisStreamResult>;
+
+const OID_LOCK_KEY: &str = "lock:oid_generation";
 
 #[derive(Debug, Clone)]
 pub struct RedisConfig {
@@ -26,7 +32,7 @@ pub struct RedisStore {
 }
 
 impl RedisStore {
-    pub async fn new(config: RedisConfig) -> Result<Self, anyhow::Error> {
+    pub async fn new(config: RedisConfig) -> Result<Self> {
         let cfg = Config::from_url(&config.url);
         let pool = cfg.create_pool(Some(Runtime::Tokio1))?;
         let pool = Arc::new(pool);
@@ -41,20 +47,26 @@ impl RedisStore {
         self.config.clone()
     }
 
+    pub async fn create_dedicated_connection(&self) -> Result<redis::aio::MultiplexedConnection> {
+        let client = redis::Client::open(self.config.url.clone())?;
+        let conn = client.get_multiplexed_async_connection().await?;
+        Ok(conn)
+    }
+
     pub async fn publish_update(
         &self,
+        conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
         update: &[u8],
-        conn: &mut Connection,
-    ) -> Result<(), anyhow::Error> {
+        instance_id: &str,
+    ) -> Result<()> {
         let script = redis::Script::new(
             r#"
             local stream_key = KEYS[1]
             local update = ARGV[1]
-            local ttl = ARGV[2]
+            local instance_id = ARGV[2]
             
-            redis.call('XADD', stream_key, 'NOMKSTREAM', '*', 'update', update)
-            redis.call('EXPIRE', stream_key, ttl)
+            redis.call('XADD', stream_key, '*', 'instance_id', update)
             return 1
             "#,
         );
@@ -62,265 +74,41 @@ impl RedisStore {
         let _: () = script
             .key(stream_key)
             .arg(update)
-            .arg(self.config.ttl)
+            .arg(instance_id)
             .invoke_async(&mut *conn)
             .await?;
 
         Ok(())
     }
 
-    pub async fn publish_batch_updates(
+    pub async fn publish_update_with_ttl(
         &self,
-        doc_id: &str,
-        updates: &[&[u8]],
-    ) -> Result<(), anyhow::Error> {
-        if updates.is_empty() {
-            return Ok(());
-        }
+        conn: &mut redis::aio::MultiplexedConnection,
+        stream_key: &str,
+        update: &[u8],
+        instance_id: &str,
+        ttl: u64,
+    ) -> Result<()> {
+        let script = redis::Script::new(
+            r#"
+            local stream_key = KEYS[1]
+            local update = ARGV[1]
+            local instance_id = ARGV[2]
+            local ttl = ARGV[3]
+            redis.call('XADD', stream_key, '*', 'instance_id', update)
+            redis.call('EXPIRE', stream_key, ttl)
+            return 1
+            "#,
+        );
+        let _: () = script
+            .key(stream_key)
+            .arg(update)
+            .arg(instance_id)
+            .arg(ttl)
+            .invoke_async(&mut *conn)
+            .await?;
 
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        if let Ok(mut conn) = self.pool.get().await {
-            let ttl = self.config.ttl;
-
-            let mut pipe = redis::pipe();
-
-            pipe.atomic();
-
-            for update in updates {
-                let fields = &[("update", *update)];
-                pipe.cmd("XADD")
-                    .arg(&stream_key)
-                    .arg("MAXLEN")
-                    .arg("~")
-                    .arg(1000)
-                    .arg("NOMKSTREAM")
-                    .arg("*")
-                    .arg(fields);
-            }
-
-            pipe.cmd("EXPIRE").arg(&stream_key).arg(ttl);
-
-            let _: () = pipe.query_async(&mut *conn).await?;
-        }
         Ok(())
-    }
-
-    pub async fn create_consumer_group(
-        &self,
-        doc_id: &str,
-        group_name: &str,
-    ) -> Result<(), anyhow::Error> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        if let Ok(mut conn) = self.pool.get().await {
-            let result: Result<String, redis::RedisError> = redis::cmd("XGROUP")
-                .arg("CREATE")
-                .arg(&stream_key)
-                .arg(group_name)
-                .arg("0")
-                .arg("MKSTREAM")
-                .query_async(&mut *conn)
-                .await;
-
-            match result {
-                Ok(_) => Ok(()),
-                Err(e) => {
-                    if e.to_string().contains("BUSYGROUP") {
-                        Ok(())
-                    } else {
-                        Err(e.into())
-                    }
-                }
-            }
-        } else {
-            Err(anyhow::anyhow!("Failed to get Redis connection"))
-        }
-    }
-
-    pub async fn read_stream_messages(
-        &self,
-        doc_id: &str,
-        group_name: &str,
-        consumer_name: &str,
-        count: usize,
-        block_ms: usize,
-    ) -> Result<Vec<(String, Bytes)>, anyhow::Error> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        if let Ok(mut conn) = self.pool.get().await {
-            let result: RedisStreamResults = redis::cmd("XREADGROUP")
-                .arg("GROUP")
-                .arg(group_name)
-                .arg(consumer_name)
-                .arg("COUNT")
-                .arg(count)
-                .arg("BLOCK")
-                .arg(block_ms)
-                .arg("STREAMS")
-                .arg(&stream_key)
-                .arg(">")
-                .query_async(&mut *conn)
-                .await?;
-
-            let mut updates = Vec::new();
-            if !result.is_empty() && !result[0].1.is_empty() {
-                for (msg_id, fields) in &result[0].1 {
-                    for (field_name, field_value) in fields {
-                        if field_name == "update" {
-                            updates.push((msg_id.clone(), field_value.clone()));
-                        }
-                    }
-                }
-            }
-
-            Ok(updates)
-        } else {
-            Err(anyhow::anyhow!("Failed to get Redis connection"))
-        }
-    }
-
-    pub async fn batch_ack_messages(
-        &self,
-        doc_id: &str,
-        group_name: &str,
-        message_ids: &[String],
-    ) -> Result<(), anyhow::Error> {
-        if message_ids.is_empty() {
-            return Ok(());
-        }
-
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        if let Ok(mut conn) = self.pool.get().await {
-            let mut pipe = redis::pipe();
-
-            let mut cmd = redis::cmd("XACK");
-            cmd.arg(&stream_key).arg(group_name);
-
-            for id in message_ids {
-                cmd.arg(id);
-            }
-
-            pipe.add_command(cmd);
-
-            let _: () = pipe.query_async(&mut *conn).await?;
-            return Ok(());
-        }
-        Err(anyhow::anyhow!("Failed to get Redis connection"))
-    }
-
-    pub async fn read_batch_messages(
-        &self,
-        doc_id: &str,
-        group_name: &str,
-        consumer_name: &str,
-        count: usize,
-        block_ms: usize,
-    ) -> Result<Vec<(String, Bytes)>, anyhow::Error> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        if let Ok(mut conn) = self.pool.get().await {
-            let result: RedisStreamResults = redis::cmd("XREADGROUP")
-                .arg("GROUP")
-                .arg(group_name)
-                .arg(consumer_name)
-                .arg("COUNT")
-                .arg(count)
-                .arg("BLOCK")
-                .arg(block_ms)
-                .arg("STREAMS")
-                .arg(&stream_key)
-                .arg(">")
-                .query_async(&mut *conn)
-                .await?;
-
-            let mut updates = Vec::new();
-            let mut message_ids = Vec::new();
-
-            if !result.is_empty() && !result[0].1.is_empty() {
-                for (msg_id, fields) in &result[0].1 {
-                    message_ids.push(msg_id.clone());
-
-                    for (field_name, field_value) in fields {
-                        if field_name == "update" {
-                            updates.push((msg_id.clone(), field_value.clone()));
-                        }
-                    }
-                }
-
-                if !message_ids.is_empty() {
-                    let mut pipe = redis::pipe();
-                    let mut cmd = redis::cmd("XACK");
-                    cmd.arg(&stream_key).arg(group_name);
-
-                    for id in &message_ids {
-                        cmd.arg(id);
-                    }
-
-                    pipe.add_command(cmd);
-                    let _: () = pipe.query_async(&mut *conn).await?;
-                }
-            }
-
-            Ok(updates)
-        } else {
-            Err(anyhow::anyhow!("Failed to get Redis connection"))
-        }
-    }
-
-    pub async fn ack_message(
-        &self,
-        doc_id: &str,
-        group_name: &str,
-        message_id: &str,
-    ) -> Result<(), anyhow::Error> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        if let Ok(mut conn) = self.pool.get().await {
-            let _: () = redis::cmd("XACK")
-                .arg(&stream_key)
-                .arg(group_name)
-                .arg(message_id)
-                .query_async(&mut *conn)
-                .await?;
-
-            Ok(())
-        } else {
-            Err(anyhow::anyhow!("Failed to get Redis connection"))
-        }
-    }
-
-    pub async fn read_pending_messages(
-        &self,
-        doc_id: &str,
-        group_name: &str,
-        consumer_name: &str,
-        count: usize,
-    ) -> Result<Vec<(String, Bytes)>, anyhow::Error> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        if let Ok(mut conn) = self.pool.get().await {
-            let result: RedisStreamResults = redis::cmd("XREADGROUP")
-                .arg("GROUP")
-                .arg(group_name)
-                .arg(consumer_name)
-                .arg("COUNT")
-                .arg(count)
-                .arg("STREAMS")
-                .arg(&stream_key)
-                .arg("0")
-                .query_async(&mut *conn)
-                .await?;
-
-            let mut updates = Vec::new();
-            if !result.is_empty() && !result[0].1.is_empty() {
-                for (msg_id, fields) in &result[0].1 {
-                    for (field_name, field_value) in fields {
-                        if field_name == "update" {
-                            updates.push((msg_id.clone(), field_value.clone()));
-                        }
-                    }
-                }
-            }
-
-            Ok(updates)
-        } else {
-            Err(anyhow::anyhow!("Failed to get Redis connection"))
-        }
     }
 
     pub async fn acquire_lock(
@@ -328,131 +116,82 @@ impl RedisStore {
         lock_key: &str,
         lock_value: &str,
         ttl_seconds: u64,
-    ) -> Result<bool, anyhow::Error> {
-        if let Ok(mut conn) = self.pool.get().await {
-            let result: Option<String> = redis::cmd("SET")
-                .arg(lock_key)
-                .arg(lock_value)
-                .arg("NX")
-                .arg("EX")
-                .arg(ttl_seconds)
-                .query_async(&mut *conn)
-                .await?;
+    ) -> Result<bool> {
+        let mut conn = self.pool.get().await?;
+        let result: Option<String> = redis::cmd("SET")
+            .arg(lock_key)
+            .arg(lock_value)
+            .arg("NX")
+            .arg("EX")
+            .arg(ttl_seconds)
+            .query_async(&mut *conn)
+            .await?;
 
-            return Ok(result.is_some());
-        }
-        Ok(false)
+        Ok(result.is_some())
     }
 
-    pub async fn release_lock(
-        &self,
-        lock_key: &str,
-        lock_value: &str,
-    ) -> Result<(), anyhow::Error> {
-        if let Ok(mut conn) = self.pool.get().await {
-            let script = redis::Script::new(
-                r"
-                if redis.call('get', KEYS[1]) == ARGV[1] then
-                    return redis.call('del', KEYS[1])
-                else
-                    return 0
-                end
-            ",
-            );
+    pub async fn release_lock(&self, lock_key: &str, lock_value: &str) -> Result<()> {
+        let mut conn = self.pool.get().await?;
+        let script = redis::Script::new(
+            r"
+            if redis.call('get', KEYS[1]) == ARGV[1] then
+                return redis.call('del', KEYS[1])
+            else
+                return 0
+            end
+        ",
+        );
 
-            let _: () = script
-                .key(lock_key)
-                .arg(lock_value)
-                .invoke_async(&mut *conn)
-                .await?;
-        }
+        let _: () = script
+            .key(lock_key)
+            .arg(lock_value)
+            .invoke_async(&mut *conn)
+            .await?;
+
         Ok(())
     }
 
-    pub async fn set(&self, key: &str, value: &str) -> Result<(), anyhow::Error> {
-        if let Ok(mut conn) = self.pool.get().await {
-            let _: () = conn.set(key, value).await?;
-        }
+    pub async fn set(&self, key: &str, value: &str) -> Result<()> {
+        let mut conn = self.pool.get().await?;
+        let _: () = conn.set(key, value).await?;
+
         Ok(())
     }
 
-    pub async fn set_with_expiry(
-        &self,
-        key: &str,
-        value: &str,
-        ttl_seconds: u64,
-    ) -> Result<(), anyhow::Error> {
-        if let Ok(mut conn) = self.pool.get().await {
-            let _: () = redis::cmd("SET")
-                .arg(key)
-                .arg(value)
-                .arg("EX")
-                .arg(ttl_seconds)
-                .query_async(&mut *conn)
-                .await?;
-        }
+    pub async fn exists(&self, key: &str) -> Result<bool> {
+        let mut conn = self.pool.get().await?;
+        let exists: bool = redis::cmd("EXISTS")
+            .arg(key)
+            .query_async(&mut *conn)
+            .await?;
+        Ok(exists)
+    }
+
+    pub async fn set_nx(&self, key: &str, value: &str) -> Result<bool> {
+        let mut conn = self.pool.get().await?;
+        let result: bool = redis::cmd("SETNX")
+            .arg(key)
+            .arg(value)
+            .query_async(&mut *conn)
+            .await?;
+        Ok(result)
+    }
+
+    pub async fn del(&self, key: &str) -> Result<()> {
+        let mut conn = self.pool.get().await?;
+        let _: () = redis::cmd("DEL").arg(key).query_async(&mut *conn).await?;
+
         Ok(())
     }
 
-    pub async fn exists(&self, key: &str) -> Result<bool, anyhow::Error> {
-        if let Ok(mut conn) = self.pool.get().await {
-            let exists: bool = redis::cmd("EXISTS")
-                .arg(key)
-                .query_async(&mut *conn)
-                .await?;
-            return Ok(exists);
-        }
-        Ok(false)
-    }
+    pub async fn expire(&self, key: &str, ttl_seconds: u64) -> Result<()> {
+        let mut conn = self.pool.get().await?;
+        let _: () = redis::cmd("EXPIRE")
+            .arg(key)
+            .arg(ttl_seconds)
+            .query_async(&mut *conn)
+            .await?;
 
-    pub async fn set_nx(&self, key: &str, value: &str) -> Result<bool, anyhow::Error> {
-        if let Ok(mut conn) = self.pool.get().await {
-            let result: bool = redis::cmd("SETNX")
-                .arg(key)
-                .arg(value)
-                .query_async(&mut *conn)
-                .await?;
-            return Ok(result);
-        }
-        Ok(false)
-    }
-
-    pub async fn set_nx_with_expiry(
-        &self,
-        key: &str,
-        value: &str,
-        ttl_seconds: u64,
-    ) -> Result<bool, anyhow::Error> {
-        if let Ok(mut conn) = self.pool.get().await {
-            let result: Option<String> = redis::cmd("SET")
-                .arg(key)
-                .arg(value)
-                .arg("NX")
-                .arg("EX")
-                .arg(ttl_seconds)
-                .query_async(&mut *conn)
-                .await?;
-
-            return Ok(result.is_some());
-        }
-        Ok(false)
-    }
-
-    pub async fn del(&self, key: &str) -> Result<(), anyhow::Error> {
-        if let Ok(mut conn) = self.pool.get().await {
-            let _: () = redis::cmd("DEL").arg(key).query_async(&mut *conn).await?;
-        }
-        Ok(())
-    }
-
-    pub async fn expire(&self, key: &str, ttl_seconds: u64) -> Result<(), anyhow::Error> {
-        if let Ok(mut conn) = self.pool.get().await {
-            let _: () = redis::cmd("EXPIRE")
-                .arg(key)
-                .arg(ttl_seconds)
-                .query_async(&mut *conn)
-                .await?;
-        }
         Ok(())
     }
 
@@ -461,55 +200,53 @@ impl RedisStore {
         doc_id: &str,
         instance_id: &str,
         ttl_seconds: u64,
-    ) -> Result<bool, anyhow::Error> {
+    ) -> Result<bool> {
         let key = format!("doc:instance:{}", doc_id);
-        if let Ok(mut conn) = self.pool.get().await {
-            let effective_ttl = if ttl_seconds < 2 { 2 } else { ttl_seconds };
-            let result: bool = redis::cmd("SET")
-                .arg(&key)
-                .arg(instance_id)
-                .arg("NX")
-                .arg("EX")
-                .arg(effective_ttl)
-                .query_async(&mut *conn)
-                .await?;
+        let mut conn = self.pool.get().await?;
+        let effective_ttl = if ttl_seconds < 2 { 2 } else { ttl_seconds };
+        let result: bool = redis::cmd("SET")
+            .arg(&key)
+            .arg(instance_id)
+            .arg("NX")
+            .arg("EX")
+            .arg(effective_ttl)
+            .query_async(&mut *conn)
+            .await?;
 
-            return Ok(result);
-        }
-        Ok(false)
+        Ok(result)
     }
 
-    pub async fn get_doc_instance(&self, doc_id: &str) -> Result<Option<String>, anyhow::Error> {
+    pub async fn get_doc_instance(&self, doc_id: &str) -> Result<Option<String>> {
         let key = format!("doc:instance:{}", doc_id);
-        if let Ok(mut conn) = self.pool.get().await {
-            let result: Option<String> = conn.get(&key).await?;
-            return Ok(result);
-        }
-        Ok(None)
+        let mut conn = self.pool.get().await?;
+        let result: Option<String> = conn.get(&key).await?;
+        Ok(result)
     }
 
-    pub async fn read_and_ack(
+    pub async fn read_and_filter(
         &self,
-        conn: &mut Connection,
+        conn: &mut redis::aio::MultiplexedConnection,
         stream_key: &str,
-        group_name: &str,
-        consumer_name: &str,
         count: usize,
-    ) -> Result<Vec<Bytes>, anyhow::Error> {
+        instance_id: &str,
+        last_read_id: &Arc<Mutex<String>>,
+    ) -> Result<Vec<Bytes>> {
         let block_ms = 1600;
 
-        let result: RedisStreamResults = redis::cmd("XREADGROUP")
-            .arg("GROUP")
-            .arg(group_name)
-            .arg(consumer_name)
+        let read_id = {
+            let last_id = last_read_id.lock().await;
+            last_id.clone()
+        };
+
+        let result: RedisStreamResults = redis::cmd("XREAD")
             .arg("COUNT")
             .arg(count)
             .arg("BLOCK")
             .arg(block_ms)
             .arg("STREAMS")
             .arg(stream_key)
-            .arg(">")
-            .query_async(&mut *conn)
+            .arg(read_id)
+            .query_async(conn)
             .await?;
 
         if result.is_empty() || result[0].1.is_empty() {
@@ -517,346 +254,434 @@ impl RedisStore {
         }
 
         let mut updates = Vec::with_capacity(result[0].1.len());
-        let mut message_ids = Vec::with_capacity(result[0].1.len());
+        let mut last_msg_id = String::new();
 
         for (msg_id, fields) in result[0].1.iter() {
-            message_ids.push(msg_id.clone());
-            if let Some((_, update)) = fields.iter().find(|(name, _)| name == "update") {
-                updates.push(update.clone());
+            if let Some((_, value)) = fields.iter().find(|(name, _)| name != instance_id) {
+                updates.push(value.clone());
             }
+            last_msg_id = msg_id.clone();
         }
 
-        if !message_ids.is_empty() {
-            let lua_script = r#"
-            local key = KEYS[1]
-            local group = ARGV[1]
-            local result = 0
-            for i=2, #ARGV do
-                result = result + redis.call('XACK', key, group, ARGV[i])
-            end
-            return result
-            "#;
-
-            let script = redis::Script::new(lua_script);
-
-            let mut cmd = script.prepare_invoke();
-            cmd.key(stream_key);
-            cmd.arg(group_name);
-
-            for msg_id in &message_ids {
-                cmd.arg(msg_id);
-            }
-
-            let _: i64 = cmd.invoke_async(&mut *conn).await?;
+        if !last_msg_id.is_empty() {
+            let mut last_id = last_read_id.lock().await;
+            *last_id = last_msg_id;
         }
+
         Ok(updates)
     }
 
-    pub async fn delete_stream(&self, doc_id: &str) -> Result<(), anyhow::Error> {
+    pub async fn delete_stream(&self, doc_id: &str) -> Result<()> {
         let stream_key = format!("yjs:stream:{}", doc_id);
-        if let Ok(mut conn) = self.pool.get().await {
-            let _: () = redis::cmd("DEL")
-                .arg(&stream_key)
-                .query_async(&mut *conn)
-                .await?;
-        }
+        let mut conn = self.pool.get().await?;
+        let _: () = redis::cmd("DEL")
+            .arg(&stream_key)
+            .query_async(&mut *conn)
+            .await?;
+
         Ok(())
     }
 
-    pub async fn delete_consumer(
-        &self,
-        doc_id: &str,
-        group_name: &str,
-        consumer_name: &str,
-    ) -> Result<i64, anyhow::Error> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        if let Ok(mut conn) = self.pool.get().await {
-            let exists: bool = redis::cmd("EXISTS")
-                .arg(&stream_key)
-                .query_async(&mut *conn)
-                .await?;
-
-            if !exists {
-                return Ok(0);
-            }
-
-            let result: i64 = redis::cmd("XGROUP")
-                .arg("DELCONSUMER")
-                .arg(&stream_key)
-                .arg(group_name)
-                .arg(consumer_name)
-                .query_async(&mut *conn)
-                .await?;
-
-            return Ok(result);
-        }
-
-        Err(anyhow::anyhow!("Failed to get Redis connection"))
-    }
-
-    pub async fn acquire_doc_lock(
-        &self,
-        doc_id: &str,
-        instance_id: &str,
-    ) -> Result<bool, anyhow::Error> {
+    pub async fn acquire_doc_lock(&self, doc_id: &str, instance_id: &str) -> Result<bool> {
         let lock_key = format!("lock:doc:{}", doc_id);
         let ttl = 10;
 
-        if let Ok(mut conn) = self.pool.get().await {
-            let result: Option<String> = redis::cmd("SET")
-                .arg(&lock_key)
-                .arg(instance_id)
-                .arg("NX")
-                .arg("EX")
-                .arg(ttl)
-                .query_async(&mut *conn)
-                .await?;
+        let mut conn = self.pool.get().await?;
+        let result: Option<String> = redis::cmd("SET")
+            .arg(&lock_key)
+            .arg(instance_id)
+            .arg("NX")
+            .arg("EX")
+            .arg(ttl)
+            .query_async(&mut *conn)
+            .await?;
 
-            return Ok(result.is_some());
-        }
-
-        Ok(false)
+        Ok(result.is_some())
     }
 
-    pub async fn release_doc_lock(
-        &self,
-        doc_id: &str,
-        instance_id: &str,
-    ) -> Result<bool, anyhow::Error> {
+    pub async fn release_doc_lock(&self, doc_id: &str, instance_id: &str) -> Result<bool> {
         let lock_key = format!("lock:doc:{}", doc_id);
 
-        if let Ok(mut conn) = self.pool.get().await {
-            let script = redis::Script::new(
-                r#"
-                if redis.call('get', KEYS[1]) == ARGV[1] then
-                    return redis.call('del', KEYS[1])
-                else
-                    return 0
-                end
-            "#,
-            );
+        let mut conn = self.pool.get().await?;
+        let script = redis::Script::new(
+            r#"
+            if redis.call('get', KEYS[1]) == ARGV[1] then
+                return redis.call('del', KEYS[1])
+            else
+                return 0
+            end
+        "#,
+        );
 
-            let result: i32 = script
-                .key(&lock_key)
-                .arg(instance_id)
-                .invoke_async(&mut *conn)
-                .await?;
+        let result: i32 = script
+            .key(&lock_key)
+            .arg(instance_id)
+            .invoke_async(&mut *conn)
+            .await?;
 
-            return Ok(result == 1);
-        }
-
-        Ok(false)
+        Ok(result == 1)
     }
 
-    pub async fn update_instance_heartbeat(
-        &self,
-        doc_id: &str,
-        instance_id: &str,
-    ) -> Result<(), anyhow::Error> {
+    pub async fn update_instance_heartbeat(&self, doc_id: &str, instance_id: &str) -> Result<()> {
         let key = format!("doc:instances:{}", doc_id);
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
 
-        if let Ok(mut conn) = self.pool.get().await {
-            let script = redis::Script::new(
-                r#"
-                redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
-                return redis.call('EXPIRE', KEYS[1], ARGV[3])
-                "#,
-            );
+        let mut conn = self.pool.get().await?;
+        let script = redis::Script::new(
+            r#"
+            redis.call('HSET', KEYS[1], ARGV[1], ARGV[2])
+            return redis.call('EXPIRE', KEYS[1], ARGV[3])
+            "#,
+        );
 
-            let _: () = script
-                .key(&key)
-                .arg(instance_id)
-                .arg(timestamp)
-                .arg(120)
-                .invoke_async(&mut *conn)
-                .await?;
+        let _: () = script
+            .key(&key)
+            .arg(instance_id)
+            .arg(timestamp)
+            .arg(120)
+            .invoke_async(&mut *conn)
+            .await?;
 
-            return Ok(());
-        }
-
-        Err(anyhow::anyhow!("Failed to get Redis connection"))
+        Ok(())
     }
 
-    pub async fn get_active_instances(
-        &self,
-        doc_id: &str,
-        timeout_secs: u64,
-    ) -> Result<i64, anyhow::Error> {
+    pub async fn get_active_instances(&self, doc_id: &str, timeout_secs: u64) -> Result<i64> {
         let key = format!("doc:instances:{}", doc_id);
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
             .as_secs();
 
-        if let Ok(mut conn) = self.pool.get().await {
-            let script = redis::Script::new(
-                r#"
-                local active_count = 0
-                local instances = redis.call('HGETALL', KEYS[1])
-                local now = tonumber(ARGV[1])
-                local timeout = tonumber(ARGV[2])
-                
-                for i = 1, #instances, 2 do
-                    local instance_id = instances[i]
-                    local last_seen = tonumber(instances[i+1])
-                    if now - last_seen < timeout then
-                        active_count = active_count + 1
-                    end
+        let mut conn = self.pool.get().await?;
+        let script = redis::Script::new(
+            r#"
+            local active_count = 0
+            local instances = redis.call('HGETALL', KEYS[1])
+            local now = tonumber(ARGV[1])
+            local timeout = tonumber(ARGV[2])
+            
+            for i = 1, #instances, 2 do
+                local instance_id = instances[i]
+                local last_seen = tonumber(instances[i+1])
+                if now - last_seen < timeout then
+                    active_count = active_count + 1
                 end
-                
-                return active_count
-            "#,
-            );
+            end
+            
+            return active_count
+        "#,
+        );
 
-            let count: i64 = script
-                .key(&key)
-                .arg(now)
-                .arg(timeout_secs)
-                .invoke_async(&mut *conn)
-                .await?;
+        let count: i64 = script
+            .key(&key)
+            .arg(now)
+            .arg(timeout_secs)
+            .invoke_async(&mut *conn)
+            .await?;
 
-            return Ok(count);
-        }
-
-        Err(anyhow::anyhow!("Failed to get Redis connection"))
+        Ok(count)
     }
 
-    pub async fn remove_instance_heartbeat(
-        &self,
-        doc_id: &str,
-        instance_id: &str,
-    ) -> Result<bool, anyhow::Error> {
+    pub async fn remove_instance_heartbeat(&self, doc_id: &str, instance_id: &str) -> Result<bool> {
         let key = format!("doc:instances:{}", doc_id);
 
-        if let Ok(mut conn) = self.pool.get().await {
-            let script = redis::Script::new(
-                r#"
-                redis.call('HDEL', KEYS[1], ARGV[1])
-                local count = redis.call('HLEN', KEYS[1])
-                if count == 0 then
+        let mut conn = self.pool.get().await?;
+
+        let script = redis::Script::new(
+            r#"
+            redis.call('HDEL', KEYS[1], ARGV[1])
+            local count = redis.call('HLEN', KEYS[1])
+            if count == 0 then
                     redis.call('DEL', KEYS[1])
                     return 1
                 else
                     return 0
                 end
                 "#,
-            );
+        );
 
-            let is_empty: i32 = script
-                .key(&key)
-                .arg(instance_id)
-                .invoke_async(&mut *conn)
-                .await?;
+        let is_empty: i32 = script
+            .key(&key)
+            .arg(instance_id)
+            .invoke_async(&mut *conn)
+            .await?;
 
-            return Ok(is_empty == 1);
-        }
-
-        Err(anyhow::anyhow!("Failed to get Redis connection"))
+        Ok(is_empty == 1)
     }
 
-    pub async fn safe_delete_stream(
+    pub async fn safe_delete_stream(&self, doc_id: &str, instance_id: &str) -> Result<()> {
+        let stream_key = format!("yjs:stream:{}", doc_id);
+        let instances_key = format!("doc:instances:{}", doc_id);
+        let read_lock_key = format!("read:lock:{}", doc_id);
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs();
+
+        let mut conn = self.pool.get().await?;
+
+        let read_lock_exists: bool = redis::cmd("EXISTS")
+            .arg(&read_lock_key)
+            .query_async(&mut *conn)
+            .await?;
+
+        if read_lock_exists {
+            return Ok(());
+        }
+
+        let script = redis::Script::new(
+            r#"
+            local lock_key = KEYS[1]
+            local instances_key = KEYS[2]
+            local stream_key = KEYS[3]
+            local read_lock_key = KEYS[4]
+            
+            local instance_id = ARGV[1]
+            local now = tonumber(ARGV[2])
+            local timeout = tonumber(ARGV[3])
+            
+            if redis.call('EXISTS', read_lock_key) == 1 then
+                return {acquired=0, deleted=0, reason="read_in_progress"}
+            end
+            
+            if redis.call('GET', lock_key) ~= instance_id then
+                if redis.call('SET', lock_key, instance_id, 'NX', 'EX', 10) == false then
+                    return {acquired=0, deleted=0, reason="lock_failed"}
+                end
+            end
+            
+            local active_count = 0
+            local instances = redis.call('HGETALL', instances_key)
+            
+            for i = 1, #instances, 2 do
+                local inst_id = instances[i]
+                local last_seen = tonumber(instances[i+1])
+                if now - last_seen < timeout then
+                    active_count = active_count + 1
+                end
+            end
+            
+            if active_count <= 0 then
+                local exists = redis.call('EXISTS', stream_key)
+                if exists == 1 then
+                    redis.call('DEL', stream_key)
+                    return {acquired=1, deleted=1, reason="success"}
+                else
+                    return {acquired=1, deleted=0, reason="stream_not_exists"}
+                end
+            else
+                return {acquired=1, deleted=0, reason="active_instances", count=active_count}
+            end
+            "#,
+        );
+
+        let lock_key = format!("lock:doc:{}", doc_id);
+
+        let _: redis::Value = script
+            .key(&lock_key)
+            .key(&instances_key)
+            .key(&stream_key)
+            .key(&read_lock_key)
+            .arg(instance_id)
+            .arg(now)
+            .arg(60)
+            .invoke_async(&mut *conn)
+            .await?;
+
+        let _ = self.release_doc_lock(doc_id, instance_id).await;
+
+        Ok(())
+    }
+
+    pub async fn check_stream_exists(&self, doc_id: &str) -> Result<bool> {
+        let stream_key = format!("yjs:stream:{}", doc_id);
+
+        let mut conn = self.pool.get().await?;
+        let exists: bool = redis::cmd("EXISTS")
+            .arg(&stream_key)
+            .query_async(&mut *conn)
+            .await?;
+
+        if exists {
+            debug!("Redis stream '{}' exists", stream_key);
+        } else {
+            debug!("Redis stream '{}' does not exist", stream_key);
+        }
+
+        Ok(exists)
+    }
+
+    pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<Vec<Bytes>> {
+        let stream_key = format!("yjs:stream:{}", doc_id);
+
+        let mut conn = self.pool.get().await?;
+        let script = redis::Script::new(
+            r#"
+            if redis.call('EXISTS', KEYS[1]) == 0 then
+                return {}
+            end
+            
+            local result = redis.call('XRANGE', KEYS[1], '-', '+')
+            local updates = {}
+            
+            for i, entry in ipairs(result) do
+                local fields = entry[2]
+                for j = 1, #fields, 2 do
+                    table.insert(updates, fields[j+1])
+                end
+            end
+            
+            return updates
+        "#,
+        );
+
+        let updates: Vec<Bytes> = script.key(&stream_key).invoke_async(&mut *conn).await?;
+
+        Ok(updates)
+    }
+
+    pub async fn read_stream_data_in_batches(
         &self,
         doc_id: &str,
-        instance_id: &str,
-    ) -> Result<bool, anyhow::Error> {
-        if self.acquire_doc_lock(doc_id, instance_id).await? {
-            let connections = self.get_active_instances(doc_id, 60).await?;
-
-            if connections <= 0 {
-                let stream_key = format!("yjs:stream:{}", doc_id);
-                if let Ok(mut conn) = self.pool.get().await {
-                    let exists: bool = redis::cmd("EXISTS")
-                        .arg(&stream_key)
-                        .query_async(&mut *conn)
-                        .await?;
-
-                    if exists {
-                        let _: () = redis::cmd("DEL")
-                            .arg(&stream_key)
-                            .query_async(&mut *conn)
-                            .await?;
-
-                        tracing::info!("Safely deleted Redis stream for '{}'", doc_id);
-                    }
-                }
-
-                let _ = self.release_doc_lock(doc_id, instance_id).await;
-                return Ok(true);
-            }
-
-            tracing::info!(
-                "Not deleting Redis stream for '{}' as there are still {} connections",
-                doc_id,
-                connections
-            );
-
-            let _ = self.release_doc_lock(doc_id, instance_id).await;
-        } else {
-            tracing::debug!(
-                "Could not acquire lock for doc '{}', skipping deletion attempt",
-                doc_id
-            );
-        }
-
-        Ok(false)
-    }
-
-    pub async fn check_stream_exists(&self, doc_id: &str) -> Result<bool, anyhow::Error> {
+        batch_size: usize,
+        start_id: &str,
+        is_first_batch: bool,
+        is_final_batch: bool,
+        lock_value: &mut Option<String>,
+    ) -> Result<(Vec<Bytes>, String)> {
         let stream_key = format!("yjs:stream:{}", doc_id);
+        let protection_lock_key = format!("read:lock:{}", doc_id);
 
-        if let Ok(mut conn) = self.pool.get().await {
-            let exists: bool = redis::cmd("EXISTS")
-                .arg(&stream_key)
-                .query_async(&mut *conn)
+        if is_first_batch {
+            let lock_id = uuid::Uuid::new_v4().to_string();
+            let acquired = self
+                .acquire_lock(&protection_lock_key, &lock_id, 30)
                 .await?;
-
-            if exists {
-                tracing::debug!("Redis stream '{}' exists", stream_key);
-            } else {
-                tracing::debug!("Redis stream '{}' does not exist", stream_key);
+            if acquired {
+                *lock_value = Some(lock_id.clone());
             }
-
-            return Ok(exists);
         }
 
-        Err(anyhow::anyhow!("Failed to get Redis connection"))
-    }
+        let mut conn = self.pool.get().await?;
 
-    pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<Vec<Bytes>, anyhow::Error> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-
-        if let Ok(mut conn) = self.pool.get().await {
-            let script = redis::Script::new(
-                r#"
-                if redis.call('EXISTS', KEYS[1]) == 0 then
-                    return {}
-                end
-                
-                local result = redis.call('XRANGE', KEYS[1], '-', '+')
-                local updates = {}
+        let script = redis::Script::new(
+            r#"
+            if redis.call('EXISTS', KEYS[1]) == 0 then
+                return {updates={}, last_id=""}
+            end
+            
+            local result = redis.call('XRANGE', KEYS[1], ARGV[1], '+', 'COUNT', ARGV[2])
+            local updates = {}
+            local last_id = ARGV[1]
+            
+            if #result > 0 then
+                last_id = result[#result][1]
                 
                 for i, entry in ipairs(result) do
                     local fields = entry[2]
                     for j = 1, #fields, 2 do
-                        if fields[j] == "update" then
-                            table.insert(updates, fields[j+1])
-                        end
+                        table.insert(updates, fields[j+1])
                     end
                 end
-                
-                return updates
+            end
+            
+            return {updates, last_id}
             "#,
-            );
+        );
 
-            let updates: Vec<Bytes> = script.key(&stream_key).invoke_async(&mut *conn).await?;
+        let result: redis::Value = script
+            .key(&stream_key)
+            .arg(start_id)
+            .arg(batch_size)
+            .invoke_async(&mut *conn)
+            .await?;
 
-            return Ok(updates);
+        let mut updates = Vec::new();
+        let mut last_id = start_id.to_string();
+
+        if let redis::Value::Array(array) = result {
+            if array.len() >= 2 {
+                if let redis::Value::Array(entries) = &array[0] {
+                    for entry in entries {
+                        if let redis::Value::BulkString(bytes) = entry {
+                            updates.push(Bytes::from(bytes.clone()));
+                        }
+                    }
+                }
+
+                if let redis::Value::BulkString(id_bytes) = &array[1] {
+                    if let Ok(id_str) = std::str::from_utf8(id_bytes) {
+                        last_id = id_str.to_string();
+                    }
+                }
+            }
         }
 
-        Err(anyhow::anyhow!("Failed to get Redis connection"))
+        if is_final_batch && lock_value.is_some() {
+            let lock_id = lock_value.clone().unwrap();
+            if let Err(e) = self.release_lock(&protection_lock_key, &lock_id).await {
+                error!(
+                    "Failed to release read lock {} for document '{}': {}",
+                    lock_id, doc_id, e
+                );
+            }
+            return Ok((updates, last_id));
+        }
+
+        Ok((updates, last_id))
+    }
+
+    pub async fn acquire_oid_lock(&self, ttl_seconds: u64) -> Result<String> {
+        let lock_value = uuid::Uuid::new_v4().to_string();
+        let mut conn = self.pool.get().await?;
+
+        let script = redis::Script::new(
+            r#"
+            local result = redis.call('SET', KEYS[1], ARGV[1], 'NX', 'EX', ARGV[2])
+            if result then
+                return ARGV[1]
+            else
+                return false
+            end
+            "#,
+        );
+
+        let result: Option<String> = script
+            .key(OID_LOCK_KEY)
+            .arg(&lock_value)
+            .arg(ttl_seconds)
+            .invoke_async(&mut *conn)
+            .await?;
+
+        if let Some(val) = result {
+            Ok(val)
+        } else {
+            Err(anyhow::anyhow!("Failed to acquire OID generation lock"))
+        }
+    }
+
+    pub async fn release_oid_lock(&self, lock_value: &str) -> Result<bool> {
+        let mut conn = self.pool.get().await?;
+
+        let script = redis::Script::new(
+            r#"
+            if redis.call('get', KEYS[1]) == ARGV[1] then
+                return redis.call('del', KEYS[1])
+            else
+                return 0
+            end
+            "#,
+        );
+
+        let result: i32 = script
+            .key(OID_LOCK_KEY)
+            .arg(lock_value)
+            .invoke_async(&mut *conn)
+            .await?;
+
+        Ok(result == 1)
     }
 }

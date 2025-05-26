@@ -20,18 +20,19 @@ import {
 } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
+import { CanvasContextMenu } from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
-import { NodeContextMenu, SelectionContextMenu } from "./components";
 
-const gridSize = 25;
+const gridSize = 16.5;
 
 const snapGrid: SnapGrid = [gridSize, gridSize];
 
 const proOptions: ProOptions = { hideAttribution: true };
 
 type Props = {
+  isSubworkflow: boolean;
   nodes: Node[];
   edges: Edge[];
   selectedEdgeIds?: string[];
@@ -49,9 +50,13 @@ type Props = {
   onEdgesAdd?: (newEdges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onEdgeHover?: (e: MouseEvent, edge?: Edge) => void;
+  onCopy?: (node?: Node) => void;
+  onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
+  onPaste?: () => void;
 };
 
 const Canvas: React.FC<Props> = ({
+  isSubworkflow,
   canvasLock,
   nodes,
   edges,
@@ -65,6 +70,9 @@ const Canvas: React.FC<Props> = ({
   onEdgesAdd,
   onEdgesChange,
   onNodePickerOpen,
+  onCopy,
+  onCut,
+  onPaste,
 }) => {
   const {
     handleNodesChange,
@@ -78,6 +86,7 @@ const Canvas: React.FC<Props> = ({
     handleReconnect,
     handleNodeContextMenu,
     handleSelectionContextMenu,
+    handlePaneContextMenu,
     handleCloseContextmenu,
     contextMenu,
     paneRef,
@@ -95,6 +104,7 @@ const Canvas: React.FC<Props> = ({
 
   return (
     <ReactFlow
+      className={`${isSubworkflow ? "border-node-subworkflow border-t-2" : ""}`}
       // minZoom={0.7}
       // maxZoom={1}
       // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
@@ -146,6 +156,7 @@ const Canvas: React.FC<Props> = ({
       onNodeMouseLeave={onNodeHover}
       onNodeContextMenu={handleNodeContextMenu}
       onSelectionContextMenu={handleSelectionContextMenu}
+      onPaneContextMenu={handlePaneContextMenu}
       onMoveStart={handleCloseContextmenu}
       onDrop={handleNodeDrop}
       onDragOver={handleNodeDragOver}
@@ -158,25 +169,19 @@ const Canvas: React.FC<Props> = ({
         className="bg-background"
         variant={BackgroundVariant["Lines"]}
         gap={gridSize}
-        color="rgba(63, 63, 70, 0.3)"
+        color="rgba(63, 63, 70, 0.4)"
       />
-
-      {contextMenu?.type === "node" && (
-        <NodeContextMenu
-          node={contextMenu.data}
-          contextMenu={contextMenu}
-          onNodesChange={handleNodesChange}
-          onSecondaryNodeAction={onNodeDoubleClick}
-          onClose={handleCloseContextmenu}
-        />
-      )}
-      {contextMenu?.type === "selection" && (
-        <SelectionContextMenu
-          nodes={contextMenu.data}
+      {contextMenu && (
+        <CanvasContextMenu
+          data={contextMenu.data}
           selectedEdgeIds={selectedEdgeIds}
           contextMenu={contextMenu}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
+          onSecondaryNodeAction={onNodeDoubleClick}
+          onCopy={onCopy}
+          onCut={onCut}
+          onPaste={onPaste}
           onClose={handleCloseContextmenu}
         />
       )}

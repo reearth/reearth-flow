@@ -1,4 +1,7 @@
 pub mod group;
 pub mod pool;
-pub mod tasks;
+mod publish;
+pub mod sub;
 pub mod types;
+
+use publish::Publish;

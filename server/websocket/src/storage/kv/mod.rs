@@ -38,18 +38,21 @@
 pub mod error;
 pub mod keys;
 
+use crate::storage::redis::RedisStore;
+use anyhow;
 use async_trait::async_trait;
 use error::Error;
+use hex;
 use keys::{
     doc_oid_name, key_doc, key_doc_end, key_doc_start, key_meta, key_meta_end, key_meta_start,
     key_oid, key_state_vector, key_update, Key, KEYSPACE_DOC, KEYSPACE_OID, OID, V1,
 };
 use std::convert::TryInto;
-use tracing::debug;
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
 use yrs::{Doc, ReadTxn, StateVector, Transact, TransactionMut, Update};
 
+use super::first_zero_bit;
 /// A trait to be implemented by the specific key-value store transaction equivalent in order to
 /// auto-implement features provided by [DocOps] trait.
 
@@ -118,10 +121,11 @@ where
         &self,
         name: &K,
         txn: &T,
+        redis: &RedisStore,
     ) -> Result<(), Error> {
         let doc_state = txn.encode_diff_v1(&StateVector::default());
         let state_vector = txn.state_vector().encode_v1();
-        self.insert_doc_raw_v1(name.as_ref(), &doc_state, &state_vector)
+        self.insert_doc_raw_v1(name.as_ref(), &doc_state, &state_vector, redis)
             .await
     }
 
@@ -137,8 +141,9 @@ where
         name: &[u8],
         doc_state_v1: &[u8],
         doc_sv_v1: &[u8],
+        redis: &RedisStore,
     ) -> Result<(), Error> {
-        let oid = get_or_create_oid(self, name).await?;
+        let oid = get_or_create_oid(self, name, redis).await?;
         insert_inner_v1(self, oid, doc_state_v1, doc_sv_v1).await?;
         Ok(())
     }
@@ -154,8 +159,6 @@ where
         txn: &mut TransactionMut<'doc>,
     ) -> Result<bool, Error> {
         if let Some(oid) = get_oid(self, name.as_ref()).await? {
-            debug!("Loading document from KV store - oid: {:?}", oid);
-            debug!("Document-----------------------------");
             let loaded = load_doc(self, oid, txn).await?;
             Ok(loaded != 0)
         } else {
@@ -173,6 +176,81 @@ where
         name: &K,
     ) -> Result<Option<Doc>, Error> {
         self.flush_doc_with(name, yrs::Options::default()).await
+    }
+
+    async fn trim_updates<K: AsRef<[u8]> + ?Sized + Sync>(
+        &self,
+        name: &K,
+        density_shift: u32,
+    ) -> Result<Option<Doc>, Error> {
+        if let Some(oid) = get_oid(self, name.as_ref()).await? {
+            let update_range_start = key_update(oid, 0)?;
+            let update_range_end = key_update(oid, u32::MAX)?;
+            let mut updates = Vec::new();
+
+            for entry in self
+                .iter_range(&update_range_start, &update_range_end)
+                .await?
+            {
+                let key = entry.key();
+                let len = key.len();
+                let seq_bytes = &key[(len - 5)..(len - 1)];
+                let seq_nr = u32::from_be_bytes(seq_bytes.try_into().unwrap());
+                updates.push(seq_nr);
+            }
+
+            if updates.is_empty() {
+                return Ok(None);
+            }
+
+            updates.sort_unstable();
+            let n = *updates.last().unwrap();
+
+            let to_delete = if n > 0 {
+                let bit = first_zero_bit(n);
+                let delete_offset = bit << density_shift;
+                n.saturating_sub(delete_offset)
+            } else {
+                0
+            };
+
+            if to_delete > 0 && updates.contains(&to_delete) {
+                let doc = Doc::new();
+                let mut found = false;
+
+                {
+                    let doc_key = key_doc(oid)?;
+                    if let Some(doc_state) = self.get(&doc_key).await? {
+                        let update = Update::decode_v1(doc_state.as_ref())?;
+                        let _ = doc.transact_mut().apply_update(update);
+                        found = true;
+                    }
+                }
+
+                let update_key = key_update(oid, to_delete)?;
+                if let Some(data) = self.get(&update_key).await? {
+                    let update = Update::decode_v1(data.as_ref())?;
+                    let _ = doc.transact_mut().apply_update(update);
+                    found = true;
+                }
+
+                self.remove(&update_key).await?;
+
+                if found {
+                    let txn = doc.transact();
+                    let doc_state = txn.encode_state_as_update_v1(&StateVector::default());
+                    let state_vec = txn.state_vector().encode_v1();
+                    drop(txn);
+
+                    insert_inner_v1(self, oid, &doc_state, &state_vec).await?;
+                    return Ok(Some(doc));
+                }
+            }
+
+            Ok(None)
+        } else {
+            Ok(None)
+        }
     }
 
     /// Merges all updates stored via [Self::push_update] that were detached from the main document
@@ -241,8 +319,9 @@ where
         &self,
         name: &K,
         update: &[u8],
+        redis: &RedisStore,
     ) -> Result<u32, Error> {
-        let oid = get_or_create_oid(self, name.as_ref()).await?;
+        let oid = get_or_create_oid(self, name.as_ref(), redis).await?;
         let last_clock = {
             let end = key_update(oid, u32::MAX)?;
             if let Some(e) = self.peek_back(&end).await? {
@@ -329,8 +408,9 @@ where
         name: &K1,
         meta_key: &K2,
         meta: &[u8],
+        redis: &RedisStore,
     ) -> Result<(), Error> {
-        let oid = get_or_create_oid(self, name.as_ref()).await?;
+        let oid = get_or_create_oid(self, name.as_ref(), redis).await?;
         let key = key_meta(oid, meta_key.as_ref())?;
         self.upsert(&key, meta).await?;
         Ok(())
@@ -373,6 +453,45 @@ where
             Ok(MetadataIter(None))
         }
     }
+
+    async fn load_doc_direct<K: AsRef<[u8]> + ?Sized + Sync>(
+        &self,
+        name: &K,
+    ) -> Result<Doc, Error> {
+        let doc_key = format!("direct_doc:{}", hex::encode(name.as_ref()));
+        let doc_key_bytes = doc_key.as_bytes();
+
+        match self.get(doc_key_bytes).await? {
+            Some(data) => {
+                let doc = Doc::new();
+                let mut txn = doc.transact_mut();
+                if let Ok(update) = Update::decode_v2(data.as_ref()) {
+                    txn.apply_update(update)?;
+                }
+                drop(txn);
+                Ok(doc)
+            }
+            None => Err(anyhow::anyhow!(
+                "Document not found: {}",
+                hex::encode(name.as_ref())
+            )),
+        }
+    }
+
+    async fn flush_doc_direct<K: AsRef<[u8]> + ?Sized + Sync>(
+        &self,
+        name: &K,
+        doc: &Doc,
+    ) -> Result<(), Error> {
+        let doc_key = format!("direct_doc:{}", hex::encode(name.as_ref()));
+        let doc_key_bytes = doc_key.as_bytes();
+
+        let txn = doc.transact();
+        let state = txn.encode_state_as_update_v2(&StateVector::default());
+
+        self.upsert(doc_key_bytes, &state).await?;
+        Ok(())
+    }
 }
 
 pub async fn get_oid<'a, DB: DocOps<'a>>(db: &DB, name: &[u8]) -> Result<Option<OID>, Error>
@@ -390,24 +509,91 @@ where
     }
 }
 
-async fn get_or_create_oid<'a, DB: DocOps<'a>>(db: &DB, name: &[u8]) -> Result<OID, Error>
+async fn get_or_create_oid<'a, DB: DocOps<'a>>(
+    db: &DB,
+    name: &[u8],
+    redis: &RedisStore,
+) -> Result<OID, Error>
 where
     Error: From<<DB as KVStore>::Error>,
 {
     if let Some(oid) = get_oid(db, name).await? {
-        Ok(oid)
-    } else {
-        let last_oid = if let Some(e) = db.peek_back([V1, KEYSPACE_DOC].as_ref()).await? {
-            let value = e.value();
-            OID::from_be_bytes(value.try_into().unwrap())
-        } else {
-            0
-        };
-        let new_oid = last_oid + 1;
-        let key = key_oid(name)?;
-        db.upsert(&key, new_oid.to_be_bytes().as_ref()).await?;
-        Ok(new_oid)
+        return Ok(oid);
     }
+
+    let mut lock_value = None;
+    let max_retries = 10;
+    let retry_delay_ms = 500;
+
+    for attempt in 0..max_retries {
+        match redis.acquire_oid_lock(10).await {
+            Ok(value) => {
+                lock_value = Some(value);
+                break;
+            }
+            Err(e) => {
+                if attempt < max_retries - 1 {
+                    tokio::time::sleep(std::time::Duration::from_millis(retry_delay_ms)).await;
+
+                    if let Some(oid) = get_oid(db, name).await? {
+                        return Ok(oid);
+                    }
+                } else {
+                    return Err(anyhow::anyhow!("Failed to acquire OID lock: {}", e));
+                }
+            }
+        }
+    }
+
+    let lock_value = lock_value.ok_or_else(|| {
+        anyhow::anyhow!("Failed to acquire OID lock after {} attempts", max_retries)
+    })?;
+
+    if let Some(oid) = get_oid(db, name).await? {
+        let _ = redis.release_oid_lock(&lock_value).await;
+        return Ok(oid);
+    }
+
+    let last_oid_key = b"system:last_oid".to_vec();
+    let new_oid = match db.get(&last_oid_key).await? {
+        Some(last_oid_data) => {
+            if last_oid_data.as_ref().len() >= 4 {
+                let bytes: [u8; 4] = last_oid_data.as_ref()[..4].try_into().unwrap();
+                let last_oid = OID::from_be_bytes(bytes);
+                last_oid + 1
+            } else {
+                let last_oid = if let Some(e) = db.peek_back([V1, KEYSPACE_DOC].as_ref()).await? {
+                    let value = e.value();
+                    OID::from_be_bytes(value.try_into().unwrap())
+                } else {
+                    0
+                };
+                last_oid + 1
+            }
+        }
+        None => {
+            let last_oid = if let Some(e) = db.peek_back([V1, KEYSPACE_DOC].as_ref()).await? {
+                let value = e.value();
+                OID::from_be_bytes(value.try_into().unwrap())
+            } else {
+                0
+            };
+            last_oid + 1
+        }
+    };
+
+    let key = key_oid(name)?;
+    let key_ref = key.as_ref();
+    let new_oid_bytes = new_oid.to_be_bytes();
+    let batch = [
+        (key_ref, &new_oid_bytes[..]),
+        (last_oid_key.as_ref(), &new_oid_bytes[..]),
+    ];
+    db.batch_upsert(&batch).await?;
+
+    let _ = redis.release_oid_lock(&lock_value).await;
+
+    Ok(new_oid)
 }
 
 async fn load_doc<'doc, 'a, DB: DocOps<'a>>(

@@ -22,7 +22,7 @@ const Infobar: React.FC<Props> = ({ hoveredDetails }) => {
     };
   }, []);
   return isHovered ? (
-    <div className="absolute bottom-1 left-1/2 z-10 -translate-x-1/2 rounded-md border bg-primary">
+    <div className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 p-1 rounded-md bg-secondary/80 shadow-md backdrop-blur-sm">
       <div className="flex justify-center gap-5 rounded-md px-4 py-2">
         {"source" in hoveredDetails ? (
           <div className="flex flex-col items-center gap-1">

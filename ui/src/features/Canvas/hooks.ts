@@ -87,7 +87,6 @@ export default ({
     const localX = event.clientX - pane.left;
     const localY = event.clientY - pane.top;
     const styles: React.CSSProperties = {};
-
     if (localY < pane.height - 200) {
       styles.top = localY;
     } else {
@@ -99,17 +98,17 @@ export default ({
     } else {
       styles.right = pane.width - localX;
     }
-    return styles;
+    return { styles, mousePosition: { x: localX, y: localY } };
   };
 
   const handleNodeContextMenu = useCallback(
     (event: MouseEvent, node: Node) => {
       event.preventDefault();
-      const styles = getContextMenuPosition(event);
-      if (!styles) return;
+      const position = getContextMenuPosition(event);
+      if (!position) return;
+      const { styles } = position;
 
       setContextMenu({
-        type: "node",
         data: node,
         styles,
       });
@@ -120,12 +119,26 @@ export default ({
   const handleSelectionContextMenu = useCallback(
     (event: MouseEvent, nodes: Node[]) => {
       event.preventDefault();
-      const styles = getContextMenuPosition(event);
-      if (!styles) return;
+      const position = getContextMenuPosition(event);
+      if (!position) return;
+      const { styles } = position;
 
       setContextMenu({
-        type: "selection",
         data: nodes,
+        styles,
+      });
+    },
+    [setContextMenu],
+  );
+
+  const handlePaneContextMenu = useCallback(
+    (event: MouseEvent | globalThis.MouseEvent) => {
+      event.preventDefault();
+      const position = getContextMenuPosition(event as MouseEvent);
+      if (!position) return;
+      const { styles, mousePosition } = position;
+      setContextMenu({
+        mousePosition,
         styles,
       });
     },
@@ -148,6 +161,7 @@ export default ({
     handleReconnect,
     handleNodeContextMenu,
     handleSelectionContextMenu,
+    handlePaneContextMenu,
     handleCloseContextmenu,
     contextMenu,
     paneRef,

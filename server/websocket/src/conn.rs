@@ -9,7 +9,8 @@ use std::task::{Context, Poll};
 use tokio::sync::Mutex;
 use yrs::sync::Error;
 
-use crate::group::{BroadcastGroup, Subscription};
+use crate::broadcast::sub::Subscription;
+use crate::group::BroadcastGroup;
 
 type CompletionFuture = Pin<Box<dyn Future<Output = Result<(), Error>> + Send>>;
 
@@ -17,8 +18,8 @@ pub struct Connection<Sink, Stream> {
     broadcast_sub: Option<Subscription>,
     completion_future: Option<CompletionFuture>,
     user_token: Option<String>,
-    _sink: PhantomData<Sink>,
-    _stream: PhantomData<Stream>,
+    sink: PhantomData<Sink>,
+    stream: PhantomData<Stream>,
 }
 
 impl<Sink, Stream, E> Connection<Sink, Stream>
@@ -34,14 +35,16 @@ where
         user_token: Option<String>,
     ) -> Self {
         let sink = Arc::new(Mutex::new(sink));
-        let broadcast_sub = Some(broadcast_group.subscribe(sink, stream, user_token.clone()));
+        let broadcast_sub = broadcast_group
+            .subscribe(sink.clone(), stream, user_token.clone())
+            .await;
 
         Connection {
-            broadcast_sub,
+            broadcast_sub: Some(broadcast_sub),
             completion_future: None,
             user_token,
-            _sink: PhantomData,
-            _stream: PhantomData,
+            sink: PhantomData,
+            stream: PhantomData,
         }
     }
 }
@@ -51,23 +54,24 @@ impl<Sink, Stream> Future for Connection<Sink, Stream> {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         if self.completion_future.is_none() {
-            if let Some(sub) = self.broadcast_sub.take() {
-                self.completion_future = Some(Box::pin(sub.completed()));
+            if let Some(broadcast_sub) = self.as_mut().get_mut().broadcast_sub.take() {
+                self.completion_future = Some(Box::pin(broadcast_sub.completed()));
             }
         }
 
         if let Some(fut) = self.completion_future.as_mut() {
-            fut.as_mut().poll(cx)
+            let poll_result = fut.as_mut().poll(cx);
+            match &poll_result {
+                Poll::Ready(result) => {
+                    tracing::debug!("Connection future completed with result: {:?}", result);
+                }
+                Poll::Pending => {
+                    tracing::debug!("Connection future is pending");
+                }
+            }
+            poll_result
         } else {
             Poll::Ready(Ok(()))
-        }
-    }
-}
-
-impl<Sink, Stream> Drop for Connection<Sink, Stream> {
-    fn drop(&mut self) {
-        if let Some(sub) = self.broadcast_sub.take() {
-            drop(sub);
         }
     }
 }

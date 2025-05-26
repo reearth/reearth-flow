@@ -51,6 +51,7 @@ pub struct AppState {
 #[cfg(feature = "auth")]
 pub use auth::AuthService;
 
+pub use broadcast::sub::Subscription;
 pub use conf::Config;
 pub use group::BroadcastGroup;
 pub use pool::BroadcastPool;

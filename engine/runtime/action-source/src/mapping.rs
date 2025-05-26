@@ -5,7 +5,10 @@ use reearth_flow_runtime::node::{NodeKind, SourceFactory};
 
 use crate::{
     feature_creator::FeatureCreatorFactory,
-    file::{path_extractor::FilePathExtractorFactory, reader::FileReaderFactory},
+    file::{
+        csv::CsvReaderFactory, geojson::GeoJsonReaderFactory,
+        path_extractor::FilePathExtractorFactory, reader::FileReaderFactory,
+    },
     sql::SqlReaderFactory,
 };
 
@@ -15,6 +18,8 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<FilePathExtractorFactory>::default(),
         Box::<FeatureCreatorFactory>::default(),
         Box::<SqlReaderFactory>::default(),
+        Box::<CsvReaderFactory>::default(),
+        Box::<GeoJsonReaderFactory>::default(),
     ];
     factories
         .into_iter()

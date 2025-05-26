@@ -78,6 +78,12 @@ export default ({
     undoTrackerActionWrapper,
   });
 
+  const isSubworkflow = useMemo(() => {
+    if (!currentYWorkflow) return false;
+    const workflowId = currentYWorkflow.get("id")?.toJSON();
+    return workflowId !== DEFAULT_ENTRY_GRAPH_ID;
+  }, [currentYWorkflow]);
+
   const rawNodes = useY(currentYWorkflow?.get("nodes") ?? new YMap()) as Record<
     string,
     Node
@@ -133,6 +139,7 @@ export default ({
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
+    setWorkflowsNames,
   } = useWorkflowTabs({
     currentWorkflowId,
     rawWorkflows,
@@ -156,11 +163,6 @@ export default ({
     if (subworkflowId) {
       handleWorkflowOpen(subworkflowId);
     } else {
-      fitView({
-        nodes: [{ id: nodeId }],
-        duration: 500,
-        padding: 2,
-      });
       handleNodeLocking(nodeId);
     }
   };
@@ -170,7 +172,7 @@ export default ({
     [],
   );
 
-  const { handleCopy, handlePaste } = useCanvasCopyPaste({
+  const { handleCopy, handleCut, handlePaste } = useCanvasCopyPaste({
     nodes,
     edges,
     rawWorkflows,
@@ -178,16 +180,15 @@ export default ({
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
     handleEdgesAdd: handleYEdgesAdd,
+    handleEdgesChange: handleYEdgesChange,
   });
 
   const {
-    openPanel,
     nodePickerOpen,
     rightPanelContent,
     hoveredDetails,
     handleNodeHover,
     handleEdgeHover,
-    handlePanelOpen,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleRightPanelOpen,
@@ -256,6 +257,12 @@ export default ({
       callback: handleCopy,
     },
     {
+      keyBinding: { key: "x", commandKey: true },
+      callback: () => {
+        handleCut(true);
+      },
+    },
+    {
       keyBinding: { key: "v", commandKey: true },
       callback: handlePaste,
     },
@@ -273,7 +280,18 @@ export default ({
     // },
   ]);
 
+  const handleWorkflowRename = useCallback(
+    (id: string, newName: string) => {
+      handleYWorkflowRename(id, newName);
+      setWorkflowsNames((prevNames) =>
+        prevNames.map((w) => (w.id === id ? { ...w, name: newName } : w)),
+      );
+    },
+    [handleYWorkflowRename, setWorkflowsNames],
+  );
+
   return {
+    isSubworkflow,
     currentWorkflowId,
     openWorkflows,
     currentProject,
@@ -284,7 +302,6 @@ export default ({
     locallyLockedNode,
     hoveredDetails,
     nodePickerOpen,
-    openPanel,
     allowedToDeploy,
     rightPanelContent,
     canUndo,
@@ -295,12 +312,11 @@ export default ({
     handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
-    handlePanelOpen,
     handleWorkflowClose,
     handleWorkflowChange: handleCurrentWorkflowIdChange,
     handleWorkflowRedo: handleYWorkflowRedo,
     handleWorkflowUndo: handleYWorkflowUndo,
-    handleWorkflowRename: handleYWorkflowRename,
+    handleWorkflowRename,
     handleLayoutChange,
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
@@ -314,5 +330,8 @@ export default ({
     handleEdgeHover,
     handleDebugRunStart,
     handleDebugRunStop,
+    handleCopy,
+    handleCut,
+    handlePaste,
   };
 };

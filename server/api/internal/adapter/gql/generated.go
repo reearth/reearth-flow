@@ -133,18 +133,19 @@ type ComplexityRoot struct {
 	}
 
 	Job struct {
-		CompletedAt  func(childComplexity int) int
-		Debug        func(childComplexity int) int
-		Deployment   func(childComplexity int) int
-		DeploymentID func(childComplexity int) int
-		ID           func(childComplexity int) int
-		Logs         func(childComplexity int, since time.Time) int
-		LogsURL      func(childComplexity int) int
-		OutputURLs   func(childComplexity int) int
-		StartedAt    func(childComplexity int) int
-		Status       func(childComplexity int) int
-		Workspace    func(childComplexity int) int
-		WorkspaceID  func(childComplexity int) int
+		CompletedAt   func(childComplexity int) int
+		Debug         func(childComplexity int) int
+		Deployment    func(childComplexity int) int
+		DeploymentID  func(childComplexity int) int
+		ID            func(childComplexity int) int
+		Logs          func(childComplexity int, since time.Time) int
+		LogsURL       func(childComplexity int) int
+		OutputURLs    func(childComplexity int) int
+		StartedAt     func(childComplexity int) int
+		Status        func(childComplexity int) int
+		WorkerLogsURL func(childComplexity int) int
+		Workspace     func(childComplexity int) int
+		WorkspaceID   func(childComplexity int) int
 	}
 
 	JobConnection struct {
@@ -842,6 +843,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Job.Status(childComplexity), true
+
+	case "Job.workerLogsURL":
+		if e.complexity.Job.WorkerLogsURL == nil {
+			break
+		}
+
+		return e.complexity.Job.WorkerLogsURL(childComplexity), true
 
 	case "Job.workspace":
 		if e.complexity.Job.Workspace == nil {
@@ -2667,6 +2675,7 @@ extend type Mutation {
   debug: Boolean
   id: ID!
   logsURL: String
+  workerLogsURL: String
   outputURLs: [String!]
   startedAt: DateTime!
   status: JobStatus!
@@ -4909,6 +4918,8 @@ func (ec *executionContext) fieldContext_CancelJobPayload_job(_ context.Context,
 				return ec.fieldContext_Job_id(ctx, field)
 			case "logsURL":
 				return ec.fieldContext_Job_logsURL(ctx, field)
+			case "workerLogsURL":
+				return ec.fieldContext_Job_workerLogsURL(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -6300,6 +6311,47 @@ func (ec *executionContext) fieldContext_Job_logsURL(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _Job_workerLogsURL(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Job_workerLogsURL(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.WorkerLogsURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Job_workerLogsURL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Job",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Job_outputURLs(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Job_outputURLs(ctx, field)
 	if err != nil {
@@ -6643,6 +6695,8 @@ func (ec *executionContext) fieldContext_JobConnection_nodes(_ context.Context, 
 				return ec.fieldContext_Job_id(ctx, field)
 			case "logsURL":
 				return ec.fieldContext_Job_logsURL(ctx, field)
+			case "workerLogsURL":
+				return ec.fieldContext_Job_workerLogsURL(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -6809,6 +6863,8 @@ func (ec *executionContext) fieldContext_JobPayload_job(_ context.Context, field
 				return ec.fieldContext_Job_id(ctx, field)
 			case "logsURL":
 				return ec.fieldContext_Job_logsURL(ctx, field)
+			case "workerLogsURL":
+				return ec.fieldContext_Job_workerLogsURL(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -12356,6 +12412,8 @@ func (ec *executionContext) fieldContext_Query_job(ctx context.Context, field gr
 				return ec.fieldContext_Job_id(ctx, field)
 			case "logsURL":
 				return ec.fieldContext_Job_logsURL(ctx, field)
+			case "workerLogsURL":
+				return ec.fieldContext_Job_workerLogsURL(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -13103,6 +13161,8 @@ func (ec *executionContext) fieldContext_RunProjectPayload_job(_ context.Context
 				return ec.fieldContext_Job_id(ctx, field)
 			case "logsURL":
 				return ec.fieldContext_Job_logsURL(ctx, field)
+			case "workerLogsURL":
+				return ec.fieldContext_Job_workerLogsURL(ctx, field)
 			case "outputURLs":
 				return ec.fieldContext_Job_outputURLs(ctx, field)
 			case "startedAt":
@@ -19063,6 +19123,8 @@ func (ec *executionContext) _Job(ctx context.Context, sel ast.SelectionSet, obj 
 			}
 		case "logsURL":
 			out.Values[i] = ec._Job_logsURL(ctx, field, obj)
+		case "workerLogsURL":
+			out.Values[i] = ec._Job_workerLogsURL(ctx, field, obj)
 		case "outputURLs":
 			out.Values[i] = ec._Job_outputURLs(ctx, field, obj)
 		case "startedAt":
