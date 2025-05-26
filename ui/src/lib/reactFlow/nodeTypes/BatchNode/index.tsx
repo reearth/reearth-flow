@@ -35,7 +35,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
       )}
 
       <div
-        className={`react-flow__node batch-node relative z-0 h-full rounded-b-md bg-orange-400/20 p-2 border-x border-b ${selected ? "border-orange-400/50" : "border-transparent"}`}
+        className={`relative z-0 h-full rounded-b-md bg-orange-400/20 p-2 border-x border-b ${selected ? "border-orange-400/50" : "border-transparent"}`}
         ref={(element) => {
           if (element) {
             element.style.setProperty(
