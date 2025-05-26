@@ -25,6 +25,7 @@ type Props = {
   selectedEdgeIds?: string[];
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
+  onWorkflowOpen?: (workflowId: string) => void;
   onSecondaryNodeAction?: (
     e: React.MouseEvent | undefined,
     nodeId: string,
@@ -39,6 +40,7 @@ type Props = {
 const CanvasContextMenu: React.FC<Props> = ({
   contextMenu,
   data,
+  onWorkflowOpen,
   onSecondaryNodeAction,
   selectedEdgeIds,
   onNodesChange,
@@ -68,7 +70,16 @@ const CanvasContextMenu: React.FC<Props> = ({
     },
     [onSecondaryNodeAction],
   );
-  console.log("NODE IN CONTEXT", node);
+
+  const handleSubworkflowOpen = useCallback(
+    (node?: Node) => {
+      if (!node || !node.data?.subworkflowId || !onWorkflowOpen) return;
+
+      onWorkflowOpen(node.data.subworkflowId);
+    },
+    [onWorkflowOpen],
+  );
+
   const handleNodeDelete = useCallback(
     (node?: Node, nodes?: Node[]) => {
       if (!nodes && !node) return;
@@ -137,9 +148,7 @@ const CanvasContextMenu: React.FC<Props> = ({
               props: {
                 label: t("Open Subworkflow"),
                 icon: <Graph weight="light" />,
-                onCallback: wrapWithClose(() =>
-                  handleSecondaryNodeAction(node),
-                ),
+                onCallback: wrapWithClose(() => handleSubworkflowOpen(node)),
               },
             },
           ]
@@ -194,6 +203,7 @@ const CanvasContextMenu: React.FC<Props> = ({
     value,
     handleNodeDelete,
     handleSecondaryNodeAction,
+    handleSubworkflowOpen,
   ]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;

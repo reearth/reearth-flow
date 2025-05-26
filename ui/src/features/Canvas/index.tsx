@@ -38,6 +38,7 @@ type Props = {
   selectedEdgeIds?: string[];
   canvasLock: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
+  onWorkflowOpen?: (workflowId: string) => void;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onNodeDoubleClick?: (
@@ -62,6 +63,7 @@ const Canvas: React.FC<Props> = ({
   edges,
   selectedEdgeIds,
   onWorkflowAdd,
+  onWorkflowOpen,
   onNodesAdd,
   onNodesChange,
   onNodeDoubleClick,
@@ -178,6 +180,7 @@ const Canvas: React.FC<Props> = ({
           contextMenu={contextMenu}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
+          onWorkflowOpen={onWorkflowOpen}
           onSecondaryNodeAction={onNodeDoubleClick}
           onCopy={onCopy}
           onCut={onCut}
