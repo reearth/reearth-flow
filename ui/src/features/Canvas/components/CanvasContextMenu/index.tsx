@@ -29,7 +29,6 @@ type Props = {
   onSecondaryNodeAction?: (
     e: React.MouseEvent | undefined,
     nodeId: string,
-    subworkflowId?: string,
   ) => void;
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
@@ -57,25 +56,17 @@ const CanvasContextMenu: React.FC<Props> = ({
   const node = Array.isArray(data) ? undefined : data;
 
   const handleSecondaryNodeAction = useCallback(
-    (node?: Node, allowNodeSettings?: boolean) => {
-      if (!node) return;
-
-      if (allowNodeSettings) {
-        onSecondaryNodeAction?.(undefined, node.id, undefined);
-
-        return;
-      }
-
-      onSecondaryNodeAction?.(undefined, node.id, node.data.subworkflowId);
+    (node: Node) => {
+      onSecondaryNodeAction?.(undefined, node.id);
     },
     [onSecondaryNodeAction],
   );
 
   const handleSubworkflowOpen = useCallback(
-    (node?: Node) => {
-      if (!node || !node.data?.subworkflowId || !onWorkflowOpen) return;
+    (node: Node) => {
+      if (!node.data?.subworkflowId) return;
 
-      onWorkflowOpen(node.data.subworkflowId);
+      onWorkflowOpen?.(node.data.subworkflowId);
     },
     [onWorkflowOpen],
   );
@@ -161,7 +152,7 @@ const CanvasContextMenu: React.FC<Props> = ({
                 label: t("Node Settings"),
                 icon: <GearFine weight="light" />,
                 onCallback: wrapWithClose(() =>
-                  handleSecondaryNodeAction(node, true),
+                  handleSecondaryNodeAction(node),
                 ),
               },
             },
