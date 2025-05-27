@@ -147,17 +147,17 @@ export default ({
   });
 
   // Passed to editor context so needs to be a ref
-  const handleNodeDoubleClickRef =
+  const handleNodeSettingsClickRef =
     useRef<(e: MouseEvent | undefined, nodeId: string) => void>(undefined);
-  handleNodeDoubleClickRef.current = (
+  handleNodeSettingsClickRef.current = (
     _e: MouseEvent | undefined,
     nodeId: string,
   ) => {
     handleNodeLocking(nodeId);
   };
-  const handleNodeDoubleClick = useCallback(
+  const handleNodeSettings = useCallback(
     (e: MouseEvent | undefined, nodeId: string) =>
-      handleNodeDoubleClickRef.current?.(e, nodeId),
+      handleNodeSettingsClickRef.current?.(e, nodeId),
     [],
   );
 
@@ -312,7 +312,7 @@ export default ({
     handleNodesChange: handleYNodesChange,
     handleNodeHover,
     handleNodeDataUpdate: handleYNodeDataUpdate,
-    handleNodeDoubleClick,
+    handleNodeSettings,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgesAdd: handleYEdgesAdd,

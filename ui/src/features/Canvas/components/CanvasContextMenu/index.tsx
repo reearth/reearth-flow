@@ -26,10 +26,7 @@ type Props = {
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onWorkflowOpen?: (workflowId: string) => void;
-  onSecondaryNodeAction?: (
-    e: React.MouseEvent | undefined,
-    nodeId: string,
-  ) => void;
+  onNodeSettings?: (e: React.MouseEvent | undefined, nodeId: string) => void;
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: (menuPosition?: XYPosition) => void;
@@ -40,7 +37,7 @@ const CanvasContextMenu: React.FC<Props> = ({
   contextMenu,
   data,
   onWorkflowOpen,
-  onSecondaryNodeAction,
+  onNodeSettings,
   selectedEdgeIds,
   onNodesChange,
   onEdgesChange,
@@ -57,9 +54,9 @@ const CanvasContextMenu: React.FC<Props> = ({
 
   const handleSecondaryNodeAction = useCallback(
     (node: Node) => {
-      onSecondaryNodeAction?.(undefined, node.id);
+      onNodeSettings?.(undefined, node.id);
     },
-    [onSecondaryNodeAction],
+    [onNodeSettings],
   );
 
   const handleSubworkflowOpen = useCallback(
@@ -88,7 +85,6 @@ const CanvasContextMenu: React.FC<Props> = ({
     },
     [selectedEdgeIds, onNodesChange, onEdgesChange],
   );
-
   const menuItems = useMemo(() => {
     const wrapWithClose = (callback: () => void) => () => {
       callback();
@@ -104,7 +100,7 @@ const CanvasContextMenu: React.FC<Props> = ({
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "c", commandKey: true }} />
           ),
-          disabled: !nodes && !node,
+          disabled: (!nodes && !node) || !onCut,
           onCallback: wrapWithClose(() => onCopy?.(node) ?? (() => {})),
         },
       },
@@ -116,7 +112,7 @@ const CanvasContextMenu: React.FC<Props> = ({
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "x", commandKey: true }} />
           ),
-          disabled: !nodes && !node,
+          disabled: (!nodes && !node) || !onCut,
           onCallback: wrapWithClose(() => onCut?.(false, node) ?? (() => {})),
         },
       },
@@ -128,7 +124,7 @@ const CanvasContextMenu: React.FC<Props> = ({
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "v", commandKey: true }} />
           ),
-          disabled: !value?.clipboard,
+          disabled: !value?.clipboard || !onPaste,
           onCallback: wrapWithClose(() => onPaste?.(contextMenu.mousePosition)),
         },
       },
@@ -174,6 +170,8 @@ const CanvasContextMenu: React.FC<Props> = ({
                 label: node ? t("Delete Node") : t("Delete Selection"),
                 icon: <Trash weight="light" />,
                 destructive: true,
+                disabled: !onNodesChange || !onEdgesChange,
+
                 onCallback: wrapWithClose(() => handleNodeDelete(node, nodes)),
               },
             },
@@ -190,6 +188,8 @@ const CanvasContextMenu: React.FC<Props> = ({
     onCut,
     onPaste,
     onClose,
+    onNodesChange,
+    onEdgesChange,
     contextMenu.mousePosition,
     value,
     handleNodeDelete,

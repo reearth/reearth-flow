@@ -10,11 +10,7 @@ import { NodeChange } from "@flow/types";
 
 export type EditorContextType = {
   onNodesChange?: (changes: NodeChange[]) => void;
-  onSecondaryNodeAction?: (
-    _e: MouseEvent | undefined,
-    nodeId: string,
-    subworkflowId?: string,
-  ) => void;
+  onNodeSettings?: (_e: MouseEvent | undefined, nodeId: string) => void;
 };
 
 const EditorContext = createContext<EditorContextType | undefined>(undefined);

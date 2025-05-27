@@ -32,7 +32,6 @@ const snapGrid: SnapGrid = [gridSize, gridSize];
 const proOptions: ProOptions = { hideAttribution: true };
 
 type Props = {
-  isSharedCanvas?: boolean;
   isSubworkflow: boolean;
   nodes: Node[];
   edges: Edge[];
@@ -42,7 +41,7 @@ type Props = {
   onWorkflowOpen?: (workflowId: string) => void;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
-  onNodeDoubleClick?: (e: MouseEvent | undefined, nodeId: string) => void;
+  onNodeSettings?: (e: MouseEvent | undefined, nodeId: string) => void;
   onNodeHover?: (e: MouseEvent, node?: Node) => void;
   onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
   onEdgesAdd?: (newEdges: Edge[]) => void;
@@ -54,7 +53,6 @@ type Props = {
 };
 
 const Canvas: React.FC<Props> = ({
-  isSharedCanvas,
   isSubworkflow,
   canvasLock,
   nodes,
@@ -64,7 +62,7 @@ const Canvas: React.FC<Props> = ({
   onWorkflowOpen,
   onNodesAdd,
   onNodesChange,
-  onNodeDoubleClick,
+  onNodeSettings,
   onNodeHover,
   onEdgeHover,
   onEdgesAdd,
@@ -75,13 +73,11 @@ const Canvas: React.FC<Props> = ({
   onPaste,
 }) => {
   const {
-    handleNodesChange,
     handleNodesDelete,
     handleNodeDragStop,
     handleNodeDragOver,
     handleNodeDrop,
-    handleNodeDoubleClick,
-    handleEdgesChange,
+    handleNodeSettings,
     handleConnect,
     handleReconnect,
     handleNodeContextMenu,
@@ -96,7 +92,7 @@ const Canvas: React.FC<Props> = ({
     onWorkflowAdd,
     onNodesAdd,
     onNodesChange,
-    onNodeDoubleClick,
+    onNodeSettings,
     onEdgesAdd,
     onEdgesChange,
     onNodePickerOpen,
@@ -146,10 +142,9 @@ const Canvas: React.FC<Props> = ({
       connectionLineComponent={CustomConnectionLine}
       connectionLineStyle={connectionLineStyle}
       isValidConnection={isValidConnection}
-      onBeforeDelete={isSharedCanvas ? async () => false : async () => true}
-      onNodesChange={handleNodesChange}
-      onEdgesChange={handleEdgesChange}
-      onNodeDoubleClick={handleNodeDoubleClick}
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
+      onNodeDoubleClick={handleNodeSettings}
       onNodeDragStart={handleCloseContextmenu}
       onNodeDragStop={handleNodeDragStop}
       onNodesDelete={handleNodesDelete}
@@ -172,15 +167,15 @@ const Canvas: React.FC<Props> = ({
         gap={gridSize}
         color="rgba(63, 63, 70, 0.4)"
       />
-      {contextMenu && !isSharedCanvas && (
+      {contextMenu && (
         <CanvasContextMenu
           data={contextMenu.data}
           selectedEdgeIds={selectedEdgeIds}
           contextMenu={contextMenu}
-          onNodesChange={handleNodesChange}
-          onEdgesChange={handleEdgesChange}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
           onWorkflowOpen={onWorkflowOpen}
-          onSecondaryNodeAction={onNodeDoubleClick}
+          onNodeSettings={onNodeSettings}
           onCopy={onCopy}
           onCut={onCut}
           onPaste={onPaste}

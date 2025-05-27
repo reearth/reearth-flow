@@ -53,7 +53,7 @@ export default function Editor({
     handleNodesChange,
     handleNodeDataUpdate,
     handleNodeHover,
-    handleNodeDoubleClick,
+    handleNodeSettings,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgesAdd,
@@ -73,9 +73,9 @@ export default function Editor({
   const editorContext = useMemo(
     (): EditorContextType => ({
       onNodesChange: handleNodesChange,
-      onSecondaryNodeAction: handleNodeDoubleClick,
+      onNodeSettings: handleNodeSettings,
     }),
-    [handleNodesChange, handleNodeDoubleClick],
+    [handleNodesChange, handleNodeSettings],
   );
 
   return (
@@ -118,7 +118,7 @@ export default function Editor({
                 onNodesAdd={handleNodesAdd}
                 onNodesChange={handleNodesChange}
                 onNodeHover={handleNodeHover}
-                onNodeDoubleClick={handleNodeDoubleClick}
+                onNodeSettings={handleNodeSettings}
                 onNodePickerOpen={handleNodePickerOpen}
                 onEdgesAdd={handleEdgesAdd}
                 onEdgesChange={handleEdgesChange}
