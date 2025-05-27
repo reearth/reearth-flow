@@ -38,7 +38,7 @@ impl Publish {
         let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
 
         let timer_task = tokio::spawn(async move {
-            let mut interval = interval(Duration::from_millis(100));
+            let mut interval = interval(Duration::from_millis(200));
 
             loop {
                 tokio::select! {
@@ -49,6 +49,7 @@ impl Publish {
                         let mut doc_lock = doc_clone.lock().await;
                         let count_value = *count_clone.lock().await;
                         if count_value > 0 {
+
                             let update = {
                                 let txn = doc_lock.transact_mut();
                                 txn.encode_state_as_update_v1(&StateVector::default())
@@ -112,7 +113,6 @@ impl Publish {
             *count += 1;
 
             if *count > 10 {
-                tracing::info!("Flushing document");
                 let _ = self.flush_sender.send(()).await;
             }
         }
