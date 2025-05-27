@@ -32,7 +32,7 @@ const snapGrid: SnapGrid = [gridSize, gridSize];
 const proOptions: ProOptions = { hideAttribution: true };
 
 type Props = {
-  isSharedCanvas: boolean;
+  isSharedCanvas?: boolean;
   isSubworkflow: boolean;
   nodes: Node[];
   edges: Edge[];

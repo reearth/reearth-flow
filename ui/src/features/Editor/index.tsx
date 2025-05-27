@@ -108,7 +108,6 @@ export default function Editor({
               onWorkflowRedo={handleWorkflowRedo}
               onLayoutChange={handleLayoutChange}>
               <Canvas
-                isSharedCanvas={false}
                 isSubworkflow={isSubworkflow}
                 nodes={nodes}
                 edges={edges}
