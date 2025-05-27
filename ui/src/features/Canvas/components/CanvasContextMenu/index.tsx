@@ -52,7 +52,7 @@ const CanvasContextMenu: React.FC<Props> = ({
   const nodes = Array.isArray(data) ? data : undefined;
   const node = Array.isArray(data) ? undefined : data;
 
-  const handleSecondaryNodeAction = useCallback(
+  const handleNodeSettingsOpen = useCallback(
     (node: Node) => {
       onNodeSettings?.(undefined, node.id);
     },
@@ -100,7 +100,7 @@ const CanvasContextMenu: React.FC<Props> = ({
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "c", commandKey: true }} />
           ),
-          disabled: (!nodes && !node) || !onCut,
+          disabled: (!nodes && !node) || !onCopy,
           onCallback: wrapWithClose(() => onCopy?.(node) ?? (() => {})),
         },
       },
@@ -147,9 +147,7 @@ const CanvasContextMenu: React.FC<Props> = ({
               props: {
                 label: t("Node Settings"),
                 icon: <GearFine weight="light" />,
-                onCallback: wrapWithClose(() =>
-                  handleSecondaryNodeAction(node),
-                ),
+                onCallback: wrapWithClose(() => handleNodeSettingsOpen(node)),
               },
             },
           ]
@@ -193,7 +191,7 @@ const CanvasContextMenu: React.FC<Props> = ({
     contextMenu.mousePosition,
     value,
     handleNodeDelete,
-    handleSecondaryNodeAction,
+    handleNodeSettingsOpen,
     handleSubworkflowOpen,
   ]);
 
