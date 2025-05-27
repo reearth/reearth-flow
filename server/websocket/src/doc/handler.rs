@@ -28,15 +28,10 @@ impl DocumentHandler {
         }
 
         let storage = state.pool.get_store();
-        let doc = Doc::new();
 
         let result = async {
-            let mut txn = doc.transact_mut();
-            let load_result = storage.load_doc(&doc_id, &mut txn).await;
-
-            match load_result {
-                Ok(true) => {
-                    drop(txn);
+            match storage.load_doc_v2(&doc_id).await {
+                Ok(doc) => {
                     let read_txn = doc.transact();
                     let state = read_txn.encode_diff_v1(&StateVector::default());
                     drop(read_txn);
@@ -60,8 +55,41 @@ impl DocumentHandler {
 
                     Ok::<_, anyhow::Error>(document)
                 }
-                Ok(false) => Err(anyhow::anyhow!("Document not found: {}", doc_id)),
-                Err(e) => Err(anyhow::anyhow!("Failed to load document: {}", e)),
+                Err(_) => {
+                    let doc = Doc::new();
+                    let mut txn = doc.transact_mut();
+                    let load_result = storage.load_doc(&doc_id, &mut txn).await;
+
+                    match load_result {
+                        Ok(true) => {
+                            drop(txn);
+                            let read_txn = doc.transact();
+                            let state = read_txn.encode_diff_v1(&StateVector::default());
+                            drop(read_txn);
+
+                            let metadata = storage.get_latest_update_metadata(&doc_id).await?;
+
+                            let latest_clock = metadata.map(|(clock, _)| clock).unwrap_or(0);
+                            let timestamp = if let Some((_, ts)) = metadata {
+                                chrono::DateTime::from_timestamp(ts.unix_timestamp(), 0)
+                                    .unwrap_or(Utc::now())
+                            } else {
+                                Utc::now()
+                            };
+
+                            let document = Document {
+                                id: doc_id.clone(),
+                                version: latest_clock as u64,
+                                timestamp,
+                                updates: state,
+                            };
+
+                            Ok::<_, anyhow::Error>(document)
+                        }
+                        Ok(false) => Err(anyhow::anyhow!("Document not found: {}", doc_id)),
+                        Err(e) => Err(anyhow::anyhow!("Failed to load document: {}", e)),
+                    }
+                }
             }
         }
         .await;

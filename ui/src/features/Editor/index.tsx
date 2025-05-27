@@ -46,13 +46,14 @@ export default function Editor({
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
+    handleWorkflowOpen,
     handleWorkflowClose,
     handleWorkflowChange,
     handleNodesAdd,
     handleNodesChange,
     handleNodeDataUpdate,
     handleNodeHover,
-    handleNodeDoubleClick,
+    handleNodeSettings,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgesAdd,
@@ -72,9 +73,9 @@ export default function Editor({
   const editorContext = useMemo(
     (): EditorContextType => ({
       onNodesChange: handleNodesChange,
-      onSecondaryNodeAction: handleNodeDoubleClick,
+      onNodeSettings: handleNodeSettings,
     }),
-    [handleNodesChange, handleNodeDoubleClick],
+    [handleNodesChange, handleNodeSettings],
   );
 
   return (
@@ -115,10 +116,11 @@ export default function Editor({
                 selectedEdgeIds={selectedEdgeIds}
                 canvasLock={!!locallyLockedNode}
                 onWorkflowAdd={handleWorkflowAdd}
+                onWorkflowOpen={handleWorkflowOpen}
                 onNodesAdd={handleNodesAdd}
                 onNodesChange={handleNodesChange}
                 onNodeHover={handleNodeHover}
-                onNodeDoubleClick={handleNodeDoubleClick}
+                onNodeSettings={handleNodeSettings}
                 onNodePickerOpen={handleNodePickerOpen}
                 onEdgesAdd={handleEdgesAdd}
                 onEdgesChange={handleEdgesChange}

@@ -35,7 +35,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
       )}
 
       <div
-        className={`relative z-0 h-full rounded-b-md bg-accent/20 border ${selected ? "border-border" : "border-transparent"}`}
+        className={`relative z-0 h-full rounded-b-md bg-orange-400/20 p-2 border-x border-b ${selected ? "border-orange-400/50" : "border-transparent"}`}
         ref={(element) => {
           if (element) {
             element.style.setProperty(
@@ -46,7 +46,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
           }
         }}>
         <div
-          className={`absolute inset-x-[-0.8px] top-[-26px] flex items-center gap-2 rounded-t-md border-x border-t bg-accent/50 px-2 ${selected ? "border-border" : "border-transparent"}`}
+          className={`absolute inset-x-[-0.8px] top-[-33px] p-1 flex items-center gap-2 rounded-t-md border-x border-t bg-secondary px-2 ${selected ? "border-orange-400/50" : "border-transparent"}`}
           ref={(element) => {
             if (element)
               element.style.setProperty(
@@ -55,7 +55,12 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
                 "important",
               );
           }}>
-          <RectangleDashed />
+          <div className="p-1 rounded-sm bg-primary">
+            <RectangleDashed
+              className="w-[15px] fill-orange-400/80"
+              weight="bold"
+            />
+          </div>
           <p>{data.customizations?.customName || data.officialName}</p>
         </div>
       </div>

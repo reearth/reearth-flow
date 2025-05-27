@@ -25,7 +25,7 @@ import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
 
-const gridSize = 25;
+const gridSize = 16.5;
 
 const snapGrid: SnapGrid = [gridSize, gridSize];
 
@@ -38,13 +38,10 @@ type Props = {
   selectedEdgeIds?: string[];
   canvasLock: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
+  onWorkflowOpen?: (workflowId: string) => void;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
-  onNodeDoubleClick?: (
-    e: MouseEvent | undefined,
-    nodeId: string,
-    subworkflowId?: string,
-  ) => void;
+  onNodeSettings?: (e: MouseEvent | undefined, nodeId: string) => void;
   onNodeHover?: (e: MouseEvent, node?: Node) => void;
   onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
   onEdgesAdd?: (newEdges: Edge[]) => void;
@@ -62,9 +59,10 @@ const Canvas: React.FC<Props> = ({
   edges,
   selectedEdgeIds,
   onWorkflowAdd,
+  onWorkflowOpen,
   onNodesAdd,
   onNodesChange,
-  onNodeDoubleClick,
+  onNodeSettings,
   onNodeHover,
   onEdgeHover,
   onEdgesAdd,
@@ -75,13 +73,11 @@ const Canvas: React.FC<Props> = ({
   onPaste,
 }) => {
   const {
-    handleNodesChange,
     handleNodesDelete,
     handleNodeDragStop,
     handleNodeDragOver,
     handleNodeDrop,
-    handleNodeDoubleClick,
-    handleEdgesChange,
+    handleNodeSettings,
     handleConnect,
     handleReconnect,
     handleNodeContextMenu,
@@ -96,7 +92,7 @@ const Canvas: React.FC<Props> = ({
     onWorkflowAdd,
     onNodesAdd,
     onNodesChange,
-    onNodeDoubleClick,
+    onNodeSettings,
     onEdgesAdd,
     onEdgesChange,
     onNodePickerOpen,
@@ -104,7 +100,7 @@ const Canvas: React.FC<Props> = ({
 
   return (
     <ReactFlow
-      className={`${isSubworkflow ? "border-node-subworkflow border" : ""}`}
+      className={`${isSubworkflow ? "border-node-subworkflow border-t-2" : ""}`}
       // minZoom={0.7}
       // maxZoom={1}
       // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
@@ -146,9 +142,9 @@ const Canvas: React.FC<Props> = ({
       connectionLineComponent={CustomConnectionLine}
       connectionLineStyle={connectionLineStyle}
       isValidConnection={isValidConnection}
-      onNodesChange={handleNodesChange}
-      onEdgesChange={handleEdgesChange}
-      onNodeDoubleClick={handleNodeDoubleClick}
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
+      onNodeDoubleClick={handleNodeSettings}
       onNodeDragStart={handleCloseContextmenu}
       onNodeDragStop={handleNodeDragStop}
       onNodesDelete={handleNodesDelete}
@@ -176,9 +172,10 @@ const Canvas: React.FC<Props> = ({
           data={contextMenu.data}
           selectedEdgeIds={selectedEdgeIds}
           contextMenu={contextMenu}
-          onNodesChange={handleNodesChange}
-          onEdgesChange={handleEdgesChange}
-          onSecondaryNodeAction={onNodeDoubleClick}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onWorkflowOpen={onWorkflowOpen}
+          onNodeSettings={onNodeSettings}
           onCopy={onCopy}
           onCut={onCut}
           onPaste={onPaste}
