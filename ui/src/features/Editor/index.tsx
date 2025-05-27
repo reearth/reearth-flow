@@ -46,6 +46,7 @@ export default function Editor({
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
+    handleWorkflowOpen,
     handleWorkflowClose,
     handleWorkflowChange,
     handleNodesAdd,
@@ -114,6 +115,7 @@ export default function Editor({
                 selectedEdgeIds={selectedEdgeIds}
                 canvasLock={!!locallyLockedNode}
                 onWorkflowAdd={handleWorkflowAdd}
+                onWorkflowOpen={handleWorkflowOpen}
                 onNodesAdd={handleNodesAdd}
                 onNodesChange={handleNodesChange}
                 onNodeHover={handleNodeHover}
