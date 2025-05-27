@@ -1,6 +1,6 @@
 import { ScrollArea } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { ProjectDocument, ProjectSnapshotMeta } from "@flow/types";
+import type { ProjectDocument, ProjectSnapshotMeta } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
 import { Version } from "./Version";
@@ -25,7 +25,8 @@ const VersionHistoryList: React.FC<Props> = ({
     (version) => version.version !== latestProjectSnapshotVersion?.version,
   );
 
-  const handleDoubleClick = () => {
+  const handleVersionSelection = (versionNumber: number) => {
+    onVersionSelection(versionNumber);
     onPreviewVersion();
   };
   return (
@@ -54,8 +55,7 @@ const VersionHistoryList: React.FC<Props> = ({
               key={version.version}
               version={version}
               isSelected={version.version === selectedProjectSnapshotVersion}
-              onClick={() => onVersionSelection(version.version)}
-              onDoubleClick={handleDoubleClick}
+              onClick={() => handleVersionSelection(version.version)}
             />
           ))}
         </div>

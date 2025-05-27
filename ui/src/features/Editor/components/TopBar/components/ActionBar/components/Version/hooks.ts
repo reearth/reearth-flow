@@ -1,11 +1,11 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Doc } from "yjs";
 import * as Y from "yjs";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useDocument } from "@flow/lib/gql/document/useApi";
 import { useT } from "@flow/lib/i18n";
-import { YWorkflow } from "@flow/lib/yjs/types";
+import type { YWorkflow } from "@flow/lib/yjs/types";
 
 export default ({
   projectId,
@@ -26,10 +26,17 @@ export default ({
   const { projectDocument } = useGetLatestProjectSnapshot(projectId);
   const [selectedProjectSnapshotVersion, setSelectedProjectSnapshotVersion] =
     useState<number | null>(null);
-  const { projectSnapshot } = useGetProjectSnapshot(
+  const { projectSnapshot, refetch } = useGetProjectSnapshot(
     projectId,
     selectedProjectSnapshotVersion,
   );
+
+  useEffect(() => {
+    if (selectedProjectSnapshotVersion !== null) {
+      refetch();
+    }
+  }, [selectedProjectSnapshotVersion, refetch]);
+
   const previewDocRef = useRef<Y.Doc | null>(null);
 
   const [openVersionConfirmationDialog, setOpenVersionConfirmationDialog] =
@@ -188,11 +195,11 @@ export default ({
 
       setPreviewDocYWorkflows(versionpreviewPreviewYWorkflows);
     } catch (error) {
-      console.error("Project Version Preview Creation Failed:", error);
+      console.error("Version Preview Failed:", error);
       return toast({
-        title: t("Project Version Preview Creation"),
+        title: t("Version Preview Failed"),
         description: t(
-          "Project cannot be rolled back to this version. An error has occurred.",
+          "Project Version Preview cannot be viewed. An error has occurred.",
         ),
         variant: "destructive",
       });
@@ -200,6 +207,10 @@ export default ({
   }, [t, toast, selectedProjectSnapshotVersion, projectSnapshot]);
 
   const handleVersionSelection = (version: number) => {
+    if (previewDocRef.current) {
+      previewDocRef.current.destroy();
+      previewDocRef.current = null;
+    }
     setSelectedProjectSnapshotVersion(version);
   };
 

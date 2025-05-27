@@ -6,15 +6,9 @@ type VersionProps = {
   version: ProjectSnapshotMeta;
   isSelected: boolean;
   onClick: () => void;
-  onDoubleClick: () => void;
 };
 
-const Version: React.FC<VersionProps> = ({
-  version,
-  isSelected,
-  onClick,
-  onDoubleClick,
-}) => {
+const Version: React.FC<VersionProps> = ({ version, isSelected, onClick }) => {
   const t = useT();
 
   return (
@@ -22,7 +16,6 @@ const Version: React.FC<VersionProps> = ({
       <div
         className={`flex cursor-pointer select-none justify-between gap-2 px-2 py-2 ${isSelected ? "bg-primary" : "hover:bg-primary"}`}
         onClick={onClick}
-        onDoubleClick={onDoubleClick}
         style={{ height: "100%" }}>
         <p className="flex-2 self-center text-xs font-thin">
           {formatDate(version.timestamp)}

@@ -13,8 +13,8 @@ import {
 } from "@flow/components";
 import VersionCanvas from "@flow/features/VersionCanvas";
 import { useT } from "@flow/lib/i18n";
-import { YWorkflow } from "@flow/lib/yjs/types";
-import { Project } from "@flow/types";
+import type { YWorkflow } from "@flow/lib/yjs/types";
+import type { Project } from "@flow/types";
 
 import useHooks from "./hooks";
 import { VersionConfirmationDialog } from "./VersionConfirmationDialog";
@@ -112,7 +112,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
 const VersionEditorComponent: React.FC<{
   yDoc: Y.Doc | null;
   previewDocYWorkflows: Y.Map<YWorkflow> | null;
-}> = ({ previewDocYWorkflows, yDoc }) => {
+}> = ({ yDoc, previewDocYWorkflows }) => {
   return (
     <div className="h-[570px] w-[575px]">
       {!previewDocYWorkflows && yDoc && (
