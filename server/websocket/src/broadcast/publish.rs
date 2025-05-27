@@ -111,7 +111,7 @@ impl Publish {
             let mut count = self.count.lock().await;
             *count += 1;
 
-            if *count > 6 {
+            if *count > 10 {
                 let _ = self.flush_sender.send(()).await;
             }
         }
