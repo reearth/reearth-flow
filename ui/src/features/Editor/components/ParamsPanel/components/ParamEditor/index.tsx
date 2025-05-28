@@ -142,14 +142,13 @@ const ParamEditor: React.FC<Props> = ({
                   />
                 )}
               </div>
-              {!readonly && (
-                <Button
-                  className="self-end shrink-0"
-                  size="lg"
-                  onClick={handleUpdate}>
-                  {t("Update")}
-                </Button>
-              )}
+              <Button
+                className="self-end shrink-0"
+                size="lg"
+                onClick={handleUpdate}
+                disabled={readonly}>
+                {t("Update")}
+              </Button>
             </div>
           </TabsContent>
           <TabsContent className="py-4 px-6" value="customizations" asChild>
@@ -176,14 +175,13 @@ const ParamEditor: React.FC<Props> = ({
                   </div>
                 )}
               </div>
-              {!readonly && (
-                <Button
-                  className="self-end shrink-0"
-                  size="lg"
-                  onClick={handleUpdate}>
-                  {t("Update")}
-                </Button>
-              )}
+              <Button
+                className="self-end shrink-0"
+                size="lg"
+                onClick={handleUpdate}
+                disabled={readonly}>
+                {t("Update")}
+              </Button>
             </div>
           </TabsContent>
           <TabsContent className="py-4 px-6 w-full" value="details">

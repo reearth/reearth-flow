@@ -91,7 +91,7 @@ const BaseInputTemplate = <
             placeholder={placeholder}
             autoFocus={autofocus}
             required={required}
-            disabled={disabled || readonly}
+            disabled={readonly || disabled}
             {...otherProps}
             value={value || value === 0 ? value : ""}
             onChange={(e) =>
@@ -127,7 +127,7 @@ const BaseInputTemplate = <
             placeholder={placeholder}
             autoFocus={autofocus}
             required={required}
-            disabled={disabled || readonly}
+            disabled={readonly || disabled}
             {...otherProps}
             value={value || value === 0 ? value : ""}
             onChange={(e) =>
@@ -143,7 +143,7 @@ const BaseInputTemplate = <
               variant="outline"
               size="sm"
               onClick={() => onChange(defaultValue)}
-              disabled={disabled || readonly}
+              disabled={readonly || disabled}
               className="h-9 px-2">
               {t("Reset Value")}
             </Button>
@@ -163,7 +163,7 @@ const BaseInputTemplate = <
         placeholder={placeholder}
         autoFocus={autofocus}
         required={required}
-        disabled={disabled || readonly}
+        disabled={readonly || disabled}
         {...otherProps}
         value={value || value === 0 ? value : ""}
         onChange={handleOnChange}

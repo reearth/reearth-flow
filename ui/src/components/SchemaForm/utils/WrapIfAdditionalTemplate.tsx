@@ -54,7 +54,7 @@ const WrapIfAdditionalTemplate = <
         <Input
           required={required}
           defaultValue={label}
-          disabled={disabled || readonly}
+          disabled={readonly || disabled}
           id={`${id}-key`}
           name={`${id}-key`}
           onBlur={!readonly ? handleBlur : undefined}
@@ -65,7 +65,7 @@ const WrapIfAdditionalTemplate = <
       <div>
         <RemoveButton
           iconType="default"
-          disabled={disabled || readonly}
+          disabled={readonly || disabled}
           onClick={onDropPropertyClick(label)}
           uiSchema={uiSchema}
           registry={registry}
