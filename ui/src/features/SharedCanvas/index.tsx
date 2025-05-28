@@ -74,7 +74,11 @@ const SharedCanvas: React.FC<Props> = ({
           </Button>
         </div>
         {openNode && (
-          <ParamsPanel openNode={openNode} onOpenNode={handleOpenNode} />
+          <ParamsPanel
+            openNode={openNode}
+            onOpenNode={handleOpenNode}
+            disableEditing
+          />
         )}
       </EditorProvider>
     </div>

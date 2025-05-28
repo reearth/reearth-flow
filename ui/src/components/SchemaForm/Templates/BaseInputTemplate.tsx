@@ -143,6 +143,7 @@ const BaseInputTemplate = <
               variant="outline"
               size="sm"
               onClick={() => onChange(defaultValue)}
+              disabled={disabled || readonly}
               className="h-9 px-2">
               {t("Reset Value")}
             </Button>

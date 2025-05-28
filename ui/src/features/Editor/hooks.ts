@@ -244,8 +244,6 @@ export default ({
     rawWorkflows,
   });
 
-  console.log("SELECTED NODE IDS", selectedNodeIds);
-
   useShortcuts([
     {
       keyBinding: { key: "r", commandKey: false },

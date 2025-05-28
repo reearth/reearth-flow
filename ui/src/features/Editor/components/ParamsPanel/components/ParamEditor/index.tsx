@@ -31,6 +31,7 @@ type Props = {
     type: "params" | "customizations",
   ) => Promise<void>;
   onWorkflowRename?: (id: string, name: string) => void;
+  disableEditing?: boolean;
 };
 
 const ParamEditor: React.FC<Props> = ({
@@ -40,6 +41,7 @@ const ParamEditor: React.FC<Props> = ({
   // nodeParameters = [{ id: "param1", name: "Param 1", value: "Value 1", type: "string"}],
   onUpdate,
   onWorkflowRename,
+  disableEditing,
 }) => {
   const t = useT();
   const { useGetActionById } = useAction(i18n.language);
@@ -136,15 +138,18 @@ const ParamEditor: React.FC<Props> = ({
                     schema={patchedSchemaParams}
                     defaultFormData={updatedParams}
                     onChange={handleParamChange}
+                    disableEditing={disableEditing}
                   />
                 )}
               </div>
-              <Button
-                className="self-end shrink-0"
-                size="lg"
-                onClick={handleUpdate}>
-                {t("Update")}
-              </Button>
+              {!disableEditing && (
+                <Button
+                  className="self-end shrink-0"
+                  size="lg"
+                  onClick={handleUpdate}>
+                  {t("Update")}
+                </Button>
+              )}
             </div>
           </TabsContent>
           <TabsContent className="py-4 px-6" value="customizations" asChild>
@@ -166,16 +171,19 @@ const ParamEditor: React.FC<Props> = ({
                       schema={createdAction?.customizations}
                       defaultFormData={updatedCustomization}
                       onChange={handleCustomizationChange}
+                      disableEditing={disableEditing}
                     />
                   </div>
                 )}
               </div>
-              <Button
-                className="self-end shrink-0"
-                size="lg"
-                onClick={handleUpdate}>
-                {t("Update")}
-              </Button>
+              {!disableEditing && (
+                <Button
+                  className="self-end shrink-0"
+                  size="lg"
+                  onClick={handleUpdate}>
+                  {t("Update")}
+                </Button>
+              )}
             </div>
           </TabsContent>
           <TabsContent className="py-4 px-6 w-full" value="details">

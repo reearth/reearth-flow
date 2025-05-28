@@ -15,6 +15,7 @@ import { ParamEditor } from "./components";
 type Props = {
   openNode: Node;
   onOpenNode?: (nodeId: string, deselect?: boolean) => void;
+  disableEditing?: boolean;
   onDataSubmit?: (
     nodeId: string,
     dataField: "params" | "customizations",
@@ -26,6 +27,7 @@ type Props = {
 const ParamsPanel: React.FC<Props> = ({
   openNode,
   onOpenNode,
+  disableEditing,
   onDataSubmit,
   onWorkflowRename,
 }) => {
@@ -85,6 +87,7 @@ const ParamsPanel: React.FC<Props> = ({
             nodeType={openNode.type}
             onUpdate={handleUpdate}
             onWorkflowRename={onWorkflowRename}
+            disableEditing={disableEditing}
           />
         )}
       </DialogContent>

@@ -16,6 +16,7 @@ type SchemaFormProps = {
   defaultFormData?: any;
   onChange: (data: any) => void;
   onError?: (errors: any[]) => void;
+  disableEditing?: boolean; // Optional prop to disable editing
 };
 
 const SchemaForm: React.FC<SchemaFormProps> = ({
@@ -23,6 +24,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
   defaultFormData,
   onChange,
   onError,
+  disableEditing = false,
 }) => {
   const t = useT();
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +42,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
     <ThemedForm
       className="flex-1 overflow-scroll"
       schema={schema}
+      disabled={disableEditing}
       formData={defaultFormData}
       validator={validator}
       uiSchema={{ "ui:submitButtonOptions": { norender: true } }} // We handle submissions outside of this component
