@@ -1,4 +1,5 @@
 import {
+  ChalkboardTeacher,
   Database,
   Disc,
   Graph,
@@ -17,9 +18,9 @@ import { useT } from "@flow/lib/i18n";
 import type { Node, NodeChange } from "@flow/types";
 import { getNodeIcon } from "@flow/utils/getNodeIcon";
 
-import { ActionsList } from "./components";
+import { ActionsList, ProjectVariables } from "./components";
 
-type Tab = "navigator" | "actions-list" | "resources";
+type Tab = "navigator" | "actions-list" | "resources" | "project-vars";
 
 type Props = {
   nodes: Node[];
@@ -121,6 +122,18 @@ const LeftPanel: React.FC<Props> = ({
         ),
     },
     {
+      id: "project-vars",
+      title: t("Project Variables"),
+      icon: <ChalkboardTeacher className="size-5" weight="thin" />,
+      component: <ProjectVariables />,
+    },
+    // {
+    //   id: "resources",
+    //   title: t("Resources"),
+    //   icon: <HardDrive className="size-5" weight="thin" />,
+    //   component: <Resources />,
+    // },
+    {
       id: "actions-list",
       title: t("Actions list"),
       icon: <Lightning className="size-5" weight="thin" />,
@@ -173,7 +186,7 @@ const LeftPanel: React.FC<Props> = ({
       <div
         className="absolute left-[55px] bottom-[8px] top-[35px] z-10 flex w-[350px] flex-1 flex-col gap-3 p-2 overflow-auto rounded-md bg-secondary transition-all"
         style={{
-          transform: `translateX(${isOpen ? "8px" : "-100%"})`,
+          transform: `translateX(${isOpen ? "8px" : "-120%"})`,
           transitionDuration: isOpen ? "500ms" : "300ms",
           transitionProperty: "transform",
           transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",

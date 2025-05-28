@@ -22,7 +22,7 @@ type Props = {
   onWorkflowRename?: (id: string, name: string) => void;
 };
 
-const ParamsPanel: React.FC<Props> = ({
+const ParamsDialog: React.FC<Props> = ({
   selected,
   onDataSubmit,
   onWorkflowRename,
@@ -89,4 +89,4 @@ const ParamsPanel: React.FC<Props> = ({
   );
 };
 
-export default memo(ParamsPanel);
+export default memo(ParamsDialog);

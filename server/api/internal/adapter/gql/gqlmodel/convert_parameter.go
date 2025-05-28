@@ -10,25 +10,26 @@ func ToParameter(p *parameter.Parameter) *Parameter {
 	}
 
 	return &Parameter{
-		CreatedAt: p.CreatedAt(),
-		ID:        IDFrom(p.ID()),
-		Index:     p.Index(),
-		Name:      p.Name(),
-		ProjectID: IDFrom(p.ProjectID()),
-		Required:  p.Required(),
-		Type:      ToParameterType(p.Type()),
-		UpdatedAt: p.UpdatedAt(),
-		Value:     p.Value(),
+		CreatedAt:    p.CreatedAt(),
+		ID:           IDFrom(p.ID()),
+		Index:        p.Index(),
+		Name:         p.Name(),
+		ProjectID:    IDFrom(p.ProjectID()),
+		Required:     p.Required(),
+		Public:       p.Public(),
+		Type:         ToParameterType(p.Type()),
+		UpdatedAt:    p.UpdatedAt(),
+		DefaultValue: p.DefaultValue(),
 	}
 }
 
-func ToParameters(params parameter.ParameterList) []*Parameter {
+func ToParameters(params *parameter.ParameterList) []*Parameter {
 	if params == nil {
 		return nil
 	}
 
-	res := make([]*Parameter, 0, len(params))
-	for _, p := range params {
+	res := make([]*Parameter, 0, len(*params))
+	for _, p := range *params {
 		if p != nil {
 			res = append(res, ToParameter(p))
 		}
