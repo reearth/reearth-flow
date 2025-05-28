@@ -901,6 +901,72 @@
       ]
     },
     {
+      "name": "CsvReader",
+      "type": "source",
+      "description": "Reads features from a csv/tsv file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CsvReaderParam",
+        "type": "object",
+        "required": [
+          "format"
+        ],
+        "properties": {
+          "dataset": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "format": {
+            "$ref": "#/definitions/CsvFormat"
+          },
+          "inline": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "offset": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0.0
+          }
+        },
+        "definitions": {
+          "CsvFormat": {
+            "type": "string",
+            "enum": [
+              "csv",
+              "tsv"
+            ]
+          },
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
+      "categories": [
+        "File"
+      ]
+    },
+    {
       "name": "CzmlWriter",
       "type": "sink",
       "description": "Writes features to a Czml file",
@@ -2277,6 +2343,51 @@
         "default"
       ],
       "outputPorts": [],
+      "categories": [
+        "File"
+      ]
+    },
+    {
+      "name": "GeoJsonReader",
+      "type": "source",
+      "description": "Reads features from a geojson file",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeoJsonReaderParam",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "inline": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Expr"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Expr": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "default"
+      ],
       "categories": [
         "File"
       ]

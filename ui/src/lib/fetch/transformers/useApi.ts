@@ -105,9 +105,6 @@ const combinedFilter = (
     if (action.name.toLowerCase().includes("router")) {
       return false;
     }
-    if (action.type === "reader") {
-      return !hasReader(filter.nodes);
-    }
   } else {
     if (action.type === "reader" || action.type === "writer") {
       return false;

@@ -10,6 +10,7 @@ use futures_util::{SinkExt, StreamExt};
 use rand;
 use tokio::task::JoinHandle;
 use tracing::{debug, error, warn};
+use yrs::types::ToJson;
 
 use super::Publish;
 use serde_json;
@@ -508,6 +509,42 @@ impl BroadcastGroup {
         }
     }
 
+    fn all_nodes_have_position(&self, doc: &Doc) -> bool {
+        let map = doc.get_or_insert_map("workflows");
+        let map_json = map.to_json(&doc.transact());
+
+        let json_str = serde_json::to_string(&map_json).unwrap_or_else(|_| "{}".to_string());
+        match serde_json::from_str::<serde_json::Value>(&json_str) {
+            Ok(map_json_value) => {
+                if let Some(main) = map_json_value["main"].as_object() {
+                    if let Some(nodes) = main["nodes"].as_object() {
+                        if nodes.is_empty() {
+                            debug!("No nodes found");
+                            return false;
+                        }
+
+                        for (_, node) in nodes {
+                            if let Some(position) = node["position"].as_object() {
+                                if let (Some(x), Some(y)) = (position.get("x"), position.get("y")) {
+                                    if x.is_number() && y.is_number() {
+                                        continue;
+                                    }
+                                }
+                            }
+                            return false;
+                        }
+                        return true;
+                    }
+                }
+                false
+            }
+            Err(e) => {
+                tracing::error!("Error parsing map_json: {:?}", e);
+                false
+            }
+        }
+    }
+
     pub async fn shutdown(&self) -> Result<()> {
         if self.connection_count() == 0 {
             if let Err(e) = self
@@ -550,83 +587,76 @@ impl BroadcastGroup {
                 let lock_id = format!("gcs:lock:{}", self.doc_name);
                 let instance_id = format!("instance-{}", rand::random::<u64>());
 
-                let lock_acquired = match self
+                let lock_acquired = self
                     .redis_store
                     .acquire_doc_lock(&lock_id, &instance_id)
-                    .await
-                {
-                    Ok(true) => {
-                        debug!("Acquired lock for GCS operations on {}", self.doc_name);
-                        Some((self.redis_store.clone(), lock_id, instance_id))
-                    }
-                    Ok(false) => {
-                        warn!("Could not acquire lock for GCS operations, skipping update");
-                        None
-                    }
-                    Err(e) => {
-                        warn!("Error acquiring lock for GCS operations: {}", e);
-                        None
-                    }
-                };
+                    .await?;
 
-                if lock_acquired.is_some() {
+                if lock_acquired {
                     let awareness = self.awareness_ref.write().await;
                     let awareness_doc = awareness.doc();
 
-                    let gcs_doc = Doc::new();
-                    let mut gcs_txn = gcs_doc.transact_mut();
+                    // Check if all nodes have position data before saving to GCS
+                    if !self.all_nodes_have_position(awareness_doc) {
+                        debug!("Skipping GCS save: not all nodes have position data");
+                    } else {
+                        let gcs_doc = Doc::new();
+                        let mut gcs_txn = gcs_doc.transact_mut();
 
-                    if let Err(e) = self.storage.load_doc(&self.doc_name, &mut gcs_txn).await {
-                        warn!("Failed to load current state from GCS: {}", e);
-                    }
-
-                    let gcs_state = gcs_txn.state_vector();
-
-                    let awareness_txn = awareness_doc.transact();
-                    let awareness_state = awareness_txn.state_vector();
-
-                    let update = awareness_txn.encode_diff_v1(&gcs_state);
-                    let update_bytes = Bytes::from(update);
-
-                    if !(update_bytes.is_empty()
-                        || (update_bytes.len() == 2
-                            && update_bytes[0] == 0
-                            && update_bytes[1] == 0)
-                        || awareness_state == gcs_state)
-                    {
-                        let update_future = self.storage.push_update(
-                            &self.doc_name,
-                            &update_bytes,
-                            &self.redis_store,
-                        );
-                        let flush_future =
-                            self.storage.flush_doc_direct(&self.doc_name, awareness_doc);
-
-                        let (update_result, flush_result) =
-                            tokio::join!(update_future, flush_future);
-
-                        if let Err(e) = flush_result {
-                            warn!("Failed to flush document directly to storage: {}", e);
+                        if let Err(e) = self.storage.load_doc(&self.doc_name, &mut gcs_txn).await {
+                            warn!("Failed to load current state from GCS: {}", e);
                         }
 
-                        if let Err(e) = update_result {
-                            warn!("Failed to update document in storage: {}", e);
-                        }
+                        let gcs_state = gcs_txn.state_vector();
 
-                        if let Err(e) = self
-                            .storage
-                            .trim_updates_logarithmic(&self.doc_name, 1)
-                            .await
+                        let awareness_txn = awareness_doc.transact();
+                        let awareness_state = awareness_txn.state_vector();
+
+                        let update = awareness_txn.encode_diff_v1(&gcs_state);
+                        let update_bytes = Bytes::from(update);
+
+                        if !(update_bytes.is_empty()
+                            || (update_bytes.len() == 2
+                                && update_bytes[0] == 0
+                                && update_bytes[1] == 0)
+                            || awareness_state == gcs_state)
                         {
-                            warn!("Failed to trim updates: {}", e);
+                            let update_future = self.storage.push_update(
+                                &self.doc_name,
+                                &update_bytes,
+                                &self.redis_store,
+                            );
+                            let flush_future =
+                                self.storage.flush_doc_v2(&self.doc_name, awareness_doc);
+
+                            let (update_result, flush_result) =
+                                tokio::join!(update_future, flush_future);
+
+                            if let Err(e) = flush_result {
+                                warn!("Failed to flush document directly to storage: {}", e);
+                            }
+
+                            if let Err(e) = update_result {
+                                warn!("Failed to update document in storage: {}", e);
+                            }
+
+                            // if let Err(e) = self
+                            //     .storage
+                            //     .trim_updates_logarithmic(&self.doc_name, 1)
+                            //     .await
+                            // {
+                            //     warn!("Failed to trim updates: {}", e);
+                            // }
                         }
-                    }
+                    } // Close the else block for position check
                 }
 
-                if let Some((redis, lock_id, instance_id)) = lock_acquired {
-                    if let Err(e) = redis.release_doc_lock(&lock_id, &instance_id).await {
-                        warn!("Failed to release GCS lock: {}", e);
-                    }
+                if let Err(e) = self
+                    .redis_store
+                    .release_doc_lock(&lock_id, &instance_id)
+                    .await
+                {
+                    warn!("Failed to release GCS lock: {}", e);
                 }
             }
         }

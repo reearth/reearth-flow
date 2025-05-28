@@ -103,20 +103,11 @@ export default ({
     setSelectedNodeIds,
   });
 
-  const handleNodeDoubleClick = useCallback(
-    (_e: MouseEvent | undefined, nodeId: string, subworkflowId?: string) => {
-      if (subworkflowId) {
-        handleWorkflowOpen(subworkflowId);
-      } else {
-        fitView({
-          nodes: [{ id: nodeId }],
-          duration: 500,
-          padding: 2,
-        });
-        handleNodeLocking(nodeId);
-      }
+  const handleNodeSettings = useCallback(
+    (_e: MouseEvent | undefined, nodeId: string) => {
+      handleNodeLocking(nodeId);
     },
-    [handleWorkflowOpen, fitView, handleNodeLocking],
+    [handleNodeLocking],
   );
 
   const { handleProjectExport } = useProjectExport(project);
@@ -133,7 +124,7 @@ export default ({
     handleProjectExport,
     handleNodeHover,
     handleNodesChange: handleYNodesChange,
-    handleNodeDoubleClick,
+    handleNodeSettings,
     handleEdgeHover,
     handleWorkflowOpen,
     handleWorkflowClose,

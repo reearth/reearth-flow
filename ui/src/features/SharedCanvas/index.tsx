@@ -39,19 +39,17 @@ const SharedCanvas: React.FC<Props> = ({
     handleProjectExport,
     // handleNodeHover,
     // handleEdgeHover,
-    handleNodeDoubleClick,
+    handleNodeSettings,
     // handleWorkflowOpen,
-    handleNodesChange,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
   } = useHooks({ yWorkflows, project, undoTrackerActionWrapper });
 
   const editorContext = useMemo(
     (): EditorContextType => ({
-      onNodesChange: handleNodesChange,
-      onSecondaryNodeAction: handleNodeDoubleClick,
+      onNodeSettings: handleNodeSettings,
     }),
-    [handleNodesChange, handleNodeDoubleClick],
+    [handleNodeSettings],
   );
 
   return (
@@ -62,10 +60,7 @@ const SharedCanvas: React.FC<Props> = ({
           nodes={nodes}
           edges={edges}
           canvasLock
-          // onNodeHover={handleNodeHover}
-          onNodesChange={handleNodesChange}
-          onNodeDoubleClick={handleNodeDoubleClick}
-          // onEdgeHover={handleEdgeHover}
+          onNodeSettings={handleNodeSettings}
         />
         <WorkflowTabs
           openWorkflows={openWorkflows}

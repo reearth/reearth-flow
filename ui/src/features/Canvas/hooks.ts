@@ -16,11 +16,7 @@ type Props = {
   onWorkflowAdd?: (position?: XYPosition) => void;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
-  onNodeDoubleClick?: (
-    e: MouseEvent | undefined,
-    nodeId: string,
-    subworkflowId?: string,
-  ) => void;
+  onNodeSettings?: (e: MouseEvent | undefined, nodeId: string) => void;
   onEdgesAdd?: (newEdges: Edge[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
   onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
@@ -49,7 +45,7 @@ export default ({
   onWorkflowAdd,
   onNodesAdd,
   onNodesChange,
-  onNodeDoubleClick,
+  onNodeSettings,
   onEdgesAdd,
   onEdgesChange,
   onNodePickerOpen,
@@ -60,14 +56,14 @@ export default ({
     handleNodeDragOver,
     handleNodeDragStop,
     handleNodeDrop,
-    handleNodeDoubleClick,
+    handleNodeSettings,
   } = useNodes({
     nodes,
     edges,
     onWorkflowAdd,
     onNodesAdd,
     onNodesChange,
-    onNodeDoubleClick,
+    onNodeSettings,
     onEdgesChange,
     onNodePickerOpen,
   });
@@ -205,7 +201,7 @@ export default ({
     handleNodeDragStop,
     handleNodeDragOver,
     handleNodeDrop,
-    handleNodeDoubleClick,
+    handleNodeSettings,
     handleEdgesChange,
     handleConnect,
     handleReconnect,
