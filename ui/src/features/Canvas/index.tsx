@@ -36,7 +36,6 @@ type Props = {
   nodes: Node[];
   edges: Edge[];
   selectedEdgeIds?: string[];
-  canvasLock: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
   onNodesAdd?: (newNode: Node[]) => void;
@@ -54,7 +53,6 @@ type Props = {
 
 const Canvas: React.FC<Props> = ({
   isSubworkflow,
-  canvasLock,
   nodes,
   edges,
   selectedEdgeIds,
@@ -114,20 +112,20 @@ const Canvas: React.FC<Props> = ({
       // fitView
       ref={paneRef}
       // Locking props START
-      nodesDraggable={!canvasLock}
-      nodesConnectable={!canvasLock}
-      nodesFocusable={!canvasLock}
-      edgesFocusable={!canvasLock}
+      // nodesDraggable={!canvasLock}
+      // nodesConnectable={!canvasLock}
+      // nodesFocusable={!canvasLock}
+      // edgesFocusable={!canvasLock}
       // elementsSelectable={!canvasLock}
-      autoPanOnConnect={!canvasLock}
-      autoPanOnNodeDrag={!canvasLock}
+      // autoPanOnConnect={!canvasLock}
+      // autoPanOnNodeDrag={!canvasLock}
       // panOnDrag={!canvasLock}
-      selectionOnDrag={!canvasLock}
+      // selectionOnDrag={!canvasLock}
       // panOnScroll={!canvasLock}
       // zoomOnScroll={!canvasLock}
       // zoomOnPinch={!canvasLock}
       // zoomOnDoubleClick={!canvasLock}
-      connectOnClick={!canvasLock}
+      // connectOnClick={!canvasLock}
       // Locking props END
 
       nodeDragThreshold={2}

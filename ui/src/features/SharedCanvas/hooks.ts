@@ -11,7 +11,6 @@ import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import useYNode from "@flow/lib/yjs/useYNode";
 import { Edge, Node, Project } from "@flow/types";
 
-import useNodeLocker from "../Editor/useNodeLocker";
 import useUIState from "../Editor/useUIState";
 
 export default ({
@@ -29,6 +28,13 @@ export default ({
   const { fitView } = useReactFlow();
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+  const [openNode, setOpenNode] = useState<Node | undefined>(undefined);
+
+  useEffect(() => {
+    if (openNode && !selectedNodeIds.includes(openNode.id)) {
+      setOpenNode(undefined);
+    }
+  }, [selectedNodeIds, openNode]);
 
   const [currentWorkflowId, setCurrentWorkflowId] = useState(
     DEFAULT_ENTRY_GRAPH_ID,
@@ -97,17 +103,26 @@ export default ({
     fitView({ padding: 0.5 });
   }, [fitView]);
 
-  const { locallyLockedNode, handleNodeLocking } = useNodeLocker({
-    nodes,
-    selectedNodeIds,
-    setSelectedNodeIds,
-  });
+  const handleOpenNode = useCallback(
+    (nodeId: string, deselect?: boolean) => {
+      if (deselect) {
+        setSelectedNodeIds([]);
+        setOpenNode(undefined);
+      } else {
+        setSelectedNodeIds([nodeId]);
+        setOpenNode((on) =>
+          on?.id === nodeId ? undefined : nodes.find((n) => n.id === nodeId),
+        );
+      }
+    },
+    [nodes, setSelectedNodeIds, setOpenNode],
+  );
 
   const handleNodeSettings = useCallback(
     (_e: MouseEvent | undefined, nodeId: string) => {
-      handleNodeLocking(nodeId);
+      handleOpenNode(nodeId);
     },
-    [handleNodeLocking],
+    [handleOpenNode],
   );
 
   const { handleProjectExport } = useProjectExport(project);
@@ -120,10 +135,11 @@ export default ({
     openWorkflows,
     isMainWorkflow,
     hoveredDetails,
-    locallyLockedNode,
+    openNode,
     handleProjectExport,
     handleNodeHover,
     handleNodesChange: handleYNodesChange,
+    handleOpenNode,
     handleNodeSettings,
     handleEdgeHover,
     handleWorkflowOpen,

@@ -13,7 +13,8 @@ import { Node } from "@flow/types";
 import { ParamEditor } from "./components";
 
 type Props = {
-  selected?: Node;
+  openNode: Node;
+  onOpenNode?: (nodeId: string, deselect?: boolean) => void;
   onDataSubmit?: (
     nodeId: string,
     dataField: "params" | "customizations",
@@ -23,7 +24,8 @@ type Props = {
 };
 
 const ParamsPanel: React.FC<Props> = ({
-  selected,
+  openNode,
+  onOpenNode,
   onDataSubmit,
   onWorkflowRename,
 }) => {
@@ -35,9 +37,10 @@ const ParamsPanel: React.FC<Props> = ({
     // https://github.com/xyflow/xyflow/blob/71db83761c245493d44e74311e10cc6465bf8387/packages/react/src/container/Pane/index.tsx#L249
     const paneElement = document.getElementsByClassName("react-flow__pane")[0];
     if (!paneElement) return;
+    onOpenNode?.(openNode.id, true);
     const clickEvent = new Event("click", { bubbles: true, cancelable: true });
     paneElement.dispatchEvent(clickEvent);
-  }, []);
+  }, [onOpenNode, openNode]);
 
   const handleUpdate = useCallback(
     async (nodeId: string, data: any, type: "params" | "customizations") => {
@@ -60,26 +63,26 @@ const ParamsPanel: React.FC<Props> = ({
   } | null>(null);
 
   useEffect(() => {
-    if (selected && !previousViewportRef.current) {
+    if (openNode && !previousViewportRef.current) {
       const { x, y, zoom } = getViewport();
       previousViewportRef.current = { x, y, zoom };
-    } else if (!selected && previousViewportRef.current) {
+    } else if (!openNode && previousViewportRef.current) {
       setViewport(previousViewportRef.current, { duration: 400 });
       previousViewportRef.current = null;
     }
-  }, [setViewport, getViewport, selected]);
+  }, [setViewport, getViewport, openNode]);
 
   return (
-    <Dialog open={!!selected} onOpenChange={handleClose}>
+    <Dialog open={!!openNode} onOpenChange={handleClose}>
       <DialogContent size="2xl">
         <DialogHeader>
           <DialogTitle>{t("Parameter Editor")}</DialogTitle>
         </DialogHeader>
-        {selected && (
+        {openNode && (
           <ParamEditor
-            nodeId={selected.id}
-            nodeMeta={selected.data}
-            nodeType={selected.type}
+            nodeId={openNode.id}
+            nodeMeta={openNode.data}
+            nodeType={openNode.type}
             onUpdate={handleUpdate}
             onWorkflowRename={onWorkflowRename}
           />

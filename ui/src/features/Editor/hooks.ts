@@ -23,7 +23,6 @@ import type { Algorithm, Direction, Edge, Node } from "@flow/types";
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useDebugRun from "./useDebugRun";
 import useDeployment from "./useDeployment";
-import useNodeLocker from "./useNodeLocker";
 import useUIState from "./useUIState";
 
 export default ({
@@ -46,6 +45,14 @@ export default ({
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
+
+  const [openNode, setOpenNode] = useState<Node | undefined>(undefined);
+
+  useEffect(() => {
+    if (openNode && !selectedNodeIds.includes(openNode.id)) {
+      setOpenNode(undefined);
+    }
+  }, [selectedNodeIds, openNode]);
 
   // TODO: If we split canvas more, or use refs, etc, this will become unnecessary @KaWaite
   useEffect(() => {
@@ -129,10 +136,6 @@ export default ({
 
   const hasReader = checkForReader(nodes);
 
-  const { lockedNodeIds, locallyLockedNode, handleNodeLocking } = useNodeLocker(
-    { nodes, selectedNodeIds, setSelectedNodeIds },
-  );
-
   const {
     openWorkflows,
     isMainWorkflow,
@@ -146,6 +149,20 @@ export default ({
     setCurrentWorkflowId,
   });
 
+  const handleOpenNode = useCallback(
+    (nodeId: string, deselect?: boolean) => {
+      if (deselect) {
+        setSelectedNodeIds([]);
+        setOpenNode(undefined);
+      }
+      setSelectedNodeIds([nodeId]);
+      setOpenNode((on) =>
+        on?.id === nodeId ? undefined : nodes.find((n) => n.id === nodeId),
+      );
+    },
+    [nodes, setSelectedNodeIds, setOpenNode],
+  );
+
   // Passed to editor context so needs to be a ref
   const handleNodeSettingsClickRef =
     useRef<(e: MouseEvent | undefined, nodeId: string) => void>(undefined);
@@ -153,8 +170,9 @@ export default ({
     _e: MouseEvent | undefined,
     nodeId: string,
   ) => {
-    handleNodeLocking(nodeId);
+    handleOpenNode(nodeId);
   };
+
   const handleNodeSettings = useCallback(
     (e: MouseEvent | undefined, nodeId: string) =>
       handleNodeSettingsClickRef.current?.(e, nodeId),
@@ -226,6 +244,8 @@ export default ({
     rawWorkflows,
   });
 
+  console.log("SELECTED NODE IDS", selectedNodeIds);
+
   useShortcuts([
     {
       keyBinding: { key: "r", commandKey: false },
@@ -287,8 +307,7 @@ export default ({
     nodes,
     edges,
     selectedEdgeIds,
-    lockedNodeIds,
-    locallyLockedNode,
+    openNode,
     hoveredDetails,
     nodePickerOpen,
     allowedToDeploy,
@@ -312,6 +331,7 @@ export default ({
     handleNodesChange: handleYNodesChange,
     handleNodeHover,
     handleNodeDataUpdate: handleYNodeDataUpdate,
+    handleOpenNode,
     handleNodeSettings,
     handleNodePickerOpen,
     handleNodePickerClose,
