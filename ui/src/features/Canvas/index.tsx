@@ -32,6 +32,7 @@ const snapGrid: SnapGrid = [gridSize, gridSize];
 const proOptions: ProOptions = { hideAttribution: true };
 
 type Props = {
+  readonly?: boolean;
   isSubworkflow: boolean;
   nodes: Node[];
   edges: Edge[];
@@ -52,6 +53,7 @@ type Props = {
 };
 
 const Canvas: React.FC<Props> = ({
+  readonly,
   isSubworkflow,
   nodes,
   edges,
@@ -113,7 +115,7 @@ const Canvas: React.FC<Props> = ({
       ref={paneRef}
       // Locking props START
       // nodesDraggable={!canvasLock}
-      // nodesConnectable={!canvasLock}
+      nodesConnectable={!readonly}
       // nodesFocusable={!canvasLock}
       // edgesFocusable={!canvasLock}
       // elementsSelectable={!canvasLock}

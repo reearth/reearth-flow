@@ -30,12 +30,6 @@ export default ({
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [openNode, setOpenNode] = useState<Node | undefined>(undefined);
 
-  useEffect(() => {
-    if (openNode && !selectedNodeIds.includes(openNode.id)) {
-      setOpenNode(undefined);
-    }
-  }, [selectedNodeIds, openNode]);
-
   const [currentWorkflowId, setCurrentWorkflowId] = useState(
     DEFAULT_ENTRY_GRAPH_ID,
   );
@@ -104,18 +98,16 @@ export default ({
   }, [fitView]);
 
   const handleOpenNode = useCallback(
-    (nodeId: string, deselect?: boolean) => {
-      if (deselect) {
-        setSelectedNodeIds([]);
+    (nodeId?: string) => {
+      if (!nodeId) {
         setOpenNode(undefined);
       } else {
-        setSelectedNodeIds([nodeId]);
         setOpenNode((on) =>
           on?.id === nodeId ? undefined : nodes.find((n) => n.id === nodeId),
         );
       }
     },
-    [nodes, setSelectedNodeIds, setOpenNode],
+    [nodes, setOpenNode],
   );
 
   const handleNodeSettings = useCallback(

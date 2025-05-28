@@ -57,6 +57,7 @@ const SharedCanvas: React.FC<Props> = ({
     <div className="relative flex size-full flex-col">
       <EditorProvider value={editorContext}>
         <Canvas
+          readonly
           isSubworkflow={isSubworkflow}
           nodes={nodes}
           edges={edges}
@@ -75,9 +76,9 @@ const SharedCanvas: React.FC<Props> = ({
         </div>
         {openNode && (
           <ParamsPanel
+            readonly
             openNode={openNode}
             onOpenNode={handleOpenNode}
-            disableEditing
           />
         )}
       </EditorProvider>

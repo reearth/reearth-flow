@@ -21,6 +21,7 @@ import i18n from "@flow/lib/i18n/i18n";
 import type { NodeData } from "@flow/types";
 
 type Props = {
+  readonly?: boolean;
   nodeId: string;
   nodeMeta: NodeData;
   nodeType: string;
@@ -31,17 +32,16 @@ type Props = {
     type: "params" | "customizations",
   ) => Promise<void>;
   onWorkflowRename?: (id: string, name: string) => void;
-  disableEditing?: boolean;
 };
 
 const ParamEditor: React.FC<Props> = ({
+  readonly,
   nodeId,
   nodeMeta,
   nodeType,
   // nodeParameters = [{ id: "param1", name: "Param 1", value: "Value 1", type: "string"}],
   onUpdate,
   onWorkflowRename,
-  disableEditing,
 }) => {
   const t = useT();
   const { useGetActionById } = useAction(i18n.language);
@@ -135,14 +135,14 @@ const ParamEditor: React.FC<Props> = ({
                 )}
                 {createdAction && (
                   <SchemaForm
+                    readonly={readonly}
                     schema={patchedSchemaParams}
                     defaultFormData={updatedParams}
                     onChange={handleParamChange}
-                    disableEditing={disableEditing}
                   />
                 )}
               </div>
-              {!disableEditing && (
+              {!readonly && (
                 <Button
                   className="self-end shrink-0"
                   size="lg"
@@ -168,15 +168,15 @@ const ParamEditor: React.FC<Props> = ({
                       {t("Customization Options")}
                     </h4>
                     <SchemaForm
+                      readonly={readonly}
                       schema={createdAction?.customizations}
                       defaultFormData={updatedCustomization}
                       onChange={handleCustomizationChange}
-                      disableEditing={disableEditing}
                     />
                   </div>
                 )}
               </div>
-              {!disableEditing && (
+              {!readonly && (
                 <Button
                   className="self-end shrink-0"
                   size="lg"

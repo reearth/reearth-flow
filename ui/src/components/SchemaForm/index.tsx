@@ -12,19 +12,19 @@ import { useT } from "@flow/lib/i18n";
 import { ThemedForm } from "./ThemedForm";
 
 type SchemaFormProps = {
+  readonly?: boolean; // Optional prop to disable editing
   schema?: RJSFSchema;
   defaultFormData?: any;
   onChange: (data: any) => void;
   onError?: (errors: any[]) => void;
-  disableEditing?: boolean; // Optional prop to disable editing
 };
 
 const SchemaForm: React.FC<SchemaFormProps> = ({
+  readonly = false,
   schema,
   defaultFormData,
   onChange,
   onError,
-  disableEditing = false,
 }) => {
   const t = useT();
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +42,7 @@ const SchemaForm: React.FC<SchemaFormProps> = ({
     <ThemedForm
       className="flex-1 overflow-scroll"
       schema={schema}
-      disabled={disableEditing}
+      disabled={readonly}
       formData={defaultFormData}
       validator={validator}
       uiSchema={{ "ui:submitButtonOptions": { norender: true } }} // We handle submissions outside of this component

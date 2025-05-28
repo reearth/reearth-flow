@@ -53,6 +53,7 @@ export default function Editor({
     handleNodeDataUpdate,
     handleNodeHover,
     handleNodeSettings,
+    handleOpenNode,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgesAdd,
@@ -136,6 +137,7 @@ export default function Editor({
           {openNode && (
             <ParamsPanel
               openNode={openNode}
+              onOpenNode={handleOpenNode}
               onDataSubmit={handleNodeDataUpdate}
               onWorkflowRename={handleWorkflowRename}
             />
