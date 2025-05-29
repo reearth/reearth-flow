@@ -11,6 +11,11 @@ fragment Project on Project {
   }
 }
 
+fragment Workspaces on Workspace {
+  id
+  name
+}
+
 fragment Deployment on Deployment {
   id
   projectId

@@ -1,33 +1,68 @@
 import { createLazyFileRoute, useParams } from "@tanstack/react-router";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
+import { useEffect, useState } from "react";
 
-import { LoadingSplashscreen } from "@flow/components";
+import { LoadingSplashscreen, TooltipProvider } from "@flow/components";
+import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
 import SharedCanvas from "@flow/features/SharedCanvas";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useFullscreen, useShortcuts } from "@flow/hooks";
+import { useAuth } from "@flow/lib/auth";
 import { GraphQLProvider, useSharedProject } from "@flow/lib/gql";
 import { I18nProvider } from "@flow/lib/i18n";
 import { ThemeProvider } from "@flow/lib/theme";
 import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
 
 export const Route = createLazyFileRoute("/shared/$sharedToken")({
-  component: () => (
+  component: () => <SharedRoute />,
+});
+
+const SharedRoute = () => {
+  const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
+
+  const { getAccessToken } = useAuth();
+
+  useEffect(() => {
+    if (!accessToken) {
+      (async () => {
+        const token = await getAccessToken();
+        setAccessToken(token);
+      })();
+    }
+  }, [accessToken, getAccessToken]);
+
+  return accessToken ? (
+    <AuthenticationWrapper>
+      <ThemeProvider>
+        <GraphQLProvider gqlAccessToken={accessToken}>
+          <I18nProvider>
+            <TooltipProvider>
+              <ReactFlowProvider>
+                <EditorComponent />
+              </ReactFlowProvider>
+            </TooltipProvider>
+          </I18nProvider>
+        </GraphQLProvider>
+      </ThemeProvider>
+    </AuthenticationWrapper>
+  ) : (
     <ThemeProvider>
       <GraphQLProvider>
         <I18nProvider>
-          <ReactFlowProvider>
-            <EditorComponent />
-          </ReactFlowProvider>
+          <TooltipProvider>
+            <ReactFlowProvider>
+              <EditorComponent />
+            </ReactFlowProvider>
+          </TooltipProvider>
         </I18nProvider>
       </GraphQLProvider>
     </ThemeProvider>
-  ),
-});
+  );
+};
 
 const EditorComponent = () => {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const { handleFullscreenToggle } = useFullscreen();
-
   useShortcuts([
     {
       keyBinding: { key: "+", commandKey: false },

@@ -1,8 +1,10 @@
+import { ArrowSquareIn, Export } from "@phosphor-icons/react";
 import { useMemo } from "react";
 import { Map as YMap } from "yjs";
 
-import { Button } from "@flow/components";
+import { IconButton } from "@flow/components";
 import Canvas from "@flow/features/Canvas";
+import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { YWorkflow } from "@flow/lib/yjs/types";
 import { Project } from "@flow/types";
@@ -40,11 +42,15 @@ const SharedCanvas: React.FC<Props> = ({
     // handleNodeHover,
     // handleEdgeHover,
     handleNodeSettings,
-    // handleWorkflowOpen,
+    handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
   } = useHooks({ yWorkflows, project, undoTrackerActionWrapper });
 
+  const { useGetMeAndWorkspaces } = useUser();
+
+  const { me } = useGetMeAndWorkspaces();
+  console.log("USER INFO", me?.email);
   const editorContext = useMemo(
     (): EditorContextType => ({
       onNodeSettings: handleNodeSettings,
@@ -53,25 +59,45 @@ const SharedCanvas: React.FC<Props> = ({
   );
 
   return (
-    <div className="relative flex size-full flex-col">
+    <div className="flex h-screen flex-col">
       <EditorProvider value={editorContext}>
-        <Canvas
-          isSubworkflow={isSubworkflow}
-          nodes={nodes}
-          edges={edges}
-          canvasLock
-          onNodeSettings={handleNodeSettings}
-        />
-        <WorkflowTabs
-          openWorkflows={openWorkflows}
-          currentWorkflowId={currentWorkflowId}
-          onWorkflowClose={handleWorkflowClose}
-          onWorkflowChange={handleCurrentWorkflowIdChange}
-        />
-        <div className="absolute right-0 top-0 p-4">
-          <Button size="lg" onClick={handleProjectExport}>
-            {t("Export Project")}
-          </Button>
+        <div className="flex shrink-0 justify-between gap-2 bg-secondary h-[44px] w-[100vw]">
+          <div className="flex flex-1 gap-2 h-full overflow-hidden">
+            <WorkflowTabs
+              currentWorkflowId={currentWorkflowId}
+              openWorkflows={openWorkflows}
+              onWorkflowClose={handleWorkflowClose}
+              onWorkflowChange={handleCurrentWorkflowIdChange}
+            />
+          </div>
+          <div className="flex items-center">
+            <IconButton
+              tooltipText={t("Export Project")}
+              tooltipOffset={6}
+              icon={<Export weight="thin" size={18} />}
+              onClick={handleProjectExport}
+            />
+            {me && (
+              <IconButton
+                tooltipText={t("Import Project")}
+                tooltipOffset={6}
+                icon={<ArrowSquareIn weight="thin" size={18} />}
+                onClick={handleProjectExport}
+              />
+            )}
+          </div>
+        </div>
+        <div className="relative flex flex-1">
+          <div className="flex flex-1 flex-col">
+            <Canvas
+              isSubworkflow={isSubworkflow}
+              onWorkflowOpen={handleWorkflowOpen}
+              nodes={nodes}
+              edges={edges}
+              canvasLock
+              onNodeSettings={handleNodeSettings}
+            />
+          </div>
         </div>
         <ParamsPanel selected={locallyLockedNode} />
       </EditorProvider>

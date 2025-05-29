@@ -6,14 +6,28 @@ import { useQueries } from "./useQueries";
 
 export enum UserQueryKeys {
   GetMe = "getMe",
+  GetMeAndWorkspaces = "getMeAndWorkspaces",
   SearchUser = "User",
 }
 
 export const useUser = () => {
-  const { useGetMeQuery, searchUserQuery, updateMeMutation } = useQueries();
+  const {
+    useGetMeQuery,
+    useGetMeAndWorkspacesQuery,
+    searchUserQuery,
+    updateMeMutation,
+  } = useQueries();
 
   const useGetMe = (): GetMe => {
     const { data, ...rest } = useGetMeQuery();
+    return {
+      me: data,
+      ...rest,
+    };
+  };
+
+  const useGetMeAndWorkspaces = (): GetMe => {
+    const { data, ...rest } = useGetMeAndWorkspacesQuery();
     return {
       me: data,
       ...rest,
@@ -39,6 +53,7 @@ export const useUser = () => {
 
   return {
     useGetMe,
+    useGetMeAndWorkspaces,
     searchUser,
     updateMe,
   };

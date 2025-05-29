@@ -28,6 +28,25 @@ export const useQueries = () => {
       staleTime: Infinity,
     });
 
+  const useGetMeAndWorkspacesQuery = () =>
+    useQuery({
+      queryKey: [UserQueryKeys.GetMeAndWorkspaces],
+      queryFn: async () => {
+        const data = await graphQLContext?.GetMeAndWorkspaces();
+        if (!data?.me) return;
+        const me = data.me;
+        return {
+          id: me.id,
+          name: me.name,
+          email: me.email,
+          myWorkspaceId: me.myWorkspaceId,
+          lang: me.lang,
+          workspaces: me.workspaces,
+        };
+      },
+      staleTime: Infinity,
+    });
+
   // Not using react-query because no observers are needed on this
   const searchUserQuery = async (email: string) => {
     try {
@@ -64,6 +83,7 @@ export const useQueries = () => {
 
   return {
     useGetMeQuery,
+    useGetMeAndWorkspacesQuery,
     searchUserQuery,
     updateMeMutation,
   };
