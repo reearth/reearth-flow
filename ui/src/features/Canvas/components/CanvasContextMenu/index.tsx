@@ -25,11 +25,8 @@ type Props = {
   selectedEdgeIds?: string[];
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
-  onSecondaryNodeAction?: (
-    e: React.MouseEvent | undefined,
-    nodeId: string,
-    subworkflowId?: string,
-  ) => void;
+  onWorkflowOpen?: (workflowId: string) => void;
+  onNodeSettings?: (e: React.MouseEvent | undefined, nodeId: string) => void;
   onCopy?: (node?: Node) => void;
   onCut?: (isCutByShortCut?: boolean, node?: Node) => void;
   onPaste?: (menuPosition?: XYPosition) => void;
@@ -39,7 +36,8 @@ type Props = {
 const CanvasContextMenu: React.FC<Props> = ({
   contextMenu,
   data,
-  onSecondaryNodeAction,
+  onWorkflowOpen,
+  onNodeSettings,
   selectedEdgeIds,
   onNodesChange,
   onEdgesChange,
@@ -54,21 +52,22 @@ const CanvasContextMenu: React.FC<Props> = ({
   const nodes = Array.isArray(data) ? data : undefined;
   const node = Array.isArray(data) ? undefined : data;
 
-  const handleSecondaryNodeAction = useCallback(
-    (node?: Node, allowNodeSettings?: boolean) => {
-      if (!node) return;
-
-      if (allowNodeSettings) {
-        onSecondaryNodeAction?.(undefined, node.id, undefined);
-
-        return;
-      }
-
-      onSecondaryNodeAction?.(undefined, node.id, node.data.subworkflowId);
+  const handleNodeSettingsOpen = useCallback(
+    (node: Node) => {
+      onNodeSettings?.(undefined, node.id);
     },
-    [onSecondaryNodeAction],
+    [onNodeSettings],
   );
-  console.log("NODE IN CONTEXT", node);
+
+  const handleSubworkflowOpen = useCallback(
+    (node: Node) => {
+      if (!node.data?.subworkflowId) return;
+
+      onWorkflowOpen?.(node.data.subworkflowId);
+    },
+    [onWorkflowOpen],
+  );
+
   const handleNodeDelete = useCallback(
     (node?: Node, nodes?: Node[]) => {
       if (!nodes && !node) return;
@@ -86,7 +85,6 @@ const CanvasContextMenu: React.FC<Props> = ({
     },
     [selectedEdgeIds, onNodesChange, onEdgesChange],
   );
-
   const menuItems = useMemo(() => {
     const wrapWithClose = (callback: () => void) => () => {
       callback();
@@ -102,7 +100,7 @@ const CanvasContextMenu: React.FC<Props> = ({
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "c", commandKey: true }} />
           ),
-          disabled: !nodes && !node,
+          disabled: (!nodes && !node) || !onCopy,
           onCallback: wrapWithClose(() => onCopy?.(node) ?? (() => {})),
         },
       },
@@ -114,7 +112,7 @@ const CanvasContextMenu: React.FC<Props> = ({
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "x", commandKey: true }} />
           ),
-          disabled: !nodes && !node,
+          disabled: (!nodes && !node) || !onCut,
           onCallback: wrapWithClose(() => onCut?.(false, node) ?? (() => {})),
         },
       },
@@ -126,7 +124,7 @@ const CanvasContextMenu: React.FC<Props> = ({
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "v", commandKey: true }} />
           ),
-          disabled: !value?.clipboard,
+          disabled: !value?.clipboard || !onPaste,
           onCallback: wrapWithClose(() => onPaste?.(contextMenu.mousePosition)),
         },
       },
@@ -137,9 +135,7 @@ const CanvasContextMenu: React.FC<Props> = ({
               props: {
                 label: t("Open Subworkflow"),
                 icon: <Graph weight="light" />,
-                onCallback: wrapWithClose(() =>
-                  handleSecondaryNodeAction(node),
-                ),
+                onCallback: wrapWithClose(() => handleSubworkflowOpen(node)),
               },
             },
           ]
@@ -151,9 +147,7 @@ const CanvasContextMenu: React.FC<Props> = ({
               props: {
                 label: t("Node Settings"),
                 icon: <GearFine weight="light" />,
-                onCallback: wrapWithClose(() =>
-                  handleSecondaryNodeAction(node, true),
-                ),
+                onCallback: wrapWithClose(() => handleNodeSettingsOpen(node)),
               },
             },
           ]
@@ -174,6 +168,8 @@ const CanvasContextMenu: React.FC<Props> = ({
                 label: node ? t("Delete Node") : t("Delete Selection"),
                 icon: <Trash weight="light" />,
                 destructive: true,
+                disabled: !onNodesChange || !onEdgesChange,
+
                 onCallback: wrapWithClose(() => handleNodeDelete(node, nodes)),
               },
             },
@@ -190,10 +186,13 @@ const CanvasContextMenu: React.FC<Props> = ({
     onCut,
     onPaste,
     onClose,
+    onNodesChange,
+    onEdgesChange,
     contextMenu.mousePosition,
     value,
     handleNodeDelete,
-    handleSecondaryNodeAction,
+    handleNodeSettingsOpen,
+    handleSubworkflowOpen,
   ]);
 
   return <ContextMenu items={menuItems} contextMenuMeta={contextMenu} />;

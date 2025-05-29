@@ -147,28 +147,17 @@ export default ({
   });
 
   // Passed to editor context so needs to be a ref
-  const handleNodeDoubleClickRef =
-    useRef<
-      (
-        e: MouseEvent | undefined,
-        nodeId: string,
-        subworkflowId?: string,
-      ) => void
-    >(undefined);
-  handleNodeDoubleClickRef.current = (
+  const handleNodeSettingsClickRef =
+    useRef<(e: MouseEvent | undefined, nodeId: string) => void>(undefined);
+  handleNodeSettingsClickRef.current = (
     _e: MouseEvent | undefined,
     nodeId: string,
-    subworkflowId?: string,
   ) => {
-    if (subworkflowId) {
-      handleWorkflowOpen(subworkflowId);
-    } else {
-      handleNodeLocking(nodeId);
-    }
+    handleNodeLocking(nodeId);
   };
-  const handleNodeDoubleClick = useCallback(
-    (e: MouseEvent | undefined, nodeId: string, subworkflowId?: string) =>
-      handleNodeDoubleClickRef.current?.(e, nodeId, subworkflowId),
+  const handleNodeSettings = useCallback(
+    (e: MouseEvent | undefined, nodeId: string) =>
+      handleNodeSettingsClickRef.current?.(e, nodeId),
     [],
   );
 
@@ -312,6 +301,7 @@ export default ({
     handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
+    handleWorkflowOpen,
     handleWorkflowClose,
     handleWorkflowChange: handleCurrentWorkflowIdChange,
     handleWorkflowRedo: handleYWorkflowRedo,
@@ -322,7 +312,7 @@ export default ({
     handleNodesChange: handleYNodesChange,
     handleNodeHover,
     handleNodeDataUpdate: handleYNodeDataUpdate,
-    handleNodeDoubleClick,
+    handleNodeSettings,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgesAdd: handleYEdgesAdd,

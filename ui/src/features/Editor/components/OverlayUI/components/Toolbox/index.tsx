@@ -77,7 +77,9 @@ const Toolbox: React.FC<Props> = ({
     {
       id: "batch" as const,
       name: t("Batch Node"),
-      icon: <RectangleDashed weight="thin" size={16} />,
+      icon: (
+        <RectangleDashed className="fill-orange-400" weight="thin" size={16} />
+      ),
     },
     {
       id: "subworkflow" as const,
@@ -175,14 +177,14 @@ const Toolbox: React.FC<Props> = ({
               <IconButton
                 className={`dndnode-${tool.id} cursor-grab  ${
                   tool.id === "reader"
-                    ? "bg-node-reader/30 hover:bg-node-reader/60"
+                    ? "bg-node-reader/50 hover:bg-node-reader/80"
                     : tool.id === "writer"
-                      ? "bg-node-writer/30 hover:bg-node-writer"
+                      ? "bg-node-writer/50 hover:bg-node-writer/80"
                       : tool.id === "subworkflow"
-                        ? "bg-node-subworkflow/30 hover:bg-node-subworkflow/60"
-                        : tool.id === "note" || tool.id === "batch"
-                          ? "bg-primary/30 hover:bg-primary/60"
-                          : "bg-node-transformer/30 hover:bg-node-transformer/60"
+                        ? "bg-node-subworkflow/50 hover:bg-node-subworkflow/80"
+                        : tool.id === "batch" || tool.id === "note"
+                          ? "bg-primary/50 hover:bg-primary/80"
+                          : "bg-node-transformer/50 hover:bg-node-transformer/80"
                 }`}
                 tooltipPosition="right"
                 tooltipOffset={4}
