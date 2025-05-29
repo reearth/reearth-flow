@@ -75,7 +75,6 @@ export default ({
   });
 
   const [contextMenu, setContextMenu] = useState<ContextMenuMeta | null>(null);
-
   const paneRef = useRef<HTMLDivElement>(null);
   const getContextMenuPosition = (event: MouseEvent) => {
     if (!paneRef.current) return;
