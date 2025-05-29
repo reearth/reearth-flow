@@ -26,6 +26,8 @@
   "Node Settings": "",
   "Delete Node": "",
   "Delete Selection": "",
+  "Are you sure you want to delete an input or output node?": "",
+  "Input and Output nodes are required for the workflow to run. By deleting a node you may cause unexpected behavior.": "",
   "No content to display": "",
   "Select Language": "",
   "Account settings": "",
