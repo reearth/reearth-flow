@@ -20,7 +20,7 @@ import {
 } from "@flow/lib/reactFlow";
 import type { ActionNodeType, Edge, Node } from "@flow/types";
 
-import { CanvasContextMenu, NodeDeletionDialog } from "./components";
+import { CanvasContextMenu } from "./components";
 import useHooks, { defaultEdgeOptions } from "./hooks";
 
 import "@xyflow/react/dist/style.css";
@@ -41,6 +41,7 @@ type Props = {
   onWorkflowOpen?: (workflowId: string) => void;
   onNodesAdd?: (newNode: Node[]) => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
+  onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
   onNodeSettings?: (e: MouseEvent | undefined, nodeId: string) => void;
   onNodeHover?: (e: MouseEvent, node?: Node) => void;
   onNodePickerOpen?: (position: XYPosition, nodeType?: ActionNodeType) => void;
@@ -62,6 +63,7 @@ const Canvas: React.FC<Props> = ({
   onWorkflowOpen,
   onNodesAdd,
   onNodesChange,
+  onBeforeDelete,
   onNodeSettings,
   onNodeHover,
   onEdgeHover,
@@ -74,7 +76,6 @@ const Canvas: React.FC<Props> = ({
 }) => {
   const {
     handleNodesDelete,
-    handleBeforeDeleteNodes,
     handleNodeDragStop,
     handleNodeDragOver,
     handleNodeDrop,
@@ -87,9 +88,6 @@ const Canvas: React.FC<Props> = ({
     handleCloseContextmenu,
     contextMenu,
     paneRef,
-    showBeforeDeleteDialog,
-    handleDeleteDialogClose,
-    deferredDeleteRef,
   } = useHooks({
     nodes,
     edges,
@@ -164,7 +162,7 @@ const Canvas: React.FC<Props> = ({
       onEdgeMouseLeave={onEdgeHover}
       onConnect={handleConnect}
       onReconnect={handleReconnect}
-      onBeforeDelete={handleBeforeDeleteNodes}
+      onBeforeDelete={onBeforeDelete}
       proOptions={proOptions}>
       <Background
         className="bg-background"
@@ -177,7 +175,7 @@ const Canvas: React.FC<Props> = ({
           data={contextMenu.data}
           selectedEdgeIds={selectedEdgeIds}
           contextMenu={contextMenu}
-          onBeforeDelete={handleBeforeDeleteNodes}
+          onBeforeDelete={onBeforeDelete}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onWorkflowOpen={onWorkflowOpen}
@@ -186,13 +184,6 @@ const Canvas: React.FC<Props> = ({
           onCut={onCut}
           onPaste={onPaste}
           onClose={handleCloseContextmenu}
-        />
-      )}
-      {showBeforeDeleteDialog && (
-        <NodeDeletionDialog
-          showBeforeDeleteDialog={showBeforeDeleteDialog}
-          deferredDeleteRef={deferredDeleteRef}
-          onDialogClose={handleDeleteDialogClose}
         />
       )}
     </ReactFlow>
