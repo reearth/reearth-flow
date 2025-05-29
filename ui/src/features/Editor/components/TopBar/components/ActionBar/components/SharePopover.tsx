@@ -60,11 +60,21 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
   };
 
   const handleCopyUrl = () => {
-    navigator.clipboard.writeText(sharedUrl || "");
-    toast({
-      title: t("URL copied."),
-      description: t("URL was successfully copied to your clipboard."),
-    });
+    navigator.clipboard
+      .writeText(sharedUrl || "")
+      .then(() => {
+        toast({
+          title: t("URL Copied."),
+          description: t("URL was successfully copied to your clipboard."),
+        });
+      })
+      .catch(() => {
+        toast({
+          title: t("URL Copy Failed"),
+          description: t("Failed to copy URL to clipboard."),
+          variant: "destructive",
+        });
+      });
   };
 
   return (
