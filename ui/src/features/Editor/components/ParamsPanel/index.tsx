@@ -14,7 +14,7 @@ import { ParamEditor } from "./components";
 
 type Props = {
   readonly?: boolean;
-  openNode: Node;
+  openNode?: Node;
   onOpenNode: (nodeId?: string) => void;
   onDataSubmit?: (
     nodeId: string,
@@ -32,9 +32,6 @@ const ParamsPanel: React.FC<Props> = ({
   onWorkflowRename,
 }) => {
   const t = useT();
-  const handleClose = useCallback(() => {
-    onOpenNode();
-  }, [onOpenNode]);
 
   const handleUpdate = useCallback(
     async (nodeId: string, data: any, type: "params" | "customizations") => {
@@ -43,9 +40,9 @@ const ParamsPanel: React.FC<Props> = ({
       } else if (type === "customizations") {
         await Promise.resolve(onDataSubmit?.(nodeId, "customizations", data));
       }
-      handleClose();
+      onOpenNode();
     },
-    [onDataSubmit, handleClose],
+    [onDataSubmit, onOpenNode],
   );
 
   const { getViewport, setViewport } = useReactFlow();
@@ -67,7 +64,7 @@ const ParamsPanel: React.FC<Props> = ({
   }, [setViewport, getViewport, openNode]);
 
   return (
-    <Dialog open={!!openNode} onOpenChange={handleClose}>
+    <Dialog open={!!openNode} onOpenChange={() => onOpenNode()}>
       <DialogContent size="2xl">
         <DialogHeader>
           <DialogTitle>{t("Parameter Editor")}</DialogTitle>

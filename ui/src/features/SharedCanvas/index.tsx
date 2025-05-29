@@ -74,13 +74,8 @@ const SharedCanvas: React.FC<Props> = ({
             {t("Export Project")}
           </Button>
         </div>
-        {openNode && (
-          <ParamsPanel
-            readonly
-            openNode={openNode}
-            onOpenNode={handleOpenNode}
-          />
-        )}
+
+        <ParamsPanel readonly openNode={openNode} onOpenNode={handleOpenNode} />
       </EditorProvider>
     </div>
   );

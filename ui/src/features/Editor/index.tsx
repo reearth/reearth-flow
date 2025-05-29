@@ -134,14 +134,13 @@ export default function Editor({
             project={currentProject}
             yDoc={yDoc}
           />
-          {openNode && (
-            <ParamsPanel
-              openNode={openNode}
-              onOpenNode={handleOpenNode}
-              onDataSubmit={handleNodeDataUpdate}
-              onWorkflowRename={handleWorkflowRename}
-            />
-          )}
+
+          <ParamsPanel
+            openNode={openNode}
+            onOpenNode={handleOpenNode}
+            onDataSubmit={handleNodeDataUpdate}
+            onWorkflowRename={handleWorkflowRename}
+          />
         </div>
       </EditorProvider>
     </div>
