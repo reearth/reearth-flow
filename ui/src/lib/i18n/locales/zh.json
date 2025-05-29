@@ -26,6 +26,8 @@
   "Node Settings": "节点设置",
   "Delete Node": "删除节点",
   "Delete Selection": "删除选定内容",
+  "Are you sure you want to delete an input or output node?": "您确定要删除输入或输出节点吗？",
+  "Input and Output nodes are required for the workflow to run. By deleting a node you may cause unexpected behavior.": "输入和输出节点是工作流运行所必需的。删除节点可能会导致意外行为。",
   "No content to display": "没有内容可显示",
   "Select Language": "选择语言",
   "Account settings": "帐户设置",

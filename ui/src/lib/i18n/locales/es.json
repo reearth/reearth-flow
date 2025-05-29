@@ -26,6 +26,8 @@
   "Node Settings": "Configuración del nodo",
   "Delete Node": "Eliminar nodo",
   "Delete Selection": "Eliminar selección",
+  "Are you sure you want to delete an input or output node?": "¿Estás seguro de que deseas eliminar un nodo de entrada o salida?",
+  "Input and Output nodes are required for the workflow to run. By deleting a node you may cause unexpected behavior.": "Los nodos de entrada y salida son necesarios para que el flujo de trabajo se ejecute. Al eliminar un nodo, puedes causar un comportamiento inesperado.",
   "No content to display": "No hay contenido para mostrar",
   "Select Language": "Seleccionar idioma",
   "Account settings": "Configuración de la cuenta",

@@ -26,6 +26,8 @@
   "Node Settings": "ノード設定",
   "Delete Node": "ノードを削除",
   "Delete Selection": "選択を削除",
+  "Are you sure you want to delete an input or output node?": "入力ノードまたは出力ノードを削除してもよろしいですか？",
+  "Input and Output nodes are required for the workflow to run. By deleting a node you may cause unexpected behavior.": "入力ノードと出力ノードはワークフローの実行に必要です。ノードを削除すると予期しない動作が発生する可能性があります。",
   "No content to display": "表示するコンテンツがありません",
   "Select Language": "言語を選択",
   "Account settings": "アカウント設定",

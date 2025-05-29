@@ -26,6 +26,8 @@
   "Node Settings": "Paramètres du nœud",
   "Delete Node": "Supprimer le nœud",
   "Delete Selection": "Supprimer la sélection",
+  "Are you sure you want to delete an input or output node?": "Êtes-vous sûr de vouloir supprimer un nœud d'entrée ou de sortie?",
+  "Input and Output nodes are required for the workflow to run. By deleting a node you may cause unexpected behavior.": "Les nœuds d'entrée et de sortie sont nécessaires pour que le flux de travail fonctionne. En supprimant un nœud, vous risquez de provoquer un comportement inattendu.",
   "No content to display": "Aucun contenu à afficher",
   "Select Language": "Sélectionner la langue",
   "Account settings": "Paramètres du compte",
