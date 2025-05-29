@@ -26,8 +26,10 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
   );
 
   useEffect(() => {
-    setIsSharing(!!currentProject?.sharedToken);
-  }, [currentProject?.sharedToken]);
+    if (isSharing !== !!currentProject?.sharedToken) {
+      setIsSharing(!!currentProject?.sharedToken);
+    }
+  }, [isSharing, currentProject?.sharedToken]);
 
   const useDebouncedCallback = (
     callback: (checked: boolean) => void,
