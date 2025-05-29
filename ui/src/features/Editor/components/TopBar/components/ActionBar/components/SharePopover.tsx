@@ -11,8 +11,6 @@ type Props = {
   onProjectShare: (share: boolean) => void;
 };
 
-type SharingState = "sharing" | "notSharing";
-
 const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
   const t = useT();
   const { toast } = useToast();
@@ -23,13 +21,14 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
     ? BASE_URL + "/shared/" + sharedToken
     : undefined;
 
-  const [isSharing, setIsSharing] = useState<SharingState>(
-    currentProject?.sharedToken ? "sharing" : "notSharing",
+  const [isSharing, setIsSharing] = useState<boolean>(
+    !!currentProject?.sharedToken,
   );
 
-  const [isSwitchOn, setIsSwitchOn] = useState<boolean>(
-    isSharing === "sharing",
-  );
+  useEffect(() => {
+    setIsSharing(!!currentProject?.sharedToken);
+  }, [currentProject?.sharedToken]);
+
   const useDebouncedCallback = (
     callback: (checked: boolean) => void,
     delay: number,
@@ -47,15 +46,13 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
 
   const debouncedHandleSharingChange = useDebouncedCallback(
     (checked: boolean) => {
-      const share = checked ? "sharing" : "notSharing";
-      setIsSharing(share);
-      onProjectShare(share === "sharing");
+      onProjectShare(checked);
     },
     500,
   );
 
   const handleSharingChange = (checked: boolean) => {
-    setIsSwitchOn(checked);
+    setIsSharing(checked);
     debouncedHandleSharingChange(checked);
   };
 
@@ -99,7 +96,7 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
           )}
         </p>
         <div className="flex items-center gap-2">
-          <Switch checked={isSwitchOn} onCheckedChange={handleSharingChange} />
+          <Switch checked={isSharing} onCheckedChange={handleSharingChange} />
           <span className="text-sm dark:font-light">{t("Sharing")}</span>
         </div>
       </div>
