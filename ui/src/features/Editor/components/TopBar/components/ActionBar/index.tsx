@@ -13,10 +13,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   IconButton,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
-import { DeployDialog, ShareDialog } from "./components";
+import { DeployDialog, SharePopover } from "./components";
 import useHooks from "./hooks";
 
 const tooltipOffset = 6;
@@ -41,7 +44,7 @@ const ActionBar: React.FC<Props> = ({
   const {
     showDialog,
     handleShowDeployDialog,
-    handleShowShareDialog,
+    handleShowSharePopover,
     handleDialogClose,
     handleProjectExport,
   } = useHooks();
@@ -56,12 +59,25 @@ const ActionBar: React.FC<Props> = ({
             icon={<Rocket weight="thin" size={18} />}
             onClick={handleShowDeployDialog}
           />
-          <IconButton
-            tooltipText={t("Share Project")}
-            tooltipOffset={tooltipOffset}
-            icon={<PaperPlaneTilt weight="thin" size={18} />}
-            onClick={handleShowShareDialog}
-          />
+          <Popover
+            open={showDialog === "share"}
+            onOpenChange={(open) => {
+              if (!open) handleDialogClose();
+            }}>
+            <PopoverTrigger>
+              <IconButton
+                tooltipText={t("Share Project")}
+                tooltipOffset={tooltipOffset}
+                icon={<PaperPlaneTilt weight="thin" size={18} />}
+                onClick={handleShowSharePopover}
+              />
+            </PopoverTrigger>
+            <PopoverContent>
+              {showDialog === "share" && (
+                <SharePopover onProjectShare={onProjectShare} />
+              )}
+            </PopoverContent>
+          </Popover>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <IconButton
@@ -97,12 +113,6 @@ const ActionBar: React.FC<Props> = ({
           allowedToDeploy={allowedToDeploy}
           onDialogClose={handleDialogClose}
           onWorkflowDeployment={onWorkflowDeployment}
-        />
-      )}
-      {showDialog === "share" && (
-        <ShareDialog
-          onDialogClose={handleDialogClose}
-          onProjectShare={onProjectShare}
         />
       )}
     </>
