@@ -4,7 +4,13 @@ import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 import Canvas from "@flow/features/Canvas";
 import { YWorkflow } from "@flow/lib/yjs/types";
 
-import { TopBar, OverlayUI, ParamsPanel, RightPanel } from "./components";
+import {
+  TopBar,
+  OverlayUI,
+  ParamsPanel,
+  RightPanel,
+  NodeDeletionDialog,
+} from "./components";
 import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
 
@@ -40,6 +46,8 @@ export default function Editor({
     allowedToDeploy,
     isMainWorkflow,
     hasReader,
+    deferredDeleteRef,
+    showBeforeDeleteDialog,
     rightPanelContent,
     handleRightPanelOpen,
     handleWorkflowAdd,
@@ -50,6 +58,8 @@ export default function Editor({
     handleWorkflowChange,
     handleNodesAdd,
     handleNodesChange,
+    handleBeforeDeleteNodes,
+    handleDeleteDialogClose,
     handleNodeDataUpdate,
     handleNodeHover,
     handleNodeSettings,
@@ -115,6 +125,7 @@ export default function Editor({
                 onWorkflowAdd={handleWorkflowAdd}
                 onWorkflowOpen={handleWorkflowOpen}
                 onNodesAdd={handleNodesAdd}
+                onBeforeDelete={handleBeforeDeleteNodes}
                 onNodesChange={handleNodesChange}
                 onNodeHover={handleNodeHover}
                 onNodeSettings={handleNodeSettings}
@@ -141,6 +152,13 @@ export default function Editor({
             onDataSubmit={handleNodeDataUpdate}
             onWorkflowRename={handleWorkflowRename}
           />
+          {showBeforeDeleteDialog && (
+            <NodeDeletionDialog
+              showBeforeDeleteDialog={showBeforeDeleteDialog}
+              deferredDeleteRef={deferredDeleteRef}
+              onDialogClose={handleDeleteDialogClose}
+            />
+          )}
         </div>
       </EditorProvider>
     </div>
