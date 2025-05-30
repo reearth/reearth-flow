@@ -66,7 +66,7 @@ const ImportDialog: React.FC<Props> = ({
                   <SelectLabel className="text-xs text-muted-foreground">
                     {t("Personal")}
                   </SelectLabel>
-                  <SelectItem value={personalWorkspace.id}>
+                  <SelectItem className="pl-3" value={personalWorkspace.id}>
                     {personalWorkspace.name}
                   </SelectItem>
                 </SelectGroup>
@@ -75,7 +75,10 @@ const ImportDialog: React.FC<Props> = ({
                     {t("Team Workspaces")}
                   </SelectLabel>
                   {teamWorkspaces.map((workspace) => (
-                    <SelectItem key={workspace.id} value={workspace.id}>
+                    <SelectItem
+                      className="pl-3"
+                      key={workspace.id}
+                      value={workspace.id}>
                       {workspace.name}
                     </SelectItem>
                   ))}

@@ -5,25 +5,24 @@ import * as Y from "yjs";
 import { Doc } from "yjs";
 
 import { config } from "@flow/config";
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { YWorkflow } from "@flow/lib/yjs/types";
 import type { Project, ProjectToImport, Workspace } from "@flow/types";
 
-import { useToast } from "../NotificationSystem/useToast";
-
 type Props = {
   sharedYdoc: Doc | null;
   sharedProject?: Project;
   selectedWorkspace: Workspace | null;
-  token?: string;
+  accessToken?: string;
 };
 export default ({
   sharedYdoc,
   sharedProject,
   selectedWorkspace,
-  token,
+  accessToken,
 }: Props) => {
   const t = useT();
   const { toast } = useToast();
@@ -36,9 +35,9 @@ export default ({
     try {
       setIsProjectImporting(true);
 
-      if (!sharedYdoc || !sharedProject || !token || !selectedWorkspace) {
+      if (!sharedYdoc || !sharedProject || !accessToken || !selectedWorkspace) {
         throw new Error(
-          "Missing either sharedYdoc, sharedProject, token, or selectedWorkspaceId",
+          "Missing either sharedYdoc, sharedProject, accessToken, or selectedWorkspaceId",
         );
       }
 
@@ -64,7 +63,7 @@ export default ({
           websocket,
           `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
           yDoc,
-          { params: { token } },
+          { params: { accessToken } },
         );
 
         await new Promise<void>((resolve) => {
@@ -111,7 +110,7 @@ export default ({
     sharedYdoc,
     sharedProject,
     selectedWorkspace,
-    token,
+    accessToken,
     t,
     toast,
   ]);

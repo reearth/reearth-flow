@@ -4,6 +4,7 @@ import { Doc, Map as YMap } from "yjs";
 
 import { IconButton } from "@flow/components";
 import Canvas from "@flow/features/Canvas";
+import { useSharedProjectImport } from "@flow/hooks";
 import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { YWorkflow } from "@flow/lib/yjs/types";
@@ -14,7 +15,6 @@ import { EditorContextType, EditorProvider } from "../Editor/editorContext";
 
 import ImportDialog from "./components/ImportDialog";
 import useHooks from "./hooks";
-import useSharedProjectImport from "./useSharedProjectImport";
 
 type Props = {
   yWorkflows: YMap<YWorkflow>;
@@ -43,11 +43,7 @@ const SharedCanvas: React.FC<Props> = ({
     edges,
     openWorkflows,
     locallyLockedNode,
-    // isMainWorkflow,
-    // hoveredDetails,
     handleProjectExport,
-    // handleNodeHover,
-    // handleEdgeHover,
     handleNodeSettings,
     handleWorkflowOpen,
     handleWorkflowClose,
@@ -62,8 +58,8 @@ const SharedCanvas: React.FC<Props> = ({
   const { handleProjectImport } = useSharedProjectImport({
     sharedYdoc: yDoc,
     sharedProject: project,
-    selectedWorkspace: selectedWorkspace,
-    token: accessToken,
+    selectedWorkspace,
+    accessToken,
   });
 
   const { useGetMeAndWorkspaces } = useUser();
