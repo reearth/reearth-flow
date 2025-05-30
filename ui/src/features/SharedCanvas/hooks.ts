@@ -9,7 +9,7 @@ import { rebuildWorkflow } from "@flow/lib/yjs/conversions";
 import { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import useYNode from "@flow/lib/yjs/useYNode";
-import { Edge, Node, Project } from "@flow/types";
+import type { Edge, Node, Project, Workspace } from "@flow/types";
 
 import useNodeLocker from "../Editor/useNodeLocker";
 import useUIState from "../Editor/useUIState";
@@ -111,6 +111,19 @@ export default ({
   );
 
   const { handleProjectExport } = useProjectExport(project);
+  const [showDialog, setShowDialog] = useState<"import" | undefined>(undefined);
+  const handleShowImportDialog = () => setShowDialog("import");
+  const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(
+    null,
+  );
+  const handleSelectWorkspace = useCallback((workspace: Workspace | null) => {
+    setSelectedWorkspace(workspace);
+  }, []);
+
+  const handleDialogClose = useCallback(() => {
+    setShowDialog(undefined);
+    handleSelectWorkspace(null);
+  }, [handleSelectWorkspace]);
 
   return {
     currentWorkflowId,
@@ -129,5 +142,10 @@ export default ({
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
+    showDialog,
+    handleShowImportDialog,
+    selectedWorkspace,
+    handleSelectWorkspace,
+    handleDialogClose,
   };
 };

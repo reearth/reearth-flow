@@ -218,6 +218,7 @@ export type Job = Node & {
   outputURLs?: Maybe<Array<Scalars['String']['output']>>;
   startedAt: Scalars['DateTime']['output'];
   status: JobStatus;
+  workerLogsURL?: Maybe<Scalars['String']['output']>;
   workspace?: Maybe<Workspace>;
   workspaceId: Scalars['ID']['output'];
 };
@@ -637,7 +638,7 @@ export type Query = {
   nodes: Array<Maybe<Node>>;
   projectHistory: Array<ProjectSnapshotMetadata>;
   projectSharingInfo: ProjectSharingInfoPayload;
-  projectSnapshot: Array<ProjectSnapshot>;
+  projectSnapshot: ProjectSnapshot;
   projects: ProjectConnection;
   searchUser?: Maybe<User>;
   sharedProject: SharedProjectPayload;
@@ -1056,6 +1057,8 @@ export type RollbackProjectMutation = { __typename?: 'Mutation', rollbackProject
 
 export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
+export type WorkspaceFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> };
+
 export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
 
 export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } };
@@ -1229,6 +1232,11 @@ export type GetMeQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type GetMeQuery = { __typename?: 'Query', me?: { __typename?: 'Me', id: string, name: string, email: string, myWorkspaceId: string, lang: any } | null };
 
+export type GetMeAndWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetMeAndWorkspacesQuery = { __typename?: 'Query', me?: { __typename?: 'Me', id: string, name: string, email: string, myWorkspaceId: string, lang: any, workspaces: Array<{ __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> }> } | null };
+
 export type SearchUserQueryVariables = Exact<{
   email: Scalars['String']['input'];
 }>;
@@ -1242,8 +1250,6 @@ export type UpdateMeMutationVariables = Exact<{
 
 
 export type UpdateMeMutation = { __typename?: 'Mutation', updateMe?: { __typename?: 'UpdateMePayload', me: { __typename?: 'Me', id: string, name: string, email: string, lang: any } } | null };
-
-export type WorkspaceFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> };
 
 export type CreateWorkspaceMutationVariables = Exact<{
   input: CreateWorkspaceInput;
@@ -1328,6 +1334,22 @@ export const ProjectFragmentDoc = gql`
   }
 }
     ${DeploymentFragmentDoc}`;
+export const WorkspaceFragmentDoc = gql`
+    fragment Workspace on Workspace {
+  id
+  name
+  personal
+  members {
+    userId
+    role
+    user {
+      id
+      email
+      name
+    }
+  }
+}
+    `;
 export const TriggerFragmentDoc = gql`
     fragment Trigger on Trigger {
   id
@@ -1400,22 +1422,6 @@ export const LogFragmentDoc = gql`
   timestamp
   logLevel
   message
-}
-    `;
-export const WorkspaceFragmentDoc = gql`
-    fragment Workspace on Workspace {
-  id
-  name
-  personal
-  members {
-    userId
-    role
-    user {
-      id
-      email
-      name
-    }
-  }
 }
     `;
 export const CreateDeploymentDocument = gql`
@@ -1695,6 +1701,20 @@ export const GetMeDocument = gql`
   }
 }
     `;
+export const GetMeAndWorkspacesDocument = gql`
+    query GetMeAndWorkspaces {
+  me {
+    id
+    name
+    email
+    myWorkspaceId
+    lang
+    workspaces {
+      ...Workspace
+    }
+  }
+}
+    ${WorkspaceFragmentDoc}`;
 export const SearchUserDocument = gql`
     query SearchUser($email: String!) {
   searchUser(nameOrEmail: $email) {
@@ -1886,6 +1906,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     GetMe(variables?: GetMeQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetMeQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetMeQuery>(GetMeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetMe', 'query', variables);
+    },
+    GetMeAndWorkspaces(variables?: GetMeAndWorkspacesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetMeAndWorkspacesQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetMeAndWorkspacesQuery>(GetMeAndWorkspacesDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetMeAndWorkspaces', 'query', variables);
     },
     SearchUser(variables: SearchUserQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<SearchUserQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<SearchUserQuery>(SearchUserDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'SearchUser', 'query', variables);

@@ -10,6 +10,20 @@ fragment Project on Project {
     ...Deployment
   }
 }
+fragment Workspace on Workspace {
+  id
+  name
+  personal
+  members {
+    userId
+    role
+    user {
+      id
+      email
+      name
+    }
+  }
+}
 
 fragment Deployment on Deployment {
   id

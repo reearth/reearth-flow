@@ -1,8 +1,11 @@
+import { ArrowSquareIn, Export } from "@phosphor-icons/react";
 import { useMemo } from "react";
-import { Map as YMap } from "yjs";
+import { Doc, Map as YMap } from "yjs";
 
-import { Button } from "@flow/components";
+import { IconButton } from "@flow/components";
 import Canvas from "@flow/features/Canvas";
+import { useSharedProjectImport } from "@flow/hooks";
+import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { YWorkflow } from "@flow/lib/yjs/types";
 import { Project } from "@flow/types";
@@ -10,23 +13,29 @@ import { Project } from "@flow/types";
 import { ParamsPanel, WorkflowTabs } from "../Editor/components";
 import { EditorContextType, EditorProvider } from "../Editor/editorContext";
 
+import ImportDialog from "./components/ImportDialog";
 import useHooks from "./hooks";
 
 type Props = {
   yWorkflows: YMap<YWorkflow>;
   project?: Project;
+  yDoc: Doc | null;
   undoTrackerActionWrapper: (
     callback: () => void,
     originPrepend?: string,
   ) => void;
+  accessToken?: string;
 };
 
 const SharedCanvas: React.FC<Props> = ({
   yWorkflows,
+  yDoc,
   project,
+  accessToken,
   undoTrackerActionWrapper,
 }) => {
   const t = useT();
+
   const {
     currentWorkflowId,
     isSubworkflow,
@@ -34,16 +43,28 @@ const SharedCanvas: React.FC<Props> = ({
     edges,
     openWorkflows,
     locallyLockedNode,
-    // isMainWorkflow,
-    // hoveredDetails,
     handleProjectExport,
-    // handleNodeHover,
-    // handleEdgeHover,
     handleNodeSettings,
-    // handleWorkflowOpen,
+    handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
+    selectedWorkspace,
+    handleSelectWorkspace,
+    handleDialogClose,
+    handleShowImportDialog,
+    showDialog,
   } = useHooks({ yWorkflows, project, undoTrackerActionWrapper });
+
+  const { handleProjectImport } = useSharedProjectImport({
+    sharedYdoc: yDoc,
+    sharedProject: project,
+    selectedWorkspace,
+    accessToken,
+  });
+
+  const { useGetMeAndWorkspaces } = useUser();
+
+  const { me, workspaces } = useGetMeAndWorkspaces();
 
   const editorContext = useMemo(
     (): EditorContextType => ({
@@ -53,25 +74,55 @@ const SharedCanvas: React.FC<Props> = ({
   );
 
   return (
-    <div className="relative flex size-full flex-col">
+    <div className="flex h-screen flex-col">
       <EditorProvider value={editorContext}>
-        <Canvas
-          isSubworkflow={isSubworkflow}
-          nodes={nodes}
-          edges={edges}
-          canvasLock
-          onNodeSettings={handleNodeSettings}
-        />
-        <WorkflowTabs
-          openWorkflows={openWorkflows}
-          currentWorkflowId={currentWorkflowId}
-          onWorkflowClose={handleWorkflowClose}
-          onWorkflowChange={handleCurrentWorkflowIdChange}
-        />
-        <div className="absolute right-0 top-0 p-4">
-          <Button size="lg" onClick={handleProjectExport}>
-            {t("Export Project")}
-          </Button>
+        <div className="flex shrink-0 justify-between gap-2 bg-secondary h-[44px] w-[100vw]">
+          <div className="flex flex-1 gap-2 h-full overflow-hidden">
+            <WorkflowTabs
+              currentWorkflowId={currentWorkflowId}
+              openWorkflows={openWorkflows}
+              onWorkflowClose={handleWorkflowClose}
+              onWorkflowChange={handleCurrentWorkflowIdChange}
+            />
+          </div>
+          <div className="flex items-center">
+            <IconButton
+              tooltipText={t("Export Project")}
+              tooltipOffset={6}
+              icon={<Export weight="thin" size={18} />}
+              onClick={handleProjectExport}
+            />
+
+            <IconButton
+              tooltipText={t("Import Project")}
+              tooltipOffset={6}
+              icon={<ArrowSquareIn weight="thin" size={18} />}
+              disabled={!me}
+              onClick={handleShowImportDialog}
+            />
+
+            {showDialog === "import" && workspaces && (
+              <ImportDialog
+                workspaces={workspaces}
+                selectedWorkspace={selectedWorkspace}
+                onSelectWorkspace={handleSelectWorkspace}
+                onImportProject={handleProjectImport}
+                onDialogClose={handleDialogClose}
+              />
+            )}
+          </div>
+        </div>
+        <div className="relative flex flex-1">
+          <div className="flex flex-1 flex-col">
+            <Canvas
+              isSubworkflow={isSubworkflow}
+              onWorkflowOpen={handleWorkflowOpen}
+              nodes={nodes}
+              edges={edges}
+              canvasLock
+              onNodeSettings={handleNodeSettings}
+            />
+          </div>
         </div>
         <ParamsPanel selected={locallyLockedNode} />
       </EditorProvider>
