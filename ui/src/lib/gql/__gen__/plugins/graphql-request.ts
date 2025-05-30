@@ -1057,7 +1057,7 @@ export type RollbackProjectMutation = { __typename?: 'Mutation', rollbackProject
 
 export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
-export type WorkspacesFragment = { __typename?: 'Workspace', id: string, name: string };
+export type WorkspacesFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean };
 
 export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
 
@@ -1235,7 +1235,7 @@ export type GetMeQuery = { __typename?: 'Query', me?: { __typename?: 'Me', id: s
 export type GetMeAndWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetMeAndWorkspacesQuery = { __typename?: 'Query', me?: { __typename?: 'Me', id: string, name: string, email: string, myWorkspaceId: string, lang: any, workspaces: Array<{ __typename?: 'Workspace', id: string, name: string }> } | null };
+export type GetMeAndWorkspacesQuery = { __typename?: 'Query', me?: { __typename?: 'Me', id: string, name: string, email: string, myWorkspaceId: string, lang: any, workspaces: Array<{ __typename?: 'Workspace', id: string, name: string, personal: boolean }> } | null };
 
 export type SearchUserQueryVariables = Exact<{
   email: Scalars['String']['input'];
@@ -1340,6 +1340,7 @@ export const WorkspacesFragmentDoc = gql`
     fragment Workspaces on Workspace {
   id
   name
+  personal
 }
     `;
 export const TriggerFragmentDoc = gql`

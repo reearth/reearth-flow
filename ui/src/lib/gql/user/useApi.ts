@@ -1,4 +1,9 @@
-import { GetMe, SearchUser, UpdateMe } from "@flow/types/user";
+import {
+  GetMe,
+  GetMeAndWorkspaces,
+  SearchUser,
+  UpdateMe,
+} from "@flow/types/user";
 
 import { UpdateMeInput } from "../__gen__/graphql";
 
@@ -26,7 +31,7 @@ export const useUser = () => {
     };
   };
 
-  const useGetMeAndWorkspaces = (): GetMe => {
+  const useGetMeAndWorkspaces = (): GetMeAndWorkspaces => {
     const { data, ...rest } = useGetMeAndWorkspacesQuery();
     return {
       me: data,

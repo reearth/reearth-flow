@@ -38,7 +38,7 @@ const SharedRoute = () => {
           <I18nProvider>
             <TooltipProvider>
               <ReactFlowProvider>
-                <EditorComponent />
+                <EditorComponent accessToken={accessToken} />
               </ReactFlowProvider>
             </TooltipProvider>
           </I18nProvider>
@@ -60,7 +60,7 @@ const SharedRoute = () => {
   );
 };
 
-const EditorComponent = () => {
+const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const { handleFullscreenToggle } = useFullscreen();
   useShortcuts([
@@ -88,10 +88,11 @@ const EditorComponent = () => {
 
   const { sharedProject } = useGetSharedProject(sharedToken);
 
-  const { yWorkflows, isSynced, undoTrackerActionWrapper } = useYjsSetup({
-    projectId: sharedProject?.id,
-    workflowId: DEFAULT_ENTRY_GRAPH_ID,
-  });
+  const { yWorkflows, yDocState, isSynced, undoTrackerActionWrapper } =
+    useYjsSetup({
+      projectId: sharedProject?.id,
+      workflowId: DEFAULT_ENTRY_GRAPH_ID,
+    });
 
   return !yWorkflows || !isSynced || !undoTrackerActionWrapper ? (
     <LoadingSplashscreen />
@@ -99,7 +100,9 @@ const EditorComponent = () => {
     <div className="h-screen">
       <SharedCanvas
         yWorkflows={yWorkflows}
+        yDoc={yDocState}
         project={sharedProject}
+        accessToken={accessToken}
         undoTrackerActionWrapper={undoTrackerActionWrapper}
       />
     </div>

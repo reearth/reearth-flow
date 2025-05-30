@@ -1,8 +1,13 @@
 import { ArrowSquareIn, Export } from "@phosphor-icons/react";
 import { useMemo } from "react";
-import { Map as YMap } from "yjs";
+import { Doc, Map as YMap } from "yjs";
 
-import { IconButton } from "@flow/components";
+import {
+  IconButton,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@flow/components";
 import Canvas from "@flow/features/Canvas";
 import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
@@ -12,20 +17,26 @@ import { Project } from "@flow/types";
 import { ParamsPanel, WorkflowTabs } from "../Editor/components";
 import { EditorContextType, EditorProvider } from "../Editor/editorContext";
 
+import ImportPopover from "./components/ImportPopover";
 import useHooks from "./hooks";
+import useSharedProjectImport from "./useSharedProjectImport";
 
 type Props = {
   yWorkflows: YMap<YWorkflow>;
   project?: Project;
+  yDoc: Doc | null;
   undoTrackerActionWrapper: (
     callback: () => void,
     originPrepend?: string,
   ) => void;
+  accessToken?: string;
 };
 
 const SharedCanvas: React.FC<Props> = ({
   yWorkflows,
+  yDoc,
   project,
+  accessToken,
   undoTrackerActionWrapper,
 }) => {
   const t = useT();
@@ -45,12 +56,22 @@ const SharedCanvas: React.FC<Props> = ({
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
+    handleDialogClose,
+    handleShowImportPopover,
+    showDialog,
   } = useHooks({ yWorkflows, project, undoTrackerActionWrapper });
+
+  const { selectedWorkspaceId, handleProjectImport, handleSelectWorkspace } =
+    useSharedProjectImport({
+      sharedYdoc: yDoc,
+      sharedProject: project,
+      token: accessToken,
+    });
 
   const { useGetMeAndWorkspaces } = useUser();
 
   const { me } = useGetMeAndWorkspaces();
-  console.log("USER INFO", me?.email);
+
   const editorContext = useMemo(
     (): EditorContextType => ({
       onNodeSettings: handleNodeSettings,
@@ -77,13 +98,32 @@ const SharedCanvas: React.FC<Props> = ({
               icon={<Export weight="thin" size={18} />}
               onClick={handleProjectExport}
             />
+
             {me && (
-              <IconButton
-                tooltipText={t("Import Project")}
-                tooltipOffset={6}
-                icon={<ArrowSquareIn weight="thin" size={18} />}
-                onClick={handleProjectExport}
-              />
+              <Popover
+                open={showDialog === "import"}
+                onOpenChange={(open) => {
+                  if (!open) handleDialogClose();
+                }}>
+                <PopoverTrigger>
+                  <IconButton
+                    tooltipText={t("Import Project")}
+                    tooltipOffset={6}
+                    icon={<ArrowSquareIn weight="thin" size={18} />}
+                    onClick={handleShowImportPopover}
+                  />
+                </PopoverTrigger>
+                <PopoverContent>
+                  {showDialog === "import" && me.workspaces && (
+                    <ImportPopover
+                      workspaces={me?.workspaces}
+                      selectedWorkspaceId={selectedWorkspaceId}
+                      onSelectWorkspace={handleSelectWorkspace}
+                      onImportProject={handleProjectImport}
+                    />
+                  )}
+                </PopoverContent>
+              </Popover>
             )}
           </div>
         </div>

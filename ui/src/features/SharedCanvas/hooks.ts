@@ -111,6 +111,10 @@ export default ({
   );
 
   const { handleProjectExport } = useProjectExport(project);
+  const [showDialog, setShowDialog] = useState<"import" | undefined>(undefined);
+  const handleShowImportPopover = () => setShowDialog("import");
+
+  const handleDialogClose = () => setShowDialog(undefined);
 
   return {
     currentWorkflowId,
@@ -129,5 +133,8 @@ export default ({
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
+    showDialog,
+    handleShowImportPopover,
+    handleDialogClose,
   };
 };
