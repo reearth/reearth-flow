@@ -15,7 +15,6 @@ query GetMeAndWorkspaces {
     email
     myWorkspaceId
     lang
-
     workspaces {
       ...Workspaces
     }

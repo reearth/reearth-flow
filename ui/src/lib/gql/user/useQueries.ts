@@ -33,7 +33,7 @@ export const useQueries = () => {
       queryKey: [UserQueryKeys.GetMeAndWorkspaces],
       queryFn: async () => {
         const data = await graphQLContext?.GetMeAndWorkspaces();
-        if (!data?.me) return;
+        if (!data?.me || !data) return;
         const me = data.me;
         return {
           id: me.id,

@@ -2,9 +2,10 @@ import { ArrowSquareIn, XCircle } from "@phosphor-icons/react";
 
 import { Button, ScrollArea } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { Workspace } from "@flow/types";
 
 type Props = {
-  workspaces: any;
+  workspaces: Workspace[];
   selectedWorkspaceId: string | null;
   onSelectWorkspace: (workspaceId: string) => void;
   onImportProject: () => void;

@@ -15,6 +15,15 @@ fragment Workspaces on Workspace {
   id
   name
   personal
+  members {
+    userId
+    role
+    user {
+      id
+      email
+      name
+    }
+  }
 }
 
 fragment Deployment on Deployment {

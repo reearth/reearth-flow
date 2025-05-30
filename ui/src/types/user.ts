@@ -1,10 +1,10 @@
 import { ApiResponse } from "./api";
+import { Workspace } from "./workspace";
 
 export type Me = {
   myWorkspaceId: string;
   lang?: string;
   theme?: string;
-  workspaces?: Workspace[];
 } & User;
 
 export type GetMe = {
@@ -14,6 +14,7 @@ export type GetMe = {
 
 export type GetMeAndWorkspaces = {
   me: Me | undefined;
+  workspaces: Workspace[] | undefined;
   isLoading: boolean;
 } & ApiResponse;
 
@@ -21,12 +22,6 @@ export type User = {
   id: string;
   name: string;
   email: string;
-};
-
-export type Workspace = {
-  id: string;
-  name: string;
-  personal: boolean;
 };
 
 export type SearchUser = {

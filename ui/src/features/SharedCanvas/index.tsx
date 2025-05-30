@@ -70,7 +70,7 @@ const SharedCanvas: React.FC<Props> = ({
 
   const { useGetMeAndWorkspaces } = useUser();
 
-  const { me } = useGetMeAndWorkspaces();
+  const { me, workspaces } = useGetMeAndWorkspaces();
 
   const editorContext = useMemo(
     (): EditorContextType => ({
@@ -78,7 +78,7 @@ const SharedCanvas: React.FC<Props> = ({
     }),
     [handleNodeSettings],
   );
-
+  console.log("WORKSPACES", workspaces);
   return (
     <div className="flex h-screen flex-col">
       <EditorProvider value={editorContext}>
@@ -114,9 +114,9 @@ const SharedCanvas: React.FC<Props> = ({
                   />
                 </PopoverTrigger>
                 <PopoverContent>
-                  {showDialog === "import" && me.workspaces && (
+                  {showDialog === "import" && workspaces && (
                     <ImportPopover
-                      workspaces={me?.workspaces}
+                      workspaces={workspaces}
                       selectedWorkspaceId={selectedWorkspaceId}
                       onSelectWorkspace={handleSelectWorkspace}
                       onImportProject={handleProjectImport}
