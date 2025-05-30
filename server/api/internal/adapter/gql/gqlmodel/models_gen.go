@@ -314,14 +314,6 @@ type ProjectDocument struct {
 func (ProjectDocument) IsNode()        {}
 func (this ProjectDocument) GetID() ID { return this.ID }
 
-type ProjectHistorySnapshot struct {
-	ID        ID        `json:"id"`
-	Timestamp time.Time `json:"timestamp"`
-	Updates   []int     `json:"updates"`
-	Version   int       `json:"version"`
-	Name      *string   `json:"name,omitempty"`
-}
-
 type ProjectPayload struct {
 	Project *Project `json:"project"`
 }
@@ -534,6 +526,14 @@ type WorkspaceMember struct {
 	Role   Role  `json:"role"`
 	User   *User `json:"user,omitempty"`
 	UserID ID    `json:"userId"`
+}
+
+type Previewsnapshot struct {
+	ID        ID        `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+	Updates   []int     `json:"updates"`
+	Version   int       `json:"version"`
+	Name      *string   `json:"name,omitempty"`
 }
 
 type AssetSortType string
