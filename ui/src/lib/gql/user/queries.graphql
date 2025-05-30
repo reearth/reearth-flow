@@ -16,7 +16,7 @@ query GetMeAndWorkspaces {
     myWorkspaceId
     lang
     workspaces {
-      ...Workspaces
+      ...Workspace
     }
   }
 }

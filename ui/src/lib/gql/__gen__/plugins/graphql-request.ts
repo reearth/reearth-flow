@@ -1057,7 +1057,7 @@ export type RollbackProjectMutation = { __typename?: 'Mutation', rollbackProject
 
 export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
-export type WorkspacesFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> };
+export type WorkspaceFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> };
 
 export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
 
@@ -1251,8 +1251,6 @@ export type UpdateMeMutationVariables = Exact<{
 
 export type UpdateMeMutation = { __typename?: 'Mutation', updateMe?: { __typename?: 'UpdateMePayload', me: { __typename?: 'Me', id: string, name: string, email: string, lang: any } } | null };
 
-export type WorkspaceFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> };
-
 export type CreateWorkspaceMutationVariables = Exact<{
   input: CreateWorkspaceInput;
 }>;
@@ -1336,8 +1334,8 @@ export const ProjectFragmentDoc = gql`
   }
 }
     ${DeploymentFragmentDoc}`;
-export const WorkspacesFragmentDoc = gql`
-    fragment Workspaces on Workspace {
+export const WorkspaceFragmentDoc = gql`
+    fragment Workspace on Workspace {
   id
   name
   personal
@@ -1424,22 +1422,6 @@ export const LogFragmentDoc = gql`
   timestamp
   logLevel
   message
-}
-    `;
-export const WorkspaceFragmentDoc = gql`
-    fragment Workspace on Workspace {
-  id
-  name
-  personal
-  members {
-    userId
-    role
-    user {
-      id
-      email
-      name
-    }
-  }
 }
     `;
 export const CreateDeploymentDocument = gql`
@@ -1728,11 +1710,11 @@ export const GetMeAndWorkspacesDocument = gql`
     myWorkspaceId
     lang
     workspaces {
-      ...Workspaces
+      ...Workspace
     }
   }
 }
-    ${WorkspacesFragmentDoc}`;
+    ${WorkspaceFragmentDoc}`;
 export const SearchUserDocument = gql`
     query SearchUser($email: String!) {
   searchUser(nameOrEmail: $email) {
