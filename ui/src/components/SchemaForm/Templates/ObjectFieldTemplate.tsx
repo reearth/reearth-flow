@@ -76,7 +76,7 @@ const ObjectFieldTemplate = <
             <div className="py-4">
               <AddButton
                 onClick={onAddClick(schema)}
-                disabled={disabled || readonly}
+                disabled={readonly || disabled}
                 uiSchema={uiSchema}
                 registry={registry}
               />

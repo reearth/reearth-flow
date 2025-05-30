@@ -32,11 +32,11 @@ const snapGrid: SnapGrid = [gridSize, gridSize];
 const proOptions: ProOptions = { hideAttribution: true };
 
 type Props = {
+  readonly?: boolean;
   isSubworkflow: boolean;
   nodes: Node[];
   edges: Edge[];
   selectedEdgeIds?: string[];
-  canvasLock: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
   onNodesAdd?: (newNode: Node[]) => void;
@@ -54,8 +54,8 @@ type Props = {
 };
 
 const Canvas: React.FC<Props> = ({
+  readonly,
   isSubworkflow,
-  canvasLock,
   nodes,
   edges,
   selectedEdgeIds,
@@ -103,35 +103,13 @@ const Canvas: React.FC<Props> = ({
   return (
     <ReactFlow
       className={`${isSubworkflow ? "border-node-subworkflow border-t-2" : ""}`}
-      // minZoom={0.7}
-      // maxZoom={1}
-      // defaultViewport={{ zoom: 0.8, x: 200, y: 200 }}
-      // translateExtent={[
-      //   [-1000, -1000],
-      //   [1000, 1000],
-      // ]}
-      // onInit={setReactFlowInstance}
-      // selectNodesOnDrag={false}
-      // fitViewOptions={{ padding: 0.5 }}
-      // fitView
       ref={paneRef}
-      // Locking props START
-      nodesDraggable={!canvasLock}
-      nodesConnectable={!canvasLock}
-      nodesFocusable={!canvasLock}
-      edgesFocusable={!canvasLock}
-      // elementsSelectable={!canvasLock}
-      autoPanOnConnect={!canvasLock}
-      autoPanOnNodeDrag={!canvasLock}
-      // panOnDrag={!canvasLock}
-      selectionOnDrag={!canvasLock}
-      // panOnScroll={!canvasLock}
-      // zoomOnScroll={!canvasLock}
-      // zoomOnPinch={!canvasLock}
-      // zoomOnDoubleClick={!canvasLock}
-      connectOnClick={!canvasLock}
-      // Locking props END
-
+      // Readonly props START
+      nodesConnectable={!readonly}
+      nodesFocusable={!readonly}
+      elementsSelectable={!readonly}
+      reconnectRadius={!readonly ? 10 : 0}
+      // Readonly props END
       nodeDragThreshold={2}
       snapToGrid
       snapGrid={snapGrid}

@@ -21,6 +21,7 @@ import i18n from "@flow/lib/i18n/i18n";
 import type { NodeData } from "@flow/types";
 
 type Props = {
+  readonly?: boolean;
   nodeId: string;
   nodeMeta: NodeData;
   nodeType: string;
@@ -34,6 +35,7 @@ type Props = {
 };
 
 const ParamEditor: React.FC<Props> = ({
+  readonly,
   nodeId,
   nodeMeta,
   nodeType,
@@ -133,6 +135,7 @@ const ParamEditor: React.FC<Props> = ({
                 )}
                 {createdAction && (
                   <SchemaForm
+                    readonly={readonly}
                     schema={patchedSchemaParams}
                     defaultFormData={updatedParams}
                     onChange={handleParamChange}
@@ -142,7 +145,8 @@ const ParamEditor: React.FC<Props> = ({
               <Button
                 className="self-end shrink-0"
                 size="lg"
-                onClick={handleUpdate}>
+                onClick={handleUpdate}
+                disabled={readonly}>
                 {t("Update")}
               </Button>
             </div>
@@ -163,6 +167,7 @@ const ParamEditor: React.FC<Props> = ({
                       {t("Customization Options")}
                     </h4>
                     <SchemaForm
+                      readonly={readonly}
                       schema={createdAction?.customizations}
                       defaultFormData={updatedCustomization}
                       onChange={handleCustomizationChange}
@@ -173,7 +178,8 @@ const ParamEditor: React.FC<Props> = ({
               <Button
                 className="self-end shrink-0"
                 size="lg"
-                onClick={handleUpdate}>
+                onClick={handleUpdate}
+                disabled={readonly}>
                 {t("Update")}
               </Button>
             </div>

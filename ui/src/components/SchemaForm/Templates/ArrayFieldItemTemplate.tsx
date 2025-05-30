@@ -43,7 +43,7 @@ const ArrayFieldItemTemplate = <
               {(hasMoveUp || hasMoveDown) && (
                 <div>
                   <MoveUpButton
-                    disabled={disabled || readonly || !hasMoveUp}
+                    disabled={readonly || disabled || !hasMoveUp}
                     onClick={onReorderClick(index, index - 1)}
                     uiSchema={uiSchema}
                     registry={registry}
@@ -53,7 +53,7 @@ const ArrayFieldItemTemplate = <
               {(hasMoveUp || hasMoveDown) && (
                 <div>
                   <MoveDownButton
-                    disabled={disabled || readonly || !hasMoveDown}
+                    disabled={readonly || disabled || !hasMoveDown}
                     onClick={onReorderClick(index, index + 1)}
                     uiSchema={uiSchema}
                     registry={registry}
@@ -63,7 +63,7 @@ const ArrayFieldItemTemplate = <
               {hasCopy && (
                 <div>
                   <CopyButton
-                    disabled={disabled || readonly}
+                    disabled={readonly || disabled}
                     onClick={onCopyIndexClick(index)}
                     uiSchema={uiSchema}
                     registry={registry}
@@ -73,7 +73,7 @@ const ArrayFieldItemTemplate = <
               {hasRemove && (
                 <div>
                   <RemoveButton
-                    disabled={disabled || readonly}
+                    disabled={readonly || disabled}
                     onClick={onDropIndexClick(index)}
                     uiSchema={uiSchema}
                     registry={registry}
