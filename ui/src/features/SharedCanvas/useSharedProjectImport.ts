@@ -8,32 +8,34 @@ import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { YWorkflow } from "@flow/lib/yjs/types";
-import { Project, ProjectToImport } from "@flow/types";
+import type { Project, ProjectToImport, Workspace } from "@flow/types";
 
 import { useToast } from "../NotificationSystem/useToast";
 
 type Props = {
   sharedYdoc: Doc | null;
   sharedProject?: Project;
+  selectedWorkspace: Workspace | null;
   token?: string;
 };
-export default ({ sharedYdoc, sharedProject, token }: Props) => {
+export default ({
+  sharedYdoc,
+  sharedProject,
+  selectedWorkspace,
+  token,
+}: Props) => {
   const t = useT();
   const { toast } = useToast();
 
   const [isProjectImporting, setIsProjectImporting] = useState<boolean>(false);
-  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState<string | null>(
-    null,
-  );
+
   const { createProject } = useProject();
-  const handleSelectWorkspace = useCallback((workspaceId: string) => {
-    setSelectedWorkspaceId(workspaceId);
-  }, []);
+
   const handleProjectImport = useCallback(async () => {
     try {
       setIsProjectImporting(true);
 
-      if (!sharedYdoc || !sharedProject || !token || !selectedWorkspaceId) {
+      if (!sharedYdoc || !sharedProject || !token || !selectedWorkspace) {
         throw new Error(
           "Missing either sharedYdoc, sharedProject, token, or selectedWorkspaceId",
         );
@@ -45,7 +47,7 @@ export default ({ sharedYdoc, sharedProject, token }: Props) => {
       if (!projectMeta) return console.error("Missing project metadata");
 
       const { project } = await createProject({
-        workspaceId: selectedWorkspaceId,
+        workspaceId: selectedWorkspace.id,
         name: projectMeta.name + t("(import)"),
         description: projectMeta.description,
       });
@@ -87,7 +89,7 @@ export default ({ sharedYdoc, sharedProject, token }: Props) => {
           "{{project}} has successfully been imported into {{workspace}}",
           {
             project: projectMeta.name,
-            workspace: selectedWorkspaceId,
+            workspace: selectedWorkspace.name,
           },
         ),
       });
@@ -99,16 +101,15 @@ export default ({ sharedYdoc, sharedProject, token }: Props) => {
     createProject,
     sharedYdoc,
     sharedProject,
-    selectedWorkspaceId,
+    selectedWorkspace,
     token,
     t,
     toast,
   ]);
 
   return {
-    selectedWorkspaceId,
+    selectedWorkspace,
     isProjectImporting,
     handleProjectImport,
-    handleSelectWorkspace,
   };
 };

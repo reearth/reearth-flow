@@ -1,67 +1,78 @@
-import { ArrowSquareIn, XCircle } from "@phosphor-icons/react";
+import { ArrowSquareIn } from "@phosphor-icons/react";
 
 import { Button, ScrollArea } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { Workspace } from "@flow/types";
+import type { Workspace } from "@flow/types";
 
 type Props = {
   workspaces: Workspace[];
-  selectedWorkspaceId: string | null;
-  onSelectWorkspace: (workspaceId: string) => void;
+  selectedWorkspace: Workspace | null;
+  onSelectWorkspace: (workspace: Workspace) => void;
   onImportProject: () => void;
 };
 
 const ImportPopover: React.FC<Props> = ({
   workspaces,
-  selectedWorkspaceId,
+  selectedWorkspace,
   onSelectWorkspace,
   onImportProject,
 }) => {
   const t = useT();
+  const [personalWorkspace, ...teamWorkspaces] =
+    workspaces?.sort((a, b) => (a.personal ? -1 : b.personal ? 1 : 0)) || [];
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex gap-2 justify-between border-b p-4 pb-2">
-        <h4 className="text-md self-center dark:font-thin leading-none tracking-tight rounded-t-lg">
-          {t("Import Project into Workspace")}
+    <div className="flex flex-col">
+      <div className="flex flex-col gap-2 justify-between border-b p-4 pb-2">
+        <h4 className="text-md dark:font-thin leading-none tracking-tight rounded-t-lg">
+          {t("Import Project")}
         </h4>
+        <p className="text-xs dark:font-light">
+          {t("Select a workspace below to import the shared project into it.")}
+        </p>
       </div>
+
       <div className="flex flex-col overflow-auto">
         <ScrollArea>
-          <div className="flex flex-col gap-2">
-            {workspaces.map((workspace) => (
+          <div className="flex flex-col">
+            <p className="text-xs text-muted-foreground px-4 py-2">
+              {t("Personal")}
+            </p>
+            <div
+              onClick={() => onSelectWorkspace(personalWorkspace)}
+              className={`flex cursor-pointer select-none justify-between gap-2 px-4 py-2 ${selectedWorkspace?.id === personalWorkspace.id ? "bg-card" : "hover:bg-card"}`}
+              style={{ height: "100%" }}>
+              <p className="flex-2 self-center text-sm dark:font-light">
+                {personalWorkspace.name}
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-col">
+            <p className="text-xs text-muted-foreground px-4 py-2">
+              {t("Team Workspaces")}
+            </p>
+            {teamWorkspaces.map((workspace) => (
               <div
-                onClick={() => onSelectWorkspace(workspace.id)}
-                className={`flex cursor-pointer select-none justify-between gap-2 px-4 py-2 ${selectedWorkspaceId === workspace.id ? "bg-secondary" : "hover:bg-secondary"}`}
+                onClick={() => onSelectWorkspace(workspace)}
+                className={`flex cursor-pointer select-none justify-between gap-2 px-4 py-2 ${selectedWorkspace?.id === workspace.id ? "bg-card" : "hover:bg-card"}`}
                 style={{ height: "100%" }}>
-                <p className="flex-2 self-center text-xs font-thin">
+                <p className="flex-2 self-center text-sm dark:font-light">
                   {workspace.name}
                 </p>
-                {workspace.personal && (
-                  <div className="flex justify-end">
-                    <p className="rounded border bg-logo/30 p-1 text-xs font-thin">
-                      <span className="font-light">{"Personal"}</span>
-                    </p>
-                  </div>
-                )}
               </div>
             ))}
           </div>
         </ScrollArea>
       </div>
 
-      <div className="flex justify-between gap-4 p-4 pt-0">
-        <Button className="flex gap-2" variant="outline">
-          <XCircle />
-          <p className="text-xs dark:font-light">{t("Cancel")}</p>
-        </Button>
+      <div className="flex justify-between gap-4 border-t p-2">
         <Button
-          className="flex gap-2"
+          className="flex w-full gap-2"
           variant="outline"
-          disabled={!selectedWorkspaceId}
+          disabled={!selectedWorkspace}
           onClick={onImportProject}>
           <ArrowSquareIn weight="thin" size={18} />
-          <p className="text-xs dark:font-light">{t("Import Project")}</p>
+          <p className="text-xs dark:font-light">{t("Import")}</p>
         </Button>
       </div>
     </div>

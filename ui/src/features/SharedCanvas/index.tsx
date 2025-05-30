@@ -40,6 +40,7 @@ const SharedCanvas: React.FC<Props> = ({
   undoTrackerActionWrapper,
 }) => {
   const t = useT();
+
   const {
     currentWorkflowId,
     isSubworkflow,
@@ -56,17 +57,19 @@ const SharedCanvas: React.FC<Props> = ({
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
+    selectedWorkspace,
+    handleSelectWorkspace,
     handleDialogClose,
     handleShowImportPopover,
     showDialog,
   } = useHooks({ yWorkflows, project, undoTrackerActionWrapper });
 
-  const { selectedWorkspaceId, handleProjectImport, handleSelectWorkspace } =
-    useSharedProjectImport({
-      sharedYdoc: yDoc,
-      sharedProject: project,
-      token: accessToken,
-    });
+  const { handleProjectImport } = useSharedProjectImport({
+    sharedYdoc: yDoc,
+    sharedProject: project,
+    selectedWorkspace: selectedWorkspace,
+    token: accessToken,
+  });
 
   const { useGetMeAndWorkspaces } = useUser();
 
@@ -78,7 +81,7 @@ const SharedCanvas: React.FC<Props> = ({
     }),
     [handleNodeSettings],
   );
-  console.log("WORKSPACES", workspaces);
+
   return (
     <div className="flex h-screen flex-col">
       <EditorProvider value={editorContext}>
@@ -113,11 +116,11 @@ const SharedCanvas: React.FC<Props> = ({
                     onClick={handleShowImportPopover}
                   />
                 </PopoverTrigger>
-                <PopoverContent>
+                <PopoverContent className="w-60">
                   {showDialog === "import" && workspaces && (
                     <ImportPopover
                       workspaces={workspaces}
-                      selectedWorkspaceId={selectedWorkspaceId}
+                      selectedWorkspace={selectedWorkspace}
                       onSelectWorkspace={handleSelectWorkspace}
                       onImportProject={handleProjectImport}
                     />
