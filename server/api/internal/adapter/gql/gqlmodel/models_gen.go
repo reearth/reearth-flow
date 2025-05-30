@@ -528,6 +528,14 @@ type WorkspaceMember struct {
 	UserID ID    `json:"userId"`
 }
 
+type Previewsnapshot struct {
+	ID        ID        `json:"id"`
+	Timestamp time.Time `json:"timestamp"`
+	Updates   []int     `json:"updates"`
+	Version   int       `json:"version"`
+	Name      *string   `json:"name,omitempty"`
+}
+
 type AssetSortType string
 
 const (

@@ -13,6 +13,7 @@ type WebsocketClient interface {
 	GetHistoryMetadata(ctx context.Context, docID string) ([]*websocket.HistoryMetadata, error)
 	Rollback(ctx context.Context, id string, version int) (*websocket.Document, error)
 	FlushToGCS(ctx context.Context, id string) error
+	CreateSnapshot(ctx context.Context, docID string, version int, name string) (*websocket.Document, error)
 
 	Close() error
 }

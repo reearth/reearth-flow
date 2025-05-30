@@ -40,6 +40,20 @@ type rollbackRequest struct {
 	Version uint64 `json:"version"`
 }
 
+type createSnapshotRequest struct {
+	DocID   string `json:"doc_id"`
+	Version uint64 `json:"version"`
+	Name    string `json:"name"`
+}
+
+type snapshotResponse struct {
+	ID        string `json:"id"`
+	Updates   []byte `json:"updates"`
+	Version   uint64 `json:"version"`
+	Timestamp string `json:"timestamp"`
+	Name      string `json:"name"`
+}
+
 func NewClient(config Config) (*Client, error) {
 	if config.ServerURL == "" {
 		config.ServerURL = "http://localhost:8000"
@@ -338,4 +352,64 @@ func (c *Client) FlushToGCS(ctx context.Context, id string) error {
 	}
 
 	return nil
+}
+
+func (c *Client) CreateSnapshot(ctx context.Context, docID string, version int, name string) (*websocket.Document, error) {
+	url := fmt.Sprintf("%s/api/document/snapshot", c.config.ServerURL)
+
+	createSnapshotReq := createSnapshotRequest{
+		DocID:   docID,
+		Version: uint64(version),
+		Name:    name,
+	}
+
+	reqBody, err := json.Marshal(createSnapshotReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, io.NopCloser(bytes.NewReader(reqBody)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create snapshot: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
+	}
+
+	var snapshotResp snapshotResponse
+	if err := json.NewDecoder(resp.Body).Decode(&snapshotResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	updates := make([]int, len(snapshotResp.Updates))
+	for i, update := range snapshotResp.Updates {
+		updates[i] = int(update)
+	}
+
+	timestamp, err := time.Parse(time.RFC3339, snapshotResp.Timestamp)
+	if err != nil {
+		log.Warnf("failed to parse timestamp: %v, using current time", err)
+		timestamp = time.Now()
+	}
+
+	return &websocket.Document{
+		ID:        snapshotResp.ID,
+		Updates:   updates,
+		Version:   int(snapshotResp.Version),
+		Timestamp: timestamp,
+	}, nil
 }
