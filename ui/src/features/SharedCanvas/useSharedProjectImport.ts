@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import { useCallback, useState } from "react";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
@@ -30,7 +31,7 @@ export default ({
   const [isProjectImporting, setIsProjectImporting] = useState<boolean>(false);
 
   const { createProject } = useProject();
-
+  const navigate = useNavigate();
   const handleProjectImport = useCallback(async () => {
     try {
       setIsProjectImporting(true);
@@ -82,6 +83,7 @@ export default ({
           });
         });
         yWebSocketProvider?.destroy();
+        navigate({ to: `/workspaces/${selectedWorkspace.id}/projects` });
       }
       toast({
         title: t("Project Imported"),
@@ -95,10 +97,17 @@ export default ({
       });
     } catch (error) {
       console.error("Failed to import project into selected workspace:", error);
+      toast({
+        title: t("Project Import Failed"),
+        description: t(
+          "Project could not be imported into the selected workspace",
+        ),
+      });
       setIsProjectImporting(false);
     }
   }, [
     createProject,
+    navigate,
     sharedYdoc,
     sharedProject,
     selectedWorkspace,

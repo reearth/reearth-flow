@@ -112,7 +112,7 @@ export default ({
 
   const { handleProjectExport } = useProjectExport(project);
   const [showDialog, setShowDialog] = useState<"import" | undefined>(undefined);
-  const handleShowImportPopover = () => setShowDialog("import");
+  const handleShowImportDialog = () => setShowDialog("import");
   const [selectedWorkspace, setSelectedWorkspace] = useState<Workspace | null>(
     null,
   );
@@ -143,7 +143,7 @@ export default ({
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
     showDialog,
-    handleShowImportPopover,
+    handleShowImportDialog,
     selectedWorkspace,
     handleSelectWorkspace,
     handleDialogClose,
