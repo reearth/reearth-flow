@@ -14,8 +14,8 @@ services:
 
   log-subscriber:
     build:
-      context: .
-      dockerfile: ./Dockerfile
+      context: ../../
+      dockerfile: server/subscriber/Dockerfile
     container_name: log-subscriber
     restart: always
     depends_on:
@@ -29,3 +29,5 @@ services:
       - REEARTH_FLOW_SUBSCRIBER_WORKER_STDOUT_LOG_SUBSCRIPTION_ID=${REEARTH_FLOW_SUBSCRIBER_WORKER_STDOUT_LOG_SUBSCRIPTION_ID}
       - REEARTH_FLOW_SUBSCRIBER_PORT=${REEARTH_FLOW_SUBSCRIBER_PORT}
       - REEARTH_FLOW_SUBSCRIBER_REDIS_URL=${REEARTH_FLOW_SUBSCRIBER_REDIS_URL}
+      - REEARTH_FLOW_SUBSCRIBER_DB=${REEARTH_FLOW_SUBSCRIBER_DB}
+      - REEARTH_FLOW_SUBSCRIBER_NODE_STATUS_SUBSCRIPTION_ID=${REEARTH_FLOW_SUBSCRIBER_NODE_STATUS_SUBSCRIPTION_ID}
