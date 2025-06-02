@@ -11,7 +11,6 @@ import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import useYNode from "@flow/lib/yjs/useYNode";
 import { Edge, Node, Project } from "@flow/types";
 
-import useNodeLocker from "../Editor/useNodeLocker";
 import useUIState from "../Editor/useUIState";
 
 export default ({
@@ -29,6 +28,7 @@ export default ({
   const { fitView } = useReactFlow();
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+  const [openNode, setOpenNode] = useState<Node | undefined>(undefined);
 
   const [currentWorkflowId, setCurrentWorkflowId] = useState(
     DEFAULT_ENTRY_GRAPH_ID,
@@ -97,26 +97,24 @@ export default ({
     fitView({ padding: 0.5 });
   }, [fitView]);
 
-  const { locallyLockedNode, handleNodeLocking } = useNodeLocker({
-    nodes,
-    selectedNodeIds,
-    setSelectedNodeIds,
-  });
-
-  const handleNodeDoubleClick = useCallback(
-    (_e: MouseEvent | undefined, nodeId: string, subworkflowId?: string) => {
-      if (subworkflowId) {
-        handleWorkflowOpen(subworkflowId);
+  const handleOpenNode = useCallback(
+    (nodeId?: string) => {
+      if (!nodeId) {
+        setOpenNode(undefined);
       } else {
-        fitView({
-          nodes: [{ id: nodeId }],
-          duration: 500,
-          padding: 2,
-        });
-        handleNodeLocking(nodeId);
+        setOpenNode((on) =>
+          on?.id === nodeId ? undefined : nodes.find((n) => n.id === nodeId),
+        );
       }
     },
-    [handleWorkflowOpen, fitView, handleNodeLocking],
+    [nodes, setOpenNode],
+  );
+
+  const handleNodeSettings = useCallback(
+    (_e: MouseEvent | undefined, nodeId: string) => {
+      handleOpenNode(nodeId);
+    },
+    [handleOpenNode],
   );
 
   const { handleProjectExport } = useProjectExport(project);
@@ -129,11 +127,12 @@ export default ({
     openWorkflows,
     isMainWorkflow,
     hoveredDetails,
-    locallyLockedNode,
+    openNode,
     handleProjectExport,
     handleNodeHover,
     handleNodesChange: handleYNodesChange,
-    handleNodeDoubleClick,
+    handleOpenNode,
+    handleNodeSettings,
     handleEdgeHover,
     handleWorkflowOpen,
     handleWorkflowClose,

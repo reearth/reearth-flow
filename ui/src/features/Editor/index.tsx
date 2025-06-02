@@ -4,7 +4,13 @@ import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 import Canvas from "@flow/features/Canvas";
 import { YWorkflow } from "@flow/lib/yjs/types";
 
-import { TopBar, OverlayUI, ParamsDialog, RightPanel } from "./components";
+import {
+  TopBar,
+  OverlayUI,
+  ParamsDialog,
+  RightPanel,
+  NodeDeletionDialog,
+} from "./components";
 import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
 
@@ -32,8 +38,7 @@ export default function Editor({
     nodes,
     edges,
     selectedEdgeIds,
-    // lockedNodeIds,
-    locallyLockedNode,
+    openNode,
     hoveredDetails,
     nodePickerOpen,
     canUndo,
@@ -41,18 +46,24 @@ export default function Editor({
     allowedToDeploy,
     isMainWorkflow,
     hasReader,
+    deferredDeleteRef,
+    showBeforeDeleteDialog,
     rightPanelContent,
     handleRightPanelOpen,
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
+    handleWorkflowOpen,
     handleWorkflowClose,
     handleWorkflowChange,
     handleNodesAdd,
     handleNodesChange,
+    handleBeforeDeleteNodes,
+    handleDeleteDialogClose,
     handleNodeDataUpdate,
     handleNodeHover,
-    handleNodeDoubleClick,
+    handleNodeSettings,
+    handleOpenNode,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgesAdd,
@@ -72,9 +83,9 @@ export default function Editor({
   const editorContext = useMemo(
     (): EditorContextType => ({
       onNodesChange: handleNodesChange,
-      onSecondaryNodeAction: handleNodeDoubleClick,
+      onNodeSettings: handleNodeSettings,
     }),
-    [handleNodesChange, handleNodeDoubleClick],
+    [handleNodesChange, handleNodeSettings],
   );
 
   return (
@@ -111,12 +122,13 @@ export default function Editor({
                 nodes={nodes}
                 edges={edges}
                 selectedEdgeIds={selectedEdgeIds}
-                canvasLock={!!locallyLockedNode}
                 onWorkflowAdd={handleWorkflowAdd}
+                onWorkflowOpen={handleWorkflowOpen}
                 onNodesAdd={handleNodesAdd}
+                onBeforeDelete={handleBeforeDeleteNodes}
                 onNodesChange={handleNodesChange}
                 onNodeHover={handleNodeHover}
-                onNodeDoubleClick={handleNodeDoubleClick}
+                onNodeSettings={handleNodeSettings}
                 onNodePickerOpen={handleNodePickerOpen}
                 onEdgesAdd={handleEdgesAdd}
                 onEdgesChange={handleEdgesChange}
@@ -133,11 +145,20 @@ export default function Editor({
             project={currentProject}
             yDoc={yDoc}
           />
+
           <ParamsDialog
-            selected={locallyLockedNode}
+            openNode={openNode}
+            onOpenNode={handleOpenNode}
             onDataSubmit={handleNodeDataUpdate}
             onWorkflowRename={handleWorkflowRename}
           />
+          {showBeforeDeleteDialog && (
+            <NodeDeletionDialog
+              showBeforeDeleteDialog={showBeforeDeleteDialog}
+              deferredDeleteRef={deferredDeleteRef}
+              onDialogClose={handleDeleteDialogClose}
+            />
+          )}
         </div>
       </EditorProvider>
     </div>

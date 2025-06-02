@@ -52,7 +52,7 @@ const SelectWidget = <
         className={`flex h-8 w-full items-center justify-between rounded border bg-background px-3 hover:bg-accent ${
           rawErrors.length > 0 ? "border-destructive" : ""
         }`}
-        disabled={disabled || readonly}
+        disabled={readonly || disabled}
         onBlur={handleBlur}
         onFocus={handleFocus}>
         <span className={`${value ? "" : "text-muted-foreground"}`}>

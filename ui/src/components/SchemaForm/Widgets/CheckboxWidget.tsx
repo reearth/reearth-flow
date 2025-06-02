@@ -76,7 +76,7 @@ const CheckboxWidget = <
           name={id}
           checked={typeof value === "undefined" ? false : Boolean(value)}
           required={required}
-          disabled={disabled || readonly}
+          disabled={readonly || disabled}
           autoFocus={autofocus}
           onChange={_onChange}
           onBlur={_onBlur}

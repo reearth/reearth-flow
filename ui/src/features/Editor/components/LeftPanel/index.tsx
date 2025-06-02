@@ -34,7 +34,6 @@ type Props = {
   onNodeDoubleClick: (
     e: React.MouseEvent<Element> | undefined,
     nodeId: string,
-    subworkflowId?: string,
   ) => void;
 };
 
@@ -70,7 +69,7 @@ const LeftPanel: React.FC<Props> = ({
       }));
 
       onNodesChange(nodeChanges);
-      onNodeDoubleClick(undefined, node.id, node.data.subworkflowId);
+      onNodeDoubleClick(undefined, node.id);
     },
     [nodes, onNodesChange, onNodeDoubleClick],
   );

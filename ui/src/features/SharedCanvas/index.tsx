@@ -33,39 +33,35 @@ const SharedCanvas: React.FC<Props> = ({
     nodes,
     edges,
     openWorkflows,
-    locallyLockedNode,
+    openNode,
     // isMainWorkflow,
     // hoveredDetails,
     handleProjectExport,
     // handleNodeHover,
     // handleEdgeHover,
-    handleNodeDoubleClick,
+    handleOpenNode,
+    handleNodeSettings,
     // handleWorkflowOpen,
-    handleNodesChange,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
   } = useHooks({ yWorkflows, project, undoTrackerActionWrapper });
 
   const editorContext = useMemo(
     (): EditorContextType => ({
-      onNodesChange: handleNodesChange,
-      onSecondaryNodeAction: handleNodeDoubleClick,
+      onNodeSettings: handleNodeSettings,
     }),
-    [handleNodesChange, handleNodeDoubleClick],
+    [handleNodeSettings],
   );
 
   return (
     <div className="relative flex size-full flex-col">
       <EditorProvider value={editorContext}>
         <Canvas
+          readonly
           isSubworkflow={isSubworkflow}
           nodes={nodes}
           edges={edges}
-          canvasLock
-          // onNodeHover={handleNodeHover}
-          onNodesChange={handleNodesChange}
-          onNodeDoubleClick={handleNodeDoubleClick}
-          // onEdgeHover={handleEdgeHover}
+          onNodeSettings={handleNodeSettings}
         />
         <WorkflowTabs
           openWorkflows={openWorkflows}
@@ -78,7 +74,12 @@ const SharedCanvas: React.FC<Props> = ({
             {t("Export Project")}
           </Button>
         </div>
-        <ParamsDialog selected={locallyLockedNode} />
+
+        <ParamsDialog
+          readonly
+          openNode={openNode}
+          onOpenNode={handleOpenNode}
+        />
       </EditorProvider>
     </div>
   );
