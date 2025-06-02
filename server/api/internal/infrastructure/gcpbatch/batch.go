@@ -64,7 +64,6 @@ func NewBatch(ctx context.Context, config BatchConfig) (gateway.Batch, error) {
 }
 
 func (b *BatchRepo) SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL, metadataURL string, variables map[string]interface{}, projectID id.ProjectID, workspaceID accountdomain.WorkspaceID) (string, error) {
-
 	formattedJobID := formatJobID(jobID.String())
 
 	jobName := fmt.Sprintf("projects/%s/locations/%s/jobs/%s", b.config.ProjectID, b.config.Region, formattedJobID)

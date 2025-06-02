@@ -26,8 +26,10 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
 )
 
-const databaseName = "reearth-flow"
-const accountDatabaseName = "reearth-account"
+const (
+	databaseName        = "reearth-flow"
+	accountDatabaseName = "reearth-account"
+)
 
 func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*repo.Container, *gateway.Container, *accountrepo.Container, *accountgateway.Container) {
 	interactor.InitWebsocket(
