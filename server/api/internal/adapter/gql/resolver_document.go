@@ -74,7 +74,7 @@ func (r *mutationResolver) FlushProjectToGcs(ctx context.Context, projectId gqlm
 	return &result, nil
 }
 
-func (r *mutationResolver) Previewsnapshot(ctx context.Context, projectID gqlmodel.ID, version int, name *string) (*gqlmodel.Previewsnapshot, error) {
+func (r *mutationResolver) PreviewSnapshot(ctx context.Context, projectID gqlmodel.ID, version int, name *string) (*gqlmodel.PreviewSnapshot, error) {
 	var snapshotName string
 	if name != nil {
 		snapshotName = *name
@@ -85,7 +85,7 @@ func (r *mutationResolver) Previewsnapshot(ctx context.Context, projectID gqlmod
 		return nil, err
 	}
 
-	return &gqlmodel.Previewsnapshot{
+	return &gqlmodel.PreviewSnapshot{
 		ID:        projectID,
 		Updates:   history.Updates,
 		Version:   history.Version,

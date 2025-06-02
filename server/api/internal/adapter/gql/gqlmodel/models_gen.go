@@ -277,6 +277,14 @@ type Parameter struct {
 	Value     interface{}   `json:"value"`
 }
 
+type PreviewSnapshot struct {
+	ID        ID        `json:"id"`
+	Name      *string   `json:"name,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
+	Updates   []int     `json:"updates"`
+	Version   int       `json:"version"`
+}
+
 type Project struct {
 	BasicAuthPassword string       `json:"basicAuthPassword"`
 	BasicAuthUsername string       `json:"basicAuthUsername"`
@@ -526,14 +534,6 @@ type WorkspaceMember struct {
 	Role   Role  `json:"role"`
 	User   *User `json:"user,omitempty"`
 	UserID ID    `json:"userId"`
-}
-
-type Previewsnapshot struct {
-	ID        ID        `json:"id"`
-	Timestamp time.Time `json:"timestamp"`
-	Updates   []int     `json:"updates"`
-	Version   int       `json:"version"`
-	Name      *string   `json:"name,omitempty"`
 }
 
 type AssetSortType string
