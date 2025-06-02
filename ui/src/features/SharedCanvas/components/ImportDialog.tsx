@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { memo, useCallback } from "react";
 
 import {
   Button,
@@ -104,4 +104,4 @@ const ImportDialog: React.FC<Props> = ({
   );
 };
 
-export default ImportDialog;
+export default memo(ImportDialog);

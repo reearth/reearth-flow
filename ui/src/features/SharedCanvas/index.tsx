@@ -1,19 +1,15 @@
-import { ArrowSquareIn, Export } from "@phosphor-icons/react";
 import { useMemo } from "react";
 import { Doc, Map as YMap } from "yjs";
 
-import { IconButton } from "@flow/components";
 import Canvas from "@flow/features/Canvas";
-import { useSharedProjectImport } from "@flow/hooks";
 import { useUser } from "@flow/lib/gql";
-import { useT } from "@flow/lib/i18n";
 import { YWorkflow } from "@flow/lib/yjs/types";
 import { Project } from "@flow/types";
 
-import { ParamsPanel, WorkflowTabs } from "../Editor/components";
+import { ParamsPanel } from "../Editor/components";
 import { EditorContextType, EditorProvider } from "../Editor/editorContext";
 
-import ImportDialog from "./components/ImportDialog";
+import { SharedCanvasTopBar } from "./components";
 import useHooks from "./hooks";
 
 type Props = {
@@ -34,8 +30,6 @@ const SharedCanvas: React.FC<Props> = ({
   accessToken,
   undoTrackerActionWrapper,
 }) => {
-  const t = useT();
-
   const {
     currentWorkflowId,
     isSubworkflow,
@@ -43,29 +37,12 @@ const SharedCanvas: React.FC<Props> = ({
     edges,
     openWorkflows,
     openNode,
-    // isMainWorkflow,
-    // hoveredDetails,
-    handleProjectExport,
-    // handleNodeHover,
-    // handleEdgeHover,
     handleOpenNode,
     handleNodeSettings,
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
-    selectedWorkspace,
-    handleSelectWorkspace,
-    handleDialogClose,
-    handleShowImportDialog,
-    showDialog,
-  } = useHooks({ yWorkflows, project, undoTrackerActionWrapper });
-
-  const { handleProjectImport } = useSharedProjectImport({
-    sharedYdoc: yDoc,
-    sharedProject: project,
-    selectedWorkspace,
-    accessToken,
-  });
+  } = useHooks({ yWorkflows, undoTrackerActionWrapper });
 
   const { useGetMeAndWorkspaces } = useUser();
 
@@ -82,40 +59,17 @@ const SharedCanvas: React.FC<Props> = ({
     <div className="flex h-screen flex-col">
       <EditorProvider value={editorContext}>
         <div className="flex shrink-0 justify-between gap-2 bg-secondary h-[44px] w-[100vw]">
-          <div className="flex flex-1 gap-2 h-full overflow-hidden">
-            <WorkflowTabs
-              currentWorkflowId={currentWorkflowId}
-              openWorkflows={openWorkflows}
-              onWorkflowClose={handleWorkflowClose}
-              onWorkflowChange={handleCurrentWorkflowIdChange}
-            />
-          </div>
-          <div className="flex items-center">
-            <IconButton
-              tooltipText={t("Export Project")}
-              tooltipOffset={6}
-              icon={<Export weight="thin" size={18} />}
-              onClick={handleProjectExport}
-            />
-
-            <IconButton
-              tooltipText={t("Import Project")}
-              tooltipOffset={6}
-              icon={<ArrowSquareIn weight="thin" size={18} />}
-              disabled={!me}
-              onClick={handleShowImportDialog}
-            />
-
-            {showDialog === "import" && workspaces && (
-              <ImportDialog
-                workspaces={workspaces}
-                selectedWorkspace={selectedWorkspace}
-                onSelectWorkspace={handleSelectWorkspace}
-                onImportProject={handleProjectImport}
-                onDialogClose={handleDialogClose}
-              />
-            )}
-          </div>
+          <SharedCanvasTopBar
+            currentWorkflowId={currentWorkflowId}
+            openWorkflows={openWorkflows}
+            yDoc={yDoc}
+            project={project}
+            accessToken={accessToken}
+            me={me}
+            workspaces={workspaces}
+            onWorkflowClose={handleWorkflowClose}
+            onWorkflowChange={handleCurrentWorkflowIdChange}
+          />
         </div>
         <div className="relative flex flex-1">
           <div className="flex flex-1 flex-col">
@@ -129,7 +83,6 @@ const SharedCanvas: React.FC<Props> = ({
             />
           </div>
         </div>
-
         <ParamsPanel readonly openNode={openNode} onOpenNode={handleOpenNode} />
       </EditorProvider>
     </div>

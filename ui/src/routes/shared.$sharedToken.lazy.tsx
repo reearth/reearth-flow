@@ -97,14 +97,12 @@ const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
   return !yWorkflows || !isSynced || !undoTrackerActionWrapper ? (
     <LoadingSplashscreen />
   ) : (
-    <div className="h-screen">
-      <SharedCanvas
-        yWorkflows={yWorkflows}
-        yDoc={yDocState}
-        project={sharedProject}
-        accessToken={accessToken}
-        undoTrackerActionWrapper={undoTrackerActionWrapper}
-      />
-    </div>
+    <SharedCanvas
+      yWorkflows={yWorkflows}
+      yDoc={yDocState}
+      project={sharedProject}
+      accessToken={accessToken}
+      undoTrackerActionWrapper={undoTrackerActionWrapper}
+    />
   );
 };
