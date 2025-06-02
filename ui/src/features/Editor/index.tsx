@@ -38,8 +38,7 @@ export default function Editor({
     nodes,
     edges,
     selectedEdgeIds,
-    // lockedNodeIds,
-    locallyLockedNode,
+    openNode,
     hoveredDetails,
     nodePickerOpen,
     canUndo,
@@ -64,6 +63,7 @@ export default function Editor({
     handleNodeDataUpdate,
     handleNodeHover,
     handleNodeSettings,
+    handleOpenNode,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgesAdd,
@@ -122,7 +122,6 @@ export default function Editor({
                 nodes={nodes}
                 edges={edges}
                 selectedEdgeIds={selectedEdgeIds}
-                canvasLock={!!locallyLockedNode}
                 onWorkflowAdd={handleWorkflowAdd}
                 onWorkflowOpen={handleWorkflowOpen}
                 onNodesAdd={handleNodesAdd}
@@ -146,8 +145,10 @@ export default function Editor({
             project={currentProject}
             yDoc={yDoc}
           />
+
           <ParamsPanel
-            selected={locallyLockedNode}
+            openNode={openNode}
+            onOpenNode={handleOpenNode}
             onDataSubmit={handleNodeDataUpdate}
             onWorkflowRename={handleWorkflowRename}
           />
