@@ -3,8 +3,8 @@ import { Doc, Map as YMap } from "yjs";
 
 import Canvas from "@flow/features/Canvas";
 import { useUser } from "@flow/lib/gql";
-import { YWorkflow } from "@flow/lib/yjs/types";
-import { Project } from "@flow/types";
+import type { YWorkflow } from "@flow/lib/yjs/types";
+import type { Project } from "@flow/types";
 
 import { ParamsPanel } from "../Editor/components";
 import { EditorContextType, EditorProvider } from "../Editor/editorContext";

@@ -5,7 +5,7 @@ import { Doc } from "yjs";
 import { IconButton } from "@flow/components";
 import { WorkflowTabs } from "@flow/features/Editor/components";
 import { useT } from "@flow/lib/i18n";
-import { Me, Project, Workspace } from "@flow/types";
+import type { Me, Project, Workspace } from "@flow/types";
 
 import ImportDialog from "../ImportDialog";
 

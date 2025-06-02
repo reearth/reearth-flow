@@ -1,5 +1,5 @@
 import { ApiResponse } from "./api";
-import { Workspace } from "./workspace";
+import type { Workspace } from "./workspace";
 
 export type Me = {
   myWorkspaceId: string;
