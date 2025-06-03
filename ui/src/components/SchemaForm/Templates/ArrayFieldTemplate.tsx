@@ -76,7 +76,7 @@ const ArrayFieldTemplate = <
         {canAdd && (
           <AddButton
             onClick={onAddClick}
-            disabled={disabled || readonly}
+            disabled={readonly || disabled}
             uiSchema={uiSchema}
             registry={registry}
             className="mx-0 my-2"

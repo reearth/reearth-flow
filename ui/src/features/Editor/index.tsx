@@ -4,7 +4,13 @@ import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 import Canvas from "@flow/features/Canvas";
 import { YWorkflow } from "@flow/lib/yjs/types";
 
-import { TopBar, OverlayUI, ParamsPanel, RightPanel } from "./components";
+import {
+  TopBar,
+  OverlayUI,
+  ParamsPanel,
+  RightPanel,
+  NodeDeletionDialog,
+} from "./components";
 import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
 
@@ -32,8 +38,7 @@ export default function Editor({
     nodes,
     edges,
     selectedEdgeIds,
-    // lockedNodeIds,
-    locallyLockedNode,
+    openNode,
     hoveredDetails,
     nodePickerOpen,
     canUndo,
@@ -41,6 +46,8 @@ export default function Editor({
     allowedToDeploy,
     isMainWorkflow,
     hasReader,
+    deferredDeleteRef,
+    showBeforeDeleteDialog,
     rightPanelContent,
     handleRightPanelOpen,
     handleWorkflowAdd,
@@ -51,9 +58,12 @@ export default function Editor({
     handleWorkflowChange,
     handleNodesAdd,
     handleNodesChange,
+    handleBeforeDeleteNodes,
+    handleDeleteDialogClose,
     handleNodeDataUpdate,
     handleNodeHover,
     handleNodeSettings,
+    handleOpenNode,
     handleNodePickerOpen,
     handleNodePickerClose,
     handleEdgesAdd,
@@ -112,10 +122,10 @@ export default function Editor({
                 nodes={nodes}
                 edges={edges}
                 selectedEdgeIds={selectedEdgeIds}
-                canvasLock={!!locallyLockedNode}
                 onWorkflowAdd={handleWorkflowAdd}
                 onWorkflowOpen={handleWorkflowOpen}
                 onNodesAdd={handleNodesAdd}
+                onBeforeDelete={handleBeforeDeleteNodes}
                 onNodesChange={handleNodesChange}
                 onNodeHover={handleNodeHover}
                 onNodeSettings={handleNodeSettings}
@@ -135,11 +145,20 @@ export default function Editor({
             project={currentProject}
             yDoc={yDoc}
           />
+
           <ParamsPanel
-            selected={locallyLockedNode}
+            openNode={openNode}
+            onOpenNode={handleOpenNode}
             onDataSubmit={handleNodeDataUpdate}
             onWorkflowRename={handleWorkflowRename}
           />
+          {showBeforeDeleteDialog && (
+            <NodeDeletionDialog
+              showBeforeDeleteDialog={showBeforeDeleteDialog}
+              deferredDeleteRef={deferredDeleteRef}
+              onDialogClose={handleDeleteDialogClose}
+            />
+          )}
         </div>
       </EditorProvider>
     </div>

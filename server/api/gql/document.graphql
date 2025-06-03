@@ -1,3 +1,12 @@
+# Project History Snapshot
+type PreviewSnapshot {
+  id: ID!
+  name: String
+  timestamp: DateTime!
+  updates: [Int!]!
+  version: Int!
+}
+
 # Latest Project Document
 type ProjectDocument implements Node {
   id: ID!
@@ -19,17 +28,18 @@ type ProjectSnapshotMetadata {
   version: Int!
 }
 
+# Mutation
+
+extend type Mutation {
+  saveSnapshot(projectId: ID!): Boolean
+  previewSnapshot(projectId: ID!, version: Int!, name: String): PreviewSnapshot
+  rollbackProject(projectId: ID!, version: Int!): ProjectDocument
+}
+
 # Query
 
 extend type Query {
   latestProjectSnapshot(projectId: ID!): ProjectDocument
-  projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
   projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
-}
-
-# Mutation
-
-extend type Mutation {
-  rollbackProject(projectId: ID!, version: Int!): ProjectDocument
-  saveSnapshot(projectId: ID!): Boolean
+  projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
 }

@@ -25,6 +25,7 @@ type Props = {
   selectedEdgeIds?: string[];
   onNodesChange?: (changes: NodeChange[]) => void;
   onEdgesChange?: (changes: EdgeChange[]) => void;
+  onBeforeDelete?: (args: { nodes: Node[] }) => Promise<boolean>;
   onWorkflowOpen?: (workflowId: string) => void;
   onNodeSettings?: (e: React.MouseEvent | undefined, nodeId: string) => void;
   onCopy?: (node?: Node) => void;
@@ -41,6 +42,7 @@ const CanvasContextMenu: React.FC<Props> = ({
   selectedEdgeIds,
   onNodesChange,
   onEdgesChange,
+  onBeforeDelete,
   onCopy,
   onCut,
   onPaste,
@@ -69,21 +71,23 @@ const CanvasContextMenu: React.FC<Props> = ({
   );
 
   const handleNodeDelete = useCallback(
-    (node?: Node, nodes?: Node[]) => {
+    async (node?: Node, nodes?: Node[]) => {
       if (!nodes && !node) return;
 
-      if (nodes) {
-        nodes.forEach((node) => {
-          onNodesChange?.([{ id: node.id, type: "remove" as const }]);
-        });
+      const toDelete = nodes ?? (node ? [node] : []);
+      const shouldDelete = await onBeforeDelete?.({ nodes: toDelete });
+
+      if (shouldDelete) {
+        onNodesChange?.(
+          toDelete.map((node) => ({ id: node.id, type: "remove" as const })),
+        );
+
         selectedEdgeIds?.forEach((edgeId) => {
           onEdgesChange?.([{ id: edgeId, type: "remove" as const }]);
         });
-      } else if (node) {
-        onNodesChange?.([{ id: node.id, type: "remove" }]);
       }
     },
-    [selectedEdgeIds, onNodesChange, onEdgesChange],
+    [selectedEdgeIds, onBeforeDelete, onNodesChange, onEdgesChange],
   );
   const menuItems = useMemo(() => {
     const wrapWithClose = (callback: () => void) => () => {

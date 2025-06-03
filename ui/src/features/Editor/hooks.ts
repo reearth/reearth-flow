@@ -23,7 +23,6 @@ import type { Algorithm, Direction, Edge, Node } from "@flow/types";
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useDebugRun from "./useDebugRun";
 import useDeployment from "./useDeployment";
-import useNodeLocker from "./useNodeLocker";
 import useUIState from "./useUIState";
 
 export default ({
@@ -46,6 +45,8 @@ export default ({
 
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
   const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([]);
+
+  const [openNode, setOpenNode] = useState<Node | undefined>(undefined);
 
   // TODO: If we split canvas more, or use refs, etc, this will become unnecessary @KaWaite
   useEffect(() => {
@@ -77,6 +78,11 @@ export default ({
     setSelectedEdgeIds,
     undoTrackerActionWrapper,
   });
+  const [showBeforeDeleteDialog, setShowBeforeDeleteDialog] =
+    useState<boolean>(false);
+  const deferredDeleteRef = useRef<{
+    resolve: (val: boolean) => void;
+  } | null>(null);
 
   const isSubworkflow = useMemo(() => {
     if (!currentYWorkflow) return false;
@@ -129,10 +135,6 @@ export default ({
 
   const hasReader = checkForReader(nodes);
 
-  const { lockedNodeIds, locallyLockedNode, handleNodeLocking } = useNodeLocker(
-    { nodes, selectedNodeIds, setSelectedNodeIds },
-  );
-
   const {
     openWorkflows,
     isMainWorkflow,
@@ -146,6 +148,18 @@ export default ({
     setCurrentWorkflowId,
   });
 
+  const handleOpenNode = useCallback(
+    (nodeId?: string) => {
+      if (!nodeId) {
+        setOpenNode(undefined);
+      }
+      setOpenNode((on) =>
+        on?.id === nodeId ? undefined : nodes.find((n) => n.id === nodeId),
+      );
+    },
+    [nodes, setOpenNode],
+  );
+
   // Passed to editor context so needs to be a ref
   const handleNodeSettingsClickRef =
     useRef<(e: MouseEvent | undefined, nodeId: string) => void>(undefined);
@@ -153,8 +167,9 @@ export default ({
     _e: MouseEvent | undefined,
     nodeId: string,
   ) => {
-    handleNodeLocking(nodeId);
+    handleOpenNode(nodeId);
   };
+
   const handleNodeSettings = useCallback(
     (e: MouseEvent | undefined, nodeId: string) =>
       handleNodeSettingsClickRef.current?.(e, nodeId),
@@ -226,6 +241,50 @@ export default ({
     rawWorkflows,
   });
 
+  const handleBeforeDeleteNodes = useCallback(
+    ({ nodes: nodesToDelete }: { nodes: Node[] }) => {
+      return new Promise<boolean>((resolve) => {
+        const deletingIds = new Set(nodesToDelete.map((node) => node.id));
+
+        let totalInputRouters = 0;
+        let totalOutputRouters = 0;
+        let remainingInputRouters = 0;
+        let remainingOutputRouters = 0;
+
+        for (const node of nodes) {
+          const officalName = node.data.officialName;
+          if (officalName !== "InputRouter" && officalName !== "OutputRouter")
+            continue;
+          const isDeleting = deletingIds.has(node.id);
+
+          if (officalName === "InputRouter") {
+            totalInputRouters++;
+            if (!isDeleting) remainingInputRouters++;
+          } else if (officalName === "OutputRouter") {
+            totalOutputRouters++;
+            if (!isDeleting) remainingOutputRouters++;
+          }
+        }
+
+        const isDeletingLastInputRouter =
+          totalInputRouters > 0 && remainingInputRouters === 0;
+
+        const isDeletingLastOutputRouter =
+          totalOutputRouters > 0 && remainingOutputRouters === 0;
+
+        if (isDeletingLastInputRouter || isDeletingLastOutputRouter) {
+          deferredDeleteRef.current = { resolve };
+          setShowBeforeDeleteDialog(true);
+        } else {
+          resolve(true);
+        }
+      });
+    },
+    [nodes],
+  );
+
+  const handleDeleteDialogClose = () => setShowBeforeDeleteDialog(false);
+
   useShortcuts([
     {
       keyBinding: { key: "r", commandKey: false },
@@ -287,8 +346,7 @@ export default ({
     nodes,
     edges,
     selectedEdgeIds,
-    lockedNodeIds,
-    locallyLockedNode,
+    openNode,
     hoveredDetails,
     nodePickerOpen,
     allowedToDeploy,
@@ -297,6 +355,8 @@ export default ({
     canRedo,
     isMainWorkflow,
     hasReader,
+    deferredDeleteRef,
+    showBeforeDeleteDialog,
     handleRightPanelOpen,
     handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowDeployment,
@@ -310,8 +370,11 @@ export default ({
     handleLayoutChange,
     handleNodesAdd: handleYNodesAdd,
     handleNodesChange: handleYNodesChange,
+    handleBeforeDeleteNodes,
+    handleDeleteDialogClose,
     handleNodeHover,
     handleNodeDataUpdate: handleYNodeDataUpdate,
+    handleOpenNode,
     handleNodeSettings,
     handleNodePickerOpen,
     handleNodePickerClose,

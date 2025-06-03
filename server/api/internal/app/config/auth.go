@@ -131,7 +131,7 @@ func getAuthDomain(url string) string {
 	}
 	// Auth0 JS library adds slash to the end of the domain (issuer)
 	if !strings.HasSuffix(url, "/") {
-		url = url + "/"
+		url += "/"
 	}
 	return url
 }
