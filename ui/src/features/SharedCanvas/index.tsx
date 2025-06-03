@@ -83,9 +83,9 @@ const SharedCanvas: React.FC<Props> = ({
               edges={edges}
               onNodeSettings={handleNodeSettings}
             />
-            <div className="absolute bottom-4 left-0 right-4 flex items-center justify-end gap-4">
+            <div className="absolute bottom-4 right-4 flex items-center justify-end gap-4 cursor-default select-none">
               <FlowLogo className="text-[#00A34188] size-10" />
-              <p className="font-extralight text-gray-400">{t("Shared")}</p>
+              <p className="font-extralight text-gray-400 ">{t("Shared")}</p>
             </div>
           </div>
         </div>

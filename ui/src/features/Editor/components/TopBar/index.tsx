@@ -1,10 +1,15 @@
 import { memo } from "react";
+import { Doc } from "yjs";
+
+import type { Project } from "@flow/types";
 
 import { WorkflowTabs } from "..";
 
 import { ActionBar, Breadcrumb, DebugActionBar, HomeMenu } from "./components";
 
 type Props = {
+  yDoc: Doc | null;
+  project?: Project;
   currentWorkflowId: string;
   openWorkflows: {
     id: string;
@@ -24,6 +29,8 @@ type Props = {
 };
 
 const TopBar: React.FC<Props> = ({
+  yDoc,
+  project,
   currentWorkflowId,
   openWorkflows,
   allowedToDeploy,
@@ -63,6 +70,8 @@ const TopBar: React.FC<Props> = ({
         />
         <div className="border-r h-4/5" />
         <ActionBar
+          yDoc={yDoc}
+          project={project}
           allowedToDeploy={allowedToDeploy}
           onProjectShare={onProjectShare}
           onWorkflowDeployment={onWorkflowDeployment}

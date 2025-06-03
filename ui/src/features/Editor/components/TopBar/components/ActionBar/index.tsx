@@ -6,6 +6,7 @@ import {
   Rocket,
 } from "@phosphor-icons/react";
 import { memo } from "react";
+import { Doc } from "yjs";
 
 import {
   DropdownMenu,
@@ -18,6 +19,7 @@ import {
   PopoverTrigger,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { Project } from "@flow/types";
 
 import { DeployDialog, SharePopover } from "./components";
 import useHooks from "./hooks";
@@ -25,6 +27,8 @@ import useHooks from "./hooks";
 const tooltipOffset = 6;
 
 type Props = {
+  yDoc: Doc | null;
+  project?: Project;
   allowedToDeploy: boolean;
   onWorkflowDeployment: (
     description: string,
@@ -35,6 +39,8 @@ type Props = {
 };
 
 const ActionBar: React.FC<Props> = ({
+  yDoc,
+  project,
   allowedToDeploy,
   onWorkflowDeployment,
   onProjectShare,
@@ -94,7 +100,7 @@ const ActionBar: React.FC<Props> = ({
               alignOffset={2}>
               <DropdownMenuItem
                 className="flex justify-between gap-4"
-                onClick={handleProjectExport}>
+                onClick={() => handleProjectExport({ yDoc, project })}>
                 <p>{t("Export Project")}</p>
                 <Export weight="thin" size={18} />
               </DropdownMenuItem>

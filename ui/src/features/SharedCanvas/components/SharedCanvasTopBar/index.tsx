@@ -53,7 +53,7 @@ const SharedCanvasTopBar: React.FC<Props> = ({
     showDialog,
     selectedWorkspace,
     handleSelectWorkspace,
-    handleProjectExport,
+    handleSharedProjectExport,
     handleSharedProjectImport,
     handleDialogClose,
     handleShowImportDialog,
@@ -98,7 +98,7 @@ const SharedCanvasTopBar: React.FC<Props> = ({
             alignOffset={2}>
             <DropdownMenuItem
               className="flex justify-between gap-4"
-              onClick={handleProjectExport}>
+              onClick={handleSharedProjectExport}>
               <p>{t("Export Project")}</p>
               <Export weight="thin" size={18} />
             </DropdownMenuItem>

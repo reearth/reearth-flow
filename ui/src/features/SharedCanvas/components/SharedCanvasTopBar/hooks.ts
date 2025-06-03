@@ -20,7 +20,18 @@ export default ({
     null,
   );
 
-  const { handleProjectExport } = useProjectExport(project);
+  const { handleProjectExport } = useProjectExport();
+
+  const handleSharedProjectExport = useCallback(async () => {
+    try {
+      handleProjectExport({
+        yDoc,
+        project,
+      });
+    } catch (error) {
+      console.error("Error exporting project:", error);
+    }
+  }, [handleProjectExport, yDoc, project]);
 
   const { handleSharedProjectImport } = useSharedProjectImport({
     sharedYdoc: yDoc,
@@ -43,8 +54,8 @@ export default ({
   return {
     showDialog,
     selectedWorkspace,
-    handleProjectExport,
     handleSharedProjectImport,
+    handleSharedProjectExport,
     handleShowImportDialog,
     handleSelectWorkspace,
     handleDialogClose,

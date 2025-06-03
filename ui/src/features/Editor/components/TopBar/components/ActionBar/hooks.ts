@@ -1,12 +1,9 @@
 import { useState } from "react";
 
 import { useProjectExport } from "@flow/hooks";
-import { useCurrentProject } from "@flow/stores";
 
 export default () => {
-  const [currentProject] = useCurrentProject();
-
-  const { handleProjectExport } = useProjectExport(currentProject);
+  const { handleProjectExport } = useProjectExport();
 
   const [showDialog, setShowDialog] = useState<
     "deploy" | "share" | "debugStop" | undefined
