@@ -42,7 +42,7 @@ const SharedCanvasTopBar: React.FC<Props> = ({
     selectedWorkspace,
     handleSelectWorkspace,
     handleProjectExport,
-    handleProjectImport,
+    handleSharedProjectImport,
     handleDialogClose,
     handleShowImportDialog,
   } = useHooks({ yDoc, project, accessToken });
@@ -76,7 +76,7 @@ const SharedCanvasTopBar: React.FC<Props> = ({
             workspaces={workspaces}
             selectedWorkspace={selectedWorkspace}
             onSelectWorkspace={handleSelectWorkspace}
-            onImportProject={handleProjectImport}
+            onImportProject={handleSharedProjectImport}
             onDialogClose={handleDialogClose}
           />
         )}
