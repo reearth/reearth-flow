@@ -65,13 +65,33 @@ func (r *mutationResolver) RollbackProject(ctx context.Context, projectId gqlmod
 	}, nil
 }
 
-func (r *mutationResolver) FlushProjectToGcs(ctx context.Context, projectId gqlmodel.ID) (*bool, error) {
+func (r *mutationResolver) SaveSnapshot(ctx context.Context, projectId gqlmodel.ID) (*bool, error) {
 	err := interactor.FlushToGCS(ctx, string(projectId))
 	if err != nil {
 		return nil, err
 	}
 	result := true
 	return &result, nil
+}
+
+func (r *mutationResolver) PreviewSnapshot(ctx context.Context, projectID gqlmodel.ID, version int, name *string) (*gqlmodel.PreviewSnapshot, error) {
+	var snapshotName string
+	if name != nil {
+		snapshotName = *name
+	}
+
+	history, err := interactor.CreateSnapshot(ctx, string(projectID), version, snapshotName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &gqlmodel.PreviewSnapshot{
+		ID:        projectID,
+		Updates:   history.Updates,
+		Version:   history.Version,
+		Timestamp: history.Timestamp,
+		Name:      name,
+	}, nil
 }
 
 type projectDocumentResolver struct{ *Resolver }

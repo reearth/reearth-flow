@@ -7,7 +7,7 @@ import (
 )
 
 func TestBuilder_New(t *testing.T) {
-	var tb = New()
+	tb := New()
 	assert.NotNil(t, tb)
 }
 
@@ -110,26 +110,26 @@ func TestBuilder_MustBuild(t *testing.T) {
 }
 
 func TestBuilder_ID(t *testing.T) {
-	var tb = New()
+	tb := New()
 	res := tb.ID(NewID()).MustBuild()
 	assert.NotNil(t, res.ID())
 }
 
 func TestBuilder_NewID(t *testing.T) {
-	var tb = New()
+	tb := New()
 	res := tb.NewID().MustBuild()
 	assert.NotNil(t, res.ID())
 }
 
 func TestBuilder_Project(t *testing.T) {
-	var tb = New().NewID()
+	tb := New().NewID()
 	pid := NewProjectID()
 	res := tb.Project(pid).MustBuild()
 	assert.Equal(t, pid, res.Project())
 }
 
 func TestBuilder_IsPublic(t *testing.T) {
-	var tb = New().NewID()
+	tb := New().NewID()
 
 	res := tb.IsPublic(true).MustBuild()
 	assert.True(t, res.IsPublic())
@@ -139,7 +139,7 @@ func TestBuilder_IsPublic(t *testing.T) {
 }
 
 func TestBuilder_Token(t *testing.T) {
-	var tb = New().NewID()
+	tb := New().NewID()
 	res := tb.Token("token").MustBuild()
 	assert.Equal(t, "token", res.Token())
 }
