@@ -9,16 +9,73 @@ use std::sync::Arc;
 use tracing::error;
 use yrs::{Doc, ReadTxn, StateVector, Transact};
 
-use crate::doc::types::{Document, HistoryItem};
 use crate::doc::types::{
-    DocumentResponse, HistoryMetadataResponse, HistoryResponse, RollbackRequest,
+    CreateSnapshotRequest, DocumentResponse, HistoryMetadataResponse, HistoryResponse,
+    RollbackRequest, SnapshotResponse,
 };
+use crate::doc::types::{Document, HistoryItem};
 use crate::storage::kv::DocOps;
 use crate::AppState;
 
 pub struct DocumentHandler;
 
 impl DocumentHandler {
+    pub async fn create_snapshot(
+        State(state): State<Arc<AppState>>,
+        Json(request): Json<CreateSnapshotRequest>,
+    ) -> Response {
+        let storage = state.pool.get_store();
+        let doc_id = request.doc_id;
+        let version = request.version;
+
+        let result = async {
+            let doc_result = storage
+                .create_snapshot_from_version(&doc_id, version)
+                .await?;
+
+            let doc = match doc_result {
+                Some(doc) => doc,
+                None => return Err(anyhow::anyhow!("Failed to create snapshot")),
+            };
+
+            let read_txn = doc.transact();
+            let state = read_txn.encode_state_as_update_v1(&StateVector::default());
+            drop(read_txn);
+
+            let timestamp = Utc::now();
+            let document = Document {
+                id: doc_id.clone(),
+                version,
+                timestamp,
+                updates: state,
+            };
+
+            Ok::<_, anyhow::Error>(document)
+        }
+        .await;
+
+        match result {
+            Ok(doc) => Json(SnapshotResponse {
+                id: doc.id,
+                updates: doc.updates,
+                version: doc.version,
+                timestamp: doc.timestamp.to_rfc3339(),
+                name: request.name,
+            })
+            .into_response(),
+            Err(err) => {
+                error!("Failed to create snapshot for document {}: {}", doc_id, err);
+                let status_code = if err.to_string().contains("not found") {
+                    StatusCode::NOT_FOUND
+                } else {
+                    StatusCode::INTERNAL_SERVER_ERROR
+                };
+
+                (status_code, format!("Error: {}", err)).into_response()
+            }
+        }
+    }
+
     pub async fn get_latest(
         Path(doc_id): Path<String>,
         State(state): State<Arc<AppState>>,
