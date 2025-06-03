@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import { Doc, Map as YMap } from "yjs";
 
+import { FlowLogo } from "@flow/components";
 import Canvas from "@flow/features/Canvas";
 import { useUser } from "@flow/lib/gql";
+import { useT } from "@flow/lib/i18n";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import type { Project } from "@flow/types";
 
@@ -54,7 +56,7 @@ const SharedCanvas: React.FC<Props> = ({
     }),
     [handleNodeSettings],
   );
-
+  const t = useT();
   return (
     <div className="flex h-screen flex-col">
       <EditorProvider value={editorContext}>
@@ -72,7 +74,7 @@ const SharedCanvas: React.FC<Props> = ({
           />
         </div>
         <div className="relative flex flex-1">
-          <div className="flex flex-1 flex-col">
+          <div className="flex flex-1 flex-col relative">
             <Canvas
               readonly
               isSubworkflow={isSubworkflow}
@@ -81,6 +83,10 @@ const SharedCanvas: React.FC<Props> = ({
               edges={edges}
               onNodeSettings={handleNodeSettings}
             />
+            <div className="absolute bottom-4 left-0 right-4 flex items-center justify-end gap-4">
+              <FlowLogo className="text-[#00A34188] size-10" />
+              <p className="font-extralight text-gray-400">{t("Shared")}</p>
+            </div>
           </div>
         </div>
         <ParamsPanel readonly openNode={openNode} onOpenNode={handleOpenNode} />
