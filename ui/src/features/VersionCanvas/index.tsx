@@ -3,7 +3,7 @@ import { Map as YMap } from "yjs";
 import Canvas from "@flow/features/Canvas";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 
-import { ParamsPanel, WorkflowTabs } from "../Editor/components";
+import { WorkflowTabs } from "../Editor/components";
 
 import useHooks from "./hooks";
 
@@ -18,7 +18,6 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
     nodes,
     edges,
     openWorkflows,
-    locallyLockedNode,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
   } = useHooks({ yWorkflows });
@@ -26,10 +25,10 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
   return (
     <div className="relative flex size-full flex-col">
       <Canvas
+        readonly
         isSubworkflow={isSubworkflow}
         nodes={nodes}
         edges={edges}
-        canvasLock
       />
       <WorkflowTabs
         openWorkflows={openWorkflows}
@@ -37,7 +36,6 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
         onWorkflowClose={handleWorkflowClose}
         onWorkflowChange={handleCurrentWorkflowIdChange}
       />
-      <ParamsPanel selected={locallyLockedNode} />
     </div>
   );
 };

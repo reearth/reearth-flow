@@ -33,7 +33,7 @@ export const useQueries = () => {
       enabled: !!projectId,
     });
 
-  const useProjectSnapshot = (projectId: string, version: number) =>
+  const useProjectSnapshotQuery = (projectId: string, version: number) =>
     useQuery({
       queryKey: [DocumentQueryKeys.GetProjectSnapshot, projectId],
       queryFn: async () => {
@@ -100,10 +100,43 @@ export const useQueries = () => {
     },
   });
 
+  const previewSnapshot = useMutation({
+    mutationFn: async ({
+      projectId,
+      version,
+    }: {
+      projectId: string;
+      version: number;
+    }) => {
+      const data = await graphQLContext?.PreviewSnapshot({
+        projectId,
+        version,
+      });
+
+      if (data?.previewSnapshot) {
+        return data?.previewSnapshot;
+      }
+    },
+    onSuccess: (previewSnapshot) => {
+      if (previewSnapshot) {
+        queryClient.invalidateQueries({
+          queryKey: [
+            DocumentQueryKeys.GetLatestProjectSnapshot,
+            previewSnapshot.id,
+          ],
+        });
+        queryClient.invalidateQueries({
+          queryKey: [DocumentQueryKeys.GetProjectHistory, previewSnapshot.id],
+        });
+      }
+    },
+  });
+
   return {
     useLatestProjectSnapshotQuery,
-    useProjectSnapshot,
+    useProjectSnapshotQuery,
     useProjectHistoryQuery,
     rollbackProjectMutation,
+    previewSnapshot,
   };
 };

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Doc } from "yjs";
 import * as Y from "yjs";
 
@@ -18,24 +18,14 @@ export default ({
 }) => {
   const {
     useGetProjectHistory,
-    useGetProjectSnapshot,
     useGetLatestProjectSnapshot,
     useRollbackProject,
+    usePreviewSnapshot,
   } = useDocument();
   const { history, isFetching } = useGetProjectHistory(projectId);
   const { projectDocument } = useGetLatestProjectSnapshot(projectId);
   const [selectedProjectSnapshotVersion, setSelectedProjectSnapshotVersion] =
     useState<number | null>(null);
-  const { projectSnapshot, refetch } = useGetProjectSnapshot(
-    projectId,
-    selectedProjectSnapshotVersion,
-  );
-
-  useEffect(() => {
-    if (selectedProjectSnapshotVersion !== null) {
-      refetch();
-    }
-  }, [selectedProjectSnapshotVersion, refetch]);
 
   const previewDocRef = useRef<Y.Doc | null>(null);
 
@@ -164,16 +154,20 @@ export default ({
 
   const handlePreviewVersion = useCallback(async () => {
     if (selectedProjectSnapshotVersion === null) return;
+    const previewData = await usePreviewSnapshot(
+      projectId,
+      selectedProjectSnapshotVersion,
+    );
 
     try {
-      if (!projectSnapshot) {
+      if (!previewData) {
         console.error(
           "No project snapshot found for version: ",
           selectedProjectSnapshotVersion,
         );
         return;
       }
-      const updates = projectSnapshot.updates;
+      const updates = previewData.previewSnapshot?.updates;
       if (!updates || !updates.length) {
         console.error("No updates found in snapshot");
         return;
@@ -204,7 +198,7 @@ export default ({
         variant: "destructive",
       });
     }
-  }, [t, toast, selectedProjectSnapshotVersion, projectSnapshot]);
+  }, [usePreviewSnapshot, projectId, t, toast, selectedProjectSnapshotVersion]);
 
   const handleVersionSelection = (version: number) => {
     if (previewDocRef.current) {
