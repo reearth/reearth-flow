@@ -13,15 +13,18 @@ export default () => {
   >(undefined);
 
   const handleShowDeployDialog = () => setShowDialog("deploy");
-  const handleShowShareDialog = () => setShowDialog("share");
+
   const handleShowVersionDialog = () => setShowDialog("version");
+
+  const handleShowSharePopover = () => setShowDialog("share");
+
   const handleDialogClose = () => setShowDialog(undefined);
 
   return {
     showDialog,
     handleShowDeployDialog,
-    handleShowShareDialog,
     handleShowVersionDialog,
+    handleShowSharePopover,
     handleDialogClose,
     handleProjectExport,
   };

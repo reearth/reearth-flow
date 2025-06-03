@@ -33,12 +33,13 @@ const SharedCanvas: React.FC<Props> = ({
     nodes,
     edges,
     openWorkflows,
-    locallyLockedNode,
+    openNode,
     // isMainWorkflow,
     // hoveredDetails,
     handleProjectExport,
     // handleNodeHover,
     // handleEdgeHover,
+    handleOpenNode,
     handleNodeSettings,
     // handleWorkflowOpen,
     handleWorkflowClose,
@@ -56,10 +57,10 @@ const SharedCanvas: React.FC<Props> = ({
     <div className="relative flex size-full flex-col">
       <EditorProvider value={editorContext}>
         <Canvas
+          readonly
           isSubworkflow={isSubworkflow}
           nodes={nodes}
           edges={edges}
-          canvasLock
           onNodeSettings={handleNodeSettings}
         />
         <WorkflowTabs
@@ -73,7 +74,8 @@ const SharedCanvas: React.FC<Props> = ({
             {t("Export Project")}
           </Button>
         </div>
-        <ParamsPanel selected={locallyLockedNode} />
+
+        <ParamsPanel readonly openNode={openNode} onOpenNode={handleOpenNode} />
       </EditorProvider>
     </div>
   );

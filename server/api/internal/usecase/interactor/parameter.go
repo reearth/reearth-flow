@@ -195,11 +195,12 @@ func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.U
 
 	// Reorder parameters
 	for _, p := range *params {
-		if p.ID() == param.ParamID {
+		switch {
+		case p.ID() == param.ParamID:
 			p.SetIndex(newIndex)
-		} else if currentIndex < newIndex && p.Index() > currentIndex && p.Index() <= newIndex {
+		case currentIndex < newIndex && p.Index() > currentIndex && p.Index() <= newIndex:
 			p.SetIndex(p.Index() - 1)
-		} else if currentIndex > newIndex && p.Index() >= newIndex && p.Index() < currentIndex {
+		case currentIndex > newIndex && p.Index() >= newIndex && p.Index() < currentIndex:
 			p.SetIndex(p.Index() + 1)
 		}
 

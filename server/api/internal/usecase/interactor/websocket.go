@@ -85,3 +85,11 @@ func FlushToGCS(ctx context.Context, id string) error {
 	}
 	return client.FlushToGCS(ctx, id)
 }
+
+func CreateSnapshot(ctx context.Context, docID string, version int, name string) (*ws.Document, error) {
+	client := getDefaultWebsocketClient()
+	if client == nil {
+		return nil, fmt.Errorf("websocket client is not initialized")
+	}
+	return client.CreateSnapshot(ctx, docID, version, name)
+}
