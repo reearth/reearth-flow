@@ -1,65 +1,42 @@
-import JSZip from "jszip";
-import { ChangeEvent, useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 
 import { config } from "@flow/config";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useAuth } from "@flow/lib/auth";
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { YWorkflow } from "@flow/lib/yjs/types";
-import { useCurrentWorkspace } from "@flow/stores";
-import { ProjectToImport } from "@flow/types";
+import type { Workspace } from "@flow/types";
 
 export default () => {
-  const { getAccessToken } = useAuth();
   const t = useT();
-
-  const [currentWorkspace] = useCurrentWorkspace();
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isProjectImporting, setIsProjectImporting] = useState<boolean>(false);
 
-  const handleProjectImportClick = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
-
   const { createProject } = useProject();
 
-  const handleProjectFileUpload = useCallback(
-    async (e: ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-
+  const handleProjectImport = useCallback(
+    async ({
+      projectName,
+      projectDescription,
+      workspace,
+      yDocBinary,
+      accessToken,
+    }: {
+      projectName: string;
+      projectDescription: string;
+      workspace: Workspace;
+      yDocBinary: Uint8Array<ArrayBufferLike>;
+      accessToken: string;
+    }) => {
       try {
         setIsProjectImporting(true);
 
-        const zip = await JSZip.loadAsync(file);
-
-        const yDocBinary = await zip.file("ydoc.bin")?.async("uint8array");
-        if (!yDocBinary) {
-          throw new Error("Missing Y.doc binary data");
-        }
-
-        const projectMetaJson = await zip
-          .file("projectMeta.json")
-          ?.async("string");
-        if (!projectMetaJson) {
-          throw new Error("Missing project metadata");
-        }
-
-        const projectMeta: ProjectToImport = JSON.parse(projectMetaJson);
-
-        if (!projectMeta) return console.error("Missing project metadata");
-        if (!currentWorkspace)
-          return console.error("Missing current workspace");
-
         const { project } = await createProject({
-          workspaceId: currentWorkspace?.id,
-          name: projectMeta.name + t("(import)"),
-          description: projectMeta.description,
+          workspaceId: workspace.id,
+          name: projectName + t("(import)"),
+          description: projectDescription,
         });
 
         if (!project) return console.error("Failed to create project");
@@ -67,14 +44,12 @@ export default () => {
         const yDoc = new Y.Doc();
         const { websocket } = config();
 
-        if (websocket && projectMeta) {
-          const token = await getAccessToken();
-
+        if (websocket) {
           const yWebSocketProvider = new WebsocketProvider(
             websocket,
             `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
             yDoc,
-            { params: { token } },
+            { params: { token: accessToken } },
           );
 
           await new Promise<void>((resolve) => {
@@ -99,13 +74,11 @@ export default () => {
         setIsProjectImporting(false);
       }
     },
-    [createProject, currentWorkspace, getAccessToken, t],
+    [createProject, t],
   );
 
   return {
     isProjectImporting,
-    handleProjectImportClick,
-    handleProjectFileUpload,
-    fileInputRef,
+    handleProjectImport,
   };
 };

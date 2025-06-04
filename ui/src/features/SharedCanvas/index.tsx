@@ -1,32 +1,35 @@
 import { useMemo } from "react";
-import { Map as YMap } from "yjs";
+import { Doc, Map as YMap } from "yjs";
 
-import { Button } from "@flow/components";
 import Canvas from "@flow/features/Canvas";
-import { useT } from "@flow/lib/i18n";
-import { YWorkflow } from "@flow/lib/yjs/types";
-import { Project } from "@flow/types";
+import { useUser } from "@flow/lib/gql";
+import type { YWorkflow } from "@flow/lib/yjs/types";
+import type { Project } from "@flow/types";
 
-import { ParamsPanel, WorkflowTabs } from "../Editor/components";
+import { ParamsPanel } from "../Editor/components";
 import { EditorContextType, EditorProvider } from "../Editor/editorContext";
 
+import { SharedCanvasTopBar } from "./components";
 import useHooks from "./hooks";
 
 type Props = {
   yWorkflows: YMap<YWorkflow>;
   project?: Project;
+  yDoc: Doc | null;
   undoTrackerActionWrapper: (
     callback: () => void,
     originPrepend?: string,
   ) => void;
+  accessToken?: string;
 };
 
 const SharedCanvas: React.FC<Props> = ({
   yWorkflows,
+  yDoc,
   project,
+  accessToken,
   undoTrackerActionWrapper,
 }) => {
-  const t = useT();
   const {
     currentWorkflowId,
     isSubworkflow,
@@ -34,17 +37,16 @@ const SharedCanvas: React.FC<Props> = ({
     edges,
     openWorkflows,
     openNode,
-    // isMainWorkflow,
-    // hoveredDetails,
-    handleProjectExport,
-    // handleNodeHover,
-    // handleEdgeHover,
     handleOpenNode,
     handleNodeSettings,
-    // handleWorkflowOpen,
+    handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
-  } = useHooks({ yWorkflows, project, undoTrackerActionWrapper });
+  } = useHooks({ yWorkflows, undoTrackerActionWrapper });
+
+  const { useGetMeAndWorkspaces } = useUser();
+
+  const { me, workspaces } = useGetMeAndWorkspaces();
 
   const editorContext = useMemo(
     (): EditorContextType => ({
@@ -52,29 +54,34 @@ const SharedCanvas: React.FC<Props> = ({
     }),
     [handleNodeSettings],
   );
-
   return (
-    <div className="relative flex size-full flex-col">
+    <div className="flex h-screen flex-col">
       <EditorProvider value={editorContext}>
-        <Canvas
-          readonly
-          isSubworkflow={isSubworkflow}
-          nodes={nodes}
-          edges={edges}
-          onNodeSettings={handleNodeSettings}
-        />
-        <WorkflowTabs
-          openWorkflows={openWorkflows}
-          currentWorkflowId={currentWorkflowId}
-          onWorkflowClose={handleWorkflowClose}
-          onWorkflowChange={handleCurrentWorkflowIdChange}
-        />
-        <div className="absolute right-0 top-0 p-4">
-          <Button size="lg" onClick={handleProjectExport}>
-            {t("Export Project")}
-          </Button>
+        <div className="flex shrink-0 justify-between gap-2 bg-secondary h-[44px] w-[100vw]">
+          <SharedCanvasTopBar
+            currentWorkflowId={currentWorkflowId}
+            openWorkflows={openWorkflows}
+            yDoc={yDoc}
+            project={project}
+            accessToken={accessToken}
+            me={me}
+            workspaces={workspaces}
+            onWorkflowClose={handleWorkflowClose}
+            onWorkflowChange={handleCurrentWorkflowIdChange}
+          />
         </div>
-
+        <div className="relative flex flex-1">
+          <div className="flex flex-1 flex-col relative">
+            <Canvas
+              readonly
+              isSubworkflow={isSubworkflow}
+              onWorkflowOpen={handleWorkflowOpen}
+              nodes={nodes}
+              edges={edges}
+              onNodeSettings={handleNodeSettings}
+            />
+          </div>
+        </div>
         <ParamsPanel readonly openNode={openNode} onOpenNode={handleOpenNode} />
       </EditorProvider>
     </div>

@@ -8,6 +8,19 @@ query GetMe {
   }
 }
 
+query GetMeAndWorkspaces {
+  me {
+    id
+    name
+    email
+    myWorkspaceId
+    lang
+    workspaces {
+      ...Workspace
+    }
+  }
+}
+
 query SearchUser($email: String!) {
   searchUser(nameOrEmail: $email) {
     id

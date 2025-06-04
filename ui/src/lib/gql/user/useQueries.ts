@@ -1,8 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useGraphQLContext } from "@flow/lib/gql";
+import { Workspace } from "@flow/types";
+import { isDefined } from "@flow/utils";
 
 import { UpdateMeInput } from "../__gen__/graphql";
+import { toWorkspace } from "../convert";
 
 import { UserQueryKeys } from "./useApi";
 
@@ -23,6 +26,28 @@ export const useQueries = () => {
           email: me.email,
           myWorkspaceId: me.myWorkspaceId,
           lang: me.lang,
+        };
+      },
+      staleTime: Infinity,
+    });
+
+  const useGetMeAndWorkspacesQuery = () =>
+    useQuery({
+      queryKey: [UserQueryKeys.GetMeAndWorkspaces],
+      queryFn: async () => {
+        const data = await graphQLContext?.GetMeAndWorkspaces();
+        if (!data?.me || !data) return;
+        const me = data.me;
+        const workspaces: Workspace[] = data.me.workspaces
+          .filter(isDefined)
+          .map((workspace) => toWorkspace(workspace));
+        return {
+          id: me.id,
+          name: me.name,
+          email: me.email,
+          myWorkspaceId: me.myWorkspaceId,
+          lang: me.lang,
+          workspaces: workspaces,
         };
       },
       staleTime: Infinity,
@@ -64,6 +89,7 @@ export const useQueries = () => {
 
   return {
     useGetMeQuery,
+    useGetMeAndWorkspacesQuery,
     searchUserQuery,
     updateMeMutation,
   };

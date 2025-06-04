@@ -1,6 +1,8 @@
 import type {
   DeploymentFragment,
   ProjectFragment,
+  WorkspaceFragment,
+  ProjectSnapshotFragment,
   JobFragment,
   JobStatus as GraphqlJobStatus,
   NodeStatus as GraphqlNodeStatus,
@@ -22,10 +24,10 @@ import type {
   NodeStatus,
   ProjectSnapshotMeta,
   ProjectSnapshot,
+  Workspace,
+  Member,
 } from "@flow/types";
 import { formatDate } from "@flow/utils";
-
-import { ProjectSnapshotFragment } from "./__gen__/graphql";
 
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
@@ -36,6 +38,25 @@ export const toProject = (project: ProjectFragment): Project => ({
   workspaceId: project.workspaceId,
   sharedToken: project.sharedToken ?? undefined,
   deployment: project.deployment ? toDeployment(project.deployment) : undefined,
+});
+
+export const toWorkspace = (workspace: WorkspaceFragment): Workspace => ({
+  id: workspace.id,
+  name: workspace.name,
+  personal: workspace.personal,
+  members: workspace.members.map(
+    (m): Member => ({
+      userId: m.userId,
+      role: m.role,
+      user: m.user
+        ? {
+            id: m.user?.id,
+            name: m.user?.name,
+            email: m.user?.email,
+          }
+        : undefined,
+    }),
+  ),
 });
 
 export const toDeployment = (deployment: DeploymentFragment): Deployment => ({

@@ -36,7 +36,7 @@ type Props = {
     deploymentId?: string,
   ) => Promise<void>;
   onProjectShare: (share: boolean) => void;
-  onRightPanelOpen: (content?: "version-history") => void;
+  onProjectExport: () => void;
 };
 
 const ActionBar: React.FC<Props> = ({
@@ -45,6 +45,7 @@ const ActionBar: React.FC<Props> = ({
   allowedToDeploy,
   onWorkflowDeployment,
   onProjectShare,
+  onProjectExport,
 }) => {
   const t = useT();
   const {
@@ -53,7 +54,6 @@ const ActionBar: React.FC<Props> = ({
     handleShowVersionDialog,
     handleShowSharePopover,
     handleDialogClose,
-    handleProjectExport,
   } = useHooks();
 
   return (
@@ -101,7 +101,7 @@ const ActionBar: React.FC<Props> = ({
               alignOffset={2}>
               <DropdownMenuItem
                 className="flex justify-between gap-4"
-                onClick={handleProjectExport}>
+                onClick={onProjectExport}>
                 <p>{t("Export Project")}</p>
                 <Export weight="thin" size={18} />
               </DropdownMenuItem>
