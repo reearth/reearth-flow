@@ -1,10 +1,6 @@
 import { useState } from "react";
 
-import { useProjectExport } from "@flow/hooks";
-
 export default () => {
-  const { handleProjectExport } = useProjectExport();
-
   const [showDialog, setShowDialog] = useState<
     "deploy" | "share" | "debugStop" | undefined
   >(undefined);
@@ -18,6 +14,5 @@ export default () => {
     handleShowDeployDialog,
     handleShowSharePopover,
     handleDialogClose,
-    handleProjectExport,
   };
 };
