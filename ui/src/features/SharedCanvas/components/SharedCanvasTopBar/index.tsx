@@ -1,7 +1,9 @@
 import {
-  ArrowSquareIn,
   DotsThreeVertical,
   Export,
+  PaperPlaneTilt,
+  Question,
+  SquaresFour,
 } from "@phosphor-icons/react";
 import { memo } from "react";
 import { Doc } from "yjs";
@@ -14,6 +16,9 @@ import {
   DropdownMenuTrigger,
   FlowLogo,
   IconButton,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@flow/components";
 import { WorkflowTabs } from "@flow/features/Editor/components";
 import { useT } from "@flow/lib/i18n";
@@ -61,17 +66,38 @@ const SharedCanvasTopBar: React.FC<Props> = ({
   const t = useT();
   return (
     <div className="flex shrink-0 justify-between gap-2 bg-secondary h-[44px] w-[100vw]">
-      <div className="flex items-center gap-1">
-        <div className="self-start h-full flex gap-2 items-center pl-4 pr-2 group">
-          <FlowLogo className="size-6 transition-all" />
+      <div className="flex items-center gap-4 pl-4 pr-2">
+        <FlowLogo className="size-6 transition-all " />
+        <div className="flex items-center gap-2 border border-logo/50 py-0.5 px-2 rounded">
+          <PaperPlaneTilt weight="thin" size={18} />
+          <p className="text-accent-foreground font-light select-none">
+            {t("Shared Project")}
+          </p>
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger>
+              <Question weight="thin" size={16} />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-[200px]" sideOffset={18}>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-1">
+                  <Question size={12} />
+                  <p>{t("Shared project")}</p>
+                </div>
+                <p>
+                  {t(
+                    "A shared project is in a read only state. To start editing or to run this project, please import it into one of your workspaces.",
+                  )}
+                </p>
+              </div>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
       <div className="flex items-center pr-4 pl-2">
-        <div className="flex cursor-default select-none items-center gap-2">
-          <p className="max-w-[200px] truncate transition-all delay-0 duration-500 text-sm dark:font-thin">
-            {project?.name}
-          </p>
-        </div>
+        <p className="flex items-center gap-2 max-w-[200px] truncate transition-all delay-0 duration-500 text-sm dark:font-thin">
+          <SquaresFour weight="thin" size={18} />
+          {project?.name}
+        </p>
       </div>
       <div className="flex flex-1 gap-2 h-full overflow-hidden">
         <WorkflowTabs
@@ -106,12 +132,11 @@ const SharedCanvasTopBar: React.FC<Props> = ({
         </DropdownMenu>
         <Button
           type="button"
-          variant="default"
+          variant="outline"
           size="sm"
           disabled={!me}
           onClick={handleShowImportDialog}>
           {t("Import into Workspace")}
-          <ArrowSquareIn weight="thin" size={18} />
         </Button>
         {showDialog === "import" && workspaces && (
           <ImportDialog
