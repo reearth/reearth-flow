@@ -57,7 +57,7 @@ deadpool = "0.12.2"
 deadpool-redis = "0.20.0"
 bytes = "1.10.1"
 tower = "0.5.2"
-tower-http = { version = "0.6.2", features = ["compression-br"] }
+tower-http = { version = "0.6.2", features = ["compression-br", "cors"] }
 scopeguard = "1.2.0"
 brotli = "8.0.1"
 

@@ -14,6 +14,7 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as WorkspacesImport } from './routes/workspaces'
+import { Route as TestDocumentApiImport } from './routes/test-document-api'
 import { Route as IndexImport } from './routes/index'
 import { Route as WorkspacesWorkspaceIdImport } from './routes/workspaces.$workspaceId'
 import { Route as WorkspacesWorkspaceIdTriggersImport } from './routes/workspaces.$workspaceId.triggers'
@@ -37,6 +38,12 @@ const WorkspacesWorkspaceIdProjectsProjectIdLazyImport = createFileRoute(
 const WorkspacesRoute = WorkspacesImport.update({
   id: '/workspaces',
   path: '/workspaces',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const TestDocumentApiRoute = TestDocumentApiImport.update({
+  id: '/test-document-api',
+  path: '/test-document-api',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -135,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexImport
+      parentRoute: typeof rootRoute
+    }
+    '/test-document-api': {
+      id: '/test-document-api'
+      path: '/test-document-api'
+      fullPath: '/test-document-api'
+      preLoaderRoute: typeof TestDocumentApiImport
       parentRoute: typeof rootRoute
     }
     '/workspaces': {
@@ -272,6 +286,7 @@ const WorkspacesRouteWithChildren = WorkspacesRoute._addFileChildren(
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/test-document-api': typeof TestDocumentApiRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRouteWithChildren
   '/shared/$sharedToken': typeof SharedSharedTokenLazyRoute
@@ -288,6 +303,7 @@ export interface FileRoutesByFullPath {
 
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/test-document-api': typeof TestDocumentApiRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRouteWithChildren
   '/shared/$sharedToken': typeof SharedSharedTokenLazyRoute
@@ -305,6 +321,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRoute
   '/': typeof IndexRoute
+  '/test-document-api': typeof TestDocumentApiRoute
   '/workspaces': typeof WorkspacesRouteWithChildren
   '/workspaces/$workspaceId': typeof WorkspacesWorkspaceIdRouteWithChildren
   '/shared/$sharedToken': typeof SharedSharedTokenLazyRoute
@@ -323,6 +340,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/test-document-api'
     | '/workspaces'
     | '/workspaces/$workspaceId'
     | '/shared/$sharedToken'
@@ -338,6 +356,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/test-document-api'
     | '/workspaces'
     | '/workspaces/$workspaceId'
     | '/shared/$sharedToken'
@@ -353,6 +372,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/test-document-api'
     | '/workspaces'
     | '/workspaces/$workspaceId'
     | '/shared/$sharedToken'
@@ -370,12 +390,14 @@ export interface FileRouteTypes {
 
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  TestDocumentApiRoute: typeof TestDocumentApiRoute
   WorkspacesRoute: typeof WorkspacesRouteWithChildren
   SharedSharedTokenLazyRoute: typeof SharedSharedTokenLazyRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  TestDocumentApiRoute: TestDocumentApiRoute,
   WorkspacesRoute: WorkspacesRouteWithChildren,
   SharedSharedTokenLazyRoute: SharedSharedTokenLazyRoute,
 }
@@ -391,12 +413,16 @@ export const routeTree = rootRoute
       "filePath": "__root.tsx",
       "children": [
         "/",
+        "/test-document-api",
         "/workspaces",
         "/shared/$sharedToken"
       ]
     },
     "/": {
       "filePath": "index.tsx"
+    },
+    "/test-document-api": {
+      "filePath": "test-document-api.tsx"
     },
     "/workspaces": {
       "filePath": "workspaces.tsx",

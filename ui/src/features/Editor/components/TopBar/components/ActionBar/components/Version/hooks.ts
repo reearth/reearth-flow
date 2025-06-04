@@ -3,7 +3,7 @@ import { Doc } from "yjs";
 import * as Y from "yjs";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
-import { useDocument } from "@flow/lib/gql/document/useApi";
+import { useDocument } from "@flow/lib/gql/document";
 import { useT } from "@flow/lib/i18n";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 
@@ -22,6 +22,7 @@ export default ({
     useRollbackProject,
     usePreviewSnapshot,
   } = useDocument();
+
   const { history, isFetching } = useGetProjectHistory(projectId);
   const { projectDocument } = useGetLatestProjectSnapshot(projectId);
   const [selectedProjectSnapshotVersion, setSelectedProjectSnapshotVersion] =

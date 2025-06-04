@@ -584,6 +584,7 @@ impl BroadcastGroup {
             };
 
             if should_save {
+                tracing::info!("Saving document to GCS");
                 let lock_id = format!("gcs:lock:{}", self.doc_name);
                 let instance_id = format!("instance-{}", rand::random::<u64>());
 
@@ -628,6 +629,8 @@ impl BroadcastGroup {
                             );
                             let flush_future =
                                 self.storage.flush_doc_v2(&self.doc_name, awareness_doc);
+
+                            tracing::info!("update_future");
 
                             let (update_result, flush_result) =
                                 tokio::join!(update_future, flush_future);

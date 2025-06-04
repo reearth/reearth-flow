@@ -1,7 +1,9 @@
+import { DocumentGraphQLProvider } from "./DocumentGraphQLProvider";
 import { GraphQLRequestProvider } from "./GraphQLRequestProvider";
 import { TanStackQueryProvider } from "./TanStackQueryProvider";
 
 export { useGraphQLContext } from "./GraphQLRequestProvider";
+export { useDocumentGraphQLContext } from "./DocumentGraphQLProvider";
 
 const GraphQLProvider = ({
   gqlAccessToken,
@@ -13,7 +15,9 @@ const GraphQLProvider = ({
   return (
     <TanStackQueryProvider>
       <GraphQLRequestProvider accesstoken={gqlAccessToken}>
-        {children}
+        <DocumentGraphQLProvider accesstoken={gqlAccessToken}>
+          {children}
+        </DocumentGraphQLProvider>
       </GraphQLRequestProvider>
     </TanStackQueryProvider>
   );
