@@ -127,15 +127,8 @@ function DataTable<TData, TValue>({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 34,
+    estimateSize: () => 24,
   });
-
-  console.log(
-    "rows",
-    rows.length,
-    "virtualizer",
-    virtualizer.getVirtualItems().length,
-  );
 
   return (
     <div className="flex h-full flex-col justify-between">
@@ -227,7 +220,7 @@ function DataTable<TData, TValue>({
                     return (
                       <TableRow
                         key={row.id}
-                        className="cursor-pointer"
+                        className="cursor-pointer relative border-0 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b after:border-line-200"
                         style={{
                           height: `${virtualRow.size}px`,
                           transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
