@@ -55,6 +55,12 @@ const ActionBar: React.FC<Props> = ({
     handleProjectExport,
   } = useHooks();
 
+  const handleExport = () => {
+    if (yDoc && project) {
+      handleProjectExport({ yDoc, project });
+    }
+  };
+
   return (
     <>
       <div className="flex rounded-md bg-secondary">
@@ -100,7 +106,7 @@ const ActionBar: React.FC<Props> = ({
               alignOffset={2}>
               <DropdownMenuItem
                 className="flex justify-between gap-4"
-                onClick={() => handleProjectExport({ yDoc, project })}>
+                onClick={handleExport}>
                 <p>{t("Export Project")}</p>
                 <Export weight="thin" size={18} />
               </DropdownMenuItem>

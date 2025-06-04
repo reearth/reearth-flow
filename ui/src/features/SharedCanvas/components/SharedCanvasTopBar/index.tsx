@@ -5,6 +5,7 @@ import {
   Question,
   SquaresFour,
 } from "@phosphor-icons/react";
+import { useNavigate } from "@tanstack/react-router";
 import { memo } from "react";
 import { Doc } from "yjs";
 
@@ -64,10 +65,15 @@ const SharedCanvasTopBar: React.FC<Props> = ({
     handleShowImportDialog,
   } = useHooks({ yDoc, project, accessToken });
   const t = useT();
+
+  const navigate = useNavigate();
+
   return (
     <div className="flex shrink-0 justify-between gap-2 bg-secondary h-[44px] w-[100vw]">
       <div className="flex items-center gap-4 pl-4 pr-2">
-        <FlowLogo className="size-6 transition-all " />
+        <div onClick={() => navigate({ to: "/" })}>
+          <FlowLogo className="size-6 transition-all cursor-pointer" />
+        </div>
         <div className="flex items-center gap-2 border border-logo/50 py-0.5 px-2 rounded">
           <PaperPlaneTilt weight="thin" size={18} />
           <p className="text-accent-foreground font-light select-none">

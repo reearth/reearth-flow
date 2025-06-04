@@ -1,8 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
 
 import { useGraphQLContext } from "@flow/lib/gql";
-import { Member, Workspace } from "@flow/types";
+import type { Workspace } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 import {
@@ -10,8 +9,8 @@ import {
   RemoveMemberFromWorkspaceInput,
   UpdateMemberOfWorkspaceInput,
   UpdateWorkspaceInput,
-  WorkspaceFragment,
 } from "../__gen__/graphql";
+import { toWorkspace } from "../convert";
 
 import { WorkspaceQueryKeys } from "./useApi";
 
@@ -19,31 +18,6 @@ export const useQueries = () => {
   // TODO: Move the react-query functions into it's own file.
   const graphQLContext = useGraphQLContext();
   const queryClient = useQueryClient();
-
-  const createNewWorkspaceObject = useCallback(
-    (w?: WorkspaceFragment): Workspace | undefined => {
-      if (!w) return;
-      return {
-        id: w.id,
-        name: w.name,
-        personal: w.personal,
-        members: w.members.map(
-          (m): Member => ({
-            userId: m.userId,
-            role: m.role,
-            user: m.user
-              ? {
-                  id: m.user?.id,
-                  name: m.user?.name,
-                  email: m.user?.email,
-                }
-              : undefined,
-          }),
-        ),
-      };
-    },
-    [],
-  );
 
   const updateWorkspace = (workspace?: Workspace) => {
     if (!workspace) return;
@@ -67,7 +41,8 @@ export const useQueries = () => {
   const createWorkspaceMutation = useMutation({
     mutationFn: async (name: string) => {
       const data = await graphQLContext?.CreateWorkspace({ input: { name } });
-      return createNewWorkspaceObject(data?.createWorkspace?.workspace);
+      if (!data?.createWorkspace?.workspace) return;
+      return toWorkspace(data.createWorkspace.workspace);
     },
     onSuccess: (createdWorkspace) => {
       queryClient.setQueryData(
@@ -82,10 +57,11 @@ export const useQueries = () => {
       queryKey: [WorkspaceQueryKeys.GetWorkspaces],
       queryFn: async () => {
         const data = await graphQLContext?.GetWorkspaces();
-
-        return data?.me?.workspaces
+        if (!data?.me?.workspaces) return;
+        const workspaces: Workspace[] = data.me.workspaces
           .filter(isDefined)
-          .map((w) => createNewWorkspaceObject(w) as Workspace);
+          .map((workspace) => toWorkspace(workspace));
+        return workspaces;
       },
       staleTime: Infinity,
     });
@@ -97,8 +73,9 @@ export const useQueries = () => {
         const data = await graphQLContext?.GetWorkspaceById({
           workspaceId: workspaceId ?? "",
         });
-        return data?.node?.__typename === "Workspace"
-          ? createNewWorkspaceObject(data.node)
+        if (!data?.node) return;
+        return data.node?.__typename === "Workspace"
+          ? toWorkspace(data.node)
           : undefined;
       },
       enabled: !!workspaceId,
@@ -108,7 +85,9 @@ export const useQueries = () => {
   const updateWorkspaceMutation = useMutation({
     mutationFn: async (input: UpdateWorkspaceInput) => {
       const data = await graphQLContext?.UpdateWorkspace({ input });
-      return createNewWorkspaceObject(data?.updateWorkspace?.workspace);
+      if (!data?.updateWorkspace) return;
+
+      return toWorkspace(data.updateWorkspace.workspace);
     },
     onSuccess: updateWorkspace,
   });
@@ -140,7 +119,8 @@ export const useQueries = () => {
       const data = await graphQLContext?.AddMemberToWorkspace({
         input,
       });
-      return createNewWorkspaceObject(data?.addMemberToWorkspace?.workspace);
+      if (!data?.addMemberToWorkspace) return;
+      return toWorkspace(data.addMemberToWorkspace.workspace);
     },
     onSuccess: updateWorkspace,
   });
@@ -150,9 +130,9 @@ export const useQueries = () => {
       const data = await graphQLContext?.RemoveMemberFromWorkspace({
         input,
       });
-      return createNewWorkspaceObject(
-        data?.removeMemberFromWorkspace?.workspace,
-      );
+      if (!data?.removeMemberFromWorkspace) return;
+
+      return toWorkspace(data.removeMemberFromWorkspace.workspace);
     },
     onSuccess: updateWorkspace,
   });
@@ -162,7 +142,9 @@ export const useQueries = () => {
       const data = await graphQLContext?.UpdateMemberOfWorkspace({
         input,
       });
-      return createNewWorkspaceObject(data?.updateMemberOfWorkspace?.workspace);
+      if (!data?.updateMemberOfWorkspace) return;
+
+      return toWorkspace(data.updateMemberOfWorkspace.workspace);
     },
     onSuccess: updateWorkspace,
   });

@@ -35,22 +35,7 @@ export const useUser = () => {
     const { data, ...rest } = useGetMeAndWorkspacesQuery();
     return {
       me: data,
-      workspaces: data?.workspaces?.map((workspace) => ({
-        id: workspace.id,
-        name: workspace.name,
-        personal: workspace.personal,
-        members: workspace.members.map((member) => ({
-          userId: member.userId,
-          role: member.role,
-          user: member.user
-            ? {
-                id: member.user.id,
-                email: member.user.email,
-                name: member.user.name,
-              }
-            : undefined,
-        })),
-      })),
+      workspaces: data?.workspaces,
       ...rest,
     };
   };

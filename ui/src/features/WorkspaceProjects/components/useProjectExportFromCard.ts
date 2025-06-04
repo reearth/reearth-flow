@@ -16,7 +16,6 @@ export default (project: Project) => {
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const handleProjectExportFromCard = useCallback(async () => {
-    if (!project) return;
     try {
       setIsExporting(true);
       const yDoc = new Y.Doc();
