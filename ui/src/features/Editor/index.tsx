@@ -53,6 +53,7 @@ export default function Editor({
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
+    handleCurrentProjectExport,
     handleWorkflowOpen,
     handleWorkflowClose,
     handleWorkflowChange,
@@ -78,7 +79,7 @@ export default function Editor({
     handleCopy,
     handleCut,
     handlePaste,
-  } = useHooks({ yWorkflows, undoManager, undoTrackerActionWrapper });
+  } = useHooks({ yDoc, yWorkflows, undoManager, undoTrackerActionWrapper });
 
   const editorContext = useMemo(
     (): EditorContextType => ({
@@ -96,6 +97,7 @@ export default function Editor({
           openWorkflows={openWorkflows}
           allowedToDeploy={allowedToDeploy}
           onProjectShare={handleProjectShare}
+          onProjectExport={handleCurrentProjectExport}
           onRightPanelOpen={handleRightPanelOpen}
           onWorkflowDeployment={handleWorkflowDeployment}
           onWorkflowClose={handleWorkflowClose}

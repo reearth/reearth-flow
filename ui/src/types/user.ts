@@ -1,4 +1,5 @@
 import { ApiResponse } from "./api";
+import type { Workspace } from "./workspace";
 
 export type Me = {
   myWorkspaceId: string;
@@ -8,6 +9,12 @@ export type Me = {
 
 export type GetMe = {
   me: Me | undefined;
+  isLoading: boolean;
+} & ApiResponse;
+
+export type GetMeAndWorkspaces = {
+  me: Me | undefined;
+  workspaces: Workspace[] | undefined;
   isLoading: boolean;
 } & ApiResponse;
 
