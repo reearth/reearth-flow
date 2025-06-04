@@ -10,7 +10,8 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useMemo, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import { useMemo, useRef, useState } from "react";
 
 import {
   DropdownMenu,
@@ -121,6 +122,20 @@ function DataTable<TData, TValue>({
     DESC: t("Newest"),
     ASC: t("Oldest"),
   };
+  const parentRef = useRef<HTMLDivElement>(null);
+  const { rows } = table.getRowModel();
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 34,
+  });
+
+  console.log(
+    "rows",
+    rows.length,
+    "virtualizer",
+    virtualizer.getVirtualItems().length,
+  );
 
   return (
     <div className="flex h-full flex-col justify-between">
@@ -180,63 +195,76 @@ function DataTable<TData, TValue>({
           )}
         </div>
         <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead
-                        key={header.id}
-                        className={`${condensed ? "h-8" : "h-10"} whitespace-nowrap`}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
-                      </TableHead>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    className="cursor-pointer"
-                    data-state={row.getIsSelected() && "selected"}
-                    onClick={() => {
-                      row.toggleSelected();
-                      onRowClick?.(row.original);
-                    }}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell
-                        key={cell.id}
-                        className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
+          <div
+            ref={parentRef}
+            style={{ height: 500, overflow: "auto" }}
+            className="rounded-md border">
+            <Table>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      return (
+                        <TableHead
+                          key={header.id}
+                          className={`${condensed ? "h-8" : "h-10"} whitespace-nowrap`}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                        </TableHead>
+                      );
+                    })}
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center">
-                    {t("No Results")}
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                ))}
+              </TableHeader>
+              <TableBody>
+                {rows.length ? (
+                  virtualizer.getVirtualItems().map((virtualRow, idx) => {
+                    const row = rows[virtualRow.index];
+                    return (
+                      <TableRow
+                        key={row.id}
+                        className="cursor-pointer"
+                        style={{
+                          height: `${virtualRow.size}px`,
+                          transform: `translateY(${virtualRow.start - idx * virtualRow.size}px)`,
+                        }}
+                        data-state={row.getIsSelected() && "selected"}
+                        onClick={() => {
+                          row.toggleSelected();
+                          onRowClick?.(row.original);
+                        }}>
+                        {row.getVisibleCells().map((cell) => (
+                          <TableCell
+                            key={cell.id}
+                            className={`${condensed ? "px-2 py-[2px]" : "p-2"}`}>
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext(),
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    );
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center">
+                      {t("No Results")}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
+
       {enablePagination && (
         <Pagination
           currentPage={currentPage}
