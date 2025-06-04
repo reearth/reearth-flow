@@ -21,7 +21,7 @@ import {
   ALLOWED_PROJECT_IMPORT_EXTENSIONS,
   ALLOWED_WORKFLOW_FILE_EXTENSIONS,
 } from "@flow/global-constants";
-import { useProjectImport, useWorkflowImport } from "@flow/hooks";
+import { useWorkflowImport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 
 import {
@@ -32,6 +32,7 @@ import {
 } from "./components";
 import { ProjectDuplicateDialog } from "./components/ProjectDuplicateDialog";
 import useHooks from "./hooks";
+import useProjectImportFromFile from "./useProjectImportFromFile";
 
 const ProjectsManager: React.FC = () => {
   const t = useT();
@@ -65,11 +66,11 @@ const ProjectsManager: React.FC = () => {
   } = useHooks();
 
   const {
-    fileInputRef: fileInputRefProject,
     isProjectImporting,
+    fileInputRefProject,
     handleProjectImportClick,
     handleProjectFileUpload,
-  } = useProjectImport();
+  } = useProjectImportFromFile();
 
   const {
     fileInputRef: fileInputRefWorkflow,

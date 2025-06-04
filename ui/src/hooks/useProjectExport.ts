@@ -1,94 +1,53 @@
 import { saveAs } from "file-saver";
 import JSZip from "jszip";
 import { useCallback, useState } from "react";
-import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
+import { Doc } from "yjs";
 
-import { config } from "@flow/config";
-import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useAuth } from "@flow/lib/auth";
-import { yWorkflowConstructor } from "@flow/lib/yjs/conversions";
-import { YWorkflow } from "@flow/lib/yjs/types";
 import { Project } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
-export default (project?: Project) => {
-  const { getAccessToken } = useAuth();
+export default () => {
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
-  const handleProjectExport = useCallback(async () => {
-    if (!project) return;
-    setIsExporting(true);
-    const yDoc = new Y.Doc();
+  const handleProjectExport = useCallback(
+    async ({ yDoc, project }: { yDoc: Doc | null; project?: Project }) => {
+      if (!project || !yDoc) return;
 
-    const { websocket } = config();
-    let yWebSocketProvider: WebsocketProvider | null = null;
+      setIsExporting(true);
 
-    if (websocket && project.id) {
-      (async () => {
-        const token = await getAccessToken();
-        yWebSocketProvider = new WebsocketProvider(
-          websocket,
-          `${project.id}:${DEFAULT_ENTRY_GRAPH_ID}`,
-          yDoc,
-          {
-            params: {
-              token,
-            },
-          },
-        );
+      const zip = new JSZip();
 
-        yWebSocketProvider.once("sync", async () => {
-          const metadata = yDoc.getMap("metadata");
-          if (!metadata.get("initialized")) {
-            yDoc.transact(() => {
-              const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
-              if (yWorkflows.get(DEFAULT_ENTRY_GRAPH_ID)) return;
-              if (!metadata.get("initialized")) {
-                const yWorkflow = yWorkflowConstructor(
-                  DEFAULT_ENTRY_GRAPH_ID,
-                  "Main Workflow",
-                );
-                yWorkflows.set(DEFAULT_ENTRY_GRAPH_ID, yWorkflow);
-                metadata.set("initialized", true);
-              }
-            });
-          }
+      const yDocBinary = Y.encodeStateAsUpdate(yDoc);
+      zip.file("ydoc.bin", yDocBinary);
 
-          const zip = new JSZip();
+      const projectData = {
+        id: generateUUID(),
+        name: project.name,
+        description: project.description,
+      };
+      zip.file("projectMeta.json", JSON.stringify(projectData, null, 2));
 
-          const yDocBinary = Y.encodeStateAsUpdate(yDoc);
-          zip.file("ydoc.bin", yDocBinary);
-
-          const projectData = {
-            id: generateUUID(),
-            name: project.name,
-            description: project.description,
-          };
-          zip.file("projectMeta.json", JSON.stringify(projectData, null, 2));
-
-          const zipBlob = await zip.generateAsync({ type: "blob" });
-          const date = new Date();
-          const timestamp = [
-            date.getFullYear(),
-            String(date.getMonth() + 1).padStart(2, "0"),
-            String(date.getDate()).padStart(2, "0"),
-            String(date.getHours()).padStart(2, "0"),
-            String(date.getMinutes()).padStart(2, "0"),
-            String(date.getSeconds()).padStart(2, "0"),
-          ].join("");
-          const zipName = `${project.name}_${timestamp}.flow.zip`;
-          saveAs(zipBlob, zipName);
-          setIsExporting(false);
-
-          yWebSocketProvider?.destroy();
-        });
-      })();
-    }
-  }, [project, getAccessToken]);
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const date = new Date();
+      const timestamp = [
+        date.getFullYear(),
+        String(date.getMonth() + 1).padStart(2, "0"),
+        String(date.getDate()).padStart(2, "0"),
+        String(date.getHours()).padStart(2, "0"),
+        String(date.getMinutes()).padStart(2, "0"),
+        String(date.getSeconds()).padStart(2, "0"),
+      ].join("");
+      const zipName = `${project.name}_${timestamp}.flow.zip`;
+      saveAs(zipBlob, zipName);
+      setIsExporting(false);
+    },
+    [],
+  );
 
   return {
     isExporting,
+    setIsExporting,
     handleProjectExport,
   };
 };

@@ -4,22 +4,19 @@ import { useY } from "react-yjs";
 import { Map as YMap } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useProjectExport } from "@flow/hooks";
 import { rebuildWorkflow } from "@flow/lib/yjs/conversions";
 import { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import useYNode from "@flow/lib/yjs/useYNode";
-import { Edge, Node, Project } from "@flow/types";
+import type { Edge, Node } from "@flow/types";
 
 import useUIState from "../Editor/useUIState";
 
 export default ({
   yWorkflows,
-  project,
   undoTrackerActionWrapper,
 }: {
   yWorkflows: YMap<YWorkflow>;
-  project?: Project;
   undoTrackerActionWrapper: (
     callback: () => void,
     originPrepend?: string,
@@ -117,8 +114,6 @@ export default ({
     [handleOpenNode],
   );
 
-  const { handleProjectExport } = useProjectExport(project);
-
   return {
     currentWorkflowId,
     isSubworkflow,
@@ -128,7 +123,6 @@ export default ({
     isMainWorkflow,
     hoveredDetails,
     openNode,
-    handleProjectExport,
     handleNodeHover,
     handleNodesChange: handleYNodesChange,
     handleOpenNode,
