@@ -59,11 +59,12 @@ func TestProjectAccessDocument_NewProjectAccessConsumer(t *testing.T) {
 			t.Parallel()
 			c := NewProjectAccessConsumer()
 			err := c.Consume(tc.arg)
-			if tc.wantEOF {
+			switch {
+			case tc.wantEOF:
 				assert.Equal(t, io.EOF, err)
-			} else if tc.wantErr {
+			case tc.wantErr:
 				assert.Error(t, err)
-			} else {
+			default:
 				assert.NoError(t, err)
 			}
 			assert.Equal(t, tc.result, c.Result)

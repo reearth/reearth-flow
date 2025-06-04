@@ -54,6 +54,22 @@ pub struct RollbackRequest {
 }
 
 #[derive(Serialize, Deserialize)]
+pub struct CreateSnapshotRequest {
+    pub doc_id: String,
+    pub version: u64,
+    pub name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct SnapshotResponse {
+    pub id: String,
+    pub updates: Vec<u8>,
+    pub version: u64,
+    pub timestamp: String,
+    pub name: Option<String>,
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct HistoryResponse {
     pub updates: Vec<u8>,
     pub version: u64,

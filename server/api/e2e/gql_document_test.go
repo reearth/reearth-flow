@@ -87,7 +87,8 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 				return
 			}
 
-			if isLatestProjectSnapshotQuery(gqlRequest.Query) {
+			switch {
+			case isLatestProjectSnapshotQuery(gqlRequest.Query):
 				projectID, ok := getProjectIDFromVariables(gqlRequest.Variables)
 				if !ok || projectID != docPId.String() {
 					http.Error(w, "Invalid project ID", http.StatusBadRequest)
@@ -112,7 +113,7 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 				}
 				return
 
-			} else if isProjectHistoryQuery(gqlRequest.Query) {
+			case isProjectHistoryQuery(gqlRequest.Query):
 				projectID, ok := getProjectIDFromVariables(gqlRequest.Variables)
 				if !ok || projectID != docPId.String() {
 					http.Error(w, "Invalid project ID", http.StatusBadRequest)
@@ -140,7 +141,7 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 				}
 				return
 
-			} else if isProjectSnapshotQuery(gqlRequest.Query) {
+			case isProjectSnapshotQuery(gqlRequest.Query):
 				projectID, version, ok := getProjectIDAndVersionFromVariables(gqlRequest.Variables)
 				if !ok || projectID != docPId.String() {
 					http.Error(w, "Invalid project ID or version", http.StatusBadRequest)
@@ -181,7 +182,7 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 				}
 				return
 
-			} else if isRollbackProjectMutation(gqlRequest.Query) {
+			case isRollbackProjectMutation(gqlRequest.Query):
 				projectID, version, ok := getProjectIDAndVersionFromVariables(gqlRequest.Variables)
 				if !ok || projectID != docPId.String() {
 					http.Error(w, "Invalid project ID or version", http.StatusBadRequest)
@@ -211,7 +212,8 @@ func documentTestInterceptor(next http.Handler) http.Handler {
 					return
 				}
 				return
-			} else if isFlushProjectToGcsMutation(gqlRequest.Query) {
+
+			case isFlushProjectToGcsMutation(gqlRequest.Query):
 				projectID, ok := getProjectIDFromVariables(gqlRequest.Variables)
 				if !ok || projectID != docPId.String() {
 					http.Error(w, "Invalid project ID", http.StatusBadRequest)

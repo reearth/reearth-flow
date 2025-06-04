@@ -50,14 +50,17 @@ func Start(debug bool, version string) {
 
 	// PermissionChecker
 	if conf.AccountsApiHost == "" {
-		log.Fatalf("accounts host configuration is required")
+		log.Error("accounts host configuration is required")
+		return
 	}
 	if _, err := url.Parse(conf.AccountsApiHost); err != nil {
-		log.Fatalf("invalid accounts host URL: %v", err)
+		log.Errorf("invalid accounts host URL: %v", err)
+		return
 	}
 	permissionChecker := cerbosClient.NewPermissionChecker(rbac.ServiceName, conf.AccountsApiHost)
 	if permissionChecker == nil {
-		log.Fatalf("failed to initialize permission checker")
+		log.Error("failed to initialize permission checker")
+		return
 	}
 
 	serverCfg := &ServerConfig{

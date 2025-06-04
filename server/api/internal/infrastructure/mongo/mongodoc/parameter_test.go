@@ -26,7 +26,6 @@ func TestNewParameter(t *testing.T) {
 		CreatedAt(now).
 		UpdatedAt(now).
 		Build()
-
 	if err != nil {
 		t.Fatalf("unexpected error building parameter: %v", err)
 	}

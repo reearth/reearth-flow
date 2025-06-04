@@ -4,8 +4,10 @@ import (
 	"time"
 )
 
-type EventSourceType string
-type TimeInterval string
+type (
+	EventSourceType string
+	TimeInterval    string
+)
 
 func (t *TimeInterval) String() {
 	panic("unimplemented")

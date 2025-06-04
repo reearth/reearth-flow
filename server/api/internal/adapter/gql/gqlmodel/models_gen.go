@@ -279,6 +279,14 @@ type Parameter struct {
 	DefaultValue interface{}   `json:"defaultValue"`
 }
 
+type PreviewSnapshot struct {
+	ID        ID        `json:"id"`
+	Name      *string   `json:"name,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
+	Updates   []int     `json:"updates"`
+	Version   int       `json:"version"`
+}
+
 type Project struct {
 	BasicAuthPassword string       `json:"basicAuthPassword"`
 	BasicAuthUsername string       `json:"basicAuthUsername"`
