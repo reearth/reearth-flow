@@ -20,7 +20,7 @@ export default ({
     useGetProjectHistory,
     useGetLatestProjectSnapshot,
     useRollbackProject,
-    usePreviewSnapshot,
+    useGetPreviewProjectSnapshot,
   } = useDocument();
   const { history, isFetching } = useGetProjectHistory(projectId);
   const { projectDocument } = useGetLatestProjectSnapshot(projectId);
@@ -163,7 +163,10 @@ export default ({
       setIsLoadingPreview(true);
 
       try {
-        const previewData = await usePreviewSnapshot(projectId, version);
+        const previewData = await useGetPreviewProjectSnapshot(
+          projectId,
+          version,
+        );
         if (!previewData) {
           console.error(
             "No project snapshot found for version: ",
@@ -205,7 +208,13 @@ export default ({
       }
       setIsLoadingPreview(false);
     },
-    [usePreviewSnapshot, projectId, t, toast, selectedProjectSnapshotVersion],
+    [
+      useGetPreviewProjectSnapshot,
+      projectId,
+      t,
+      toast,
+      selectedProjectSnapshotVersion,
+    ],
   );
 
   return {

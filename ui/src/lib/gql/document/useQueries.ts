@@ -100,7 +100,7 @@ export const useQueries = () => {
     },
   });
 
-  const previewSnapshot = useMutation({
+  const usePreviewSnapshot = useMutation({
     mutationFn: async ({
       projectId,
       version,
@@ -123,7 +123,7 @@ export const useQueries = () => {
     useLatestProjectSnapshotQuery,
     useProjectSnapshotQuery,
     useProjectHistoryQuery,
+    usePreviewSnapshot,
     rollbackProjectMutation,
-    previewSnapshot,
   };
 };

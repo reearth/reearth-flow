@@ -64,7 +64,9 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
         <DialogContentWrapper className="p-0 h-full">
           <DialogContentSection className="flex flex-row gap-0 h-full overflow-hidden">
             {isLoadingPreview ? (
-              <LoadingSkeleton />
+              <div className="flex-1 overflow-auto">
+                <LoadingSkeleton className="w-full h-full overflow-hidden" />
+              </div>
             ) : (
               <div className="flex-1 overflow-auto">
                 <VersionEditorComponent
