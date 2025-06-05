@@ -94,19 +94,22 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &crate::Conf
         .layer(
             ServiceBuilder::new()
                 .layer({
-                    let origins: Vec<_> = config.app.origins
+                    let origins: Vec<_> = config
+                        .app
+                        .origins
                         .iter()
                         .map(|s| s.parse().unwrap())
                         .collect();
-                    
+
                     CorsLayer::new()
                         .allow_origin(origins)
                         .allow_methods(Any)
                         .allow_headers(Any)
                 })
-                .layer(CompressionLayer::new().compress_when(
-                    tower_http::compression::predicate::SizeAbove::new(1024)
-                )),
+                .layer(
+                    CompressionLayer::new()
+                        .compress_when(tower_http::compression::predicate::SizeAbove::new(1024)),
+                ),
         );
 
     info!("WebSocket endpoint available at ws://{}/[doc_id]", addr);
