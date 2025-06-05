@@ -1,5 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useY } from "react-yjs";
 import { Map as YMap } from "yjs";
 
@@ -15,7 +15,7 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
   const { fitView } = useReactFlow();
 
   const [selectedNodeIds] = useState<string[]>([]);
-
+  const [openNode, setOpenNode] = useState<Node | undefined>(undefined);
   const [currentWorkflowId, setCurrentWorkflowId] = useState(
     DEFAULT_ENTRY_GRAPH_ID,
   );
@@ -75,6 +75,26 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
     fitView({ padding: 0.5 });
   }, [fitView]);
 
+  const handleOpenNode = useCallback(
+    (nodeId?: string) => {
+      if (!nodeId) {
+        setOpenNode(undefined);
+      } else {
+        setOpenNode((on) =>
+          on?.id === nodeId ? undefined : nodes.find((n) => n.id === nodeId),
+        );
+      }
+    },
+    [nodes, setOpenNode],
+  );
+
+  const handleNodeSettings = useCallback(
+    (_e: MouseEvent | undefined, nodeId: string) => {
+      handleOpenNode(nodeId);
+    },
+    [handleOpenNode],
+  );
+
   return {
     currentWorkflowId,
     isSubworkflow,
@@ -82,6 +102,9 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
     edges,
     openWorkflows,
     isMainWorkflow,
+    openNode,
+    handleOpenNode,
+    handleNodeSettings,
     hoveredDetails,
     handleNodeHover,
     handleEdgeHover,

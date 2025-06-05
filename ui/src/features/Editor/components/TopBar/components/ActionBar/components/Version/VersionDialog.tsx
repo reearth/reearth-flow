@@ -122,16 +122,16 @@ const VersionEditorComponent: React.FC<{
   yDoc: Y.Doc | null;
   previewDocYWorkflows: Y.Map<YWorkflow> | null;
 }> = ({ yDoc, previewDocYWorkflows }) => {
+  const yWorkflows = previewDocYWorkflows
+    ? previewDocYWorkflows
+    : yDoc
+      ? yDoc.getMap<YWorkflow>("workflows")
+      : null;
   return (
     <div className="w-full h-full overflow-hidden">
-      {!previewDocYWorkflows && yDoc && (
+      {yWorkflows && (
         <ReactFlowProvider>
-          <VersionCanvas yWorkflows={yDoc.getMap<YWorkflow>("workflows")} />
-        </ReactFlowProvider>
-      )}
-      {previewDocYWorkflows && (
-        <ReactFlowProvider>
-          <VersionCanvas yWorkflows={previewDocYWorkflows} />
+          <VersionCanvas yWorkflows={yWorkflows} />
         </ReactFlowProvider>
       )}
     </div>

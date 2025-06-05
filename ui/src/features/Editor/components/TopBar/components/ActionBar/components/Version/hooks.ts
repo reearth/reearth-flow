@@ -35,8 +35,6 @@ export default ({
   const [isLoadingPreview, setIsLoadingPreview] = useState<boolean>(false);
   const [previewDocYWorkflows, setPreviewDocYWorkflows] =
     useState<Y.Map<YWorkflow> | null>(null);
-  const snapshotOriginRollback = "snapshot-rollback";
-  const snapshotOriginPreview = "snapshot-preview";
 
   const { toast } = useToast();
   const t = useT();
@@ -48,7 +46,7 @@ export default ({
     getMetadata: (key: string) => "Text" | "Map" | "Array",
   ) {
     const snapshotDoc = new Y.Doc();
-    Y.applyUpdate(snapshotDoc, snapshotUpdate, snapshotOriginRollback);
+    Y.applyUpdate(snapshotDoc, snapshotUpdate, "snapshot-rollback");
 
     const currentStateVector = Y.encodeStateVector(doc);
     const snapshotStateVector = Y.encodeStateVector(snapshotDoc);
@@ -69,24 +67,16 @@ export default ({
         throw new Error("Unknown type");
       }),
       {
-        trackedOrigins: new Set([snapshotOriginRollback]),
+        trackedOrigins: new Set(["snapshot-rollback"]),
       },
     );
-    Y.applyUpdate(
-      snapshotDoc,
-      changesSinceSnapshotUpdate,
-      snapshotOriginRollback,
-    );
+    Y.applyUpdate(snapshotDoc, changesSinceSnapshotUpdate, "snapshot-rollback");
     undoManager.undo();
     const revertChangesSinceSnapshotUpdate = Y.encodeStateAsUpdate(
       snapshotDoc,
       currentStateVector,
     );
-    Y.applyUpdate(
-      doc,
-      revertChangesSinceSnapshotUpdate,
-      snapshotOriginRollback,
-    );
+    Y.applyUpdate(doc, revertChangesSinceSnapshotUpdate, "snapshot-rollback");
   }
 
   const handleRollbackProject = useCallback(async () => {
@@ -148,7 +138,7 @@ export default ({
 
   function createVersionPreview(snapshotUpdate: Uint8Array): Y.Doc {
     const snapshotDoc = new Y.Doc();
-    Y.applyUpdate(snapshotDoc, snapshotUpdate, snapshotOriginPreview);
+    Y.applyUpdate(snapshotDoc, snapshotUpdate, "snapshot-preview");
     return snapshotDoc;
   }
 
