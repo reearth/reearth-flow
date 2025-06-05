@@ -73,7 +73,7 @@ pub async fn ensure_bucket(client: &Client, bucket_name: &str) -> Result<()> {
     }
 }
 
-pub async fn start_server(state: Arc<AppState>, port: &str) -> Result<()> {
+pub async fn start_server(state: Arc<AppState>, port: &str, config: &crate::Config) -> Result<()> {
     let addr = format!("0.0.0.0:{}", port);
     let listener = TcpListener::bind(&addr).await?;
 
@@ -93,13 +93,20 @@ pub async fn start_server(state: Arc<AppState>, port: &str) -> Result<()> {
         .with_state(state)
         .layer(
             ServiceBuilder::new()
-                .layer(
+                .layer({
+                    let origins: Vec<_> = config.app.origins
+                        .split(',')
+                        .map(|s| s.trim().parse().unwrap())
+                        .collect();
+                    
                     CorsLayer::new()
-                        .allow_origin(Any)
+                        .allow_origin(origins)
                         .allow_methods(Any)
-                        .allow_headers(Any),
-                )
-                .layer(CompressionLayer::new()),
+                        .allow_headers(Any)
+                })
+                .layer(CompressionLayer::new().compress_when(
+                    tower_http::compression::predicate::SizeAbove::new(1024)
+                )),
         );
 
     info!("WebSocket endpoint available at ws://{}/[doc_id]", addr);
