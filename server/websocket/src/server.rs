@@ -7,6 +7,7 @@ use axum::{
 };
 use tower::ServiceBuilder;
 use tower_http::compression::CompressionLayer;
+use tower_http::cors::{Any, CorsLayer};
 
 use google_cloud_storage::{
     client::Client,
@@ -90,7 +91,16 @@ pub async fn start_server(state: Arc<AppState>, port: &str) -> Result<()> {
         .merge(ws_router)
         .nest("/api", document_routes())
         .with_state(state)
-        .layer(ServiceBuilder::new().layer(CompressionLayer::new()));
+        .layer(
+            ServiceBuilder::new()
+                .layer(
+                    CorsLayer::new()
+                        .allow_origin(Any)
+                        .allow_methods(Any)
+                        .allow_headers(Any),
+                )
+                .layer(CompressionLayer::new()),
+        );
 
     info!("WebSocket endpoint available at ws://{}/[doc_id]", addr);
     info!(
