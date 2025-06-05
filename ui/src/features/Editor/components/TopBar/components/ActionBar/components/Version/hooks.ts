@@ -152,64 +152,61 @@ export default ({
     return snapshotDoc;
   }
 
-  const handlePreviewVersion = useCallback(async () => {
-    if (selectedProjectSnapshotVersion === null) return;
-    setIsLoadingPreview(true);
-
-    try {
-      const previewData = await usePreviewSnapshot(
-        projectId,
-        selectedProjectSnapshotVersion,
-      );
-      if (!previewData) {
-        console.error(
-          "No project snapshot found for version: ",
-          selectedProjectSnapshotVersion,
-        );
-        return;
+  const handleVersionSelection = useCallback(
+    async (version: number) => {
+      setSelectedProjectSnapshotVersion(version);
+      if (version === null) return;
+      if (previewDocRef.current) {
+        previewDocRef.current.destroy();
+        previewDocRef.current = null;
       }
-      const updates = previewData.previewSnapshot?.updates;
-      if (!updates || !updates.length) {
-        console.error("No updates found in snapshot");
-        setIsLoadingPreview(false);
-        return;
+      setIsLoadingPreview(true);
+
+      try {
+        const previewData = await usePreviewSnapshot(projectId, version);
+        if (!previewData) {
+          console.error(
+            "No project snapshot found for version: ",
+            selectedProjectSnapshotVersion,
+          );
+          return;
+        }
+        const updates = previewData.previewSnapshot?.updates;
+        if (!updates || !updates.length) {
+          console.error("No updates found in snapshot");
+          setIsLoadingPreview(false);
+          return;
+        }
+
+        const convertedUpdates = new Uint8Array(updates);
+
+        const versionPreviewYDoc = createVersionPreview(convertedUpdates);
+
+        previewDocRef.current = versionPreviewYDoc;
+
+        const versionpreviewPreviewYWorkflows =
+          versionPreviewYDoc.getMap<YWorkflow>("workflows");
+
+        if (!versionpreviewPreviewYWorkflows) {
+          console.error("No workflows found in version preview");
+          return;
+        }
+
+        setPreviewDocYWorkflows(versionpreviewPreviewYWorkflows);
+      } catch (error) {
+        console.error("Version Preview Failed:", error);
+        return toast({
+          title: t("Version Preview Failed"),
+          description: t(
+            "Project Version Preview cannot be viewed. An error has occurred.",
+          ),
+          variant: "destructive",
+        });
       }
-
-      const convertedUpdates = new Uint8Array(updates);
-
-      const versionPreviewYDoc = createVersionPreview(convertedUpdates);
-
-      previewDocRef.current = versionPreviewYDoc;
-
-      const versionpreviewPreviewYWorkflows =
-        versionPreviewYDoc.getMap<YWorkflow>("workflows");
-
-      if (!versionpreviewPreviewYWorkflows) {
-        console.error("No workflows found in version preview");
-        return;
-      }
-
-      setPreviewDocYWorkflows(versionpreviewPreviewYWorkflows);
-    } catch (error) {
-      console.error("Version Preview Failed:", error);
-      return toast({
-        title: t("Version Preview Failed"),
-        description: t(
-          "Project Version Preview cannot be viewed. An error has occurred.",
-        ),
-        variant: "destructive",
-      });
-    }
-    setIsLoadingPreview(false);
-  }, [usePreviewSnapshot, projectId, t, toast, selectedProjectSnapshotVersion]);
-
-  const handleVersionSelection = (version: number) => {
-    if (previewDocRef.current) {
-      previewDocRef.current.destroy();
-      previewDocRef.current = null;
-    }
-    setSelectedProjectSnapshotVersion(version);
-  };
+      setIsLoadingPreview(false);
+    },
+    [usePreviewSnapshot, projectId, t, toast, selectedProjectSnapshotVersion],
+  );
 
   return {
     history,
@@ -223,7 +220,6 @@ export default ({
     openVersionConfirmationDialog,
     setOpenVersionConfirmationDialog,
     onRollbackProject: handleRollbackProject,
-    onPreviewVersion: handlePreviewVersion,
     onVersionSelection: handleVersionSelection,
   };
 };

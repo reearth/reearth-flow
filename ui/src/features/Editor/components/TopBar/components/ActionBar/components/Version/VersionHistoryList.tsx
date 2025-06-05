@@ -10,7 +10,6 @@ type Props = {
   history?: ProjectSnapshotMeta[];
   onVersionSelection: (version: number) => void;
   selectedProjectSnapshotVersion: number | null;
-  onPreviewVersion: () => void;
 };
 
 const VersionHistoryList: React.FC<Props> = ({
@@ -18,17 +17,11 @@ const VersionHistoryList: React.FC<Props> = ({
   history,
   selectedProjectSnapshotVersion,
   onVersionSelection,
-  onPreviewVersion,
 }) => {
   const t = useT();
   const previousVersions = history?.filter(
     (version) => version.version !== latestProjectSnapshotVersion?.version,
   );
-
-  const handleVersionSelection = (versionNumber: number) => {
-    onVersionSelection(versionNumber);
-    onPreviewVersion();
-  };
 
   return (
     <ScrollArea className="max-h-[500px] w-full overflow-y-auto place-self-start">
@@ -56,14 +49,12 @@ const VersionHistoryList: React.FC<Props> = ({
               key={version.version}
               version={version}
               isSelected={version.version === selectedProjectSnapshotVersion}
-              onClick={() => handleVersionSelection(version.version)}
-              onPreviewVersion={onPreviewVersion}
               onVersionSelection={onVersionSelection}
             />
           ))}
         </div>
       ) : null}
-      <div className="pt-9" />
+      <div className="pt-7" />
     </ScrollArea>
   );
 };

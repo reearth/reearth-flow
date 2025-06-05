@@ -40,7 +40,6 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
     openVersionConfirmationDialog,
     setOpenVersionConfirmationDialog,
     onRollbackProject,
-    onPreviewVersion,
     onVersionSelection,
   } = useHooks({ projectId: project?.id ?? "", yDoc, onDialogClose });
 
@@ -65,7 +64,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
         <DialogContentWrapper className="p-0">
           <DialogContentSection className="flex flex-row items-center gap-0">
             {isLoadingPreview ? (
-              <LoadingSkeleton className="max-h-[500px] min-w-[270px] place-self-start pt-40" />
+              <LoadingSkeleton className="max-h-[500px] min-w-[270px] place-self-start pt-60" />
             ) : (
               <VersionEditorComponent
                 yDoc={yDoc}
@@ -73,12 +72,12 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
               />
             )}
 
-            <div className="min-h-[532px] min-w-[327px] p-4 border-l overflow-y-auto place-self-start relative">
+            <div className="min-h-[580px] min-w-[327px] p-4 border-l overflow-y-auto place-self-start relative">
               <p className="text-md dark:font-thin pb-4">
                 {t("Version History")}
               </p>
               {isFetching ? (
-                <LoadingSkeleton className="max-h-[500px] min-w-[270px] place-self-start pt-40" />
+                <LoadingSkeleton className="max-h-[700px] min-w-[270px] place-self-start pt-40" />
               ) : (
                 <VersionHistoryList
                   latestProjectSnapshotVersion={latestProjectSnapshotVersion}
@@ -87,7 +86,6 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
                     selectedProjectSnapshotVersion
                   }
                   onVersionSelection={onVersionSelection}
-                  onPreviewVersion={onPreviewVersion}
                 />
               )}
               <div className="flex border-t justify-end absolute w-full bg-secondary p-2 bottom-0 left-0">
