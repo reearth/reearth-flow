@@ -32,7 +32,7 @@ export interface CreateSnapshotRequest {
 
 // API Base URL - fixed to 127.0.0.1:8080
 const getApiBaseUrl = () => {
-  return "http://127.0.0.1:8080";
+  return "https://api.flow.test.reearth.dev";
 };
 
 // Fetcher function for document API

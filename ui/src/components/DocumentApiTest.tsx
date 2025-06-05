@@ -19,7 +19,7 @@ export const DocumentApiTest: React.FC = () => {
   // Manual test function
   const testManualRequest = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8080/api/document/${testDocId}`, {
+      const response = await fetch(`https://api.flow.test.reearth.dev/api/document/${testDocId}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

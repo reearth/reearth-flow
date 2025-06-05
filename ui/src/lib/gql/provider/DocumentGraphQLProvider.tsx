@@ -24,7 +24,7 @@ export const DocumentGraphQLProvider = ({
 }) => {
   const [graphQLSdk, setGraphQLSdk] = useState<Sdk | undefined>();
   // Fixed endpoint for document operations
-  const endpoint = "http://127.0.0.1:8080/api/graphql";
+  const endpoint = "https://api.flow.test.reearth.dev/api/graphql";
 
   useEffect(() => {
     if (graphQLSdk) return;
