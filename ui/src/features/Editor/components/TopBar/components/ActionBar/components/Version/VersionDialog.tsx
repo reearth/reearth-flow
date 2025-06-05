@@ -35,6 +35,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
     previewDocYWorkflows,
     selectedProjectSnapshotVersion,
     isFetching,
+    isLoadingPreview,
     isReverting,
     openVersionConfirmationDialog,
     setOpenVersionConfirmationDialog,
@@ -63,10 +64,15 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
         </DialogTitle>
         <DialogContentWrapper className="p-0">
           <DialogContentSection className="flex flex-row items-center gap-0">
-            <VersionEditorComponent
-              yDoc={yDoc}
-              previewDocYWorkflows={previewDocYWorkflows}
-            />
+            {isLoadingPreview ? (
+              <LoadingSkeleton className="max-h-[500px] min-w-[270px] place-self-start pt-40" />
+            ) : (
+              <VersionEditorComponent
+                yDoc={yDoc}
+                previewDocYWorkflows={previewDocYWorkflows}
+              />
+            )}
+
             <div className="min-h-[532px] min-w-[327px] p-4 border-l overflow-y-auto place-self-start relative">
               <p className="text-md dark:font-thin pb-4">
                 {t("Version History")}

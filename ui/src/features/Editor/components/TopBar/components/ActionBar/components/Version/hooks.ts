@@ -32,6 +32,7 @@ export default ({
   const [openVersionConfirmationDialog, setOpenVersionConfirmationDialog] =
     useState<boolean>(false);
   const [isReverting, setIsReverting] = useState<boolean>(false);
+  const [isLoadingPreview, setIsLoadingPreview] = useState<boolean>(false);
   const [previewDocYWorkflows, setPreviewDocYWorkflows] =
     useState<Y.Map<YWorkflow> | null>(null);
   const snapshotOriginRollback = "snapshot-rollback";
@@ -39,6 +40,7 @@ export default ({
 
   const { toast } = useToast();
   const t = useT();
+  const latestProjectSnapshotVersion = projectDocument;
   // Note: This function comes from this forum: https://discuss.yjs.dev/t/is-there-a-way-to-revert-to-a-specific-version/379/6
   function revertUpdate(
     doc: Y.Doc,
@@ -142,9 +144,7 @@ export default ({
     toast,
     selectedProjectSnapshotVersion,
     useRollbackProject,
-    setIsReverting,
   ]);
-  const latestProjectSnapshotVersion = projectDocument;
 
   function createVersionPreview(snapshotUpdate: Uint8Array): Y.Doc {
     const snapshotDoc = new Y.Doc();
@@ -154,12 +154,13 @@ export default ({
 
   const handlePreviewVersion = useCallback(async () => {
     if (selectedProjectSnapshotVersion === null) return;
-    const previewData = await usePreviewSnapshot(
-      projectId,
-      selectedProjectSnapshotVersion,
-    );
+    setIsLoadingPreview(true);
 
     try {
+      const previewData = await usePreviewSnapshot(
+        projectId,
+        selectedProjectSnapshotVersion,
+      );
       if (!previewData) {
         console.error(
           "No project snapshot found for version: ",
@@ -170,6 +171,7 @@ export default ({
       const updates = previewData.previewSnapshot?.updates;
       if (!updates || !updates.length) {
         console.error("No updates found in snapshot");
+        setIsLoadingPreview(false);
         return;
       }
 
@@ -198,6 +200,7 @@ export default ({
         variant: "destructive",
       });
     }
+    setIsLoadingPreview(false);
   }, [usePreviewSnapshot, projectId, t, toast, selectedProjectSnapshotVersion]);
 
   const handleVersionSelection = (version: number) => {
@@ -215,6 +218,7 @@ export default ({
     previewDocYWorkflows,
     selectedProjectSnapshotVersion,
     isFetching,
+    isLoadingPreview,
     isReverting,
     openVersionConfirmationDialog,
     setOpenVersionConfirmationDialog,

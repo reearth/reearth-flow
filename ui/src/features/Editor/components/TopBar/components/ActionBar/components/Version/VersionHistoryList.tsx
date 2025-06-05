@@ -29,6 +29,7 @@ const VersionHistoryList: React.FC<Props> = ({
     onVersionSelection(versionNumber);
     onPreviewVersion();
   };
+
   return (
     <ScrollArea className="max-h-[500px] w-full overflow-y-auto place-self-start">
       {latestProjectSnapshotVersion && (
@@ -56,6 +57,8 @@ const VersionHistoryList: React.FC<Props> = ({
               version={version}
               isSelected={version.version === selectedProjectSnapshotVersion}
               onClick={() => handleVersionSelection(version.version)}
+              onPreviewVersion={onPreviewVersion}
+              onVersionSelection={onVersionSelection}
             />
           ))}
         </div>
