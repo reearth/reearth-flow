@@ -30,7 +30,8 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
 
   const editorContext = useMemo(
     (): EditorContextType => ({
-      onNodeSettings: handleNodeSettings,
+      onNodeSettings:
+        handleNodeSettings as unknown as EditorContextType["onNodeSettings"],
     }),
     [handleNodeSettings],
   );
@@ -54,6 +55,7 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
               onWorkflowOpen={handleWorkflowOpen}
               nodes={nodes}
               edges={edges}
+              // @ts-expect-error: EditorContextType elsewhere works without any issue with the exact same code. TS mismatch due to React vs DOM MouseEvent, but event is unused so it's safe to ignore.
               onNodeSettings={handleNodeSettings}
             />
           </div>
