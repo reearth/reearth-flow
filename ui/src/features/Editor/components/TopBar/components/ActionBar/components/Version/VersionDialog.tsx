@@ -53,7 +53,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
 
   return (
     <Dialog open={true} onOpenChange={handleCloseDialog}>
-      <DialogContent size="2xl">
+      <DialogContent className="w-[90vw] h-[90vh] max-w-none max-h-none">
         <DialogTitle>
           {t("Viewing Version: {{version}}", {
             version: selectedProjectSnapshotVersion
@@ -61,34 +61,37 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
               : latestProjectSnapshotVersion?.version,
           })}
         </DialogTitle>
-        <DialogContentWrapper className="p-0">
-          <DialogContentSection className="flex flex-row items-center gap-0">
+        <DialogContentWrapper className="p-0 h-full">
+          <DialogContentSection className="flex flex-row gap-0 h-full overflow-hidden">
             {isLoadingPreview ? (
-              <LoadingSkeleton className="max-h-[500px] min-w-[270px] place-self-start pt-60" />
+              <LoadingSkeleton />
             ) : (
-              <VersionEditorComponent
-                yDoc={yDoc}
-                previewDocYWorkflows={previewDocYWorkflows}
-              />
+              <div className="flex-1 overflow-auto">
+                <VersionEditorComponent
+                  yDoc={yDoc}
+                  previewDocYWorkflows={previewDocYWorkflows}
+                />
+              </div>
             )}
-
-            <div className="min-h-[580px] min-w-[327px] p-4 border-l overflow-y-auto place-self-start relative">
-              <p className="text-md dark:font-thin pb-4">
+            <div className="relative w-[30vw] min-w-[320px] max-w-[500px] h-full border-l flex flex-col">
+              <p className="text-md dark:font-thin pl-4 pt-4">
                 {t("Version History")}
               </p>
-              {isFetching ? (
-                <LoadingSkeleton className="max-h-[700px] min-w-[270px] place-self-start pt-40" />
-              ) : (
-                <VersionHistoryList
-                  latestProjectSnapshotVersion={latestProjectSnapshotVersion}
-                  history={history}
-                  selectedProjectSnapshotVersion={
-                    selectedProjectSnapshotVersion
-                  }
-                  onVersionSelection={onVersionSelection}
-                />
-              )}
-              <div className="flex border-t justify-end absolute w-full bg-secondary p-2 bottom-0 left-0">
+              <div className="flex-1 overflow-y-auto p-4 pb-[70px]">
+                {isFetching ? (
+                  <LoadingSkeleton />
+                ) : (
+                  <VersionHistoryList
+                    latestProjectSnapshotVersion={latestProjectSnapshotVersion}
+                    history={history}
+                    selectedProjectSnapshotVersion={
+                      selectedProjectSnapshotVersion
+                    }
+                    onVersionSelection={onVersionSelection}
+                  />
+                )}
+              </div>
+              <div className="absolute bottom-17 left-0 w-full bg-secondary border-t p-2 flex justify-end">
                 <Button
                   disabled={!selectedProjectSnapshotVersion}
                   onClick={() => setOpenVersionConfirmationDialog(true)}>
@@ -118,7 +121,7 @@ const VersionEditorComponent: React.FC<{
   previewDocYWorkflows: Y.Map<YWorkflow> | null;
 }> = ({ yDoc, previewDocYWorkflows }) => {
   return (
-    <div className="h-[570px] w-[575px]">
+    <div className="w-full h-full overflow-hidden">
       {!previewDocYWorkflows && yDoc && (
         <ReactFlowProvider>
           <VersionCanvas yWorkflows={yDoc.getMap<YWorkflow>("workflows")} />

@@ -24,7 +24,7 @@ const VersionHistoryList: React.FC<Props> = ({
   );
 
   return (
-    <ScrollArea className="max-h-[500px] w-full overflow-y-auto place-self-start">
+    <ScrollArea className="h-full w-full overflow-y-auto">
       {latestProjectSnapshotVersion && (
         <div className="flex items-center justify-between bg-primary py-2 px-2">
           <div className="flex flex-col gap-1">
@@ -54,7 +54,7 @@ const VersionHistoryList: React.FC<Props> = ({
           ))}
         </div>
       ) : null}
-      <div className="pt-7" />
+      <div className="pt-10" />
     </ScrollArea>
   );
 };
