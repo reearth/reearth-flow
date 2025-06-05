@@ -117,19 +117,6 @@ export const useQueries = () => {
         return data?.previewSnapshot;
       }
     },
-    onSuccess: (previewSnapshot) => {
-      if (previewSnapshot) {
-        queryClient.invalidateQueries({
-          queryKey: [
-            DocumentQueryKeys.GetLatestProjectSnapshot,
-            previewSnapshot.id,
-          ],
-        });
-        queryClient.invalidateQueries({
-          queryKey: [DocumentQueryKeys.GetProjectHistory, previewSnapshot.id],
-        });
-      }
-    },
   });
 
   return {
