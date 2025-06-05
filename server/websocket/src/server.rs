@@ -95,8 +95,8 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &crate::Conf
             ServiceBuilder::new()
                 .layer({
                     let origins: Vec<_> = config.app.origins
-                        .split(',')
-                        .map(|s| s.trim().parse().unwrap())
+                        .iter()
+                        .map(|s| s.parse().unwrap())
                         .collect();
                     
                     CorsLayer::new()
