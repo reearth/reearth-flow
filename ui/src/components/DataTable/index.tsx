@@ -220,6 +220,7 @@ function DataTable<TData, TValue>({
                     return (
                       <TableRow
                         key={row.id}
+                        // Below is fix to ensure virtualized rows have a bottom border see: https://github.com/TanStack/virtual/issues/620
                         className="cursor-pointer relative border-0 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b after:border-line-200"
                         style={{
                           height: `${virtualRow.size}px`,
