@@ -8,10 +8,10 @@ import {
   useState,
 } from "react";
 import { useY } from "react-yjs";
-import { Map as YMap, UndoManager as YUndoManager } from "yjs";
+import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useShortcuts } from "@flow/hooks";
+import { useProjectExport, useShortcuts } from "@flow/hooks";
 import { useSharedProject } from "@flow/lib/gql";
 import { checkForReader } from "@flow/lib/reactFlow";
 import { useYjsStore } from "@flow/lib/yjs";
@@ -26,10 +26,12 @@ import useDeployment from "./useDeployment";
 import useUIState from "./useUIState";
 
 export default ({
+  yDoc,
   yWorkflows,
   undoManager,
   undoTrackerActionWrapper,
 }: {
+  yDoc: Doc | null;
   yWorkflows: YMap<YWorkflow>;
   undoManager: YUndoManager | null;
   undoTrackerActionWrapper: (
@@ -78,6 +80,8 @@ export default ({
     setSelectedEdgeIds,
     undoTrackerActionWrapper,
   });
+
+  const { handleProjectExport } = useProjectExport();
   const [showBeforeDeleteDialog, setShowBeforeDeleteDialog] =
     useState<boolean>(false);
   const deferredDeleteRef = useRef<{
@@ -338,6 +342,12 @@ export default ({
     [handleYWorkflowRename, setWorkflowsNames],
   );
 
+  const handleCurrentProjectExport = () => {
+    if (yDoc && currentProject) {
+      handleProjectExport({ yDoc, project: currentProject });
+    }
+  };
+
   return {
     isSubworkflow,
     currentWorkflowId,
@@ -361,6 +371,7 @@ export default ({
     handleWorkflowAdd: handleYWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
+    handleCurrentProjectExport,
     handleWorkflowOpen,
     handleWorkflowClose,
     handleWorkflowChange: handleCurrentWorkflowIdChange,

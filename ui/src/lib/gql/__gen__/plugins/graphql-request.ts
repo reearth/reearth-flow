@@ -294,13 +294,14 @@ export type Mutation = {
   deleteTrigger: Scalars['Boolean']['output'];
   deleteWorkspace?: Maybe<DeleteWorkspacePayload>;
   executeDeployment?: Maybe<JobPayload>;
-  flushProjectToGcs?: Maybe<Scalars['Boolean']['output']>;
+  previewSnapshot?: Maybe<PreviewSnapshot>;
   removeAsset?: Maybe<RemoveAssetPayload>;
   removeMemberFromWorkspace?: Maybe<RemoveMemberFromWorkspacePayload>;
   removeMyAuth?: Maybe<UpdateMePayload>;
   removeParameter: Scalars['Boolean']['output'];
   rollbackProject?: Maybe<ProjectDocument>;
   runProject?: Maybe<RunProjectPayload>;
+  saveSnapshot?: Maybe<Scalars['Boolean']['output']>;
   shareProject?: Maybe<ShareProjectPayload>;
   signup?: Maybe<SignupPayload>;
   unshareProject?: Maybe<UnshareProjectPayload>;
@@ -386,8 +387,10 @@ export type MutationExecuteDeploymentArgs = {
 };
 
 
-export type MutationFlushProjectToGcsArgs = {
+export type MutationPreviewSnapshotArgs = {
+  name?: InputMaybe<Scalars['String']['input']>;
   projectId: Scalars['ID']['input'];
+  version: Scalars['Int']['input'];
 };
 
 
@@ -419,6 +422,11 @@ export type MutationRollbackProjectArgs = {
 
 export type MutationRunProjectArgs = {
   input: RunProjectInput;
+};
+
+
+export type MutationSaveSnapshotArgs = {
+  projectId: Scalars['ID']['input'];
 };
 
 
@@ -565,6 +573,15 @@ export enum ParameterType {
   WebConnection = 'WEB_CONNECTION',
   YesNo = 'YES_NO'
 }
+
+export type PreviewSnapshot = {
+  __typename?: 'PreviewSnapshot';
+  id: Scalars['ID']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+  timestamp: Scalars['DateTime']['output'];
+  updates: Array<Scalars['Int']['output']>;
+  version: Scalars['Int']['output'];
+};
 
 export type Project = Node & {
   __typename?: 'Project';
@@ -1069,6 +1086,8 @@ export type RollbackProjectMutation = { __typename?: 'Mutation', rollbackProject
 
 export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
+export type WorkspaceFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> };
+
 export type ParameterFragment = { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, createdAt: any, updatedAt: any };
 
 export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
@@ -1274,6 +1293,11 @@ export type GetMeQueryVariables = Exact<{ [key: string]: never; }>;
 
 export type GetMeQuery = { __typename?: 'Query', me?: { __typename?: 'Me', id: string, name: string, email: string, myWorkspaceId: string, lang: any } | null };
 
+export type GetMeAndWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetMeAndWorkspacesQuery = { __typename?: 'Query', me?: { __typename?: 'Me', id: string, name: string, email: string, myWorkspaceId: string, lang: any, workspaces: Array<{ __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> }> } | null };
+
 export type SearchUserQueryVariables = Exact<{
   email: Scalars['String']['input'];
 }>;
@@ -1287,8 +1311,6 @@ export type UpdateMeMutationVariables = Exact<{
 
 
 export type UpdateMeMutation = { __typename?: 'Mutation', updateMe?: { __typename?: 'UpdateMePayload', me: { __typename?: 'Me', id: string, name: string, email: string, lang: any } } | null };
-
-export type WorkspaceFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> };
 
 export type CreateWorkspaceMutationVariables = Exact<{
   input: CreateWorkspaceInput;
@@ -1373,6 +1395,22 @@ export const ProjectFragmentDoc = gql`
   }
 }
     ${DeploymentFragmentDoc}`;
+export const WorkspaceFragmentDoc = gql`
+    fragment Workspace on Workspace {
+  id
+  name
+  personal
+  members {
+    userId
+    role
+    user {
+      id
+      email
+      name
+    }
+  }
+}
+    `;
 export const ParameterFragmentDoc = gql`
     fragment Parameter on Parameter {
   id
@@ -1459,22 +1497,6 @@ export const LogFragmentDoc = gql`
   timestamp
   logLevel
   message
-}
-    `;
-export const WorkspaceFragmentDoc = gql`
-    fragment Workspace on Workspace {
-  id
-  name
-  personal
-  members {
-    userId
-    role
-    user {
-      id
-      email
-      name
-    }
-  }
 }
     `;
 export const CreateDeploymentDocument = gql`
@@ -1780,6 +1802,20 @@ export const GetMeDocument = gql`
   }
 }
     `;
+export const GetMeAndWorkspacesDocument = gql`
+    query GetMeAndWorkspaces {
+  me {
+    id
+    name
+    email
+    myWorkspaceId
+    lang
+    workspaces {
+      ...Workspace
+    }
+  }
+}
+    ${WorkspaceFragmentDoc}`;
 export const SearchUserDocument = gql`
     query SearchUser($email: String!) {
   searchUser(nameOrEmail: $email) {
@@ -1983,6 +2019,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     GetMe(variables?: GetMeQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetMeQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetMeQuery>(GetMeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetMe', 'query', variables);
+    },
+    GetMeAndWorkspaces(variables?: GetMeAndWorkspacesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetMeAndWorkspacesQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetMeAndWorkspacesQuery>(GetMeAndWorkspacesDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetMeAndWorkspaces', 'query', variables);
     },
     SearchUser(variables: SearchUserQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<SearchUserQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<SearchUserQuery>(SearchUserDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'SearchUser', 'query', variables);

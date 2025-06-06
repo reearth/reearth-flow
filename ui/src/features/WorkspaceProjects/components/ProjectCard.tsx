@@ -26,11 +26,12 @@ import {
   TooltipTrigger,
 } from "@flow/components";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
-import { useProjectExport } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
 import { openLinkInNewTab } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
+
+import useProjectExportFromCard from "./useProjectExportFromCard";
 
 type Props = {
   project: Project;
@@ -52,7 +53,8 @@ const ProjectCard: React.FC<Props> = ({
   const t = useT();
   const { toast } = useToast();
   const { id, name, description, updatedAt, sharedToken } = project;
-
+  const { handleProjectExportFromCard, isExporting } =
+    useProjectExportFromCard(project);
   const [persistOverlay, setPersistOverlay] = useState(false);
   // TODO: isShared and sharedURL are temp values.
 
@@ -78,8 +80,6 @@ const ProjectCard: React.FC<Props> = ({
     e.stopPropagation();
     openLinkInNewTab(sharedUrl);
   };
-
-  const { isExporting, handleProjectExport } = useProjectExport(project);
 
   return (
     <Card
@@ -138,7 +138,7 @@ const ProjectCard: React.FC<Props> = ({
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="justify-between gap-2"
-                onClick={handleProjectExport}>
+                onClick={handleProjectExportFromCard}>
                 {t("Export Project")}
                 <Export weight="light" />
               </DropdownMenuItem>

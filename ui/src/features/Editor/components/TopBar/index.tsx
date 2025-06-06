@@ -24,6 +24,7 @@ type Props = {
     description: string,
     deploymentId?: string,
   ) => Promise<void>;
+  onProjectExport: () => void;
   onProjectShare: (share: boolean) => void;
   onRightPanelOpen: (content?: "version-history") => void;
   onDebugRunStart: () => Promise<void>;
@@ -37,6 +38,7 @@ const TopBar: React.FC<Props> = ({
   openWorkflows,
   allowedToDeploy,
   onWorkflowDeployment,
+  onProjectExport,
   onProjectShare,
   onRightPanelOpen,
   onDebugRunStart,
@@ -156,6 +158,7 @@ const TopBar: React.FC<Props> = ({
         <ActionBar
           allowedToDeploy={allowedToDeploy}
           onProjectShare={onProjectShare}
+          onProjectExport={onProjectExport}
           onWorkflowDeployment={onWorkflowDeployment}
           onRightPanelOpen={onRightPanelOpen}
         />
