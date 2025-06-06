@@ -16,6 +16,30 @@ func NewTriggerHandler() *TriggerHandler {
 	return &TriggerHandler{}
 }
 
+func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
+	triggerID, err := id.TriggerIDFrom(c.Param("triggerId"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid trigger ID"})
+	}
+
+	triggerUsecase := adapter.Usecases(c.Request().Context()).Trigger
+
+	job, err := triggerUsecase.ExecuteTimeDrivenTrigger(c.Request().Context(), interfaces.ExecuteTimeDrivenTriggerParam{
+		TriggerID: triggerID,
+	})
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	}
+
+	resp := trigger.ExecutionResponse{
+		RunID:        job.ID().String(),
+		DeploymentID: job.Deployment().String(),
+		Status:       string(job.Status()),
+	}
+
+	return c.JSON(http.StatusOK, resp)
+}
+
 func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 	triggerID, err := id.TriggerIDFrom(c.Param("triggerId"))
 	if err != nil {
@@ -72,4 +96,5 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 func SetupTriggerRoutes(e *echo.Echo) {
 	h := NewTriggerHandler()
 	e.POST("/api/triggers/:triggerId/run", h.ExecuteTrigger)
+	e.POST("/api/triggers/:triggerId/execute-scheduled", h.ExecuteScheduledTrigger)
 }
