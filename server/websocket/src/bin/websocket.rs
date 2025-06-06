@@ -69,7 +69,7 @@ async fn main() {
     let state = Arc::new({
         #[cfg(feature = "auth")]
         {
-            let auth = match AuthService::new(config.auth).await {
+            let auth = match AuthService::new(config.auth.clone()).await {
                 Ok(auth) => Arc::new(auth),
                 Err(e) => {
                     error!("Failed to initialize auth service: {}", e);
@@ -89,7 +89,7 @@ async fn main() {
         }
     });
 
-    if let Err(e) = start_server(state, &config.ws_port).await {
+    if let Err(e) = start_server(state, &config.ws_port, &config).await {
         error!("Server error: {}", e);
         std::process::exit(1);
     }

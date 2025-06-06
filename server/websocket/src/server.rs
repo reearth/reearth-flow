@@ -7,6 +7,7 @@ use axum::{
 };
 use tower::ServiceBuilder;
 use tower_http::compression::CompressionLayer;
+use tower_http::cors::{Any, CorsLayer};
 
 use google_cloud_storage::{
     client::Client,
@@ -72,7 +73,7 @@ pub async fn ensure_bucket(client: &Client, bucket_name: &str) -> Result<()> {
     }
 }
 
-pub async fn start_server(state: Arc<AppState>, port: &str) -> Result<()> {
+pub async fn start_server(state: Arc<AppState>, port: &str, config: &crate::Config) -> Result<()> {
     let addr = format!("0.0.0.0:{}", port);
     let listener = TcpListener::bind(&addr).await?;
 
@@ -90,7 +91,26 @@ pub async fn start_server(state: Arc<AppState>, port: &str) -> Result<()> {
         .merge(ws_router)
         .nest("/api", document_routes())
         .with_state(state)
-        .layer(ServiceBuilder::new().layer(CompressionLayer::new()));
+        .layer(
+            ServiceBuilder::new()
+                .layer({
+                    let origins: Vec<_> = config
+                        .app
+                        .origins
+                        .iter()
+                        .map(|s| s.parse().unwrap())
+                        .collect();
+
+                    CorsLayer::new()
+                        .allow_origin(origins)
+                        .allow_methods(Any)
+                        .allow_headers(Any)
+                })
+                .layer(
+                    CompressionLayer::new()
+                        .compress_when(tower_http::compression::predicate::SizeAbove::new(1024)),
+                ),
+        );
 
     info!("WebSocket endpoint available at ws://{}/[doc_id]", addr);
     info!(

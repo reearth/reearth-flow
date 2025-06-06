@@ -81,7 +81,7 @@ impl BroadcastGroup {
         storage: Arc<GcsStore>,
         config: BroadcastConfig,
     ) -> Result<Self> {
-        let (sender, _) = channel(buffer_capacity);
+        let (sender, _) = channel(buffer_capacity.max(512));
         let awareness_c = Arc::downgrade(&awareness);
         let mut lock = awareness.write().await;
         let sink = sender.clone();
@@ -165,7 +165,8 @@ impl BroadcastGroup {
         let (heartbeat_shutdown_tx, mut heartbeat_shutdown_rx) = tokio::sync::oneshot::channel();
 
         let heartbeat_task = tokio::spawn(async move {
-            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(56));
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
             loop {
                 select! {
@@ -217,7 +218,7 @@ impl BroadcastGroup {
                             .read_and_filter(
                                 &mut conn,
                                 &stream_key,
-                                1024,
+                                512,
                                 &instance_id_clone,
                                 &last_read_id_clone,
                             )
@@ -245,6 +246,8 @@ impl BroadcastGroup {
                                             warn!("Failed to apply update from Redis: {}", e);
                                         }
                                     }
+                                    drop(txn);
+                                    drop(awareness);
                                 }
 
 
@@ -261,12 +264,12 @@ impl BroadcastGroup {
             }
         });
 
-        // periodic sync task to send sync messages every 15 seconds
         let (sync_shutdown_tx, mut sync_shutdown_rx) = tokio::sync::oneshot::channel();
         let sender_clone = sender.clone();
         let awareness_clone = Arc::clone(&awareness);
         let sync_task = tokio::spawn(async move {
-            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(15));
+            let mut interval = tokio::time::interval(tokio::time::Duration::from_secs(30));
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
 
             loop {
                 select! {

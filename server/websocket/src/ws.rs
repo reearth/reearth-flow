@@ -197,7 +197,7 @@ async fn handle_socket(
 ) {
     let (sender, receiver) = socket.split();
 
-    let (pong_tx, _pong_rx) = mpsc::channel::<Message>(32);
+    let (pong_tx, _pong_rx) = mpsc::channel::<Message>(64);
 
     let sink = WarpSink(sender);
     let stream = WarpStream::with_pong_sender(receiver, pong_tx);
