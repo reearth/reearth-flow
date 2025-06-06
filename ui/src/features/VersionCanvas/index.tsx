@@ -39,7 +39,7 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
   return (
     <div className="flex h-full flex-col">
       <EditorProvider value={editorContext}>
-        <div className="flex shrink-0 justify-between gap-2 bg-secondary h-[44px] w-full">
+        <div className="bg-secondary h-[44px] w-full">
           <WorkflowTabs
             openWorkflows={openWorkflows}
             currentWorkflowId={currentWorkflowId}
@@ -48,16 +48,14 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
           />
         </div>
         <div className="relative flex flex-1">
-          <div className="flex flex-1 flex-col">
-            <Canvas
-              readonly
-              isSubworkflow={isSubworkflow}
-              onWorkflowOpen={handleWorkflowOpen}
-              nodes={nodes}
-              edges={edges}
-              onNodeSettings={handleNodeSettings}
-            />
-          </div>
+          <Canvas
+            readonly
+            isSubworkflow={isSubworkflow}
+            onWorkflowOpen={handleWorkflowOpen}
+            nodes={nodes}
+            edges={edges}
+            onNodeSettings={handleNodeSettings}
+          />
         </div>
         <ParamsPanel readonly openNode={openNode} onOpenNode={handleOpenNode} />
       </EditorProvider>
