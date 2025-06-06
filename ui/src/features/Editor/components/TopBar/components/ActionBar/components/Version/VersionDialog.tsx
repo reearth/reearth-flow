@@ -51,7 +51,8 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
         dialogRef.current &&
-        !dialogRef.current.contains(event.target as Node)
+        !dialogRef.current.contains(event.target as Node) &&
+        !openVersionConfirmationDialog
       ) {
         handleCloseDialog();
       }
@@ -59,7 +60,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [handleCloseDialog]);
+  }, [handleCloseDialog, openVersionConfirmationDialog]);
 
   return (
     <div
