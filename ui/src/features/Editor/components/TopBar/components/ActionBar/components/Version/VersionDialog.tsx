@@ -43,7 +43,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
     previewDocRef.current?.destroy();
     previewDocRef.current = null;
     setAnimate(false);
-    setTimeout(onDialogClose, 200);
+    onDialogClose();
   }, [previewDocRef, onDialogClose]);
 
   useEffect(() => {
@@ -68,7 +68,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
       aria-modal="true">
       <div
         ref={dialogRef}
-        className={`w-[90vw] h-[90vh] bg-card shadow-lg rounded-lg flex flex-col overflow-hidden relative transition-all duration-170 ease-in-out ${animate ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
+        className={`w-[90vw] h-[90vh] bg-card shadow-lg rounded-lg flex flex-col overflow-hidden relative transition-all duration-170 ease-in-out  ${animate ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
         <div className="flex p-6 items-center justify-between border-b">
           <h2 className="text-xl dark:font-thin leading-none tracking-tight rounded-t-lg">
             {t("Viewing Version: {{version}}", {
