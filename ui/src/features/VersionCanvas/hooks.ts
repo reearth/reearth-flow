@@ -1,5 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { MouseEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useY } from "react-yjs";
 import { Map as YMap } from "yjs";
 
