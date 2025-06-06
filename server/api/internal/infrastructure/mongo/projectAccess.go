@@ -13,8 +13,8 @@ import (
 )
 
 var (
-	projectAccessIndexes       = []string{}
-	projectAccessUniqueIndexes = []string{"id", "project", "token"}
+	projectAccessIndexes       = []string{"token"}
+	projectAccessUniqueIndexes = []string{"id", "project"}
 )
 
 type ProjectAccess struct {
