@@ -7,9 +7,25 @@ query GetLatestProjectSnapshot($projectId: ID!) {
   }
 }
 
+query GetProjectSnapshot($projectId: ID!, $version: Int!) {
+  projectSnapshot(projectId: $projectId, version: $version) {
+    timestamp
+    updates
+    version
+  }
+}
+
 query GetProjectHistory($projectId: ID!) {
   projectHistory(projectId: $projectId) {
     timestamp
+    version
+  }
+}
+mutation PreviewSnapshot($projectId: ID!, $version: Int!) {
+  previewSnapshot(projectId: $projectId, version: $version) {
+    id
+    timestamp
+    updates
     version
   }
 }

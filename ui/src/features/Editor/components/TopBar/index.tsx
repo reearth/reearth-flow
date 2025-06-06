@@ -1,11 +1,16 @@
 import { ChalkboardTeacher, HardDrive } from "@phosphor-icons/react";
 import { memo, useState } from "react";
+import { Doc } from "yjs";
 
 import { IconButton } from "@flow/components";
 import { useProjectVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
-import { ProjectVariable as ProjectVariableType, VarType } from "@flow/types";
+import {
+  ProjectVariable as ProjectVariableType,
+  VarType,
+  Project,
+} from "@flow/types";
 import { getDefaultValueForProjectVar } from "@flow/utils";
 
 import { WorkflowTabs } from "..";
@@ -24,6 +29,8 @@ type Props = {
     id: string;
     name: string;
   }[];
+  project?: Project;
+  yDoc: Doc | null;
   allowedToDeploy: boolean;
   onWorkflowDeployment: (
     description: string,
@@ -31,7 +38,6 @@ type Props = {
   ) => Promise<void>;
   onProjectExport: () => void;
   onProjectShare: (share: boolean) => void;
-  onRightPanelOpen: (content?: "version-history") => void;
   onDebugRunStart: () => Promise<void>;
   onDebugRunStop: () => Promise<void>;
   onWorkflowClose: (workflowId: string) => void;
@@ -41,11 +47,12 @@ type Props = {
 const TopBar: React.FC<Props> = ({
   currentWorkflowId,
   openWorkflows,
+  project,
+  yDoc,
   allowedToDeploy,
   onWorkflowDeployment,
   onProjectExport,
   onProjectShare,
-  onRightPanelOpen,
   onDebugRunStart,
   onDebugRunStop,
   onWorkflowClose,
@@ -161,11 +168,12 @@ const TopBar: React.FC<Props> = ({
         />
         <div className="border-r h-4/5" />
         <ActionBar
+          project={project}
+          yDoc={yDoc}
           allowedToDeploy={allowedToDeploy}
           onProjectShare={onProjectShare}
           onProjectExport={onProjectExport}
           onWorkflowDeployment={onWorkflowDeployment}
-          onRightPanelOpen={onRightPanelOpen}
         />
       </div>
       <ProjectVariableDialog

@@ -7,8 +7,10 @@ import { useQueries } from "./useQueries";
 export const useDocument = () => {
   const {
     useLatestProjectSnapshotQuery,
+    useProjectSnapshotQuery,
     useProjectHistoryQuery,
     rollbackProjectMutation,
+    usePreviewSnapshot,
   } = useQueries();
 
   const { toast } = useToast();
@@ -22,12 +24,37 @@ export const useDocument = () => {
     };
   };
 
+  const useGetProjectSnapshot = (projectId: string, version: number) => {
+    const { data, ...rest } = useProjectSnapshotQuery(projectId, version);
+    return {
+      projectSnapshot: data,
+      ...rest,
+    };
+  };
+
   const useGetProjectHistory = (projectId: string) => {
     const { data, ...rest } = useProjectHistoryQuery(projectId);
     return {
       history: data,
       ...rest,
     };
+  };
+
+  const useGetPreviewProjectSnapshot = async (
+    projectId: string,
+    version: number,
+  ) => {
+    const { mutateAsync, ...rest } = usePreviewSnapshot;
+    try {
+      const previewSnapshot = await mutateAsync({
+        projectId,
+        version,
+      });
+
+      return { previewSnapshot, ...rest };
+    } catch (_err) {
+      return { previewSnapshot: undefined, ...rest };
+    }
   };
 
   const useRollbackProject = async (
@@ -63,7 +90,9 @@ export const useDocument = () => {
 
   return {
     useGetLatestProjectSnapshot,
+    useGetProjectSnapshot,
     useGetProjectHistory,
+    useGetPreviewProjectSnapshot,
     useRollbackProject,
   };
 };
