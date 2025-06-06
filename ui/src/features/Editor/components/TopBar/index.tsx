@@ -9,9 +9,14 @@ import { ProjectVariable as ProjectVariableType, VarType } from "@flow/types";
 import { getDefaultValueForProjectVar } from "@flow/utils";
 
 import { WorkflowTabs } from "..";
-import { ProjectVariableDialog } from "../LeftPanel/components/ProjectVariables/ProjectVariableDialog";
 
-import { ActionBar, Breadcrumb, DebugActionBar, HomeMenu } from "./components";
+import {
+  ActionBar,
+  Breadcrumb,
+  DebugActionBar,
+  HomeMenu,
+  ProjectVariableDialog,
+} from "./components";
 
 type Props = {
   currentWorkflowId: string;

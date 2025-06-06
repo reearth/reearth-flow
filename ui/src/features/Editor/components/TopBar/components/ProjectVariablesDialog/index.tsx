@@ -273,4 +273,4 @@ const ProjectVariableDialog: React.FC<Props> = ({
   );
 };
 
-export { ProjectVariableDialog };
+export default ProjectVariableDialog;
