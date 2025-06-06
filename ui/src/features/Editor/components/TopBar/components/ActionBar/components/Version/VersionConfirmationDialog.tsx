@@ -7,7 +7,7 @@ type Props = {
   onRollbackProject: () => void;
 };
 
-const VersionHistoryChangeDialog: React.FC<Props> = ({
+const VersionConfirmationDialog: React.FC<Props> = ({
   selectedProjectSnapshotVersion,
   onDialogClose,
   onRollbackProject,
@@ -28,4 +28,4 @@ const VersionHistoryChangeDialog: React.FC<Props> = ({
   );
 };
 
-export { VersionHistoryChangeDialog };
+export { VersionConfirmationDialog };

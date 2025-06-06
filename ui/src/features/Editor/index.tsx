@@ -8,7 +8,6 @@ import {
   TopBar,
   OverlayUI,
   ParamsPanel,
-  RightPanel,
   NodeDeletionDialog,
 } from "./components";
 import { EditorContextType, EditorProvider } from "./editorContext";
@@ -48,8 +47,6 @@ export default function Editor({
     hasReader,
     deferredDeleteRef,
     showBeforeDeleteDialog,
-    rightPanelContent,
-    handleRightPanelOpen,
     handleWorkflowAdd,
     handleWorkflowDeployment,
     handleProjectShare,
@@ -94,11 +91,12 @@ export default function Editor({
       <EditorProvider value={editorContext}>
         <TopBar
           currentWorkflowId={currentWorkflowId}
+          project={currentProject}
+          yDoc={yDoc}
           openWorkflows={openWorkflows}
           allowedToDeploy={allowedToDeploy}
           onProjectShare={handleProjectShare}
           onProjectExport={handleCurrentProjectExport}
-          onRightPanelOpen={handleRightPanelOpen}
           onWorkflowDeployment={handleWorkflowDeployment}
           onWorkflowClose={handleWorkflowClose}
           onWorkflowChange={handleWorkflowChange}
@@ -141,13 +139,6 @@ export default function Editor({
               />
             </OverlayUI>
           </div>
-          <RightPanel
-            contentType={rightPanelContent}
-            onClose={() => handleRightPanelOpen(undefined)}
-            project={currentProject}
-            yDoc={yDoc}
-          />
-
           <ParamsPanel
             openNode={openNode}
             onOpenNode={handleOpenNode}

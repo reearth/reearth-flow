@@ -3,7 +3,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ProjectSnapshotMeta } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
-import { toProjectDocument, toProjectSnapShotMeta } from "../convert";
+import {
+  toProjectDocument,
+  toProjectSnapShot,
+  toProjectSnapShotMeta,
+} from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum DocumentQueryKeys {
@@ -27,6 +31,20 @@ export const useQueries = () => {
         return toProjectDocument(data.latestProjectSnapshot);
       },
       enabled: !!projectId,
+    });
+
+  const useProjectSnapshotQuery = (projectId: string, version: number) =>
+    useQuery({
+      queryKey: [DocumentQueryKeys.GetProjectSnapshot, projectId],
+      queryFn: async () => {
+        const data = await graphQLContext?.GetProjectSnapshot({
+          projectId,
+          version,
+        });
+        if (!data?.projectSnapshot) return;
+        return toProjectSnapShot(data.projectSnapshot);
+      },
+      enabled: !!projectId && version != null,
     });
 
   const useProjectHistoryQuery = (projectId: string) =>
@@ -82,9 +100,30 @@ export const useQueries = () => {
     },
   });
 
+  const usePreviewSnapshot = useMutation({
+    mutationFn: async ({
+      projectId,
+      version,
+    }: {
+      projectId: string;
+      version: number;
+    }) => {
+      const data = await graphQLContext?.PreviewSnapshot({
+        projectId,
+        version,
+      });
+
+      if (data?.previewSnapshot) {
+        return data?.previewSnapshot;
+      }
+    },
+  });
+
   return {
     useLatestProjectSnapshotQuery,
+    useProjectSnapshotQuery,
     useProjectHistoryQuery,
+    usePreviewSnapshot,
     rollbackProjectMutation,
   };
 };

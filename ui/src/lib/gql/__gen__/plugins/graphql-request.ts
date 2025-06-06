@@ -293,13 +293,14 @@ export type Mutation = {
   deleteTrigger: Scalars['Boolean']['output'];
   deleteWorkspace?: Maybe<DeleteWorkspacePayload>;
   executeDeployment?: Maybe<JobPayload>;
-  flushProjectToGcs?: Maybe<Scalars['Boolean']['output']>;
+  previewSnapshot?: Maybe<PreviewSnapshot>;
   removeAsset?: Maybe<RemoveAssetPayload>;
   removeMemberFromWorkspace?: Maybe<RemoveMemberFromWorkspacePayload>;
   removeMyAuth?: Maybe<UpdateMePayload>;
   removeParameter: Scalars['Boolean']['output'];
   rollbackProject?: Maybe<ProjectDocument>;
   runProject?: Maybe<RunProjectPayload>;
+  saveSnapshot?: Maybe<Scalars['Boolean']['output']>;
   shareProject?: Maybe<ShareProjectPayload>;
   signup?: Maybe<SignupPayload>;
   unshareProject?: Maybe<UnshareProjectPayload>;
@@ -385,8 +386,10 @@ export type MutationExecuteDeploymentArgs = {
 };
 
 
-export type MutationFlushProjectToGcsArgs = {
+export type MutationPreviewSnapshotArgs = {
+  name?: InputMaybe<Scalars['String']['input']>;
   projectId: Scalars['ID']['input'];
+  version: Scalars['Int']['input'];
 };
 
 
@@ -418,6 +421,11 @@ export type MutationRollbackProjectArgs = {
 
 export type MutationRunProjectArgs = {
   input: RunProjectInput;
+};
+
+
+export type MutationSaveSnapshotArgs = {
+  projectId: Scalars['ID']['input'];
 };
 
 
@@ -563,6 +571,15 @@ export enum ParameterType {
   WebConnection = 'WEB_CONNECTION',
   YesNo = 'YES_NO'
 }
+
+export type PreviewSnapshot = {
+  __typename?: 'PreviewSnapshot';
+  id: Scalars['ID']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+  timestamp: Scalars['DateTime']['output'];
+  updates: Array<Scalars['Int']['output']>;
+  version: Scalars['Int']['output'];
+};
 
 export type Project = Node & {
   __typename?: 'Project';
@@ -1040,12 +1057,28 @@ export type GetLatestProjectSnapshotQueryVariables = Exact<{
 
 export type GetLatestProjectSnapshotQuery = { __typename?: 'Query', latestProjectSnapshot?: { __typename?: 'ProjectDocument', id: string, timestamp: any, updates: Array<number>, version: number } | null };
 
+export type GetProjectSnapshotQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  version: Scalars['Int']['input'];
+}>;
+
+
+export type GetProjectSnapshotQuery = { __typename?: 'Query', projectSnapshot: { __typename?: 'ProjectSnapshot', timestamp: any, updates: Array<number>, version: number } };
+
 export type GetProjectHistoryQueryVariables = Exact<{
   projectId: Scalars['ID']['input'];
 }>;
 
 
 export type GetProjectHistoryQuery = { __typename?: 'Query', projectHistory: Array<{ __typename?: 'ProjectSnapshotMetadata', timestamp: any, version: number }> };
+
+export type PreviewSnapshotMutationVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  version: Scalars['Int']['input'];
+}>;
+
+
+export type PreviewSnapshotMutation = { __typename?: 'Mutation', previewSnapshot?: { __typename?: 'PreviewSnapshot', id: string, timestamp: any, updates: Array<number>, version: number } | null };
 
 export type RollbackProjectMutationVariables = Exact<{
   projectId: Scalars['ID']['input'];
@@ -1490,10 +1523,29 @@ export const GetLatestProjectSnapshotDocument = gql`
   }
 }
     `;
+export const GetProjectSnapshotDocument = gql`
+    query GetProjectSnapshot($projectId: ID!, $version: Int!) {
+  projectSnapshot(projectId: $projectId, version: $version) {
+    timestamp
+    updates
+    version
+  }
+}
+    `;
 export const GetProjectHistoryDocument = gql`
     query GetProjectHistory($projectId: ID!) {
   projectHistory(projectId: $projectId) {
     timestamp
+    version
+  }
+}
+    `;
+export const PreviewSnapshotDocument = gql`
+    mutation PreviewSnapshot($projectId: ID!, $version: Int!) {
+  previewSnapshot(projectId: $projectId, version: $version) {
+    id
+    timestamp
+    updates
     version
   }
 }
@@ -1835,8 +1887,14 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     GetLatestProjectSnapshot(variables: GetLatestProjectSnapshotQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetLatestProjectSnapshotQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetLatestProjectSnapshotQuery>(GetLatestProjectSnapshotDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetLatestProjectSnapshot', 'query', variables);
     },
+    GetProjectSnapshot(variables: GetProjectSnapshotQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetProjectSnapshotQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectSnapshotQuery>(GetProjectSnapshotDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetProjectSnapshot', 'query', variables);
+    },
     GetProjectHistory(variables: GetProjectHistoryQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetProjectHistoryQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetProjectHistoryQuery>(GetProjectHistoryDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetProjectHistory', 'query', variables);
+    },
+    PreviewSnapshot(variables: PreviewSnapshotMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<PreviewSnapshotMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<PreviewSnapshotMutation>(PreviewSnapshotDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'PreviewSnapshot', 'mutation', variables);
     },
     RollbackProject(variables: RollbackProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RollbackProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<RollbackProjectMutation>(RollbackProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RollbackProject', 'mutation', variables);
