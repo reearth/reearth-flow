@@ -8,12 +8,13 @@ import (
 )
 
 type DeclareParameterParam struct {
-	Index     *int // Optional, will be set to last position if nil
-	Name      string
-	ProjectID id.ProjectID
-	Required  bool
-	Type      parameter.Type
-	Value     interface{}
+	Index        *int // Optional, will be set to last position if nil
+	Name         string
+	ProjectID    id.ProjectID
+	Required     bool
+	Public       bool
+	Type         parameter.Type
+	DefaultValue any
 }
 
 type UpdateParameterOrderParam struct {
@@ -22,9 +23,13 @@ type UpdateParameterOrderParam struct {
 	ProjectID id.ProjectID
 }
 
-type UpdateParameterValueParam struct {
-	ParamID id.ParameterID
-	Value   interface{}
+type UpdateParameterParam struct {
+	ParamID       id.ParameterID
+	DefaultValue  any
+	NameValue     string
+	RequiredValue bool
+	PublicValue   bool
+	TypeValue     parameter.Type
 }
 
 type Parameter interface {
@@ -33,5 +38,5 @@ type Parameter interface {
 	FetchByProject(context.Context, id.ProjectID) (*parameter.ParameterList, error)
 	RemoveParameter(context.Context, id.ParameterID) (id.ParameterID, error)
 	UpdateParameterOrder(context.Context, UpdateParameterOrderParam) (*parameter.ParameterList, error)
-	UpdateParameterValue(context.Context, UpdateParameterValueParam) (*parameter.Parameter, error)
+	UpdateParameter(context.Context, UpdateParameterParam) (*parameter.Parameter, error)
 }
