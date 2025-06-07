@@ -1,3 +1,7 @@
+networks:
+  reearth-flow-net:
+    external: true
+
 services:
   reearth-flow-api:
     image: reearth/reearth-flow:latest
@@ -13,6 +17,8 @@ services:
       - reearth-flow-mongo
     volumes:
       - ./data:/app/data
+    networks:
+      - reearth-flow-net
 
   reearth-flow-mongo:
     image: mongo:6-focal
@@ -20,3 +26,5 @@ services:
       - 27017:27017
     volumes:
       - ./mongo:/data/db
+    networks:
+      - reearth-flow-net
