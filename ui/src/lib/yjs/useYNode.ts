@@ -1,12 +1,20 @@
 import { Dispatch, SetStateAction, useCallback, useRef } from "react";
+import type { NodeChange } from "@xyflow/react";
 import * as Y from "yjs";
 
-import type { Node, NodeChange, Workflow } from "@flow/types";
+import type { Node, Workflow } from "@flow/types";
+import { TrajectoryCompressor, Point2D, CompressedTrajectory } from "@flow/lib/trajectory";
 
 import { yNodeConstructor } from "./conversions";
-import type { YNodesMap, YNodeValue, YWorkflow } from "./types";
+import type { YWorkflow, YNode, YNodesMap, YNodeValue } from "./types";
 import { updateParentYWorkflow } from "./useParentYWorkflow";
 import { removeParentYWorkflowNodePseudoPort } from "./useParentYWorkflow/removeParentYWorkflowNodePseudoPort";
+
+// Trajectory compression state
+const trajectoryCompressor = new TrajectoryCompressor(1.0); // 1 pixel error tolerance
+const nodeTrajectories = new Map<string, Point2D[]>();
+const compressedTrajectories = new Map<string, CompressedTrajectory>();
+const MAX_TRAJECTORY_POINTS = 50; // Compress when reaching this many points
 
 export default ({
   currentYWorkflow,
@@ -45,6 +53,71 @@ export default ({
     [currentYWorkflow, setSelectedNodeIds, undoTrackerActionWrapper],
   );
 
+  // Process node position update with trajectory compression
+  const processNodePositionUpdate = useCallback((nodeId: string, x: number, y: number) => {
+    const currentTime = Date.now();
+    const newPoint: Point2D = { x, y, t: currentTime };
+    
+    // Get or create trajectory for this node
+    let trajectory = nodeTrajectories.get(nodeId);
+    if (!trajectory) {
+      trajectory = [];
+      nodeTrajectories.set(nodeId, trajectory);
+    }
+    
+    trajectory.push(newPoint);
+    
+    // Compress trajectory when it gets too long
+    if (trajectory.length >= MAX_TRAJECTORY_POINTS) {
+      const compressed = trajectoryCompressor.compress([...trajectory], nodeId);
+      compressedTrajectories.set(nodeId, compressed);
+      
+      // Keep only recent points for future compression
+      const keepRecentPoints = 10;
+      trajectory.splice(0, trajectory.length - keepRecentPoints);
+      
+      console.log(`Compressed trajectory for node ${nodeId}, compression ratio: ${compressed.compressionRatio.toFixed(2)}`);
+    }
+  }, []);
+
+  // Get interpolated position for smooth animation
+  const getInterpolatedPosition = useCallback((nodeId: string, timestamp: number): Point2D | null => {
+    // First check compressed trajectories
+    const compressed = compressedTrajectories.get(nodeId);
+    if (compressed) {
+      const position = trajectoryCompressor.getPositionAtTime(compressed, timestamp);
+      if (position) return position;
+    }
+    
+    // Fallback to raw trajectory points
+    const trajectory = nodeTrajectories.get(nodeId);
+    if (!trajectory || trajectory.length === 0) return null;
+    
+    // Linear interpolation between nearest points
+    for (let i = 0; i < trajectory.length - 1; i++) {
+      if (timestamp >= trajectory[i].t && timestamp <= trajectory[i + 1].t) {
+        const dt = trajectory[i + 1].t - trajectory[i].t;
+        if (dt > 1e-10) {
+          const alpha = (timestamp - trajectory[i].t) / dt;
+          return {
+            x: trajectory[i].x + alpha * (trajectory[i + 1].x - trajectory[i].x),
+            y: trajectory[i].y + alpha * (trajectory[i + 1].y - trajectory[i].y),
+            t: timestamp,
+          };
+        } else {
+          return trajectory[i];
+        }
+      }
+    }
+    
+    // Return closest point if timestamp is outside range
+    if (timestamp <= trajectory[0].t) {
+      return trajectory[0];
+    } else {
+      return trajectory[trajectory.length - 1];
+    }
+  }, []);
+
   // Passed to editor context so needs to be a ref
   const handleYNodesChangeRef =
     useRef<(changes: NodeChange[]) => void>(undefined);
@@ -61,6 +134,9 @@ export default ({
             const existingYNode = yNodes.get(change.id);
 
             if (existingYNode && change.position) {
+              // Process trajectory compression before updating Y.js
+              processNodePositionUpdate(change.id, change.position.x, change.position.y);
+              
               const newPosition = new Y.Map<unknown>();
               newPosition.set("x", change.position.x);
               newPosition.set("y", change.position.y);
@@ -100,6 +176,11 @@ export default ({
 
             if (existingYNode) {
               const nodeToDelete = existingYNode.toJSON() as Node;
+              
+              // Clean up trajectory data for removed node
+              nodeTrajectories.delete(change.id);
+              compressedTrajectories.delete(change.id);
+              
               if (
                 nodeToDelete.type === "subworkflow" &&
                 nodeToDelete.data.subworkflowId
@@ -202,5 +283,12 @@ export default ({
     handleYNodesAdd,
     handleYNodesChange,
     handleYNodeDataUpdate,
+    // Expose trajectory utilities for external use
+    getInterpolatedPosition,
+    getCompressedTrajectory: (nodeId: string) => compressedTrajectories.get(nodeId),
+    clearTrajectoryData: (nodeId: string) => {
+      nodeTrajectories.delete(nodeId);
+      compressedTrajectories.delete(nodeId);
+    },
   };
 };
