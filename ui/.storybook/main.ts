@@ -6,12 +6,7 @@ const config: StorybookConfig = {
     disableTelemetry: true,
   },
   staticDirs: ["./assets"],
-  addons: [
-    "@storybook/addon-links",
-    "@storybook/addon-essentials",
-    "@storybook/addon-onboarding",
-    "@storybook/addon-interactions",
-  ],
+  addons: ["@storybook/addon-links", "@storybook/addon-onboarding"],
   framework: {
     name: "@storybook/react-vite",
     options: {},
