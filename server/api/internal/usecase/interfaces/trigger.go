@@ -26,6 +26,10 @@ type ExecuteAPITriggerParam struct {
 	Variables           map[string]interface{}
 }
 
+type ExecuteTimeDrivenTriggerParam struct {
+	TriggerID id.TriggerID
+}
+
 type UpdateTriggerParam struct {
 	ID           id.TriggerID
 	DeploymentID *id.DeploymentID
@@ -44,6 +48,7 @@ var (
 
 type Trigger interface {
 	ExecuteAPITrigger(context.Context, ExecuteAPITriggerParam) (*job.Job, error)
+	ExecuteTimeDrivenTrigger(context.Context, ExecuteTimeDrivenTriggerParam) (*job.Job, error)
 	Fetch(context.Context, []id.TriggerID) ([]*trigger.Trigger, error)
 	FindByID(context.Context, id.TriggerID) (*trigger.Trigger, error)
 	FindByWorkspace(context.Context, accountdomain.WorkspaceID, *PaginationParam) ([]*trigger.Trigger, *PageBasedInfo, error)

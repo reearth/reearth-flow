@@ -13,7 +13,13 @@ const DEFAULT_GCS_BUCKET: &str = "yrs-dev";
 #[cfg(feature = "auth")]
 const DEFAULT_AUTH_URL: &str = "http://localhost:8080";
 const DEFAULT_APP_ENV: &str = "development";
-const DEFAULT_ORIGINS: &str = "http://localhost:3000";
+const DEFAULT_ORIGINS: &[&str] = &[
+    "http://localhost:3000",
+    "https://api.flow.test.reearth.dev",
+    "https://api.flow.reearth.dev",
+    "http://localhost:8000",
+    "http://localhost:8080",
+];
 const DEFAULT_WS_PORT: &str = "8000";
 
 #[derive(Debug, Error)]
@@ -32,7 +38,7 @@ pub struct AuthConfig {
 #[derive(Debug, Deserialize, Clone)]
 pub struct AppConfig {
     pub env: String,
-    pub origins: String,
+    pub origins: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -80,7 +86,12 @@ impl Config {
             builder = builder.app_env(env_val);
         }
         if let Ok(origins) = env::var("REEARTH_FLOW_ORIGINS") {
-            builder = builder.app_origins(origins);
+            let origins_vec: Vec<String> = origins
+                .split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+            builder = builder.app_origins(origins_vec);
         }
 
         if let Ok(ws_port) = env::var("REEARTH_FLOW_WS_PORT") {
@@ -115,7 +126,7 @@ pub struct ConfigBuilder {
     #[cfg(feature = "auth")]
     auth_timeout: Option<u64>,
     app_env: Option<String>,
-    app_origins: Option<String>,
+    app_origins: Option<Vec<String>>,
     ws_port: Option<String>,
     grpc_port: Option<String>,
 }
@@ -158,7 +169,7 @@ impl ConfigBuilder {
         self
     }
 
-    pub fn app_origins(mut self, origins: String) -> Self {
+    pub fn app_origins(mut self, origins: Vec<String>) -> Self {
         self.app_origins = Some(origins);
         self
     }
@@ -197,7 +208,7 @@ impl ConfigBuilder {
                 env: self.app_env.unwrap_or_else(|| DEFAULT_APP_ENV.to_string()),
                 origins: self
                     .app_origins
-                    .unwrap_or_else(|| DEFAULT_ORIGINS.to_string()),
+                    .unwrap_or_else(|| DEFAULT_ORIGINS.iter().map(|s| s.to_string()).collect()),
             },
             ws_port: self.ws_port.unwrap_or_else(|| DEFAULT_WS_PORT.to_string()),
         }

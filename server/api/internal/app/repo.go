@@ -9,6 +9,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth0"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/fs"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpbatch"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpscheduler"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcs"
 	mongorepo "github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
 	redisrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/redis"
@@ -85,6 +86,9 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 
 	// Batch
 	gateways.Batch = initBatch(ctx, conf)
+
+	// Scheduler
+	gateways.Scheduler = initScheduler(ctx, conf)
 
 	// Auth0
 	auth0 := auth0.New(conf.Auth0.Domain, conf.Auth0.ClientID, conf.Auth0.ClientSecret)
@@ -190,4 +194,26 @@ func initRedis(ctx context.Context, conf *config.Config) gateway.Redis {
 		log.Warnf("log: failed to init redis storage: %s\n", err.Error())
 	}
 	return RedisRepo
+}
+
+func initScheduler(ctx context.Context, conf *config.Config) gateway.Scheduler {
+	if conf.GCPProject == "" || conf.GCPRegion == "" {
+		log.Info("Scheduler disabled: GCP project or region not configured")
+		return nil
+	}
+
+	config := gcpscheduler.SchedulerConfig{
+		ProjectID: conf.GCPProject,
+		Location:  conf.GCPRegion,
+		Host:      conf.Host,
+	}
+
+	scheduler, err := gcpscheduler.NewScheduler(ctx, config)
+	if err != nil {
+		log.Errorf("failed to create Scheduler: %v", err)
+		return nil
+	}
+
+	log.Infofc(ctx, "Scheduler enabled for project %s in region %s targeting %s", conf.GCPProject, conf.GCPRegion, conf.Host)
+	return scheduler
 }
