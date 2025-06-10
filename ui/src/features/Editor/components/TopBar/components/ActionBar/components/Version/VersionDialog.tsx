@@ -31,7 +31,8 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const [animate, setAnimate] = useState<boolean>(false);
   const lastErroredVersionRef = useRef<number | null>(null);
-  const [hasVersionCorruption, setHasVersionCorruption] =
+  const [isCorruptedVersion, setIsCorruptedVersion] = useState<boolean>(false);
+  const [isCorruptionDetected, setIsCorruptionDetected] =
     useState<boolean>(false);
   const {
     history,
@@ -57,16 +58,29 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
 
   const handleWorkflowCorruption = useCallback(() => {
     lastErroredVersionRef.current = selectedProjectSnapshotVersion;
-    setHasVersionCorruption(true);
+    setIsCorruptedVersion(true);
+    setIsCorruptionDetected(true);
   }, [selectedProjectSnapshotVersion]);
+
+  const handleRollbackProject = useCallback(async () => {
+    try {
+      await onRollbackProject();
+
+      if (isCorruptionDetected) {
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("Rollback failed:", error);
+    }
+  }, [onRollbackProject, isCorruptionDetected]);
 
   useEffect(() => {
     setAnimate(true);
     if (
-      hasVersionCorruption &&
+      isCorruptedVersion &&
       selectedProjectSnapshotVersion !== lastErroredVersionRef.current
     ) {
-      setHasVersionCorruption(false);
+      setIsCorruptedVersion(false);
     }
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -84,7 +98,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
     handleCloseDialog,
     openVersionConfirmationDialog,
     selectedProjectSnapshotVersion,
-    hasVersionCorruption,
+    isCorruptedVersion,
   ]);
 
   return (
@@ -142,9 +156,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
             </div>
             <div className="absolute bottom-0 left-0 w-full bg-secondary border-t p-2 flex justify-end">
               <Button
-                disabled={
-                  !selectedProjectSnapshotVersion || hasVersionCorruption
-                }
+                disabled={!selectedProjectSnapshotVersion || isCorruptedVersion}
                 variant={"ghost"}
                 onClick={() => setOpenVersionConfirmationDialog(true)}>
                 {t("Revert")}
@@ -161,7 +173,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
           <VersionConfirmationDialog
             selectedProjectSnapshotVersion={selectedProjectSnapshotVersion}
             onDialogClose={() => setOpenVersionConfirmationDialog(false)}
-            onRollbackProject={onRollbackProject}
+            onRollbackProject={handleRollbackProject}
           />
         )}
     </div>
