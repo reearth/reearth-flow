@@ -1,48 +1,48 @@
-export interface Point2D {
+export type Point2D = {
   x: number;
   y: number;
   t: number; // timestamp
-}
+};
 
-export interface LinearSegment {
+export type LinearSegment = {
   type: 'linear';
   startPoint: Point2D;
   velocity: { x: number; y: number }; // velocity vector
   endTime: number;
-}
+};
 
-export interface CubicBezierSegment {
+export type CubicBezierSegment = {
   type: 'bezier';
   controlPoints: [Point2D, Point2D, Point2D, Point2D]; // [p0, p1, p2, p3]
   startTime: number;
   endTime: number;
-}
+};
 
-export interface BSplineSegment {
+export type BSplineSegment = {
   type: 'bspline';
   coefficients: Point2D[];
   knotVector: number[];
   degree: number;
   startTime: number;
-  endTime: number
-}
+  endTime: number;
+};
 
-export interface DiscreteSegment {
+export type DiscreteSegment = {
   type: 'discrete';
   points: Point2D[];
-}
+};
 
 export type TrajectorySegment = LinearSegment | CubicBezierSegment | BSplineSegment | DiscreteSegment;
 
-export interface CompressedTrajectory {
+export type CompressedTrajectory = {
   nodeId: string;
   segments: TrajectorySegment[];
   totalError: number;
   compressionRatio: number;
-}
+};
 
 export class TrajectoryCompressor {
-  constructor(private epsilon: number = 1.0) {}
+  constructor(private epsilon = 1.0) {}
 
   /**
    * 压缩轨迹点序列为函数片段

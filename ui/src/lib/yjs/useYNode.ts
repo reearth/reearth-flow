@@ -1,12 +1,12 @@
-import { Dispatch, SetStateAction, useCallback, useRef } from "react";
 import type { NodeChange } from "@xyflow/react";
+import { Dispatch, SetStateAction, useCallback, useRef } from "react";
 import * as Y from "yjs";
 
-import type { Node, Workflow } from "@flow/types";
 import { TrajectoryCompressor, Point2D, CompressedTrajectory } from "@flow/lib/trajectory";
+import type { Node, Workflow } from "@flow/types";
 
 import { yNodeConstructor } from "./conversions";
-import type { YWorkflow, YNode, YNodesMap, YNodeValue } from "./types";
+import type { YWorkflow,  YNodesMap, YNodeValue } from "./types";
 import { updateParentYWorkflow } from "./useParentYWorkflow";
 import { removeParentYWorkflowNodePseudoPort } from "./useParentYWorkflow/removeParentYWorkflowNodePseudoPort";
 
@@ -148,7 +148,7 @@ export default ({
             const existingYNode = yNodes.get(change.id);
 
             if (existingYNode && change.item) {
-              const newYNode = yNodeConstructor(change.item);
+              const newYNode = yNodeConstructor(change.item as Node);
               yNodes.set(change.id, newYNode);
             }
             break;
