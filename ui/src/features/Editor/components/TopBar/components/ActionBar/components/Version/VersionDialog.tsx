@@ -30,7 +30,9 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
   const t = useT();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [animate, setAnimate] = useState<boolean>(false);
-
+  const lastErroredVersionRef = useRef<number | null>(null);
+  const [hasVersionCorruption, setHasVersionCorruption] =
+    useState<boolean>(false);
   const {
     history,
     latestProjectSnapshotVersion,
@@ -53,8 +55,19 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
     onDialogClose();
   }, [previewDocRef, onDialogClose]);
 
+  const handleWorkflowCorruption = useCallback(() => {
+    lastErroredVersionRef.current = selectedProjectSnapshotVersion;
+    setHasVersionCorruption(true);
+  }, [selectedProjectSnapshotVersion]);
+
   useEffect(() => {
     setAnimate(true);
+    if (
+      hasVersionCorruption &&
+      selectedProjectSnapshotVersion !== lastErroredVersionRef.current
+    ) {
+      setHasVersionCorruption(false);
+    }
     const handleClickOutside = (event: MouseEvent) => {
       if (
         dialogRef.current &&
@@ -67,7 +80,12 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [handleCloseDialog, openVersionConfirmationDialog]);
+  }, [
+    handleCloseDialog,
+    openVersionConfirmationDialog,
+    selectedProjectSnapshotVersion,
+    hasVersionCorruption,
+  ]);
 
   return (
     <div
@@ -100,6 +118,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
               <VersionEditorComponent
                 yDoc={yDoc}
                 previewDocYWorkflows={previewDocYWorkflows}
+                onWorkflowCorruption={handleWorkflowCorruption}
               />
             )}
           </div>
@@ -150,7 +169,9 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
 const VersionEditorComponent: React.FC<{
   yDoc: Y.Doc | null;
   previewDocYWorkflows: Y.Map<YWorkflow> | null;
-}> = ({ yDoc, previewDocYWorkflows }) => {
+  versionKey?: string;
+  onWorkflowCorruption?: () => void;
+}> = ({ yDoc, previewDocYWorkflows, onWorkflowCorruption }) => {
   const t = useT();
   const yWorkflows = previewDocYWorkflows
     ? previewDocYWorkflows
@@ -162,6 +183,7 @@ const VersionEditorComponent: React.FC<{
     <div className="w-full h-full">
       {yWorkflows && (
         <ErrorBoundary
+          onError={onWorkflowCorruption}
           fallback={
             <BasicBoiler
               text={t("Selected version is corruputed or not available.")}
