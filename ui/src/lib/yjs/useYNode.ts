@@ -1,7 +1,9 @@
-import { Dispatch, SetStateAction, useCallback, useRef } from "react";
+import { Dispatch, SetStateAction, useCallback, useRef, useMemo } from "react";
 import * as Y from "yjs";
 
 import type { Node, NodeChange, Workflow } from "@flow/types";
+
+import { cancellableDebounce } from "../../utils/cancellableDebounce";
 
 import { yNodeConstructor } from "./conversions";
 import type { YNodesMap, YNodeValue, YWorkflow } from "./types";
@@ -48,109 +50,178 @@ export default ({
   // Passed to editor context so needs to be a ref
   const handleYNodesChangeRef =
     useRef<(changes: NodeChange[]) => void>(undefined);
-  // This is based off of react-flow node changes, which includes removal
-  // but not addtion. This is why we have a separate function for adding nodes.
-  handleYNodesChangeRef.current = (changes: NodeChange[]) => {
-    const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
-    if (!yNodes) return;
+  
+  const debouncedHandleYNodesChange = useMemo(
+    () => cancellableDebounce((changes: NodeChange[]) => {
+      const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
+      if (!yNodes) return;
 
-    undoTrackerActionWrapper(() => {
-      changes.forEach((change) => {
-        switch (change.type) {
-          case "position": {
-            const existingYNode = yNodes.get(change.id);
+      undoTrackerActionWrapper(() => {
+        changes.forEach((change) => {
+          switch (change.type) {
+            case "position": {
+              const existingYNode = yNodes.get(change.id);
 
-            if (existingYNode && change.position) {
-              const newPosition = new Y.Map<unknown>();
-              newPosition.set("x", change.position.x);
-              newPosition.set("y", change.position.y);
-              existingYNode.set("position", newPosition);
-            }
-            break;
-          }
-          case "replace": {
-            const existingYNode = yNodes.get(change.id);
-
-            if (existingYNode && change.item) {
-              const newYNode = yNodeConstructor(change.item);
-              yNodes.set(change.id, newYNode);
-            }
-            break;
-          }
-          case "dimensions": {
-            const existingYNode = yNodes.get(change.id);
-
-            if (existingYNode && change.dimensions) {
-              const newMeasured = new Y.Map<unknown>();
-              newMeasured.set("width", change.dimensions.width);
-              newMeasured.set("height", change.dimensions.height);
-              existingYNode?.set("measured", newMeasured);
-
-              if (change.setAttributes) {
-                const newStyle = new Y.Map<unknown>();
-                newStyle.set("width", change.dimensions.width + "px");
-                newStyle.set("height", change.dimensions.height + "px");
-                existingYNode?.set("style", newStyle);
+              if (existingYNode && change.position) {
+                const newPosition = new Y.Map<unknown>();
+                newPosition.set("x", change.position.x);
+                newPosition.set("y", change.position.y);
+                existingYNode.set("position", newPosition);
               }
+              break;
             }
-            break;
-          }
-          case "remove": {
-            const existingYNode = yNodes.get(change.id);
+            case "replace": {
+              const existingYNode = yNodes.get(change.id);
 
-            if (existingYNode) {
-              const nodeToDelete = existingYNode.toJSON() as Node;
-              if (
-                nodeToDelete.type === "subworkflow" &&
-                nodeToDelete.data.subworkflowId
-              ) {
-                handleYWorkflowRemove?.(nodeToDelete.data.subworkflowId);
-              } else if (nodeToDelete.data.params?.routingPort) {
-                const parentWorkflowId = rawWorkflows.find((w) => {
-                  const nodes = w.nodes as Node[];
-                  return nodes.some(
-                    (n) =>
-                      n.id ===
-                      (currentYWorkflow?.get("id")?.toJSON() as string),
-                  );
-                })?.id;
-                if (!parentWorkflowId) return;
-                const parentYWorkflow = yWorkflows.get(parentWorkflowId);
-                if (parentYWorkflow) {
-                  removeParentYWorkflowNodePseudoPort(
-                    currentYWorkflow?.get("id")?.toJSON() as string,
-                    parentYWorkflow,
-                    nodeToDelete,
-                  );
+              if (existingYNode && change.item) {
+                const newYNode = yNodeConstructor(change.item);
+                yNodes.set(change.id, newYNode);
+              }
+              break;
+            }
+            case "dimensions": {
+              const existingYNode = yNodes.get(change.id);
+
+              if (existingYNode && change.dimensions) {
+                const newMeasured = new Y.Map<unknown>();
+                newMeasured.set("width", change.dimensions.width);
+                newMeasured.set("height", change.dimensions.height);
+                existingYNode?.set("measured", newMeasured);
+
+                if (change.setAttributes) {
+                  const newStyle = new Y.Map<unknown>();
+                  newStyle.set("width", change.dimensions.width + "px");
+                  newStyle.set("height", change.dimensions.height + "px");
+                  existingYNode?.set("style", newStyle);
                 }
               }
-
-              setSelectedNodeIds((snids) => {
-                return snids.filter((snid) => snid !== change.id);
-              });
-
-              yNodes.delete(change.id);
+              break;
             }
-            break;
-          }
-          case "select": {
-            setSelectedNodeIds((snids) => {
-              if (change.selected) {
-                return [...snids, change.id];
-              } else {
-                return snids.filter((snid) => snid !== change.id);
+            case "remove": {
+              const existingYNode = yNodes.get(change.id);
+
+              if (existingYNode) {
+                const nodeToDelete = existingYNode.toJSON() as Node;
+                if (
+                  nodeToDelete.type === "subworkflow" &&
+                  nodeToDelete.data.subworkflowId
+                ) {
+                  handleYWorkflowRemove?.(nodeToDelete.data.subworkflowId);
+                } else if (nodeToDelete.data.params?.routingPort) {
+                  const parentWorkflowId = rawWorkflows.find((w) => {
+                    const nodes = w.nodes as Node[];
+                    return nodes.some(
+                      (n) =>
+                        n.id ===
+                        (currentYWorkflow?.get("id")?.toJSON() as string),
+                    );
+                  })?.id;
+                  if (!parentWorkflowId) return;
+                  const parentYWorkflow = yWorkflows.get(parentWorkflowId);
+                  if (parentYWorkflow) {
+                    removeParentYWorkflowNodePseudoPort(
+                      currentYWorkflow?.get("id")?.toJSON() as string,
+                      parentYWorkflow,
+                      nodeToDelete,
+                    );
+                  }
+                }
+
+                setSelectedNodeIds((snids) => {
+                  return snids.filter((snid) => snid !== change.id);
+                });
+
+                yNodes.delete(change.id);
               }
-            });
-            break;
+              break;
+            }
+            case "select": {
+              setSelectedNodeIds((snids) => {
+                if (change.selected) {
+                  return [...snids, change.id];
+                } else {
+                  return snids.filter((snid) => snid !== change.id);
+                }
+              });
+              break;
+            }
           }
-        }
+        });
       });
-    });
-  };
-  const handleYNodesChange = useCallback(
-    (changes: NodeChange[]) => handleYNodesChangeRef.current?.(changes),
-    [],
+    }, 100), 
+    [currentYWorkflow, rawWorkflows, yWorkflows, setSelectedNodeIds, undoTrackerActionWrapper, handleYWorkflowRemove]
   );
+
+  handleYNodesChangeRef.current = (changes: NodeChange[]) => {
+    const immediateChanges: NodeChange[] = [];
+    const debouncedChanges: NodeChange[] = [];
+
+    changes.forEach((change) => {
+      if (change.type === "select" || change.type === "remove") {
+        immediateChanges.push(change);
+      } else {
+        debouncedChanges.push(change);
+      }
+    });
+
+    if (immediateChanges.length > 0) {
+      const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
+      if (yNodes) {
+        undoTrackerActionWrapper(() => {
+          immediateChanges.forEach((change) => {
+            if (change.type === "select") {
+              setSelectedNodeIds((snids) => {
+                if (change.selected) {
+                  return [...snids, change.id];
+                } else {
+                  return snids.filter((snid) => snid !== change.id);
+                }
+              });
+            } else if (change.type === "remove") {
+              const existingYNode = yNodes.get(change.id);
+              if (existingYNode) {
+                const nodeToDelete = existingYNode.toJSON() as Node;
+                if (
+                  nodeToDelete.type === "subworkflow" &&
+                  nodeToDelete.data.subworkflowId
+                ) {
+                  handleYWorkflowRemove?.(nodeToDelete.data.subworkflowId);
+                } else if (nodeToDelete.data.params?.routingPort) {
+                  const parentWorkflowId = rawWorkflows.find((w) => {
+                    const nodes = w.nodes as Node[];
+                    return nodes.some(
+                      (n) =>
+                        n.id ===
+                        (currentYWorkflow?.get("id")?.toJSON() as string),
+                    );
+                  })?.id;
+                  if (!parentWorkflowId) return;
+                  const parentYWorkflow = yWorkflows.get(parentWorkflowId);
+                  if (parentYWorkflow) {
+                    removeParentYWorkflowNodePseudoPort(
+                      currentYWorkflow?.get("id")?.toJSON() as string,
+                      parentYWorkflow,
+                      nodeToDelete,
+                    );
+                  }
+                }
+
+                setSelectedNodeIds((snids) => {
+                  return snids.filter((snid) => snid !== change.id);
+                });
+
+                yNodes.delete(change.id);
+              }
+            }
+          });
+        });
+      }
+    }
+
+    if (debouncedChanges.length > 0) {
+      debouncedHandleYNodesChange(debouncedChanges);
+    }
+  };
 
   const handleYNodeDataUpdate = useCallback(
     (
@@ -196,6 +267,11 @@ export default ({
         yData?.set(dataField, updatedValue);
       }),
     [currentYWorkflow, rawWorkflows, yWorkflows, undoTrackerActionWrapper],
+  );
+
+  const handleYNodesChange = useCallback(
+    (changes: NodeChange[]) => handleYNodesChangeRef.current?.(changes),
+    [],
   );
 
   return {
