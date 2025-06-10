@@ -1,9 +1,16 @@
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { ReactFlowProvider } from "@xyflow/react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ErrorBoundary } from "react-error-boundary";
 import * as Y from "yjs";
 
-import { Button, LoadingSplashscreen, LoadingSkeleton } from "@flow/components";
+import {
+  Button,
+  LoadingSplashscreen,
+  LoadingSkeleton,
+  FlowLogo,
+} from "@flow/components";
+import BasicBoiler from "@flow/components/BasicBoiler";
 import VersionCanvas from "@flow/features/VersionCanvas";
 import { useT } from "@flow/lib/i18n";
 import type { YWorkflow } from "@flow/lib/yjs/types";
@@ -144,6 +151,7 @@ const VersionEditorComponent: React.FC<{
   yDoc: Y.Doc | null;
   previewDocYWorkflows: Y.Map<YWorkflow> | null;
 }> = ({ yDoc, previewDocYWorkflows }) => {
+  const t = useT();
   const yWorkflows = previewDocYWorkflows
     ? previewDocYWorkflows
     : yDoc
@@ -153,9 +161,18 @@ const VersionEditorComponent: React.FC<{
   return (
     <div className="w-full h-full">
       {yWorkflows && (
-        <ReactFlowProvider>
-          <VersionCanvas yWorkflows={yWorkflows} />
-        </ReactFlowProvider>
+        <ErrorBoundary
+          fallback={
+            <BasicBoiler
+              text={t("Selected version is corruputed or not available.")}
+              className="size-4 h-full [&>div>p]:text-md"
+              icon={<FlowLogo className="size-20 text-accent" />}
+            />
+          }>
+          <ReactFlowProvider>
+            <VersionCanvas yWorkflows={yWorkflows} />
+          </ReactFlowProvider>
+        </ErrorBoundary>
       )}
     </div>
   );

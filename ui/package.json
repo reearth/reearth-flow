@@ -83,6 +83,7 @@
     "react": "19.1.0",
     "react-datepicker": "8.3.0",
     "react-dom": "19.1.0",
+    "react-error-boundary": "6.0.0",
     "react-i18next": "15.5.1",
     "react-resizable-panels": "3.0.2",
     "react-yjs": "2.0.1",

@@ -131,13 +131,14 @@
   "Project cannot be rollbacked to this version. An error has occured.": "プロジェクトはこのバージョンにロールバックできません。エラーが発生しました。",
   "Version Preview Failed": "バージョンプレビューに失敗しました",
   "Project Version Preview cannot be viewed. An error has occurred.": "プロジェクトのバージョンプレビューは表示できません。エラーが発生しました。",
-  "Version ": "バージョン ",
   "Are you sure you want to revert to this version?": "このバージョンに戻しますか？",
   "By clicking continue you will be reverting to version {{version}}.": "続行をクリックすると、バージョン{{version}}に戻ります。",
   "Viewing Version: {{version}}": "バージョン表示: {{version}}",
   "Version History": "バージョン履歴",
   "Revert": "戻す",
+  "Selected version is corruputed or not available.": "選択したバージョンは破損しているか、利用できません。",
   "Current Version": "現在のバージョン",
+  "Version ": "バージョン ",
   "Deploy project's workflow": "プロジェクトのワークフローをデプロイ",
   "Additional actions": "追加アクション",
   "Export Project": "プロジェクトをエクスポート",
@@ -395,5 +396,7 @@
   "There was an error when trying to update the members persmissons.": "メンバーの権限を更新しようとした際にエラーが発生しました。",
   "Batch": "バッチ",
   "Subworkflow": "サブワークフロー",
+  "Project or version is corruputed.": "プロジェクトまたはバージョンが破損しています。",
+  "Revert to a previous version": "以前のバージョンに戻す",
   "Reload": "リロード"
 }
