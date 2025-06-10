@@ -15,6 +15,10 @@ const trajectoryCompressor = new TrajectoryCompressor(1.0); // 1 pixel error tol
 const nodeTrajectories = new Map<string, Point2D[]>();
 const compressedTrajectories = new Map<string, CompressedTrajectory>();
 const MAX_TRAJECTORY_POINTS = 50; // Compress when reaching this many points
+const UPDATE_THROTTLE_MS = 50; // Shorter throttle for better real-time experience
+const IMMEDIATE_UPDATE_DISTANCE = 10; // Send immediate update if moved more than 10 pixels
+const pendingUpdates = new Map<string, { x: number; y: number; timestamp: number; lastSentPosition?: { x: number; y: number } }>();
+const updateTimers = new Map<string, NodeJS.Timeout>();
 
 export default ({
   currentYWorkflow,
@@ -53,8 +57,8 @@ export default ({
     [currentYWorkflow, setSelectedNodeIds, undoTrackerActionWrapper],
   );
 
-  // Process node position update with trajectory compression
-  const processNodePositionUpdate = useCallback((nodeId: string, x: number, y: number) => {
+  // Process node position update with trajectory compression and smart update strategy
+  const processNodePositionUpdate = useCallback((nodeId: string, x: number, y: number): 'immediate' | 'compressed' | 'throttled' => {
     const currentTime = Date.now();
     const newPoint: Point2D = { x, y, t: currentTime };
     
@@ -67,17 +71,122 @@ export default ({
     
     trajectory.push(newPoint);
     
+    // Get current pending update to check movement distance
+    const currentPending = pendingUpdates.get(nodeId);
+    const lastSentPos = currentPending?.lastSentPosition;
+    
+    // Calculate distance moved since last sent position
+    let shouldSendImmediate = false;
+    if (lastSentPos) {
+      const distance = Math.sqrt(
+        Math.pow(x - lastSentPos.x, 2) + Math.pow(y - lastSentPos.y, 2)
+      );
+      shouldSendImmediate = distance >= IMMEDIATE_UPDATE_DISTANCE;
+    } else {
+      // First movement always sends immediately for better responsiveness
+      shouldSendImmediate = true;
+    }
+    
+                // Store pending update for throttling
+            pendingUpdates.set(nodeId, { 
+              x, 
+              y, 
+              timestamp: currentTime,
+              lastSentPosition: shouldSendImmediate ? { x, y } : lastSentPos
+            });
+    
     // Compress trajectory when it gets too long
     if (trajectory.length >= MAX_TRAJECTORY_POINTS) {
       const compressed = trajectoryCompressor.compress([...trajectory], nodeId);
       compressedTrajectories.set(nodeId, compressed);
       
       // Keep only recent points for future compression
-      const keepRecentPoints = 10;
+      const keepRecentPoints = 10;  
       trajectory.splice(0, trajectory.length - keepRecentPoints);
       
       console.log(`Compressed trajectory for node ${nodeId}, compression ratio: ${compressed.compressionRatio.toFixed(2)}`);
+      
+      return 'compressed';
     }
+    
+    // Return immediate for significant movements, otherwise throttled
+    return shouldSendImmediate ? 'immediate' : 'throttled';
+  }, []);
+
+  // Apply immediate position update to Yjs
+  const applyImmediateUpdate = useCallback((nodeId: string, x: number, y: number, yNodes: YNodesMap) => {
+    const existingYNode = yNodes.get(nodeId);
+    if (existingYNode) {
+      const newPosition = new Y.Map<unknown>();
+      newPosition.set("x", x);
+      newPosition.set("y", y);
+      existingYNode.set("position", newPosition);
+    }
+  }, []);
+
+  // Apply compressed trajectory updates to Yjs
+  const applyCompressedUpdate = useCallback((nodeId: string, yNodes: YNodesMap) => {
+    const compressed = compressedTrajectories.get(nodeId);
+    if (!compressed) return;
+
+    // Get the latest position from compressed trajectory
+    const latestTime = Date.now();
+    const position = trajectoryCompressor.getPositionAtTime(compressed, latestTime);
+    
+    if (position) {
+      const existingYNode = yNodes.get(nodeId);
+      if (existingYNode) {
+        const newPosition = new Y.Map<unknown>();
+        newPosition.set("x", position.x);
+        newPosition.set("y", position.y);
+        existingYNode.set("position", newPosition);
+      }
+    }
+  }, []);
+
+  // Throttled update using pending positions
+  const scheduleThrottledUpdate = useCallback((nodeId: string, yNodes: YNodesMap) => {
+    // Clear existing timer
+    const existingTimer = updateTimers.get(nodeId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    // Schedule new update
+    const timer = setTimeout(() => {
+      const pendingUpdate = pendingUpdates.get(nodeId);
+      if (pendingUpdate) {
+        const existingYNode = yNodes.get(nodeId);
+        if (existingYNode) {
+          const newPosition = new Y.Map<unknown>();
+          newPosition.set("x", pendingUpdate.x);
+          newPosition.set("y", pendingUpdate.y);
+          existingYNode.set("position", newPosition);
+        }
+        pendingUpdates.delete(nodeId);
+      }
+      updateTimers.delete(nodeId);
+    }, UPDATE_THROTTLE_MS);
+
+    updateTimers.set(nodeId, timer);
+  }, []);
+
+  // Force flush all pending updates (useful when drag ends)
+  const flushPendingUpdates = useCallback((yNodes: YNodesMap) => {
+    pendingUpdates.forEach((update, nodeId) => {
+      const existingYNode = yNodes.get(nodeId);
+      if (existingYNode) {
+        const newPosition = new Y.Map<unknown>();
+        newPosition.set("x", update.x);
+        newPosition.set("y", update.y);
+        existingYNode.set("position", newPosition);
+      }
+    });
+    
+    // Clear all pending updates and timers
+    pendingUpdates.clear();
+    updateTimers.forEach(timer => clearTimeout(timer));
+    updateTimers.clear();
   }, []);
 
   // Get interpolated position for smooth animation
@@ -134,13 +243,23 @@ export default ({
             const existingYNode = yNodes.get(change.id);
 
             if (existingYNode && change.position) {
-              // Process trajectory compression before updating Y.js
-              processNodePositionUpdate(change.id, change.position.x, change.position.y);
+              // Process trajectory compression and determine update strategy
+              const updateStrategy = processNodePositionUpdate(change.id, change.position.x, change.position.y);
               
-              const newPosition = new Y.Map<unknown>();
-              newPosition.set("x", change.position.x);
-              newPosition.set("y", change.position.y);
-              existingYNode.set("position", newPosition);
+              switch (updateStrategy) {
+                case 'immediate':
+                  // Send immediately for better real-time collaboration
+                  applyImmediateUpdate(change.id, change.position.x, change.position.y, yNodes);
+                  break;
+                case 'compressed':
+                  // Use compressed trajectory for position update
+                  applyCompressedUpdate(change.id, yNodes);
+                  break;
+                case 'throttled':
+                  // Use throttled updates for performance optimization
+                  scheduleThrottledUpdate(change.id, yNodes);
+                  break;
+              }
             }
             break;
           }
@@ -180,6 +299,14 @@ export default ({
               // Clean up trajectory data for removed node
               nodeTrajectories.delete(change.id);
               compressedTrajectories.delete(change.id);
+              pendingUpdates.delete(change.id);
+              
+              // Clear any pending update timers
+              const timer = updateTimers.get(change.id);
+              if (timer) {
+                clearTimeout(timer);
+                updateTimers.delete(change.id);
+              }
               
               if (
                 nodeToDelete.type === "subworkflow" &&
@@ -289,6 +416,21 @@ export default ({
     clearTrajectoryData: (nodeId: string) => {
       nodeTrajectories.delete(nodeId);
       compressedTrajectories.delete(nodeId);
+      pendingUpdates.delete(nodeId);
+      
+      // Clear any pending update timers
+      const timer = updateTimers.get(nodeId);
+      if (timer) {
+        clearTimeout(timer);
+        updateTimers.delete(nodeId);
+      }
+    },
+    // Force flush pending updates when drag operation ends
+    flushPendingUpdates: () => {
+      const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
+      if (yNodes) {
+        flushPendingUpdates(yNodes);
+      }
     },
   };
 };
