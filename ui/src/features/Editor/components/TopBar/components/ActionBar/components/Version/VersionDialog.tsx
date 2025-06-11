@@ -199,7 +199,7 @@ const VersionEditorComponent: React.FC<{
           onError={onWorkflowCorruption}
           fallback={
             <BasicBoiler
-              text={t("Selected version is corruputed or not available.")}
+              text={t("Selected version is corrupted or not available.")}
               className="size-4 h-full [&>div>p]:text-md"
               icon={<FlowLogo className="size-20 text-accent" />}
             />

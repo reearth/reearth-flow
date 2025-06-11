@@ -119,7 +119,7 @@ const ErrorComponent = () => {
   return (
     <div className="flex flex-col h-screen w-full items-center justify-center">
       <BasicBoiler
-        text={t("Project or version is corruputed.")}
+        text={t("Project or version is corrupted.")}
         icon={<FlowLogo className="size-16 text-accent" />}
       />
     </div>
