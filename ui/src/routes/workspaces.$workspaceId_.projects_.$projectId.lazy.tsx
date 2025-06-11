@@ -35,7 +35,7 @@ export const Route = createLazyFileRoute(
       </ProjectIdWrapper>
     </WorkspaceIdWrapper>
   ),
-  errorComponent: () => <ErrorComponent />,
+  errorComponent: ({ reset }) => <ErrorComponent onRefresh={reset} />,
 });
 
 const EditorComponent = () => {
@@ -114,7 +114,7 @@ const EditorComponent = () => {
   );
 };
 
-const ErrorComponent = () => {
+const ErrorComponent = ({ onRefresh }: { onRefresh: () => void }) => {
   const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
   const [openVersionDialog, setOpenVersionDialog] = useState(false);
   const { getAccessToken } = useAuth();
@@ -164,6 +164,7 @@ const ErrorComponent = () => {
           yDoc={yDocState}
           project={currentProject}
           onDialogClose={handleCloseDialog}
+          onRefresh={onRefresh}
         />
       )}
     </>

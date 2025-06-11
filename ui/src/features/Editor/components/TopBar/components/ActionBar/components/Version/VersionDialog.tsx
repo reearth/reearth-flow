@@ -24,16 +24,21 @@ type Props = {
   project?: Project;
   yDoc: Y.Doc | null;
   onDialogClose: () => void;
+  onRefresh?: () => void;
 };
 
-const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
+const VersionDialog: React.FC<Props> = ({
+  project,
+  yDoc,
+  onDialogClose,
+  onRefresh,
+}) => {
   const t = useT();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [animate, setAnimate] = useState<boolean>(false);
   const lastErroredVersionRef = useRef<number | null>(null);
   const [isCorruptedVersion, setIsCorruptedVersion] = useState<boolean>(false);
-  const [isCorruptionDetected, setIsCorruptionDetected] =
-    useState<boolean>(false);
+
   const {
     history,
     latestProjectSnapshotVersion,
@@ -59,20 +64,18 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
   const handleWorkflowCorruption = useCallback(() => {
     lastErroredVersionRef.current = selectedProjectSnapshotVersion;
     setIsCorruptedVersion(true);
-    setIsCorruptionDetected(true);
   }, [selectedProjectSnapshotVersion]);
 
   const handleRollbackProject = useCallback(async () => {
     try {
       await onRollbackProject();
-
-      if (isCorruptionDetected) {
-        window.location.reload();
+      if (onRefresh) {
+        onRefresh();
       }
     } catch (error) {
       console.error("Rollback failed:", error);
     }
-  }, [onRollbackProject, isCorruptionDetected]);
+  }, [onRollbackProject, onRefresh]);
 
   useEffect(() => {
     setAnimate(true);
