@@ -183,7 +183,6 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
 const VersionEditorComponent: React.FC<{
   yDoc: Y.Doc | null;
   previewDocYWorkflows: Y.Map<YWorkflow> | null;
-  versionKey?: string;
   onWorkflowCorruption?: () => void;
 }> = ({ yDoc, previewDocYWorkflows, onWorkflowCorruption }) => {
   const t = useT();
