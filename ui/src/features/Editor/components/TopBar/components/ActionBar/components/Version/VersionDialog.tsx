@@ -159,7 +159,11 @@ const VersionDialog: React.FC<Props> = ({
             </div>
             <div className="absolute bottom-0 left-0 w-full bg-secondary border-t p-2 flex justify-end">
               <Button
-                disabled={!selectedProjectSnapshotVersion || isCorruptedVersion}
+                disabled={
+                  !selectedProjectSnapshotVersion ||
+                  isLoadingPreview ||
+                  isCorruptedVersion
+                }
                 variant={"ghost"}
                 onClick={() => setOpenVersionConfirmationDialog(true)}>
                 {t("Revert")}
