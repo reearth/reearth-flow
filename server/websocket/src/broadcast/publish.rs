@@ -50,7 +50,7 @@ impl Publish {
 
                         let should_flush_now = {
                             let count_value = *count_clone.lock().await;
-                            count_value > 20
+                            count_value > 14
                         };
 
                         if should_flush_now {
@@ -80,7 +80,7 @@ impl Publish {
                     }
                     _ = sleep(Duration::from_millis(10)) => {
                         if let Some(last_time) = last_data_time {
-                            if last_time.elapsed() >= Duration::from_millis(100) {
+                            if last_time.elapsed() >= Duration::from_millis(50) {
                                 let mut doc_lock = doc_clone.lock().await;
                                 let count_value = *count_clone.lock().await;
                                 if count_value > 0 {
