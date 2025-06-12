@@ -98,6 +98,7 @@ impl BroadcastGroupManager {
 
         let mut start_id = "0".to_string();
         let batch_size = 2048;
+        let mut final_last_id = "0".to_string();
 
         let mut lock_value: Option<String> = None;
 
@@ -145,6 +146,8 @@ impl BroadcastGroupManager {
                             }
                         }
                     }
+
+                    final_last_id = last_id.clone();
 
                     if last_id == start_id {
                         if let Err(e) = self
@@ -215,6 +218,12 @@ impl BroadcastGroupManager {
             )
             .await?,
         );
+
+        if final_last_id != "0" {
+            let last_read_id = group.get_last_read_id();
+            let mut last_id_guard = last_read_id.lock().await;
+            *last_id_guard = final_last_id;
+        }
 
         match self.doc_to_id_map.entry(doc_id.to_string()) {
             dashmap::mapref::entry::Entry::Occupied(entry) => {
