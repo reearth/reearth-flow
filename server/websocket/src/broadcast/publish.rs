@@ -6,14 +6,14 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio::sync::Mutex;
-use tokio::time::interval;
+use tokio::time::{sleep, Instant};
 use tracing::warn;
 use yrs::{updates::decoder::Decode, Doc, ReadTxn, StateVector, Transact, Update};
 
 pub struct Publish {
     count: Arc<Mutex<u32>>,
     doc: Arc<Mutex<Doc>>,
-    flush_sender: mpsc::Sender<()>,
+    new_data_sender: mpsc::Sender<()>,
     _timer_task: Option<tokio::task::JoinHandle<()>>,
     shutdown_tx: Option<oneshot::Sender<()>>,
 }
@@ -34,57 +34,76 @@ impl Publish {
         let mut conn_clone = conn.clone();
         let mut first_publish = true;
 
-        let (flush_sender, mut flush_receiver) = mpsc::channel(32);
+        let (new_data_sender, mut new_data_receiver) = mpsc::channel(32);
         let (shutdown_tx, mut shutdown_rx) = oneshot::channel();
 
         let timer_task = tokio::spawn(async move {
-            let mut interval = interval(Duration::from_millis(200));
+            let mut last_data_time: Option<Instant> = None;
 
             loop {
                 tokio::select! {
                     _ = &mut shutdown_rx => {
                         break;
                     }
-                    _ = interval.tick() => {
-                        let mut doc_lock = doc_clone.lock().await;
-                        let count_value = *count_clone.lock().await;
-                        if count_value > 0 {
+                    _ = new_data_receiver.recv() => {
+                        last_data_time = Some(Instant::now());
 
-                            let update = {
-                                let txn = doc_lock.transact_mut();
-                                txn.encode_state_as_update_v1(&StateVector::default())
-                            };
+                        let should_flush_now = {
+                            let count_value = *count_clone.lock().await;
+                            count_value > 20
+                        };
 
-                            if first_publish {
-                                first_publish = false;
-                                if let Err(e) = redis_store.publish_update_with_ttl(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone, 43200).await {
-                                    warn!("Failed to flush first document: {}", e);
+                        if should_flush_now {
+                            let mut doc_lock = doc_clone.lock().await;
+                            let count_value = *count_clone.lock().await;
+                            if count_value > 0 {
+                                let update = {
+                                    let txn = doc_lock.transact_mut();
+                                    txn.encode_state_as_update_v1(&StateVector::default())
+                                };
+
+                                if first_publish {
+                                    first_publish = false;
+                                    if let Err(e) = redis_store.publish_update_with_ttl(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone, 43200).await {
+                                        warn!("Failed to flush first document: {}", e);
+                                    }
+                                } else if let Err(e) = redis_store.publish_update(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone).await {
+                                    warn!("Failed to flush document: {}", e);
                                 }
-                            } else if let Err(e) = redis_store.publish_update(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone).await {
-                                warn!("Failed to flush document: {}", e);
-                            }
 
-                            *doc_lock = Doc::new();
-                            let mut count = count_clone.lock().await;
-                            *count = 0;
+                                *doc_lock = Doc::new();
+                                let mut count = count_clone.lock().await;
+                                *count = 0;
+                                last_data_time = None;
+                            }
                         }
                     }
-                    _ = flush_receiver.recv() => {
-                        let mut doc_lock = doc_clone.lock().await;
-                        let count_value = *count_clone.lock().await;
-                        if count_value > 0 {
-                            let update = {
-                                let txn = doc_lock.transact_mut();
-                                txn.encode_state_as_update_v1(&StateVector::default())
-                            };
+                    _ = sleep(Duration::from_millis(10)) => {
+                        if let Some(last_time) = last_data_time {
+                            if last_time.elapsed() >= Duration::from_millis(100) {
+                                let mut doc_lock = doc_clone.lock().await;
+                                let count_value = *count_clone.lock().await;
+                                if count_value > 0 {
+                                    let update = {
+                                        let txn = doc_lock.transact_mut();
+                                        txn.encode_state_as_update_v1(&StateVector::default())
+                                    };
 
-                            if let Err(e) = redis_store.publish_update(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone).await {
-                                warn!("Failed to flush document: {}", e);
+                                    if first_publish {
+                                        first_publish = false;
+                                        if let Err(e) = redis_store.publish_update_with_ttl(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone, 43200).await {
+                                            warn!("Failed to flush first document: {}", e);
+                                        }
+                                    } else if let Err(e) = redis_store.publish_update(&mut conn_clone, &stream_key_clone, &update, &instance_id_clone).await {
+                                        warn!("Failed to flush document: {}", e);
+                                    }
+
+                                    *doc_lock = Doc::new();
+                                    let mut count = count_clone.lock().await;
+                                    *count = 0;
+                                    last_data_time = None;
+                                }
                             }
-
-                            *doc_lock = Doc::new();
-                            let mut count = count_clone.lock().await;
-                            *count = 0;
                         }
                     }
                 }
@@ -94,7 +113,7 @@ impl Publish {
         Self {
             count,
             doc,
-            flush_sender,
+            new_data_sender,
             _timer_task: Some(timer_task),
             shutdown_tx: Some(shutdown_tx),
         }
@@ -111,11 +130,9 @@ impl Publish {
         {
             let mut count = self.count.lock().await;
             *count += 1;
-
-            if *count > 10 {
-                let _ = self.flush_sender.send(()).await;
-            }
         }
+
+        let _ = self.new_data_sender.send(()).await;
 
         Ok(())
     }
