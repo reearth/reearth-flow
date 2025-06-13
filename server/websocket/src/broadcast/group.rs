@@ -327,6 +327,10 @@ impl BroadcastGroup {
         self.doc_name.clone()
     }
 
+    pub fn get_last_read_id(&self) -> &Arc<Mutex<String>> {
+        &self.last_read_id
+    }
+
     pub async fn subscribe<Sink, Stream, E>(
         self: Arc<Self>,
         sink: Arc<Mutex<Sink>>,
