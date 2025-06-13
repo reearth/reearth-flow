@@ -35,6 +35,8 @@ export default ({
   const [isLoadingPreview, setIsLoadingPreview] = useState<boolean>(false);
   const [previewDocYWorkflows, setPreviewDocYWorkflows] =
     useState<Y.Map<YWorkflow> | null>(null);
+  const lastErroredVersionRef = useRef<number | null>(null);
+  const [isCorruptedVersion, setIsCorruptedVersion] = useState<boolean>(false);
 
   const { toast } = useToast();
   const t = useT();
@@ -79,7 +81,7 @@ export default ({
     Y.applyUpdate(doc, revertChangesSinceSnapshotUpdate, "snapshot-rollback");
   }
 
-  const handleRollbackProject = useCallback(async () => {
+  const handleProjectRollback = useCallback(async () => {
     if (selectedProjectSnapshotVersion === null) return;
     setIsReverting(true);
     try {
@@ -144,6 +146,10 @@ export default ({
 
   const handleVersionSelection = useCallback(
     async (version: number) => {
+      if (isCorruptedVersion && version !== lastErroredVersionRef.current) {
+        setIsCorruptedVersion(false);
+      }
+
       setSelectedProjectSnapshotVersion(version);
       if (version === null) return;
       if (previewDocRef.current) {
@@ -203,9 +209,19 @@ export default ({
       projectId,
       t,
       toast,
+      isCorruptedVersion,
       selectedProjectSnapshotVersion,
     ],
   );
+
+  const handleWorkflowCorruption = useCallback(() => {
+    lastErroredVersionRef.current = selectedProjectSnapshotVersion;
+    setIsCorruptedVersion(true);
+  }, [
+    selectedProjectSnapshotVersion,
+    lastErroredVersionRef,
+    setIsCorruptedVersion,
+  ]);
 
   return {
     history,
@@ -213,12 +229,16 @@ export default ({
     previewDocRef,
     previewDocYWorkflows,
     selectedProjectSnapshotVersion,
+    lastErroredVersionRef,
     isFetching,
     isLoadingPreview,
     isReverting,
+    isCorruptedVersion,
     openVersionConfirmationDialog,
     setOpenVersionConfirmationDialog,
-    onRollbackProject: handleRollbackProject,
+    setIsCorruptedVersion,
+    onProjectRollback: handleProjectRollback,
     onVersionSelection: handleVersionSelection,
+    onWorkflowCorruption: handleWorkflowCorruption,
   };
 };

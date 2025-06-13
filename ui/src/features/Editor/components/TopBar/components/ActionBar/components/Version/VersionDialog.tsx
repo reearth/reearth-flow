@@ -24,20 +24,18 @@ type Props = {
   project?: Project;
   yDoc: Y.Doc | null;
   onDialogClose: () => void;
-  onRefresh?: () => void;
+  onErrorReset?: () => void;
 };
 
 const VersionDialog: React.FC<Props> = ({
   project,
   yDoc,
   onDialogClose,
-  onRefresh,
+  onErrorReset,
 }) => {
   const t = useT();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [animate, setAnimate] = useState<boolean>(false);
-  const lastErroredVersionRef = useRef<number | null>(null);
-  const [isCorruptedVersion, setIsCorruptedVersion] = useState<boolean>(false);
 
   const {
     history,
@@ -48,60 +46,50 @@ const VersionDialog: React.FC<Props> = ({
     isFetching,
     isLoadingPreview,
     isReverting,
+    isCorruptedVersion,
     openVersionConfirmationDialog,
     setOpenVersionConfirmationDialog,
-    onRollbackProject,
+    onProjectRollback,
     onVersionSelection,
+    onWorkflowCorruption,
   } = useHooks({ projectId: project?.id ?? "", yDoc, onDialogClose });
 
-  const handleCloseDialog = useCallback(() => {
+  const handleDialogClose = useCallback(() => {
     previewDocRef.current?.destroy();
     previewDocRef.current = null;
     setAnimate(false);
     onDialogClose();
   }, [previewDocRef, onDialogClose]);
 
-  const handleWorkflowCorruption = useCallback(() => {
-    lastErroredVersionRef.current = selectedProjectSnapshotVersion;
-    setIsCorruptedVersion(true);
-  }, [selectedProjectSnapshotVersion]);
-
-  const handleRollbackProject = useCallback(async () => {
+  const handleProjectRollback = useCallback(async () => {
     try {
-      await onRollbackProject();
-      if (onRefresh) {
-        onRefresh();
+      await onProjectRollback();
+      if (onErrorReset) {
+        onErrorReset();
       }
     } catch (error) {
       console.error("Rollback failed:", error);
     }
-  }, [onRollbackProject, onRefresh]);
+  }, [onProjectRollback, onErrorReset]);
 
   useEffect(() => {
     setAnimate(true);
-    if (
-      isCorruptedVersion &&
-      selectedProjectSnapshotVersion !== lastErroredVersionRef.current
-    ) {
-      setIsCorruptedVersion(false);
-    }
     const handleClickOutside = (event: MouseEvent) => {
       if (
         dialogRef.current &&
         !dialogRef.current.contains(event.target as Node) &&
         !openVersionConfirmationDialog
       ) {
-        handleCloseDialog();
+        handleDialogClose();
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [
-    handleCloseDialog,
+    handleDialogClose,
     openVersionConfirmationDialog,
     selectedProjectSnapshotVersion,
-    isCorruptedVersion,
   ]);
 
   return (
@@ -123,7 +111,7 @@ const VersionDialog: React.FC<Props> = ({
           <Button
             variant={"ghost"}
             className="h-fit p-0 opacity-70 dark:font-thin hover:bg-card hover:opacity-100 z-10"
-            onClick={handleCloseDialog}>
+            onClick={handleDialogClose}>
             <Cross2Icon className="size-5" />
           </Button>
         </div>
@@ -135,7 +123,7 @@ const VersionDialog: React.FC<Props> = ({
               <VersionEditorComponent
                 yDoc={yDoc}
                 previewDocYWorkflows={previewDocYWorkflows}
-                onWorkflowCorruption={handleWorkflowCorruption}
+                onWorkflowCorruption={onWorkflowCorruption}
               />
             )}
           </div>
@@ -180,7 +168,7 @@ const VersionDialog: React.FC<Props> = ({
           <VersionConfirmationDialog
             selectedProjectSnapshotVersion={selectedProjectSnapshotVersion}
             onDialogClose={() => setOpenVersionConfirmationDialog(false)}
-            onRollbackProject={handleRollbackProject}
+            onProjectRollback={handleProjectRollback}
           />
         )}
     </div>

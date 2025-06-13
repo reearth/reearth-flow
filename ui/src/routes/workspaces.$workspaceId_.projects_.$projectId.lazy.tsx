@@ -35,7 +35,7 @@ export const Route = createLazyFileRoute(
       </ProjectIdWrapper>
     </WorkspaceIdWrapper>
   ),
-  errorComponent: ({ reset }) => <ErrorComponent onRefresh={reset} />,
+  errorComponent: ({ reset }) => <ErrorComponent onErrorReset={reset} />,
 });
 
 const EditorComponent = () => {
@@ -114,29 +114,15 @@ const EditorComponent = () => {
   );
 };
 
-const ErrorComponent = ({ onRefresh }: { onRefresh: () => void }) => {
-  const [accessToken, setAccessToken] = useState<string | undefined>(undefined);
+const ErrorComponent = ({ onErrorReset }: { onErrorReset: () => void }) => {
   const [openVersionDialog, setOpenVersionDialog] = useState(false);
-  const { getAccessToken } = useAuth();
   const t = useT();
-  useEffect(() => {
-    if (!accessToken) {
-      (async () => {
-        const token = await getAccessToken();
-        setAccessToken(token);
-      })();
-    }
-  }, [accessToken, getAccessToken]);
-
-  const { projectId }: { projectId: string } = useParams({
-    strict: false,
-  });
 
   const [currentProject] = useCurrentProject();
 
   const { yDocState } = useYjsSetup({
     isProtected: true,
-    projectId,
+    projectId: currentProject?.id,
     workflowId: DEFAULT_ENTRY_GRAPH_ID,
   });
 
@@ -164,7 +150,7 @@ const ErrorComponent = ({ onRefresh }: { onRefresh: () => void }) => {
           yDoc={yDocState}
           project={currentProject}
           onDialogClose={handleCloseDialog}
-          onRefresh={onRefresh}
+          onErrorReset={onErrorReset}
         />
       )}
     </>
