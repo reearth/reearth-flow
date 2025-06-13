@@ -127,6 +127,7 @@
   "Viewing Version: {{version}}": "",
   "Version History": "",
   "Revert": "",
+  "Selected version is corrupted or not available.": "",
   "Current Version": "",
   "Version ": "",
   "Deploy project's workflow": "",
@@ -423,5 +424,7 @@
   "There was an error when trying to update the members persmissons.": "",
   "Batch": "",
   "Subworkflow": "",
+  "Project or version is corrupted.": "",
+  "Revert to a previous version": "",
   "Reload": ""
 }

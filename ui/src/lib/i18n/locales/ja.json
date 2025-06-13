@@ -127,6 +127,7 @@
   "Viewing Version: {{version}}": "バージョン表示: {{version}}",
   "Version History": "バージョン履歴",
   "Revert": "戻す",
+  "Selected version is corrupted or not available.": "選択したバージョンは破損しているか、利用できません。",
   "Current Version": "現在のバージョン",
   "Version ": "バージョン ",
   "Deploy project's workflow": "プロジェクトのワークフローをデプロイ",
@@ -423,5 +424,7 @@
   "There was an error when trying to update the members persmissons.": "メンバーの権限を更新しようとした際にエラーが発生しました。",
   "Batch": "バッチ",
   "Subworkflow": "サブワークフロー",
+  "Project or version is corrupted.": "プロジェクトまたはバージョンが破損しています。",
+  "Revert to a previous version": "以前のバージョンに戻す",
   "Reload": "リロード"
 }
