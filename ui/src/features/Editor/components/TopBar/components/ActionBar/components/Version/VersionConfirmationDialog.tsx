@@ -4,13 +4,13 @@ import { useT } from "@flow/lib/i18n";
 type Props = {
   selectedProjectSnapshotVersion: number;
   onDialogClose: () => void;
-  onRollbackProject: () => void;
+  onProjectRollback: () => void;
 };
 
 const VersionConfirmationDialog: React.FC<Props> = ({
   selectedProjectSnapshotVersion,
   onDialogClose,
-  onRollbackProject,
+  onProjectRollback,
 }) => {
   const t = useT();
   return (
@@ -23,7 +23,7 @@ const VersionConfirmationDialog: React.FC<Props> = ({
       isOpen={!!selectedProjectSnapshotVersion}
       confirmDisabled={!selectedProjectSnapshotVersion}
       onClose={() => onDialogClose()}
-      onConfirm={() => onRollbackProject()}
+      onConfirm={() => onProjectRollback()}
     />
   );
 };

@@ -2,19 +2,25 @@ import { createLazyFileRoute, useParams } from "@tanstack/react-router";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { useEffect, useState } from "react";
 
-import { LoadingSplashscreen, TooltipProvider } from "@flow/components";
+import {
+  FlowLogo,
+  LoadingSplashscreen,
+  TooltipProvider,
+} from "@flow/components";
+import BasicBoiler from "@flow/components/BasicBoiler";
 import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
 import SharedCanvas from "@flow/features/SharedCanvas";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useFullscreen, useShortcuts } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { GraphQLProvider, useSharedProject } from "@flow/lib/gql";
-import { I18nProvider } from "@flow/lib/i18n";
+import { I18nProvider, useT } from "@flow/lib/i18n";
 import { ThemeProvider } from "@flow/lib/theme";
 import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
 
 export const Route = createLazyFileRoute("/shared/$sharedToken")({
   component: () => <SharedRoute />,
+  errorComponent: () => <ErrorComponent />,
 });
 
 const SharedRoute = () => {
@@ -104,5 +110,18 @@ const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
       accessToken={accessToken}
       undoTrackerActionWrapper={undoTrackerActionWrapper}
     />
+  );
+};
+
+const ErrorComponent = () => {
+  const t = useT();
+
+  return (
+    <div className="flex flex-col h-screen w-full items-center justify-center">
+      <BasicBoiler
+        text={t("Project or version is corrupted.")}
+        icon={<FlowLogo className="size-16 text-accent" />}
+      />
+    </div>
   );
 };
