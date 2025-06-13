@@ -2,6 +2,7 @@ import {
   ClockCounterClockwise,
   DotsThreeVertical,
   Export,
+  FloppyDiskIcon,
   PaperPlaneTilt,
   Rocket,
 } from "@phosphor-icons/react";
@@ -54,7 +55,8 @@ const ActionBar: React.FC<Props> = ({
     handleShowVersionDialog,
     handleShowSharePopover,
     handleDialogClose,
-  } = useHooks();
+    handleProjectSnapshotSave,
+  } = useHooks({ projectId: project?.id ?? "" });
 
   return (
     <>
@@ -110,6 +112,12 @@ const ActionBar: React.FC<Props> = ({
                 onClick={handleShowVersionDialog}>
                 <p>{t("Version History")}</p>
                 <ClockCounterClockwise weight="thin" size={18} />
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex justify-between gap-4"
+                onClick={handleProjectSnapshotSave}>
+                <p>{t("Manually Save")}</p>
+                <FloppyDiskIcon weight="thin" size={18} />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

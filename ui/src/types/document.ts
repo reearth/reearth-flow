@@ -27,3 +27,7 @@ export type PreviewSnapshot = {
 export type RollbackProject = {
   projectDocument?: ProjectDocument;
 } & ApiResponse;
+
+export type SaveSnapshot = {
+  saveSnapshot: boolean;
+} & ApiResponse;
