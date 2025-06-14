@@ -80,8 +80,13 @@ pub enum ExecutionError {
     AmbiguousSourceIdentifier(String),
     #[error("Invalid AppSource connection {0}. Already exists.")]
     AppSourceConnectionAlreadyExists(String),
-    #[error("Factory error: {0}")]
-    Factory(#[source] BoxedError),
+    #[error("Factory error for node {node_id} ({node_name}): {error}")]
+    Factory {
+        node_id: String,
+        node_name: String,
+        #[source]
+        error: BoxedError,
+    },
     #[error("Failed to restore record writer: {0}")]
     RestoreRecordWriter(#[source] DeserializationError),
     #[error("Source error: {0}")]
