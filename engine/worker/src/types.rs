@@ -4,3 +4,4 @@ pub(crate) mod log_stream_event;
 pub(crate) mod metadata;
 pub(crate) mod node_status_event;
 pub(crate) mod stdout_log_event;
+pub(crate) mod user_facing_log_event;
