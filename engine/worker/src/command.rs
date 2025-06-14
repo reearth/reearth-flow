@@ -7,13 +7,14 @@ use reearth_flow_runner::runner::AsyncRunner;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::{self, StorageResolver};
 use reearth_flow_types::Workflow;
+use uuid::Uuid;
 
 use crate::{
     artifact::upload_artifact,
     asset::download_asset,
     event_handler::{EventHandler, NodeFailureHandler},
     factory::ALL_ACTION_FACTORIES,
-    logger::enable_file_logging,
+    logger::{enable_file_logging, set_pubsub_context, USER_FACING_LOG_HANDLER},
     pubsub::{backend::PubSubBackend, publisher::Publisher},
     types::{
         job_complete_event::{JobCompleteEvent, JobResult},
@@ -21,8 +22,13 @@ use crate::{
     },
 };
 
+use tokio::runtime::Handle;
+
 const WORKER_ASSET_GLOBAL_PARAMETER_VARIABLE: &str = "workerAssetPath";
 const WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE: &str = "workerArtifactPath";
+
+// Special UUID for workflow definition errors
+const WORKFLOW_PARSE_ERROR_UUID: Uuid = Uuid::nil(); // 00000000-0000-0000-0000-000000000000
 
 pub fn build_worker_command() -> Command {
     Command::new("Re:Earth Flow Worker")
@@ -102,7 +108,8 @@ impl RunWorkerCommand {
         let metadata_path =
             Uri::from_str(metadata_path.as_str()).map_err(crate::errors::Error::init)?;
         let worker_num = matches
-            .remove_one::<usize>("worker_num")
+            .remove_one::<String>("worker_num")
+            .and_then(|s| s.parse::<usize>().ok())
             .unwrap_or(num_cpus::get());
         let pubsub_backend = matches
             .remove_one::<String>("pubsub_backend")
@@ -143,20 +150,52 @@ impl RunWorkerCommand {
     async fn run(&self) -> crate::errors::Result<()> {
         tracing::info!("Starting worker");
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
-        let (workflow, state, logger_factory, meta) = self.prepare(&storage_resolver).await?;
+
+        let meta = self.download_metadata(&storage_resolver).await?;
         enable_file_logging(meta.job_id)?;
+
+        let workflow_yaml = self.download_workflow(&storage_resolver).await?;
+
+        let (workflow_id, workflow_name) = Self::extract_workflow_info(&workflow_yaml);
+        let workflow_id = workflow_id.unwrap_or(WORKFLOW_PARSE_ERROR_UUID);
+
         let pubsub = PubSubBackend::try_from(self.pubsub_backend.as_str())
             .await
             .map_err(crate::errors::Error::init)?;
 
-        let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match pubsub {
-            PubSubBackend::Google(pubsub) => {
-                Arc::new(EventHandler::new(workflow.id, meta.job_id, pubsub))
+        let handle = Handle::current();
+        set_pubsub_context(pubsub.clone(), workflow_id, meta.job_id, handle)
+            .map_err(crate::errors::Error::init)?;
+
+        if let Some(name) = workflow_name {
+            if let Some(handler) = USER_FACING_LOG_HANDLER.get() {
+                handler.set_workflow_name(name);
             }
-            PubSubBackend::Noop(pubsub) => {
-                Arc::new(EventHandler::new(workflow.id, meta.job_id, pubsub))
+        }
+
+        let mut workflow = match Workflow::try_from(workflow_yaml.as_str()) {
+            Ok(w) => w,
+            Err(e) => {
+                if let Some(handler) = USER_FACING_LOG_HANDLER.get() {
+                    handler.send_workflow_definition_error(&e);
+                }
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+                self.cleanup(&meta, &storage_resolver).await?;
+
+                return Err(crate::errors::Error::failed_to_create_workflow(e));
             }
         };
+
+        let (state, logger_factory) = self
+            .prepare_workflow(&storage_resolver, &meta, &mut workflow)
+            .await?;
+
+        let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match pubsub.clone() {
+            PubSubBackend::Google(p) => Arc::new(EventHandler::new(workflow.id, meta.job_id, p)),
+            PubSubBackend::Noop(p) => Arc::new(EventHandler::new(workflow.id, meta.job_id, p)),
+        };
+
         let workflow_id = workflow.id;
         let node_failure_handler = Arc::new(NodeFailureHandler::new());
         let result = AsyncRunner::run_with_event_handler(
@@ -181,11 +220,8 @@ impl RunWorkerCommand {
             Err(_) => JobResult::Failed,
         };
         self.cleanup(&meta, &storage_resolver).await?;
-        let pubsub = PubSubBackend::try_from(self.pubsub_backend.as_str())
-            .await
-            .map_err(crate::errors::Error::init)?;
-        match pubsub {
-            PubSubBackend::Google(pubsub) => pubsub
+        match &pubsub {
+            PubSubBackend::Google(p) => p
                 .publish(JobCompleteEvent::new(
                     workflow_id,
                     meta.job_id,
@@ -211,30 +247,10 @@ impl RunWorkerCommand {
         Ok(())
     }
 
-    async fn prepare(
+    async fn download_metadata(
         &self,
         storage_resolver: &Arc<StorageResolver>,
-    ) -> crate::errors::Result<(Workflow, Arc<State>, Arc<LoggerFactory>, Metadata)> {
-        let json = if self.workflow == "-" {
-            io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?
-        } else {
-            let path = Uri::from_str(self.workflow.as_str()).map_err(crate::errors::Error::init)?;
-            let storage = storage_resolver
-                .resolve(&path)
-                .map_err(crate::errors::Error::init)?;
-            let bytes = storage
-                .get(path.path().as_path())
-                .await
-                .map_err(crate::errors::Error::FailedToDownloadWorkflow)?;
-            let bytes = bytes
-                .bytes()
-                .await
-                .map_err(crate::errors::Error::FailedToDownloadWorkflow)?;
-            String::from_utf8(bytes.to_vec()).map_err(crate::errors::Error::init)?
-        };
-        let mut workflow = Workflow::try_from(json.as_str())
-            .map_err(crate::errors::Error::failed_to_create_workflow)?;
-
+    ) -> crate::errors::Result<Metadata> {
         let storage = storage_resolver
             .resolve(&self.metadata_path)
             .map_err(crate::errors::Error::init)?;
@@ -252,6 +268,56 @@ impl RunWorkerCommand {
         let meta: Metadata =
             serde_json::from_str(meta_json.as_str()).map_err(crate::errors::Error::init)?;
 
+        Ok(meta)
+    }
+
+    async fn download_workflow(
+        &self,
+        storage_resolver: &Arc<StorageResolver>,
+    ) -> crate::errors::Result<String> {
+        let json = if self.workflow == "-" {
+            io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?
+        } else {
+            let path = Uri::from_str(self.workflow.as_str()).map_err(crate::errors::Error::init)?;
+            let storage = storage_resolver
+                .resolve(&path)
+                .map_err(crate::errors::Error::init)?;
+            let bytes = storage
+                .get(path.path().as_path())
+                .await
+                .map_err(crate::errors::Error::FailedToDownloadWorkflow)?;
+            let bytes = bytes
+                .bytes()
+                .await
+                .map_err(crate::errors::Error::FailedToDownloadWorkflow)?;
+            String::from_utf8(bytes.to_vec()).map_err(crate::errors::Error::init)?
+        };
+        Ok(json)
+    }
+
+    fn extract_workflow_info(yaml: &str) -> (Option<Uuid>, Option<String>) {
+        match serde_yaml::from_str::<serde_yaml::Value>(yaml) {
+            Ok(value) => {
+                let id = value
+                    .get("id")
+                    .and_then(|v| v.as_str())
+                    .and_then(|s| Uuid::parse_str(s).ok());
+                let name = value
+                    .get("name")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                (id, name)
+            }
+            Err(_) => (None, None),
+        }
+    }
+
+    async fn prepare_workflow(
+        &self,
+        storage_resolver: &Arc<StorageResolver>,
+        meta: &Metadata,
+        workflow: &mut Workflow,
+    ) -> crate::errors::Result<(Arc<State>, Arc<LoggerFactory>)> {
         let job_id = meta.job_id;
         let asset_path =
             setup_job_directory("workers", "assets", job_id).map_err(crate::errors::Error::init)?;
@@ -288,7 +354,7 @@ impl RunWorkerCommand {
             create_root_logger(action_log_uri.path()),
             action_log_uri.path(),
         ));
-        Ok((workflow, state, logger_factory, meta))
+        Ok((state, logger_factory))
     }
 
     async fn cleanup(
