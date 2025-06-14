@@ -1,0 +1,52 @@
+use bytes::Bytes;
+use chrono::{DateTime, Utc};
+use serde::Serialize;
+use std::env;
+use uuid::Uuid;
+
+use crate::pubsub::{
+    message::{EncodableMessage, ValidatedMessage},
+    topic::Topic,
+};
+
+#[derive(Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub enum UserFacingLogLevel {
+    Info,
+    Success,
+    Error,
+}
+
+#[derive(Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct UserFacingLogEvent {
+    pub workflow_id: Uuid,
+    pub job_id: Uuid,
+    pub timestamp: DateTime<Utc>,
+    pub level: UserFacingLogLevel,
+    pub node_id: Option<String>,
+    pub node_name: Option<String>,
+    pub display_message: String,
+}
+
+impl EncodableMessage for UserFacingLogEvent {
+    type Error = String;
+
+    fn topic(&self) -> Topic {
+        let topic_name = env::var("FLOW_WORKER_USER_FACING_LOG_TOPIC")
+            .unwrap_or_else(|_| "flow-worker-user-facing-log-topic".to_string());
+        Topic::new(topic_name)
+    }
+
+    fn encode(&self) -> Result<ValidatedMessage<Bytes>, Self::Error> {
+        let data = serde_json::to_vec(self).map_err(|e| {
+            eprintln!("Failed to serialize UserFacingLogEvent: {}", e);
+            e.to_string()
+        })?;
+        Ok(ValidatedMessage::new(
+            Uuid::new_v4(),
+            self.timestamp,
+            Bytes::from(data),
+        ))
+    }
+}
