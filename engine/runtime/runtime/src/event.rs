@@ -38,6 +38,7 @@ pub enum Event {
         level: Level,
         span: Option<Span>,
         node_handle: Option<NodeHandle>,
+        node_name: Option<String>,
         message: String,
     },
     NodeStatusChanged {
@@ -68,6 +69,7 @@ impl EventHub {
             level: Level::INFO,
             span,
             node_handle: None,
+            node_name: None,
             message: message.to_string(),
         });
     }
@@ -82,6 +84,23 @@ impl EventHub {
             level: Level::INFO,
             span,
             node_handle: Some(node_handle),
+            node_name: None,
+            message: message.to_string(),
+        });
+    }
+
+    pub fn info_log_with_node_info<T: ToString>(
+        &self,
+        span: Option<Span>,
+        node_handle: NodeHandle,
+        node_name: String,
+        message: T,
+    ) {
+        self.send(Event::Log {
+            level: Level::INFO,
+            span,
+            node_handle: Some(node_handle),
+            node_name: Some(node_name),
             message: message.to_string(),
         });
     }
@@ -91,6 +110,7 @@ impl EventHub {
             level: Level::DEBUG,
             span,
             node_handle: None,
+            node_name: None,
             message: message.to_string(),
         });
     }
@@ -105,6 +125,7 @@ impl EventHub {
             level: Level::DEBUG,
             span,
             node_handle: Some(node_handle),
+            node_name: None,
             message: message.to_string(),
         });
     }
@@ -113,11 +134,27 @@ impl EventHub {
         tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
     }
 
+    pub async fn enhanced_flush(&self, max_wait_ms: u64) {
+        let start = std::time::Instant::now();
+        let max_duration = tokio::time::Duration::from_millis(max_wait_ms);
+
+        while start.elapsed() < max_duration {
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+            if self.sender.receiver_count() == 0 {
+                break;
+            }
+        }
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+    }
+
     pub fn warn_log<T: ToString>(&self, span: Option<Span>, message: T) {
         self.send(Event::Log {
             level: Level::WARN,
             span,
             node_handle: None,
+            node_name: None,
             message: message.to_string(),
         });
     }
@@ -132,6 +169,7 @@ impl EventHub {
             level: Level::WARN,
             span,
             node_handle: Some(node_handle),
+            node_name: None,
             message: message.to_string(),
         });
     }
@@ -141,6 +179,7 @@ impl EventHub {
             level: Level::ERROR,
             span,
             node_handle: None,
+            node_name: None,
             message: message.to_string(),
         });
     }
@@ -155,6 +194,23 @@ impl EventHub {
             level: Level::ERROR,
             span,
             node_handle: Some(node_handle),
+            node_name: None,
+            message: message.to_string(),
+        });
+    }
+
+    pub fn error_log_with_node_info<T: ToString>(
+        &self,
+        span: Option<Span>,
+        node_handle: NodeHandle,
+        node_name: String,
+        message: T,
+    ) {
+        self.send(Event::Log {
+            level: Level::ERROR,
+            span,
+            node_handle: Some(node_handle),
+            node_name: Some(node_name),
             message: message.to_string(),
         });
     }

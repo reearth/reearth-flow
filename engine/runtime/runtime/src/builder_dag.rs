@@ -149,7 +149,11 @@ impl BuilderDag {
                         node.node.action().to_string(),
                         node.with.clone(),
                     )
-                    .map_err(ExecutionError::Factory)?;
+                    .map_err(|e| ExecutionError::Factory {
+                        node_id: node.handle.id.to_string(),
+                        node_name: node.name.clone(),
+                        error: e,
+                    })?;
 
                 let state = sink.get_source_state().map_err(ExecutionError::Sink)?;
                 if let Some(state) = state {
@@ -204,7 +208,11 @@ impl BuilderDag {
                             node.with.clone(),
                             source_states.remove(&node.handle),
                         )
-                        .map_err(ExecutionError::Factory)?;
+                        .map_err(|e| ExecutionError::Factory {
+                            node_id: node.handle.id.to_string(),
+                            node_name: node.name.clone(),
+                            error: e,
+                        })?;
 
                     // Write state to relevant sink.
                     let state = source
@@ -241,7 +249,11 @@ impl BuilderDag {
                             node.node.action().to_string(),
                             node.with.clone(),
                         )
-                        .map_err(ExecutionError::Factory)?;
+                        .map_err(|e| ExecutionError::Factory {
+                            node_id: node.handle.id.to_string(),
+                            node_name: node.name.clone(),
+                            error: e,
+                        })?;
                     NodeType {
                         handle: node.handle,
                         name: node.name,

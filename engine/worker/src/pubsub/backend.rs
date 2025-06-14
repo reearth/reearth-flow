@@ -3,7 +3,7 @@ use google_cloud_pubsub::client::{Client, ClientConfig};
 pub(crate) mod google;
 pub(crate) mod noop;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone)]
 pub(crate) enum PubSubBackendError {
     #[error("Failed to try from : {0}")]
     TryFrom(String),
@@ -17,6 +17,7 @@ impl PubSubBackendError {
     }
 }
 
+#[derive(Clone)]
 pub(crate) enum PubSubBackend {
     Google(google::CloudPubSub),
     Noop(noop::NoopPubSub),
