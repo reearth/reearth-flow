@@ -3,7 +3,7 @@ use std::{
     env,
     fmt::Debug,
     mem::swap,
-    sync::Arc,
+    sync::{atomic::AtomicU64, Arc},
     time::{self, Duration},
 };
 
@@ -41,6 +41,8 @@ static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
 pub struct SinkNode<F> {
     /// Node handle in description DAG.
     node_handle: NodeHandle,
+    /// Node name from workflow definition.
+    node_name: String,
     /// Input node handles.
     node_handles: Vec<NodeHandle>,
     /// Input data channels.
@@ -55,6 +57,7 @@ pub struct SinkNode<F> {
     #[allow(dead_code)]
     runtime: Arc<Handle>,
     span: tracing::Span,
+    features_written: Arc<AtomicU64>,
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
@@ -73,6 +76,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             panic!("Must pass in a node")
         };
         let node_handle = node.handle.clone();
+        let node_name = node.name.clone();
         let NodeKind::Sink(sink) = kind else {
             panic!("Must pass in a sink node");
         };
@@ -90,6 +94,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
         );
         Self {
             node_handle,
+            node_name,
             node_handles,
             receivers,
             sink,
@@ -97,6 +102,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             shutdown,
             runtime,
             span,
+            features_written: Arc::new(AtomicU64::new(0)),
             expr_engine: ctx.expr_engine.clone(),
             storage_resolver: ctx.storage_resolver.clone(),
             kv_store: ctx.kv_store.clone(),
@@ -127,6 +133,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         let now = time::Instant::now();
         let span = self.span.clone();
         let mut sel = init_select(&receivers);
+        let mut first_error: Option<ExecutionError> = None;
 
         tracing::info!("Sink node {} is starting", self.node_handle.id);
         self.event_hub.send(Event::NodeStatusChanged {
@@ -134,6 +141,13 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             status: NodeStatus::Starting,
             feature_id: None,
         });
+
+        // Log sink start before initialization
+        self.event_hub.info_log_with_node_handle(
+            Some(span.clone()),
+            self.node_handle.clone(),
+            format!("{} ({}) sink start...", self.sink.name(), self.node_name),
+        );
 
         let init_result = self
             .sink
@@ -145,8 +159,21 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             })
             .map_err(ExecutionError::Sink);
 
-        if init_result.is_err() {
+        if let Err(ref e) = init_result {
             tracing::error!("Sink node {} initialization failed", self.node_handle.id);
+
+            // Log error to action-log for user-facing log
+            self.event_hub.error_log_with_node_handle(
+                Some(span.clone()),
+                self.node_handle.clone(),
+                format!(
+                    "{} ({}) sink error: {}",
+                    self.sink.name(),
+                    self.node_name,
+                    e
+                ),
+            );
+
             self.event_hub.send(Event::NodeStatusChanged {
                 node_handle: self.node_handle.clone(),
                 status: NodeStatus::Failed,
@@ -163,12 +190,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             feature_id: None,
         });
 
-        self.event_hub.info_log_with_node_handle(
-            Some(span.clone()),
-            self.node_handle.clone(),
-            format!("{:?} sink start...", self.sink.name()),
-        );
-
         loop {
             let index = sel.ready();
             let op = receivers[index]
@@ -178,7 +199,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                 ExecutorOperation::Op { ctx } => {
                     let result = self.on_op(ctx.clone());
 
-                    if result.is_err() {
+                    if let Err(e) = result {
                         // Track failure but don't emit per-feature status
                         has_failed = true;
                         tracing::warn!(
@@ -186,23 +207,59 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                             self.node_handle.id,
                             ctx.feature.id
                         );
-                    }
 
-                    // Propagate the result
-                    result?;
+                        // Log error to action-log for user-facing log
+                        self.event_hub.error_log_with_node_handle(
+                            Some(span.clone()),
+                            self.node_handle.clone(),
+                            format!(
+                                "{} ({}) sink error: {}",
+                                self.sink.name(),
+                                self.node_name,
+                                e
+                            ),
+                        );
+
+                        // Store the first error to return later
+                        if first_error.is_none() {
+                            first_error = Some(e);
+                        }
+
+                        // For sink errors, we want to continue processing to emit terminate log
+                        // So we don't propagate the error here
+                    } else {
+                        // Increment counter on success
+                        self.features_written
+                            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                    }
                 }
                 ExecutorOperation::Terminate { ctx } => {
                     is_terminated[index] = true;
                     sel.remove(index);
                     if is_terminated.iter().all(|value| *value) {
+                        let features_count = self
+                            .features_written
+                            .load(std::sync::atomic::Ordering::Relaxed);
+                        let message = if features_count > 0 && !has_failed {
+                            format!(
+                                "{} ({}) sink finish. elapsed = {:?}",
+                                self.sink.name(),
+                                self.node_name,
+                                now.elapsed()
+                            )
+                        } else {
+                            format!(
+                                "{} ({}) sink terminate. elapsed = {:?}",
+                                self.sink.name(),
+                                self.node_name,
+                                now.elapsed()
+                            )
+                        };
+
                         self.event_hub.info_log_with_node_handle(
                             Some(span.clone()),
                             self.node_handle.clone(),
-                            format!(
-                                "{:?} sink finish. elapsed = {:?}",
-                                self.sink.name(),
-                                now.elapsed()
-                            ),
+                            message,
                         );
 
                         // Set final status based on overall success/failure
@@ -231,6 +288,11 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                             });
                         }
 
+                        // If there was an error during processing, return that error
+                        // Otherwise, return the terminate result
+                        if let Some(e) = first_error {
+                            return Err(e);
+                        }
                         return terminate_result;
                     }
                 }
@@ -251,7 +313,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")));
         self.event_hub.send(Event::SinkFinished {
             node: self.node_handle.clone(),
-            name: self.sink.name().to_string(),
+            name: self.node_name.clone(),
         });
         result
     }
