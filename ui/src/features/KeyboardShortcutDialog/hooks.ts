@@ -23,7 +23,7 @@ export default () => {
       },
       {
         keyBinding: GeneralKeyBindings["save"],
-        description: t("Manually save the project"),
+        description: t("Manually Save the Project"),
       },
     ],
   };
