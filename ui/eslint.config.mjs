@@ -9,28 +9,6 @@ const storyBookConfig = {
     storybook,
   },
 };
-// eslint-plugin-tailwindcss does not support the latest tailwindcss version.
-// Therefore, we use eslint-plugin-better-tailwindcss instead, which is being regularly updated and a work in progress.
-// const customTailwindConfig = [
-//   ...tailwind.configs["flat/recommended"],
-//   {
-//     rules: {
-//       "tailwindcss/no-custom-classname": [
-//         "warn",
-//         {
-//           whitelist: [
-//             "nopan",
-//             "nodrag",
-//             "nowheel",
-//             "destructive",
-//             "warning",
-//             "dndnode-",
-//           ],
-//         },
-//       ],
-//     },
-//   },
-// ];
 
 const tailwindConfig = {
   plugins: {
