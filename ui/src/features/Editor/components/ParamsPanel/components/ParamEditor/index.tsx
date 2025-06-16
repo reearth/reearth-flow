@@ -1,4 +1,4 @@
-import { Info, Nut, PuzzlePiece } from "@phosphor-icons/react";
+import { InfoIcon, NutIcon, PuzzlePieceIcon } from "@phosphor-icons/react";
 import { RJSFSchema } from "@rjsf/utils";
 import { JSONSchema7Definition } from "json-schema";
 import { memo, useMemo, useState } from "react";
@@ -106,20 +106,20 @@ const ParamEditor: React.FC<Props> = ({
               <TabsTrigger
                 className="h-[30px] w-full justify-start gap-2"
                 value="params">
-                <PuzzlePiece className="shrink-0" />
+                <PuzzlePieceIcon className="shrink-0" />
                 <p>{t("Parameters")}</p>
               </TabsTrigger>
             )}
             <TabsTrigger
               className="h-[30px] w-full justify-start gap-2"
               value="customizations">
-              <Nut className="shrink-0" />
+              <NutIcon className="shrink-0" />
               <p>{t("Customizations")}</p>
             </TabsTrigger>
             <TabsTrigger
               className="h-[30px] w-full justify-start gap-2"
               value="details">
-              <Info className="shrink-0" />
+              <InfoIcon className="shrink-0" />
               <p>{t("Details")}</p>
             </TabsTrigger>
           </TabsList>

@@ -65,12 +65,13 @@ func (r *mutationResolver) RollbackProject(ctx context.Context, projectId gqlmod
 	}, nil
 }
 
-func (r *mutationResolver) SaveSnapshot(ctx context.Context, projectId gqlmodel.ID) (bool, error) {
+func (r *mutationResolver) SaveSnapshot(ctx context.Context, projectId gqlmodel.ID) (*bool, error) {
 	err := interactor.FlushToGCS(ctx, string(projectId))
 	if err != nil {
-		return false, err
+		return nil, err
 	}
-	return true, nil
+	result := true
+	return &result, nil
 }
 
 func (r *mutationResolver) PreviewSnapshot(ctx context.Context, projectID gqlmodel.ID, version int, name *string) (*gqlmodel.PreviewSnapshot, error) {

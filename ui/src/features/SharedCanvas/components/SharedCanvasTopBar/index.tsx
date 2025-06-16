@@ -1,9 +1,9 @@
 import {
-  DotsThreeVertical,
-  Export,
-  PaperPlaneTilt,
-  Question,
-  SquaresFour,
+  DotsThreeVerticalIcon,
+  ExportIcon,
+  PaperPlaneTiltIcon,
+  QuestionIcon,
+  SquaresFourIcon,
 } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 import { memo } from "react";
@@ -75,18 +75,18 @@ const SharedCanvasTopBar: React.FC<Props> = ({
           <FlowLogo className="size-6 cursor-pointer transition-all" />
         </div>
         <div className="flex items-center gap-2 rounded border border-logo/50 px-2 py-0.5">
-          <PaperPlaneTilt weight="thin" size={18} />
+          <PaperPlaneTiltIcon weight="thin" size={18} />
           <p className="font-light text-accent-foreground select-none">
             {t("Shared Project")}
           </p>
           <Tooltip delayDuration={0}>
             <TooltipTrigger>
-              <Question weight="thin" size={16} />
+              <QuestionIcon weight="thin" size={16} />
             </TooltipTrigger>
             <TooltipContent className="max-w-[200px]" sideOffset={18}>
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-1">
-                  <Question size={12} />
+                  <QuestionIcon size={12} />
                   <p>{t("Shared project")}</p>
                 </div>
                 <p>
@@ -101,7 +101,7 @@ const SharedCanvasTopBar: React.FC<Props> = ({
       </div>
       <div className="flex items-center pr-4 pl-2">
         <p className="flex max-w-[200px] items-center gap-2 truncate text-sm transition-all delay-0 duration-500 dark:font-thin">
-          <SquaresFour weight="thin" size={18} />
+          <SquaresFourIcon weight="thin" size={18} />
           {project?.name}
         </p>
       </div>
@@ -120,7 +120,7 @@ const SharedCanvasTopBar: React.FC<Props> = ({
               className="w-[25px]"
               tooltipText={t("Additional actions")}
               tooltipOffset={6}
-              icon={<DotsThreeVertical size={18} />}
+              icon={<DotsThreeVerticalIcon size={18} />}
             />
           </DropdownMenuTrigger>
           <DropdownMenuContent
@@ -132,7 +132,7 @@ const SharedCanvasTopBar: React.FC<Props> = ({
               className="flex justify-between gap-4"
               onClick={handleSharedProjectExport}>
               <p>{t("Export Project")}</p>
-              <Export weight="thin" size={18} />
+              <ExportIcon weight="thin" size={18} />
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

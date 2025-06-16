@@ -1,4 +1,9 @@
-import { PencilLine, Play, Plus, Trash } from "@phosphor-icons/react";
+import {
+  PencilLineIcon,
+  PlayIcon,
+  PlusIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
 import {
@@ -72,21 +77,21 @@ const DeploymentManager: React.FC = () => {
             size="icon"
             tooltipText={t("Run Deployment")}
             onClick={() => handleDeploymentRun(row.row.original)}>
-            <Play />
+            <PlayIcon />
           </ButtonWithTooltip>
           <ButtonWithTooltip
             variant="outline"
             size="icon"
             tooltipText={t("Edit Deployment")}
             onClick={() => setDeploymentToBeEdited(row.row.original)}>
-            <PencilLine />
+            <PencilLineIcon />
           </ButtonWithTooltip>
           <ButtonWithTooltip
             variant="destructive"
             size="icon"
             tooltipText={t("Delete Deployment")}
             onClick={() => setDeploymentToBeDeleted(row.row.original)}>
-            <Trash />
+            <TrashIcon />
           </ButtonWithTooltip>
         </div>
       ),
@@ -111,7 +116,7 @@ const DeploymentManager: React.FC = () => {
               <Button
                 className="flex gap-2"
                 onClick={() => setOpenDeploymentAddDialog(true)}>
-                <Plus weight="thin" />
+                <PlusIcon weight="thin" />
                 <p className="text-xs dark:font-light">{t("New Deployment")}</p>
               </Button>
             </div>

@@ -1,4 +1,9 @@
-import { CaretLeft, PencilLine, Play, Trash } from "@phosphor-icons/react";
+import {
+  CaretLeftIcon,
+  PencilLineIcon,
+  PlayIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
 
 import { Button } from "@flow/components";
 import { DetailsBox } from "@flow/features/common";
@@ -34,14 +39,14 @@ const DeploymentDetails: React.FC<Props> = ({
       <div className="flex flex-1 flex-col gap-4 px-6 pt-6 pb-2">
         <div className="flex justify-between">
           <Button size="icon" variant="ghost" onClick={handleBack}>
-            <CaretLeft />
+            <CaretLeftIcon />
           </Button>
           <div className="flex gap-2">
             <Button
               variant="default"
               size="sm"
               onClick={() => onDeploymentRun(selectedDeployment)}>
-              <Play />
+              <PlayIcon />
               {t("Run")}
             </Button>
             <Button
@@ -49,14 +54,14 @@ const DeploymentDetails: React.FC<Props> = ({
               size="sm"
               disabled={!selectedDeployment}
               onClick={() => setOpenDeploymentEditDialog(true)}>
-              <PencilLine />
+              <PencilLineIcon />
               {t("Edit Deployment")}
             </Button>
             <Button
               variant="destructive"
               size="sm"
               onClick={() => setDeploymentToBeDeleted(selectedDeployment)}>
-              <Trash />
+              <TrashIcon />
               {t("Delete")}
             </Button>
           </div>

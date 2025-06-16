@@ -1,11 +1,11 @@
 import {
-  Database,
-  Disc,
-  Graph,
+  DatabaseIcon,
+  DiscIcon,
+  GraphIcon,
   Icon,
-  Lightning,
-  RectangleDashed,
-  TreeView,
+  LightningIcon,
+  RectangleDashedIcon,
+  TreeViewIcon,
 } from "@phosphor-icons/react";
 import { memo, useCallback, useEffect, useState } from "react";
 
@@ -74,17 +74,21 @@ const LeftPanel: React.FC<Props> = ({
   );
 
   const treeContent: TreeDataItem[] = [
-    ...(createTreeDataItem("reader", Database, nodes) || []),
-    ...(createTreeDataItem("writer", Disc, nodes) || []),
+    ...(createTreeDataItem("reader", DatabaseIcon, nodes) || []),
+    ...(createTreeDataItem("writer", DiscIcon, nodes) || []),
     ...(createTreeDataItem(
       "transformer",
-      Lightning,
+      LightningIcon,
       nodes,
       t("Transformers"),
     ) || []),
-    ...(createTreeDataItem("subworkflow", Graph, nodes, t("Subworkflows")) ||
-      []),
-    ...(createTreeDataItem("batch", RectangleDashed, nodes, t("Batches")) ||
+    ...(createTreeDataItem(
+      "subworkflow",
+      GraphIcon,
+      nodes,
+      t("Subworkflows"),
+    ) || []),
+    ...(createTreeDataItem("batch", RectangleDashedIcon, nodes, t("Batches")) ||
       []),
   ];
 
@@ -97,7 +101,7 @@ const LeftPanel: React.FC<Props> = ({
     {
       id: "navigator",
       title: t("Canvas Navigation"),
-      icon: <TreeView className="size-5" weight="thin" />,
+      icon: <TreeViewIcon className="size-5" weight="thin" />,
       component:
         nodes.length !== 0 ? (
           <Tree
@@ -123,7 +127,7 @@ const LeftPanel: React.FC<Props> = ({
     {
       id: "actions-list",
       title: t("Actions list"),
-      icon: <Lightning className="size-5" weight="thin" />,
+      icon: <LightningIcon className="size-5" weight="thin" />,
       component: (
         <ActionsList
           nodes={nodes}

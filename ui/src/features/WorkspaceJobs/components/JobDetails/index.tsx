@@ -1,4 +1,4 @@
-import { CaretLeft, XCircle } from "@phosphor-icons/react";
+import { CaretLeftIcon, XCircleIcon } from "@phosphor-icons/react";
 
 import { Button } from "@flow/components";
 import { DetailsBox } from "@flow/features/common";
@@ -27,11 +27,11 @@ const JobDetails: React.FC<Props> = ({ jobId, accessToken }) => {
       <div className="flex flex-1 flex-col gap-4 px-6 pt-6 pb-2">
         <div className="flex justify-between">
           <Button size="icon" variant="ghost" onClick={handleBack}>
-            <CaretLeft />
+            <CaretLeftIcon />
           </Button>
           {(jobStatus === "queued" || jobStatus === "running") && (
             <Button variant="destructive" size="sm" onClick={handleCancelJob}>
-              <XCircle />
+              <XCircleIcon />
               {t("Cancel Job")}
             </Button>
           )}

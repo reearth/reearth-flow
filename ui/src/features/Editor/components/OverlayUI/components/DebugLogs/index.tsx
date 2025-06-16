@@ -1,4 +1,9 @@
-import { CaretUp, CaretDown, Minus, Terminal } from "@phosphor-icons/react";
+import {
+  CaretUpIcon,
+  CaretDownIcon,
+  MinusIcon,
+  TerminalIcon,
+} from "@phosphor-icons/react";
 import { memo } from "react";
 
 import LogsConsole from "@flow/features/LogsConsole";
@@ -16,21 +21,25 @@ const DebugLogs: React.FC = () => {
       className={`pointer-events-auto w-[45vw] min-w-[700px] cursor-pointer rounded-md bg-secondary shadow-md shadow-secondary transition-all ${minimized ? "h-[36px]" : expanded ? "h-[90vh]" : "h-[350px]"}`}>
       <div className="flex items-center p-1" onClick={handleExpand}>
         <div className="flex flex-1 items-center justify-center gap-2">
-          <Terminal />
+          <TerminalIcon />
           <p className="text-sm font-thin select-none">{t("Workflow Logs")}</p>
         </div>
         <div className="flex items-center gap-2">
           <div
             className="rounded p-1 hover:bg-primary"
             onClick={handleMinimize}>
-            {minimized ? <CaretUp weight="light" /> : <Minus weight="light" />}
+            {minimized ? (
+              <CaretUpIcon weight="light" />
+            ) : (
+              <MinusIcon weight="light" />
+            )}
           </div>
           {!minimized && (
             <div className="rounded p-1 hover:bg-primary">
               {expanded ? (
-                <CaretDown weight="light" />
+                <CaretDownIcon weight="light" />
               ) : (
-                <CaretUp weight="light" />
+                <CaretUpIcon weight="light" />
               )}
             </div>
           )}

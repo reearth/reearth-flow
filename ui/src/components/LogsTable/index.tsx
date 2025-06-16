@@ -1,4 +1,4 @@
-import { Bug } from "@phosphor-icons/react";
+import { BugIcon } from "@phosphor-icons/react";
 import {
   CaretSortIcon,
   ClockIcon,
@@ -146,7 +146,7 @@ const LogsTable = ({
             variant={getStatusValue === "DEBUG" ? "default" : "outline"}
             tooltipText={t("Debug")}
             onClick={() => handleStatusChange(LogLevel.Debug)}
-            icon={<Bug />}
+            icon={<BugIcon />}
           />
           <IconButton
             size="icon"

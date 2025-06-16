@@ -1,9 +1,9 @@
 import {
-  ClockCounterClockwise,
-  DotsThreeVertical,
-  Export,
-  PaperPlaneTilt,
-  Rocket,
+  ClockCounterClockwiseIcon,
+  DotsThreeVerticalIcon,
+  ExportIcon,
+  PaperPlaneTiltIcon,
+  RocketIcon,
 } from "@phosphor-icons/react";
 import { memo } from "react";
 import { Doc } from "yjs";
@@ -63,7 +63,7 @@ const ActionBar: React.FC<Props> = ({
           <IconButton
             tooltipText={t("Deploy project's workflow")}
             tooltipOffset={tooltipOffset}
-            icon={<Rocket weight="thin" size={18} />}
+            icon={<RocketIcon weight="thin" size={18} />}
             onClick={handleShowDeployDialog}
           />
           <Popover
@@ -75,7 +75,7 @@ const ActionBar: React.FC<Props> = ({
               <IconButton
                 tooltipText={t("Share Project")}
                 tooltipOffset={tooltipOffset}
-                icon={<PaperPlaneTilt weight="thin" size={18} />}
+                icon={<PaperPlaneTiltIcon weight="thin" size={18} />}
                 onClick={handleShowSharePopover}
               />
             </PopoverTrigger>
@@ -91,7 +91,7 @@ const ActionBar: React.FC<Props> = ({
                 className="w-[25px]"
                 tooltipText={t("Additional actions")}
                 tooltipOffset={tooltipOffset}
-                icon={<DotsThreeVertical size={18} />}
+                icon={<DotsThreeVerticalIcon size={18} />}
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -103,13 +103,13 @@ const ActionBar: React.FC<Props> = ({
                 className="flex justify-between gap-4"
                 onClick={onProjectExport}>
                 <p>{t("Export Project")}</p>
-                <Export weight="thin" size={18} />
+                <ExportIcon weight="thin" size={18} />
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="flex justify-between gap-4"
                 onClick={handleShowVersionDialog}>
                 <p>{t("Version History")}</p>
-                <ClockCounterClockwise weight="thin" size={18} />
+                <ClockCounterClockwiseIcon weight="thin" size={18} />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

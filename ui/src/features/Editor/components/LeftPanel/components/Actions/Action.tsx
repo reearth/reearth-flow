@@ -1,4 +1,4 @@
-import { Lightning } from "@phosphor-icons/react";
+import { LightningIcon } from "@phosphor-icons/react";
 import { type DragEvent, memo } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -41,7 +41,7 @@ const ActionComponent: React.FC<Props> = ({
       <div className="flex size-12 rounded bg-secondary">
         <div
           className={`flex w-full justify-center rounded align-middle  ${type === "reader" ? "bg-node-reader/60" : type === "writer" ? "bg-node-writer/60" : "bg-node-transformer/60"}`}>
-          <Lightning className="self-center" />
+          <LightningIcon className="self-center" />
         </div>
       </div>,
     );

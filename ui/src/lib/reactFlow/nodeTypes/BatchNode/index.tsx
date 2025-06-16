@@ -1,4 +1,4 @@
-import { RectangleDashed } from "@phosphor-icons/react";
+import { RectangleDashedIcon } from "@phosphor-icons/react";
 import { NodeProps, NodeResizer } from "@xyflow/react";
 import { memo } from "react";
 
@@ -56,7 +56,7 @@ const BatchNode: React.FC<BatchNodeProps> = ({ data, selected, id }) => {
               );
           }}>
           <div className="rounded-sm bg-primary p-1">
-            <RectangleDashed
+            <RectangleDashedIcon
               className="w-[15px] fill-orange-400/80"
               weight="bold"
             />
