@@ -1,4 +1,4 @@
-import { Broom, Play, Stop } from "@phosphor-icons/react";
+import { BroomIcon, PlayIcon, StopIcon } from "@phosphor-icons/react";
 import { memo } from "react";
 
 import { IconButton } from "@flow/components";
@@ -43,7 +43,7 @@ const DebugActionBar: React.FC<Props> = ({
               jobStatus === "running" ||
               jobStatus === "queued"
             }
-            icon={<Play weight="thin" size={18} />}
+            icon={<PlayIcon weight="thin" size={18} />}
             onClick={handleDebugRunStart}
           />
           <IconButton
@@ -52,7 +52,7 @@ const DebugActionBar: React.FC<Props> = ({
             disabled={
               !jobStatus || (jobStatus !== "running" && jobStatus !== "queued")
             }
-            icon={<Stop weight="thin" size={18} />}
+            icon={<StopIcon weight="thin" size={18} />}
             onClick={handleShowDebugStopDialog}
           />
           <IconButton
@@ -64,7 +64,7 @@ const DebugActionBar: React.FC<Props> = ({
               jobStatus === "running" ||
               jobStatus === "queued"
             }
-            icon={<Broom weight="thin" size={18} />}
+            icon={<BroomIcon weight="thin" size={18} />}
             onClick={handleDebugRunReset}
           />
         </div>

@@ -1,4 +1,4 @@
-import { CaretDown, Plus } from "@phosphor-icons/react";
+import { CaretDownIcon, PlusIcon } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
@@ -50,7 +50,7 @@ const WorkspaceMenu: React.FC = () => {
             {currentWorkspace?.name}
           </p>
           <div className="shrink-0">
-            <CaretDown size="12px" weight="thin" />
+            <CaretDownIcon size="12px" weight="thin" />
           </div>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -95,7 +95,7 @@ const WorkspaceMenu: React.FC = () => {
               setOpenWorkspaceAddDialog(true);
               setOpenDropdown(false);
             }}>
-            <Plus weight="thin" />
+            <PlusIcon weight="thin" />
             <p className="text-xs dark:font-light">{t("New Workspace")}</p>
           </div>
         </DropdownMenuContent>

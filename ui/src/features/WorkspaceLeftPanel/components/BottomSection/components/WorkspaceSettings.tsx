@@ -1,4 +1,4 @@
-import { Toolbox, UsersThree } from "@phosphor-icons/react";
+import { ToolboxIcon, UsersThreeIcon } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { RouteOption } from "@flow/features/WorkspaceLeftPanel";
@@ -23,7 +23,7 @@ const WorkspaceSettings: React.FC<Props> = ({ selected }) => {
             to: `/workspaces/${currentWorkspace?.id}/settings/general`,
           })
         }>
-        <Toolbox weight="light" />
+        <ToolboxIcon weight="light" />
         <p className="text-sm dark:font-extralight">{t("General Settings")}</p>
       </div>
       <div
@@ -33,7 +33,7 @@ const WorkspaceSettings: React.FC<Props> = ({ selected }) => {
             to: `/workspaces/${currentWorkspace?.id}/settings/members`,
           })
         }>
-        <UsersThree weight="light" />
+        <UsersThreeIcon weight="light" />
         <p className="text-sm dark:font-extralight">{t("Member Settings")}</p>
       </div>
       {/* <div

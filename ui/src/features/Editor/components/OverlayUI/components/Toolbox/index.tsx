@@ -1,13 +1,13 @@
 import {
-  ArrowArcLeft,
-  ArrowArcRight,
-  Database,
-  Disc,
-  Graph,
-  Layout,
-  Lightning,
-  Note,
-  RectangleDashed,
+  ArrowArcLeftIcon,
+  ArrowArcRightIcon,
+  DatabaseIcon,
+  DiscIcon,
+  GraphIcon,
+  LayoutIcon,
+  LightningIcon,
+  NoteIcon,
+  RectangleDashedIcon,
 } from "@phosphor-icons/react";
 import { memo, type DragEvent } from "react";
 import { createRoot } from "react-dom/client";
@@ -55,36 +55,40 @@ const Toolbox: React.FC<Props> = ({
     {
       id: "reader" as const,
       name: t("Reader Node"),
-      icon: <Database weight="thin" size={16} />,
+      icon: <DatabaseIcon weight="thin" size={16} />,
       disabled: !isMainWorkflow || hasReader,
     },
     {
       id: "transformer" as const,
       name: t("Transformer Node"),
-      icon: <Lightning weight="thin" size={16} />,
+      icon: <LightningIcon weight="thin" size={16} />,
     },
     {
       id: "writer" as const,
       name: t("Writer Node"),
-      icon: <Disc weight="thin" size={16} />,
+      icon: <DiscIcon weight="thin" size={16} />,
       disabled: !isMainWorkflow,
     },
     {
       id: "note" as const,
       name: t("Note"),
-      icon: <Note weight="thin" size={16} />,
+      icon: <NoteIcon weight="thin" size={16} />,
     },
     {
       id: "batch" as const,
       name: t("Batch Node"),
       icon: (
-        <RectangleDashed className="fill-orange-400" weight="thin" size={16} />
+        <RectangleDashedIcon
+          className="fill-orange-400"
+          weight="thin"
+          size={16}
+        />
       ),
     },
     {
       id: "subworkflow" as const,
       name: t("Subworkflow Node"),
-      icon: <Graph weight="thin" size={16} />,
+      icon: <GraphIcon weight="thin" size={16} />,
     },
   ];
 
@@ -92,21 +96,21 @@ const Toolbox: React.FC<Props> = ({
     {
       id: "layout",
       name: t("Auto layout"),
-      icon: <Layout weight="thin" size={16} />,
+      icon: <LayoutIcon weight="thin" size={16} />,
       onClick: onLayoutChange,
     },
     { id: "break" },
     {
       id: "undo",
       name: t("Undo last action"),
-      icon: <ArrowArcLeft weight="thin" size={16} />,
+      icon: <ArrowArcLeftIcon weight="thin" size={16} />,
       disabled: !canUndo,
       onClick: onUndo,
     },
     {
       id: "redo",
       name: t("Redo action"),
-      icon: <ArrowArcRight weight="thin" size={16} />,
+      icon: <ArrowArcRightIcon weight="thin" size={16} />,
       disabled: !canRedo,
       onClick: onRedo,
     },
@@ -140,17 +144,17 @@ const Toolbox: React.FC<Props> = ({
                     : "bg-node-transformer/60"
           }`}>
           {nodeType === "reader" ? (
-            <Database className="self-center" />
+            <DatabaseIcon className="self-center" />
           ) : nodeType === "writer" ? (
-            <Disc className="self-center" />
+            <DiscIcon className="self-center" />
           ) : nodeType === "subworkflow" ? (
-            <Graph className="self-center" />
+            <GraphIcon className="self-center" />
           ) : nodeType === "batch" ? (
-            <RectangleDashed className="self-center" />
+            <RectangleDashedIcon className="self-center" />
           ) : nodeType === "note" ? (
-            <Note className="self-center" />
+            <NoteIcon className="self-center" />
           ) : (
-            <Lightning className="self-center" />
+            <LightningIcon className="self-center" />
           )}
         </div>
       </div>,
