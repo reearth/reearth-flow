@@ -271,7 +271,10 @@ impl BroadcastPool {
         let broadcast_group = match self.manager.doc_to_id_map.get(doc_id) {
             Some(group) => group.clone(),
             None => {
-                return Ok(());
+                return Err(anyhow::anyhow!(
+                    "Broadcast group not found for doc_id: {}",
+                    doc_id
+                ));
             }
         };
 
