@@ -1,13 +1,12 @@
 import { Cross2Icon } from "@radix-ui/react-icons";
 import maplibregl, { LngLatBounds } from "maplibre-gl";
 import * as React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState, useMemo, useCallback } from "react";
 import { Map, Source, Marker } from "react-map-gl/maplibre";
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import { Button } from "@flow/components";
-import Loading from "@flow/components/Loading/Skeleton";
 import { useT } from "@flow/lib/i18n";
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
@@ -26,14 +25,8 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
   const mapRef = useRef<maplibregl.Map | null>(null);
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
 
-  const [viewState, setViewState] = useState<{
-    latitude: number;
-    longitude: number;
-    zoom: number;
-  } | null>(null);
-
-  useEffect(() => {
-    if (!fileContent?.features?.length || viewState) return;
+  const dataBounds = useMemo(() => {
+    if (!fileContent?.features?.length) return null;
 
     const bounds = new LngLatBounds();
 
@@ -52,42 +45,20 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
       }
     });
 
-    if (!bounds.isEmpty()) {
-      // We need to create a temporary map to calculate the view state,
-      // so that we can set the initial view state to match that of the location of the data.
-      const container = document.createElement("div");
+    return bounds.isEmpty() ? null : bounds;
+  }, [fileContent]);
 
-      document.body.appendChild(container);
-
-      const tempMap = new maplibregl.Map({
-        container,
-        style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-        center: [0, 0],
-        zoom: 0,
-        interactive: false,
-      });
-
-      tempMap.fitBounds(bounds, { duration: 0 });
-
-      tempMap.once("idle", () => {
-        const center = tempMap.getCenter();
-        const zoom = tempMap.getZoom();
-
-        setViewState({
-          latitude: center.lat,
-          longitude: center.lng,
-          zoom,
-        });
-
-        tempMap.remove();
-        container.remove();
+  const handleMapLoad = useCallback(() => {
+    if (mapRef.current && dataBounds) {
+      mapRef.current.fitBounds(dataBounds, {
+        padding: 40,
+        duration: 0,
+        maxZoom: 16,
       });
     }
-  }, [fileContent, viewState]);
+  }, [dataBounds]);
 
-  return !viewState ? (
-    <Loading />
-  ) : (
+  return (
     <div className={`relative size-full ${className}`}>
       <Map
         ref={(instance) => {
@@ -95,12 +66,10 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
         }}
         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
         style={{ width: "100%", height: "100%" }}
-        initialViewState={viewState}>
-        {fileContent && (
-          <Source id="data" type={fileType || "geojson"} data={fileContent} />
-        )}
-
-        {fileContent?.features?.map((feature: any, i: number) => {
+        maplibreLogo={true}
+        onLoad={handleMapLoad}>
+        <Source id="data" type={fileType || "geojson"} data={fileContent} />
+        {fileContent.features.map((feature: any, i: number) => {
           const coords = feature.geometry?.coordinates;
           if (!coords || feature.geometry.type !== "Point") return null;
 
@@ -128,6 +97,7 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
     </div>
   );
 };
+
 const MapSidePanel: React.FC<MapSidePanelProps> = ({
   selectedFeature,
   setSelectedFeature,
