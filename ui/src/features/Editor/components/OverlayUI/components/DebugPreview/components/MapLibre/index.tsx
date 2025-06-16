@@ -1,3 +1,4 @@
+import { MapPinAreaIcon } from "@phosphor-icons/react";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import maplibregl, { LngLatBounds } from "maplibre-gl";
 import * as React from "react";
@@ -6,7 +7,7 @@ import { Map, Source, Marker } from "react-map-gl/maplibre";
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import { Button } from "@flow/components";
+import { Button, IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
@@ -19,6 +20,7 @@ type Props = {
 type MapSidePanelProps = {
   selectedFeature: any;
   setSelectedFeature: (value: any) => void;
+  onFlyToSelectedFeature?: (selectedFeature: any) => void;
 };
 
 const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
@@ -58,6 +60,19 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
     }
   }, [dataBounds]);
 
+  const handleFlyToSelectedFeature = useCallback(() => {
+    if (mapRef.current && selectedFeature) {
+      const coords = selectedFeature.geometry?.coordinates;
+      if (coords && selectedFeature.geometry.type === "Point") {
+        mapRef.current.flyTo({
+          center: coords,
+          zoom: 16,
+          duration: 300,
+        });
+      }
+    }
+  }, [selectedFeature]);
+
   return (
     <div className={`relative size-full ${className}`}>
       <Map
@@ -92,6 +107,7 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
         <MapSidePanel
           selectedFeature={selectedFeature}
           setSelectedFeature={setSelectedFeature}
+          onFlyToSelectedFeature={handleFlyToSelectedFeature}
         />
       )}
     </div>
@@ -101,12 +117,19 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
 const MapSidePanel: React.FC<MapSidePanelProps> = ({
   selectedFeature,
   setSelectedFeature,
+  onFlyToSelectedFeature,
 }) => {
   const t = useT();
   return (
-    <div className="absolute top-0 right-0 w-80 h-full bg-background border-l shadow-lg z-10 overflow-auto animate-in slide-in-from-right duration-300">
+    <div className="absolute top-4 right-4 w-80 h-4/6 bg-background border-l rounded-md opacity-98 shadow-lg z-10 overflow-auto">
       <div className="p-4 flex justify-between items-center border-b">
-        <h2 className="font-semibold text-lg">{t("Feature Info")}</h2>
+        <div className="flex items-center gap-2">
+          <IconButton
+            onClick={onFlyToSelectedFeature}
+            icon={<MapPinAreaIcon className="size-5" />}
+          />
+          <h2 className="font-semibold text-lg">{t("Feature Info")}</h2>
+        </div>
         <Button
           variant={"ghost"}
           className="h-fit p-0 opacity-70 dark:font-thin hover:bg-card hover:opacity-100 z-10"
@@ -120,14 +143,14 @@ const MapSidePanel: React.FC<MapSidePanelProps> = ({
           {Object.entries(selectedFeature.properties || {}).map(
             ([key, value]) => (
               <div key={key} className="grid grid-cols-2 gap-2 px-4 py-2">
-                <div className="font-medium break-words">{key}</div>
-                <div className="text-right w-fit break-all whitespace-pre-wrap">
+                <span className="font-medium break-words">{key}</span>
+                <span className="text-right w-fit break-all whitespace-pre-wrap">
                   {Array.isArray(value)
                     ? value.join(", ")
                     : typeof value === "object" && value !== null
                       ? JSON.stringify(value, null, 2)
                       : String(value)}
-                </div>
+                </span>
               </div>
             ),
           )}

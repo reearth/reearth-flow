@@ -60,24 +60,23 @@ const DebugPreview: React.FC = () => {
       className={`pointer-events-auto w-[45vw] min-w-[700px] rounded-md p-1 bg-secondary transition-all shadow-md shadow-secondary ${minimized ? "h-[36px]" : expanded ? "h-[90vh] w-[90vw]" : "h-[500px]"}`}
       defaultValue="data-viewer">
       <div className="relative flex items-center p-1">
-        <div className="left-1 top-1">
-          <Select
-            defaultValue={dataURLs[0].key}
-            value={selectedDataURL}
-            onValueChange={handleSelectedDataChange}>
-            <SelectTrigger className="h-[26px] max-w-[200px] border-none text-xs font-bold">
-              <SelectValue placeholder={t("Select Data to Preview")} />
-            </SelectTrigger>
-            <SelectContent>
-              {dataURLs.map(({ key, name }) => (
-                <SelectItem key={key} value={key}>
-                  {name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex w-full items-center justify-start gap-1 p-1">
+        <Select
+          defaultValue={dataURLs[0].key}
+          value={selectedDataURL}
+          onValueChange={handleSelectedDataChange}>
+          <SelectTrigger className="h-[26px] max-w-[200px] border-none text-xs font-bold">
+            <SelectValue placeholder={t("Select Data to Preview")} />
+          </SelectTrigger>
+          <SelectContent>
+            {dataURLs.map(({ key, name }) => (
+              <SelectItem key={key} value={key}>
+                {name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <div className="flex w-full items-center justify-center gap-1 p-1">
           <TabsList className="gap-2">
             <TabsTrigger
               className="gap-1 bg-card font-thin"
@@ -104,7 +103,7 @@ const DebugPreview: React.FC = () => {
             </TabsTrigger>
           </TabsList>
         </div>
-        <div className="absolute right-1 top-1 flex items-center gap-2">
+        <div className="flex items-center gap-2">
           <div
             className="cursor-pointer rounded p-1 hover:bg-primary"
             onClick={handleMinimize}>
