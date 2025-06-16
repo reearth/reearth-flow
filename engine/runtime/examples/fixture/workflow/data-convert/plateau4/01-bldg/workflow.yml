@@ -238,7 +238,7 @@ graphs:
         type: action
         action: FeatureLodFilter
         with:
-          filterKey: _path
+          filterKey: city_code
 
       - id: 41d69f1f-2a4d-4bc1-a5d0-175698273571
         name: cesium3DTilesWriterByLod1
