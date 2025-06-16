@@ -31,7 +31,7 @@ type ProjectSnapshotMetadata {
 # Mutation
 
 extend type Mutation {
-  saveSnapshot(projectId: ID!): Boolean!
+  saveSnapshot(projectId: ID!): Boolean
   previewSnapshot(projectId: ID!, version: Int!, name: String): PreviewSnapshot
   rollbackProject(projectId: ID!, version: Int!): ProjectDocument
 }
