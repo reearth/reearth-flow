@@ -1,5 +1,6 @@
 import * as graphql from "@graphql-eslint/eslint-plugin";
 import config from "eslint-config-reearth";
+import betterTailwind from "eslint-plugin-better-tailwindcss";
 import storybook from "eslint-plugin-storybook";
 
 const storyBookConfig = {
@@ -8,7 +9,8 @@ const storyBookConfig = {
     storybook,
   },
 };
-
+// eslint-plugin-tailwindcss does not support the latest tailwindcss version.
+// Therefore, we use eslint-plugin-better-tailwindcss instead, which is being regularly updated and a work in progress.
 // const customTailwindConfig = [
 //   ...tailwind.configs["flat/recommended"],
 //   {
@@ -29,6 +31,21 @@ const storyBookConfig = {
 //     },
 //   },
 // ];
+
+const tailwindConfig = {
+  plugins: {
+    "better-tailwindcss": betterTailwind,
+  },
+  rules: {
+    "better-tailwindcss/sort-classes": "warn",
+  },
+  settings: {
+    "better-tailwindcss": {
+      entryPoint: "src/index.css",
+      tailwindConfig: "tailwind.config.js",
+    },
+  },
+};
 
 const graphqlConfig = {
   files: ["**/*.graphql"],
@@ -86,6 +103,7 @@ export default [
   flowConfig,
   storyBookConfig,
   graphqlConfig,
+  tailwindConfig,
   {
     ignores: ["coverage/*", "src/lib/gql/__gen__", "src/routeTree.gen.ts"],
   },
