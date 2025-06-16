@@ -142,7 +142,7 @@
   "Deploy project's workflow": "Desplegar el flujo de trabajo del proyecto",
   "Additional actions": "Acciones adicionales",
   "Export Project": "Exportar proyecto",
-  "Manually Save": "",
+  "Manual Save": "",
   "Stop Workflow": "Detener flujo de trabajo",
   "Are you sure you want to stop the workflow's debug run?": "¿Estás seguro de que deseas detener la ejecución de depuración del flujo de trabajo?",
   "Stop": "Detener",

@@ -142,7 +142,7 @@
   "Deploy project's workflow": "部署项目的工作流",
   "Additional actions": "附加操作",
   "Export Project": "导出项目",
-  "Manually Save": "",
+  "Manual Save": "",
   "Stop Workflow": "停止工作流",
   "Are you sure you want to stop the workflow's debug run?": "您确定要停止工作流的调试运行吗？",
   "Stop": "停止",
