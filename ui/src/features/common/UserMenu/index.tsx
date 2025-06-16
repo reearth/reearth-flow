@@ -57,7 +57,7 @@ const UserMenu: React.FC<Props> = ({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger>
-          <div className={`flex items-center gap-1 size-8 ${className}`}>
+          <div className={`flex size-8 items-center gap-1 ${className}`}>
             <Avatar className="size-full">
               <AvatarFallback>
                 {me?.name ? me.name.charAt(0).toUpperCase() : "?"}

@@ -99,9 +99,9 @@ const VersionDialog: React.FC<Props> = ({
       aria-modal="true">
       <div
         ref={dialogRef}
-        className={`w-[90vw] h-[90vh] bg-card shadow-lg rounded-lg flex flex-col overflow-hidden relative transition-all duration-170 ease-in-out  ${animate ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
-        <div className="flex p-6 items-center justify-between border-b">
-          <h2 className="text-xl dark:font-thin leading-none tracking-tight rounded-t-lg">
+        className={`relative flex h-[90vh] w-[90vw] flex-col overflow-hidden rounded-lg bg-card shadow-lg transition-all duration-170 ease-in-out  ${animate ? "scale-100 opacity-100" : "scale-95 opacity-0"}`}>
+        <div className="flex items-center justify-between border-b p-6">
+          <h2 className="rounded-t-lg text-xl leading-none tracking-tight dark:font-thin">
             {t("Viewing Version: {{version}}", {
               version:
                 selectedProjectSnapshotVersion ??
@@ -110,7 +110,7 @@ const VersionDialog: React.FC<Props> = ({
           </h2>
           <Button
             variant={"ghost"}
-            className="h-fit p-0 opacity-70 dark:font-thin hover:bg-card hover:opacity-100 z-10"
+            className="z-10 h-fit p-0 opacity-70 hover:bg-card hover:opacity-100 dark:font-thin"
             onClick={handleDialogClose}>
             <Cross2Icon className="size-5" />
           </Button>
@@ -118,7 +118,7 @@ const VersionDialog: React.FC<Props> = ({
         <div className="flex flex-1 overflow-hidden">
           <div className="flex-1 overflow-auto">
             {isLoadingPreview ? (
-              <LoadingSkeleton className="w-full h-full" />
+              <LoadingSkeleton className="h-full w-full" />
             ) : (
               <VersionEditorComponent
                 yDoc={yDoc}
@@ -127,8 +127,8 @@ const VersionDialog: React.FC<Props> = ({
               />
             )}
           </div>
-          <div className="w-[30vw] min-w-[320px] max-w-[500px] h-full border-l flex flex-col relative">
-            <div className="text-md dark:font-thin pl-4 pt-4">
+          <div className="relative flex h-full w-[30vw] max-w-[500px] min-w-[320px] flex-col border-l">
+            <div className="text-md pt-4 pl-4 dark:font-thin">
               {t("Version History")}
             </div>
             <div className="flex-1 overflow-y-auto p-4 pb-[55px]">
@@ -145,7 +145,7 @@ const VersionDialog: React.FC<Props> = ({
                 />
               )}
             </div>
-            <div className="absolute bottom-0 left-0 w-full bg-secondary border-t p-2 flex justify-end">
+            <div className="absolute bottom-0 left-0 flex w-full justify-end border-t bg-secondary p-2">
               <Button
                 disabled={
                   !selectedProjectSnapshotVersion ||
@@ -188,14 +188,14 @@ const VersionEditorComponent: React.FC<{
       : null;
 
   return (
-    <div className="w-full h-full">
+    <div className="h-full w-full">
       {yWorkflows && (
         <ErrorBoundary
           onError={onWorkflowCorruption}
           fallback={
             <BasicBoiler
               text={t("Selected version is corrupted or not available.")}
-              className="size-4 h-full [&>div>p]:text-md"
+              className="[&>div>p]:text-md size-4 h-full"
               icon={<FlowLogo className="size-20 text-accent" />}
             />
           }>

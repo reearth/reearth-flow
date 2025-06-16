@@ -20,9 +20,9 @@ const CanvasActionBar = () => {
   const { isFullscreen, handleFullscreenToggle } = useFullscreen();
 
   return (
-    <div className="pointer-events-auto rounded-md bg-secondary/80 p-1 backdrop-blur-xs shadow-md">
+    <div className="pointer-events-auto rounded-md bg-secondary/80 p-1 shadow-md backdrop-blur-xs">
       <div className="flex rounded-md">
-        <div className="flex flex-1 flex-col justify-end align-middle gap-1">
+        <div className="flex flex-1 flex-col justify-end gap-1 align-middle">
           <IconButton
             className="rounded-[4px]"
             tooltipText={t("Zoom in")}

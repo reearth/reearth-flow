@@ -55,10 +55,10 @@ const DebugPreview: React.FC = () => {
 
   return debugJobState && dataURLs ? (
     <Tabs
-      className={`pointer-events-auto w-[45vw] min-w-[700px] rounded-md p-1 bg-secondary transition-all shadow-md shadow-secondary ${minimized ? "h-[36px]" : expanded ? "h-[90vh] w-[90vw]" : "h-[500px]"}`}
+      className={`pointer-events-auto w-[45vw] min-w-[700px] rounded-md bg-secondary p-1 shadow-md shadow-secondary transition-all ${minimized ? "h-[36px]" : expanded ? "h-[90vh] w-[90vw]" : "h-[500px]"}`}
       defaultValue="data-viewer">
       <div className="relative flex items-center p-1">
-        <div className="absolute left-1 top-1">
+        <div className="absolute top-1 left-1">
           <Select
             defaultValue={dataURLs[0].key}
             value={selectedDataURL}
@@ -82,7 +82,7 @@ const DebugPreview: React.FC = () => {
               value="data-viewer"
               onClick={handleTabChange}>
               <GridNine />
-              <p className="select-none text-sm font-thin">
+              <p className="text-sm font-thin select-none">
                 {t("Table Viewer")}
               </p>
             </TabsTrigger>
@@ -91,11 +91,11 @@ const DebugPreview: React.FC = () => {
               value="3d-viewer"
               onClick={handleTabChange}>
               <Globe />
-              <p className="select-none text-sm font-thin">{t("3D Viewer")}</p>
+              <p className="text-sm font-thin select-none">{t("3D Viewer")}</p>
             </TabsTrigger>
           </TabsList>
         </div>
-        <div className="absolute right-1 top-1 flex items-center gap-2">
+        <div className="absolute top-1 right-1 flex items-center gap-2">
           <div
             className="cursor-pointer rounded p-1 hover:bg-primary"
             onClick={handleMinimize}>

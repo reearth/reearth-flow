@@ -95,36 +95,36 @@ const ParamEditor: React.FC<Props> = ({
   };
 
   return (
-    <div className="h-[60vh] flex flex-col gap-4 overflow-hidden">
+    <div className="flex h-[60vh] flex-col gap-4 overflow-hidden">
       <div className="flex h-full flex-col gap-4 bg-card">
         <Tabs
           onValueChange={setActiveTab}
           value={activeTab}
           className="flex h-full">
-          <TabsList className="flex flex-col h-full justify-start rounded-none gap-2 p-2 bg-secondary">
+          <TabsList className="flex h-full flex-col justify-start gap-2 rounded-none bg-secondary p-2">
             {createdAction?.parameter && (
               <TabsTrigger
-                className="w-full gap-2 h-[30px] justify-start"
+                className="h-[30px] w-full justify-start gap-2"
                 value="params">
                 <PuzzlePiece className="shrink-0" />
                 <p>{t("Parameters")}</p>
               </TabsTrigger>
             )}
             <TabsTrigger
-              className="w-full gap-2 h-[30px] justify-start"
+              className="h-[30px] w-full justify-start gap-2"
               value="customizations">
               <Nut className="shrink-0" />
               <p>{t("Customizations")}</p>
             </TabsTrigger>
             <TabsTrigger
-              className="w-full gap-2 h-[30px] justify-start"
+              className="h-[30px] w-full justify-start gap-2"
               value="details">
               <Info className="shrink-0" />
               <p>{t("Details")}</p>
             </TabsTrigger>
           </TabsList>
-          <TabsContent className="py-4 px-6" value="params" asChild>
-            <div className="flex flex-col justify-between min-h-0 size-full gap-4">
+          <TabsContent className="px-6 py-4" value="params" asChild>
+            <div className="flex size-full min-h-0 flex-col justify-between gap-4">
               <div className="min-h-0 overflow-scroll rounded px-2 pt-1">
                 {!createdAction?.parameter && (
                   <BasicBoiler
@@ -143,7 +143,7 @@ const ParamEditor: React.FC<Props> = ({
                 )}
               </div>
               <Button
-                className="self-end shrink-0"
+                className="shrink-0 self-end"
                 size="lg"
                 onClick={handleUpdate}
                 disabled={readonly}>
@@ -151,8 +151,8 @@ const ParamEditor: React.FC<Props> = ({
               </Button>
             </div>
           </TabsContent>
-          <TabsContent className="py-4 px-6" value="customizations" asChild>
-            <div className="flex flex-col justify-between min-h-0 size-full gap-4">
+          <TabsContent className="px-6 py-4" value="customizations" asChild>
+            <div className="flex size-full min-h-0 flex-col justify-between gap-4">
               <div className="min-h-0 overflow-scroll rounded px-2 pt-4">
                 {!createdAction?.customizations && (
                   <BasicBoiler
@@ -176,7 +176,7 @@ const ParamEditor: React.FC<Props> = ({
                 )}
               </div>
               <Button
-                className="self-end shrink-0"
+                className="shrink-0 self-end"
                 size="lg"
                 onClick={handleUpdate}
                 disabled={readonly}>
@@ -184,7 +184,7 @@ const ParamEditor: React.FC<Props> = ({
               </Button>
             </div>
           </TabsContent>
-          <TabsContent className="py-4 px-6 w-full" value="details">
+          <TabsContent className="w-full px-6 py-4" value="details">
             <div className="min-h-32 w-full overflow-scroll rounded border px-2 pt-4">
               {!createdAction && (
                 <BasicBoiler
@@ -201,13 +201,13 @@ const ParamEditor: React.FC<Props> = ({
                     </h4>
                     <div className="my-4 flex w-full flex-col gap-4">
                       <div className="flex items-center text-sm">
-                        <p className="mr-2 font-medium w-[150px]">
+                        <p className="mr-2 w-[150px] font-medium">
                           {t("Action Name")}:
                         </p>
                         <p className="text-white">{nodeMeta.officialName}</p>
                       </div>
                       <div className="flex items-center text-sm">
-                        <p className="mr-2 font-medium w-[150px]">
+                        <p className="mr-2 w-[150px] font-medium">
                           {t("Description")}:
                         </p>
                         {createdAction?.description && (

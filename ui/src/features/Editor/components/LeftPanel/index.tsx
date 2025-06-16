@@ -102,7 +102,7 @@ const LeftPanel: React.FC<Props> = ({
         nodes.length !== 0 ? (
           <Tree
             data={treeContent}
-            className="w-full shrink-0 select-none truncate rounded px-1"
+            className="w-full shrink-0 truncate rounded px-1 select-none"
             onSelectChange={(item) => {
               setNodeId(item?.id ?? "");
             }}
@@ -171,7 +171,7 @@ const LeftPanel: React.FC<Props> = ({
   return (
     <>
       <div
-        className="absolute left-[55px] bottom-[8px] top-[35px] z-10 flex w-[350px] flex-1 flex-col gap-3 p-2 overflow-auto rounded-md bg-secondary transition-all"
+        className="absolute top-[35px] bottom-[8px] left-[55px] z-10 flex w-[350px] flex-1 flex-col gap-3 overflow-auto rounded-md bg-secondary p-2 transition-all"
         style={{
           transform: `translateX(${isOpen ? "8px" : "-100%"})`,
           transitionDuration: isOpen ? "500ms" : "300ms",
@@ -184,7 +184,7 @@ const LeftPanel: React.FC<Props> = ({
             {tabs?.find((tc) => tc.id === selectedTab)?.title}
           </p>
         </div>
-        <div className="flex flex-col gap-2 overflow-auto bg-card rounded">
+        <div className="flex flex-col gap-2 overflow-auto rounded bg-card">
           {tabs?.find((tc) => tc.id === selectedTab)?.component}
         </div>
       </div>

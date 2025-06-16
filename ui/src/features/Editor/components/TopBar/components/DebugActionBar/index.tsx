@@ -33,9 +33,9 @@ const DebugActionBar: React.FC<Props> = ({
   return (
     <>
       <div className="flex rounded-md bg-secondary">
-        <div className="flex align-middle gap-2">
+        <div className="flex gap-2 align-middle">
           <IconButton
-            className="rounded-l-[4px] rounded"
+            className="rounded rounded-l-[4px]"
             tooltipText={t("Start debug run of workflow")}
             tooltipOffset={tooltipOffset}
             disabled={
