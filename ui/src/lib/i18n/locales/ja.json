@@ -161,7 +161,7 @@
   "Empty workflow detected": "空のワークフローが検出されました",
   "You cannot create a deployment without a workflow.": "ワークフローがないとデプロイメントを作成できません。",
   "General shortcuts": "一般ショートカット",
-    "Open the Keyboard Shortcuts Dialog": "キーボードショートカットダイアログを開く",
+  "Open the Keyboard Shortcuts Dialog": "キーボードショートカットダイアログを開く",
   "Manually Save the Project": "プロジェクトを手動で保存",
   "Editor shortcuts": "エディターショートカット",
   "Toggle Fullscreen Mode": "フルスクリーンモードを切り替え",
