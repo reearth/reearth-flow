@@ -438,7 +438,7 @@ type MutationResolver interface {
 	UpdateDeployment(ctx context.Context, input gqlmodel.UpdateDeploymentInput) (*gqlmodel.DeploymentPayload, error)
 	DeleteDeployment(ctx context.Context, input gqlmodel.DeleteDeploymentInput) (*gqlmodel.DeleteDeploymentPayload, error)
 	ExecuteDeployment(ctx context.Context, input gqlmodel.ExecuteDeploymentInput) (*gqlmodel.JobPayload, error)
-	SaveSnapshot(ctx context.Context, projectID gqlmodel.ID) (*bool, error)
+	SaveSnapshot(ctx context.Context, projectID gqlmodel.ID) (bool, error)
 	PreviewSnapshot(ctx context.Context, projectID gqlmodel.ID, version int, name *string) (*gqlmodel.PreviewSnapshot, error)
 	RollbackProject(ctx context.Context, projectID gqlmodel.ID, version int) (*gqlmodel.ProjectDocument, error)
 	CancelJob(ctx context.Context, input gqlmodel.CancelJobInput) (*gqlmodel.CancelJobPayload, error)
@@ -2722,7 +2722,7 @@ type ProjectSnapshotMetadata {
 # Mutation
 
 extend type Mutation {
-  saveSnapshot(projectId: ID!): Boolean
+  saveSnapshot(projectId: ID!): Boolean!
   previewSnapshot(projectId: ID!, version: Int!, name: String): PreviewSnapshot
   rollbackProject(projectId: ID!, version: Int!): ProjectDocument
 }
@@ -7934,11 +7934,14 @@ func (ec *executionContext) _Mutation_saveSnapshot(ctx context.Context, field gr
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*bool)
+	res := resTmp.(bool)
 	fc.Result = res
-	return ec.marshalOBoolean2ᚖbool(ctx, field.Selections, res)
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_saveSnapshot(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -19935,6 +19938,9 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_saveSnapshot(ctx, field)
 			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "previewSnapshot":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_previewSnapshot(ctx, field)
