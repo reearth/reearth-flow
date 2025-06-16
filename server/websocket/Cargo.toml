@@ -32,7 +32,7 @@ tokio-util = { version = "0.7.15", features = ["codec"] }
 dotenv = "0.15"
 # lmdb-rs = { version = "0.7" }
 thiserror = "2.0.12"
-smallvec = { version = "1.15.1", features = [
+smallvec = { version = "1.15.0", features = [
   "write",
   "union",
   "const_generics",
@@ -46,7 +46,7 @@ redis = { version = "0.29.5", features = ["tokio-comp", "connection-manager"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 hex = "0.4"
 dashmap = "6.1.0"
-reqwest = { version = "0.12.20", features = ["json"] }
+reqwest = { version = "0.12.19", features = ["json"] }
 chrono = { version = "0.4", features = ["serde"] }
 rand = "0.9.1"
 # thrift = "0.17.0"
