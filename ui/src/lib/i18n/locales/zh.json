@@ -73,6 +73,7 @@
   "Output data": "输出数据",
   "Select Data to Preview": "选择要预览的数据",
   "Table Viewer": "表格查看器",
+  "2D Viewer": "",
   "3D Viewer": "3D查看器",
   "Your workflow completed without any output data.": "您的工作流完成，但没有任何输出数据。",
   "Please review the logs to see if there were any errors during the workflow process.": "请查看日志，以查看工作流过程中是否有任何错误。",

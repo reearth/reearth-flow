@@ -73,6 +73,7 @@
   "Output data": "Datos de salida",
   "Select Data to Preview": "Seleccionar datos para previsualizar",
   "Table Viewer": "Visor de tabla",
+  "2D Viewer": "",
   "3D Viewer": "Visor 3D",
   "Your workflow completed without any output data.": "",
   "Please review the logs to see if there were any errors during the workflow process.": "",

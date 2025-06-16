@@ -4,6 +4,7 @@ import {
   CornersOut,
   Globe,
   GridNine,
+  MapPinAreaIcon,
   Minus,
   Warning,
 } from "@phosphor-icons/react";
@@ -32,6 +33,7 @@ import {
 import { useT } from "@flow/lib/i18n";
 
 import { DataTable, GeoMap } from "./components";
+import { MapLibre } from "./components/MapLibre";
 import useHooks from "./hooks";
 
 const DebugPreview: React.FC = () => {
@@ -88,6 +90,13 @@ const DebugPreview: React.FC = () => {
             </TabsTrigger>
             <TabsTrigger
               className="gap-1 bg-card"
+              value="2d-viewer"
+              onClick={handleTabChange}>
+              <MapPinAreaIcon />
+              <p className="select-none text-sm font-thin">{t("2D Viewer")}</p>
+            </TabsTrigger>
+            <TabsTrigger
+              className="gap-1 bg-card"
               value="3d-viewer"
               onClick={handleTabChange}>
               <Globe />
@@ -122,6 +131,11 @@ const DebugPreview: React.FC = () => {
             className="h-[calc(100%-35px)] overflow-scroll"
             value="data-viewer">
             <DataTable fileContent={selectedOutputData} fileType={fileType} />
+          </TabsContent>
+          <TabsContent
+            className="m-0 h-[calc(100%-32px)] p-1"
+            value="2d-viewer">
+            <MapLibre fileContent={selectedOutputData} fileType={fileType} />
           </TabsContent>
           <TabsContent
             className="m-0 h-[calc(100%-32px)] p-1"
