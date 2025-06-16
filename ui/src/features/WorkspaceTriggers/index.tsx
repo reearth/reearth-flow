@@ -1,4 +1,4 @@
-import { PencilLine, Plus, Trash } from "@phosphor-icons/react";
+import { PencilLineIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
 import {
@@ -70,14 +70,14 @@ const TriggerManager: React.FC = () => {
             size="icon"
             tooltipText={t("Update Trigger")}
             onClick={() => setTriggerToBeEdited(row.row.original)}>
-            <PencilLine />
+            <PencilLineIcon />
           </ButtonWithTooltip>
           <ButtonWithTooltip
             variant="destructive"
             size="icon"
             tooltipText={t("Delete Trigger")}
             onClick={() => setTriggerToBeDeleted(row.row.original)}>
-            <Trash />
+            <TrashIcon />
           </ButtonWithTooltip>
         </div>
       ),
@@ -101,7 +101,7 @@ const TriggerManager: React.FC = () => {
               <Button
                 className="flex gap-2"
                 onClick={() => setOpenTriggerAddDialog(true)}>
-                <Plus weight="thin" />
+                <PlusIcon weight="thin" />
                 <p className="text-xs dark:font-light">{t("New Trigger")}</p>
               </Button>
             </div>

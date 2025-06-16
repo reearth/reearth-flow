@@ -1,4 +1,4 @@
-import { Table, X } from "@phosphor-icons/react";
+import { TableIcon, XIcon } from "@phosphor-icons/react";
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -51,7 +51,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
       <BaseEdge id={id} path={edgePath} />
       <EdgeLabelRenderer>
         {jobStatus === "failed" && (
-          <X
+          <XIcon
             className="nodrag nopan absolute size-[20px] origin-center rounded-full border border-destructive bg-primary fill-destructive p-1"
             weight="bold"
             style={{
@@ -61,7 +61,7 @@ const DefaultEdge: React.FC<CustomEdgeProps> = ({
           />
         )}
         {hasIntermediateData && (
-          <Table
+          <TableIcon
             className={`nodrag nopan absolute size-[25px] origin-center rounded-full border bg-primary p-1 transition-[height,width] hover:size-[40px] hover:fill-success  ${intermediateDataIsSet ? "size-[35px] border-success bg-success fill-white hover:fill-white" : selected ? "border-success fill-success" : "border-slate-400/80 fill-success/80"}`}
             style={{
               pointerEvents: "all",

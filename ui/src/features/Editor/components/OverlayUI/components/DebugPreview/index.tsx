@@ -1,11 +1,11 @@
 import {
-  CaretUp,
-  CornersIn,
-  CornersOut,
-  Globe,
-  GridNine,
-  Minus,
-  Warning,
+  CaretUpIcon,
+  CornersInIcon,
+  CornersOutIcon,
+  GlobeIcon,
+  GridNineIcon,
+  MinusIcon,
+  WarningIcon,
 } from "@phosphor-icons/react";
 import { memo } from "react";
 
@@ -81,7 +81,7 @@ const DebugPreview: React.FC = () => {
               className="gap-1 bg-card font-thin"
               value="data-viewer"
               onClick={handleTabChange}>
-              <GridNine />
+              <GridNineIcon />
               <p className="select-none text-sm font-thin">
                 {t("Table Viewer")}
               </p>
@@ -90,7 +90,7 @@ const DebugPreview: React.FC = () => {
               className="gap-1 bg-card"
               value="3d-viewer"
               onClick={handleTabChange}>
-              <Globe />
+              <GlobeIcon />
               <p className="select-none text-sm font-thin">{t("3D Viewer")}</p>
             </TabsTrigger>
           </TabsList>
@@ -99,16 +99,20 @@ const DebugPreview: React.FC = () => {
           <div
             className="cursor-pointer rounded p-1 hover:bg-primary"
             onClick={handleMinimize}>
-            {minimized ? <CaretUp weight="light" /> : <Minus weight="light" />}
+            {minimized ? (
+              <CaretUpIcon weight="light" />
+            ) : (
+              <MinusIcon weight="light" />
+            )}
           </div>
           {!minimized && (
             <div
               className="cursor-pointer rounded p-1 hover:bg-primary"
               onClick={handleExpand}>
               {expanded ? (
-                <CornersIn weight="light" />
+                <CornersInIcon weight="light" />
               ) : (
-                <CornersOut weight="light" />
+                <CornersOutIcon weight="light" />
               )}
             </div>
           )}
@@ -136,7 +140,7 @@ const DebugPreview: React.FC = () => {
       <DialogContent size="sm" hideCloseButton>
         <DialogHeader className="text-warning">
           <DialogTitle className="flex justify-center gap-1">
-            <Warning weight="light" />
+            <WarningIcon weight="light" />
             {t("Warning")}
           </DialogTitle>
         </DialogHeader>

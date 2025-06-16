@@ -1,4 +1,8 @@
-import { CaretDown, CaretUp, Download } from "@phosphor-icons/react";
+import {
+  CaretDownIcon,
+  CaretUpIcon,
+  DownloadIcon,
+} from "@phosphor-icons/react";
 import { useState } from "react";
 
 import { Button } from "@flow/components";
@@ -69,7 +73,7 @@ const DetailsBox: React.FC<Props> = ({ title, content, collapsible }) => {
         onClick={() => collapsible && setCollapsed(!collapsed)}>
         <div className="flex items-center gap-4">
           <p className="text-xl">{title}</p>
-          {collapsible ? collapsed ? <CaretUp /> : <CaretDown /> : null}
+          {collapsible ? collapsed ? <CaretUpIcon /> : <CaretDownIcon /> : null}
         </div>
         <div className="flex items-center gap-2">
           {!collapsed &&
@@ -86,7 +90,7 @@ const DetailsBox: React.FC<Props> = ({ title, content, collapsible }) => {
                       className="flex h-full items-center gap-2 rounded px-4 py-2"
                       href={value}
                       onClick={() => value && handleDownload(value)}>
-                      <Download />
+                      <DownloadIcon />
                       <p className="max-w-[100px] truncate font-light">
                         {value.split("/").pop()}
                       </p>
@@ -107,7 +111,7 @@ const DetailsBox: React.FC<Props> = ({ title, content, collapsible }) => {
                       typeof detail.value === "string" &&
                       handleDownload(detail.value)
                     }>
-                    <Download />
+                    <DownloadIcon />
                     <p className="font-light">{detail.name}</p>
                   </a>
                 </Button>

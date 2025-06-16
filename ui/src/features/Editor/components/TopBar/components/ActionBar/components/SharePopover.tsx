@@ -1,4 +1,4 @@
-import { Paperclip } from "@phosphor-icons/react";
+import { PaperclipIcon } from "@phosphor-icons/react";
 import { debounce } from "lodash-es";
 import { useEffect, useRef, useState } from "react";
 
@@ -85,7 +85,7 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
           variant="outline"
           disabled={!currentProject?.sharedToken}
           onClick={handleCopyUrl}>
-          <Paperclip weight="thin" />
+          <PaperclipIcon weight="thin" />
           <p className="text-xs dark:font-light">{t("Copy URL")}</p>
         </Button>
       </div>
