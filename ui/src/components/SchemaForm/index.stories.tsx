@@ -1,4 +1,4 @@
-import { Copy } from "@phosphor-icons/react";
+import { CopyIcon } from "@phosphor-icons/react";
 import {
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -148,7 +148,7 @@ export const Default = () => {
             onClick={() => {
               navigator.clipboard.writeText(JSON.stringify(schema, null, 2));
             }}>
-            <Copy />
+            <CopyIcon />
           </Button>
         </pre>
       )}

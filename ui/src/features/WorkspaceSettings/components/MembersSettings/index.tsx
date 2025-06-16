@@ -1,4 +1,4 @@
-import { CaretDown, Plus, User } from "@phosphor-icons/react";
+import { CaretDownIcon, PlusIcon, UserIcon } from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
@@ -117,7 +117,7 @@ const MembersSettings: React.FC = () => {
           <Button
             className="flex gap-2"
             onClick={() => setOpenMemberAddDialog(true)}>
-            <Plus weight="thin" />
+            <PlusIcon weight="thin" />
             <p className="text-xs dark:font-light"> {t("Add Member")}</p>
           </Button>
         )}
@@ -136,7 +136,7 @@ const MembersSettings: React.FC = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger className="flex items-center gap-2">
                     <p>{filters.find((f) => f.id === currentFilter)?.title}</p>
-                    <CaretDown className="size-3" />
+                    <CaretDownIcon className="size-3" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="min-w-[70px]">
                     {filters.map((filter, idx) => (
@@ -152,7 +152,7 @@ const MembersSettings: React.FC = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <User weight="thin" />
+              <UserIcon weight="thin" />
               <p>{`${members?.length} ${t("Members")}`}</p>
             </div>
           </div>
@@ -168,7 +168,7 @@ const MembersSettings: React.FC = () => {
                     disabled={m.userId === me?.id}
                     className={`flex flex-1 items-center gap-1 ${m.userId === me?.id ? "opacity-50" : ""}`}>
                     <p className="text-sm">{t("Change role")}</p>
-                    <CaretDown className="size-2" />
+                    <CaretDownIcon className="size-2" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="min-w-[70px]">
                     {roles.map((role, idx) => (

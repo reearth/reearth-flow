@@ -1,4 +1,4 @@
-import { Calendar } from "@phosphor-icons/react";
+import { CalendarIcon } from "@phosphor-icons/react";
 import { enUS, ja, es, fr, zhCN, Locale } from "date-fns/locale";
 import { useEffect, useState } from "react";
 import DatePicker, { registerLocale } from "react-datepicker";
@@ -50,7 +50,7 @@ const DateTimePicker: React.FC<Props> = ({ className }) => {
       showTimeSelect
       showIcon
       toggleCalendarOnIconClick
-      icon={<Calendar />}
+      icon={<CalendarIcon />}
       locale={currentLang}
       showPopperArrow={false}
       onChange={(date) => date && setStartDate(date)}

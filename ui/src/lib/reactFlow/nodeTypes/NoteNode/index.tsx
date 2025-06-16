@@ -1,4 +1,4 @@
-import { Note } from "@phosphor-icons/react";
+import { NoteIcon } from "@phosphor-icons/react";
 import { NodeProps, NodeResizer } from "@xyflow/react";
 import { memo } from "react";
 
@@ -65,7 +65,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
               );
           }}>
           <div className="p-1 bg-primary/80 rounded-sm">
-            <Note className="w-[15px]" />
+            <NoteIcon className="w-[15px]" />
           </div>
           <p>{data.customizations?.customName ?? data.officialName}</p>
         </div>

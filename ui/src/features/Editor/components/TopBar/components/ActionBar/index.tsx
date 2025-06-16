@@ -1,10 +1,10 @@
 import {
-  ClockCounterClockwise,
-  DotsThreeVertical,
-  Export,
+  ClockCounterClockwiseIcon,
+  DotsThreeVerticalIcon,
+  ExportIcon,
+  PaperPlaneTiltIcon,
+  RocketIcon,
   FloppyDiskIcon,
-  PaperPlaneTilt,
-  Rocket,
 } from "@phosphor-icons/react";
 import { memo } from "react";
 import { Doc } from "yjs";
@@ -66,7 +66,7 @@ const ActionBar: React.FC<Props> = ({
           <IconButton
             tooltipText={t("Deploy project's workflow")}
             tooltipOffset={tooltipOffset}
-            icon={<Rocket weight="thin" size={18} />}
+            icon={<RocketIcon weight="thin" size={18} />}
             onClick={handleShowDeployDialog}
           />
           <Popover
@@ -78,7 +78,7 @@ const ActionBar: React.FC<Props> = ({
               <IconButton
                 tooltipText={t("Share Project")}
                 tooltipOffset={tooltipOffset}
-                icon={<PaperPlaneTilt weight="thin" size={18} />}
+                icon={<PaperPlaneTiltIcon weight="thin" size={18} />}
                 onClick={handleShowSharePopover}
               />
             </PopoverTrigger>
@@ -94,7 +94,7 @@ const ActionBar: React.FC<Props> = ({
                 className="w-[25px]"
                 tooltipText={t("Additional actions")}
                 tooltipOffset={tooltipOffset}
-                icon={<DotsThreeVertical size={18} />}
+                icon={<DotsThreeVerticalIcon size={18} />}
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent
@@ -106,7 +106,7 @@ const ActionBar: React.FC<Props> = ({
                 className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs"
                 onClick={onProjectExport}>
                 <div className="flex items-center gap-1">
-                  <Export weight="light" />
+                  <ExportIcon weight="light" />
                   <p>{t("Export Project")}</p>
                 </div>
               </DropdownMenuItem>
@@ -114,7 +114,7 @@ const ActionBar: React.FC<Props> = ({
                 className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs"
                 onClick={handleShowVersionDialog}>
                 <div className="flex items-center gap-1">
-                  <ClockCounterClockwise weight="light" />
+                  <ClockCounterClockwiseIcon weight="light" />
                   <p>{t("Version History")}</p>
                 </div>
               </DropdownMenuItem>

@@ -1,4 +1,9 @@
-import { ArrowSquareOut, Keyboard, SignOut, User } from "@phosphor-icons/react";
+import {
+  ArrowSquareOutIcon,
+  KeyboardIcon,
+  SignOutIcon,
+  UserIcon,
+} from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
@@ -79,13 +84,13 @@ const UserMenu: React.FC<Props> = ({
             className="justify-between gap-4"
             onClick={() => setOpenAccountUpdateDialog(true)}>
             <p>{t("Account Settings")}</p>
-            <User weight="light" />
+            <UserIcon weight="light" />
           </DropdownMenuItem>
           <DropdownMenuItem
             className="justify-between gap-4"
             onClick={() => setOpenShortcutDialog(true)}>
             <p>{t("Keyboard Shortcuts")}</p>
-            <Keyboard weight="light" />
+            <KeyboardIcon weight="light" />
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {tosUrl && (
@@ -93,7 +98,7 @@ const UserMenu: React.FC<Props> = ({
               className="justify-between gap-4"
               onClick={handleTosPageOpen}>
               <p>{t("Terms of Service")}</p>
-              <ArrowSquareOut weight="light" />
+              <ArrowSquareOutIcon weight="light" />
             </DropdownMenuItem>
           )}
           {documentationUrl && (
@@ -101,7 +106,7 @@ const UserMenu: React.FC<Props> = ({
               className="justify-between gap-4"
               onClick={handleDocumentationPageOpen}>
               <p>{t("Documentation")}</p>
-              <ArrowSquareOut weight="light" />
+              <ArrowSquareOutIcon weight="light" />
             </DropdownMenuItem>
           )}
           <DropdownMenuSeparator />
@@ -109,7 +114,7 @@ const UserMenu: React.FC<Props> = ({
             className="justify-between gap-4 text-warning"
             onClick={handleLogout}>
             <p>{t("Log Out")}</p>
-            <SignOut weight="light" />
+            <SignOutIcon weight="light" />
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

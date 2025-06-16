@@ -1,4 +1,4 @@
-import { Graph, X } from "@phosphor-icons/react";
+import { GraphIcon, XIcon } from "@phosphor-icons/react";
 
 type Props = {
   currentWorkflowId?: string;
@@ -24,7 +24,7 @@ const WorkflowTab: React.FC<Props> = ({
       key={id}>
       <div
         className={`h-full flex gap-2 items-center ml-[8px] group-hover:text-white dark:font-extralight ${currentWorkflowId !== id && "text-accent-foreground"}`}>
-        <Graph weight="light" />
+        <GraphIcon weight="light" />
       </div>
       <div className="flex justify-center items-center text-center w-[100px] h-full overflow-hidden">
         <p className="select-none truncate text-center text-xs w-full">
@@ -36,7 +36,7 @@ const WorkflowTab: React.FC<Props> = ({
           <div
             className="transition-all p-1 rounded hover:bg-node-entrance/40"
             onClick={onWorkflowClose(id)}>
-            <X />
+            <XIcon />
           </div>
         </div>
       </div>
