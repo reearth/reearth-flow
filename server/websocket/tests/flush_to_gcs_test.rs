@@ -10,7 +10,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_flush_to_gcs_scenario_simulation() {
+    async fn test_flush_to_gcs() {
         let gcs_store = MockGcsStore::new();
         let redis_store = MockRedisStore::new();
 
