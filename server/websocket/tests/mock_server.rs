@@ -32,7 +32,7 @@ impl MockRedisStore {
     pub async fn acquire_doc_lock(&self, lock_id: &str, instance_id: &str) -> anyhow::Result<bool> {
         let mut locks = self.locks.lock().unwrap();
         if locks.contains_key(lock_id) {
-            Ok(false) // Lock already acquired
+            Ok(false)
         } else {
             locks.insert(lock_id.to_string(), instance_id.to_string());
             Ok(true)
