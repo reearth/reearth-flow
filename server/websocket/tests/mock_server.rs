@@ -8,17 +8,23 @@ use yrs::Doc;
 #[derive(Clone, Debug)]
 pub struct MockRedisStore {
     streams: Arc<Mutex<HashMap<String, Vec<Bytes>>>>,
-    locks: Arc<Mutex<HashMap<String, String>>>, // lock_id -> instance_id
+    locks: Arc<Mutex<HashMap<String, String>>>,
     lock_should_fail: Arc<Mutex<bool>>,
 }
 
-impl MockRedisStore {
-    pub fn new() -> Self {
+impl Default for MockRedisStore {
+    fn default() -> Self {
         Self {
             streams: Arc::new(Mutex::new(HashMap::new())),
             locks: Arc::new(Mutex::new(HashMap::new())),
             lock_should_fail: Arc::new(Mutex::new(false)),
         }
+    }
+}
+
+impl MockRedisStore {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn set_lock_should_fail(&self, should_fail: bool) {
@@ -28,10 +34,7 @@ impl MockRedisStore {
 
     pub fn add_stream_data(&self, doc_id: &str, data: Bytes) {
         let mut streams = self.streams.lock().unwrap();
-        streams
-            .entry(doc_id.to_string())
-            .or_insert_with(Vec::new)
-            .push(data);
+        streams.entry(doc_id.to_string()).or_default().push(data);
     }
 
     pub fn clear_stream(&self, doc_id: &str) {
@@ -95,12 +98,18 @@ pub struct MockGcsStore {
     should_fail_operations: Arc<Mutex<bool>>,
 }
 
-impl MockGcsStore {
-    pub fn new() -> Self {
+impl Default for MockGcsStore {
+    fn default() -> Self {
         Self {
             docs: Arc::new(RwLock::new(HashMap::new())),
             should_fail_operations: Arc::new(Mutex::new(false)),
         }
+    }
+}
+
+impl MockGcsStore {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn set_should_fail(&self, should_fail: bool) {
