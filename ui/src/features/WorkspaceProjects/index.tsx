@@ -87,7 +87,7 @@ const ProjectsManager: React.FC = () => {
 
   return (
     <div className="flex h-full flex-1 flex-col">
-      <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pb-2 pt-4">
+      <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pt-4 pb-2">
         <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg dark:font-extralight">{t("Projects")}</p>
           <div className="flex gap-2">

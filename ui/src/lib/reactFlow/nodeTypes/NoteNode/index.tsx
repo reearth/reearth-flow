@@ -40,7 +40,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
         />
       )}
       <div
-        className={`relative z-0 h-full rounded-b-md bg-secondary/50 p-2 border-x border-b ${props.selected ? "border-border" : "border-transparent"}`}
+        className={`relative z-0 h-full rounded-b-md border-x border-b bg-secondary/50 p-2 ${props.selected ? "border-border" : "border-transparent"}`}
         ref={(element) => {
           if (element) {
             element.style.setProperty(
@@ -55,7 +55,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
           minHeight: minSize.height,
         }}>
         <div
-          className={`absolute inset-x-[-0.8px] top-[-33px] p-1 flex items-center gap-2 rounded-t-md border-x border-t bg-secondary px-2 ${props.selected ? "border-border" : "border-transparent"}`}
+          className={`absolute inset-x-[-0.8px] top-[-33px] flex items-center gap-2 rounded-t-md border-x border-t bg-secondary p-1 px-2 ${props.selected ? "border-border" : "border-transparent"}`}
           ref={(element) => {
             if (element)
               element.style.setProperty(
@@ -64,7 +64,7 @@ const NoteNode: React.FC<NoteNodeProps> = ({ id, type, data, ...props }) => {
                 "important",
               );
           }}>
-          <div className="p-1 bg-primary/80 rounded-sm">
+          <div className="rounded-sm bg-primary/80 p-1">
             <NoteIcon className="w-[15px]" />
           </div>
           <p>{data.customizations?.customName ?? data.officialName}</p>
