@@ -73,10 +73,7 @@ impl MockGcsStore {
         Self::default()
     }
 
-    pub async fn load_doc_v2(
-        &self,
-        doc_name: &str,
-    ) -> Result<Doc, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn load_doc_v2(&self, doc_name: &str) -> anyhow::Result<Doc> {
         let docs = self.docs.read().await;
         if let Some(doc) = docs.get(doc_name) {
             Ok(doc.clone())
@@ -85,11 +82,7 @@ impl MockGcsStore {
         }
     }
 
-    pub async fn flush_doc_v2(
-        &self,
-        doc_name: &str,
-        doc: &Doc,
-    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn flush_doc_v2(&self, doc_name: &str, doc: &Doc) -> anyhow::Result<()> {
         let mut docs = self.docs.write().await;
         docs.insert(doc_name.to_string(), doc.clone());
         Ok(())
