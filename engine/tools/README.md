@@ -5,7 +5,7 @@
 1. Copy to cesium/3dtiles
 
 Move the folder folder to be distributed under examples/3dtiles.
-examples/3dtiles/tiles.json and should be
+examples/3dtiles/tileset.json and should be
 
 2. Start local web server:
 
