@@ -209,7 +209,6 @@ mod tests {
         let doc_id = "concurrent_test";
         let lock_id = format!("gcs:lock:{}", doc_id);
 
-        // Test concurrent lock acquisition
         let redis1 = redis_store.clone();
         let redis2 = redis_store.clone();
         let lock_id1 = lock_id.clone();
@@ -225,7 +224,6 @@ mod tests {
         let acquired1 = result1.unwrap().unwrap();
         let acquired2 = result2.unwrap().unwrap();
 
-        // Only one should succeed
         assert!(
             acquired1 != acquired2,
             "Only one lock acquisition should succeed"

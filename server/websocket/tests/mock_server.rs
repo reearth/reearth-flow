@@ -4,7 +4,6 @@ use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
 use yrs::Doc;
 
-/// Mock Redis Store for testing
 #[derive(Clone, Debug)]
 pub struct MockRedisStore {
     streams: Arc<Mutex<HashMap<String, Vec<Bytes>>>>,
@@ -71,27 +70,8 @@ impl MockRedisStore {
         let streams = self.streams.lock().unwrap();
         Ok(streams.get(doc_id).cloned().unwrap_or_default())
     }
-
-    // pub async fn check_stream_exists(&self, _doc_id: &str) -> anyhow::Result<bool> {
-    //     Ok(true)
-    // }
-
-    // pub async fn read_stream_data_in_batches(
-    //     &self,
-    //     doc_id: &str,
-    //     _batch_size: usize,
-    //     _start_id: &str,
-    //     _is_first_batch: bool,
-    //     _is_final_batch: bool,
-    //     _lock_value: &mut Option<String>,
-    // ) -> anyhow::Result<(Vec<Bytes>, String)> {
-    //     let streams = self.streams.lock().unwrap();
-    //     let updates = streams.get(doc_id).cloned().unwrap_or_default();
-    //     Ok((updates, "mock_last_id".to_string()))
-    // }
 }
 
-/// Mock GCS Store for testing
 #[derive(Clone)]
 pub struct MockGcsStore {
     docs: Arc<RwLock<HashMap<String, Doc>>>,
@@ -116,16 +96,6 @@ impl MockGcsStore {
         let mut should_fail_ops = self.should_fail_operations.lock().unwrap();
         *should_fail_ops = should_fail;
     }
-
-    // pub async fn insert_doc(&self, doc_id: &str, doc: Doc) {
-    //     let mut docs = self.docs.write().await;
-    //     docs.insert(doc_id.to_string(), doc);
-    // }
-
-    // pub async fn get_doc(&self, doc_id: &str) -> Option<Doc> {
-    //     let docs = self.docs.read().await;
-    //     docs.get(doc_id).cloned()
-    // }
 
     pub async fn load_doc_v2(
         &self,
@@ -158,20 +128,6 @@ impl MockGcsStore {
         docs.insert(doc_name.to_string(), doc.clone());
         Ok(())
     }
-
-    // pub async fn push_update(
-    //     &self,
-    //     _doc_name: &str,
-    //     _update: &Bytes,
-    //     _redis: &MockRedisStore,
-    // ) -> Result<u32, Box<dyn std::error::Error + Send + Sync>> {
-    //     let should_fail = *self.should_fail_operations.lock().unwrap();
-    //     if should_fail {
-    //         return Err("Mock GCS push_update operation failed".into());
-    //     }
-
-    //     Ok(1)
-    // }
 }
 
 impl std::fmt::Debug for MockGcsStore {
