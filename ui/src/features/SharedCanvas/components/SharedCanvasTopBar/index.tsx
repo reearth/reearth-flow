@@ -69,14 +69,14 @@ const SharedCanvasTopBar: React.FC<Props> = ({
   const navigate = useNavigate();
 
   return (
-    <div className="flex shrink-0 justify-between gap-2 bg-secondary h-[44px] w-[100vw]">
-      <div className="flex items-center gap-4 pl-4 pr-2">
+    <div className="flex h-[44px] w-[100vw] shrink-0 justify-between gap-2 bg-secondary">
+      <div className="flex items-center gap-4 pr-2 pl-4">
         <div onClick={() => navigate({ to: "/" })}>
-          <FlowLogo className="size-6 transition-all cursor-pointer" />
+          <FlowLogo className="size-6 cursor-pointer transition-all" />
         </div>
-        <div className="flex items-center gap-2 border border-logo/50 py-0.5 px-2 rounded">
+        <div className="flex items-center gap-2 rounded border border-logo/50 px-2 py-0.5">
           <PaperPlaneTiltIcon weight="thin" size={18} />
-          <p className="text-accent-foreground font-light select-none">
+          <p className="font-light text-accent-foreground select-none">
             {t("Shared Project")}
           </p>
           <Tooltip delayDuration={0}>
@@ -100,12 +100,12 @@ const SharedCanvasTopBar: React.FC<Props> = ({
         </div>
       </div>
       <div className="flex items-center pr-4 pl-2">
-        <p className="flex items-center gap-2 max-w-[200px] truncate transition-all delay-0 duration-500 text-sm dark:font-thin">
+        <p className="flex max-w-[200px] items-center gap-2 truncate text-sm transition-all delay-0 duration-500 dark:font-thin">
           <SquaresFourIcon weight="thin" size={18} />
           {project?.name}
         </p>
       </div>
-      <div className="flex flex-1 gap-2 h-full overflow-hidden">
+      <div className="flex h-full flex-1 gap-2 overflow-hidden">
         <WorkflowTabs
           currentWorkflowId={currentWorkflowId}
           openWorkflows={openWorkflows}

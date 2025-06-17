@@ -24,7 +24,7 @@ const JobDetails: React.FC<Props> = ({ jobId, accessToken }) => {
 
   return (
     job && (
-      <div className="flex flex-1 flex-col gap-4 px-6 pb-2 pt-6">
+      <div className="flex flex-1 flex-col gap-4 px-6 pt-6 pb-2">
         <div className="flex justify-between">
           <Button size="icon" variant="ghost" onClick={handleBack}>
             <CaretLeftIcon />

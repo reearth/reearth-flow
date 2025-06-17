@@ -144,7 +144,7 @@ export const Default = () => {
           <Button
             size="sm"
             variant="outline"
-            className="absolute right-0 top-0 mr-2 mt-2"
+            className="absolute top-0 right-0 mt-2 mr-2"
             onClick={() => {
               navigator.clipboard.writeText(JSON.stringify(schema, null, 2));
             }}>

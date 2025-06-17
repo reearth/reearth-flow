@@ -59,7 +59,7 @@ const ActionBar: React.FC<Props> = ({
   return (
     <>
       <div className="flex rounded-md bg-secondary">
-        <div className="flex align-middle gap-2">
+        <div className="flex gap-2 align-middle">
           <IconButton
             tooltipText={t("Deploy project's workflow")}
             tooltipOffset={tooltipOffset}

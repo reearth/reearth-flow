@@ -153,7 +153,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
             <div
               className="flex min-h-8 w-full items-center rounded-md border bg-transparent px-3 py-1 text-sm"
               onClick={() => setOpenSelectDeploymentsDialog(true)}>
-              <span className="cursor-default whitespace-nowrap pr-2 text-muted-foreground">
+              <span className="cursor-default pr-2 whitespace-nowrap text-muted-foreground">
                 {t("Select Deployment: ")}
               </span>
               {selectedDeployment ? (

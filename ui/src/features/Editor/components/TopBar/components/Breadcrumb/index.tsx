@@ -17,18 +17,18 @@ const Breadcrumb: React.FC = () => {
 
   return (
     <div
-      className="flex cursor-default select-none items-center gap-2"
+      className="flex cursor-default items-center gap-2 select-none"
       onMouseLeave={() => setIsHovered(undefined)}>
       <UsersThreeIcon weight="thin" size={18} />
       <p
-        className={`max-w-[200px] truncate transition-all delay-0 duration-500 text-sm dark:font-thin ${isHovered?.includes("workspace") ? "max-w-[50vw] select-text delay-500" : undefined}`}
+        className={`max-w-[200px] truncate text-sm transition-all delay-0 duration-500 dark:font-thin ${isHovered?.includes("workspace") ? "max-w-[50vw] delay-500 select-text" : undefined}`}
         onMouseEnter={() => setIsHovered((h) => [...(h ?? []), "workspace"])}>
         {currentWorkspace?.name}
       </p>
       <p className="text-sm font-thin text-accent-foreground">{"/"}</p>
       <SquaresFourIcon weight="thin" size={18} />
       <p
-        className={`max-w-[200px] truncate transition-all delay-0 duration-500 text-sm dark:font-thin ${isHovered?.includes("project") ? "max-w-[50vw] select-text delay-500" : undefined}`}
+        className={`max-w-[200px] truncate text-sm transition-all delay-0 duration-500 dark:font-thin ${isHovered?.includes("project") ? "max-w-[50vw] delay-500 select-text" : undefined}`}
         onMouseEnter={() => setIsHovered((h) => [...(h ?? []), "project"])}>
         {currentProject?.name}
       </p>

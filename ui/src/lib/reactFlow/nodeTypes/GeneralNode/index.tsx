@@ -37,10 +37,10 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
 
   return (
     <div
-      className={`rounded-md bg-secondary border min-w-[150px] max-w-[200px] ${selected ? selectedColor : borderColor}`}>
-      <div className="relative m-1 flex items-center gap-1 h-[25px] rounded-sm">
+      className={`max-w-[200px] min-w-[150px] rounded-md border bg-secondary ${selected ? selectedColor : borderColor}`}>
+      <div className="relative m-1 flex h-[25px] items-center gap-1 rounded-sm">
         <div
-          className={`flex p-1 self-center align-middle justify-center rounded-sm border ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
+          className={`flex justify-center self-center rounded-sm border p-1 align-middle ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
           {type === "reader" ? (
             <DatabaseIcon className={typeIconClasses} />
           ) : type === "writer" ? (

@@ -59,13 +59,13 @@ const ActionItem = forwardRef<HTMLDivElement, Props>(
         onMouseDown={onMouseDown}
         onDragStart={(e) => onDragStart?.(e, action.name)}>
         <div className="flex w-full justify-between gap-1 pb-2">
-          <div className="w-3/5 self-center break-words text-sm">
+          <div className="w-3/5 self-center text-sm break-words">
             <p className="self-center text-zinc-200">{action.name}</p>
           </div>
           <div
             className={`self-center rounded border ${action.type === "transformer" ? "bg-node-transformer/30" : action.type === "reader" ? "bg-node-reader/30" : action.type === "writer" ? "bg-node-writer/30" : "bg-popover"} p-1 align-middle`}
             onClick={handleTypeClick(action.type)}>
-            <p className="self-center text-xs capitalize text-zinc-200">
+            <p className="self-center text-xs text-zinc-200 capitalize">
               {action.type}
             </p>
           </div>

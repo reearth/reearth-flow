@@ -128,10 +128,10 @@ const Toolbox: React.FC<Props> = ({
 
     const root = createRoot(dragPreviewContainer);
     root.render(
-      <div className="bg-secondary rounded">
+      <div className="rounded bg-secondary">
         <div
           className={`
-          flex justify-center rounded align-middle size-9
+          flex size-9 justify-center rounded align-middle
           ${
             nodeType === "reader"
               ? "bg-node-reader/60"
@@ -171,13 +171,13 @@ const Toolbox: React.FC<Props> = ({
   };
 
   return (
-    <div className="self-start rounded-md bg-secondary/80 p-1 backdrop-blur-xs shadow-md">
+    <div className="self-start rounded-md bg-secondary/80 p-1 shadow-md backdrop-blur-xs">
       <div className="flex flex-col flex-wrap gap-1 rounded-md transition-all">
         {availableTools.map((tool, idx) =>
           tool.id === "break" ? (
-            <div key={tool.id + idx} className="border-t mx-1 box-border" />
+            <div key={tool.id + idx} className="mx-1 box-border border-t" />
           ) : (
-            <div key={tool.id} className="bg-secondary rounded-md">
+            <div key={tool.id} className="rounded-md bg-secondary">
               <IconButton
                 className={`dndnode-${tool.id} cursor-grab  ${
                   tool.id === "reader"
@@ -202,10 +202,10 @@ const Toolbox: React.FC<Props> = ({
             </div>
           ),
         )}
-        <div className="border-t mx-1 box-border" />
+        <div className="mx-1 box-border border-t" />
         {availableActions.map((action, idx) =>
           action.id === "break" ? (
-            <div key={action.id + idx} className="border-t mx-1 box-border" />
+            <div key={action.id + idx} className="mx-1 box-border border-t" />
           ) : (
             <IconButton
               key={action.id}

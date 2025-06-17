@@ -76,8 +76,8 @@ const SharePopover: React.FC<Props> = ({ onProjectShare }) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex gap-2 justify-between border-b p-4 pb-2">
-        <h4 className="text-md self-center dark:font-thin leading-none tracking-tight rounded-t-lg">
+      <div className="flex justify-between gap-2 border-b p-4 pb-2">
+        <h4 className="text-md self-center rounded-t-lg leading-none tracking-tight dark:font-thin">
           {t("Share Project")}
         </h4>
         <Button
