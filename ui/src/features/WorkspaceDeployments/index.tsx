@@ -1,4 +1,9 @@
-import { PencilLine, Play, Plus, Trash } from "@phosphor-icons/react";
+import {
+  PencilLineIcon,
+  PlayIcon,
+  PlusIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
 import {
@@ -72,21 +77,21 @@ const DeploymentManager: React.FC = () => {
             size="icon"
             tooltipText={t("Run Deployment")}
             onClick={() => handleDeploymentRun(row.row.original)}>
-            <Play />
+            <PlayIcon />
           </ButtonWithTooltip>
           <ButtonWithTooltip
             variant="outline"
             size="icon"
             tooltipText={t("Edit Deployment")}
             onClick={() => setDeploymentToBeEdited(row.row.original)}>
-            <PencilLine />
+            <PencilLineIcon />
           </ButtonWithTooltip>
           <ButtonWithTooltip
             variant="destructive"
             size="icon"
             tooltipText={t("Delete Deployment")}
             onClick={() => setDeploymentToBeDeleted(row.row.original)}>
-            <Trash />
+            <TrashIcon />
           </ButtonWithTooltip>
         </div>
       ),
@@ -105,13 +110,13 @@ const DeploymentManager: React.FC = () => {
         </div>
       ) : (
         <div className="flex h-full flex-1 flex-col">
-          <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pb-2 pt-4">
+          <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pt-4 pb-2">
             <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
               <p className="text-lg dark:font-extralight">{t("Deployments")}</p>
               <Button
                 className="flex gap-2"
                 onClick={() => setOpenDeploymentAddDialog(true)}>
-                <Plus weight="thin" />
+                <PlusIcon weight="thin" />
                 <p className="text-xs dark:font-light">{t("New Deployment")}</p>
               </Button>
             </div>

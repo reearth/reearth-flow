@@ -24,7 +24,7 @@ const VersionHistoryList: React.FC<Props> = ({
   return (
     <ScrollArea className="h-full w-full overflow-y-auto">
       {latestProjectSnapshotVersion && (
-        <div className="flex items-center justify-between bg-primary py-2 px-2">
+        <div className="flex items-center justify-between bg-primary px-2 py-2">
           <div className="flex flex-col gap-1">
             <p className="text-xs font-light">{t("Current Version")}</p>
             <p className="flex-2 text-xs font-thin">
@@ -46,7 +46,7 @@ const VersionHistoryList: React.FC<Props> = ({
           {previousVersions?.map((version) => (
             <div>
               <div
-                className={`flex cursor-pointer select-none justify-between gap-2 px-2 py-2 ${version.version === selectedProjectSnapshotVersion ? "bg-primary" : "hover:bg-primary"}`}
+                className={`flex cursor-pointer justify-between gap-2 px-2 py-2 select-none ${version.version === selectedProjectSnapshotVersion ? "bg-primary" : "hover:bg-primary"}`}
                 onClick={() => onVersionSelection(version.version)}
                 style={{ height: "100%" }}>
                 <p className="flex-2 self-center text-xs font-thin">

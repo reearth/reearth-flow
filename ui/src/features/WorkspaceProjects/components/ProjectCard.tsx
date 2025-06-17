@@ -1,11 +1,11 @@
 import {
-  ClipboardText,
-  Copy,
-  DotsThreeVertical,
-  Export,
-  PencilSimple,
-  PaperPlaneTilt,
-  Trash,
+  ClipboardTextIcon,
+  CopyIcon,
+  DotsThreeVerticalIcon,
+  ExportIcon,
+  PencilSimpleIcon,
+  PaperPlaneTiltIcon,
+  TrashIcon,
 } from "@phosphor-icons/react";
 import { MouseEvent, useState } from "react";
 
@@ -88,12 +88,12 @@ const ProjectCard: React.FC<Props> = ({
       onClick={() => onProjectSelect(project)}>
       <CardContent className="relative flex h-[120px] items-center justify-center p-0">
         {isExporting && (
-          <p className="loading-pulse absolute left-2 top-2 font-thin">
+          <p className="loading-pulse absolute top-2 left-2 font-thin">
             {t("Exporting...")}
           </p>
         )}
         {isDuplicating && (
-          <p className="loading-pulse absolute left-2 top-2 font-thin">
+          <p className="loading-pulse absolute top-2 left-2 font-thin">
             {t("Duplicating...")}
           </p>
         )}
@@ -113,7 +113,7 @@ const ProjectCard: React.FC<Props> = ({
         className={`absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-lg group-hover:flex group-hover:flex-col`}>
         <div
           className={`flex h-[120px] items-center justify-center rounded-t-lg bg-black/30 p-4 ${description ? "backdrop-blur-xs" : ""}`}>
-          <p className="line-clamp-4 overflow-hidden text-ellipsis whitespace-normal break-words text-center text-sm text-secondary dark:font-light dark:text-foreground">
+          <p className="line-clamp-4 overflow-hidden text-center text-sm break-words text-ellipsis whitespace-normal text-secondary dark:font-light dark:text-foreground">
             {description}
           </p>
         </div>
@@ -124,7 +124,7 @@ const ProjectCard: React.FC<Props> = ({
             <DropdownMenuTrigger
               className="flex h-full w-[30px] items-center justify-center rounded-br-lg hover:bg-primary"
               onClick={(e) => e.stopPropagation()}>
-              <DotsThreeVertical className="size-[24px]" />
+              <DotsThreeVerticalIcon className="size-[24px]" />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
@@ -133,27 +133,27 @@ const ProjectCard: React.FC<Props> = ({
                 className="justify-between gap-2 text-warning"
                 onClick={() => setEditProject({ ...project })}>
                 {t("Edit Details")}
-                <PencilSimple />
+                <PencilSimpleIcon />
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="justify-between gap-2"
                 onClick={handleProjectExportFromCard}>
                 {t("Export Project")}
-                <Export weight="light" />
+                <ExportIcon weight="light" />
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="justify-between gap-2"
                 onClick={() => setDuplicateProject({ ...project })}>
                 {t("Duplicate Project")}
-                <Copy weight="light" />
+                <CopyIcon weight="light" />
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="justify-between gap-2"
                 disabled={!sharedUrl}
                 onClick={handleCopyURLToClipBoard}>
                 {t("Copy Share URL")}
-                <ClipboardText weight="light" />
+                <ClipboardTextIcon weight="light" />
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -163,7 +163,7 @@ const ProjectCard: React.FC<Props> = ({
                   setProjectToBeDeleted(id);
                 }}>
                 {t("Delete Project")}
-                <Trash weight="light" />
+                <TrashIcon weight="light" />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -173,9 +173,9 @@ const ProjectCard: React.FC<Props> = ({
         <Tooltip>
           {/* <TooltipTrigger className="absolute right-1 top-1 rounded p-1 text-muted-foreground hover:bg-primary group-hover:text-white"> */}
           <TooltipTrigger
-            className="absolute right-1 top-1 rounded p-1 text-muted-foreground hover:bg-primary group-hover:text-white"
+            className="absolute top-1 right-1 rounded p-1 text-muted-foreground group-hover:text-white hover:bg-primary"
             onClick={handleOpenSharedProject}>
-            <PaperPlaneTilt />
+            <PaperPlaneTiltIcon />
           </TooltipTrigger>
           <TooltipContent>{t("Public Read Access")}</TooltipContent>
         </Tooltip>

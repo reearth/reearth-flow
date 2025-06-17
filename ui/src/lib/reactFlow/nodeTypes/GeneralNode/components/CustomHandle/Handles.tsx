@@ -13,11 +13,11 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
   return (
     <div className="flex justify-between gap-0.5">
       {nodeType !== "reader" && inputs && (
-        <div className="inset-x-0 mx-auto flex-1 min-w-0">
+        <div className="inset-x-0 mx-auto min-w-0 flex-1">
           {inputs.map((input, index) => (
             <div
               key={input + index}
-              className="relative border-b py-0.5 flex items-center last-of-type:border-none">
+              className="relative flex items-center border-b py-0.5 last-of-type:border-none">
               <CustomHandle
                 type="target"
                 className={`left-1 w-[8px] rounded-none transition-colors ${index === (!outputs && inputs && inputs.length - 1) ? "rounded-bl-sm" : undefined}`}
@@ -25,11 +25,11 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
                 id={input}
                 // isConnectable={1}
               />
-              <div className="flex items-center translate-x-0.5 w-full">
+              <div className="flex w-full translate-x-0.5 items-center">
                 <div>
-                  <div className="size-1.5 bg-gray-300 rounded-full" />
+                  <div className="size-1.5 rounded-full bg-gray-300" />
                 </div>
-                <p className="pl-1 text-[10px] dark:font-thin italic break-words w-[90%]">
+                <p className="w-[90%] pl-1 text-[10px] break-words italic dark:font-thin">
                   {input}
                 </p>
               </div>
@@ -38,22 +38,22 @@ const Handles: React.FC<Props> = ({ nodeType, inputs, outputs }) => {
         </div>
       )}
       {outputs && (
-        <div className="inset-x-0 mx-auto flex-1 min-w-0 overflow-hidden">
+        <div className="inset-x-0 mx-auto min-w-0 flex-1 overflow-hidden">
           {outputs.map((output, index) => (
             <div
               key={output + index}
-              className="relative flex justify-end items-center border-b py-0.5 last-of-type:border-none">
+              className="relative flex items-center justify-end border-b py-0.5 last-of-type:border-none">
               <CustomHandle
                 type="source"
-                className="w-[8px] right-1 rounded-none transition-colors z-10"
+                className="right-1 z-10 w-[8px] rounded-none transition-colors"
                 position={Position.Right}
                 id={output}
               />
-              <div className="flex justify-end items-center -translate-x-0.5 w-full">
-                <p className="pr-1 text-end text-[10px] dark:font-thin italic break-words w-[90%]">
+              <div className="flex w-full -translate-x-0.5 items-center justify-end">
+                <p className="w-[90%] pr-1 text-end text-[10px] break-words italic dark:font-thin">
                   {output}
                 </p>
-                <div className="size-1.5 bg-gray-300 rounded-full" />
+                <div className="size-1.5 rounded-full bg-gray-300" />
               </div>
             </div>
           ))}

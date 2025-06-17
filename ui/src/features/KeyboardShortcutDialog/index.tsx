@@ -1,4 +1,4 @@
-import { X } from "@phosphor-icons/react";
+import { XIcon } from "@phosphor-icons/react";
 import { ReactNode, useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 
@@ -45,7 +45,7 @@ const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
         onClick={(e) => e.stopPropagation()}>
         <div className="relative flex h-[40px] items-center justify-center rounded-t-lg border-y border-b-primary">
           <p>{title}</p>
-          <X
+          <XIcon
             className="absolute right-3 cursor-pointer"
             onClick={handlePortalClose}
           />

@@ -1,5 +1,4 @@
-// import { CaretRight } from "@phosphor-icons/react";
-import { CaretRight } from "@phosphor-icons/react";
+import { CaretRightIcon } from "@phosphor-icons/react";
 import { useCallback, useMemo, useState } from "react";
 
 import {
@@ -77,7 +76,7 @@ const DeployDialog: React.FC<Props> = ({
             <Label>{t("Deployment Version: ")}</Label>
             <div className="flex items-center gap-2">
               <p className="dark:font-thin">{currentVersion}</p>
-              <CaretRight />
+              <CaretRightIcon />
               <p className="font-semibold">
                 {currentVersion ? currentVersion + 1 : 1}
               </p>

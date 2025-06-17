@@ -57,7 +57,7 @@ const SharedCanvas: React.FC<Props> = ({
   return (
     <div className="flex h-screen flex-col">
       <EditorProvider value={editorContext}>
-        <div className="flex shrink-0 justify-between gap-2 bg-secondary h-[44px] w-[100vw]">
+        <div className="flex h-[44px] w-[100vw] shrink-0 justify-between gap-2 bg-secondary">
           <SharedCanvasTopBar
             currentWorkflowId={currentWorkflowId}
             openWorkflows={openWorkflows}
@@ -71,7 +71,7 @@ const SharedCanvas: React.FC<Props> = ({
           />
         </div>
         <div className="relative flex flex-1">
-          <div className="flex flex-1 flex-col relative">
+          <div className="relative flex flex-1 flex-col">
             <Canvas
               readonly
               isSubworkflow={isSubworkflow}

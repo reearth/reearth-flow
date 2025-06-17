@@ -1,4 +1,8 @@
-import { ArrowSquareIn, CaretDown, Plus } from "@phosphor-icons/react";
+import {
+  ArrowSquareInIcon,
+  CaretDownIcon,
+  PlusIcon,
+} from "@phosphor-icons/react";
 
 import {
   Button,
@@ -83,18 +87,18 @@ const ProjectsManager: React.FC = () => {
 
   return (
     <div className="flex h-full flex-1 flex-col">
-      <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pb-2 pt-4">
+      <div className="flex flex-1 flex-col gap-4 overflow-scroll px-6 pt-4 pb-2">
         <div className="flex h-[50px] items-center justify-between gap-2 border-b pb-4">
           <p className="text-lg dark:font-extralight">{t("Projects")}</p>
           <div className="flex gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-1 rounded-md p-2 hover:bg-primary">
-                <ArrowSquareIn weight="thin" />
+                <ArrowSquareInIcon weight="thin" />
                 <p className="line-clamp-2 text-xs font-extralight">
                   {t("Import")}
                 </p>
                 <div className="shrink-0">
-                  <CaretDown size="12px" weight="thin" />
+                  <CaretDownIcon size="12px" weight="thin" />
                 </div>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
@@ -118,7 +122,7 @@ const ProjectsManager: React.FC = () => {
               className="flex gap-2"
               variant="default"
               onClick={() => setOpenProjectAddDialog(true)}>
-              <Plus weight="thin" />
+              <PlusIcon weight="thin" />
               <p className="text-xs dark:font-light">{t("New Project")}</p>
             </Button>
           </div>

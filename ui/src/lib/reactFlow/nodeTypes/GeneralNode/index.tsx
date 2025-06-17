@@ -1,4 +1,9 @@
-import { Database, Disc, Graph, Lightning } from "@phosphor-icons/react";
+import {
+  DatabaseIcon,
+  DiscIcon,
+  GraphIcon,
+  LightningIcon,
+} from "@phosphor-icons/react";
 import { NodeProps } from "@xyflow/react";
 import { memo } from "react";
 
@@ -32,18 +37,18 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
 
   return (
     <div
-      className={`rounded-md bg-secondary border min-w-[150px] max-w-[200px] ${selected ? selectedColor : borderColor}`}>
-      <div className="relative m-1 flex items-center gap-1 h-[25px] rounded-sm">
+      className={`max-w-[200px] min-w-[150px] rounded-md border bg-secondary ${selected ? selectedColor : borderColor}`}>
+      <div className="relative m-1 flex h-[25px] items-center gap-1 rounded-sm">
         <div
-          className={`flex p-1 self-center align-middle justify-center rounded-sm border ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
+          className={`flex justify-center self-center rounded-sm border p-1 align-middle ${selected ? selectedColor : borderColor} ${selected ? selectedBackgroundColor : className}`}>
           {type === "reader" ? (
-            <Database className={typeIconClasses} />
+            <DatabaseIcon className={typeIconClasses} />
           ) : type === "writer" ? (
-            <Disc className={typeIconClasses} />
+            <DiscIcon className={typeIconClasses} />
           ) : type === "transformer" ? (
-            <Lightning className={typeIconClasses} />
+            <LightningIcon className={typeIconClasses} />
           ) : type === "subworkflow" ? (
-            <Graph className={typeIconClasses} />
+            <GraphIcon className={typeIconClasses} />
           ) : null}
         </div>
         <div className="flex flex-1 items-center justify-between gap-2 truncate rounded-r-sm px-1 leading-none">
