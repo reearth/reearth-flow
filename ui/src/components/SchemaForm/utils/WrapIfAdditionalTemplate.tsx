@@ -49,7 +49,7 @@ const WrapIfAdditionalTemplate = <
     onKeyChange(target && target.value);
 
   return (
-    <div key={`${id}-key`} className={cn("align-middle gap-4", classNames)}>
+    <div key={`${id}-key`} className={cn("gap-4 align-middle", classNames)}>
       <div>
         <Input
           required={required}

@@ -1,11 +1,11 @@
 import {
-  Database,
-  Disc,
-  Graph,
+  DatabaseIcon,
+  DiscIcon,
+  GraphIcon,
   Icon,
-  Lightning,
-  RectangleDashed,
-  TreeView,
+  LightningIcon,
+  RectangleDashedIcon,
+  TreeViewIcon,
 } from "@phosphor-icons/react";
 import { memo, useCallback, useEffect, useState } from "react";
 
@@ -74,17 +74,21 @@ const LeftPanel: React.FC<Props> = ({
   );
 
   const treeContent: TreeDataItem[] = [
-    ...(createTreeDataItem("reader", Database, nodes) || []),
-    ...(createTreeDataItem("writer", Disc, nodes) || []),
+    ...(createTreeDataItem("reader", DatabaseIcon, nodes) || []),
+    ...(createTreeDataItem("writer", DiscIcon, nodes) || []),
     ...(createTreeDataItem(
       "transformer",
-      Lightning,
+      LightningIcon,
       nodes,
       t("Transformers"),
     ) || []),
-    ...(createTreeDataItem("subworkflow", Graph, nodes, t("Subworkflows")) ||
-      []),
-    ...(createTreeDataItem("batch", RectangleDashed, nodes, t("Batches")) ||
+    ...(createTreeDataItem(
+      "subworkflow",
+      GraphIcon,
+      nodes,
+      t("Subworkflows"),
+    ) || []),
+    ...(createTreeDataItem("batch", RectangleDashedIcon, nodes, t("Batches")) ||
       []),
   ];
 
@@ -97,12 +101,12 @@ const LeftPanel: React.FC<Props> = ({
     {
       id: "navigator",
       title: t("Canvas Navigation"),
-      icon: <TreeView className="size-5" weight="thin" />,
+      icon: <TreeViewIcon className="size-5" weight="thin" />,
       component:
         nodes.length !== 0 ? (
           <Tree
             data={treeContent}
-            className="w-full shrink-0 select-none truncate rounded px-1"
+            className="w-full shrink-0 truncate rounded px-1 select-none"
             onSelectChange={(item) => {
               setNodeId(item?.id ?? "");
             }}
@@ -123,7 +127,7 @@ const LeftPanel: React.FC<Props> = ({
     {
       id: "actions-list",
       title: t("Actions list"),
-      icon: <Lightning className="size-5" weight="thin" />,
+      icon: <LightningIcon className="size-5" weight="thin" />,
       component: (
         <ActionsList
           nodes={nodes}
@@ -171,7 +175,7 @@ const LeftPanel: React.FC<Props> = ({
   return (
     <>
       <div
-        className="absolute left-[55px] bottom-[8px] top-[35px] z-10 flex w-[350px] flex-1 flex-col gap-3 p-2 overflow-auto rounded-md bg-secondary transition-all"
+        className="absolute top-[35px] bottom-[8px] left-[55px] z-10 flex w-[350px] flex-1 flex-col gap-3 overflow-auto rounded-md bg-secondary p-2 transition-all"
         style={{
           transform: `translateX(${isOpen ? "8px" : "-100%"})`,
           transitionDuration: isOpen ? "500ms" : "300ms",
@@ -184,7 +188,7 @@ const LeftPanel: React.FC<Props> = ({
             {tabs?.find((tc) => tc.id === selectedTab)?.title}
           </p>
         </div>
-        <div className="flex flex-col gap-2 overflow-auto bg-card rounded">
+        <div className="flex flex-col gap-2 overflow-auto rounded bg-card">
           {tabs?.find((tc) => tc.id === selectedTab)?.component}
         </div>
       </div>

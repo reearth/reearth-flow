@@ -1,4 +1,4 @@
-import { Toolbox, UsersThree } from "@phosphor-icons/react";
+import { ToolboxIcon, UsersThreeIcon } from "@phosphor-icons/react";
 import { useRouterState } from "@tanstack/react-router";
 
 import { useT } from "@flow/lib/i18n";
@@ -30,20 +30,20 @@ const WorkspaceSettings: React.FC = () => {
     {
       id: "general",
       name: t("General"),
-      icon: <Toolbox weight="light" />,
+      icon: <ToolboxIcon weight="light" />,
       component: <GeneralSettings />,
     },
     {
       id: "members",
       name: t("Members"),
-      icon: <UsersThree weight="light" />,
+      icon: <UsersThreeIcon weight="light" />,
       component: <MembersSettings />,
     },
   ];
 
   return (
     <div className="flex h-full flex-1 flex-col">
-      <div className="flex flex-1 flex-col gap-4 px-6 pb-2 pt-4">
+      <div className="flex flex-1 flex-col gap-4 px-6 pt-4 pb-2">
         {content.find((c) => c.id === selectedTab)?.component}
       </div>
     </div>

@@ -21,7 +21,7 @@ const Loading: React.FC<{ show?: boolean; className?: string }> = ({
   const loadingContent = (
     <div
       className={cn(
-        "fixed left-0 top-0 z-50 flex h-screen w-screen justify-center items-center bg-secondary",
+        "fixed top-0 left-0 z-50 flex h-screen w-screen items-center justify-center bg-secondary",
         className,
       )}>
       <div className="flex items-center gap-8">

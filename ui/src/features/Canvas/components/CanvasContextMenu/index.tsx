@@ -1,10 +1,10 @@
 import {
-  Clipboard,
-  Copy,
-  GearFine,
-  Graph,
-  Scissors,
-  Trash,
+  ClipboardIcon,
+  CopyIcon,
+  GearFineIcon,
+  GraphIcon,
+  ScissorsIcon,
+  TrashIcon,
 } from "@phosphor-icons/react";
 import { EdgeChange, XYPosition } from "@xyflow/react";
 import { useCallback, useMemo } from "react";
@@ -100,7 +100,7 @@ const CanvasContextMenu: React.FC<Props> = ({
         type: "action",
         props: {
           label: t("Copy"),
-          icon: <Copy weight="light" />,
+          icon: <CopyIcon weight="light" />,
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "c", commandKey: true }} />
           ),
@@ -112,7 +112,7 @@ const CanvasContextMenu: React.FC<Props> = ({
         type: "action",
         props: {
           label: t("Cut"),
-          icon: <Scissors weight="light" />,
+          icon: <ScissorsIcon weight="light" />,
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "x", commandKey: true }} />
           ),
@@ -124,7 +124,7 @@ const CanvasContextMenu: React.FC<Props> = ({
         type: "action",
         props: {
           label: t("Paste"),
-          icon: <Clipboard weight="light" />,
+          icon: <ClipboardIcon weight="light" />,
           shortcut: (
             <ContextMenuShortcut keyBinding={{ key: "v", commandKey: true }} />
           ),
@@ -138,7 +138,7 @@ const CanvasContextMenu: React.FC<Props> = ({
               type: "action" as const,
               props: {
                 label: t("Open Subworkflow"),
-                icon: <Graph weight="light" />,
+                icon: <GraphIcon weight="light" />,
                 onCallback: wrapWithClose(() => handleSubworkflowOpen(node)),
               },
             },
@@ -150,7 +150,7 @@ const CanvasContextMenu: React.FC<Props> = ({
               type: "action" as const,
               props: {
                 label: t("Node Settings"),
-                icon: <GearFine weight="light" />,
+                icon: <GearFineIcon weight="light" />,
                 onCallback: wrapWithClose(() => handleNodeSettingsOpen(node)),
               },
             },
@@ -170,7 +170,7 @@ const CanvasContextMenu: React.FC<Props> = ({
               type: "action" as const,
               props: {
                 label: node ? t("Delete Node") : t("Delete Selection"),
-                icon: <Trash weight="light" />,
+                icon: <TrashIcon weight="light" />,
                 destructive: true,
                 disabled: !onNodesChange || !onEdgesChange,
 

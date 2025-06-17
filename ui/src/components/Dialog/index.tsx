@@ -24,7 +24,7 @@ const DialogOverlay = forwardRef<
     ref={ref}
     className={cn(
       overlayBgClass,
-      "fixed inset-0 z-50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
       className,
     )}
     {...props}
@@ -60,7 +60,7 @@ const DialogContent = forwardRef<
       <DialogPrimitive.Content
         ref={ref}
         className={cn(
-          "fixed left-[50%] top-[50%] z-50 grid w-full max-w-xl translate-x-[-50%] gap-4 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
+          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-xl translate-x-[-50%] gap-4 shadow-lg duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-lg",
           size === "xs"
             ? "max-w-[300px]"
             : size === "sm"
@@ -93,7 +93,7 @@ const DialogContent = forwardRef<
         <div className="overflow-hidden rounded-lg bg-card">
           {children}
           {!hideCloseButton && (
-            <DialogPrimitive.Close className="absolute right-6 top-6 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+            <DialogPrimitive.Close className="absolute top-6 right-6 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
               <Cross2Icon className="size-5" />
               <span className="sr-only">Close</span>
             </DialogPrimitive.Close>
@@ -140,7 +140,7 @@ const DialogTitle = forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "text-xl dark:font-thin border-b leading-none tracking-tight p-6 rounded-t-lg",
+      "rounded-t-lg border-b p-6 text-xl leading-none tracking-tight dark:font-thin",
       className,
     )}
     {...props}
@@ -180,7 +180,7 @@ const DialogContentWrapper = forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("py-4 px-6 flex flex-col gap-4 overflow-hidden", className)}
+    className={cn("flex flex-col gap-4 overflow-hidden px-6 py-4", className)}
     {...props}
   />
 ));

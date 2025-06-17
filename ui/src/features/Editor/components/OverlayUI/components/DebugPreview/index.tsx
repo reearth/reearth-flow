@@ -1,12 +1,12 @@
 import {
-  CaretUp,
-  CornersIn,
-  CornersOut,
-  Globe,
-  GridNine,
+  CaretUpIcon,
+  CornersInIcon,
+  CornersOutIcon,
+  GlobeIcon,
+  GridNineIcon,
   MapPinAreaIcon,
-  Minus,
-  Warning,
+  MinusIcon,
+  WarningIcon,
 } from "@phosphor-icons/react";
 import { memo } from "react";
 
@@ -57,33 +57,34 @@ const DebugPreview: React.FC = () => {
 
   return debugJobState && dataURLs ? (
     <Tabs
-      className={`pointer-events-auto w-[45vw] min-w-[700px] rounded-md p-1 bg-secondary transition-all shadow-md shadow-secondary ${minimized ? "h-[36px]" : expanded ? "h-[90vh] w-[90vw]" : "h-[500px]"}`}
+      className={`pointer-events-auto w-[45vw] min-w-[700px] rounded-md bg-secondary p-1 shadow-md shadow-secondary transition-all ${minimized ? "h-[36px]" : expanded ? "h-[90vh] w-[90vw]" : "h-[500px]"}`}
       defaultValue="data-viewer">
       <div className="relative flex items-center p-1">
-        <Select
-          defaultValue={dataURLs[0].key}
-          value={selectedDataURL}
-          onValueChange={handleSelectedDataChange}>
-          <SelectTrigger className="h-[26px] max-w-[200px] border-none text-xs font-bold">
-            <SelectValue placeholder={t("Select Data to Preview")} />
-          </SelectTrigger>
-          <SelectContent>
-            {dataURLs.map(({ key, name }) => (
-              <SelectItem key={key} value={key}>
-                {name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
+        <div className="absolute top-1 left-1">
+          <Select
+            defaultValue={dataURLs[0].key}
+            value={selectedDataURL}
+            onValueChange={handleSelectedDataChange}>
+            <SelectTrigger className="h-[26px] max-w-[200px] border-none text-xs font-bold">
+              <SelectValue placeholder={t("Select Data to Preview")} />
+            </SelectTrigger>
+            <SelectContent>
+              {dataURLs.map(({ key, name }) => (
+                <SelectItem key={key} value={key}>
+                  {name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex w-full items-center justify-center gap-1 p-1">
           <TabsList className="gap-2">
             <TabsTrigger
               className="gap-1 bg-card font-thin"
               value="data-viewer"
               onClick={handleTabChange}>
-              <GridNine />
-              <p className="select-none text-sm font-thin">
+              <GridNineIcon />
+              <p className="text-sm font-thin select-none">
                 {t("Table Viewer")}
               </p>
             </TabsTrigger>
@@ -98,25 +99,29 @@ const DebugPreview: React.FC = () => {
               className="gap-1 bg-card"
               value="3d-viewer"
               onClick={handleTabChange}>
-              <Globe />
-              <p className="select-none text-sm font-thin">{t("3D Viewer")}</p>
+              <GlobeIcon />
+              <p className="text-sm font-thin select-none">{t("3D Viewer")}</p>
             </TabsTrigger>
           </TabsList>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="absolute top-1 right-1 flex items-center gap-2">
           <div
             className="cursor-pointer rounded p-1 hover:bg-primary"
             onClick={handleMinimize}>
-            {minimized ? <CaretUp weight="light" /> : <Minus weight="light" />}
+            {minimized ? (
+              <CaretUpIcon weight="light" />
+            ) : (
+              <MinusIcon weight="light" />
+            )}
           </div>
           {!minimized && (
             <div
               className="cursor-pointer rounded p-1 hover:bg-primary"
               onClick={handleExpand}>
               {expanded ? (
-                <CornersIn weight="light" />
+                <CornersInIcon weight="light" />
               ) : (
-                <CornersOut weight="light" />
+                <CornersOutIcon weight="light" />
               )}
             </div>
           )}
@@ -149,7 +154,7 @@ const DebugPreview: React.FC = () => {
       <DialogContent size="sm" hideCloseButton>
         <DialogHeader className="text-warning">
           <DialogTitle className="flex justify-center gap-1">
-            <Warning weight="light" />
+            <WarningIcon weight="light" />
             {t("Warning")}
           </DialogTitle>
         </DialogHeader>

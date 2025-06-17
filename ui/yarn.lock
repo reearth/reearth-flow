@@ -1530,6 +1530,16 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@eslint/css-tree@npm:^3.6.1":
+  version: 3.6.1
+  resolution: "@eslint/css-tree@npm:3.6.1"
+  dependencies:
+    mdn-data: "npm:2.21.0"
+    source-map-js: "npm:^1.0.1"
+  checksum: 10c0/bf482dd90061c8f1cd425f0f3da1322254525d96ab1fb5b542934703e349b29e72701bf394e3bb286d6eb2faa8b7172b29a86d8e1809be1038ce0c7367c4bac1
+  languageName: node
+  linkType: hard
+
 "@eslint/eslintrc@npm:^3.3.1":
   version: 3.3.1
   resolution: "@eslint/eslintrc@npm:3.3.1"
@@ -2890,6 +2900,13 @@ __metadata:
   version: 0.11.0
   resolution: "@pkgjs/parseargs@npm:0.11.0"
   checksum: 10c0/5bd7576bb1b38a47a7fc7b51ac9f38748e772beebc56200450c4a817d712232b8f1d3ef70532c80840243c657d491cf6a6be1e3a214cff907645819fdc34aadd
+  languageName: node
+  linkType: hard
+
+"@pkgr/core@npm:^0.2.4":
+  version: 0.2.7
+  resolution: "@pkgr/core@npm:0.2.7"
+  checksum: 10c0/951f5ebf2feb6e9dbc202d937f1a364d60f2bf0e3e53594251bcc1d9d2ed0df0a919c49ba162a9499fce73cf46ebe4d7959a8dfbac03511dbe79b69f5fedb804
   languageName: node
   linkType: hard
 
@@ -4387,6 +4404,7 @@ __metadata:
     embla-carousel-react: "npm:8.6.0"
     eslint: "npm:9.28.0"
     eslint-config-reearth: "npm:0.3.8"
+    eslint-plugin-better-tailwindcss: "npm:3.2.1"
     eslint-plugin-import: "npm:2.31.0"
     eslint-plugin-storybook: "npm:9.0.6"
     file-saver: "npm:2.0.5"
@@ -8659,6 +8677,24 @@ __metadata:
   languageName: node
   linkType: hard
 
+"eslint-plugin-better-tailwindcss@npm:3.2.1":
+  version: 3.2.1
+  resolution: "eslint-plugin-better-tailwindcss@npm:3.2.1"
+  dependencies:
+    "@eslint/css-tree": "npm:^3.6.1"
+    enhanced-resolve: "npm:^5.18.1"
+    jiti: "npm:^2.4.2"
+    postcss: "npm:^8.5.5"
+    postcss-import: "npm:^16.1.0"
+    synckit: "npm:^0.11.8"
+    tailwind-csstree: "npm:^0.1.0"
+  peerDependencies:
+    eslint: ^7.0.0 || ^8.0.0 || ^9.0.0
+    tailwindcss: ^3.3.0 || ^4.0.0
+  checksum: 10c0/2d6b3a845ae1aa7a18029d6f354ff81c69a3123e1278f9d0a22f224b1dfc46bf0928a8a6c0eefcccf1fd38b2d7c1a03c6f3d4e7bb514156c761e352aa00f8350
+  languageName: node
+  linkType: hard
+
 "eslint-plugin-import@npm:2.31.0":
   version: 2.31.0
   resolution: "eslint-plugin-import@npm:2.31.0"
@@ -11398,6 +11434,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"mdn-data@npm:2.21.0":
+  version: 2.21.0
+  resolution: "mdn-data@npm:2.21.0"
+  checksum: 10c0/cd26902551af2cc29f06f130893cb04bca9ee278939fce3ffbcb759497cc80d53a6f4abdef2ae2f3ed3c95ac8d651f53fc141defd580ebf4ae2f93aea325957b
+  languageName: node
+  linkType: hard
+
 "meow@npm:^13.2.0":
   version: 13.2.0
   resolution: "meow@npm:13.2.0"
@@ -11617,7 +11660,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nanoid@npm:^3.3.7":
+"nanoid@npm:^3.3.11, nanoid@npm:^3.3.7":
   version: 3.3.11
   resolution: "nanoid@npm:3.3.11"
   bin:
@@ -12274,6 +12317,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"pify@npm:^2.3.0":
+  version: 2.3.0
+  resolution: "pify@npm:2.3.0"
+  checksum: 10c0/551ff8ab830b1052633f59cb8adc9ae8407a436e06b4a9718bcb27dc5844b83d535c3a8512b388b6062af65a98c49bdc0dd523d8b2617b188f7c8fee457158dc
+  languageName: node
+  linkType: hard
+
 "possible-typed-array-names@npm:^1.0.0":
   version: 1.1.0
   resolution: "possible-typed-array-names@npm:1.1.0"
@@ -12281,7 +12331,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"postcss-value-parser@npm:^4.2.0":
+"postcss-import@npm:^16.1.0":
+  version: 16.1.0
+  resolution: "postcss-import@npm:16.1.0"
+  dependencies:
+    postcss-value-parser: "npm:^4.0.0"
+    read-cache: "npm:^1.0.0"
+    resolve: "npm:^1.1.7"
+  peerDependencies:
+    postcss: ^8.0.0
+  checksum: 10c0/60e6499354079a3f46242b861412a40c54be7ab99f4ad55096a07ffe5e57fcc01c2c626b5d1fbc7a18cd23adc82b320c205059d0c7ab09e91baba8dc45c88e29
+  languageName: node
+  linkType: hard
+
+"postcss-value-parser@npm:^4.0.0, postcss-value-parser@npm:^4.2.0":
   version: 4.2.0
   resolution: "postcss-value-parser@npm:4.2.0"
   checksum: 10c0/f4142a4f56565f77c1831168e04e3effd9ffcc5aebaf0f538eee4b2d465adfd4b85a44257bb48418202a63806a7da7fe9f56c330aebb3cac898e46b4cbf49161
@@ -12299,10 +12362,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"potpack@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "potpack@npm:2.0.0"
-  checksum: 10c0/8df693484486535b95586a624c5abf3fd7bebad161b1c10c10d86562c870fe1c90703b862a19020b1d1c2f3fbd6cea1e9d699c6eca6ded4b5792873a992c81e1
+"postcss@npm:^8.5.5":
+  version: 8.5.6
+  resolution: "postcss@npm:8.5.6"
+  dependencies:
+    nanoid: "npm:^3.3.11"
+    picocolors: "npm:^1.1.1"
+    source-map-js: "npm:^1.2.1"
+  checksum: 10c0/5127cc7c91ed7a133a1b7318012d8bfa112da9ef092dddf369ae699a1f10ebbd89b1b9f25f3228795b84585c72aabd5ced5fc11f2ba467eedf7b081a66fad024
   languageName: node
   linkType: hard
 
@@ -12671,6 +12738,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"read-cache@npm:^1.0.0":
+  version: 1.0.0
+  resolution: "read-cache@npm:1.0.0"
+  dependencies:
+    pify: "npm:^2.3.0"
+  checksum: 10c0/90cb2750213c7dd7c80cb420654344a311fdec12944e81eb912cd82f1bc92aea21885fa6ce442e3336d9fccd663b8a7a19c46d9698e6ca55620848ab932da814
+  languageName: node
+  linkType: hard
+
 "read-env@npm:2.0.0":
   version: 2.0.0
   resolution: "read-env@npm:2.0.0"
@@ -12877,16 +12953,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"resolve-protobuf-schema@npm:^2.1.0":
-  version: 2.1.0
-  resolution: "resolve-protobuf-schema@npm:2.1.0"
-  dependencies:
-    protocol-buffers-schema: "npm:^3.3.1"
-  checksum: 10c0/8e656b9072b1c001952f851251413bc79d8c771c3015f607b75e1ca3b8bd7c4396068dd19cdbb3019affa03f6457d2c0fd38d981ffd714215cd2e7c2b67221a7
-  languageName: node
-  linkType: hard
-
-"resolve@npm:^1.22.1, resolve@npm:^1.22.4, resolve@npm:^1.22.8":
+"resolve@npm:^1.1.7, resolve@npm:^1.22.1, resolve@npm:^1.22.4, resolve@npm:^1.22.8":
   version: 1.22.10
   resolution: "resolve@npm:1.22.10"
   dependencies:
@@ -12912,7 +12979,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"resolve@patch:resolve@npm%3A^1.22.1#optional!builtin<compat/resolve>, resolve@patch:resolve@npm%3A^1.22.4#optional!builtin<compat/resolve>, resolve@patch:resolve@npm%3A^1.22.8#optional!builtin<compat/resolve>":
+"resolve@patch:resolve@npm%3A^1.1.7#optional!builtin<compat/resolve>, resolve@patch:resolve@npm%3A^1.22.1#optional!builtin<compat/resolve>, resolve@patch:resolve@npm%3A^1.22.4#optional!builtin<compat/resolve>, resolve@patch:resolve@npm%3A^1.22.8#optional!builtin<compat/resolve>":
   version: 1.22.10
   resolution: "resolve@patch:resolve@npm%3A1.22.10#optional!builtin<compat/resolve>::version=1.22.10&hash=c3c19d"
   dependencies:
@@ -13652,21 +13719,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sort-object@npm:^3.0.3":
-  version: 3.0.3
-  resolution: "sort-object@npm:3.0.3"
-  dependencies:
-    bytewise: "npm:^1.1.0"
-    get-value: "npm:^2.0.2"
-    is-extendable: "npm:^0.1.1"
-    sort-asc: "npm:^0.2.0"
-    sort-desc: "npm:^0.2.0"
-    union-value: "npm:^1.0.1"
-  checksum: 10c0/b19518e3659875d0997bfb6e4a2bc681a71b3cc30a39b7ab673fcb5c32e65b2c9d4b66eba6c97c29c78b5fc437306ec0e0a85a381565d54eff8716388535db5d
-  languageName: node
-  linkType: hard
-
-"source-map-js@npm:^1.2.0, source-map-js@npm:^1.2.1":
+"source-map-js@npm:^1.0.1, source-map-js@npm:^1.2.0, source-map-js@npm:^1.2.1":
   version: 1.2.1
   resolution: "source-map-js@npm:1.2.1"
   checksum: 10c0/7bda1fc4c197e3c6ff17de1b8b2c20e60af81b63a52cb32ec5a5d67a20a7d42651e2cb34ebe93833c5a2a084377e17455854fee3e21e7925c64a51b6a52b0faf
@@ -14023,10 +14076,28 @@ __metadata:
   languageName: node
   linkType: hard
 
+"synckit@npm:^0.11.8":
+  version: 0.11.8
+  resolution: "synckit@npm:0.11.8"
+  dependencies:
+    "@pkgr/core": "npm:^0.2.4"
+  checksum: 10c0/a1de5131ee527512afcaafceb2399b2f3e63678e56b831e1cb2dc7019c972a8b654703a3b94ef4166868f87eb984ea252b467c9d9e486b018ec2e6a55c24dfd8
+  languageName: node
+  linkType: hard
+
 "tabbable@npm:^6.0.0":
   version: 6.2.0
   resolution: "tabbable@npm:6.2.0"
   checksum: 10c0/ced8b38f05f2de62cd46836d77c2646c42b8c9713f5bd265daf0e78ff5ac73d3ba48a7ca45f348bafeef29b23da7187c72250742d37627883ef89cbd7fa76898
+  languageName: node
+  linkType: hard
+
+"tailwind-csstree@npm:^0.1.0":
+  version: 0.1.0
+  resolution: "tailwind-csstree@npm:0.1.0"
+  bin:
+    crosspost: dist/bin.js
+  checksum: 10c0/63b9c117898fa1c1b66f5b03e83af4a39cfb5d4c38548891579eb4fe9783a1e1d90f0494848a850045feb6b2a4d8e81a91ed157d6543de0954c7730b842b993a
   languageName: node
   linkType: hard
 
