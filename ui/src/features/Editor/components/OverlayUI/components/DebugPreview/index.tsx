@@ -60,7 +60,7 @@ const DebugPreview: React.FC = () => {
       className={`pointer-events-auto w-[45vw] min-w-[700px] rounded-md bg-secondary p-1 shadow-md shadow-secondary transition-all ${minimized ? "h-[36px]" : expanded ? "h-[90vh] w-[90vw]" : "h-[500px]"}`}
       defaultValue="data-viewer">
       <div className="relative flex items-center p-1">
-        <div className="absolute top-1 left-1">
+        <div className="top-1 left-1">
           <Select
             defaultValue={dataURLs[0].key}
             value={selectedDataURL}
@@ -77,7 +77,7 @@ const DebugPreview: React.FC = () => {
             </SelectContent>
           </Select>
         </div>
-        <div className="flex w-full items-center justify-center gap-1 p-1">
+        <div className="flex w-full items-center justify-center p-1">
           <TabsList className="gap-2">
             <TabsTrigger
               className="gap-1 bg-card font-thin"
@@ -104,7 +104,7 @@ const DebugPreview: React.FC = () => {
             </TabsTrigger>
           </TabsList>
         </div>
-        <div className="absolute top-1 right-1 flex items-center gap-2">
+        <div className="top-1 right-1 flex items-center gap-2">
           <div
             className="cursor-pointer rounded p-1 hover:bg-primary"
             onClick={handleMinimize}>

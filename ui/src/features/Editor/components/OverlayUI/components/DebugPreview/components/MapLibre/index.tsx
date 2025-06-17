@@ -121,30 +121,30 @@ const MapSidePanel: React.FC<MapSidePanelProps> = ({
 }) => {
   const t = useT();
   return (
-    <div className="absolute top-4 right-4 w-80 h-4/6 bg-background border-l rounded-md opacity-98 shadow-lg z-10 overflow-auto">
-      <div className="p-4 flex justify-between items-center border-b">
+    <div className="absolute top-4 right-4 z-10 h-4/6 w-80 overflow-auto rounded-md border-l bg-background opacity-97 shadow-lg">
+      <div className="flex items-center justify-between border-b p-4">
         <div className="flex items-center gap-2">
           <IconButton
             onClick={onFlyToSelectedFeature}
             icon={<MapPinAreaIcon className="size-5" />}
           />
-          <h2 className="font-semibold text-lg">{t("Feature Info")}</h2>
+          <h2 className="text-lg font-semibold">{t("Feature Info")}</h2>
         </div>
         <Button
           variant={"ghost"}
-          className="h-fit p-0 opacity-70 dark:font-thin hover:bg-card hover:opacity-100 z-10"
+          className="z-10 h-fit p-0 opacity-70 hover:bg-card hover:opacity-100 dark:font-thin"
           onClick={() => setSelectedFeature(null)}>
           <Cross2Icon className="size-5" />
         </Button>
       </div>
 
-      <div className="p-0 text-sm text-foreground overflow-auto max-h-full">
+      <div className="max-h-full overflow-auto p-0 text-sm text-foreground">
         <div className="min-w-[24rem] divide-y divide-border border-t border-border">
           {Object.entries(selectedFeature.properties || {}).map(
             ([key, value]) => (
               <div key={key} className="grid grid-cols-2 gap-2 px-4 py-2">
                 <span className="font-medium break-words">{key}</span>
-                <span className="text-right w-fit break-all whitespace-pre-wrap">
+                <span className="w-fit text-right break-all whitespace-pre-wrap">
                   {Array.isArray(value)
                     ? value.join(", ")
                     : typeof value === "object" && value !== null
