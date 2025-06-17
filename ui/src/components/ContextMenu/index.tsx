@@ -24,7 +24,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 }) => {
   return (
     <div className="absolute z-50" style={{ ...contextMenuMeta.styles }}>
-      <div className="min-w-[160px] select-none rounded-md bg-primary p-1 text-popover-foreground shadow-md">
+      <div className="min-w-[160px] rounded-md bg-primary p-1 text-popover-foreground shadow-md select-none">
         {items.map((item, index) =>
           item.type === "action" ? (
             <ContextMenuItem key={index} {...item.props} />
@@ -64,8 +64,8 @@ const ContextMenuItem: React.FC<ContextMenuItemProps> = ({
     <div
       className={`flex items-center justify-between rounded-sm px-2 py-1.5 text-xs ${destructive ? "text-destructive" : ""} ${
         disabled
-          ? "pointer-events-none opacity-50 text-muted-foreground"
-          : "hover:bg-accent cursor-pointer"
+          ? "pointer-events-none text-muted-foreground opacity-50"
+          : "cursor-pointer hover:bg-accent"
       } hover:bg-accent ${className}`}
       onClick={() => {
         if (!disabled) {

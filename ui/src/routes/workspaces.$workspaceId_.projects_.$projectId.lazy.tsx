@@ -131,7 +131,7 @@ const ErrorComponent = ({ onErrorReset }: { onErrorReset: () => void }) => {
   };
   return (
     <>
-      <div className="flex flex-col h-screen w-full items-center justify-center">
+      <div className="flex h-screen w-full flex-col items-center justify-center">
         <div className="flex flex-col items-center justify-center gap-8">
           <BasicBoiler
             text={t("Project or version is corrupted.")}

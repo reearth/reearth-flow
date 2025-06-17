@@ -1,4 +1,4 @@
-import { SneakerMove } from "@phosphor-icons/react";
+import { SneakerMoveIcon } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 
 import { useT } from "@flow/lib/i18n";
@@ -20,7 +20,7 @@ const JobManager: React.FC<Props> = ({ selected }) => {
         onClick={() =>
           navigate({ to: `/workspaces/${currentWorkspace?.id}/jobs` })
         }>
-        <SneakerMove weight="light" />
+        <SneakerMoveIcon weight="light" />
         <p className="text-sm dark:font-extralight">{t("Jobs")}</p>
       </div>
     </div>

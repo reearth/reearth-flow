@@ -74,7 +74,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
         </div>
         <div
           id="left-top"
-          className="pointer-events-none absolute bottom-1 left-4 top-4 flex flex-col shrink-0 gap-4 *:pointer-events-auto">
+          className="pointer-events-none absolute top-4 bottom-1 left-4 flex shrink-0 flex-col gap-4 *:pointer-events-auto">
           <div className="self-start">
             <Toolbox
               canUndo={canUndo}
@@ -87,11 +87,11 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             />
           </div>
         </div>
-        <div id="right-top" className="absolute right-4 top-4" />
-        <div className="pointer-events-none absolute inset-y-2 left-4 bottom-4 flex items-end">
+        <div id="right-top" className="absolute top-4 right-4" />
+        <div className="pointer-events-none absolute inset-y-2 bottom-4 left-4 flex items-end">
           <DebugLogs />
         </div>
-        <div className="pointer-events-none absolute bottom-4 right-4 flex flex-row-reverse items-end gap-4">
+        <div className="pointer-events-none absolute right-4 bottom-4 flex flex-row-reverse items-end gap-4">
           <CanvasActionBar />
           <DebugPreview />
         </div>
