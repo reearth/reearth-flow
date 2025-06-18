@@ -52,7 +52,10 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
       const coords = feature.geometry?.coordinates;
       if (!coords) return;
 
-      if (feature.geometry.type === "Point") {
+      if (
+        feature.geometry.type === "Point" ||
+        feature.geometry.type === "MultiPoint"
+      ) {
         bounds.extend(coords);
       } else if (Array.isArray(coords[0])) {
         coords.flat(Infinity).forEach((c: any) => {
@@ -79,7 +82,10 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
   const handleFlyToSelectedFeature = useCallback(() => {
     if (mapRef.current && selectedFeature) {
       const coords = selectedFeature.geometry?.coordinates;
-      if (coords && selectedFeature.geometry.type === "Point") {
+      if (
+        (coords && selectedFeature.geometry.type === "Point") ||
+        selectedFeature.geometry.type === "MultiPoint"
+      ) {
         mapRef.current.flyTo({
           center: coords,
           zoom: 16,
@@ -119,13 +125,24 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
             />
           )}
 
-          {fileContent?.features?.some(
-            (feature: GeoJSON.Feature) => feature.geometry.type === "Point",
-          ) &&
-            fileContent.features.map((feature: any, i: number) => {
-              const coords = feature.geometry?.coordinates;
-              if (!coords || feature.geometry.type !== "Point") return null;
-
+          {fileContent?.features?.map((feature: any, i: number) => {
+            if (feature.geometry?.type === "MultiPoint") {
+              return feature.geometry.coordinates.map(
+                (coords: any, j: number) => (
+                  <Marker
+                    key={`${i}-${j}`}
+                    color="#3f3f45"
+                    longitude={coords[0]}
+                    latitude={coords[1]}
+                    onClick={(e) => {
+                      e.originalEvent.stopPropagation();
+                      setSelectedFeature(feature);
+                    }}
+                  />
+                ),
+              );
+            } else if (feature.geometry?.type === "Point") {
+              const coords = feature.geometry.coordinates;
               return (
                 <Marker
                   key={i}
@@ -138,7 +155,8 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
                   }}
                 />
               );
-            })}
+            } else return null;
+          })}
         </Source>
       </Map>
 
