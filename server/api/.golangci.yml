@@ -8,6 +8,7 @@ linters:
       - legacy
       - std-error-handling
 
+
 formatters:
   enable:
     - gofmt
