@@ -3,7 +3,7 @@ import { Cross2Icon } from "@radix-ui/react-icons";
 import maplibregl, { LngLatBounds } from "maplibre-gl";
 import * as React from "react";
 import { useRef, useState, useMemo, useCallback } from "react";
-import { Map, Source, Marker } from "react-map-gl/maplibre";
+import { Map, Source, Marker, Layer, LayerProps } from "react-map-gl/maplibre";
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -21,6 +21,22 @@ type MapSidePanelProps = {
   selectedFeature: any;
   setSelectedFeature: (value: any) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
+};
+
+const polygonLayer: LayerProps = {
+  type: "fill",
+  paint: {
+    "fill-color": "#3f3f45",
+    "fill-opacity": 0.8,
+  },
+};
+
+const lineStringLayer: LayerProps = {
+  type: "line",
+  paint: {
+    "line-color": "#3f3f45",
+    "line-width": 2,
+  },
 };
 
 const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
@@ -83,24 +99,47 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
         style={{ width: "100%", height: "100%" }}
         maplibreLogo={true}
         onLoad={handleMapLoad}>
-        <Source id="data" type={fileType || "geojson"} data={fileContent} />
-        {fileContent.features.map((feature: any, i: number) => {
-          const coords = feature.geometry?.coordinates;
-          if (!coords || feature.geometry.type !== "Point") return null;
-
-          return (
-            <Marker
-              key={i}
-              color="#4169E1"
-              longitude={coords[0]}
-              latitude={coords[1]}
-              onClick={(e) => {
-                e.originalEvent.stopPropagation();
-                setSelectedFeature(feature);
-              }}
+        <Source type={fileType || "geojson"} data={fileContent}>
+          {fileContent?.features?.some(
+            (feature: GeoJSON.Feature) =>
+              feature.geometry.type === "LineString",
+          ) && (
+            <Layer
+              {...lineStringLayer}
+              filter={["==", ["geometry-type"], "LineString"]}
             />
-          );
-        })}
+          )}
+
+          {fileContent?.features?.some(
+            (feature: GeoJSON.Feature) => feature.geometry.type === "Polygon",
+          ) && (
+            <Layer
+              {...polygonLayer}
+              filter={["==", ["geometry-type"], "Polygon"]}
+            />
+          )}
+
+          {fileContent?.features?.some(
+            (feature: GeoJSON.Feature) => feature.geometry.type === "Point",
+          ) &&
+            fileContent.features.map((feature: any, i: number) => {
+              const coords = feature.geometry?.coordinates;
+              if (!coords || feature.geometry.type !== "Point") return null;
+
+              return (
+                <Marker
+                  key={i}
+                  color="#3f3f45"
+                  longitude={coords[0]}
+                  latitude={coords[1]}
+                  onClick={(e) => {
+                    e.originalEvent.stopPropagation();
+                    setSelectedFeature(feature);
+                  }}
+                />
+              );
+            })}
+        </Source>
       </Map>
 
       {selectedFeature && (
