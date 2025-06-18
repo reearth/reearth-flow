@@ -268,13 +268,6 @@ impl BroadcastPool {
     }
 
     pub async fn flush_to_gcs(&self, doc_id: &str) -> Result<()> {
-        let broadcast_group = match self.manager.doc_to_id_map.get(doc_id) {
-            Some(group) => group.clone(),
-            None => {
-                return Ok(());
-            }
-        };
-
         let lock_id = format!("gcs:lock:{}", doc_id);
         let instance_id = format!("sync-{}", rand::random::<u64>());
 
@@ -284,17 +277,20 @@ impl BroadcastPool {
             .acquire_doc_lock(&lock_id, &instance_id)
             .await?;
 
-        if lock_acquired {
-            let redis_store = self.manager.redis_store.clone();
+        if !lock_acquired {
+            return Ok(());
+        }
+
+        let local_broadcast_group = self.manager.doc_to_id_map.get(doc_id).map(|g| g.clone());
+
+        let redis_store = self.manager.redis_store.clone();
+
+        let result = if let Some(broadcast_group) = local_broadcast_group {
             let awareness = broadcast_group.awareness().read().await;
             let awareness_doc = awareness.doc();
 
-            let gcs_doc = Doc::new();
-            let mut gcs_txn = gcs_doc.transact_mut();
-
-            if let Err(e) = self.manager.store.load_doc(doc_id, &mut gcs_txn).await {
-                warn!("Failed to load current state from GCS: {}", e);
-            }
+            let gcs_doc = self.manager.store.load_doc_v2(doc_id).await?;
+            let gcs_txn = gcs_doc.transact_mut();
 
             let gcs_state = gcs_txn.state_vector();
             let awareness_txn = awareness_doc.transact();
@@ -312,13 +308,30 @@ impl BroadcastPool {
                     .flush_doc_v2(doc_id, awareness_doc)
                     .await?;
             }
+            Ok(())
+        } else {
+            let doc = self.manager.store.load_doc_v2(doc_id).await?;
+            let mut txn = doc.transact_mut();
 
-            if let Err(e) = redis_store.release_doc_lock(&lock_id, &instance_id).await {
-                warn!("Failed to release GCS lock: {}", e);
+            let update = redis_store.read_all_stream_data(doc_id).await?;
+
+            for update in update {
+                if let Ok(update) = Update::decode_v1(&update) {
+                    if let Err(e) = txn.apply_update(update) {
+                        warn!("Failed to apply Redis update: {}", e);
+                    }
+                }
             }
+
+            self.manager.store.flush_doc_v2(doc_id, &doc).await?;
+            Ok(())
+        };
+
+        if let Err(e) = redis_store.release_doc_lock(&lock_id, &instance_id).await {
+            warn!("Failed to release GCS lock: {}", e);
         }
 
-        Ok(())
+        result
     }
 
     pub async fn cleanup_empty_group(&self, doc_id: &str) -> Result<()> {
