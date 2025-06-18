@@ -26,11 +26,14 @@ var (
 func baseSeeder(ctx context.Context, r *repo.Container) error {
 	defer util.MockNow(now)()
 
+	um := user.NewMetadata()
+
 	u := user.New().
 		ID(uID).
 		Workspace(wID).
 		Name(uName).
 		Email(uEmail).
+		Metadata(um).
 		MustBuild()
 	if err := r.User.Save(ctx, u); err != nil {
 		return err
@@ -39,10 +42,12 @@ func baseSeeder(ctx context.Context, r *repo.Container) error {
 	m := workspace.Member{
 		Role: workspace.RoleOwner,
 	}
+	wm := workspace.NewMetadata()
 	w := workspace.New().ID(wID).
 		Name("e2e").
 		Personal(false).
 		Members(map[accountdomain.UserID]workspace.Member{u.ID(): m}).
+		Metadata(wm).
 		MustBuild()
 	if err := r.Workspace.Save(ctx, w); err != nil {
 		return err

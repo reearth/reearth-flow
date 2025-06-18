@@ -44,6 +44,7 @@ func TestEndpoint(t *testing.T) {
 	rr := authserver.NewMongo(mongox.NewClientCollection(db.Collection("authRequest")))
 
 	uid := user.NewID()
+	um := user.NewMetadata()
 	usr := user.New().ID(uid).
 		Name("aaa").
 		Workspace(user.NewWorkspaceID()).
@@ -51,6 +52,7 @@ func TestEndpoint(t *testing.T) {
 		Auths(user.Auths{user.NewReearthAuth("subsub")}).
 		PasswordPlainText("Xyzxyz123").
 		Verification(user.VerificationFrom("", time.Time{}, true)).
+		Metadata(um).
 		MustBuild()
 	lo.Must0(ur.Save(ctx, usr))
 
