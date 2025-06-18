@@ -6,6 +6,8 @@ type Props = {
   route?: RouteOption;
 };
 
+// Cool coomment to test stuff
+
 const BottomSection: React.FC<Props> = ({ route }) => {
   return (
     <div className="flex flex-1 items-end">
