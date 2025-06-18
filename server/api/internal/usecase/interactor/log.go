@@ -99,7 +99,7 @@ func (li *LogInteractor) runLogMonitoringLoop(ctx context.Context, jobID id.JobI
 		return
 	}
 
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(15 * time.Second)
 	defer ticker.Stop()
 
 	jobKey := jobID.String()

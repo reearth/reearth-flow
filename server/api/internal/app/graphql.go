@@ -50,8 +50,8 @@ func GraphqlAPI(conf config.GraphQLConfig, dev bool, origins []string) echo.Hand
 				return false
 			},
 			EnableCompression: true,
-			ReadBufferSize:    1024,
-			WriteBufferSize:   1024,
+			ReadBufferSize:    8192,
+			WriteBufferSize:   8192,
 		},
 	})
 
