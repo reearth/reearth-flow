@@ -30,10 +30,10 @@ import {
   TabsList,
   TabsTrigger,
 } from "@flow/components";
+import { MapLibre } from "@flow/components/visualizations/MapLibre";
 import { useT } from "@flow/lib/i18n";
 
 import { DataTable, GeoMap } from "./components";
-import { MapLibre } from "./components/MapLibre";
 import useHooks from "./hooks";
 
 const DebugPreview: React.FC = () => {
@@ -93,7 +93,7 @@ const DebugPreview: React.FC = () => {
               value="2d-viewer"
               onClick={handleTabChange}>
               <MapPinAreaIcon />
-              <p className="select-none text-sm font-thin">{t("2D Viewer")}</p>
+              <p className="text-sm font-thin select-none">{t("2D Viewer")}</p>
             </TabsTrigger>
             <TabsTrigger
               className="gap-1 bg-card"
