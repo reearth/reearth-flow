@@ -6,7 +6,7 @@ import { useUser } from "@flow/lib/gql";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 import type { Project } from "@flow/types";
 
-import { ParamsPanel } from "../Editor/components";
+import { ParamsDialog } from "../Editor/components";
 import { EditorContextType, EditorProvider } from "../Editor/editorContext";
 
 import { SharedCanvasTopBar } from "./components";
@@ -82,7 +82,11 @@ const SharedCanvas: React.FC<Props> = ({
             />
           </div>
         </div>
-        <ParamsPanel readonly openNode={openNode} onOpenNode={handleOpenNode} />
+        <ParamsDialog
+          readonly
+          openNode={openNode}
+          onOpenNode={handleOpenNode}
+        />
       </EditorProvider>
     </div>
   );
