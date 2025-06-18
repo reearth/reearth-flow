@@ -3,6 +3,7 @@ on:
   workflow_call:
 env:
   RUST_VERSION: "1.85"
+  GO_VERSION: "1.24"
 
 jobs:
   ci-api-lint:
@@ -11,17 +12,22 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.head_ref }}
+      - name: Fetch base branch
+        run: git fetch origin main
       - name: set up
         uses: actions/setup-go@v5
         with:
-          go-version-file: 'server/api/go.mod'
+          go-version: ${{ env.GO_VERSION }}
           check-latest: true
           cache: false
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: v1.63.4
-          args: --timeout=10m
+          version: v2.1
+          args: --timeout=10m --new-from-rev=origin/main --timeout=10m
           working-directory: server/api
 
   ci-api-test:
