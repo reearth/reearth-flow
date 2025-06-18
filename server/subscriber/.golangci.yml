@@ -1,14 +1,7 @@
-version: "2"
+issues:
+  exclude-use-default: false
 
 linters:
-  exclusions:
-    presets:
-      - comments
-      - common-false-positives
-      - legacy
-      - std-error-handling
-
-formatters:
   enable:
     - gofmt
     - goimports
