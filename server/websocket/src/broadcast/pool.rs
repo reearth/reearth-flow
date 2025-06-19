@@ -13,7 +13,7 @@ use std::time::Duration;
 use tracing::{error, warn};
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
-use yrs::{updates, Doc, ReadTxn, StateVector, Transact, Update};
+use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
 use super::types::BroadcastConfig;
 
