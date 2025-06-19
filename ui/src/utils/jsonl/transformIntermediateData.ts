@@ -99,5 +99,30 @@ function handle2DGeometry(geometry: any) {
       coordinates,
     };
   }
+  if ("triangle" in geometry) {
+    const coordinates = [
+      geometry.triangle.map((point: any) => [point.x, point.y]),
+    ];
+    return {
+      type: "Polygon",
+      coordinates,
+    };
+  }
+  if ("rectangle" in geometry) {
+    const { min, max } = geometry.rectangle;
+    const coordinates = [
+      [
+        [min.x, min.y],
+        [max.x, min.y],
+        [max.x, max.y],
+        [min.x, max.y],
+        [min.x, min.y],
+      ],
+    ];
+    return {
+      type: "Polygon",
+      coordinates,
+    };
+  }
   return geometry;
 }
