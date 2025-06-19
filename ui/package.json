@@ -63,6 +63,7 @@
     "@tanstack/react-router": "1.116.0",
     "@tanstack/react-table": "8.21.3",
     "@tanstack/react-virtual": "3.13.9",
+    "@turf/bbox": "7.2.0",
     "@xyflow/react": "12.6.4",
     "cesium": "1.130.0",
     "class-variance-authority": "0.7.1",

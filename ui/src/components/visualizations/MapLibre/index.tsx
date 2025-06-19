@@ -1,5 +1,6 @@
 import { MapPinAreaIcon } from "@phosphor-icons/react";
 import { Cross2Icon } from "@radix-ui/react-icons";
+import bbox from "@turf/bbox";
 import maplibregl, { LngLatBounds } from "maplibre-gl";
 import * as React from "react";
 import { useRef, useState, useMemo, useCallback } from "react";
@@ -45,29 +46,15 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
   const [selectedFeature, setSelectedFeature] = useState<any>(null);
 
   const dataBounds = useMemo(() => {
-    if (!fileContent?.features?.length) return null;
+    if (!fileContent) return null;
 
-    const bounds = new LngLatBounds();
-
-    fileContent.features.forEach((feature: any) => {
-      const coords = feature.geometry?.coordinates;
-      if (!coords) return;
-
-      if (
-        feature.geometry.type === "Point" ||
-        feature.geometry.type === "MultiPoint"
-      ) {
-        bounds.extend(coords);
-      } else if (Array.isArray(coords[0])) {
-        coords.flat(Infinity).forEach((c: any) => {
-          if (Array.isArray(c) && c.length >= 2) {
-            bounds.extend([c[0], c[1]] as [number, number]);
-          }
-        });
-      }
-    });
-
-    return bounds.isEmpty() ? null : bounds;
+    try {
+      const [minLng, minLat, maxLng, maxLat] = bbox(fileContent);
+      return new LngLatBounds([minLng, minLat], [maxLng, maxLat]);
+    } catch (err) {
+      console.error("Error computing bbox:", err);
+      return null;
+    }
   }, [fileContent]);
 
   const handleMapLoad = useCallback(() => {
@@ -82,17 +69,15 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
 
   const handleFlyToSelectedFeature = useCallback(() => {
     if (mapRef.current && selectedFeature) {
-      const coords = selectedFeature.geometry?.coordinates;
-      if (
-        (coords && selectedFeature.geometry.type === "Point") ||
-        selectedFeature.geometry.type === "MultiPoint"
-      ) {
-        mapRef.current.flyTo({
-          center: coords,
-          zoom: 16,
-          duration: 300,
-        });
-      }
+      const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
+
+      mapRef.current.fitBounds(
+        [
+          [minLng, minLat],
+          [maxLng, maxLat],
+        ],
+        { padding: 40, duration: 500 },
+      );
     }
   }, [selectedFeature]);
 
@@ -107,7 +92,7 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
         maplibreLogo={true}
         interactiveLayerIds={["polygon-layer", "line-layer"]}
         onClick={(e) => {
-          setSelectedFeature(e.features?.[0] || null);
+          setSelectedFeature(e.features?.[0]);
         }}
         onLoad={handleMapLoad}>
         <Source type={fileType || "geojson"} data={fileContent}>
