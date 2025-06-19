@@ -426,7 +426,7 @@ impl BroadcastPool {
             .push_update(doc_id, &update_bytes, &self.manager.redis_store)
             .await?;
 
-        self.manager.store.flush_doc_v2(doc_id, &gcs_doc).await?;
+        self.manager.store.flush_doc_v2(doc_id, &doc).await?;
 
         Ok(())
     }
