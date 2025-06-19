@@ -58,7 +58,7 @@ graphs:
                 buildingIdAttributes["uro:city_code"] ?? env.get("__value").cityCode
 
             - attribute: cityName
-              method: convert
+              method: create
               value: |
                 let attributes = env.get("__value").cityGmlAttributes;
                 let buildingIdAttributes = attributes["uro:BuildingIDAttribute"] ?? {};
