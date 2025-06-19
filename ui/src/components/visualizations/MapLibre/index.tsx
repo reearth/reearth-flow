@@ -23,6 +23,7 @@ type MapSidePanelProps = {
 };
 
 const polygonLayer: LayerProps = {
+  id: "polygon-layer",
   type: "fill",
   paint: {
     "fill-color": "#3f3f45",
@@ -31,6 +32,7 @@ const polygonLayer: LayerProps = {
 };
 
 const lineStringLayer: LayerProps = {
+  id: "line-layer",
   type: "line",
   paint: {
     "line-color": "#3f3f45",
@@ -103,6 +105,10 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
         mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
         style={{ width: "100%", height: "100%" }}
         maplibreLogo={true}
+        interactiveLayerIds={["polygon-layer", "line-layer"]}
+        onClick={(e) => {
+          setSelectedFeature(e.features?.[0] || null);
+        }}
         onLoad={handleMapLoad}>
         <Source type={fileType || "geojson"} data={fileContent}>
           {fileContent?.features?.some(
