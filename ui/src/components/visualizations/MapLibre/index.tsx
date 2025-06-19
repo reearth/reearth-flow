@@ -5,11 +5,10 @@ import * as React from "react";
 import { useRef, useState, useMemo, useCallback } from "react";
 import { Map, Source, Marker, Layer, LayerProps } from "react-map-gl/maplibre";
 
-import "maplibre-gl/dist/maplibre-gl.css";
-
 import { Button, IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 type Props = {
   className?: string;
