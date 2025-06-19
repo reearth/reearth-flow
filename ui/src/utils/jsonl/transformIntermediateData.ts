@@ -101,7 +101,7 @@ function handle2DGeometry(geometry: any) {
   }
   if ("triangle" in geometry) {
     const coordinates = [
-      geometry.triangle.map((point: any) => [point.x, point.y]),
+      geometry.triangle.map((point: any) => [point.x, point.y]).concat([geometry.triangle[0].map((point: any) => [point.x, point.y])]),
     ];
     return {
       type: "Polygon",
