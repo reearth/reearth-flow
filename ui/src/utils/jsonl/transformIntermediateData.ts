@@ -100,14 +100,20 @@ function handle2DGeometry(geometry: any) {
     };
   }
   if ("triangle" in geometry) {
-    const coordinates = [
-      geometry.triangle.map((point: any) => [point.x, point.y]).concat([geometry.triangle[0].map((point: any) => [point.x, point.y])]),
-    ];
+    const coords = geometry.triangle.map((point: any) => [point.x, point.y]);
+    const closedCoords =
+      coords.length > 0 &&
+      coords[0][0] !== coords[coords.length - 1][0] &&
+      coords[0][1] !== coords[coords.length - 1][1]
+        ? coords.concat([coords[0]])
+        : coords;
+
     return {
       type: "Polygon",
-      coordinates,
+      coordinates: [closedCoords],
     };
   }
+
   if ("rect" in geometry) {
     const { min, max } = geometry.rect;
     const coordinates = [

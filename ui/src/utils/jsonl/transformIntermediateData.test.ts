@@ -420,6 +420,7 @@ describe("intermediateDataTransform", () => {
               [0, 0],
               [10, 0],
               [5, 10],
+              [0, 0],
             ],
           ],
         },
