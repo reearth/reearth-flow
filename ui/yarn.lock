@@ -4543,7 +4543,7 @@ __metadata:
     jszip: "npm:3.10.1"
     lodash-es: "npm:4.17.21"
     maplibre-gl: "npm:5.6.0"
-    msw: "npm:^2.10.2"
+    msw: "npm:2.10.2"
     prettier: "npm:3.5.3"
     react: "npm:19.1.0"
     react-datepicker: "npm:8.4.0"
@@ -11812,7 +11812,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"msw@npm:^2.10.2":
+"msw@npm:2.10.2":
   version: 2.10.2
   resolution: "msw@npm:2.10.2"
   dependencies:
