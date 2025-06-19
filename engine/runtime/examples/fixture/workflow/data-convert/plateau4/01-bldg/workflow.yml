@@ -161,14 +161,6 @@ graphs:
               method: create
               value: |
                 env.get("__lod")
-            - attribute: _x
-              method: create
-              value: |
-                 (env.get("__value")["_xmin"] + env.get("__value")["_xmax"]) * 0.5
-            - attribute: _y
-              method: create
-              value: |
-                 (env.get("__value")["_ymin"] + env.get("__value")["_ymax"]) * 0.5
             - attribute: feature_type
               method: create
               value: |
@@ -233,6 +225,21 @@ graphs:
           zmin: _zmin
           zmax: _zmax
 
+      - id: fe1daa11-2b3c-4e52-8a1f-123456789011
+        name: AttributeManagerXYByLod1
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value: |
+                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         name: VerticalReprojectorByLod1
         type: action
@@ -251,6 +258,21 @@ graphs:
           ymax: _ymax
           zmin: _zmin
           zmax: _zmax
+
+      - id: fe1daa11-2b3c-4e52-8a1f-123456789012
+        name: AttributeManagerXYByLod2
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value: |
+                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
         name: VerticalReprojectorByLod2
@@ -271,6 +293,21 @@ graphs:
           zmin: _zmin
           zmax: _zmax
 
+      - id: fe1daa11-2b3c-4e52-8a1f-123456789013
+        name: AttributeManagerXYByLod2NoTexture
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value: |
+                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d3
         name: VerticalReprojectorByLod2NoTexture
         type: action
@@ -289,6 +326,21 @@ graphs:
           ymax: _ymax
           zmin: _zmin
           zmax: _zmax
+
+      - id: fe1daa11-2b3c-4e52-8a1f-123456789014
+        name: AttributeManagerXYByLod3
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value: |
+                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
         name: VerticalReprojectorByLod3
@@ -309,6 +361,21 @@ graphs:
           zmin: _zmin
           zmax: _zmax
 
+      - id: fe1daa11-2b3c-4e52-8a1f-123456789015
+        name: AttributeManagerXYByLod3NoTexture
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value: |
+                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d5
         name: VerticalReprojectorByLod3NoTexture
         type: action
@@ -328,6 +395,21 @@ graphs:
           zmin: _zmin
           zmax: _zmax
 
+      - id: fe1daa11-2b3c-4e52-8a1f-123456789016
+        name: AttributeManagerXYByLod4
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value: |
+                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
         name: VerticalReprojectorByLod4
         type: action
@@ -346,6 +428,21 @@ graphs:
           ymax: _ymax
           zmin: _zmin
           zmax: _zmax
+
+      - id: fe1daa11-2b3c-4e52-8a1f-123456789017
+        name: AttributeManagerXYByLod4NoTexture
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value: |
+                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d7
         name: VerticalReprojectorByLod4NoTexture
@@ -569,10 +666,15 @@ graphs:
         toPort: default
       - id: dde1d751-fe3e-4283-8742-ec4a61a41575
         from: dc85a21b-4356-4a29-a862-270029071234
+        to: fe1daa11-2b3c-4e52-8a1f-123456789011
+        fromPort: default
+        toPort: default
+      - id: dde1d751-fe3e-4283-8742-ec4a61a41576
+        from: fe1daa11-2b3c-4e52-8a1f-123456789011
         to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         fromPort: default
         toPort: default
-      - id: dde1d751-fe3e-4283-8742-ec4a61a41575
+      - id: dde1d751-fe3e-4283-8742-ec4a61a41577
         from: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         to: 41d69f1f-2a4d-4bc1-a5d0-175698273571
         fromPort: default
@@ -584,6 +686,11 @@ graphs:
         toPort: default
       - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30ba
         from: dc85a21b-4356-4a29-a862-270029071235
+        to: fe1daa11-2b3c-4e52-8a1f-123456789012
+        fromPort: default
+        toPort: default
+      - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30b2
+        from: fe1daa11-2b3c-4e52-8a1f-123456789012
         to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
         fromPort: default
         toPort: default
@@ -599,6 +706,11 @@ graphs:
         toPort: default
       - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30da
         from: dc85a21b-4356-4a29-a862-270029071236
+        to: fe1daa11-2b3c-4e52-8a1f-123456789013
+        fromPort: default
+        toPort: default
+      - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30d1
+        from: fe1daa11-2b3c-4e52-8a1f-123456789013
         to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d3
         fromPort: default
         toPort: default
@@ -614,6 +726,11 @@ graphs:
         toPort: default
       - id: ce3f3571-053c-4487-8e85-b95fb71a49c8
         from: dc85a21b-4356-4a29-a862-270029071237
+        to: fe1daa11-2b3c-4e52-8a1f-123456789014
+        fromPort: default
+        toPort: default
+      - id: ce3f3571-053c-4487-8e85-b95fb71a49c1
+        from: fe1daa11-2b3c-4e52-8a1f-123456789014
         to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
         fromPort: default
         toPort: default
@@ -629,6 +746,11 @@ graphs:
         toPort: default
       - id: ce3f3571-053c-4487-8e85-b95fb71a49ca
         from: dc85a21b-4356-4a29-a862-270029071238
+        to: fe1daa11-2b3c-4e52-8a1f-123456789015
+        fromPort: default
+        toPort: default
+      - id: ce3f3571-053c-4487-8e85-b95fb71a49c2
+        from: fe1daa11-2b3c-4e52-8a1f-123456789015
         to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d5
         fromPort: default
         toPort: default
@@ -644,6 +766,11 @@ graphs:
         toPort: default
       - id: 841f1bed-a4d3-4425-a754-4f0dd7461eca
         from: dc85a21b-4356-4a29-a862-270029071239
+        to: fe1daa11-2b3c-4e52-8a1f-123456789016
+        fromPort: default
+        toPort: default
+      - id: 841f1bed-a4d3-4425-a754-4f0dd7461ec2
+        from: fe1daa11-2b3c-4e52-8a1f-123456789016
         to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
         fromPort: default
         toPort: default
@@ -659,6 +786,11 @@ graphs:
         toPort: default
       - id: 841f1bed-a4d3-4425-a754-4f0dd7461eea
         from: dc85a21b-4356-4a29-a862-270029071240
+        to: fe1daa11-2b3c-4e52-8a1f-123456789017
+        fromPort: default
+        toPort: default
+      - id: 841f1bed-a4d3-4425-a754-4f0dd7461ee2
+        from: fe1daa11-2b3c-4e52-8a1f-123456789017
         to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d7
         fromPort: default
         toPort: default
