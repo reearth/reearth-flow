@@ -33,3 +33,4 @@ export * from "./visualizations";
 export * from "./Pagination";
 export * from "./Popover";
 export * from "./Switch";
+export * from "./errors";

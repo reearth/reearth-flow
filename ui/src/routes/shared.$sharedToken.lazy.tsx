@@ -8,6 +8,7 @@ import {
   TooltipProvider,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
+import ErrorPage from "@flow/components/errors/ErrorPage";
 import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
 import SharedCanvas from "@flow/features/SharedCanvas";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
@@ -20,7 +21,7 @@ import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
 
 export const Route = createLazyFileRoute("/shared/$sharedToken")({
   component: () => <SharedRoute />,
-  errorComponent: () => <ErrorComponent />,
+  errorComponent: ({ error }) => <ErrorComponent error={error} />,
 });
 
 const SharedRoute = () => {
@@ -113,15 +114,21 @@ const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
   );
 };
 
-const ErrorComponent = () => {
+const ErrorComponent = ({ error }: { error: Error }) => {
   const t = useT();
 
   return (
-    <div className="flex h-screen w-full flex-col items-center justify-center">
-      <BasicBoiler
-        text={t("Project or version is corrupted.")}
-        icon={<FlowLogo className="size-16 text-accent" />}
-      />
-    </div>
+    <>
+      {error.stack?.includes("reassembleNode") ? (
+        <div className="flex h-screen w-full flex-col items-center justify-center">
+          <BasicBoiler
+            text={t("Project or version is corrupted.")}
+            icon={<FlowLogo className="size-16 text-accent" />}
+          />
+        </div>
+      ) : (
+        <ErrorPage errorMessage={"Something Went Wrong"} />
+      )}
+    </>
   );
 };

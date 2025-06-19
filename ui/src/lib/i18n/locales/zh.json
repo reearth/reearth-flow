@@ -5,6 +5,7 @@
   "Columns": "列",
   "No Results": "没有结果",
   "Time": "时间",
+  "Reload": "重新加载",
   "Loading": "加载中",
   "Error": "错误",
   "Warning": "警告",
@@ -19,6 +20,7 @@
   "Reset": "重置",
   "Reset Value": "重置值",
   "Submit": "提交",
+  "Feature Info": "",
   "Copy": "复制",
   "Cut": "剪切",
   "Paste": "粘贴",
@@ -70,7 +72,6 @@
   "Exit fullscreen": "退出全屏",
   "Enter fullscreen": "进入全屏",
   "Workflow Logs": "工作流日志",
-  "Feature Info": "",
   "Output data": "输出数据",
   "Select Data to Preview": "选择要预览的数据",
   "Table Viewer": "表格查看器",
@@ -399,6 +400,5 @@
   "Batch": "批处理",
   "Subworkflow": "子工作流",
   "Project or version is corrupted.": "",
-  "Revert to a previous version": "",
-  "Reload": "重新加载"
+  "Revert to a previous version": ""
 }
