@@ -1,6 +1,6 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
-import { RollbackProject } from "@flow/types";
+import { RollbackProject, SaveSnapshot } from "@flow/types";
 
 import { useQueries } from "./useQueries";
 
@@ -10,6 +10,7 @@ export const useDocument = () => {
     useProjectSnapshotQuery,
     useProjectHistoryQuery,
     rollbackProjectMutation,
+    snapshotSaveMutation,
     usePreviewSnapshot,
   } = useQueries();
 
@@ -88,11 +89,37 @@ export const useDocument = () => {
     }
   };
 
+  const useSaveSnapshot = async (projectId: string): Promise<SaveSnapshot> => {
+    const { mutateAsync, ...rest } = snapshotSaveMutation;
+    try {
+      const saveSnapshot = await mutateAsync({
+        projectId,
+      });
+      toast({
+        title: t("Project Saved Successfully"),
+        description: t("Project has been successfully saved."),
+      });
+
+      if (!saveSnapshot) return { saveSnapshot: false, ...rest };
+
+      return { saveSnapshot, ...rest };
+    } catch (_err) {
+      toast({
+        title: t("Project failed to save"),
+        description: t("There was an error saving the project."),
+        variant: "warning",
+      });
+
+      return { saveSnapshot: false, ...rest };
+    }
+  };
+
   return {
     useGetLatestProjectSnapshot,
     useGetProjectSnapshot,
     useGetProjectHistory,
     useGetPreviewProjectSnapshot,
     useRollbackProject,
+    useSaveSnapshot,
   };
 };

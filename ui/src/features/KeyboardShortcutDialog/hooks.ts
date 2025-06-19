@@ -21,6 +21,10 @@ export default () => {
         keyBinding: GeneralKeyBindings["shortcutsDialog"],
         description: t("Open the Keyboard Shortcuts Dialog"),
       },
+      {
+        keyBinding: GeneralKeyBindings["save"],
+        description: t("Manually Save the Project"),
+      },
     ],
   };
 

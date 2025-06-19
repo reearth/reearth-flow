@@ -38,3 +38,7 @@ mutation RollbackProject($projectId: ID!, $version: Int!) {
     version
   }
 }
+
+mutation SaveSnapshot($projectId: ID!) {
+  saveSnapshot(projectId: $projectId)
+}
