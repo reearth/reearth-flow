@@ -16,6 +16,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/vektah/gqlparser/v2/ast"
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
@@ -63,11 +64,10 @@ func GraphqlAPI(conf config.GraphQLConfig, dev bool, origins []string) echo.Hand
 		MaxMemory:     maxMemorySize,
 	})
 
-	srv.SetQueryCache(lru.New(1000))
-
+	srv.SetQueryCache(lru.New[*ast.QueryDocument](1000))
 	srv.Use(extension.Introspection{})
 	srv.Use(extension.AutomaticPersistedQuery{
-		Cache: lru.New(100),
+		Cache: lru.New[string](100),
 	})
 
 	srv.Use(otelgqlgen.Middleware())
