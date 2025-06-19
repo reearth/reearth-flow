@@ -44,7 +44,7 @@ func ToMe(u *user.User) *Me {
 		ID:            IDFrom(u.ID()),
 		Name:          u.Name(),
 		Email:         u.Email(),
-		Lang:          u.Metadata().Lang(),
+		Lang:          u.Lang(),
 		MyWorkspaceID: IDFrom(u.Workspace()),
 		Auths: util.Map(u.Auths(), func(a user.Auth) string {
 			return a.Provider
