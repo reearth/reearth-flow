@@ -65,7 +65,7 @@ const WorkspaceNavigation = () => {
       replace: true,
     });
   }, [me, workspaceId, navigate]);
-  console.log("ME", me, isLoading, isError);
+
   return isLoading ? (
     <LoadingSplashscreen />
   ) : isError || !me || !me?.myWorkspaceId ? (
