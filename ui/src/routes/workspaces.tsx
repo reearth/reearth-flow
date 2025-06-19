@@ -7,12 +7,13 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 
-import { Button, FlowLogo, LoadingSplashscreen } from "@flow/components";
+import { LoadingSplashscreen } from "@flow/components";
+import ErrorPage from "@flow/components/errors/ErrorPage";
 import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
 import { NotificationSystem } from "@flow/features/NotificationSystem";
 import { useAuth } from "@flow/lib/auth";
 import { GraphQLProvider, useUser } from "@flow/lib/gql";
-import { I18nProvider, useT } from "@flow/lib/i18n";
+import { I18nProvider } from "@flow/lib/i18n";
 import { ThemeProvider } from "@flow/lib/theme";
 
 export const Route = createFileRoute("/workspaces")({
@@ -72,22 +73,3 @@ const WorkspaceNavigation = () => {
     <ErrorPage errorMessage={"Could not fetch user"} />
   ) : null;
 };
-
-function ErrorPage({ errorMessage }: { errorMessage: string }) {
-  const t = useT();
-  return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="flex flex-col items-center gap-10">
-        <div className="flex items-center gap-4">
-          <div className="rounded bg-logo p-2">
-            <FlowLogo className="size-[75px]" />
-          </div>
-        </div>
-        <p className="text-destructive dark:font-extralight">{errorMessage}</p>
-        <Button variant="outline" onClick={() => window.location.reload()}>
-          <p className="dark:font-extralight">{t("Reload")}</p>
-        </Button>
-      </div>
-    </div>
-  );
-}

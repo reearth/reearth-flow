@@ -5,6 +5,7 @@
   "Columns": "Columns",
   "No Results": "No Results",
   "Time": "",
+  "Reload": "",
   "Loading": "Loading",
   "Error": "",
   "Warning": "",
@@ -19,6 +20,7 @@
   "Reset": "",
   "Reset Value": "",
   "Submit": "Submit",
+  "Feature Info": "",
   "Copy": "",
   "Cut": "",
   "Paste": "",
@@ -70,7 +72,6 @@
   "Exit fullscreen": "",
   "Enter fullscreen": "",
   "Workflow Logs": "",
-  "Feature Info": "",
   "Output data": "",
   "Select Data to Preview": "",
   "Table Viewer": "",
@@ -399,6 +400,5 @@
   "Batch": "",
   "Subworkflow": "",
   "Project or version is corrupted.": "",
-  "Revert to a previous version": "",
-  "Reload": ""
+  "Revert to a previous version": ""
 }

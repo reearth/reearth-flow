@@ -5,6 +5,7 @@
   "Columns": "Columnas",
   "No Results": "Sin resultados",
   "Time": "Tiempo",
+  "Reload": "Recargar",
   "Loading": "Cargando",
   "Error": "Error",
   "Warning": "Advertencia",
@@ -19,6 +20,7 @@
   "Reset": "Restablecer",
   "Reset Value": "Restablecer valor",
   "Submit": "Enviar",
+  "Feature Info": "",
   "Copy": "Copiar",
   "Cut": "Cortar",
   "Paste": "Pegar",
@@ -70,7 +72,6 @@
   "Exit fullscreen": "Salir de pantalla completa",
   "Enter fullscreen": "Entrar en pantalla completa",
   "Workflow Logs": "Registros del flujo de trabajo",
-  "Feature Info": "",
   "Output data": "Datos de salida",
   "Select Data to Preview": "Seleccionar datos para previsualizar",
   "Table Viewer": "Visor de tabla",
@@ -399,6 +400,5 @@
   "Batch": "Lote",
   "Subworkflow": "Subflujo de trabajo",
   "Project or version is corrupted.": "",
-  "Revert to a previous version": "",
-  "Reload": "Recargar"
+  "Revert to a previous version": ""
 }

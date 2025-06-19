@@ -5,6 +5,7 @@
   "Columns": "カラム",
   "No Results": "結果なし",
   "Time": "時間",
+  "Reload": "リロード",
   "Loading": "読み込み中",
   "Error": "エラー",
   "Warning": "警告",
@@ -19,6 +20,7 @@
   "Reset": "リセット",
   "Reset Value": "値をリセット",
   "Submit": "送信",
+  "Feature Info": "機能情報",
   "Copy": "コピー",
   "Cut": "切り取り",
   "Paste": "貼り付け",
@@ -70,7 +72,6 @@
   "Exit fullscreen": "フルスクリーンを終了",
   "Enter fullscreen": "フルスクリーンに入る",
   "Workflow Logs": "ワークフローログ",
-  "Feature Info": "機能情報",
   "Output data": "出力データ",
   "Select Data to Preview": "プレビューするデータを選択",
   "Table Viewer": "テーブルビューア",
@@ -399,6 +400,5 @@
   "Batch": "バッチ",
   "Subworkflow": "サブワークフロー",
   "Project or version is corrupted.": "プロジェクトまたはバージョンが破損しています。",
-  "Revert to a previous version": "以前のバージョンに戻す",
-  "Reload": "リロード"
+  "Revert to a previous version": "以前のバージョンに戻す"
 }
