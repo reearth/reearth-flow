@@ -108,8 +108,8 @@ function handle2DGeometry(geometry: any) {
       coordinates,
     };
   }
-  if ("rectangle" in geometry) {
-    const { min, max } = geometry.rectangle;
+  if ("rect" in geometry) {
+    const { min, max } = geometry.rect;
     const coordinates = [
       [
         [min.x, min.y],

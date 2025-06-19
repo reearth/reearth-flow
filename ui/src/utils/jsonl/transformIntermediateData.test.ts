@@ -435,7 +435,7 @@ describe("intermediateDataTransform", () => {
         geometry: {
           value: {
             flowGeometry2D: {
-              rectangle: {
+              rect: {
                 min: { x: 0, y: 0 },
                 max: { x: 10, y: 20 },
               },
