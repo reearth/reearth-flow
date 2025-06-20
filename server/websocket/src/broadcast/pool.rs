@@ -266,6 +266,117 @@ impl BroadcastPool {
         Ok(())
     }
 
+    pub async fn save_snapshot(&self, doc_id: &str) -> Result<()> {
+        let valid_recheck = self
+            .manager
+            .redis_store
+            .check_stream_exists(doc_id)
+            .await
+            .unwrap_or(false);
+
+        if !valid_recheck {
+            return Err(anyhow::anyhow!("doc_id does not exist or no updates"));
+        }
+
+        let doc = self.manager.store.load_doc_v2(doc_id).await?;
+        let mut txn = doc.transact_mut();
+        let mut start_id = "0".to_string();
+        let batch_size = 2048;
+
+        let mut lock_value: Option<String> = None;
+
+        loop {
+            match self
+                .manager
+                .redis_store
+                .read_stream_data_in_batches(
+                    doc_id,
+                    batch_size,
+                    &start_id,
+                    start_id == "0",
+                    false,
+                    &mut lock_value,
+                )
+                .await
+            {
+                Ok((updates, last_id)) => {
+                    if updates.is_empty() {
+                        if start_id != "0" {
+                            if let Err(e) = self
+                                .manager
+                                .redis_store
+                                .read_stream_data_in_batches(
+                                    doc_id,
+                                    1,
+                                    &last_id,
+                                    false,
+                                    true,
+                                    &mut lock_value,
+                                )
+                                .await
+                            {
+                                warn!("Failed to release lock in final batch: {}", e);
+                            }
+                        }
+                        break;
+                    }
+
+                    for update_data in &updates {
+                        if let Ok(update) = Update::decode_v1(update_data) {
+                            if let Err(e) = txn.apply_update(update) {
+                                warn!("Failed to apply Redis update: {}", e);
+                            }
+                        }
+                    }
+
+                    if last_id == start_id {
+                        if let Err(e) = self
+                            .manager
+                            .redis_store
+                            .read_stream_data_in_batches(
+                                doc_id,
+                                1,
+                                &last_id,
+                                false,
+                                true,
+                                &mut lock_value,
+                            )
+                            .await
+                        {
+                            warn!("Failed to release lock in final batch: {}", e);
+                        }
+                        break;
+                    }
+
+                    start_id = last_id;
+                }
+                Err(e) => {
+                    warn!(
+                        "Failed to read updates from Redis stream for document '{}': {}",
+                        doc_id, e
+                    );
+                    break;
+                }
+            }
+        }
+
+        drop(txn);
+        let gcs_doc = self.manager.store.load_doc_v2(doc_id).await?;
+        let gcs_txn = gcs_doc.transact_mut();
+
+        let update = gcs_txn.encode_diff_v1(&gcs_txn.state_vector());
+        let update_bytes = bytes::Bytes::from(update);
+        self.manager
+            .store
+            .push_update(doc_id, &update_bytes, &self.manager.redis_store)
+            .await?;
+        drop(gcs_txn);
+
+        self.manager.store.flush_doc_v2(doc_id, &doc).await?;
+
+        Ok(())
+    }
+
     pub async fn cleanup_empty_group(&self, doc_id: &str) -> Result<()> {
         if let Some(group) = self.manager.doc_to_id_map.get(doc_id) {
             if group.connection_count() > 0 {
