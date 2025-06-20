@@ -1,25 +1,25 @@
 import {
-  Circle,
-  Database,
-  Disc,
-  Graph,
-  Lightning,
-  Note,
+  CircleIcon,
+  DatabaseIcon,
+  DiscIcon,
+  GraphIcon,
+  LightningIcon,
+  NoteIcon,
 } from "@phosphor-icons/react";
 
 export function getNodeIcon(type: string | undefined) {
   switch (type) {
     case "note":
-      return Note;
+      return NoteIcon;
     case "subworkflow":
-      return Graph;
+      return GraphIcon;
     case "transformer":
-      return Lightning;
+      return LightningIcon;
     case "reader":
-      return Database;
+      return DatabaseIcon;
     case "writer":
-      return Disc;
+      return DiscIcon;
     default:
-      return Circle;
+      return CircleIcon;
   }
 }

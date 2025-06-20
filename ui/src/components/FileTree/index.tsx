@@ -1,4 +1,4 @@
-import { CaretRight, Icon } from "@phosphor-icons/react";
+import { CaretRightIcon, Icon } from "@phosphor-icons/react";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { XYPosition } from "@xyflow/react";
 import { forwardRef, useCallback, useMemo, useState } from "react";
@@ -143,14 +143,14 @@ const TreeItem = forwardRef<HTMLDivElement, TreeItemProps>(
                     <AccordionPrimitive.Item value={item.id}>
                       <AccordionTrigger
                         className={cn(
-                          "px-2 hover:before:opacity-100 before:absolute before:left-0 before:w-full before:opacity-0 before:bg-primary before:rounded-md before:h-[1.75rem] before:-z-10",
+                          "px-2 before:absolute before:left-0 before:-z-10 before:h-[1.75rem] before:w-full before:rounded-md before:bg-primary before:opacity-0 hover:before:opacity-100",
                           selectedItemId === item.id &&
-                            "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-logo/30",
+                            "before:rounded-md before:border before:border-l-2 before:border-accent before:border-l-logo/30 before:bg-primary before:opacity-100",
                         )}
                         onClick={() => handleSelectChange(item)}>
                         {item.icon && (
                           <item.icon
-                            className={cn("h-4 w-4 shrink-0 mr-2")}
+                            className={cn("mr-2 h-4 w-4 shrink-0")}
                             weight="thin"
                             aria-hidden="true"
                           />
@@ -219,16 +219,16 @@ const Leaf = forwardRef<
     <div
       ref={ref}
       className={cn(
-        "flex items-center py-2 px-2 cursor-pointer \
-        hover:before:opacity-100 before:absolute before:left-0 before:right-1 before:w-full before:opacity-0 before:bg-primary before:rounded-md before:h-[1.75rem] before:-z-10",
+        "flex cursor-pointer items-center px-2 py-2",
+        "before:absolute before:right-1 before:left-0 before:-z-10 before:h-[1.75rem] before:w-full before:rounded-md before:bg-primary before:opacity-0 hover:before:opacity-100",
         className,
         isSelected &&
-          "before:opacity-100 before:rounded-md before:bg-primary before:border before:border-accent before:border-l-2 before:border-l-logo/30",
+          "before:rounded-md before:border before:border-l-2 before:border-accent before:border-l-logo/30 before:bg-primary before:opacity-100",
       )}
       {...props}>
       {item.icon && (
         <item.icon
-          className={cn("h-4 w-4 shrink-0 mr-2")}
+          className={cn("mr-2 h-4 w-4 shrink-0")}
           weight="thin"
           aria-hidden="true"
         />
@@ -257,12 +257,12 @@ const AccordionTrigger = forwardRef<
     <AccordionPrimitive.Trigger
       ref={ref}
       className={cn(
-        "flex flex-1 w-full items-center py-2 transition-all [&[data-state=open]>svg]:last:rotate-90",
+        "flex w-full flex-1 items-center py-2 transition-all [&[data-state=open]>svg]:last:rotate-90",
         className,
       )}
       {...props}>
       {children}
-      <CaretRight className="ml-auto size-4 shrink-0 transition-transform duration-200" />
+      <CaretRightIcon className="ml-auto size-4 shrink-0 transition-transform duration-200" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ));
@@ -279,7 +279,7 @@ const AccordionContent = forwardRef<
       className,
     )}
     {...props}>
-    <div className="pb-1 pt-0">{children}</div>
+    <div className="pt-0 pb-1">{children}</div>
   </AccordionPrimitive.Content>
 ));
 AccordionContent.displayName = AccordionPrimitive.Content.displayName;

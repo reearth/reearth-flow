@@ -1,9 +1,16 @@
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { ReactFlowProvider } from "@xyflow/react";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ErrorBoundary } from "react-error-boundary";
 import * as Y from "yjs";
 
-import { Button, LoadingSplashscreen, LoadingSkeleton } from "@flow/components";
+import {
+  Button,
+  LoadingSplashscreen,
+  LoadingSkeleton,
+  FlowLogo,
+} from "@flow/components";
+import BasicBoiler from "@flow/components/BasicBoiler";
 import VersionCanvas from "@flow/features/VersionCanvas";
 import { useT } from "@flow/lib/i18n";
 import type { YWorkflow } from "@flow/lib/yjs/types";
@@ -17,9 +24,15 @@ type Props = {
   project?: Project;
   yDoc: Y.Doc | null;
   onDialogClose: () => void;
+  onErrorReset?: () => void;
 };
 
-const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
+const VersionDialog: React.FC<Props> = ({
+  project,
+  yDoc,
+  onDialogClose,
+  onErrorReset,
+}) => {
   const t = useT();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [animate, setAnimate] = useState<boolean>(false);
@@ -33,18 +46,31 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
     isFetching,
     isLoadingPreview,
     isReverting,
+    isCorruptedVersion,
     openVersionConfirmationDialog,
     setOpenVersionConfirmationDialog,
-    onRollbackProject,
+    onProjectRollback,
     onVersionSelection,
+    onWorkflowCorruption,
   } = useHooks({ projectId: project?.id ?? "", yDoc, onDialogClose });
 
-  const handleCloseDialog = useCallback(() => {
+  const handleDialogClose = useCallback(() => {
     previewDocRef.current?.destroy();
     previewDocRef.current = null;
     setAnimate(false);
     onDialogClose();
   }, [previewDocRef, onDialogClose]);
+
+  const handleProjectRollback = useCallback(async () => {
+    try {
+      await onProjectRollback();
+      if (onErrorReset) {
+        onErrorReset();
+      }
+    } catch (error) {
+      console.error("Rollback failed:", error);
+    }
+  }, [onProjectRollback, onErrorReset]);
 
   useEffect(() => {
     setAnimate(true);
@@ -54,13 +80,17 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
         !dialogRef.current.contains(event.target as Node) &&
         !openVersionConfirmationDialog
       ) {
-        handleCloseDialog();
+        handleDialogClose();
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [handleCloseDialog, openVersionConfirmationDialog]);
+  }, [
+    handleDialogClose,
+    openVersionConfirmationDialog,
+    selectedProjectSnapshotVersion,
+  ]);
 
   return (
     <div
@@ -69,9 +99,9 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
       aria-modal="true">
       <div
         ref={dialogRef}
-        className={`w-[90vw] h-[90vh] bg-card shadow-lg rounded-lg flex flex-col overflow-hidden relative transition-all duration-170 ease-in-out  ${animate ? "opacity-100 scale-100" : "opacity-0 scale-95"}`}>
-        <div className="flex p-6 items-center justify-between border-b">
-          <h2 className="text-xl dark:font-thin leading-none tracking-tight rounded-t-lg">
+        className={`relative flex h-[90vh] w-[90vw] flex-col overflow-hidden rounded-lg bg-card shadow-lg transition-all duration-170 ease-in-out  ${animate ? "scale-100 opacity-100" : "scale-95 opacity-0"}`}>
+        <div className="flex items-center justify-between border-b p-6">
+          <h2 className="rounded-t-lg text-xl leading-none tracking-tight dark:font-thin">
             {t("Viewing Version: {{version}}", {
               version:
                 selectedProjectSnapshotVersion ??
@@ -80,24 +110,25 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
           </h2>
           <Button
             variant={"ghost"}
-            className="h-fit p-0 opacity-70 dark:font-thin hover:bg-card hover:opacity-100 z-10"
-            onClick={handleCloseDialog}>
+            className="z-10 h-fit p-0 opacity-70 hover:bg-card hover:opacity-100 dark:font-thin"
+            onClick={handleDialogClose}>
             <Cross2Icon className="size-5" />
           </Button>
         </div>
         <div className="flex flex-1 overflow-hidden">
           <div className="flex-1 overflow-auto">
             {isLoadingPreview ? (
-              <LoadingSkeleton className="w-full h-full" />
+              <LoadingSkeleton className="h-full w-full" />
             ) : (
               <VersionEditorComponent
                 yDoc={yDoc}
                 previewDocYWorkflows={previewDocYWorkflows}
+                onWorkflowCorruption={onWorkflowCorruption}
               />
             )}
           </div>
-          <div className="w-[30vw] min-w-[320px] max-w-[500px] h-full border-l flex flex-col relative">
-            <div className="text-md dark:font-thin pl-4 pt-4">
+          <div className="relative flex h-full w-[30vw] max-w-[500px] min-w-[320px] flex-col border-l">
+            <div className="text-md pt-4 pl-4 dark:font-thin">
               {t("Version History")}
             </div>
             <div className="flex-1 overflow-y-auto p-4 pb-[55px]">
@@ -114,9 +145,13 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
                 />
               )}
             </div>
-            <div className="absolute bottom-0 left-0 w-full bg-secondary border-t p-2 flex justify-end">
+            <div className="absolute bottom-0 left-0 flex w-full justify-end border-t bg-secondary p-2">
               <Button
-                disabled={!selectedProjectSnapshotVersion}
+                disabled={
+                  !selectedProjectSnapshotVersion ||
+                  isLoadingPreview ||
+                  isCorruptedVersion
+                }
                 variant={"ghost"}
                 onClick={() => setOpenVersionConfirmationDialog(true)}>
                 {t("Revert")}
@@ -133,7 +168,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
           <VersionConfirmationDialog
             selectedProjectSnapshotVersion={selectedProjectSnapshotVersion}
             onDialogClose={() => setOpenVersionConfirmationDialog(false)}
-            onRollbackProject={onRollbackProject}
+            onProjectRollback={handleProjectRollback}
           />
         )}
     </div>
@@ -143,7 +178,9 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
 const VersionEditorComponent: React.FC<{
   yDoc: Y.Doc | null;
   previewDocYWorkflows: Y.Map<YWorkflow> | null;
-}> = ({ yDoc, previewDocYWorkflows }) => {
+  onWorkflowCorruption?: () => void;
+}> = ({ yDoc, previewDocYWorkflows, onWorkflowCorruption }) => {
+  const t = useT();
   const yWorkflows = previewDocYWorkflows
     ? previewDocYWorkflows
     : yDoc
@@ -151,11 +188,21 @@ const VersionEditorComponent: React.FC<{
       : null;
 
   return (
-    <div className="w-full h-full">
+    <div className="h-full w-full">
       {yWorkflows && (
-        <ReactFlowProvider>
-          <VersionCanvas yWorkflows={yWorkflows} />
-        </ReactFlowProvider>
+        <ErrorBoundary
+          onError={onWorkflowCorruption}
+          fallback={
+            <BasicBoiler
+              text={t("Selected version is corrupted or not available.")}
+              className="[&>div>p]:text-md size-4 h-full"
+              icon={<FlowLogo className="size-20 text-accent" />}
+            />
+          }>
+          <ReactFlowProvider>
+            <VersionCanvas yWorkflows={yWorkflows} />
+          </ReactFlowProvider>
+        </ErrorBoundary>
       )}
     </div>
   );

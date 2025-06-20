@@ -2,8 +2,10 @@ import { createLazyFileRoute, useParams } from "@tanstack/react-router";
 import { ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { useEffect, useMemo, useState } from "react";
 
-import { LoadingSplashscreen } from "@flow/components";
+import { Button, FlowLogo, LoadingSplashscreen } from "@flow/components";
+import BasicBoiler from "@flow/components/BasicBoiler";
 import Editor from "@flow/features/Editor";
+import { VersionDialog } from "@flow/features/Editor/components/TopBar/components/ActionBar/components/Version/VersionDialog";
 import {
   ProjectIdWrapper,
   WorkspaceIdWrapper,
@@ -15,6 +17,7 @@ import {
   useShortcuts,
 } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
+import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
 import { useCurrentProject } from "@flow/stores";
@@ -32,6 +35,7 @@ export const Route = createLazyFileRoute(
       </ProjectIdWrapper>
     </WorkspaceIdWrapper>
   ),
+  errorComponent: ({ reset }) => <ErrorComponent onErrorReset={reset} />,
 });
 
 const EditorComponent = () => {
@@ -107,5 +111,48 @@ const EditorComponent = () => {
       yDoc={yDocState}
       undoTrackerActionWrapper={undoTrackerActionWrapper}
     />
+  );
+};
+
+const ErrorComponent = ({ onErrorReset }: { onErrorReset: () => void }) => {
+  const [openVersionDialog, setOpenVersionDialog] = useState(false);
+  const t = useT();
+
+  const [currentProject] = useCurrentProject();
+
+  const { yDocState } = useYjsSetup({
+    isProtected: true,
+    projectId: currentProject?.id,
+    workflowId: DEFAULT_ENTRY_GRAPH_ID,
+  });
+
+  const handleCloseDialog = () => {
+    setOpenVersionDialog(false);
+  };
+  return (
+    <>
+      <div className="flex h-screen w-full flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center gap-8">
+          <BasicBoiler
+            text={t("Project or version is corrupted.")}
+            icon={<FlowLogo className="size-16 text-accent" />}
+          />
+          <Button
+            onClick={() => setOpenVersionDialog(true)}
+            variant="default"
+            className="ml-4">
+            {t("Revert to a previous version")}
+          </Button>
+        </div>
+      </div>
+      {openVersionDialog && (
+        <VersionDialog
+          yDoc={yDocState}
+          project={currentProject}
+          onDialogClose={handleCloseDialog}
+          onErrorReset={onErrorReset}
+        />
+      )}
+    </>
   );
 };

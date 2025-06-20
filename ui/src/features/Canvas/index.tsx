@@ -102,7 +102,7 @@ const Canvas: React.FC<Props> = ({
 
   return (
     <ReactFlow
-      className={`${isSubworkflow ? "border-node-subworkflow border-t-2" : ""}`}
+      className={`${isSubworkflow ? "border-t-2 border-node-subworkflow" : ""}`}
       ref={paneRef}
       // Readonly props START
       nodesConnectable={!readonly}

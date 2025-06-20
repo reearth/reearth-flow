@@ -43,7 +43,7 @@ const TopBar: React.FC<Props> = ({
   onWorkflowChange,
 }) => {
   return (
-    <div className="flex shrink-0 justify-between gap-2 bg-secondary w-[100vw]">
+    <div className="flex w-[100vw] shrink-0 justify-between gap-2 bg-secondary">
       <div className="flex items-center gap-1">
         <HomeMenu
           dropdownPosition="bottom"
@@ -54,7 +54,7 @@ const TopBar: React.FC<Props> = ({
           <Breadcrumb />
         </div>
       </div>
-      <div className="flex flex-1 gap-2 h-full overflow-hidden">
+      <div className="flex h-full flex-1 gap-2 overflow-hidden">
         <WorkflowTabs
           currentWorkflowId={currentWorkflowId}
           openWorkflows={openWorkflows}
@@ -62,13 +62,13 @@ const TopBar: React.FC<Props> = ({
           onWorkflowChange={onWorkflowChange}
         />
       </div>
-      <div className="flex select-none items-center h-full justify-center gap-2 self-center p-1">
-        <div className="border-r h-4/5" />
+      <div className="flex h-full items-center justify-center gap-2 self-center p-1 select-none">
+        <div className="h-4/5 border-r" />
         <DebugActionBar
           onDebugRunStart={onDebugRunStart}
           onDebugRunStop={onDebugRunStop}
         />
-        <div className="border-r h-4/5" />
+        <div className="h-4/5 border-r" />
         <ActionBar
           project={project}
           yDoc={yDoc}

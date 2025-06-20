@@ -1,4 +1,8 @@
-import { CaretLeft, PencilLine, Trash } from "@phosphor-icons/react";
+import {
+  CaretLeftIcon,
+  PencilLineIcon,
+  TrashIcon,
+} from "@phosphor-icons/react";
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 
@@ -108,10 +112,10 @@ const TriggerDetails: React.FC<Props> = ({
 
   return (
     <>
-      <div className="flex flex-1 flex-col gap-4 px-6 pb-2 pt-6">
+      <div className="flex flex-1 flex-col gap-4 px-6 pt-6 pb-2">
         <div className="flex justify-between">
           <Button size="icon" variant="ghost" onClick={handleBack}>
-            <CaretLeft />
+            <CaretLeftIcon />
           </Button>
           <div className="flex gap-2">
             <Button
@@ -119,14 +123,14 @@ const TriggerDetails: React.FC<Props> = ({
               size="sm"
               disabled={!selectedTrigger}
               onClick={() => setOpenTriggerEditDialog(true)}>
-              <PencilLine />
+              <PencilLineIcon />
               {t("Update Trigger")}
             </Button>
             <Button
               variant="destructive"
               size="sm"
               onClick={() => setTriggerToBeDeleted(selectedTrigger)}>
-              <Trash />
+              <TrashIcon />
               {t("Delete")}
             </Button>
           </div>

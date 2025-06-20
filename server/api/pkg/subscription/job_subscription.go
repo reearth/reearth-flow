@@ -25,7 +25,7 @@ func (m *JobManager) CountSubscribers(jobID string) int {
 }
 
 func (m *JobManager) Subscribe(jobID string) chan job.Status {
-	ch := make(chan job.Status, 1)
+	ch := make(chan job.Status, 50)
 
 	m.mu.Lock()
 	m.subscribers[jobID] = append(m.subscribers[jobID], ch)
@@ -59,6 +59,8 @@ func (m *JobManager) Notify(jobID string, status job.Status) {
 		select {
 		case ch <- status:
 		default:
+			// Log dropped message or implement retry logic
+			// For now, we'll still drop but with larger buffer this should be rare
 		}
 	}
 }

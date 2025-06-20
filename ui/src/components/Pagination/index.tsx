@@ -1,8 +1,8 @@
 import {
-  CaretDoubleLeft,
-  CaretDoubleRight,
-  CaretLeft,
-  CaretRight,
+  CaretDoubleLeftIcon,
+  CaretDoubleRightIcon,
+  CaretLeftIcon,
+  CaretRightIcon,
 } from "@phosphor-icons/react";
 import * as React from "react";
 
@@ -23,7 +23,7 @@ const Pagination: React.FC<PaginationProps> = ({
       <div className="flex gap-1">
         <IconButton
           variant="outline"
-          icon={<CaretDoubleLeft />}
+          icon={<CaretDoubleLeftIcon />}
           onClick={() => {
             if (currentPage > 1) {
               setCurrentPage?.(1);
@@ -34,7 +34,7 @@ const Pagination: React.FC<PaginationProps> = ({
         />
         <IconButton
           variant="outline"
-          icon={<CaretLeft />}
+          icon={<CaretLeftIcon />}
           onClick={() => {
             if (currentPage > 1) {
               setCurrentPage?.(currentPage - 1);
@@ -50,7 +50,7 @@ const Pagination: React.FC<PaginationProps> = ({
         </div>
         <IconButton
           className="rounded border p-1"
-          icon={<CaretRight />}
+          icon={<CaretRightIcon />}
           onClick={() => {
             if (currentPage < totalPages) {
               setCurrentPage?.(currentPage + 1);
@@ -62,7 +62,7 @@ const Pagination: React.FC<PaginationProps> = ({
 
         <IconButton
           className="rounded border p-1"
-          icon={<CaretDoubleRight />}
+          icon={<CaretDoubleRightIcon />}
           onClick={() => {
             if (currentPage < totalPages) {
               setCurrentPage?.(totalPages);
