@@ -1,4 +1,4 @@
-name: Build and Deploy UI
+name: Build UI
 
 on:
   workflow_call:
@@ -109,41 +109,3 @@ jobs:
           tags: ${{ steps.options.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  deploy-to-cloud-run:
-    name: Deploy to Cloud Run (Nightly)
-    needs: build-docker-image
-    runs-on: ubuntu-latest
-    if: ${{ inputs.name == 'nightly' }}
-    permissions:
-      contents: read
-      id-token: write
-    env:
-      IMAGE: reearth/reearth-flow-web:nightly
-      CLOUD_RUN_SERVICE: reearth-flow-web
-    steps:
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          service_account: ${{ secrets.GC_SA_EMAIL }}
-          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Configure Docker for GCP
-        run: gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
-
-      - name: Push Docker Image to GCP Artifact Registry
-        run: |
-          docker pull ${{ env.IMAGE }}
-          docker tag ${{ env.IMAGE }} ${{ secrets.WEB_IMAGE_GC }}
-          docker push ${{ secrets.WEB_IMAGE_GC }}
-
-      - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
-            --image ${{ secrets.WEB_IMAGE_GC }} \
-            --region ${{ secrets.GC_REGION }} \
-            --platform managed \
-            --quiet
