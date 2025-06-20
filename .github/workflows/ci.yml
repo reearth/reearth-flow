@@ -236,3 +236,55 @@ jobs:
     uses: ./.github/workflows/build_deploy_policies_cerbos.yml
     if: ${{ !failure() && needs.ci-policies.result == 'success' && github.event_name == 'push' && github.ref_name == 'main' }}
     secrets: inherit
+
+  # PR Preview Jobs
+  build-ui-pr:
+    needs:
+      - prepare
+      - ci-ui
+      - ci-collect-info
+    if: ${{ needs.prepare.outputs.ui == 'true' && github.event_name == 'pull_request' && github.base_ref == 'main' && (github.event.action == 'opened' || github.event.action == 'synchronize') }}
+    uses: reearth/actions/.github/workflows/build-docker.yml@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5
+    with:
+      image: reearth/reearth-flow:ui
+      context: ui
+      use_dockerhub: false
+      name: ${{ needs.ci-collect-info.outputs.sha_short }}
+      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
+      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
+      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+    secrets:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+
+  deploy-ui-pr:
+    needs:
+      - ci-collect-info
+      - build-ui-pr
+      - prepare
+    runs-on: ubuntu-latest
+    outputs:
+      preview_url: ${{ steps.deploy.outputs.url }}
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+      packages: write
+      pull-requests: write
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: reearth/actions/deploy-cloud-run-with-tag@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5
+        id: deploy
+        with:
+          image: ${{ needs.build-ui-pr.outputs.image }}
+          image_internal: '${{ secrets.GC_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-ui:${{ needs.ci-collect-info.outputs.sha_short }}'
+          region: ${{ secrets.GC_REGION }}
+          service: reearth-flow-ui
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          tag: pr-${{ github.event.pull_request.number }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
