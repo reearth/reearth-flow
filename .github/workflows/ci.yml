@@ -186,12 +186,12 @@ jobs:
       sha: ${{ github.sha }}
       sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
     secrets: inherit
-  build-ui:
+  build-and-deploy-ui:
     needs:
       - ci
       - ci-ui
       - ci-collect-info
-    uses: ./.github/workflows/build_ui.yml
+    uses: ./.github/workflows/build_deploy_ui.yml
     if: ${{ !failure() && needs.ci-ui.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
     with:
       name: ${{ needs.ci-collect-info.outputs.name }}
@@ -199,17 +199,6 @@ jobs:
       new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
       sha: ${{ github.sha }}
       sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-    secrets: inherit
-  deploy-ui:
-    needs:
-      - ci
-      - ci-ui
-      - ci-collect-info
-      - build-ui
-    uses: ./.github/workflows/deploy_ui.yml
-    if: ${{ !failure() && needs.ci-ui.result == 'success' && needs.build-ui.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
-    with:
-      name: ${{ needs.ci-collect-info.outputs.name }}
     secrets: inherit
   build-and-deploy-websocket:
     needs:
