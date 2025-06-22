@@ -42,24 +42,21 @@ struct SimpleEdge {
     to: String,
 }
 
+// Type alias for calculate_step_mapping return type
+type StepMappingResult = (HashMap<String, usize>, HashMap<String, String>);
+
 #[derive(Clone, Debug)]
 pub struct NodeExecutionInfo {
-    #[allow(dead_code)]
-    pub node_id: String,
     pub node_name: String,
     pub step_number: usize,
     pub start_time: Instant,
     pub running_logged: bool,
     pub finished_logged: bool,
-    pub node_type: String,
 }
 
 #[derive(Clone, Debug)]
 pub struct WorkflowExecutionInfo {
-    #[allow(dead_code)]
     pub workflow_name: String,
-    #[allow(dead_code)]
-    pub start_time: Instant,
 }
 
 pub struct UserFacingLogHandler {
@@ -72,8 +69,6 @@ pub struct UserFacingLogHandler {
     workflow_info: Arc<RwLock<Option<WorkflowExecutionInfo>>>,
     // Step number mapping from topological order
     node_step_mapping: Arc<RwLock<HashMap<String, usize>>>,
-    // Store node type information for runtime use
-    node_type_mapping: Arc<RwLock<HashMap<String, String>>>,
     // Store node name information for runtime use
     node_name_mapping: Arc<RwLock<HashMap<String, String>>>,
     // Track workflow errors
@@ -99,7 +94,6 @@ impl UserFacingLogHandler {
             node_execution_map: Arc::new(RwLock::new(HashMap::new())),
             workflow_info: Arc::new(RwLock::new(None)),
             node_step_mapping: Arc::new(RwLock::new(HashMap::new())),
-            node_type_mapping: Arc::new(RwLock::new(HashMap::new())),
             node_name_mapping: Arc::new(RwLock::new(HashMap::new())),
             workflow_error_occurred: Arc::new(RwLock::new(false)),
             failed_nodes: Arc::new(RwLock::new(HashSet::new())),
@@ -120,17 +114,13 @@ impl UserFacingLogHandler {
 
         // Find the main graph (assuming first graph for simplicity)
         if let Some(graph) = workflow.graphs.first() {
-            let (step_mapping, type_mapping, name_mapping) = self.calculate_step_mapping(graph)?;
+            let (step_mapping, name_mapping) = self.calculate_step_mapping(graph)?;
 
             // Calculate and store total steps
             let total_steps = step_mapping.values().max().copied().unwrap_or(0);
             *self.total_steps.write() = total_steps;
 
             self.set_node_step_mapping(step_mapping);
-
-            // Store node type mapping for runtime use
-            let mut node_type_mapping = self.node_type_mapping.write();
-            *node_type_mapping = type_mapping;
 
             // Store node name mapping for runtime use
             let mut node_name_mapping = self.node_name_mapping.write();
@@ -147,14 +137,7 @@ impl UserFacingLogHandler {
     fn calculate_step_mapping(
         &self,
         graph: &SimpleGraph,
-    ) -> Result<
-        (
-            HashMap<String, usize>,
-            HashMap<String, String>,
-            HashMap<String, String>,
-        ),
-        Box<dyn std::error::Error>,
-    > {
+    ) -> Result<StepMappingResult, Box<dyn std::error::Error>> {
         // Build adjacency list and in-degree count
         let mut adj_list: HashMap<String, Vec<String>> = HashMap::new();
         let mut in_degree: HashMap<String, usize> = HashMap::new();
@@ -210,7 +193,6 @@ impl UserFacingLogHandler {
 
         // Create step mapping (only for action nodes, excluding sources)
         let mut step_mapping = HashMap::new();
-        let mut type_mapping = HashMap::new();
         let mut name_mapping = HashMap::new();
         let mut step_counter = 0;
 
@@ -222,20 +204,14 @@ impl UserFacingLogHandler {
                     step_mapping.insert(node_id.clone(), step_counter);
                     name_mapping.insert(node_id.clone(), node.name.clone());
                     tracing::debug!("Step {}: {} ({})", step_counter, node.name, node_id);
-
-                    // Store the actual action type for runtime use
-                    // The actual categorization (source/processor/sink) will be determined at runtime
-                    // based on the node's behavior and connections
-                    type_mapping.insert(node_id.clone(), "action".to_string());
                 } else {
-                    // For non-action nodes, preserve original type
-                    type_mapping.insert(node_id.clone(), node.node_type.clone());
+                    // For non-action nodes, preserve name mapping
                     name_mapping.insert(node_id.clone(), node.name.clone());
                 }
             }
         }
 
-        Ok((step_mapping, type_mapping, name_mapping))
+        Ok((step_mapping, name_mapping))
     }
 
     fn publish_event(&self, event: UserFacingLogEvent) {
@@ -331,25 +307,19 @@ impl UserFacingLogHandler {
                 let step_number = step_mapping.get(&node_id).copied().unwrap_or(0);
                 drop(step_mapping);
 
-                let type_mapping = self.node_type_mapping.read();
-                let node_type = type_mapping.get(&node_id).cloned().unwrap_or_default();
-                drop(type_mapping);
-
-                // Get node name from mapping or use node type as fallback
+                // Get node name from mapping or use default
                 let name_mapping = self.node_name_mapping.read();
                 let node_name = name_mapping
                     .get(&node_id)
                     .cloned()
-                    .unwrap_or_else(|| format!("{} Node", node_type));
+                    .unwrap_or_else(|| "Unknown Node".to_string());
 
                 let node_info = NodeExecutionInfo {
-                    node_id: node_id.clone(),
                     node_name: node_name.clone(),
                     step_number,
                     start_time: Instant::now(),
                     running_logged: false,
                     finished_logged: false,
-                    node_type: node_type.clone(),
                 };
 
                 let mut node_map = self.node_execution_map.write();
@@ -632,7 +602,6 @@ where
                 let mut workflow_info = self.handler.workflow_info.write();
                 *workflow_info = Some(WorkflowExecutionInfo {
                     workflow_name: workflow_name.clone(),
-                    start_time: Instant::now(),
                 });
 
                 // Emit workflow start event
@@ -657,19 +626,12 @@ where
                 let step_number = step_mapping.get(&node_id).copied().unwrap_or(0);
                 drop(step_mapping);
 
-                // Get node type
-                let type_mapping = self.handler.node_type_mapping.read();
-                let node_type = type_mapping.get(&node_id).cloned().unwrap_or_default();
-                drop(type_mapping);
-
                 let node_info = NodeExecutionInfo {
-                    node_id: node_id.clone(),
                     node_name: node_name.clone(),
                     step_number,
                     start_time: Instant::now(),
                     running_logged: false,
                     finished_logged: false,
-                    node_type: node_type.clone(),
                 };
 
                 let mut node_map = self.handler.node_execution_map.write();
@@ -779,6 +741,20 @@ where
             event.record(&mut message_extractor);
             let message = message_extractor.0.unwrap_or_default();
 
+            // Filter out internal debug logs that shouldn't be in user-facing log
+            // These are internal system logs that provide debugging information
+            const INTERNAL_LOG_FILTERS: &[(&str, &str)] = &[
+                ("reearth_flow_worker::event_handler", "Node failed:"),
+                ("reearth_flow_worker::command", "Failed nodes:"),
+            ];
+
+            if INTERNAL_LOG_FILTERS
+                .iter()
+                .any(|(t, msg)| target.contains(t) && message.starts_with(msg))
+            {
+                return;
+            }
+
             // Check for error conditions
             if *level == Level::ERROR
                 || *level == Level::WARN
@@ -805,14 +781,10 @@ where
                         &message
                     };
 
-                let display_message = if let Some((_node_id, node_name, _)) =
+                let display_message = if let Some((_node_id, Some(node_name), _)) =
                     UserFacingLogHandler::extract_span_fields(&ctx)
                 {
-                    if let Some(node_name) = &node_name {
-                        format!("{} - {}", node_name, user_friendly_message)
-                    } else {
-                        user_friendly_message.to_string()
-                    }
+                    format!("{} - {}", node_name, user_friendly_message)
                 } else {
                     user_friendly_message.to_string()
                 };
@@ -864,7 +836,7 @@ impl<'a> FieldVisitor<'a> {
     }
 }
 
-impl<'a> tracing::field::Visit for FieldVisitor<'a> {
+impl tracing::field::Visit for FieldVisitor<'_> {
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
         match field.name() {
             "node.id" => self.fields.node_id = Some(value.to_string()),

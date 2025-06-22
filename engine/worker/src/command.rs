@@ -104,7 +104,8 @@ impl RunWorkerCommand {
         let metadata_path =
             Uri::from_str(metadata_path.as_str()).map_err(crate::errors::Error::init)?;
         let worker_num = matches
-            .remove_one::<usize>("worker_num")
+            .remove_one::<String>("worker_num")
+            .and_then(|s| s.parse::<usize>().ok())
             .unwrap_or(num_cpus::get());
         let pubsub_backend = matches
             .remove_one::<String>("pubsub_backend")
