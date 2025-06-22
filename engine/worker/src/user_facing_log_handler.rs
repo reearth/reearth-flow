@@ -19,6 +19,7 @@ use crate::types::user_facing_log_event::{UserFacingLogEvent, UserFacingLogLevel
 // Simple workflow structures for dependency analysis
 #[derive(Debug, Clone, serde::Deserialize)]
 struct SimpleWorkflow {
+    name: String,
     graphs: Vec<SimpleGraph>,
 }
 
@@ -111,6 +112,13 @@ impl UserFacingLogHandler {
         workflow_yaml: &str,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let workflow: SimpleWorkflow = serde_yaml::from_str(workflow_yaml)?;
+
+        // Store workflow name
+        let mut workflow_info = self.workflow_info.write();
+        *workflow_info = Some(WorkflowExecutionInfo {
+            workflow_name: workflow.name.clone(),
+        });
+        drop(workflow_info);
 
         // Find the main graph (assuming first graph for simplicity)
         if let Some(graph) = workflow.graphs.first() {
@@ -328,6 +336,13 @@ impl UserFacingLogHandler {
 
                 // Emit workflow start on first node
                 if step_number == 1 {
+                    let workflow_info = self.workflow_info.read();
+                    let workflow_name = workflow_info
+                        .as_ref()
+                        .map(|info| info.workflow_name.clone())
+                        .unwrap_or_else(|| "Unknown".to_string());
+                    drop(workflow_info);
+
                     let event = UserFacingLogEvent {
                         workflow_id: self.workflow_id,
                         job_id: self.job_id,
@@ -335,7 +350,7 @@ impl UserFacingLogHandler {
                         level: UserFacingLogLevel::Info,
                         node_id: None,
                         node_name: None,
-                        display_message: "Workflow Example - Started...".to_string(),
+                        display_message: format!("Workflow {} - Started...", workflow_name),
                     };
                     self.publish_event(event);
                 }

@@ -132,12 +132,6 @@ impl Processor for BulkAttributeRenamer {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        // Debug test: return error
-        return Err(AttributeProcessorError::BulkRenamerFactory(
-            "Debug test error: BulkAttributeRenamer process failed".to_string(),
-        )
-        .into());
-        
         let mut feature = ctx.feature.clone();
 
         let attributes_to_rename = self.select_attributes(&feature)?;
