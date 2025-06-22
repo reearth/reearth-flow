@@ -40,7 +40,7 @@ impl EncodableMessage for UserFacingLogEvent {
 
     fn encode(&self) -> Result<ValidatedMessage<Bytes>, Self::Error> {
         let data = serde_json::to_vec(self).map_err(|e| {
-            eprintln!("Failed to serialize UserFacingLogEvent: {}", e);
+            tracing::error!("Failed to serialize UserFacingLogEvent: {}", e);
             e.to_string()
         })?;
         Ok(ValidatedMessage::new(

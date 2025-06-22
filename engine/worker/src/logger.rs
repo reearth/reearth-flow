@@ -70,12 +70,12 @@ pub fn set_pubsub_context(
     
     tracing::info!("Pub/Sub context and Tokio handle set for stdout log publishing.");
     
+    // Initialize user-facing log handler
     let handler = Arc::new(UserFacingLogHandler::new(workflow_id, job_id, publisher, handle));
-    if let Err(_) = USER_FACING_LOG_HANDLER.set(handler) {
-        tracing::warn!("User-facing log handler already initialized");
-    } else {
-        tracing::info!("User-facing log handler initialized");
-    }
+    USER_FACING_LOG_HANDLER
+        .set(handler)
+        .map_err(|_| "User-facing log handler already initialized")?;
+    tracing::info!("User-facing log handler initialized");
     
     Ok(())
 }

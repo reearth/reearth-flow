@@ -74,10 +74,14 @@ pub struct UserFacingLogHandler {
     node_step_mapping: Arc<RwLock<HashMap<String, usize>>>,
     // Store node type information for runtime use
     node_type_mapping: Arc<RwLock<HashMap<String, String>>>,
+    // Store node name information for runtime use
+    node_name_mapping: Arc<RwLock<HashMap<String, String>>>,
     // Track workflow errors
     workflow_error_occurred: Arc<RwLock<bool>>,
     // Track which specific nodes failed
     failed_nodes: Arc<RwLock<HashSet<String>>>,
+    // Total number of steps in the workflow
+    total_steps: Arc<RwLock<usize>>,
 }
 
 impl UserFacingLogHandler {
@@ -96,8 +100,10 @@ impl UserFacingLogHandler {
             workflow_info: Arc::new(RwLock::new(None)),
             node_step_mapping: Arc::new(RwLock::new(HashMap::new())),
             node_type_mapping: Arc::new(RwLock::new(HashMap::new())),
+            node_name_mapping: Arc::new(RwLock::new(HashMap::new())),
             workflow_error_occurred: Arc::new(RwLock::new(false)),
             failed_nodes: Arc::new(RwLock::new(HashSet::new())),
+            total_steps: Arc::new(RwLock::new(0)),
         }
     }
 
@@ -111,12 +117,21 @@ impl UserFacingLogHandler {
         
         // Find the main graph (assuming first graph for simplicity)
         if let Some(graph) = workflow.graphs.first() {
-            let (step_mapping, type_mapping) = self.calculate_step_mapping(graph)?;
+            let (step_mapping, type_mapping, name_mapping) = self.calculate_step_mapping(graph)?;
+            
+            // Calculate and store total steps
+            let total_steps = step_mapping.values().max().copied().unwrap_or(0);
+            *self.total_steps.write() = total_steps;
+            
             self.set_node_step_mapping(step_mapping);
             
             // Store node type mapping for runtime use
             let mut node_type_mapping = self.node_type_mapping.write();
             *node_type_mapping = type_mapping;
+            
+            // Store node name mapping for runtime use
+            let mut node_name_mapping = self.node_name_mapping.write();
+            *node_name_mapping = name_mapping;
             
             tracing::debug!("Successfully calculated step mapping from workflow");
         } else {
@@ -126,7 +141,7 @@ impl UserFacingLogHandler {
         Ok(())
     }
 
-    fn calculate_step_mapping(&self, graph: &SimpleGraph) -> Result<(HashMap<String, usize>, HashMap<String, String>), Box<dyn std::error::Error>> {
+    fn calculate_step_mapping(&self, graph: &SimpleGraph) -> Result<(HashMap<String, usize>, HashMap<String, String>, HashMap<String, String>), Box<dyn std::error::Error>> {
         // Build adjacency list and in-degree count
         let mut adj_list: HashMap<String, Vec<String>> = HashMap::new();
         let mut in_degree: HashMap<String, usize> = HashMap::new();
@@ -180,6 +195,7 @@ impl UserFacingLogHandler {
         // Create step mapping (only for action nodes, excluding sources)
         let mut step_mapping = HashMap::new();
         let mut type_mapping = HashMap::new();
+        let mut name_mapping = HashMap::new();
         let mut step_counter = 0;
 
         for node_id in result {
@@ -188,22 +204,22 @@ impl UserFacingLogHandler {
                 if node.node_type == "action" {
                     step_counter += 1;
                     step_mapping.insert(node_id.clone(), step_counter);
+                    name_mapping.insert(node_id.clone(), node.name.clone());
                     tracing::debug!("Step {}: {} ({})", step_counter, node.name, node_id);
                     
-                    // For FeatureCreator actions, mark them as source type for user-facing log
-                    if node.name == "FeatureCreator" {
-                        type_mapping.insert(node_id.clone(), "source".to_string());
-                    } else {
-                        type_mapping.insert(node_id.clone(), "action".to_string());
-                    }
+                    // Store the actual action type for runtime use
+                    // The actual categorization (source/processor/sink) will be determined at runtime
+                    // based on the node's behavior and connections
+                    type_mapping.insert(node_id.clone(), "action".to_string());
                 } else {
                     // For non-action nodes, preserve original type
                     type_mapping.insert(node_id.clone(), node.node_type.clone());
+                    name_mapping.insert(node_id.clone(), node.name.clone());
                 }
             }
         }
 
-        Ok((step_mapping, type_mapping))
+        Ok((step_mapping, type_mapping, name_mapping))
     }
 
     fn publish_event(&self, event: UserFacingLogEvent) {
@@ -218,7 +234,7 @@ impl UserFacingLogHandler {
                 PubSubBackend::Noop(p) => p.publish(event).await.map_err(|e| format!("{:?}", e)),
             };
             if let Err(e) = result {
-                eprintln!("Failed to publish user-facing log event: {}", e);
+                tracing::error!("Failed to publish user-facing log event: {}", e);
             }
         });
     }
@@ -290,12 +306,10 @@ impl UserFacingLogHandler {
                 let node_type = type_mapping.get(&node_id).cloned().unwrap_or_default();
                 drop(type_mapping);
 
-                // Create a default node name from the node type if not available
-                let node_name = if node_type == "source" {
-                    "FeatureCreator".to_string()
-                } else {
-                    "FileWriter".to_string()
-                };
+                // Get node name from mapping or use node type as fallback
+                let name_mapping = self.node_name_mapping.read();
+                let node_name = name_mapping.get(&node_id).cloned()
+                    .unwrap_or_else(|| format!("{} Node", node_type));
 
                 let node_info = NodeExecutionInfo {
                     node_id: node_id.clone(),
@@ -377,7 +391,8 @@ impl UserFacingLogHandler {
                         self.publish_event(event);
 
                         // Emit workflow completion on last node
-                        if node_info.step_number == 2 { // Assuming 2 steps for this workflow
+                        let total_steps = *self.total_steps.read();
+                        if node_info.step_number == total_steps {
                             let error_occurred = *self.workflow_error_occurred.read();
                             let (level, message) = if error_occurred {
                                 (UserFacingLogLevel::Error, "Workflow failed.".to_string())
@@ -411,7 +426,7 @@ impl UserFacingLogHandler {
             let writer = crate::logger::DynamicUserFacingLogFileWriter;
             let mut file_writer = writer.make_writer();
             if let Err(e) = writeln!(file_writer, "{}", json_line) {
-                eprintln!("Failed to write user-facing log to file: {}", e);
+                tracing::error!("Failed to write user-facing log to file: {}", e);
             }
         }
     }
