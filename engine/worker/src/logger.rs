@@ -33,8 +33,10 @@ static ENABLE_JSON_LOG: Lazy<bool> = Lazy::new(|| {
 static WORKER_FILE_WRITER: Lazy<RwLock<Option<NonBlocking>>> = Lazy::new(|| RwLock::new(None));
 static WORKER_FILE_GUARD: Lazy<RwLock<Option<WorkerGuard>>> = Lazy::new(|| RwLock::new(None));
 
-pub static USER_FACING_LOG_FILE_WRITER: Lazy<RwLock<Option<NonBlocking>>> = Lazy::new(|| RwLock::new(None));
-static USER_FACING_LOG_FILE_GUARD: Lazy<RwLock<Option<WorkerGuard>>> = Lazy::new(|| RwLock::new(None));
+pub static USER_FACING_LOG_FILE_WRITER: Lazy<RwLock<Option<NonBlocking>>> =
+    Lazy::new(|| RwLock::new(None));
+static USER_FACING_LOG_FILE_GUARD: Lazy<RwLock<Option<WorkerGuard>>> =
+    Lazy::new(|| RwLock::new(None));
 
 static PUBSUB_PUBLISHER: OnceCell<PubSubBackend> = OnceCell::new();
 static WORKFLOW_ID: OnceCell<Uuid> = OnceCell::new();
@@ -42,7 +44,9 @@ static JOB_ID: OnceCell<Uuid> = OnceCell::new();
 static TOKIO_RUNTIME_HANDLE: OnceCell<Handle> = OnceCell::new();
 static USER_FACING_LOG_HANDLER: OnceCell<Arc<UserFacingLogHandler>> = OnceCell::new();
 
-pub fn analyze_workflow_for_step_mapping(workflow_yaml: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub fn analyze_workflow_for_step_mapping(
+    workflow_yaml: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(handler) = USER_FACING_LOG_HANDLER.get() {
         handler.analyze_workflow_and_set_step_mapping(workflow_yaml)?;
     }
@@ -67,16 +71,21 @@ pub fn set_pubsub_context(
     TOKIO_RUNTIME_HANDLE
         .set(handle.clone())
         .map_err(|_| "Tokio handle already initialized")?;
-    
+
     tracing::info!("Pub/Sub context and Tokio handle set for stdout log publishing.");
-    
+
     // Initialize user-facing log handler
-    let handler = Arc::new(UserFacingLogHandler::new(workflow_id, job_id, publisher, handle));
+    let handler = Arc::new(UserFacingLogHandler::new(
+        workflow_id,
+        job_id,
+        publisher,
+        handle,
+    ));
     USER_FACING_LOG_HANDLER
         .set(handler)
         .map_err(|_| "User-facing log handler already initialized")?;
     tracing::info!("User-facing log handler initialized");
-    
+
     Ok(())
 }
 
@@ -251,7 +260,6 @@ pub fn setup_logging_and_tracing() -> crate::errors::Result<()> {
     let pubsub_layer = StdoutLogPublishLayer;
     let user_facing_layer = GlobalUserFacingLogLayer;
 
-
     if *ENABLE_JSON_LOG {
         let mut console_layer = json_subscriber::JsonLayer::stdout();
         console_layer.with_flattened_event();
@@ -329,13 +337,14 @@ pub fn enable_file_logging(job_id: uuid::Uuid) -> crate::errors::Result<()> {
 }
 
 pub fn enable_user_facing_log_file(job_id: uuid::Uuid) -> crate::errors::Result<()> {
-    let log_uri = reearth_flow_common::dir::setup_job_directory("workers", "user-facing-log", job_id)
-        .map_err(Error::init)?;
+    let log_uri =
+        reearth_flow_common::dir::setup_job_directory("workers", "user-facing-log", job_id)
+            .map_err(Error::init)?;
     let path_ref = log_uri.path();
     let log_path = path_ref.as_path();
     std::fs::create_dir_all(log_path)
         .map_err(|e| Error::init(format!("Failed to create user-facing-log dir: {e}")))?;
-    
+
     let log_file_path = log_path.join("user-facing.log");
     let file = std::fs::OpenOptions::new()
         .create(true)
@@ -354,6 +363,9 @@ pub fn enable_user_facing_log_file(job_id: uuid::Uuid) -> crate::errors::Result<
         guard_lock.replace(guard);
     }
 
-    tracing::info!("User-facing log file enabled: {}", log_file_path.to_string_lossy());
+    tracing::info!(
+        "User-facing log file enabled: {}",
+        log_file_path.to_string_lossy()
+    );
     Ok(())
 }

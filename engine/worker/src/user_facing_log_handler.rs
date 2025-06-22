@@ -112,36 +112,49 @@ impl UserFacingLogHandler {
         *step_mapping = mapping;
     }
 
-    pub fn analyze_workflow_and_set_step_mapping(&self, workflow_yaml: &str) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn analyze_workflow_and_set_step_mapping(
+        &self,
+        workflow_yaml: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let workflow: SimpleWorkflow = serde_yaml::from_str(workflow_yaml)?;
-        
+
         // Find the main graph (assuming first graph for simplicity)
         if let Some(graph) = workflow.graphs.first() {
             let (step_mapping, type_mapping, name_mapping) = self.calculate_step_mapping(graph)?;
-            
+
             // Calculate and store total steps
             let total_steps = step_mapping.values().max().copied().unwrap_or(0);
             *self.total_steps.write() = total_steps;
-            
+
             self.set_node_step_mapping(step_mapping);
-            
+
             // Store node type mapping for runtime use
             let mut node_type_mapping = self.node_type_mapping.write();
             *node_type_mapping = type_mapping;
-            
+
             // Store node name mapping for runtime use
             let mut node_name_mapping = self.node_name_mapping.write();
             *node_name_mapping = name_mapping;
-            
+
             tracing::debug!("Successfully calculated step mapping from workflow");
         } else {
             tracing::warn!("No graphs found in workflow");
         }
-        
+
         Ok(())
     }
 
-    fn calculate_step_mapping(&self, graph: &SimpleGraph) -> Result<(HashMap<String, usize>, HashMap<String, String>, HashMap<String, String>), Box<dyn std::error::Error>> {
+    fn calculate_step_mapping(
+        &self,
+        graph: &SimpleGraph,
+    ) -> Result<
+        (
+            HashMap<String, usize>,
+            HashMap<String, String>,
+            HashMap<String, String>,
+        ),
+        Box<dyn std::error::Error>,
+    > {
         // Build adjacency list and in-degree count
         let mut adj_list: HashMap<String, Vec<String>> = HashMap::new();
         let mut in_degree: HashMap<String, usize> = HashMap::new();
@@ -156,7 +169,10 @@ impl UserFacingLogHandler {
 
         // Build graph from edges
         for edge in &graph.edges {
-            adj_list.entry(edge.from.clone()).or_default().push(edge.to.clone());
+            adj_list
+                .entry(edge.from.clone())
+                .or_default()
+                .push(edge.to.clone());
             *in_degree.entry(edge.to.clone()).or_insert(0) += 1;
         }
 
@@ -206,7 +222,7 @@ impl UserFacingLogHandler {
                     step_mapping.insert(node_id.clone(), step_counter);
                     name_mapping.insert(node_id.clone(), node.name.clone());
                     tracing::debug!("Step {}: {} ({})", step_counter, node.name, node_id);
-                    
+
                     // Store the actual action type for runtime use
                     // The actual categorization (source/processor/sink) will be determined at runtime
                     // based on the node's behavior and connections
@@ -241,7 +257,12 @@ impl UserFacingLogHandler {
 
     pub fn handle_runtime_event(&self, event: &reearth_flow_runtime::event::Event) {
         match event {
-            reearth_flow_runtime::event::Event::Log { level: _, span: _, node_handle: _, message: _ } => {
+            reearth_flow_runtime::event::Event::Log {
+                level: _,
+                span: _,
+                node_handle: _,
+                message: _,
+            } => {
                 // Simplified approach: No longer handle action-log messages for Running status
                 // All nodes now emit Running at NodeStatus::Starting timing
             }
@@ -249,7 +270,7 @@ impl UserFacingLogHandler {
                 // Mark this node as failed
                 self.failed_nodes.write().insert(node.id.to_string());
                 *self.workflow_error_occurred.write() = true;
-                
+
                 let node_map = self.node_execution_map.read();
                 if let Some(node_info) = node_map.get(&node.id.to_string()) {
                     let event = UserFacingLogEvent {
@@ -270,7 +291,7 @@ impl UserFacingLogHandler {
             reearth_flow_runtime::event::Event::SinkFinishFailed { name } => {
                 // Mark workflow as failed
                 *self.workflow_error_occurred.write() = true;
-                
+
                 // For sink failures, we might not have node_id, so use the name
                 let event = UserFacingLogEvent {
                     workflow_id: self.workflow_id,
@@ -283,7 +304,11 @@ impl UserFacingLogHandler {
                 };
                 self.publish_event(event);
             }
-            reearth_flow_runtime::event::Event::NodeStatusChanged { node_handle, status, feature_id: _ } => {
+            reearth_flow_runtime::event::Event::NodeStatusChanged {
+                node_handle,
+                status,
+                feature_id: _,
+            } => {
                 self.handle_node_status_changed(node_handle, status);
             }
             _ => {
@@ -292,9 +317,13 @@ impl UserFacingLogHandler {
         }
     }
 
-    fn handle_node_status_changed(&self, node_handle: &reearth_flow_runtime::node::NodeHandle, status: &reearth_flow_runtime::node::NodeStatus) {
+    fn handle_node_status_changed(
+        &self,
+        node_handle: &reearth_flow_runtime::node::NodeHandle,
+        status: &reearth_flow_runtime::node::NodeStatus,
+    ) {
         let node_id = node_handle.id.to_string();
-        
+
         match status {
             reearth_flow_runtime::node::NodeStatus::Starting => {
                 // Create node execution info from workflow analysis
@@ -308,7 +337,9 @@ impl UserFacingLogHandler {
 
                 // Get node name from mapping or use node type as fallback
                 let name_mapping = self.node_name_mapping.read();
-                let node_name = name_mapping.get(&node_id).cloned()
+                let node_name = name_mapping
+                    .get(&node_id)
+                    .cloned()
                     .unwrap_or_else(|| format!("{} Node", node_type));
 
                 let node_info = NodeExecutionInfo {
@@ -351,12 +382,15 @@ impl UserFacingLogHandler {
                             level: UserFacingLogLevel::Info,
                             node_id: Some(node_id),
                             node_name: Some(node_name),
-                            display_message: format!("Step {}: {} - Running...", step_number, node_info.node_name),
+                            display_message: format!(
+                                "Step {}: {} - Running...",
+                                step_number, node_info.node_name
+                            ),
                         };
                         self.publish_event(event);
                     }
                 }
-            },
+            }
             reearth_flow_runtime::node::NodeStatus::Completed => {
                 let mut node_map = self.node_execution_map.write();
                 if let Some(node_info) = node_map.get_mut(&node_id) {
@@ -364,7 +398,7 @@ impl UserFacingLogHandler {
                     if !node_info.finished_logged {
                         node_info.finished_logged = true;
                         let elapsed = node_info.start_time.elapsed();
-                        
+
                         // Check if this specific node failed
                         let is_node_failed = self.failed_nodes.read().contains(&node_id);
                         let (level, status_text) = if is_node_failed {
@@ -372,7 +406,7 @@ impl UserFacingLogHandler {
                         } else {
                             (UserFacingLogLevel::Success, "Finished")
                         };
-                        
+
                         let event = UserFacingLogEvent {
                             workflow_id: self.workflow_id,
                             job_id: self.job_id,
@@ -397,9 +431,12 @@ impl UserFacingLogHandler {
                             let (level, message) = if error_occurred {
                                 (UserFacingLogLevel::Error, "Workflow failed.".to_string())
                             } else {
-                                (UserFacingLogLevel::Success, "Workflow finished successfully.".to_string())
+                                (
+                                    UserFacingLogLevel::Success,
+                                    "Workflow finished successfully.".to_string(),
+                                )
                             };
-                            
+
                             let event = UserFacingLogEvent {
                                 workflow_id: self.workflow_id,
                                 job_id: self.job_id,
@@ -413,7 +450,7 @@ impl UserFacingLogHandler {
                         }
                     }
                 }
-            },
+            }
             _ => {
                 // Handle other statuses if needed
             }
@@ -431,7 +468,9 @@ impl UserFacingLogHandler {
         }
     }
 
-    fn extract_span_fields<S>(ctx: &Context<'_, S>) -> Option<(Option<String>, Option<String>, Option<String>)>
+    fn extract_span_fields<S>(
+        ctx: &Context<'_, S>,
+    ) -> Option<(Option<String>, Option<String>, Option<String>)>
     where
         S: Subscriber + for<'a> LookupSpan<'a>,
     {
@@ -443,7 +482,7 @@ impl UserFacingLogHandler {
         // Walk up the span hierarchy to find node or workflow information
         for span in current_span.scope() {
             let extensions = span.extensions();
-            
+
             // Check if this is a node execution span
             if span.name() == "node_execution" {
                 if let Some(fields) = extensions.get::<SpanFields>() {
@@ -451,7 +490,7 @@ impl UserFacingLogHandler {
                     node_name = fields.node_name.clone();
                 }
             }
-            
+
             // Check if this is a workflow execution span
             if span.name() == "workflow_execution" {
                 if let Some(fields) = extensions.get::<SpanFields>() {
@@ -486,7 +525,10 @@ impl UserFacingLogHandler {
                     return true;
                 }
                 // Also catch errors from dependencies that might be relevant
-                if target.contains("action-") || target.contains("processor") || target.contains("sink") {
+                if target.contains("action-")
+                    || target.contains("processor")
+                    || target.contains("sink")
+                {
                     return true;
                 }
             }
@@ -554,9 +596,7 @@ pub struct UserFacingLogLayer {
 
 impl UserFacingLogLayer {
     pub fn new(handler: Arc<UserFacingLogHandler>) -> Self {
-        Self {
-            handler,
-        }
+        Self { handler }
     }
 }
 
@@ -649,7 +689,10 @@ where
                             level: UserFacingLogLevel::Info,
                             node_id: Some(node_id),
                             node_name: Some(node_name),
-                            display_message: format!("Step {}: {} - Running...", step_number, node_info.node_name),
+                            display_message: format!(
+                                "Step {}: {} - Running...",
+                                step_number, node_info.node_name
+                            ),
                         };
                         self.handler.publish_event(event);
                     }
@@ -668,7 +711,7 @@ where
                         let node_map = self.handler.node_execution_map.read();
                         if let Some(node_info) = node_map.get(node_id) {
                             let elapsed = node_info.start_time.elapsed();
-                            
+
                             // Check if this specific node failed
                             let is_node_failed = self.handler.failed_nodes.read().contains(node_id);
                             let (level, status_text) = if is_node_failed {
@@ -676,7 +719,7 @@ where
                             } else {
                                 (UserFacingLogLevel::Success, "Finished")
                             };
-                            
+
                             let event = UserFacingLogEvent {
                                 workflow_id: self.handler.workflow_id,
                                 job_id: self.handler.job_id,
@@ -704,9 +747,12 @@ where
                     let (level, message) = if error_occurred {
                         (UserFacingLogLevel::Error, "Workflow failed.".to_string())
                     } else {
-                        (UserFacingLogLevel::Success, "Workflow finished successfully.".to_string())
+                        (
+                            UserFacingLogLevel::Success,
+                            "Workflow finished successfully.".to_string(),
+                        )
                     };
-                    
+
                     let event = UserFacingLogEvent {
                         workflow_id: self.handler.workflow_id,
                         job_id: self.handler.job_id,
@@ -732,29 +778,36 @@ where
             let mut message_extractor = MessageExtractor::default();
             event.record(&mut message_extractor);
             let message = message_extractor.0.unwrap_or_default();
-            
+
             // Check for error conditions
-            if *level == Level::ERROR || *level == Level::WARN || 
-               message.contains("Failed") || message.contains("failed") || 
-               message.contains("Error") || message.contains("error") ||
-               message.contains("panic") || message.contains("Panic") ||
-               message.contains("JoinError") {
-                
+            if *level == Level::ERROR
+                || *level == Level::WARN
+                || message.contains("Failed")
+                || message.contains("failed")
+                || message.contains("Error")
+                || message.contains("error")
+                || message.contains("panic")
+                || message.contains("Panic")
+                || message.contains("JoinError")
+            {
                 // Mark workflow as failed
                 *self.handler.workflow_error_occurred.write() = true;
-                
+
                 // Create user-friendly error message
-                let user_friendly_message = if message.contains("JoinError") && message.contains("Panic") {
-                    "A critical error occurred during workflow execution."
-                } else if message.contains("panic") || message.contains("Panic") {
-                    "A panic occurred during execution."
-                } else if message.contains("Failed to workflow") {
-                    "Workflow execution failed."
-                } else {
-                    &message
-                };
-                
-                let display_message = if let Some((_node_id, node_name, _)) = UserFacingLogHandler::extract_span_fields(&ctx) {
+                let user_friendly_message =
+                    if message.contains("JoinError") && message.contains("Panic") {
+                        "A critical error occurred during workflow execution."
+                    } else if message.contains("panic") || message.contains("Panic") {
+                        "A panic occurred during execution."
+                    } else if message.contains("Failed to workflow") {
+                        "Workflow execution failed."
+                    } else {
+                        &message
+                    };
+
+                let display_message = if let Some((_node_id, node_name, _)) =
+                    UserFacingLogHandler::extract_span_fields(&ctx)
+                {
                     if let Some(node_name) = &node_name {
                         format!("{} - {}", node_name, user_friendly_message)
                     } else {
@@ -764,12 +817,14 @@ where
                     user_friendly_message.to_string()
                 };
 
-                if let Some((node_id, node_name, _)) = UserFacingLogHandler::extract_span_fields(&ctx) {
+                if let Some((node_id, node_name, _)) =
+                    UserFacingLogHandler::extract_span_fields(&ctx)
+                {
                     // Mark this specific node as failed
                     if let Some(ref nid) = node_id {
                         self.handler.failed_nodes.write().insert(nid.clone());
                     }
-                    
+
                     let event = UserFacingLogEvent {
                         workflow_id: self.handler.workflow_id,
                         job_id: self.handler.job_id,
@@ -839,7 +894,7 @@ impl tracing::field::Visit for MessageExtractor {
             self.0 = Some(value.to_string());
         }
     }
-    
+
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
         if field.name() == "message" && self.0.is_none() {
             self.0 = Some(format!("{:?}", value));
