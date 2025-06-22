@@ -66,7 +66,7 @@ func Lang(ctx context.Context, lang *language.Tag) string {
 		return defaultLang.String()
 	}
 
-	l := u.Metadata().Lang()
+	l := u.Lang()
 	if l.IsRoot() {
 		return defaultLang.String()
 	}
