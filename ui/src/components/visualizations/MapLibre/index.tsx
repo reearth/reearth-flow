@@ -69,15 +69,26 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
 
   const handleFlyToSelectedFeature = useCallback(() => {
     if (mapRef.current && selectedFeature) {
-      const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
-
-      mapRef.current.fitBounds(
-        [
-          [minLng, minLat],
-          [maxLng, maxLat],
-        ],
-        { padding: 40, duration: 500 },
-      );
+      try {
+        if (
+          !selectedFeature.geometry ||
+          !selectedFeature.geometry.type ||
+          !selectedFeature.geometry.coordinates
+        ) {
+          console.error("Invalid selectedFeature geometry:", selectedFeature);
+          return;
+        }
+        const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
+        mapRef.current.fitBounds(
+          [
+            [minLng, minLat],
+            [maxLng, maxLat],
+          ],
+          { padding: 40, duration: 500 },
+        );
+      } catch (err) {
+        console.error("Error computing bbox for selectedFeature:", err);
+      }
     }
   }, [selectedFeature]);
 
