@@ -1,6 +1,6 @@
 {
   "name": "@reearth/flow-web",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "repository": "https://github.com/reearth/reearth-flow.git",
   "license": "APACHE-2.0",
   "type": "module",
