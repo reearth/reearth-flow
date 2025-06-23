@@ -1,4 +1,4 @@
-import { ChalkboardTeacher, HardDrive } from "@phosphor-icons/react";
+import { ChalkboardTeacherIcon, HardDriveIcon } from "@phosphor-icons/react";
 import { memo, useState } from "react";
 import { Doc } from "yjs";
 
@@ -133,20 +133,20 @@ const TopBar: React.FC<Props> = ({
         <div className="pr-4 pl-2">
           <Breadcrumb />
         </div>
-        <div className="flex gap-2 items-center p-1 rounded-md">
+        <div className="flex items-center gap-2 rounded-md p-1">
           {/* <div className="border-r border-primary h-4/5" /> */}
           <IconButton
             className="h-[30px]"
             variant="outline"
             tooltipText={t("Project Variables")}
-            icon={<ChalkboardTeacher weight="thin" size={18} />}
+            icon={<ChalkboardTeacherIcon weight="thin" size={18} />}
             onClick={() => setShowProjectVarsDialog(true)}
           />
           <IconButton
             className="h-[30px]"
             variant="outline"
             tooltipText={t("Resources")}
-            icon={<HardDrive weight="thin" size={18} />}
+            icon={<HardDriveIcon weight="thin" size={18} />}
             disabled
           />
           {/* <div className="border-r border-primary h-4/5" /> */}
