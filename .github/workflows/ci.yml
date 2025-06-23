@@ -239,6 +239,9 @@ jobs:
 
   prepare-info-pr:
     runs-on: ubuntu-latest
+    if: ${{ needs.prepare.outputs.ui == 'true' && github.event_name == 'pull_request' && github.base_ref == 'main' && (github.event.action == 'opened' || github.event.action == 'synchronize') }}
+    needs:
+      - prepare
     outputs:
       build: ${{ steps.prepare.outputs.build }}
       sha_short: ${{ steps.prepare.outputs.sha_short }}
@@ -252,10 +255,7 @@ jobs:
   # PR Preview Jobs
   build-ui-pr:
     needs:
-      - prepare
-      # - ci-ui
       - prepare-info-pr
-    if: ${{ needs.prepare.outputs.ui == 'true' && github.event_name == 'pull_request' && github.base_ref == 'main' && (github.event.action == 'opened' || github.event.action == 'synchronize') }}
     uses: reearth/actions/.github/workflows/build-docker.yml@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5
     with:
       image: ${{ secrets.WEB_IMAGE_GC }}
@@ -273,7 +273,6 @@ jobs:
     needs:
       - prepare-info-pr
       - build-ui-pr
-      - prepare
     runs-on: ubuntu-latest
     outputs:
       preview_url: ${{ steps.deploy.outputs.url }}
