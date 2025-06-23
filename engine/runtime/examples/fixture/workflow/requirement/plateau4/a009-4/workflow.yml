@@ -37,7 +37,7 @@ graphs:
         with:
           format: csv
           output: |
-            file::join_path(env.get("currentPath"), "a009-1.csv")
+            file::join_path(env.get("currentPath"), "a009-4.csv")
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
