@@ -242,7 +242,7 @@ impl BroadcastPool {
             }
 
             let gcs_state = gcs_txn.state_vector();
-            let awareness_txn = awareness_doc.transact_mut();
+            let awareness_txn = awareness_doc.transact();
             let update = awareness_txn.encode_diff_v1(&gcs_state);
 
             if !update.is_empty() {
@@ -374,6 +374,8 @@ impl BroadcastPool {
 
         let update = Update::decode_v1(&update_bytes)?;
         gcs_txn.apply_update(update)?;
+        drop(gcs_txn); // drop the mut txn
+        let gcs_txn = gcs_doc.transact();
         self.manager.store.flush_doc_v2(doc_id, &gcs_txn).await?;
         Ok(())
     }

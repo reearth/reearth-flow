@@ -616,7 +616,7 @@ impl BroadcastGroup {
 
                         let gcs_state = gcs_txn.state_vector();
 
-                        let awareness_txn = awareness_doc.transact_mut();
+                        let awareness_txn = awareness_doc.transact();
                         let awareness_state = awareness_txn.state_vector();
 
                         let update = awareness_txn.encode_diff_v1(&gcs_state);

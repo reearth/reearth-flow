@@ -310,7 +310,7 @@ mod tests {
             text.push(&mut txn, "V2 content");
         }
 
-        let txn = doc.transact_mut();
+        let txn = doc.transact();
         store.flush_doc_v2(doc_name, &txn).await.unwrap();
 
         let loaded_doc = store.load_doc_v2(doc_name).await.unwrap();

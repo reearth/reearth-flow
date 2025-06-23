@@ -51,7 +51,7 @@ use keys::{
 use std::convert::TryInto;
 use yrs::updates::decoder::Decode;
 use yrs::updates::encoder::Encode;
-use yrs::{Doc, ReadTxn, StateVector, Transact, TransactionMut, Update};
+use yrs::{Doc, ReadTxn, StateVector, Transact, Transaction, TransactionMut, Update};
 
 use super::first_zero_bit;
 /// A trait to be implemented by the specific key-value store transaction equivalent in order to
@@ -482,7 +482,7 @@ where
     async fn flush_doc_v2<K: AsRef<[u8]> + ?Sized + Sync>(
         &self,
         name: &K,
-        txn: &TransactionMut,
+        txn: &Transaction,
     ) -> Result<(), Error> {
         let doc_key = format!("doc_v2:{}", hex::encode(name.as_ref()));
         let doc_key_bytes = doc_key.as_bytes();
