@@ -266,8 +266,6 @@ jobs:
           context: ui
           use_dockerhub: false
           name: ${{ needs.prepare-info-pr.outputs.name }}
-          new_tag: ${{ needs.prepare-info-pr.outputs.new_tag }}
-          new_tag_short: ${{ needs.prepare-info-pr.outputs.new_tag_short }}
           sha_short: ${{ needs.prepare-info-pr.outputs.sha_short }}
 
   deploy-ui-pr:
