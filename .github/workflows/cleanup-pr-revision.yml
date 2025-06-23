@@ -13,8 +13,8 @@ jobs:
       - name: Remove Cloud Run Tag
         uses: reearth/actions/remove-cloud-run-tag@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5
         with:
-          region: ${{ secrets.GCP_REGION }}
-          service: reearth-flow-ui
-          service_account: ${{ secrets.GCP_SA_EMAIL }}
+          region: ${{ secrets.GC_REGION }}
+          service: reearth-flow-web
+          service_account: ${{ secrets.GC_SA_EMAIL }}
           tag: pr-${{ github.event.pull_request.number }}
-          workload_identity_provider: ${{ secrets.GCP_WIP }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}

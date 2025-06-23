@@ -237,29 +237,41 @@ jobs:
     if: ${{ !failure() && needs.ci-policies.result == 'success' && github.event_name == 'push' && github.ref_name == 'main' }}
     secrets: inherit
 
+  prepare-info-pr:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.prepare.outputs.build }}
+      sha_short: ${{ steps.prepare.outputs.sha_short }}
+      new_tag: ${{ steps.prepare.outputs.new_tag }}
+      new_tag_short: ${{ steps.prepare.outputs.new_tag_short }}
+      name: ${{ steps.prepare.outputs.name }}
+    steps:
+      - uses: reearth/actions/prepare-build@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5
+        id: prepare
+
   # PR Preview Jobs
   build-ui-pr:
     needs:
       - prepare
       - ci-ui
-      - ci-collect-info
+      - prepare-info-pr
     if: ${{ needs.prepare.outputs.ui == 'true' && github.event_name == 'pull_request' && github.base_ref == 'main' && (github.event.action == 'opened' || github.event.action == 'synchronize') }}
     uses: reearth/actions/.github/workflows/build-docker.yml@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5
     with:
-      image: reearth/reearth-flow:ui
+      image: ${{ secrets.WEB_IMAGE_GC }}
       context: ui
       use_dockerhub: false
-      name: ${{ needs.ci-collect-info.outputs.sha_short }}
-      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
-      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
+      name: ${{ needs.prepare-info-pr.outputs.sha_short }}
+      new_tag: ${{ needs.prepare-info-pr.outputs.new_tag }}
+      new_tag_short: ${{ needs.prepare-info-pr.outputs.new_tag_short }}
+      sha_short: ${{ needs.prepare-info-pr.outputs.sha_short }}
     secrets:
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
   deploy-ui-pr:
     needs:
-      - ci-collect-info
+      - prepare-info-pr
       - build-ui-pr
       - prepare
     runs-on: ubuntu-latest
@@ -278,13 +290,13 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: reearth/actions/deploy-cloud-run-with-tag@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5
+      - uses: reearth/actions/deploy-cloud-run-with-tag@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5 # main
         id: deploy
         with:
-          image: ${{ needs.build-ui-pr.outputs.image }}
-          image_internal: '${{ secrets.GC_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-ui:${{ needs.ci-collect-info.outputs.sha_short }}'
-          region: ${{ secrets.GC_REGION }}
-          service: reearth-flow-ui
-          service_account: ${{ secrets.GC_SA_EMAIL }}
-          tag: pr-${{ github.event.pull_request.number }}
-          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
+            image: ${{ needs.build-ui-pr.outputs.image }}
+            image_internal: '${{ secrets.GC_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-web:${{ needs.prepare-info-pr.outputs.sha_short }}'
+            region: ${{ secrets.GC_REGION }}
+            service: reearth-flow-web
+            service_account: ${{ secrets.GC_SA_EMAIL }}
+            tag: pr-${{ github.event.pull_request.number }}
+            workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
