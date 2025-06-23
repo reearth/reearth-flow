@@ -14,6 +14,7 @@ export const useProjectVariables = () => {
     createProjectVariablesMutation,
     updateProjectVariablesMutation,
     deleteProjectVariableMutation,
+    deleteProjectVariablesMutation,
   } = useQueries();
 
   const { toast } = useToast();
@@ -105,10 +106,10 @@ export const useProjectVariables = () => {
     }
   };
 
-  const deleteProjectVariable = async (paramId: string) => {
+  const deleteProjectVariable = async (paramId: string, projectId: string) => {
     const { mutateAsync, ...rest } = deleteProjectVariableMutation;
     try {
-      const result = await mutateAsync(paramId);
+      const result = await mutateAsync({ paramId, projectId });
       if (result?.success) {
         toast({
           title: t("Project Variable Deleted"),
@@ -129,10 +130,38 @@ export const useProjectVariables = () => {
     }
   };
 
+  const deleteProjectVariables = async (
+    projectId: string,
+    paramIds: string[],
+  ) => {
+    const { mutateAsync, ...rest } = deleteProjectVariablesMutation;
+    try {
+      const result = await mutateAsync({ paramIds, projectId });
+      if (result?.success) {
+        toast({
+          title: t("Project Variables Deleted"),
+          description: t("Project variables have been deleted successfully."),
+        });
+        return { success: true, ...rest };
+      } else {
+        throw new Error("Batch delete operation returned false");
+      }
+    } catch (err) {
+      console.error("Error deleting project variables:", err);
+      toast({
+        title: t("Project Variable Deletion Failed"),
+        description: t("There was an error deleting project variables."),
+        variant: "warning",
+      });
+      return { success: false, ...rest };
+    }
+  };
+
   return {
     useGetProjectVariables,
     createProjectVariable,
     updateProjectVariable,
     deleteProjectVariable,
+    deleteProjectVariables,
   };
 };

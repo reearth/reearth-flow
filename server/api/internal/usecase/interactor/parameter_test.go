@@ -271,3 +271,89 @@ func TestParameter_UpdateParameterValue_NotFound(t *testing.T) {
 	assert.Nil(t, updatedParam)
 	assert.Same(t, rerror.ErrNotFound, err)
 }
+
+func TestParameter_RemoveParameters(t *testing.T) {
+	i, ctx, _, pid := setupParameterInteractor()
+
+	// Create multiple parameters for batch removal test
+	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
+		ProjectID:    pid,
+		Name:         "param1",
+		Type:         parameter.TypeText,
+		DefaultValue: "val1",
+	})
+	assert.NoError(t, err)
+
+	p2, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
+		ProjectID:    pid,
+		Name:         "param2",
+		Type:         parameter.TypeText,
+		DefaultValue: "val2",
+	})
+	assert.NoError(t, err)
+
+	p3, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
+		ProjectID:    pid,
+		Name:         "param3",
+		Type:         parameter.TypeText,
+		DefaultValue: "val3",
+	})
+	assert.NoError(t, err)
+
+	p4, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
+		ProjectID:    pid,
+		Name:         "param4",
+		Type:         parameter.TypeText,
+		DefaultValue: "val4",
+	})
+	assert.NoError(t, err)
+
+	// Remove p1 and p3 (non-consecutive parameters)
+	removedIDs, err := i.RemoveParameters(ctx, id.ParameterIDList{p1.ID(), p3.ID()})
+	assert.NoError(t, err)
+	assert.Len(t, removedIDs, 2)
+	assert.Contains(t, removedIDs, p1.ID())
+	assert.Contains(t, removedIDs, p3.ID())
+
+	// Check that only p2 and p4 remain with properly recalculated indexes
+	params, err := i.FetchByProject(ctx, pid)
+	assert.NoError(t, err)
+	assert.Len(t, *params, 2)
+
+	// Find remaining parameters
+	var remainingP2, remainingP4 *parameter.Parameter
+	for _, p := range *params {
+		if p.ID() == p2.ID() {
+			remainingP2 = p
+		} else if p.ID() == p4.ID() {
+			remainingP4 = p
+		}
+	}
+
+	assert.NotNil(t, remainingP2)
+	assert.NotNil(t, remainingP4)
+
+	// Check that indexes are recalculated sequentially (0, 1)
+	assert.Equal(t, 0, remainingP2.Index())
+	assert.Equal(t, 1, remainingP4.Index())
+}
+
+func TestParameter_RemoveParameters_EmptyList(t *testing.T) {
+	i, ctx, _, _ := setupParameterInteractor()
+
+	// Remove empty list should succeed
+	removedIDs, err := i.RemoveParameters(ctx, id.ParameterIDList{})
+	assert.NoError(t, err)
+	assert.Len(t, removedIDs, 0)
+}
+
+func TestParameter_RemoveParameters_NotFound(t *testing.T) {
+	i, ctx, _, _ := setupParameterInteractor()
+
+	// Try removing parameters that don't exist
+	nonexistentID1 := id.NewParameterID()
+	nonexistentID2 := id.NewParameterID()
+	removedIDs, err := i.RemoveParameters(ctx, id.ParameterIDList{nonexistentID1, nonexistentID2})
+	assert.Nil(t, removedIDs)
+	assert.Same(t, rerror.ErrNotFound, err)
+}

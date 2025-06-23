@@ -197,6 +197,7 @@ type ComplexityRoot struct {
 		RemoveMemberFromWorkspace func(childComplexity int, input gqlmodel.RemoveMemberFromWorkspaceInput) int
 		RemoveMyAuth              func(childComplexity int, input gqlmodel.RemoveMyAuthInput) int
 		RemoveParameter           func(childComplexity int, input gqlmodel.RemoveParameterInput) int
+		RemoveParameters          func(childComplexity int, input gqlmodel.RemoveParametersInput) int
 		RollbackProject           func(childComplexity int, projectID gqlmodel.ID, version int) int
 		RunProject                func(childComplexity int, input gqlmodel.RunProjectInput) int
 		SaveSnapshot              func(childComplexity int, projectID gqlmodel.ID) int
@@ -448,6 +449,7 @@ type MutationResolver interface {
 	UpdateParameter(ctx context.Context, paramID gqlmodel.ID, input gqlmodel.UpdateParameterInput) (*gqlmodel.Parameter, error)
 	UpdateParameterOrder(ctx context.Context, projectID gqlmodel.ID, input gqlmodel.UpdateParameterOrderInput) ([]*gqlmodel.Parameter, error)
 	RemoveParameter(ctx context.Context, input gqlmodel.RemoveParameterInput) (bool, error)
+	RemoveParameters(ctx context.Context, input gqlmodel.RemoveParametersInput) (bool, error)
 	CreateProject(ctx context.Context, input gqlmodel.CreateProjectInput) (*gqlmodel.ProjectPayload, error)
 	UpdateProject(ctx context.Context, input gqlmodel.UpdateProjectInput) (*gqlmodel.ProjectPayload, error)
 	DeleteProject(ctx context.Context, input gqlmodel.DeleteProjectInput) (*gqlmodel.DeleteProjectPayload, error)
@@ -1224,6 +1226,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemoveParameter(childComplexity, args["input"].(gqlmodel.RemoveParameterInput)), true
+
+	case "Mutation.removeParameters":
+		if e.complexity.Mutation.RemoveParameters == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeParameters_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RemoveParameters(childComplexity, args["input"].(gqlmodel.RemoveParametersInput)), true
 
 	case "Mutation.rollbackProject":
 		if e.complexity.Mutation.RollbackProject == nil {
@@ -2369,6 +2383,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRemoveMemberFromWorkspaceInput,
 		ec.unmarshalInputRemoveMyAuthInput,
 		ec.unmarshalInputRemoveParameterInput,
+		ec.unmarshalInputRemoveParametersInput,
 		ec.unmarshalInputRunProjectInput,
 		ec.unmarshalInputShareProjectInput,
 		ec.unmarshalInputSignupInput,
@@ -2920,6 +2935,10 @@ input RemoveParameterInput {
   paramId: ID!
 }
 
+input RemoveParametersInput {
+  paramIds: [ID!]!
+}
+
 # Query and Mutation
 
 extend type Query {
@@ -2937,6 +2956,8 @@ extend type Mutation {
   ): [Parameter!]!
 
   removeParameter(input: RemoveParameterInput!): Boolean!
+
+  removeParameters(input: RemoveParametersInput!): Boolean!
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/project.graphql", Input: `type Project implements Node {
@@ -3638,6 +3659,21 @@ func (ec *executionContext) field_Mutation_removeParameter_args(ctx context.Cont
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNRemoveParameterInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRemoveParameterInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeParameters_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.RemoveParametersInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNRemoveParametersInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRemoveParametersInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -8474,6 +8510,61 @@ func (ec *executionContext) fieldContext_Mutation_removeParameter(ctx context.Co
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_removeParameter_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeParameters(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_removeParameters(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().RemoveParameters(rctx, fc.Args["input"].(gqlmodel.RemoveParametersInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeParameters(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeParameters_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -18356,6 +18447,33 @@ func (ec *executionContext) unmarshalInputRemoveParameterInput(ctx context.Conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputRemoveParametersInput(ctx context.Context, obj interface{}) (gqlmodel.RemoveParametersInput, error) {
+	var it gqlmodel.RemoveParametersInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"paramIds"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "paramIds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("paramIds"))
+			data, err := ec.unmarshalNID2ᚕgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ParamIds = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, obj interface{}) (gqlmodel.RunProjectInput, error) {
 	var it gqlmodel.RunProjectInput
 	asMap := map[string]interface{}{}
@@ -20185,6 +20303,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "removeParameter":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_removeParameter(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeParameters":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeParameters(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -23544,6 +23669,11 @@ func (ec *executionContext) unmarshalNRemoveMyAuthInput2githubᚗcomᚋreearth�
 
 func (ec *executionContext) unmarshalNRemoveParameterInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRemoveParameterInput(ctx context.Context, v interface{}) (gqlmodel.RemoveParameterInput, error) {
 	res, err := ec.unmarshalInputRemoveParameterInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNRemoveParametersInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRemoveParametersInput(ctx context.Context, v interface{}) (gqlmodel.RemoveParametersInput, error) {
+	res, err := ec.unmarshalInputRemoveParametersInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

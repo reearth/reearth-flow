@@ -57,6 +57,10 @@ input RemoveParameterInput {
   paramId: ID!
 }
 
+input RemoveParametersInput {
+  paramIds: [ID!]!
+}
+
 # Query and Mutation
 
 extend type Query {
@@ -74,4 +78,6 @@ extend type Mutation {
   ): [Parameter!]!
 
   removeParameter(input: RemoveParameterInput!): Boolean!
+
+  removeParameters(input: RemoveParametersInput!): Boolean!
 }

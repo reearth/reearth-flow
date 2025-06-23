@@ -1,17 +1,12 @@
 import { ChalkboardTeacherIcon, HardDriveIcon } from "@phosphor-icons/react";
-import { memo, useState, useCallback, useMemo, useEffect } from "react";
+import { memo, useState, useCallback, useMemo } from "react";
 import { Doc } from "yjs";
 
 import { IconButton } from "@flow/components";
 import { useProjectVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
-import {
-  ProjectVariable as ProjectVariableType,
-  VarType,
-  Project,
-} from "@flow/types";
-import { getDefaultValueForProjectVar } from "@flow/utils";
+import { ProjectVariable as ProjectVariableType, Project } from "@flow/types";
 
 import { WorkflowTabs } from "..";
 
@@ -67,45 +62,31 @@ const TopBar: React.FC<Props> = ({
     createProjectVariable,
     updateProjectVariable,
     deleteProjectVariable,
+    deleteProjectVariables,
   } = useProjectVariables();
 
   const { projectVariables } = useGetProjectVariables(currentProject?.id);
 
-  const initialProjectVariables = useMemo(
+  const currentProjectVariables = useMemo(
     () => projectVariables ?? [],
     [projectVariables],
   );
 
-  const [updatedProjectVariables, setUpdatedProjectVariables] = useState<
-    ProjectVariableType[]
-  >(initialProjectVariables);
-
-  useEffect(() => {
-    setUpdatedProjectVariables(initialProjectVariables);
-  }, [initialProjectVariables]);
-
   const handleProjectVariableAdd = useCallback(
-    async (type: VarType) => {
+    async (projectVariable: ProjectVariableType) => {
       if (!currentProject) return;
-      const defaultValue = getDefaultValueForProjectVar(type);
 
-      const res = await createProjectVariable(
+      await createProjectVariable(
         currentProject.id,
-        t("New Project Variable"),
-        defaultValue,
-        type,
-        true,
-        true,
-        updatedProjectVariables.length,
+        projectVariable.name,
+        projectVariable.defaultValue,
+        projectVariable.type,
+        projectVariable.required,
+        projectVariable.public,
+        currentProjectVariables.length,
       );
-
-      if (!res.projectVariable) return;
-
-      const newProjectVariable = res.projectVariable;
-
-      setUpdatedProjectVariables((prev) => [...prev, newProjectVariable]);
     },
-    [currentProject, createProjectVariable, t, updatedProjectVariables.length],
+    [currentProject, createProjectVariable, currentProjectVariables.length],
   );
 
   const handleProjectVariableChange = useCallback(
@@ -118,31 +99,34 @@ const TopBar: React.FC<Props> = ({
         projectVariable.required,
         projectVariable.public,
       );
-
-      setUpdatedProjectVariables((prev) =>
-        prev.map((variable) =>
-          variable.id === projectVariable.id ? projectVariable : variable,
-        ),
-      );
     },
     [updateProjectVariable],
   );
 
   const handleProjectVariableDelete = useCallback(
     async (id: string) => {
-      try {
-        const result = await deleteProjectVariable(id);
+      if (!currentProject) return;
 
-        if (result.success) {
-          setUpdatedProjectVariables((prev) =>
-            prev.filter((variable) => variable.id !== id),
-          );
-        }
+      try {
+        await deleteProjectVariable(id, currentProject.id);
       } catch (error) {
         console.error("Failed to delete project variable:", error);
       }
     },
-    [deleteProjectVariable],
+    [deleteProjectVariable, currentProject],
+  );
+
+  const handleProjectVariablesBatchDelete = useCallback(
+    async (ids: string[]) => {
+      if (!currentProject) return;
+
+      try {
+        await deleteProjectVariables(currentProject.id, ids);
+      } catch (error) {
+        console.error("Failed to delete project variables:", error);
+      }
+    },
+    [deleteProjectVariables, currentProject],
   );
 
   const handleShowProjectVarsDialog = useCallback(() => {
@@ -152,6 +136,7 @@ const TopBar: React.FC<Props> = ({
   const handleCloseProjectVarsDialog = useCallback(() => {
     setShowProjectVarsDialog(false);
   }, []);
+
   return (
     <div className="flex w-[100vw] shrink-0 justify-between gap-2 bg-secondary">
       <div className="flex items-center gap-1">
@@ -208,11 +193,13 @@ const TopBar: React.FC<Props> = ({
       </div>
       <ProjectVariableDialog
         isOpen={showProjectVarsDialog}
-        currentProjectVariables={updatedProjectVariables}
+        currentProjectVariables={currentProjectVariables}
         onClose={handleCloseProjectVarsDialog}
         onAdd={handleProjectVariableAdd}
         onChange={handleProjectVariableChange}
         onDelete={handleProjectVariableDelete}
+        onDeleteBatch={handleProjectVariablesBatchDelete}
+        projectId={currentProject?.id}
       />
     </div>
   );

@@ -50,7 +50,6 @@ func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.Decla
 		}
 	}()
 
-	// Check if project exists
 	proj, err := i.projectRepo.FindByID(ctx, param.ProjectID)
 	if err != nil {
 		return nil, err
@@ -59,7 +58,6 @@ func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.Decla
 		return nil, rerror.ErrNotFound
 	}
 
-	// Get next index if not specified
 	var index int
 	if param.Index == nil {
 		params, err := i.paramRepo.FindByProject(ctx, param.ProjectID)
@@ -73,7 +71,6 @@ func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.Decla
 		index = *param.Index
 	}
 
-	// Create parameter
 	p, err := parameter.New().
 		ProjectID(param.ProjectID).
 		Name(param.Name).
@@ -113,13 +110,29 @@ func (i *Parameter) FetchByProject(ctx context.Context, pid id.ProjectID) (*para
 }
 
 func (i *Parameter) RemoveParameter(ctx context.Context, pid id.ParameterID) (id.ParameterID, error) {
-	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+	// Use the batch delete method for consistency
+	removedIDs, err := i.RemoveParameters(ctx, id.ParameterIDList{pid})
+	if err != nil {
 		return pid, err
+	}
+	if len(removedIDs) == 0 {
+		return pid, rerror.ErrNotFound
+	}
+	return removedIDs[0], nil
+}
+
+func (i *Parameter) RemoveParameters(ctx context.Context, pids id.ParameterIDList) (id.ParameterIDList, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
+	if len(pids) == 0 {
+		return id.ParameterIDList{}, nil
 	}
 
 	tx, err := i.transaction.Begin(ctx)
 	if err != nil {
-		return pid, err
+		return nil, err
 	}
 
 	ctx = tx.Context()
@@ -129,35 +142,66 @@ func (i *Parameter) RemoveParameter(ctx context.Context, pid id.ParameterID) (id
 		}
 	}()
 
-	p, err := i.paramRepo.FindByID(ctx, pid)
+	// Fetch all parameters to be deleted to validate they exist and get project info
+	paramsToDelete, err := i.paramRepo.FindByIDs(ctx, pids)
 	if err != nil {
-		return pid, err
+		return nil, err
 	}
-	if p == nil {
-		return pid, rerror.ErrNotFound
-	}
-
-	if err := i.paramRepo.Remove(ctx, pid); err != nil {
-		return pid, err
+	if paramsToDelete == nil || len(*paramsToDelete) == 0 {
+		return nil, rerror.ErrNotFound
 	}
 
-	// Update indices of remaining parameters
-	params, err := i.paramRepo.FindByProject(ctx, p.ProjectID())
+	// Validate all parameters belong to the same project
+	var projectID id.ProjectID
+	deleteIndexes := make(map[int]bool)
+	for i, param := range *paramsToDelete {
+		if i == 0 {
+			projectID = param.ProjectID()
+		} else if param.ProjectID() != projectID {
+			return nil, rerror.ErrNotFound
+		}
+		deleteIndexes[param.Index()] = true
+	}
+
+	// Remove all specified parameters
+	if err := i.paramRepo.RemoveAll(ctx, pids); err != nil {
+		return nil, err
+	}
+
+	// Fetch remaining parameters for the project to recalculate indexes
+	remainingParams, err := i.paramRepo.FindByProject(ctx, projectID)
 	if err != nil {
-		return pid, err
+		return nil, err
 	}
 
-	for _, param := range *params {
-		if param.Index() > p.Index() {
-			param.SetIndex(param.Index() - 1)
-			if err := i.paramRepo.Save(ctx, param); err != nil {
-				return pid, err
+	// Recalculate indexes for remaining parameters
+	if remainingParams != nil && len(*remainingParams) > 0 {
+		// Sort remaining parameters by current index
+		sortedParams := make([]*parameter.Parameter, len(*remainingParams))
+		copy(sortedParams, *remainingParams)
+
+		// Simple bubble sort by index (small datasets)
+		for i := 0; i < len(sortedParams)-1; i++ {
+			for j := 0; j < len(sortedParams)-i-1; j++ {
+				if sortedParams[j].Index() > sortedParams[j+1].Index() {
+					sortedParams[j], sortedParams[j+1] = sortedParams[j+1], sortedParams[j]
+				}
+			}
+		}
+
+		// Reassign sequential indexes starting from 0
+		for newIndex, param := range sortedParams {
+			if param.Index() != newIndex {
+				param.SetIndex(newIndex)
+				if err := i.paramRepo.Save(ctx, param); err != nil {
+					return nil, err
+				}
 			}
 		}
 	}
 
 	tx.Commit()
-	return pid, nil
+	return pids, nil
 }
 
 func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.UpdateParameterOrderParam) (*parameter.ParameterList, error) {
@@ -190,11 +234,9 @@ func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.U
 		return nil, rerror.ErrNotFound
 	}
 
-	// Update indices
 	currentIndex := targetParam.Index()
 	newIndex := param.NewIndex
 
-	// Reorder parameters
 	for _, p := range *params {
 		switch {
 		case p.ID() == param.ParamID:

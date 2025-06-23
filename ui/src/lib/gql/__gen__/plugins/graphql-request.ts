@@ -299,9 +299,10 @@ export type Mutation = {
   removeMemberFromWorkspace?: Maybe<RemoveMemberFromWorkspacePayload>;
   removeMyAuth?: Maybe<UpdateMePayload>;
   removeParameter: Scalars['Boolean']['output'];
+  removeParameters: Scalars['Boolean']['output'];
   rollbackProject?: Maybe<ProjectDocument>;
   runProject?: Maybe<RunProjectPayload>;
-  saveSnapshot?: Maybe<Scalars['Boolean']['output']>;
+  saveSnapshot: Scalars['Boolean']['output'];
   shareProject?: Maybe<ShareProjectPayload>;
   signup?: Maybe<SignupPayload>;
   unshareProject?: Maybe<UnshareProjectPayload>;
@@ -411,6 +412,11 @@ export type MutationRemoveMyAuthArgs = {
 
 export type MutationRemoveParameterArgs = {
   input: RemoveParameterInput;
+};
+
+
+export type MutationRemoveParametersArgs = {
+  input: RemoveParametersInput;
 };
 
 
@@ -798,6 +804,10 @@ export type RemoveMyAuthInput = {
 
 export type RemoveParameterInput = {
   paramId: Scalars['ID']['input'];
+};
+
+export type RemoveParametersInput = {
+  paramIds: Array<Scalars['ID']['input']>;
 };
 
 export enum Role {
@@ -1224,6 +1234,13 @@ export type DeleteProjectVariableMutationVariables = Exact<{
 
 
 export type DeleteProjectVariableMutation = { __typename?: 'Mutation', removeParameter: boolean };
+
+export type DeleteProjectVariablesMutationVariables = Exact<{
+  input: RemoveParametersInput;
+}>;
+
+
+export type DeleteProjectVariablesMutation = { __typename?: 'Mutation', removeParameters: boolean };
 
 export type GetSharedProjectQueryVariables = Exact<{
   token: Scalars['String']['input'];
@@ -1739,6 +1756,11 @@ export const DeleteProjectVariableDocument = gql`
   removeParameter(input: $input)
 }
     `;
+export const DeleteProjectVariablesDocument = gql`
+    mutation DeleteProjectVariables($input: RemoveParametersInput!) {
+  removeParameters(input: $input)
+}
+    `;
 export const GetSharedProjectDocument = gql`
     query GetSharedProject($token: String!) {
   sharedProject(token: $token) {
@@ -1950,149 +1972,152 @@ const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationTy
 
 export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
   return {
-    CreateDeployment(variables: CreateDeploymentMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateDeploymentMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<CreateDeploymentMutation>(CreateDeploymentDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateDeployment', 'mutation', variables);
+    CreateDeployment(variables: CreateDeploymentMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateDeploymentMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CreateDeploymentMutation>({ document: CreateDeploymentDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateDeployment', 'mutation', variables);
     },
-    UpdateDeployment(variables: UpdateDeploymentMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateDeploymentMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<UpdateDeploymentMutation>(UpdateDeploymentDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateDeployment', 'mutation', variables);
+    UpdateDeployment(variables: UpdateDeploymentMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateDeploymentMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateDeploymentMutation>({ document: UpdateDeploymentDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateDeployment', 'mutation', variables);
     },
-    DeleteDeployment(variables: DeleteDeploymentMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<DeleteDeploymentMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<DeleteDeploymentMutation>(DeleteDeploymentDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'DeleteDeployment', 'mutation', variables);
+    DeleteDeployment(variables: DeleteDeploymentMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteDeploymentMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteDeploymentMutation>({ document: DeleteDeploymentDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteDeployment', 'mutation', variables);
     },
-    ExecuteDeployment(variables: ExecuteDeploymentMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<ExecuteDeploymentMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<ExecuteDeploymentMutation>(ExecuteDeploymentDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'ExecuteDeployment', 'mutation', variables);
+    ExecuteDeployment(variables: ExecuteDeploymentMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<ExecuteDeploymentMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<ExecuteDeploymentMutation>({ document: ExecuteDeploymentDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'ExecuteDeployment', 'mutation', variables);
     },
-    GetDeployments(variables: GetDeploymentsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetDeploymentsQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetDeploymentsQuery>(GetDeploymentsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetDeployments', 'query', variables);
+    GetDeployments(variables: GetDeploymentsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetDeploymentsQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetDeploymentsQuery>({ document: GetDeploymentsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetDeployments', 'query', variables);
     },
-    GetDeploymentHead(variables: GetDeploymentHeadQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetDeploymentHeadQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetDeploymentHeadQuery>(GetDeploymentHeadDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetDeploymentHead', 'query', variables);
+    GetDeploymentHead(variables: GetDeploymentHeadQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetDeploymentHeadQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetDeploymentHeadQuery>({ document: GetDeploymentHeadDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetDeploymentHead', 'query', variables);
     },
-    GetLatestProjectSnapshot(variables: GetLatestProjectSnapshotQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetLatestProjectSnapshotQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetLatestProjectSnapshotQuery>(GetLatestProjectSnapshotDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetLatestProjectSnapshot', 'query', variables);
+    GetLatestProjectSnapshot(variables: GetLatestProjectSnapshotQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetLatestProjectSnapshotQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetLatestProjectSnapshotQuery>({ document: GetLatestProjectSnapshotDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetLatestProjectSnapshot', 'query', variables);
     },
-    GetProjectSnapshot(variables: GetProjectSnapshotQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetProjectSnapshotQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectSnapshotQuery>(GetProjectSnapshotDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetProjectSnapshot', 'query', variables);
+    GetProjectSnapshot(variables: GetProjectSnapshotQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetProjectSnapshotQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectSnapshotQuery>({ document: GetProjectSnapshotDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetProjectSnapshot', 'query', variables);
     },
-    GetProjectHistory(variables: GetProjectHistoryQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetProjectHistoryQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectHistoryQuery>(GetProjectHistoryDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetProjectHistory', 'query', variables);
+    GetProjectHistory(variables: GetProjectHistoryQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetProjectHistoryQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectHistoryQuery>({ document: GetProjectHistoryDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetProjectHistory', 'query', variables);
     },
-    PreviewSnapshot(variables: PreviewSnapshotMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<PreviewSnapshotMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<PreviewSnapshotMutation>(PreviewSnapshotDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'PreviewSnapshot', 'mutation', variables);
+    PreviewSnapshot(variables: PreviewSnapshotMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<PreviewSnapshotMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<PreviewSnapshotMutation>({ document: PreviewSnapshotDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'PreviewSnapshot', 'mutation', variables);
     },
-    RollbackProject(variables: RollbackProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RollbackProjectMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<RollbackProjectMutation>(RollbackProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RollbackProject', 'mutation', variables);
+    RollbackProject(variables: RollbackProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RollbackProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<RollbackProjectMutation>({ document: RollbackProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RollbackProject', 'mutation', variables);
     },
-    GetJobs(variables: GetJobsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetJobsQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetJobsQuery>(GetJobsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetJobs', 'query', variables);
+    GetJobs(variables: GetJobsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetJobsQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetJobsQuery>({ document: GetJobsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetJobs', 'query', variables);
     },
-    GetJob(variables: GetJobQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetJobQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetJobQuery>(GetJobDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetJob', 'query', variables);
+    GetJob(variables: GetJobQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetJobQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetJobQuery>({ document: GetJobDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetJob', 'query', variables);
     },
-    GetNodeExecution(variables: GetNodeExecutionQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetNodeExecutionQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetNodeExecutionQuery>(GetNodeExecutionDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetNodeExecution', 'query', variables);
+    GetNodeExecution(variables: GetNodeExecutionQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetNodeExecutionQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetNodeExecutionQuery>({ document: GetNodeExecutionDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetNodeExecution', 'query', variables);
     },
-    CancelJob(variables: CancelJobMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CancelJobMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<CancelJobMutation>(CancelJobDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CancelJob', 'mutation', variables);
+    CancelJob(variables: CancelJobMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CancelJobMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CancelJobMutation>({ document: CancelJobDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CancelJob', 'mutation', variables);
     },
-    CreateProject(variables: CreateProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateProjectMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<CreateProjectMutation>(CreateProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateProject', 'mutation', variables);
+    CreateProject(variables: CreateProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CreateProjectMutation>({ document: CreateProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateProject', 'mutation', variables);
     },
-    GetProjects(variables: GetProjectsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetProjectsQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectsQuery>(GetProjectsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetProjects', 'query', variables);
+    GetProjects(variables: GetProjectsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetProjectsQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectsQuery>({ document: GetProjectsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetProjects', 'query', variables);
     },
-    GetProjectById(variables: GetProjectByIdQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetProjectByIdQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectByIdQuery>(GetProjectByIdDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetProjectById', 'query', variables);
+    GetProjectById(variables: GetProjectByIdQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetProjectByIdQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectByIdQuery>({ document: GetProjectByIdDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetProjectById', 'query', variables);
     },
-    UpdateProject(variables: UpdateProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateProjectMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<UpdateProjectMutation>(UpdateProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateProject', 'mutation', variables);
+    UpdateProject(variables: UpdateProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateProjectMutation>({ document: UpdateProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateProject', 'mutation', variables);
     },
-    DeleteProject(variables: DeleteProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<DeleteProjectMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<DeleteProjectMutation>(DeleteProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'DeleteProject', 'mutation', variables);
+    DeleteProject(variables: DeleteProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteProjectMutation>({ document: DeleteProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteProject', 'mutation', variables);
     },
-    RunProject(variables: RunProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RunProjectMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<RunProjectMutation>(RunProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RunProject', 'mutation', variables);
+    RunProject(variables: RunProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RunProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<RunProjectMutation>({ document: RunProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RunProject', 'mutation', variables);
     },
-    GetProjectParameters(variables: GetProjectParametersQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetProjectParametersQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectParametersQuery>(GetProjectParametersDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetProjectParameters', 'query', variables);
+    GetProjectParameters(variables: GetProjectParametersQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetProjectParametersQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectParametersQuery>({ document: GetProjectParametersDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetProjectParameters', 'query', variables);
     },
-    CreateProjectVariable(variables: CreateProjectVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateProjectVariableMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<CreateProjectVariableMutation>(CreateProjectVariableDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateProjectVariable', 'mutation', variables);
+    CreateProjectVariable(variables: CreateProjectVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateProjectVariableMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CreateProjectVariableMutation>({ document: CreateProjectVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateProjectVariable', 'mutation', variables);
     },
-    UpdateProjectVariable(variables: UpdateProjectVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateProjectVariableMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<UpdateProjectVariableMutation>(UpdateProjectVariableDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateProjectVariable', 'mutation', variables);
+    UpdateProjectVariable(variables: UpdateProjectVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateProjectVariableMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateProjectVariableMutation>({ document: UpdateProjectVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateProjectVariable', 'mutation', variables);
     },
-    DeleteProjectVariable(variables: DeleteProjectVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<DeleteProjectVariableMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<DeleteProjectVariableMutation>(DeleteProjectVariableDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'DeleteProjectVariable', 'mutation', variables);
+    DeleteProjectVariable(variables: DeleteProjectVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteProjectVariableMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteProjectVariableMutation>({ document: DeleteProjectVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteProjectVariable', 'mutation', variables);
     },
-    GetSharedProject(variables: GetSharedProjectQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetSharedProjectQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetSharedProjectQuery>(GetSharedProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetSharedProject', 'query', variables);
+    DeleteProjectVariables(variables: DeleteProjectVariablesMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteProjectVariablesMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteProjectVariablesMutation>({ document: DeleteProjectVariablesDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteProjectVariables', 'mutation', variables);
     },
-    GetSharedProjectInfo(variables: GetSharedProjectInfoQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetSharedProjectInfoQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetSharedProjectInfoQuery>(GetSharedProjectInfoDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetSharedProjectInfo', 'query', variables);
+    GetSharedProject(variables: GetSharedProjectQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetSharedProjectQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetSharedProjectQuery>({ document: GetSharedProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetSharedProject', 'query', variables);
     },
-    ShareProject(variables: ShareProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<ShareProjectMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<ShareProjectMutation>(ShareProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'ShareProject', 'mutation', variables);
+    GetSharedProjectInfo(variables: GetSharedProjectInfoQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetSharedProjectInfoQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetSharedProjectInfoQuery>({ document: GetSharedProjectInfoDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetSharedProjectInfo', 'query', variables);
     },
-    UnshareProject(variables: UnshareProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UnshareProjectMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<UnshareProjectMutation>(UnshareProjectDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UnshareProject', 'mutation', variables);
+    ShareProject(variables: ShareProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<ShareProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<ShareProjectMutation>({ document: ShareProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'ShareProject', 'mutation', variables);
     },
-    OnJobStatusChange(variables: OnJobStatusChangeSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<OnJobStatusChangeSubscription> {
-      return withWrapper((wrappedRequestHeaders) => client.request<OnJobStatusChangeSubscription>(OnJobStatusChangeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'OnJobStatusChange', 'subscription', variables);
+    UnshareProject(variables: UnshareProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UnshareProjectMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UnshareProjectMutation>({ document: UnshareProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UnshareProject', 'mutation', variables);
     },
-    RealTimeLogs(variables: RealTimeLogsSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RealTimeLogsSubscription> {
-      return withWrapper((wrappedRequestHeaders) => client.request<RealTimeLogsSubscription>(RealTimeLogsDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RealTimeLogs', 'subscription', variables);
+    OnJobStatusChange(variables: OnJobStatusChangeSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<OnJobStatusChangeSubscription> {
+      return withWrapper((wrappedRequestHeaders) => client.request<OnJobStatusChangeSubscription>({ document: OnJobStatusChangeDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'OnJobStatusChange', 'subscription', variables);
     },
-    OnNodeStatusChange(variables: OnNodeStatusChangeSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<OnNodeStatusChangeSubscription> {
-      return withWrapper((wrappedRequestHeaders) => client.request<OnNodeStatusChangeSubscription>(OnNodeStatusChangeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'OnNodeStatusChange', 'subscription', variables);
+    RealTimeLogs(variables: RealTimeLogsSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RealTimeLogsSubscription> {
+      return withWrapper((wrappedRequestHeaders) => client.request<RealTimeLogsSubscription>({ document: RealTimeLogsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RealTimeLogs', 'subscription', variables);
     },
-    CreateTrigger(variables: CreateTriggerMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateTriggerMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<CreateTriggerMutation>(CreateTriggerDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateTrigger', 'mutation', variables);
+    OnNodeStatusChange(variables: OnNodeStatusChangeSubscriptionVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<OnNodeStatusChangeSubscription> {
+      return withWrapper((wrappedRequestHeaders) => client.request<OnNodeStatusChangeSubscription>({ document: OnNodeStatusChangeDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'OnNodeStatusChange', 'subscription', variables);
     },
-    UpdateTrigger(variables: UpdateTriggerMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateTriggerMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<UpdateTriggerMutation>(UpdateTriggerDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateTrigger', 'mutation', variables);
+    CreateTrigger(variables: CreateTriggerMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateTriggerMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CreateTriggerMutation>({ document: CreateTriggerDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateTrigger', 'mutation', variables);
     },
-    DeleteTrigger(variables: DeleteTriggerMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<DeleteTriggerMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<DeleteTriggerMutation>(DeleteTriggerDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'DeleteTrigger', 'mutation', variables);
+    UpdateTrigger(variables: UpdateTriggerMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateTriggerMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateTriggerMutation>({ document: UpdateTriggerDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateTrigger', 'mutation', variables);
     },
-    GetTriggers(variables: GetTriggersQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetTriggersQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetTriggersQuery>(GetTriggersDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetTriggers', 'query', variables);
+    DeleteTrigger(variables: DeleteTriggerMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteTriggerMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteTriggerMutation>({ document: DeleteTriggerDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteTrigger', 'mutation', variables);
     },
-    GetMe(variables?: GetMeQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetMeQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetMeQuery>(GetMeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetMe', 'query', variables);
+    GetTriggers(variables: GetTriggersQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetTriggersQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetTriggersQuery>({ document: GetTriggersDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetTriggers', 'query', variables);
     },
-    GetMeAndWorkspaces(variables?: GetMeAndWorkspacesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetMeAndWorkspacesQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetMeAndWorkspacesQuery>(GetMeAndWorkspacesDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetMeAndWorkspaces', 'query', variables);
+    GetMe(variables?: GetMeQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetMeQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetMeQuery>({ document: GetMeDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetMe', 'query', variables);
     },
-    SearchUser(variables: SearchUserQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<SearchUserQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<SearchUserQuery>(SearchUserDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'SearchUser', 'query', variables);
+    GetMeAndWorkspaces(variables?: GetMeAndWorkspacesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetMeAndWorkspacesQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetMeAndWorkspacesQuery>({ document: GetMeAndWorkspacesDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetMeAndWorkspaces', 'query', variables);
     },
-    UpdateMe(variables: UpdateMeMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateMeMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<UpdateMeMutation>(UpdateMeDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateMe', 'mutation', variables);
+    SearchUser(variables: SearchUserQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<SearchUserQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<SearchUserQuery>({ document: SearchUserDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'SearchUser', 'query', variables);
     },
-    CreateWorkspace(variables: CreateWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<CreateWorkspaceMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<CreateWorkspaceMutation>(CreateWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'CreateWorkspace', 'mutation', variables);
+    UpdateMe(variables: UpdateMeMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateMeMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateMeMutation>({ document: UpdateMeDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateMe', 'mutation', variables);
     },
-    GetWorkspaces(variables?: GetWorkspacesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetWorkspacesQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetWorkspacesQuery>(GetWorkspacesDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetWorkspaces', 'query', variables);
+    CreateWorkspace(variables: CreateWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateWorkspaceMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CreateWorkspaceMutation>({ document: CreateWorkspaceDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateWorkspace', 'mutation', variables);
     },
-    GetWorkspaceById(variables: GetWorkspaceByIdQueryVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<GetWorkspaceByIdQuery> {
-      return withWrapper((wrappedRequestHeaders) => client.request<GetWorkspaceByIdQuery>(GetWorkspaceByIdDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'GetWorkspaceById', 'query', variables);
+    GetWorkspaces(variables?: GetWorkspacesQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetWorkspacesQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetWorkspacesQuery>({ document: GetWorkspacesDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetWorkspaces', 'query', variables);
     },
-    UpdateWorkspace(variables: UpdateWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateWorkspaceMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<UpdateWorkspaceMutation>(UpdateWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateWorkspace', 'mutation', variables);
+    GetWorkspaceById(variables: GetWorkspaceByIdQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetWorkspaceByIdQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetWorkspaceByIdQuery>({ document: GetWorkspaceByIdDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetWorkspaceById', 'query', variables);
     },
-    DeleteWorkspace(variables: DeleteWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<DeleteWorkspaceMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<DeleteWorkspaceMutation>(DeleteWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'DeleteWorkspace', 'mutation', variables);
+    UpdateWorkspace(variables: UpdateWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateWorkspaceMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateWorkspaceMutation>({ document: UpdateWorkspaceDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateWorkspace', 'mutation', variables);
     },
-    AddMemberToWorkspace(variables: AddMemberToWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<AddMemberToWorkspaceMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<AddMemberToWorkspaceMutation>(AddMemberToWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'AddMemberToWorkspace', 'mutation', variables);
+    DeleteWorkspace(variables: DeleteWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteWorkspaceMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteWorkspaceMutation>({ document: DeleteWorkspaceDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteWorkspace', 'mutation', variables);
     },
-    RemoveMemberFromWorkspace(variables: RemoveMemberFromWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<RemoveMemberFromWorkspaceMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<RemoveMemberFromWorkspaceMutation>(RemoveMemberFromWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'RemoveMemberFromWorkspace', 'mutation', variables);
+    AddMemberToWorkspace(variables: AddMemberToWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<AddMemberToWorkspaceMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<AddMemberToWorkspaceMutation>({ document: AddMemberToWorkspaceDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'AddMemberToWorkspace', 'mutation', variables);
     },
-    UpdateMemberOfWorkspace(variables: UpdateMemberOfWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders): Promise<UpdateMemberOfWorkspaceMutation> {
-      return withWrapper((wrappedRequestHeaders) => client.request<UpdateMemberOfWorkspaceMutation>(UpdateMemberOfWorkspaceDocument, variables, {...requestHeaders, ...wrappedRequestHeaders}), 'UpdateMemberOfWorkspace', 'mutation', variables);
+    RemoveMemberFromWorkspace(variables: RemoveMemberFromWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RemoveMemberFromWorkspaceMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<RemoveMemberFromWorkspaceMutation>({ document: RemoveMemberFromWorkspaceDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RemoveMemberFromWorkspace', 'mutation', variables);
+    },
+    UpdateMemberOfWorkspace(variables: UpdateMemberOfWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateMemberOfWorkspaceMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateMemberOfWorkspaceMutation>({ document: UpdateMemberOfWorkspaceDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateMemberOfWorkspace', 'mutation', variables);
     }
   };
 }

@@ -372,6 +372,10 @@ type RemoveParameterInput struct {
 	ParamID ID `json:"paramId"`
 }
 
+type RemoveParametersInput struct {
+	ParamIds []ID `json:"paramIds"`
+}
+
 type RunProjectInput struct {
 	ProjectID   ID             `json:"projectId"`
 	WorkspaceID ID             `json:"workspaceId"`

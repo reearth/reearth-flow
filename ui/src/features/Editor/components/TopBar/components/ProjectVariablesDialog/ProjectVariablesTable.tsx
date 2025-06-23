@@ -4,7 +4,6 @@ import {
   getCoreRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { useState } from "react";
 
 import {
   Checkbox,
@@ -22,19 +21,36 @@ type Props = {
   className?: string;
   projectVariables: ProjectVariable[];
   columns: ColumnDef<ProjectVariable, unknown>[];
-  selectedRow?: number;
-  onRowClick: (projectVariable: ProjectVariable) => void;
+  selectedIndices: number[];
+  onSelectionChange: (selectedIndices: number[]) => void;
 };
 
 const ProjectVariablesTable: React.FC<Props> = ({
   className,
   projectVariables,
   columns,
-  onRowClick,
+  selectedIndices,
+  onSelectionChange,
 }) => {
   const t = useT();
 
-  const [rowSelection, setRowSelection] = useState({});
+  // Convert selectedIndices array to rowSelection object format expected by React Table
+  const rowSelection = selectedIndices.reduce(
+    (acc, index) => {
+      acc[index.toString()] = true;
+      return acc;
+    },
+    {} as Record<string, boolean>,
+  );
+
+  const handleRowSelectionChange = (updater: any) => {
+    const newRowSelection =
+      typeof updater === "function" ? updater(rowSelection) : updater;
+    const newSelectedIndices = Object.keys(newRowSelection)
+      .filter((key) => newRowSelection[key])
+      .map((key) => parseInt(key, 10));
+    onSelectionChange(newSelectedIndices);
+  };
 
   // Create columns with selection column prepended
   const columnsWithSelection: ColumnDef<ProjectVariable>[] = [
@@ -52,9 +68,6 @@ const ProjectVariablesTable: React.FC<Props> = ({
           checked={row.getIsSelected()}
           onCheckedChange={(value) => {
             row.toggleSelected(!!value);
-            if (value) {
-              onRowClick?.(row.original);
-            }
           }}
           aria-label="Select row"
           onClick={(e) => e.stopPropagation()}
@@ -78,7 +91,7 @@ const ProjectVariablesTable: React.FC<Props> = ({
     // onColumnVisibilityChange: setColumnVisibility,
     columnResizeMode: "onChange",
     // Row selection
-    onRowSelectionChange: setRowSelection,
+    onRowSelectionChange: handleRowSelectionChange,
     // Filtering
     // onGlobalFilterChange: setGlobalFilter,
     // getFilteredRowModel: getFilteredRowModel(),
@@ -95,6 +108,8 @@ const ProjectVariablesTable: React.FC<Props> = ({
     },
     // manualPagination: true,
   });
+
+  console.log("asdfs", table.getRowModel().rows);
 
   return (
     <Table className={`rounded-md bg-inherit ${className}`}>
@@ -124,13 +139,9 @@ const ProjectVariablesTable: React.FC<Props> = ({
               className="hover:bg-primary/50 data-[state=selected]:bg-primary/50"
               data-state={row.getIsSelected() && "selected"}
               onClick={(e) => {
-                // Only trigger onRowClick for visual feedback, don't toggle selection
                 // Selection is now handled only by the checkbox
-                const target = e.target as HTMLElement;
-                // Don't trigger if clicking on interactive elements
-                if (!target.closest('input, button, [role="button"]')) {
-                  onRowClick?.(row.original);
-                }
+                // Row clicks don't trigger selection anymore
+                e.preventDefault();
               }}>
               {row.getVisibleCells().map((cell) => (
                 <TableCell key={cell.id} className="px-2 py-[2px]">

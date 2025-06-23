@@ -4,13 +4,13 @@ import {
   PlusIcon,
 } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
-import { debounce } from "lodash-es";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import {
   Dialog,
   DialogContent,
   DialogContentSection,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DropdownMenu,
@@ -23,19 +23,79 @@ import {
   Input,
   Switch,
 } from "@flow/components";
+import { Button } from "@flow/components/buttons/BaseButton";
 import { useT } from "@flow/lib/i18n";
 import { ProjectVariable, VarType } from "@flow/types";
+import { generateUUID, getDefaultValueForProjectVar } from "@flow/utils";
 
 import { ProjectVariablesTable } from "./ProjectVariablesTable";
+
+// Component to handle name input without losing focus
+const NameInput: React.FC<{
+  variable: ProjectVariable;
+  onUpdate: (variable: ProjectVariable) => void;
+  placeholder: string;
+}> = ({ variable, onUpdate, placeholder }) => {
+  const [localValue, setLocalValue] = useState(variable.name);
+
+  // Update local value when variable changes from outside
+  useEffect(() => {
+    setLocalValue(variable.name);
+  }, [variable.name]);
+
+  const handleBlur = () => {
+    if (localValue !== variable.name) {
+      onUpdate({ ...variable, name: localValue });
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
+    }
+  };
+
+  return (
+    <Input
+      value={localValue}
+      onChange={(e) => {
+        e.stopPropagation();
+        setLocalValue(e.currentTarget.value);
+      }}
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}
+      onClick={(e) => e.stopPropagation()}
+      onFocus={(e) => e.stopPropagation()}
+      placeholder={placeholder}
+    />
+  );
+};
 
 type Props = {
   isOpen: boolean;
   currentProjectVariables?: ProjectVariable[];
   onClose: () => void;
-  onAdd: (type: VarType) => Promise<void>;
+  onAdd: (projectVariable: ProjectVariable) => Promise<void>;
   onChange: (projectVariable: ProjectVariable) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onDeleteBatch?: (ids: string[]) => Promise<void>;
+  projectId?: string;
 };
+
+type PendingChange =
+  | {
+      type: "add";
+      tempId: string;
+      projectVariable: ProjectVariable;
+    }
+  | {
+      type: "update";
+      projectVariable: ProjectVariable;
+    }
+  | {
+      type: "delete";
+      id: string;
+    };
 
 const allVarTypes: VarType[] = [
   "attribute_name",
@@ -63,60 +123,178 @@ const ProjectVariableDialog: React.FC<Props> = ({
   onAdd,
   onChange,
   onDelete,
+  onDeleteBatch,
+  projectId: _projectId,
 }) => {
   const t = useT();
-  const [selectedIndex, setSelectedIndex] = useState<number | undefined>();
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
+  const [localProjectVariables, setLocalProjectVariables] = useState<
+    ProjectVariable[]
+  >([]);
+  const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Create a debounced function for handling name changes
-  const debouncedNameChange = debounce((rowIndex: number, newName: string) => {
-    if (!currentProjectVariables) return;
-    const updatedProjectVariable = {
-      ...currentProjectVariables[rowIndex],
+  // Initialize local state when dialog opens or currentProjectVariables changes
+  useEffect(() => {
+    if (currentProjectVariables) {
+      setLocalProjectVariables([...currentProjectVariables]);
+      setPendingChanges([]);
+      setSelectedIndices([]);
+    }
+  }, [currentProjectVariables, isOpen]);
+
+  const handleLocalAdd = (type: VarType) => {
+    const tempId = `temp_${generateUUID()}`;
+    const newVariable: ProjectVariable = {
+      id: tempId,
+      name: t("New Project Variable"),
+      defaultValue: getDefaultValueForProjectVar(type),
+      type,
+      required: true,
+      public: true,
     };
-    updatedProjectVariable.name = newName;
-    onChange(updatedProjectVariable);
-  }, 500);
 
-  const handleDelete = async () => {
-    if (selectedIndex === undefined || !currentProjectVariables) return;
-    const varToDelete = currentProjectVariables[selectedIndex];
+    setLocalProjectVariables((prev) => [...prev, newVariable]);
+    setPendingChanges((prev) => [
+      ...prev,
+      { type: "add", tempId, projectVariable: newVariable },
+    ]);
+  };
+
+  const handleLocalUpdate = (updatedVariable: ProjectVariable) => {
+    setLocalProjectVariables((prev) =>
+      prev.map((variable) =>
+        variable.id === updatedVariable.id ? updatedVariable : variable,
+      ),
+    );
+
+    // Handle pending changes differently for new vs existing variables
+    setPendingChanges((prev) => {
+      // If this is a new variable (temp ID), update the "add" change
+      if (updatedVariable.id.startsWith("temp_")) {
+        const existingAddIndex = prev.findIndex(
+          (change) =>
+            change.type === "add" && change.tempId === updatedVariable.id,
+        );
+
+        if (existingAddIndex >= 0) {
+          const newChanges = [...prev];
+          newChanges[existingAddIndex] = {
+            type: "add",
+            tempId: updatedVariable.id,
+            projectVariable: updatedVariable,
+          };
+          return newChanges;
+        }
+      } else {
+        // For existing variables, handle as update
+        const existingUpdateIndex = prev.findIndex(
+          (change) =>
+            change.type === "update" &&
+            change.projectVariable.id === updatedVariable.id,
+        );
+
+        if (existingUpdateIndex >= 0) {
+          const newChanges = [...prev];
+          newChanges[existingUpdateIndex] = {
+            type: "update",
+            projectVariable: updatedVariable,
+          };
+          return newChanges;
+        } else {
+          return [
+            ...prev,
+            { type: "update", projectVariable: updatedVariable },
+          ];
+        }
+      }
+
+      return prev;
+    });
+  };
+
+  const handleLocalDelete = () => {
+    if (selectedIndices.length === 0 || !localProjectVariables) return;
+
+    const varsToDelete = selectedIndices.map(
+      (index) => localProjectVariables[index],
+    );
+
+    setLocalProjectVariables((prev) =>
+      prev.filter((_, index) => !selectedIndices.includes(index)),
+    );
+
+    varsToDelete.forEach((varToDelete) => {
+      if (!varToDelete.id.startsWith("temp_")) {
+        setPendingChanges((prev) => [
+          ...prev,
+          { type: "delete", id: varToDelete.id },
+        ]);
+      } else {
+        setPendingChanges((prev) =>
+          prev.filter(
+            (change) =>
+              !(change.type === "add" && change.tempId === varToDelete.id),
+          ),
+        );
+      }
+    });
+
+    setSelectedIndices([]);
+  };
+
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
     try {
-      await onDelete(varToDelete.id);
-      setSelectedIndex(undefined);
+      const addChanges = pendingChanges.filter(
+        (change) => change.type === "add",
+      );
+      const updateChanges = pendingChanges.filter(
+        (change) => change.type === "update",
+      );
+      const deleteChanges = pendingChanges.filter(
+        (change) => change.type === "delete",
+      );
+
+      for (const change of addChanges) {
+        await onAdd(change.projectVariable);
+      }
+
+      for (const change of updateChanges) {
+        await onChange(change.projectVariable);
+      }
+
+      if (deleteChanges.length > 0) {
+        const deleteIds = deleteChanges.map((change) => change.id);
+
+        if (onDeleteBatch && deleteChanges.length > 1) {
+          await onDeleteBatch(deleteIds);
+        } else {
+          for (const change of deleteChanges) {
+            await onDelete(change.id);
+          }
+        }
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      setPendingChanges([]);
+      onClose();
     } catch (error) {
-      console.error("Failed to delete project variable:", error);
+      console.error("Failed to submit project variable changes:", error);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  // const handleMoveUp = () => {
-  //   setProjectVariables((pvs) => {
-  //     if (selectedIndex !== undefined && selectedIndex > 0) {
-  //       const newProjectVariables = [...pvs];
-  //       const temp = newProjectVariables[selectedIndex];
-  //       newProjectVariables[selectedIndex] =
-  //         newProjectVariables[selectedIndex - 1];
-  //       newProjectVariables[selectedIndex - 1] = temp;
-  //       setSelectedIndex(selectedIndex - 1);
-  //       return newProjectVariables;
-  //     }
-  //     return pvs;
-  //   });
-  // };
-
-  // const handleMoveDown = () => {
-  //   setProjectVariables((pvs) => {
-  //     if (selectedIndex !== undefined && selectedIndex < pvs.length - 1) {
-  //       const newProjectVariables = [...pvs];
-  //       const temp = newProjectVariables[selectedIndex];
-  //       newProjectVariables[selectedIndex] =
-  //         newProjectVariables[selectedIndex + 1];
-  //       newProjectVariables[selectedIndex + 1] = temp;
-  //       setSelectedIndex(selectedIndex + 1);
-  //       return newProjectVariables;
-  //     }
-  //     return pvs;
-  //   });
-  // };
+  const handleCancel = () => {
+    if (currentProjectVariables) {
+      setLocalProjectVariables([...currentProjectVariables]);
+    }
+    setPendingChanges([]);
+    setSelectedIndices([]);
+    onClose();
+  };
 
   const getUserFacingName = (type: VarType): string => {
     switch (type) {
@@ -162,23 +340,12 @@ const ProjectVariableDialog: React.FC<Props> = ({
       accessorKey: "name",
       header: t("Name"),
       cell: ({ row }) => {
-        const value = row.getValue("name") as string;
+        const variable = localProjectVariables[row.index];
         return (
-          <Input
-            key={row.id}
-            defaultValue={value}
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-            onFocus={(e) => {
-              e.stopPropagation();
-            }}
-            onChange={(e) => {
-              e.stopPropagation();
-              debouncedNameChange(row.index, e.currentTarget.value);
-            }}
+          <NameInput
+            variable={variable}
+            onUpdate={handleLocalUpdate}
             placeholder={t("Enter name")}
-            disabled={false}
           />
         );
       },
@@ -190,28 +357,6 @@ const ProjectVariableDialog: React.FC<Props> = ({
     {
       accessorKey: "type",
       header: t("Type"),
-      // cell: ({ row }) => {
-      //   const value = row.getValue("type") as VarType;
-      //   return (
-      //     <Select
-      //       defaultValue={value}
-      //       onValueChange={(newValue) => {
-      //         if (!currentProjectVariables) return;
-      //         const updatedProjectVariable = currentProjectVariables[row.index];
-      //         updatedProjectVariable.type = newValue as VarType;
-      //         onChange(updatedProjectVariable);
-      //       }}>
-      //       <SelectTrigger className="w-[180px]">
-      //         <SelectValue placeholder={t("Select type")} />
-      //       </SelectTrigger>
-      //       <SelectContent>
-      //         {allVarTypes.map((type) => (
-      //           <SelectItem value={type}>{getUserFacingName(type)}</SelectItem>
-      //         ))}
-      //       </SelectContent>
-      //     </Select>
-      //   );
-      // },
     },
     {
       accessorKey: "required",
@@ -222,32 +367,39 @@ const ProjectVariableDialog: React.FC<Props> = ({
           <Switch
             checked={isChecked}
             onCheckedChange={() => {
-              if (!currentProjectVariables) return;
-              const projectVar = { ...currentProjectVariables[row.index] };
+              const projectVar = { ...localProjectVariables[row.index] };
               projectVar.required = !isChecked;
-              console.log(projectVar);
-              onChange(projectVar);
+              handleLocalUpdate(projectVar);
             }}
           />
         );
       },
     },
-    { accessorKey: "public", header: t("Public"), cell: () => <Switch /> },
+    {
+      accessorKey: "public",
+      header: t("Public"),
+      cell: ({ row }) => {
+        const variable = localProjectVariables[row.index];
+        return (
+          <Switch
+            checked={variable.public}
+            onCheckedChange={() => {
+              const projectVar = { ...variable };
+              projectVar.public = !variable.public;
+              handleLocalUpdate(projectVar);
+            }}
+          />
+        );
+      },
+    },
   ];
 
-  const handleRowSelect = (projectVar: ProjectVariable) => {
-    const index = currentProjectVariables?.findIndex(
-      (pv) => pv.id === projectVar.id,
-    );
-    if (index !== -1) {
-      setSelectedIndex(index);
-    } else {
-      setSelectedIndex(undefined);
-    }
+  const handleRowSelect = (selectedIndicesFromTable: number[]) => {
+    setSelectedIndices(selectedIndicesFromTable);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleCancel}>
       <DialogContent className="h-[50vh]" size="2xl" position="off-center">
         <div className="flex h-full flex-col">
           <DialogHeader>
@@ -275,7 +427,7 @@ const ProjectVariableDialog: React.FC<Props> = ({
                           key={type}
                           disabled={type === "unsupported"}
                           onClick={() => {
-                            onAdd(type);
+                            handleLocalAdd(type);
                           }}>
                           {getUserFacingName(type)}
                         </DropdownMenuItem>
@@ -285,27 +437,38 @@ const ProjectVariableDialog: React.FC<Props> = ({
                 </DropdownMenu>
                 <IconButton
                   icon={<MinusIcon />}
-                  onClick={handleDelete}
-                  disabled={selectedIndex === undefined}
+                  onClick={handleLocalDelete}
+                  disabled={selectedIndices.length === 0}
                   tooltipText={
-                    selectedIndex === undefined
-                      ? t("Select a variable to delete")
-                      : t("Delete selected variable")
+                    selectedIndices.length === 0
+                      ? t("Select variables to delete")
+                      : t("Delete selected variables")
                   }
                 />
-                {/* <IconButton icon={<ArrowUp />} onClick={handleMoveUp} /> */}
-                {/* <IconButton icon={<ArrowDown />} onClick={handleMoveDown} /> */}
               </DialogContentSection>
               <DialogContentSection>
                 <ProjectVariablesTable
-                  projectVariables={currentProjectVariables ?? []}
+                  projectVariables={localProjectVariables}
                   columns={columns}
-                  selectedRow={selectedIndex}
-                  onRowClick={handleRowSelect}
+                  selectedIndices={selectedIndices}
+                  onSelectionChange={handleRowSelect}
                 />
               </DialogContentSection>
             </DialogContentSection>
           </div>
+          <DialogFooter className="flex justify-end gap-2 p-4">
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isSubmitting}>
+              {t("Cancel")}
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || pendingChanges.length === 0}>
+              {isSubmitting ? t("Saving...") : t("Save Changes")}
+            </Button>
+          </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>

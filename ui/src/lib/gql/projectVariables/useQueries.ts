@@ -128,21 +128,57 @@ export const useQueries = () => {
   });
 
   const deleteProjectVariableMutation = useMutation({
-    mutationFn: async (paramId: string) => {
+    mutationFn: async ({
+      paramId,
+      projectId,
+    }: {
+      paramId: string;
+      projectId: string;
+    }) => {
       const data = await graphQLContext?.DeleteProjectVariable({
         input: {
           paramId,
         },
       });
       if (data?.removeParameter === true) {
-        return { success: true };
+        return { success: true, projectId };
       }
       throw new Error("Failed to delete project variable");
     },
     onSuccess: (result) => {
-      if (result?.success) {
+      if (result?.success && result?.projectId) {
+        queryClient.invalidateQueries({
+          queryKey: [ParameterQueryKeys.GetParameters, result.projectId],
+        });
         queryClient.invalidateQueries({
           queryKey: [ParameterQueryKeys.GetParameters],
+        });
+      }
+    },
+  });
+
+  const deleteProjectVariablesMutation = useMutation({
+    mutationFn: async ({
+      paramIds,
+      projectId,
+    }: {
+      paramIds: string[];
+      projectId: string;
+    }) => {
+      const data = await graphQLContext?.DeleteProjectVariables({
+        input: {
+          paramIds,
+        },
+      });
+      if (data?.removeParameters === true) {
+        return { success: true, projectId };
+      }
+      throw new Error("Failed to delete project variables");
+    },
+    onSuccess: (result) => {
+      if (result?.success && result?.projectId) {
+        queryClient.invalidateQueries({
+          queryKey: [ParameterQueryKeys.GetParameters, result.projectId],
         });
       }
     },
@@ -153,5 +189,6 @@ export const useQueries = () => {
     createProjectVariablesMutation,
     updateProjectVariablesMutation,
     deleteProjectVariableMutation,
+    deleteProjectVariablesMutation,
   };
 };

@@ -87,3 +87,21 @@ func (r *mutationResolver) RemoveParameter(ctx context.Context, input gqlmodel.R
 
 	return true, nil
 }
+
+func (r *mutationResolver) RemoveParameters(ctx context.Context, input gqlmodel.RemoveParametersInput) (bool, error) {
+	pids := make(id.ParameterIDList, len(input.ParamIds))
+	for i, paramID := range input.ParamIds {
+		pid, err := gqlmodel.ToID[id.Parameter](paramID)
+		if err != nil {
+			return false, err
+		}
+		pids[i] = pid
+	}
+
+	_, err := usecases(ctx).Parameter.RemoveParameters(ctx, pids)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}

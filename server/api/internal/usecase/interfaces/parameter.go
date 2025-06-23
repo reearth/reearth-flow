@@ -37,6 +37,7 @@ type Parameter interface {
 	Fetch(context.Context, id.ParameterIDList) (*parameter.ParameterList, error)
 	FetchByProject(context.Context, id.ProjectID) (*parameter.ParameterList, error)
 	RemoveParameter(context.Context, id.ParameterID) (id.ParameterID, error)
+	RemoveParameters(context.Context, id.ParameterIDList) (id.ParameterIDList, error)
 	UpdateParameterOrder(context.Context, UpdateParameterOrderParam) (*parameter.ParameterList, error)
 	UpdateParameter(context.Context, UpdateParameterParam) (*parameter.Parameter, error)
 }
