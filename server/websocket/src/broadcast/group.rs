@@ -616,7 +616,7 @@ impl BroadcastGroup {
 
                         let gcs_state = gcs_txn.state_vector();
 
-                        let awareness_txn = awareness_doc.transact();
+                        let awareness_txn = awareness_doc.transact_mut();
                         let awareness_state = awareness_txn.state_vector();
 
                         let update = awareness_txn.encode_diff_v1(&gcs_state);
@@ -634,7 +634,7 @@ impl BroadcastGroup {
                                 &self.redis_store,
                             );
                             let flush_future =
-                                self.storage.flush_doc_v2(&self.doc_name, awareness_doc);
+                                self.storage.flush_doc_v2(&self.doc_name, &awareness_txn);
 
                             let (update_result, flush_result) =
                                 tokio::join!(update_future, flush_future);

@@ -482,12 +482,11 @@ where
     async fn flush_doc_v2<K: AsRef<[u8]> + ?Sized + Sync>(
         &self,
         name: &K,
-        doc: &Doc,
+        txn: &TransactionMut,
     ) -> Result<(), Error> {
         let doc_key = format!("doc_v2:{}", hex::encode(name.as_ref()));
         let doc_key_bytes = doc_key.as_bytes();
 
-        let txn = doc.transact();
         let state = txn.encode_state_as_update_v2(&StateVector::default());
 
         let compressed_data = compress_brotli(&state, 4, 22)?;
