@@ -260,7 +260,7 @@ jobs:
       packages: write
     runs-on: ubuntu-latest
     steps:
-      - uses: reearth/actions/build-docker-image@03c56a86033879b4fd6b0bf68e08e993a41f5126
+      - uses: reearth/actions/build-docker-image@91de4055b24f837dba1d6e01238f4e2283b78bb2
         with:
           image: ${{ secrets.WEB_IMAGE_GC }}
           context: ui
