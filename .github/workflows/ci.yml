@@ -262,7 +262,7 @@ jobs:
     steps:
       - uses: reearth/actions/build-docker-image@f9ec7fd6b26255566358e46c0764b367a6d063fb
         with:
-          image: reearth/reearth-flow-web
+          image: ghcr.io/reearth/reearth-flow/reearth-flow-web
           context: ui
           use_dockerhub: false
           name: ${{ needs.prepare-info-pr.outputs.sha_short }}
@@ -291,7 +291,7 @@ jobs:
       - uses: reearth/actions/deploy-cloud-run-with-tag@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5 # main
         id: deploy
         with:
-            image: reearth/reearth-flow-web:${{ needs.prepare-info-pr.outputs.sha_short }}
+            image: ghcr.io/reearth/reearth-flow/reearth-flow-web:${{ needs.prepare-info-pr.outputs.sha_short }}
             image_internal: '${{ secrets.GC_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-web:${{ needs.prepare-info-pr.outputs.sha_short }}'
             region: ${{ secrets.GC_REGION }}
             service: reearth-flow-web
