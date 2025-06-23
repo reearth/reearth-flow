@@ -61,6 +61,16 @@ const ProjectVariableDialog: React.FC<Props> = ({
   const t = useT();
   const [selectedIndex, setSelectedIndex] = useState<number | undefined>();
 
+  // Create a debounced function for handling name changes
+  const debouncedNameChange = debounce((rowIndex: number, newName: string) => {
+    if (!currentProjectVariables) return;
+    const updatedProjectVariable = {
+      ...currentProjectVariables[rowIndex],
+    };
+    updatedProjectVariable.name = newName;
+    onChange(updatedProjectVariable);
+  }, 500);
+
   const handleDelete = () => {
     if (selectedIndex === undefined || !currentProjectVariables) return;
     const varToDelete = currentProjectVariables[selectedIndex];
@@ -146,17 +156,15 @@ const ProjectVariableDialog: React.FC<Props> = ({
           <Input
             key={row.id}
             defaultValue={value}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            onFocus={(e) => {
+              e.stopPropagation();
+            }}
             onChange={(e) => {
               e.stopPropagation();
-              debounce(() => {
-                if (!currentProjectVariables) return;
-                const updatedProjectVariable = {
-                  ...currentProjectVariables[row.index],
-                };
-                updatedProjectVariable.name = e.currentTarget.value;
-                console.log("this is a test: ", updatedProjectVariable);
-                onChange(updatedProjectVariable);
-              });
+              debouncedNameChange(row.index, e.currentTarget.value);
             }}
             placeholder={t("Enter name")}
             disabled={false}
