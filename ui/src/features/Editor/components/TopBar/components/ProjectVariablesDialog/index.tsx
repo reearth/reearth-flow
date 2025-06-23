@@ -1,4 +1,4 @@
-import { Minus, Plus } from "@phosphor-icons/react";
+import { MinusIcon, PlusIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 import { debounce } from "lodash-es";
 import { useState } from "react";
@@ -11,7 +11,9 @@ import {
   DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
   IconButton,
   Input,
@@ -246,22 +248,28 @@ const ProjectVariableDialog: React.FC<Props> = ({
             <DialogContentSection className="flex-3 bg-card">
               <DialogContentSection className="flex flex-row items-center gap-2 p-2">
                 <DropdownMenu>
-                  <DropdownMenuTrigger>
-                    <IconButton icon={<Plus />} />
+                  <DropdownMenuTrigger asChild>
+                    <IconButton icon={<PlusIcon />} />
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent>
-                    {allVarTypes.map((type) => (
-                      <DropdownMenuItem
-                        key={type}
-                        onClick={() => {
-                          onAdd(type);
-                        }}>
-                        {getUserFacingName(type)}
-                      </DropdownMenuItem>
-                    ))}
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuLabel>
+                      {t("Add a new project variable")}
+                    </DropdownMenuLabel>
+                    <DropdownMenuGroup>
+                      {allVarTypes.map((type) => (
+                        <DropdownMenuItem
+                          key={type}
+                          disabled={type === "unsupported"}
+                          onClick={() => {
+                            onAdd(type);
+                          }}>
+                          {getUserFacingName(type)}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <IconButton icon={<Minus />} onClick={handleDelete} />
+                <IconButton icon={<MinusIcon />} onClick={handleDelete} />
                 {/* <IconButton icon={<ArrowUp />} onClick={handleMoveUp} /> */}
                 {/* <IconButton icon={<ArrowDown />} onClick={handleMoveDown} /> */}
               </DialogContentSection>

@@ -66,7 +66,7 @@ const ProjectVariablesTable: React.FC<Props> = ({
   });
 
   return (
-    <Table className={`bg-inherit rounded-md ${className}`}>
+    <Table className={`rounded-md bg-inherit ${className}`}>
       <TableHeader>
         {table.getHeaderGroups().map((headerGroup) => (
           <TableRow key={headerGroup.id}>

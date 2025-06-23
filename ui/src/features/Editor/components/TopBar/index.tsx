@@ -1,5 +1,5 @@
 import { ChalkboardTeacherIcon, HardDriveIcon } from "@phosphor-icons/react";
-import { memo, useState } from "react";
+import { memo, useState, useCallback, useMemo } from "react";
 import { Doc } from "yjs";
 
 import { IconButton } from "@flow/components";
@@ -71,57 +71,77 @@ const TopBar: React.FC<Props> = ({
 
   const { projectVariables } = useGetProjectVariables(currentProject?.id);
 
+  const initialProjectVariables = useMemo(
+    () => projectVariables ?? [],
+    [projectVariables],
+  );
+
   const [updatedProjectVariables, setUpdatedProjectVariables] = useState<
     ProjectVariableType[]
-  >(projectVariables ?? []);
+  >(initialProjectVariables);
 
-  const handleProjectVariableAdd = async (type: VarType) => {
-    if (!currentProject) return;
-    const defaultValue = getDefaultValueForProjectVar(type);
+  const handleProjectVariableAdd = useCallback(
+    async (type: VarType) => {
+      if (!currentProject) return;
+      const defaultValue = getDefaultValueForProjectVar(type);
 
-    const res = await createProjectVariable(
-      currentProject.id,
-      t("New Project Variable"),
-      defaultValue,
-      type,
-      true,
-      true,
-      updatedProjectVariables.length,
-    );
+      const res = await createProjectVariable(
+        currentProject.id,
+        t("New Project Variable"),
+        defaultValue,
+        type,
+        true,
+        true,
+        updatedProjectVariables.length,
+      );
 
-    if (!res.projectVariable) return;
+      if (!res.projectVariable) return;
 
-    const newProjectVariable = res.projectVariable;
+      const newProjectVariable = res.projectVariable;
 
-    setUpdatedProjectVariables((prev) => [...prev, newProjectVariable]);
-  };
+      setUpdatedProjectVariables((prev) => [...prev, newProjectVariable]);
+    },
+    [currentProject, createProjectVariable, t, updatedProjectVariables.length],
+  );
 
-  const handleProjectVariableChange = async (
-    projectVariable: ProjectVariableType,
-  ) => {
-    await updateProjectVariable(
-      projectVariable.id,
-      projectVariable.name,
-      projectVariable.defaultValue,
-      projectVariable.type,
-      projectVariable.required,
-      projectVariable.public,
-    );
+  const handleProjectVariableChange = useCallback(
+    async (projectVariable: ProjectVariableType) => {
+      await updateProjectVariable(
+        projectVariable.id,
+        projectVariable.name,
+        projectVariable.defaultValue,
+        projectVariable.type,
+        projectVariable.required,
+        projectVariable.public,
+      );
 
-    setUpdatedProjectVariables((prev) =>
-      prev.map((variable) =>
-        variable.id === projectVariable.id ? projectVariable : variable,
-      ),
-    );
-  };
+      setUpdatedProjectVariables((prev) =>
+        prev.map((variable) =>
+          variable.id === projectVariable.id ? projectVariable : variable,
+        ),
+      );
+    },
+    [updateProjectVariable],
+  );
 
-  const handleProjectVariableDelete = async (id: string) => {
-    await deleteProjectVariable(id);
+  const handleProjectVariableDelete = useCallback(
+    async (id: string) => {
+      await deleteProjectVariable(id);
 
-    setUpdatedProjectVariables((prev) =>
-      prev.filter((variable) => variable.id !== id),
-    );
-  };
+      setUpdatedProjectVariables((prev) =>
+        prev.filter((variable) => variable.id !== id),
+      );
+    },
+    [deleteProjectVariable],
+  );
+
+  const handleShowProjectVarsDialog = useCallback(() => {
+    setShowProjectVarsDialog(true);
+  }, []);
+
+  const handleCloseProjectVarsDialog = useCallback(() => {
+    setShowProjectVarsDialog(false);
+  }, []);
   return (
     <div className="flex w-[100vw] shrink-0 justify-between gap-2 bg-secondary">
       <div className="flex items-center gap-1">
@@ -140,7 +160,7 @@ const TopBar: React.FC<Props> = ({
             variant="outline"
             tooltipText={t("Project Variables")}
             icon={<ChalkboardTeacherIcon weight="thin" size={18} />}
-            onClick={() => setShowProjectVarsDialog(true)}
+            onClick={handleShowProjectVarsDialog}
           />
           <IconButton
             className="h-[30px]"
@@ -179,7 +199,7 @@ const TopBar: React.FC<Props> = ({
       <ProjectVariableDialog
         isOpen={showProjectVarsDialog}
         currentProjectVariables={projectVariables}
-        onClose={() => setShowProjectVarsDialog(false)}
+        onClose={handleCloseProjectVarsDialog}
         onAdd={handleProjectVariableAdd}
         onChange={handleProjectVariableChange}
         onDelete={handleProjectVariableDelete}
