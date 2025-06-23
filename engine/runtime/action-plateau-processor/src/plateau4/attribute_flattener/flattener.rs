@@ -362,6 +362,13 @@ pub(super) fn get_value_from_json_path(
         }
     } else if let AttributeValue::Map(value) = value {
         get_value_from_json_path(&paths[1..], value)
+    } else if *key == "core:creationDate" {
+        match value {
+            AttributeValue::DateTime(dt) => {
+                Some(AttributeValue::String(dt.format("%Y-%m-%d").to_string()))
+            }
+            _ => Some(value.clone()),
+        }
     } else {
         Some(value.clone())
     };

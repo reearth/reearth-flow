@@ -58,12 +58,11 @@ graphs:
                 buildingIdAttributes["uro:city_code"] ?? env.get("__value").cityCode
 
             - attribute: cityName
-              method: convert
+              method: create
               value: |
                 let attributes = env.get("__value").cityGmlAttributes;
                 let buildingIdAttributes = attributes["uro:BuildingIDAttribute"] ?? {};
                 buildingIdAttributes["uro:city"] ?? env.get("__value").cityName
-
 
       - id: ae9c558d-ce05-4b40-ae04-a4477d96db5a
         name: AttributeConversionTable
@@ -148,25 +147,6 @@ graphs:
         type: action
         action: PLATEAU4.AttributeFlattener
 
-      - id: dc85a21b-4356-4a29-a862-270029071234
-        name: BoundsExtractor
-        type: action
-        action: BoundsExtractor
-        with:
-          xmin: _xmin
-          ymin: _ymin
-          xmax: _xmax
-          ymax: _ymax
-          zmin: _zmin
-          zmax: _zmax
-
-      - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
-        name: VerticalReprojector
-        type: action
-        action: VerticalReprojector
-        with:
-          reprojectorType: jgd2011ToWgs84
-
       - id: 3e637368-48dc-48c2-aade-253d5b0cfeeb
         name: AttributeManagerRemoveUnnecessaryAttributes
         type: action
@@ -181,17 +161,10 @@ graphs:
               method: create
               value: |
                 env.get("__lod")
-            - attribute: _x
+            - attribute: feature_type
               method: create
               value: |
-                 (env.get("__value")["_xmin"] + env.get("__value")["_xmax"]) * 0.5
-            - attribute: _y
-              method: create
-              value: |
-                 (env.get("__value")["_ymin"] + env.get("__value")["_ymax"]) * 0.5
-            - attribute: type
-              method: rename
-              value: "feature_type"
+                env.get("__feature_type")
             - attribute: path
               method: rename
               value: "_path"
@@ -238,7 +211,245 @@ graphs:
         type: action
         action: FeatureLodFilter
         with:
-          filterKey: _path
+          filterKey: city_code
+
+      - id: dc85a21b-4356-4a29-a862-270029071234
+        name: BoundsExtractorByLod1
+        type: action
+        action: BoundsExtractor
+        with:
+          xmin: _xmin
+          ymin: _ymin
+          xmax: _xmax
+          ymax: _ymax
+          zmin: _zmin
+          zmax: _zmax
+
+      - id: fe1daa11-2b3c-4e52-8a1f-123456789011
+        name: AttributeManagerXYByLod1
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value: |
+                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+
+      - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
+        name: VerticalReprojectorByLod1
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: dc85a21b-4356-4a29-a862-270029071235
+        name: BoundsExtractorByLod2
+        type: action
+        action: BoundsExtractor
+        with:
+          xmin: _xmin
+          ymin: _ymin
+          xmax: _xmax
+          ymax: _ymax
+          zmin: _zmin
+          zmax: _zmax
+
+      - id: fe1daa11-2b3c-4e52-8a1f-123456789012
+        name: AttributeManagerXYByLod2
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value: |
+                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+
+      - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
+        name: VerticalReprojectorByLod2
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: dc85a21b-4356-4a29-a862-270029071236
+        name: BoundsExtractorByLod2NoTexture
+        type: action
+        action: BoundsExtractor
+        with:
+          xmin: _xmin
+          ymin: _ymin
+          xmax: _xmax
+          ymax: _ymax
+          zmin: _zmin
+          zmax: _zmax
+
+      - id: fe1daa11-2b3c-4e52-8a1f-123456789013
+        name: AttributeManagerXYByLod2NoTexture
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value: |
+                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+
+      - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d3
+        name: VerticalReprojectorByLod2NoTexture
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: dc85a21b-4356-4a29-a862-270029071237
+        name: BoundsExtractorByLod3
+        type: action
+        action: BoundsExtractor
+        with:
+          xmin: _xmin
+          ymin: _ymin
+          xmax: _xmax
+          ymax: _ymax
+          zmin: _zmin
+          zmax: _zmax
+
+      - id: fe1daa11-2b3c-4e52-8a1f-123456789014
+        name: AttributeManagerXYByLod3
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value: |
+                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+
+      - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
+        name: VerticalReprojectorByLod3
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: dc85a21b-4356-4a29-a862-270029071238
+        name: BoundsExtractorByLod3NoTexture
+        type: action
+        action: BoundsExtractor
+        with:
+          xmin: _xmin
+          ymin: _ymin
+          xmax: _xmax
+          ymax: _ymax
+          zmin: _zmin
+          zmax: _zmax
+
+      - id: fe1daa11-2b3c-4e52-8a1f-123456789015
+        name: AttributeManagerXYByLod3NoTexture
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value: |
+                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+
+      - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d5
+        name: VerticalReprojectorByLod3NoTexture
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: dc85a21b-4356-4a29-a862-270029071239
+        name: BoundsExtractorByLod4
+        type: action
+        action: BoundsExtractor
+        with:
+          xmin: _xmin
+          ymin: _ymin
+          xmax: _xmax
+          ymax: _ymax
+          zmin: _zmin
+          zmax: _zmax
+
+      - id: fe1daa11-2b3c-4e52-8a1f-123456789016
+        name: AttributeManagerXYByLod4
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value: |
+                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+
+      - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
+        name: VerticalReprojectorByLod4
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
+
+      - id: dc85a21b-4356-4a29-a862-270029071240
+        name: BoundsExtractorByLod4NoTexture
+        type: action
+        action: BoundsExtractor
+        with:
+          xmin: _xmin
+          ymin: _ymin
+          xmax: _xmax
+          ymax: _ymax
+          zmin: _zmin
+          zmax: _zmax
+
+      - id: fe1daa11-2b3c-4e52-8a1f-123456789017
+        name: AttributeManagerXYByLod4NoTexture
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value: |
+                 (env.get("__value")._xmin + env.get("__value")._xmax) * 0.5
+            - attribute: _y
+              method: create
+              value: |
+                 (env.get("__value")._ymin + env.get("__value")._ymax) * 0.5
+
+      - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d7
+        name: VerticalReprojectorByLod4NoTexture
+        type: action
+        action: VerticalReprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
 
       - id: 41d69f1f-2a4d-4bc1-a5d0-175698273571
         name: cesium3DTilesWriterByLod1
@@ -440,16 +651,6 @@ graphs:
         toPort: default
       - id: eeb85110-2cb8-4196-bb94-6d44c0395fb6
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
-        to: dc85a21b-4356-4a29-a862-270029071234
-        fromPort: default
-        toPort: default
-      - id: bfeb12b1-c8d5-4d13-928d-bf2b01672af9
-        from: dc85a21b-4356-4a29-a862-270029071234
-        to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
-        fromPort: default
-        toPort: default
-      - id: fddd597c-3e9c-400c-abd9-02b6c2214459
-        from: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         to: 3e637368-48dc-48c2-aade-253d5b0cfeeb
         fromPort: default
         toPort: default
@@ -460,38 +661,143 @@ graphs:
         toPort: default
       - id: dde1d751-fe3e-4283-8742-ec4a61a41574
         from: c32a279d-97be-4584-b282-4d65627b1132
-        to: 41d69f1f-2a4d-4bc1-a5d0-175698273571
+        to: dc85a21b-4356-4a29-a862-270029071234
         fromPort: up_to_lod1
+        toPort: default
+      - id: dde1d751-fe3e-4283-8742-ec4a61a41575
+        from: dc85a21b-4356-4a29-a862-270029071234
+        to: fe1daa11-2b3c-4e52-8a1f-123456789011
+        fromPort: default
+        toPort: default
+      - id: dde1d751-fe3e-4283-8742-ec4a61a41576
+        from: fe1daa11-2b3c-4e52-8a1f-123456789011
+        to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
+        fromPort: default
+        toPort: default
+      - id: dde1d751-fe3e-4283-8742-ec4a61a41577
+        from: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
+        to: 41d69f1f-2a4d-4bc1-a5d0-175698273571
+        fromPort: default
         toPort: default
       - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30bb
         from: c32a279d-97be-4584-b282-4d65627b1132
-        to: a61799d5-176e-4fb9-aa64-5d350adf0bb8
+        to: dc85a21b-4356-4a29-a862-270029071235
         fromPort: up_to_lod2
         toPort: default
+      - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30ba
+        from: dc85a21b-4356-4a29-a862-270029071235
+        to: fe1daa11-2b3c-4e52-8a1f-123456789012
+        fromPort: default
+        toPort: default
+      - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30b2
+        from: fe1daa11-2b3c-4e52-8a1f-123456789012
+        to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
+        fromPort: default
+        toPort: default
       - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30bc
+        from: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
+        to: a61799d5-176e-4fb9-aa64-5d350adf0bb8
+        fromPort: default
+        toPort: default
+      - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30bd
         from: c32a279d-97be-4584-b282-4d65627b1132
-        to: fc4c3817-6efe-4d6e-8e82-ebd84d5e6e19
+        to: dc85a21b-4356-4a29-a862-270029071236
         fromPort: up_to_lod2
+        toPort: default
+      - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30da
+        from: dc85a21b-4356-4a29-a862-270029071236
+        to: fe1daa11-2b3c-4e52-8a1f-123456789013
+        fromPort: default
+        toPort: default
+      - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30d1
+        from: fe1daa11-2b3c-4e52-8a1f-123456789013
+        to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d3
+        fromPort: default
+        toPort: default
+      - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30be
+        from: 8b05f9d4-1cb2-4071-a1da-c968431bc0d3
+        to: fc4c3817-6efe-4d6e-8e82-ebd84d5e6e19
+        fromPort: default
         toPort: default
       - id: ce3f3571-053c-4487-8e85-b95fb71a49c7
         from: c32a279d-97be-4584-b282-4d65627b1132
-        to: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
+        to: dc85a21b-4356-4a29-a862-270029071237
         fromPort: up_to_lod3
         toPort: default
       - id: ce3f3571-053c-4487-8e85-b95fb71a49c8
+        from: dc85a21b-4356-4a29-a862-270029071237
+        to: fe1daa11-2b3c-4e52-8a1f-123456789014
+        fromPort: default
+        toPort: default
+      - id: ce3f3571-053c-4487-8e85-b95fb71a49c1
+        from: fe1daa11-2b3c-4e52-8a1f-123456789014
+        to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
+        fromPort: default
+        toPort: default
+      - id: ce3f3571-053c-4487-8e85-b95fb71a49c8
+        from: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
+        to: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
+        fromPort: default
+        toPort: default
+      - id: ce3f3571-053c-4487-8e85-b95fb71a49c9
         from: c32a279d-97be-4584-b282-4d65627b1132
-        to: 990ff798-168a-496e-a20a-b428de6a9ec0
+        to: dc85a21b-4356-4a29-a862-270029071238
         fromPort: up_to_lod3
+        toPort: default
+      - id: ce3f3571-053c-4487-8e85-b95fb71a49ca
+        from: dc85a21b-4356-4a29-a862-270029071238
+        to: fe1daa11-2b3c-4e52-8a1f-123456789015
+        fromPort: default
+        toPort: default
+      - id: ce3f3571-053c-4487-8e85-b95fb71a49c2
+        from: fe1daa11-2b3c-4e52-8a1f-123456789015
+        to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d5
+        fromPort: default
+        toPort: default
+      - id: ce3f3571-053c-4487-8e85-b95fb71a49ca
+        from: 8b05f9d4-1cb2-4071-a1da-c968431bc0d5
+        to: 990ff798-168a-496e-a20a-b428de6a9ec0
+        fromPort: default
         toPort: default
       - id: 841f1bed-a4d3-4425-a754-4f0dd7461eac
         from: c32a279d-97be-4584-b282-4d65627b1132
-        to: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
+        to: dc85a21b-4356-4a29-a862-270029071239
         fromPort: up_to_lod4
         toPort: default
+      - id: 841f1bed-a4d3-4425-a754-4f0dd7461eca
+        from: dc85a21b-4356-4a29-a862-270029071239
+        to: fe1daa11-2b3c-4e52-8a1f-123456789016
+        fromPort: default
+        toPort: default
+      - id: 841f1bed-a4d3-4425-a754-4f0dd7461ec2
+        from: fe1daa11-2b3c-4e52-8a1f-123456789016
+        to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
+        fromPort: default
+        toPort: default
       - id: 841f1bed-a4d3-4425-a754-4f0dd7461ead
+        from: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
+        to: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
+        fromPort: default
+        toPort: default
+      - id: 841f1bed-a4d3-4425-a754-4f0dd7461eae
         from: c32a279d-97be-4584-b282-4d65627b1132
-        to: 3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638
+        to: dc85a21b-4356-4a29-a862-270029071240
         fromPort: up_to_lod4
+        toPort: default
+      - id: 841f1bed-a4d3-4425-a754-4f0dd7461eea
+        from: dc85a21b-4356-4a29-a862-270029071240
+        to: fe1daa11-2b3c-4e52-8a1f-123456789017
+        fromPort: default
+        toPort: default
+      - id: 841f1bed-a4d3-4425-a754-4f0dd7461ee2
+        from: fe1daa11-2b3c-4e52-8a1f-123456789017
+        to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d7
+        fromPort: default
+        toPort: default
+      - id: 841f1bed-a4d3-4425-a754-4f0dd7461eaf
+        from: 8b05f9d4-1cb2-4071-a1da-c968431bc0d7
+        to: 3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638
+        fromPort: default
         toPort: default
       - id: 14a2d089-6d1f-4014-bb71-ff976c8e388e
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
