@@ -12,7 +12,7 @@ use std::sync::Arc;
 use tracing::{error, warn};
 use yrs::sync::Awareness;
 use yrs::updates::decoder::Decode;
-use yrs::{Doc, ReadTxn, Transact, Update};
+use yrs::{Doc, ReadTxn, StateVector, Transact, Update};
 
 use super::types::BroadcastConfig;
 
@@ -278,8 +278,12 @@ impl BroadcastPool {
             return Err(anyhow::anyhow!("doc_id does not exist or no updates"));
         }
 
-        let doc = self.manager.store.load_doc_v2(doc_id).await?;
+        let doc = Doc::new();
         let mut txn = doc.transact_mut();
+
+        let gcs_doc = self.manager.store.load_doc_v2(doc_id).await?;
+        let mut gcs_txn = gcs_doc.transact_mut();
+
         let mut start_id = "0".to_string();
         let batch_size = 2048;
 
@@ -360,20 +364,18 @@ impl BroadcastPool {
             }
         }
 
+        let update = txn.encode_diff_v1(&StateVector::default());
         drop(txn);
-        let gcs_doc = self.manager.store.load_doc_v2(doc_id).await?;
-        let gcs_txn = gcs_doc.transact_mut();
-
-        let update = gcs_txn.encode_diff_v1(&gcs_txn.state_vector());
         let update_bytes = bytes::Bytes::from(update);
         self.manager
             .store
             .push_update(doc_id, &update_bytes, &self.manager.redis_store)
             .await?;
+
+        let update = Update::decode_v1(&update_bytes)?;
+        gcs_txn.apply_update(update)?;
         drop(gcs_txn);
-
         self.manager.store.flush_doc_v2(doc_id, &doc).await?;
-
         Ok(())
     }
 
