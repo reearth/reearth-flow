@@ -28,6 +28,17 @@ export function intermediateDataTransform(parsedData: any) {
   return parsedData;
 }
 
+function buildClosedRing(coords: [number, number][]): [number, number][] {
+  if (coords.length === 0) return coords;
+
+  const firstPoint = coords[0];
+  const lastPoint = coords[coords.length - 1];
+
+  return firstPoint[0] !== lastPoint[0] || firstPoint[1] !== lastPoint[1]
+    ? [...coords, firstPoint]
+    : coords;
+}
+
 function handle2DGeometry(geometry: any) {
   if ("point" in geometry) {
     const coordinateValues = Object.values(geometry.point);
@@ -96,6 +107,30 @@ function handle2DGeometry(geometry: any) {
     });
     return {
       type: "MultiLineString",
+      coordinates,
+    };
+  }
+
+  if ("triangle" in geometry) {
+    const coords = geometry.triangle.map((point: any) => [point.x, point.y]);
+    return {
+      type: "Polygon",
+      coordinates: [buildClosedRing(coords)],
+    };
+  }
+
+  if ("rect" in geometry) {
+    const { min, max } = geometry.rect;
+    const coordinates = [
+      buildClosedRing([
+        [min.x, min.y],
+        [max.x, min.y],
+        [max.x, max.y],
+        [min.x, max.y],
+      ]),
+    ];
+    return {
+      type: "Polygon",
       coordinates,
     };
   }
