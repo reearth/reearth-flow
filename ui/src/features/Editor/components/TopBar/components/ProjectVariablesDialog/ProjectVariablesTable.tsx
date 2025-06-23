@@ -7,6 +7,7 @@ import {
 import { useState } from "react";
 
 import {
+  Checkbox,
   Table,
   TableBody,
   TableCell,
@@ -35,10 +36,40 @@ const ProjectVariablesTable: React.FC<Props> = ({
 
   const [rowSelection, setRowSelection] = useState({});
 
+  // Create columns with selection column prepended
+  const columnsWithSelection: ColumnDef<ProjectVariable>[] = [
+    {
+      id: "select",
+      header: ({ table }) => (
+        <Checkbox
+          checked={table.getIsAllPageRowsSelected()}
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+          aria-label="Select all"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={row.getIsSelected()}
+          onCheckedChange={(value) => {
+            row.toggleSelected(!!value);
+            if (value) {
+              onRowClick?.(row.original);
+            }
+          }}
+          aria-label="Select row"
+          onClick={(e) => e.stopPropagation()}
+        />
+      ),
+      enableSorting: false,
+      enableHiding: false,
+    },
+    ...columns,
+  ];
+
   const table = useReactTable({
     data: projectVariables,
-    columns,
-    enableMultiRowSelection: false,
+    columns: columnsWithSelection,
+    enableMultiRowSelection: true,
     getCoreRowModel: getCoreRowModel(),
     // Sorting
     // onSortingChange: setSorting,
@@ -90,11 +121,16 @@ const ProjectVariablesTable: React.FC<Props> = ({
           table.getRowModel().rows.map((row) => (
             <TableRow
               key={row.id}
-              className="cursor-pointer hover:bg-primary/50 data-[state=selected]:bg-primary/50"
+              className="hover:bg-primary/50 data-[state=selected]:bg-primary/50"
               data-state={row.getIsSelected() && "selected"}
-              onClick={() => {
-                row.toggleSelected();
-                onRowClick?.(row.original);
+              onClick={(e) => {
+                // Only trigger onRowClick for visual feedback, don't toggle selection
+                // Selection is now handled only by the checkbox
+                const target = e.target as HTMLElement;
+                // Don't trigger if clicking on interactive elements
+                if (!target.closest('input, button, [role="button"]')) {
+                  onRowClick?.(row.original);
+                }
               }}>
               {row.getVisibleCells().map((cell) => (
                 <TableCell key={cell.id} className="px-2 py-[2px]">
@@ -105,7 +141,9 @@ const ProjectVariablesTable: React.FC<Props> = ({
           ))
         ) : (
           <TableRow>
-            <TableCell colSpan={columns.length} className="h-24 text-center">
+            <TableCell
+              colSpan={columnsWithSelection.length}
+              className="h-24 text-center">
               {t("No Results")}
             </TableCell>
           </TableRow>

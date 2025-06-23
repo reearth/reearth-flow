@@ -134,12 +134,13 @@ export const useQueries = () => {
           paramId,
         },
       });
-      if (data?.removeParameter) {
+      if (data?.removeParameter === true) {
         return { success: true };
       }
+      throw new Error("Failed to delete project variable");
     },
-    onSuccess: (parameterDocument) => {
-      if (parameterDocument) {
+    onSuccess: (result) => {
+      if (result?.success) {
         queryClient.invalidateQueries({
           queryKey: [ParameterQueryKeys.GetParameters],
         });

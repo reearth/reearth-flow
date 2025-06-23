@@ -1,4 +1,8 @@
-import { MinusIcon, PlusIcon } from "@phosphor-icons/react";
+import {
+  ChalkboardTeacherIcon,
+  MinusIcon,
+  PlusIcon,
+} from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 import { debounce } from "lodash-es";
 import { useState } from "react";
@@ -73,10 +77,15 @@ const ProjectVariableDialog: React.FC<Props> = ({
     onChange(updatedProjectVariable);
   }, 500);
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (selectedIndex === undefined || !currentProjectVariables) return;
     const varToDelete = currentProjectVariables[selectedIndex];
-    onDelete(varToDelete.id);
+    try {
+      await onDelete(varToDelete.id);
+      setSelectedIndex(undefined);
+    } catch (error) {
+      console.error("Failed to delete project variable:", error);
+    }
   };
 
   // const handleMoveUp = () => {
@@ -242,7 +251,12 @@ const ProjectVariableDialog: React.FC<Props> = ({
       <DialogContent className="h-[50vh]" size="2xl" position="off-center">
         <div className="flex h-full flex-col">
           <DialogHeader>
-            <DialogTitle>{t("Edit Project Variables")}</DialogTitle>
+            <DialogTitle>
+              <div className="flex items-center gap-2">
+                <ChalkboardTeacherIcon />
+                {t("Project Variables")}
+              </div>
+            </DialogTitle>
           </DialogHeader>
           <div className="flex h-full">
             <DialogContentSection className="flex-3 bg-card">
@@ -269,7 +283,16 @@ const ProjectVariableDialog: React.FC<Props> = ({
                     </DropdownMenuGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <IconButton icon={<MinusIcon />} onClick={handleDelete} />
+                <IconButton
+                  icon={<MinusIcon />}
+                  onClick={handleDelete}
+                  disabled={selectedIndex === undefined}
+                  tooltipText={
+                    selectedIndex === undefined
+                      ? t("Select a variable to delete")
+                      : t("Delete selected variable")
+                  }
+                />
                 {/* <IconButton icon={<ArrowUp />} onClick={handleMoveUp} /> */}
                 {/* <IconButton icon={<ArrowDown />} onClick={handleMoveDown} /> */}
               </DialogContentSection>

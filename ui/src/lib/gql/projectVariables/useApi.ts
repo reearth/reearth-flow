@@ -108,13 +108,18 @@ export const useProjectVariables = () => {
   const deleteProjectVariable = async (paramId: string) => {
     const { mutateAsync, ...rest } = deleteProjectVariableMutation;
     try {
-      await mutateAsync(paramId);
-      toast({
-        title: t("Project Variable Deleted"),
-        description: t("Project variable has been deleted successfully."),
-      });
-      return { success: true, ...rest };
-    } catch (_err) {
+      const result = await mutateAsync(paramId);
+      if (result?.success) {
+        toast({
+          title: t("Project Variable Deleted"),
+          description: t("Project variable has been deleted successfully."),
+        });
+        return { success: true, ...rest };
+      } else {
+        throw new Error("Delete operation returned false");
+      }
+    } catch (err) {
+      console.error("Error deleting project variable:", err);
       toast({
         title: t("Project Variable Deletion Failed"),
         description: t("There was an error deleting a project variable."),

@@ -1,5 +1,5 @@
 import { ChalkboardTeacherIcon, HardDriveIcon } from "@phosphor-icons/react";
-import { memo, useState, useCallback, useMemo } from "react";
+import { memo, useState, useCallback, useMemo, useEffect } from "react";
 import { Doc } from "yjs";
 
 import { IconButton } from "@flow/components";
@@ -80,6 +80,10 @@ const TopBar: React.FC<Props> = ({
     ProjectVariableType[]
   >(initialProjectVariables);
 
+  useEffect(() => {
+    setUpdatedProjectVariables(initialProjectVariables);
+  }, [initialProjectVariables]);
+
   const handleProjectVariableAdd = useCallback(
     async (type: VarType) => {
       if (!currentProject) return;
@@ -126,11 +130,17 @@ const TopBar: React.FC<Props> = ({
 
   const handleProjectVariableDelete = useCallback(
     async (id: string) => {
-      await deleteProjectVariable(id);
+      try {
+        const result = await deleteProjectVariable(id);
 
-      setUpdatedProjectVariables((prev) =>
-        prev.filter((variable) => variable.id !== id),
-      );
+        if (result.success) {
+          setUpdatedProjectVariables((prev) =>
+            prev.filter((variable) => variable.id !== id),
+          );
+        }
+      } catch (error) {
+        console.error("Failed to delete project variable:", error);
+      }
     },
     [deleteProjectVariable],
   );
@@ -198,7 +208,7 @@ const TopBar: React.FC<Props> = ({
       </div>
       <ProjectVariableDialog
         isOpen={showProjectVarsDialog}
-        currentProjectVariables={projectVariables}
+        currentProjectVariables={updatedProjectVariables}
         onClose={handleCloseProjectVarsDialog}
         onAdd={handleProjectVariableAdd}
         onChange={handleProjectVariableChange}
