@@ -258,7 +258,7 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
                 {
                     "attribute": "uro:geometrySrcDescLod1",
                     "data_type": "string",
-                    "json_path": "uro:publicSurveyDataQualityAttribute uro:geometrySrcDescLod1"
+                    "json_path": "uro:buildingDataQualityAttribute uro:geometrySrcDescLod1"
                 },
                 {
                     "attribute": "uro:lodType",

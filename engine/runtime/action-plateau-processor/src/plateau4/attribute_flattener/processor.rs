@@ -32,6 +32,11 @@ static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
         ("city_code".to_string(), AttributeValue::default_string()),
         ("city_name".to_string(), AttributeValue::default_string()),
         ("gml_id".to_string(), AttributeValue::default_string()),
+        ("attributes".to_string(), AttributeValue::default_string()),
+        (
+            "core:creationDate".to_string(),
+            AttributeValue::default_string(),
+        ),
     ]
 });
 
@@ -120,6 +125,16 @@ impl Processor for AttributeFlattener {
             .into_iter()
             .map(|(k, v)| (k.to_string(), v))
             .collect::<HashMap<String, AttributeValue>>();
+
+        // save the whole `city_gml_attribute` values as `attributes`
+        let attributes_value =
+            serde_json::Value::from(AttributeValue::Map(city_gml_attribute.clone()));
+        let attributes_json = serde_json::to_string(&attributes_value).unwrap();
+        new_city_gml_attribute.insert(
+            Attribute::new("attributes".to_string()),
+            AttributeValue::String(attributes_json),
+        );
+
         new_city_gml_attribute.extend(
             self.common_attribute_processor
                 .flatten_generic_attributes(&edit_city_gml_attribute),

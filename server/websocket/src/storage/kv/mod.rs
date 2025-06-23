@@ -512,7 +512,7 @@ where
     }
 }
 
-async fn get_or_create_oid<'a, DB: DocOps<'a>>(
+pub async fn get_or_create_oid<'a, DB: DocOps<'a>>(
     db: &DB,
     name: &[u8],
     redis: &RedisStore,
