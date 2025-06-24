@@ -1,0 +1,20 @@
+name: Cleanup PR Revision
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  cleanup-pr-revision-ui:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Remove Cloud Run Tag
+        uses: reearth/actions/remove-cloud-run-tag@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5
+        with:
+          region: ${{ secrets.GC_REGION }}
+          service: reearth-flow-web
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          tag: pr-${{ github.event.pull_request.number }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
