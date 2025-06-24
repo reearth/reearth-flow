@@ -15,7 +15,7 @@ const schema = makeExecutableSchema({
 const executeGraphQLOperation = async (
   operation: string,
   variables?: Record<string, any>,
-  context?: any
+  context?: any,
 ) => {
   try {
     const result = await executeGraphQL({
@@ -28,7 +28,7 @@ const executeGraphQLOperation = async (
     if (result.errors) {
       console.error("GraphQL Errors:", result.errors);
       return {
-        errors: result.errors.map(error => ({
+        errors: result.errors.map((error) => ({
           message: error.message,
           locations: error.locations,
           path: error.path,
@@ -45,7 +45,8 @@ const executeGraphQLOperation = async (
     return {
       errors: [
         {
-          message: error instanceof Error ? error.message : "Internal server error",
+          message:
+            error instanceof Error ? error.message : "Internal server error",
         },
       ],
     };
@@ -56,7 +57,7 @@ const executeGraphQLOperation = async (
 const getAuthContext = (request: Request) => {
   const authHeader = request.headers.get("Authorization");
   const token = authHeader?.replace("Bearer ", "");
-  
+
   return {
     token,
     isAuthenticated: !!token,
@@ -64,62 +65,71 @@ const getAuthContext = (request: Request) => {
 };
 
 export const graphqlHandlers = [
-  graphql.link("*/api/graphql").operation(async ({ request, variables, operationName }) => {
-    console.log("🚀 GraphQL Operation:", operationName || "Unknown");
-    console.log("📝 Variables:", variables);
+  graphql
+    .link("*/api/graphql")
+    .operation(async ({ request, variables, operationName }) => {
+      console.log("🚀 GraphQL Operation:", operationName || "Unknown");
+      console.log("📝 Variables:", variables);
 
-    // Get authentication context
-    const authContext = getAuthContext(request);
-    
-    // For non-authenticated requests, return auth error for protected operations
-    if (!authContext.isAuthenticated && operationName !== "IntrospectionQuery") {
-      return new Response(
-        JSON.stringify({
-          errors: [
-            {
-              message: "Authentication required",
-              extensions: { code: "UNAUTHENTICATED" },
-            },
-          ],
-        }),
-        {
-          status: 401,
-          headers: { "Content-Type": "application/json" },
-        }
+      // Get authentication context
+      const authContext = getAuthContext(request);
+
+      // For non-authenticated requests, return auth error for protected operations
+      if (
+        !authContext.isAuthenticated &&
+        operationName !== "IntrospectionQuery"
+      ) {
+        return new Response(
+          JSON.stringify({
+            errors: [
+              {
+                message: "Authentication required",
+                extensions: { code: "UNAUTHENTICATED" },
+              },
+            ],
+          }),
+          {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      // Get the raw query from the request
+      const requestBody = (await request.json()) as {
+        query: string;
+        variables?: any;
+        operationName?: string;
+      } | null;
+
+      if (!requestBody) {
+        return new Response(
+          JSON.stringify({
+            errors: [{ message: "Invalid request body" }],
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } },
+        );
+      }
+
+      const { query, variables: requestVariables } = requestBody;
+
+      // Execute the GraphQL operation
+      const result = await executeGraphQLOperation(
+        query,
+        requestVariables || variables,
+        authContext,
       );
-    }
 
-    // Get the raw query from the request
-    const requestBody = (await request.json()) as { query: string; variables?: any; operationName?: string } | null;
-    
-    if (!requestBody) {
-      return new Response(
-        JSON.stringify({
-          errors: [{ message: "Invalid request body" }],
-        }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-    
-    const { query, variables: requestVariables } = requestBody;
+      console.log("✅ GraphQL Result:", result);
 
-    // Execute the GraphQL operation
-    const result = await executeGraphQLOperation(
-      query,
-      requestVariables || variables,
-      authContext
-    );
-
-    console.log("✅ GraphQL Result:", result);
-
-    return new Response(JSON.stringify(result), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-      },
-    });
-  }),
+      return new Response(JSON.stringify(result), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+          "Access-Control-Allow-Methods": "POST, OPTIONS",
+        },
+      });
+    }),
 ];

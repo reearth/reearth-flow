@@ -82,6 +82,7 @@ data/
 ### Users
 
 5 mock users with different roles:
+
 - **admin@reearth.io** - Administrator (default current user)
 - **john@reearth.io** - Developer
 - **jane@reearth.io** - Designer
@@ -91,6 +92,7 @@ data/
 ### Workspaces
 
 4 mock workspaces with different configurations:
+
 - **Personal Workspace** - Individual workspace
 - **Development Team** - Team collaboration
 - **Analytics Project** - Data analysis focus
@@ -99,6 +101,7 @@ data/
 ### Projects
 
 6 mock projects covering various use cases:
+
 - Data Processing Pipeline
 - Real-time Analytics
 - Machine Learning Workflow
@@ -109,6 +112,7 @@ data/
 ### Jobs
 
 5 mock jobs in different states:
+
 - **Completed** - Successful execution with outputs
 - **Running** - In-progress execution with live logs
 - **Failed** - Failed execution with error logs
@@ -239,11 +243,13 @@ The mock server automatically disables itself in production:
 ### Mock Server Not Starting
 
 1. Check environment variables:
+
    ```bash
    FLOW_ENABLE_MOCK=true
    ```
 
 2. Verify MSW service worker is installed:
+
    ```bash
    ls public/mockServiceWorker.js
    ```

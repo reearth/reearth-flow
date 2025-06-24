@@ -6,7 +6,7 @@ export type MockUser = {
   host?: string;
 };
 
-// Me type according to GraphQL schema  
+// Me type according to GraphQL schema
 export type MockMe = {
   id: string;
   name: string;
@@ -24,21 +24,21 @@ export const mockUsers: MockUser[] = [
     host: "reearth.io",
   },
   {
-    id: "user-2", 
+    id: "user-2",
     name: "developer",
     email: "john@reearth.io",
     host: "reearth.io",
   },
   {
     id: "user-3",
-    name: "designer", 
+    name: "designer",
     email: "jane@reearth.io",
     host: "reearth.io",
   },
   {
     id: "user-4",
     name: "analyst",
-    email: "mike@reearth.io", 
+    email: "mike@reearth.io",
     host: "reearth.io",
   },
   {
@@ -52,7 +52,7 @@ export const getCurrentUser = (): MockUser => mockUsers[0];
 
 export const getCurrentMe = (): MockMe => ({
   id: "user-1",
-  name: "admin", 
+  name: "admin",
   email: "admin@reearth.io",
   lang: "en",
   auths: ["auth0"],

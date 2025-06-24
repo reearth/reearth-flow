@@ -26,9 +26,9 @@ export type MockParameter = {
   updatedAt: string;
 };
 
-export type ParameterType = 
+export type ParameterType =
   | "CHOICE"
-  | "COLOR" 
+  | "COLOR"
   | "DATETIME"
   | "FILE_FOLDER"
   | "MESSAGE"

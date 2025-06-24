@@ -25,7 +25,7 @@ export const mockDeployments: MockDeployment[] = [
   },
   {
     id: "deployment-2",
-    projectId: "project-2", 
+    projectId: "project-2",
     workspaceId: "workspace-2",
     version: "2.1.0",
     description: "Real-time analytics deployment with improved performance",
@@ -37,7 +37,7 @@ export const mockDeployments: MockDeployment[] = [
   {
     id: "deployment-3",
     projectId: "project-3",
-    workspaceId: "workspace-2", 
+    workspaceId: "workspace-2",
     version: "1.0.0",
     description: "Failed ML workflow deployment",
     isHead: false,
@@ -49,7 +49,7 @@ export const mockDeployments: MockDeployment[] = [
     id: "deployment-4",
     projectId: "project-4",
     workspaceId: "workspace-3",
-    version: "3.0.0", 
+    version: "3.0.0",
     description: "Dashboard deployment in progress",
     isHead: true,
     workflowUrl: "https://workflow-4.reearth-flow.com",

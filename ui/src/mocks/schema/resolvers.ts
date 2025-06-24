@@ -1,29 +1,18 @@
-import { 
-  mockDeployments, 
-  type MockDeployment 
-} from "../data/deployments";
-import { 
-  mockJobs,
-  mockLogs,
-  type MockJob,
-  type MockLog
-} from "../data/jobs";
-import { 
-  mockProjects, 
+import { mockDeployments, type MockDeployment } from "../data/deployments";
+import { mockJobs, mockLogs, type MockJob, type MockLog } from "../data/jobs";
+import {
+  mockProjects,
   type MockProject,
-  type MockParameter
+  type MockParameter,
 } from "../data/projects";
-import { 
-  mockUsers, 
-  getCurrentUser, 
+import {
+  mockUsers,
+  getCurrentUser,
   getCurrentMe,
   type MockUser,
-  type MockMe
+  type MockMe,
 } from "../data/users";
-import { 
-  mockWorkspaces, 
-  type MockWorkspace
-} from "../data/workspaces";
+import { mockWorkspaces, type MockWorkspace } from "../data/workspaces";
 
 // In-memory storage for mutations
 let users = [...mockUsers];
@@ -34,14 +23,20 @@ let deployments = [...mockDeployments];
 const logs = [...mockLogs];
 
 // Helper functions
-const generateId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+const generateId = (prefix: string) =>
+  `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 const paginateResults = <T>(
-  items: T[], 
-  pagination: { page: number; pageSize: number; orderBy?: string; orderDir?: "ASC" | "DESC" }
+  items: T[],
+  pagination: {
+    page: number;
+    pageSize: number;
+    orderBy?: string;
+    orderDir?: "ASC" | "DESC";
+  },
 ) => {
   const { page, pageSize, orderBy, orderDir = "ASC" } = pagination;
-  
+
   // Sort if orderBy is specified
   const sortedItems = [...items];
   if (orderBy) {
@@ -52,11 +47,11 @@ const paginateResults = <T>(
       return orderDir === "DESC" ? -comparison : comparison;
     });
   }
-  
+
   const startIndex = (page - 1) * pageSize;
   const endIndex = startIndex + pageSize;
   const paginatedItems = sortedItems.slice(startIndex, endIndex);
-  
+
   return {
     nodes: paginatedItems,
     pageInfo: {
@@ -75,19 +70,19 @@ export const resolvers = {
     parseValue: (value: string) => value,
     parseLiteral: (ast: any) => ast.value,
   },
-  
+
   URL: {
     serialize: (value: string) => value,
     parseValue: (value: string) => value,
     parseLiteral: (ast: any) => ast.value,
   },
-  
+
   JSON: {
     serialize: (value: any) => value,
     parseValue: (value: any) => value,
     parseLiteral: (ast: any) => ast.value,
   },
-  
+
   FileSize: {
     serialize: (value: number) => value,
     parseValue: (value: number) => value,
@@ -105,7 +100,7 @@ export const resolvers = {
     parseValue: (value: string) => value,
     parseLiteral: (ast: any) => ast.value,
   },
-  
+
   // Interface resolvers
   Node: {
     __resolveType: (obj: any) => {
@@ -113,7 +108,13 @@ export const resolvers = {
       if (obj.email) return "User";
       if (obj.personal !== undefined) return "Workspace";
       if (obj.workspaceId && obj.parameters) return "Project";
-      if (obj.status && ["PENDING", "RUNNING", "COMPLETED", "FAILED", "CANCELLED"].includes(obj.status)) return "Job";
+      if (
+        obj.status &&
+        ["PENDING", "RUNNING", "COMPLETED", "FAILED", "CANCELLED"].includes(
+          obj.status,
+        )
+      )
+        return "Job";
       if (obj.workflowUrl) return "Deployment";
       if (obj.contentType) return "Asset";
       if (obj.schedule || obj.webhook) return "Trigger";
@@ -136,7 +137,8 @@ export const resolvers = {
     lang: (me: MockMe) => me.lang,
     auths: (me: MockMe) => me.auths,
     myWorkspaceId: (me: MockMe) => me.myWorkspaceId,
-    myWorkspace: (me: MockMe) => workspaces.find(w => w.id === me.myWorkspaceId),
+    myWorkspace: (me: MockMe) =>
+      workspaces.find((w) => w.id === me.myWorkspaceId),
     workspaces: () => workspaces,
   },
 
@@ -144,20 +146,22 @@ export const resolvers = {
     id: (workspace: MockWorkspace) => workspace.id,
     name: (workspace: MockWorkspace) => workspace.name,
     personal: (workspace: MockWorkspace) => workspace.personal,
-    members: (workspace: MockWorkspace) => workspace.members.map(member => ({
-      ...member,
-      user: users.find(u => u.id === member.userId),
-    })),
+    members: (workspace: MockWorkspace) =>
+      workspace.members.map((member) => ({
+        ...member,
+        user: users.find((u) => u.id === member.userId),
+      })),
     projects: (workspace: MockWorkspace, args: any) => {
-      const workspaceProjects = projects.filter(p => 
-        p.workspaceId === workspace.id && 
-        (args.includeArchived || !p.isArchived)
+      const workspaceProjects = projects.filter(
+        (p) =>
+          p.workspaceId === workspace.id &&
+          (args.includeArchived || !p.isArchived),
       );
-      
+
       if (args.pagination) {
         return paginateResults(workspaceProjects, args.pagination);
       }
-      
+
       return {
         nodes: workspaceProjects,
         pageInfo: {
@@ -189,8 +193,10 @@ export const resolvers = {
     parameters: (project: MockProject) => project.parameters,
     createdAt: (project: MockProject) => project.createdAt,
     updatedAt: (project: MockProject) => project.updatedAt,
-    workspace: (project: MockProject) => workspaces.find(w => w.id === project.workspaceId),
-    deployment: (project: MockProject) => deployments.find(d => d.projectId === project.id && d.isHead),
+    workspace: (project: MockProject) =>
+      workspaces.find((w) => w.id === project.workspaceId),
+    deployment: (project: MockProject) =>
+      deployments.find((d) => d.projectId === project.id && d.isHead),
   },
 
   Parameter: {
@@ -216,10 +222,14 @@ export const resolvers = {
     logsURL: (job: MockJob) => job.logsURL,
     workerLogsURL: (job: MockJob) => job.workerLogsURL,
     outputURLs: (job: MockJob) => job.outputURLs,
-    deployment: (job: MockJob) => deployments.find(d => d.id === job.deploymentId),
-    workspace: (job: MockJob) => workspaces.find(w => w.id === job.workspaceId),
+    deployment: (job: MockJob) =>
+      deployments.find((d) => d.id === job.deploymentId),
+    workspace: (job: MockJob) =>
+      workspaces.find((w) => w.id === job.workspaceId),
     logs: (job: MockJob, args: { since: string }) => {
-      return logs.filter(log => log.jobId === job.id && log.timestamp >= args.since);
+      return logs.filter(
+        (log) => log.jobId === job.id && log.timestamp >= args.since,
+      );
     },
   },
 
@@ -242,8 +252,10 @@ export const resolvers = {
     workflowUrl: (deployment: MockDeployment) => deployment.workflowUrl,
     createdAt: (deployment: MockDeployment) => deployment.createdAt,
     updatedAt: (deployment: MockDeployment) => deployment.updatedAt,
-    project: (deployment: MockDeployment) => projects.find(p => p.id === deployment.projectId),
-    workspace: (deployment: MockDeployment) => workspaces.find(w => w.id === deployment.workspaceId),
+    project: (deployment: MockDeployment) =>
+      projects.find((p) => p.id === deployment.projectId),
+    workspace: (deployment: MockDeployment) =>
+      workspaces.find((w) => w.id === deployment.workspaceId),
   },
 
   // Query resolvers
@@ -252,11 +264,11 @@ export const resolvers = {
       const { id, type } = args;
       switch (type) {
         case "USER":
-          return users.find(u => u.id === id);
+          return users.find((u) => u.id === id);
         case "WORKSPACE":
-          return workspaces.find(w => w.id === id);
+          return workspaces.find((w) => w.id === id);
         case "PROJECT":
-          return projects.find(p => p.id === id);
+          return projects.find((p) => p.id === id);
         case "ASSET":
           return null; // No assets in mock data yet
         default:
@@ -268,11 +280,11 @@ export const resolvers = {
       const { id: ids, type } = args;
       switch (type) {
         case "USER":
-          return users.filter(u => ids.includes(u.id));
+          return users.filter((u) => ids.includes(u.id));
         case "WORKSPACE":
-          return workspaces.filter(w => ids.includes(w.id));
+          return workspaces.filter((w) => ids.includes(w.id));
         case "PROJECT":
-          return projects.filter(p => ids.includes(p.id));
+          return projects.filter((p) => ids.includes(p.id));
         default:
           return [];
       }
@@ -282,21 +294,25 @@ export const resolvers = {
 
     searchUser: (_: any, args: { nameOrEmail: string }) => {
       const { nameOrEmail } = args;
-      return users.find(u => 
-        u.name.includes(nameOrEmail) || u.email.includes(nameOrEmail)
+      return users.find(
+        (u) => u.name.includes(nameOrEmail) || u.email.includes(nameOrEmail),
       );
     },
 
-    projects: (_: any, args: { workspaceId: string; includeArchived?: boolean; pagination: any }) => {
-      const workspaceProjects = projects.filter(p => 
-        p.workspaceId === args.workspaceId && 
-        (args.includeArchived || !p.isArchived)
+    projects: (
+      _: any,
+      args: { workspaceId: string; includeArchived?: boolean; pagination: any },
+    ) => {
+      const workspaceProjects = projects.filter(
+        (p) =>
+          p.workspaceId === args.workspaceId &&
+          (args.includeArchived || !p.isArchived),
       );
       return paginateResults(workspaceProjects, args.pagination);
     },
 
     projectSharingInfo: (_: any, args: { projectId: string }) => {
-      const project = projects.find(p => p.id === args.projectId);
+      const project = projects.find((p) => p.id === args.projectId);
       return {
         projectId: args.projectId,
         enabled: !!project?.sharedToken,
@@ -305,7 +321,7 @@ export const resolvers = {
     },
 
     sharedProject: (_: any, args: { token: string }) => {
-      const project = projects.find(p => p.sharedToken === args.token);
+      const project = projects.find((p) => p.sharedToken === args.token);
       if (!project) throw new Error("Project not found");
       return {
         project,
@@ -313,48 +329,65 @@ export const resolvers = {
       };
     },
 
-    assets: (_: any, args: { workspaceId: string; pagination: any; keyword?: string; sort?: string }) => {
+    assets: (
+      _: any,
+      args: {
+        workspaceId: string;
+        pagination: any;
+        keyword?: string;
+        sort?: string;
+      },
+    ) => {
       // No assets in mock data yet
       return paginateResults([], args.pagination);
     },
 
     deployments: (_: any, args: { workspaceId: string; pagination: any }) => {
-      const workspaceDeployments = deployments.filter(d => d.workspaceId === args.workspaceId);
+      const workspaceDeployments = deployments.filter(
+        (d) => d.workspaceId === args.workspaceId,
+      );
       return paginateResults(workspaceDeployments, args.pagination);
     },
 
     deploymentByVersion: (_: any, args: { input: any }) => {
       const { workspaceId, projectId, version } = args.input;
-      return deployments.find(d => 
-        d.workspaceId === workspaceId && 
-        d.projectId === projectId && 
-        d.version === version
+      return deployments.find(
+        (d) =>
+          d.workspaceId === workspaceId &&
+          d.projectId === projectId &&
+          d.version === version,
       );
     },
 
     deploymentHead: (_: any, args: { input: any }) => {
       const { workspaceId, projectId } = args.input;
-      return deployments.find(d => 
-        d.workspaceId === workspaceId && 
-        d.projectId === projectId && 
-        d.isHead
+      return deployments.find(
+        (d) =>
+          d.workspaceId === workspaceId &&
+          d.projectId === projectId &&
+          d.isHead,
       );
     },
 
-    deploymentVersions: (_: any, args: { workspaceId: string; projectId?: string }) => {
-      return deployments.filter(d => 
-        d.workspaceId === args.workspaceId && 
-        (!args.projectId || d.projectId === args.projectId)
+    deploymentVersions: (
+      _: any,
+      args: { workspaceId: string; projectId?: string },
+    ) => {
+      return deployments.filter(
+        (d) =>
+          d.workspaceId === args.workspaceId &&
+          (!args.projectId || d.projectId === args.projectId),
       );
     },
 
     jobs: (_: any, args: { workspaceId: string; pagination: any }) => {
-      const workspaceJobs = jobs.filter(j => j.workspaceId === args.workspaceId);
+      const workspaceJobs = jobs.filter(
+        (j) => j.workspaceId === args.workspaceId,
+      );
       return paginateResults(workspaceJobs, args.pagination);
     },
 
-    job: (_: any, args: { id: string }) => 
-      jobs.find(j => j.id === args.id),
+    job: (_: any, args: { id: string }) => jobs.find((j) => j.id === args.id),
 
     nodeExecution: (_: any, args: { jobId: string; nodeId: string }) => {
       // Mock node execution data
@@ -365,7 +398,9 @@ export const resolvers = {
         status: "COMPLETED",
         startedAt: "2024-01-28T10:00:00Z",
         completedAt: "2024-01-28T10:05:00Z",
-        logs: logs.filter(l => l.jobId === args.jobId && l.nodeId === args.nodeId),
+        logs: logs.filter(
+          (l) => l.jobId === args.jobId && l.nodeId === args.nodeId,
+        ),
       };
     },
 
@@ -425,7 +460,7 @@ export const resolvers = {
         email: "newuser@reearth.io",
         host: "reearth.io",
       };
-      
+
       const newWorkspace = {
         id: generateId("workspace"),
         name: "Personal Workspace",
@@ -433,10 +468,10 @@ export const resolvers = {
         members: [{ userId: newUser.id, role: "OWNER" as const }],
         createdAt: new Date().toISOString(),
       };
-      
+
       users.push(newUser);
       workspaces.push(newWorkspace);
-      
+
       return { user: newUser, workspace: newWorkspace };
     },
 
@@ -453,7 +488,7 @@ export const resolvers = {
 
     deleteMe: (_: any, args: { input: { userId: string } }) => {
       const { input } = args;
-      users = users.filter(u => u.id !== input.userId);
+      users = users.filter((u) => u.id !== input.userId);
       return { userId: input.userId };
     },
 
@@ -461,7 +496,7 @@ export const resolvers = {
     createWorkspace: (_: any, args: { input: { name: string } }) => {
       const { input } = args;
       const currentUser = getCurrentUser();
-      
+
       const newWorkspace = {
         id: generateId("workspace"),
         name: input.name,
@@ -474,82 +509,90 @@ export const resolvers = {
         ],
         createdAt: new Date().toISOString(),
       };
-      
+
       workspaces.push(newWorkspace);
       return { workspace: newWorkspace };
     },
 
     updateWorkspace: (_: any, args: { input: any }) => {
       const { input } = args;
-      const workspaceIndex = workspaces.findIndex(w => w.id === input.workspaceId);
-      
+      const workspaceIndex = workspaces.findIndex(
+        (w) => w.id === input.workspaceId,
+      );
+
       if (workspaceIndex === -1) {
         throw new Error("Workspace not found");
       }
-      
+
       const updatedWorkspace = {
         ...workspaces[workspaceIndex],
         name: input.name,
       };
-      
+
       workspaces[workspaceIndex] = updatedWorkspace;
       return { workspace: updatedWorkspace };
     },
 
     deleteWorkspace: (_: any, args: { input: { workspaceId: string } }) => {
       const { input } = args;
-      workspaces = workspaces.filter(w => w.id !== input.workspaceId);
-      projects = projects.filter(p => p.workspaceId !== input.workspaceId);
+      workspaces = workspaces.filter((w) => w.id !== input.workspaceId);
+      projects = projects.filter((p) => p.workspaceId !== input.workspaceId);
       return { workspaceId: input.workspaceId };
     },
 
     addMemberToWorkspace: (_: any, args: { input: any }) => {
       const { input } = args;
-      const workspaceIndex = workspaces.findIndex(w => w.id === input.workspaceId);
-      
+      const workspaceIndex = workspaces.findIndex(
+        (w) => w.id === input.workspaceId,
+      );
+
       if (workspaceIndex === -1) {
         throw new Error("Workspace not found");
       }
-      
+
       workspaces[workspaceIndex].members.push({
         userId: input.userId,
         role: input.role,
       });
-      
+
       return { workspace: workspaces[workspaceIndex] };
     },
 
     removeMemberFromWorkspace: (_: any, args: { input: any }) => {
       const { input } = args;
-      const workspaceIndex = workspaces.findIndex(w => w.id === input.workspaceId);
-      
+      const workspaceIndex = workspaces.findIndex(
+        (w) => w.id === input.workspaceId,
+      );
+
       if (workspaceIndex === -1) {
         throw new Error("Workspace not found");
       }
-      
-      workspaces[workspaceIndex].members = workspaces[workspaceIndex].members.filter(
-        m => m.userId !== input.userId
-      );
-      
+
+      workspaces[workspaceIndex].members = workspaces[
+        workspaceIndex
+      ].members.filter((m) => m.userId !== input.userId);
+
       return { workspace: workspaces[workspaceIndex] };
     },
 
     updateMemberOfWorkspace: (_: any, args: { input: any }) => {
       const { input } = args;
-      const workspaceIndex = workspaces.findIndex(w => w.id === input.workspaceId);
-      
+      const workspaceIndex = workspaces.findIndex(
+        (w) => w.id === input.workspaceId,
+      );
+
       if (workspaceIndex === -1) {
         throw new Error("Workspace not found");
       }
-      
+
       const memberIndex = workspaces[workspaceIndex].members.findIndex(
-        m => m.userId === input.userId
+        (m) => m.userId === input.userId,
       );
-      
+
       if (memberIndex !== -1) {
         workspaces[workspaceIndex].members[memberIndex].role = input.role;
       }
-      
+
       return { workspace: workspaces[workspaceIndex] };
     },
 
@@ -570,50 +613,58 @@ export const resolvers = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      
+
       projects.push(newProject);
       return { project: newProject };
     },
 
     updateProject: (_: any, args: { input: any }) => {
       const { input } = args;
-      const projectIndex = projects.findIndex(p => p.id === input.projectId);
-      
+      const projectIndex = projects.findIndex((p) => p.id === input.projectId);
+
       if (projectIndex === -1) {
         throw new Error("Project not found");
       }
-      
+
       const updatedProject = {
         ...projects[projectIndex],
         ...(input.name && { name: input.name }),
         ...(input.description && { description: input.description }),
         ...(input.archived !== undefined && { isArchived: input.archived }),
-        ...(input.isBasicAuthActive !== undefined && { isBasicAuthActive: input.isBasicAuthActive }),
-        ...(input.basicAuthUsername && { basicAuthUsername: input.basicAuthUsername }),
-        ...(input.basicAuthPassword && { basicAuthPassword: input.basicAuthPassword }),
+        ...(input.isBasicAuthActive !== undefined && {
+          isBasicAuthActive: input.isBasicAuthActive,
+        }),
+        ...(input.basicAuthUsername && {
+          basicAuthUsername: input.basicAuthUsername,
+        }),
+        ...(input.basicAuthPassword && {
+          basicAuthPassword: input.basicAuthPassword,
+        }),
         updatedAt: new Date().toISOString(),
       };
-      
+
       projects[projectIndex] = updatedProject;
       return { project: updatedProject };
     },
 
     deleteProject: (_: any, args: { input: { projectId: string } }) => {
       const { input } = args;
-      projects = projects.filter(p => p.id !== input.projectId);
+      projects = projects.filter((p) => p.id !== input.projectId);
       return { projectId: input.projectId };
     },
 
     runProject: (_: any, args: { input: any }) => {
       const { input } = args;
-      const project = projects.find(p => p.id === input.projectId);
-      
+      const project = projects.find((p) => p.id === input.projectId);
+
       if (!project) {
         throw new Error("Project not found");
       }
-      
+
       // Create a deployment if it doesn't exist
-      let deployment = deployments.find(d => d.projectId === input.projectId && d.isHead);
+      let deployment = deployments.find(
+        (d) => d.projectId === input.projectId && d.isHead,
+      );
       if (!deployment) {
         deployment = {
           id: generateId("deployment"),
@@ -628,7 +679,7 @@ export const resolvers = {
         };
         deployments.push(deployment);
       }
-      
+
       // Create a new job
       const newJob: MockJob = {
         id: generateId("job"),
@@ -639,9 +690,9 @@ export const resolvers = {
         startedAt: new Date().toISOString(),
         outputURLs: [],
       };
-      
+
       jobs.push(newJob);
-      
+
       // Add initial log
       logs.push({
         jobId: newJob.id,
@@ -649,10 +700,10 @@ export const resolvers = {
         logLevel: "INFO",
         message: "Job queued for execution",
       });
-      
+
       // Simulate job progression
       setTimeout(() => {
-        const jobIndex = jobs.findIndex(j => j.id === newJob.id);
+        const jobIndex = jobs.findIndex((j) => j.id === newJob.id);
         if (jobIndex !== -1) {
           jobs[jobIndex].status = "RUNNING";
           logs.push({
@@ -663,19 +714,19 @@ export const resolvers = {
           });
         }
       }, 2000);
-      
+
       return { job: newJob };
     },
 
     // Parameter mutations
     declareParameter: (_: any, args: { projectId: string; input: any }) => {
       const { projectId, input } = args;
-      const project = projects.find(p => p.id === projectId);
-      
+      const project = projects.find((p) => p.id === projectId);
+
       if (!project) {
         throw new Error("Project not found");
       }
-      
+
       const newParameter: MockParameter = {
         id: generateId("param"),
         name: input.name,
@@ -687,53 +738,59 @@ export const resolvers = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      
+
       project.parameters.push(newParameter);
       return newParameter;
     },
 
     updateParameterValue: (_: any, args: { paramId: string; input: any }) => {
       const { paramId, input } = args;
-      
+
       for (const project of projects) {
-        const paramIndex = project.parameters.findIndex(p => p.id === paramId);
+        const paramIndex = project.parameters.findIndex(
+          (p) => p.id === paramId,
+        );
         if (paramIndex !== -1) {
           project.parameters[paramIndex].value = input.value;
           project.parameters[paramIndex].updatedAt = new Date().toISOString();
           return project.parameters[paramIndex];
         }
       }
-      
+
       throw new Error("Parameter not found");
     },
 
     updateParameterOrder: (_: any, args: { projectId: string; input: any }) => {
       const { projectId, input } = args;
-      const project = projects.find(p => p.id === projectId);
-      
+      const project = projects.find((p) => p.id === projectId);
+
       if (!project) {
         throw new Error("Project not found");
       }
-      
-      const paramIndex = project.parameters.findIndex(p => p.id === input.paramId);
+
+      const paramIndex = project.parameters.findIndex(
+        (p) => p.id === input.paramId,
+      );
       if (paramIndex !== -1) {
         project.parameters[paramIndex].index = input.newIndex;
       }
-      
+
       return project.parameters;
     },
 
     removeParameter: (_: any, args: { input: { paramId: string } }) => {
       const { input } = args;
-      
+
       for (const project of projects) {
-        const paramIndex = project.parameters.findIndex(p => p.id === input.paramId);
+        const paramIndex = project.parameters.findIndex(
+          (p) => p.id === input.paramId,
+        );
         if (paramIndex !== -1) {
           project.parameters.splice(paramIndex, 1);
           return true;
         }
       }
-      
+
       return false;
     },
 
@@ -749,7 +806,7 @@ export const resolvers = {
         workspaceId: args.input.workspaceId,
         createdAt: new Date().toISOString(),
       };
-      
+
       return { asset: newAsset };
     },
 
@@ -771,41 +828,43 @@ export const resolvers = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      
+
       deployments.push(newDeployment);
       return { deployment: newDeployment };
     },
 
     updateDeployment: (_: any, args: { input: any }) => {
       const { input } = args;
-      const deploymentIndex = deployments.findIndex(d => d.id === input.deploymentId);
-      
+      const deploymentIndex = deployments.findIndex(
+        (d) => d.id === input.deploymentId,
+      );
+
       if (deploymentIndex === -1) {
         throw new Error("Deployment not found");
       }
-      
+
       if (input.description) {
         deployments[deploymentIndex].description = input.description;
       }
       deployments[deploymentIndex].updatedAt = new Date().toISOString();
-      
+
       return { deployment: deployments[deploymentIndex] };
     },
 
     deleteDeployment: (_: any, args: { input: { deploymentId: string } }) => {
       const { input } = args;
-      deployments = deployments.filter(d => d.id !== input.deploymentId);
+      deployments = deployments.filter((d) => d.id !== input.deploymentId);
       return { deploymentId: input.deploymentId };
     },
 
     executeDeployment: (_: any, args: { input: { deploymentId: string } }) => {
       const { input } = args;
-      const deployment = deployments.find(d => d.id === input.deploymentId);
-      
+      const deployment = deployments.find((d) => d.id === input.deploymentId);
+
       if (!deployment) {
         throw new Error("Deployment not found");
       }
-      
+
       const newJob: MockJob = {
         id: generateId("job"),
         deploymentId: input.deploymentId,
@@ -815,7 +874,7 @@ export const resolvers = {
         startedAt: new Date().toISOString(),
         outputURLs: [],
       };
-      
+
       jobs.push(newJob);
       return { job: newJob };
     },
@@ -823,16 +882,19 @@ export const resolvers = {
     // Job mutations
     cancelJob: (_: any, args: { input: { jobId: string } }) => {
       const { input } = args;
-      const jobIndex = jobs.findIndex(j => j.id === input.jobId);
-      
+      const jobIndex = jobs.findIndex((j) => j.id === input.jobId);
+
       if (jobIndex === -1) {
         throw new Error("Job not found");
       }
-      
-      if (jobs[jobIndex].status === "PENDING" || jobs[jobIndex].status === "RUNNING") {
+
+      if (
+        jobs[jobIndex].status === "PENDING" ||
+        jobs[jobIndex].status === "RUNNING"
+      ) {
         jobs[jobIndex].status = "CANCELLED";
         jobs[jobIndex].completedAt = new Date().toISOString();
-        
+
         logs.push({
           jobId: input.jobId,
           timestamp: new Date().toISOString(),
@@ -840,7 +902,7 @@ export const resolvers = {
           message: "Job cancelled by user request",
         });
       }
-      
+
       return { job: jobs[jobIndex] };
     },
   },
@@ -849,25 +911,25 @@ export const resolvers = {
   Subscription: {
     jobStatus: {
       subscribe: (_: any, args: { jobId: string }) => {
-        const job = jobs.find(j => j.id === args.jobId);
+        const job = jobs.find((j) => j.id === args.jobId);
         return {
           [Symbol.asyncIterator]: async function* () {
             if (job) {
               yield { jobStatus: job.status };
-              
+
               // Simulate status changes
               if (job.status === "PENDING") {
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise((resolve) => setTimeout(resolve, 2000));
                 job.status = "RUNNING";
                 yield { jobStatus: job.status };
-                
-                await new Promise(resolve => setTimeout(resolve, 5000));
+
+                await new Promise((resolve) => setTimeout(resolve, 5000));
                 job.status = "COMPLETED";
                 job.completedAt = new Date().toISOString();
                 yield { jobStatus: job.status };
               }
             }
-          }
+          },
         };
       },
     },
@@ -876,12 +938,12 @@ export const resolvers = {
       subscribe: (_: any, args: { jobId: string }) => {
         return {
           [Symbol.asyncIterator]: async function* () {
-            const jobLogs = logs.filter(l => l.jobId === args.jobId);
+            const jobLogs = logs.filter((l) => l.jobId === args.jobId);
             for (const log of jobLogs) {
               yield { logs: log };
-              await new Promise(resolve => setTimeout(resolve, 1000));
+              await new Promise((resolve) => setTimeout(resolve, 1000));
             }
-          }
+          },
         };
       },
     },
