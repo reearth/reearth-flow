@@ -25,10 +25,11 @@ export const GraphQLRequestProvider = ({
   children?: ReactNode;
 }) => {
   const [graphQLSdk, setGraphQLSdk] = useState<Sdk | undefined>();
-  
-  const isMockMode = import.meta.env.FLOW_ENABLE_MOCK === "true" || config().devMode;
-  const endpoint = isMockMode 
-    ? "/api/graphql"
+
+  const isMockMode =
+    import.meta.env.FLOW_ENABLE_MOCK === "true" || config().devMode;
+  const endpoint = isMockMode
+    ? `${window.location.origin}/api/graphql`
     : `${config().api}/api/graphql`;
 
   useEffect(() => {
@@ -36,12 +37,11 @@ export const GraphQLRequestProvider = ({
 
     const headers: HeadersInit = {};
 
-    if (accesstoken) {
+    if (accesstoken && !isMockMode) {
       headers.authorization = `Bearer ${accesstoken}`;
     } else if (isMockMode) {
       headers.authorization = "Bearer mock-token";
     }
-    
     const graphQLClient = new GraphQLClient(endpoint, {
       headers,
       requestMiddleware: requestMiddleware,
