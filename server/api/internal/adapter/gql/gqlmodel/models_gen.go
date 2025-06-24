@@ -279,6 +279,23 @@ type Parameter struct {
 	DefaultValue interface{}   `json:"defaultValue"`
 }
 
+type ParameterBatchInput struct {
+	ProjectID ID                           `json:"projectId"`
+	Creates   []*DeclareParameterInput     `json:"creates,omitempty"`
+	Updates   []*ParameterUpdateItem       `json:"updates,omitempty"`
+	Deletes   []ID                         `json:"deletes,omitempty"`
+	Reorders  []*UpdateParameterOrderInput `json:"reorders,omitempty"`
+}
+
+type ParameterUpdateItem struct {
+	ParamID      ID             `json:"paramId"`
+	Name         *string        `json:"name,omitempty"`
+	Type         *ParameterType `json:"type,omitempty"`
+	Required     *bool          `json:"required,omitempty"`
+	Public       *bool          `json:"public,omitempty"`
+	DefaultValue interface{}    `json:"defaultValue,omitempty"`
+}
+
 type PreviewSnapshot struct {
 	ID        ID        `json:"id"`
 	Name      *string   `json:"name,omitempty"`

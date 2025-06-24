@@ -83,50 +83,6 @@ export const useQueries = () => {
     },
   });
 
-  const updateProjectVariablesMutation = useMutation({
-    mutationFn: async ({
-      paramId,
-      name,
-      defaultValue,
-      type,
-      required,
-      publicValue,
-    }: {
-      paramId: string;
-      name: string;
-      defaultValue: any;
-      type: VarType;
-      required: boolean;
-      publicValue: boolean;
-    }) => {
-      const gqlType = toGqlParameterType(type);
-      if (!gqlType) return;
-      const data = await graphQLContext?.UpdateProjectVariable({
-        paramId,
-        input: {
-          name,
-          defaultValue,
-          type: gqlType,
-          required,
-          public: publicValue,
-        },
-      });
-      if (data?.updateParameter) {
-        return toProjectVariable(data?.updateParameter);
-      }
-    },
-    onSuccess: (parameterDocument) => {
-      if (parameterDocument) {
-        queryClient.invalidateQueries({
-          queryKey: [
-            ParameterQueryKeys.GetParameters,
-            parameterDocument.projectId,
-          ],
-        });
-      }
-    },
-  });
-
   const deleteProjectVariableMutation = useMutation({
     mutationFn: async ({
       paramId,
@@ -154,6 +110,100 @@ export const useQueries = () => {
           queryKey: [ParameterQueryKeys.GetParameters],
         });
       }
+    },
+  });
+
+  const updateMultipleProjectVariablesMutation = useMutation({
+    mutationFn: async (input: {
+      projectId: string;
+      creates?: {
+        name: string;
+        defaultValue: any;
+        type: VarType;
+        required: boolean;
+        publicValue: boolean;
+        index?: number;
+      }[];
+      updates?: {
+        paramId: string;
+        name?: string;
+        defaultValue?: any;
+        type?: VarType;
+        required?: boolean;
+        publicValue?: boolean;
+      }[];
+      deletes?: string[];
+      reorders?: {
+        paramId: string;
+        newIndex: number;
+      }[];
+    }) => {
+      const multiInput: any = {
+        projectId: input.projectId,
+      };
+
+      if (input.creates && input.creates.length > 0) {
+        multiInput.creates = input.creates.map((create) => {
+          const gqlType = toGqlParameterType(create.type);
+          if (!gqlType)
+            throw new Error(`Invalid parameter type: ${create.type}`);
+          return {
+            name: create.name,
+            defaultValue: create.defaultValue,
+            type: gqlType,
+            required: create.required,
+            public: create.publicValue,
+            index: create.index,
+          };
+        });
+      }
+
+      if (input.updates && input.updates.length > 0) {
+        multiInput.updates = input.updates.map((update) => {
+          const updateItem: any = {
+            paramId: update.paramId,
+          };
+          if (update.name !== undefined) updateItem.name = update.name;
+          if (update.defaultValue !== undefined)
+            updateItem.defaultValue = update.defaultValue;
+          if (update.type !== undefined) {
+            const gqlType = toGqlParameterType(update.type);
+            if (!gqlType)
+              throw new Error(`Invalid parameter type: ${update.type}`);
+            updateItem.type = gqlType;
+          }
+          if (update.required !== undefined)
+            updateItem.required = update.required;
+          if (update.publicValue !== undefined)
+            updateItem.public = update.publicValue;
+          return updateItem;
+        });
+      }
+
+      if (input.deletes && input.deletes.length > 0) {
+        multiInput.deletes = input.deletes;
+      }
+
+      if (input.reorders && input.reorders.length > 0) {
+        multiInput.reorders = input.reorders.map((reorder) => ({
+          paramId: reorder.paramId,
+          newIndex: reorder.newIndex,
+        }));
+      }
+
+      const data = await graphQLContext?.UpdateProjectVariables({
+        input: multiInput,
+      });
+
+      if (data?.updateParameters) {
+        return data.updateParameters.map((param) => toProjectVariable(param));
+      }
+      return [];
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [ParameterQueryKeys.GetParameters, variables.projectId],
+      });
     },
   });
 
@@ -187,7 +237,7 @@ export const useQueries = () => {
   return {
     useProjectVariablesQuery,
     createProjectVariablesMutation,
-    updateProjectVariablesMutation,
+    updateMultipleProjectVariablesMutation,
     deleteProjectVariableMutation,
     deleteProjectVariablesMutation,
   };

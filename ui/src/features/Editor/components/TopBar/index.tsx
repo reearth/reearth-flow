@@ -60,7 +60,7 @@ const TopBar: React.FC<Props> = ({
   const {
     useGetProjectVariables,
     createProjectVariable,
-    updateProjectVariable,
+    updateMultipleProjectVariables,
     deleteProjectVariable,
     deleteProjectVariables,
   } = useProjectVariables();
@@ -91,16 +91,49 @@ const TopBar: React.FC<Props> = ({
 
   const handleProjectVariableChange = useCallback(
     async (projectVariable: ProjectVariableType) => {
-      await updateProjectVariable(
-        projectVariable.id,
-        projectVariable.name,
-        projectVariable.defaultValue,
-        projectVariable.type,
-        projectVariable.required,
-        projectVariable.public,
-      );
+      if (!currentProject) return;
+
+      await updateMultipleProjectVariables({
+        projectId: currentProject.id,
+        updates: [
+          {
+            paramId: projectVariable.id,
+            name: projectVariable.name,
+            defaultValue: projectVariable.defaultValue,
+            type: projectVariable.type,
+            required: projectVariable.required,
+            publicValue: projectVariable.public,
+          },
+        ],
+      });
     },
-    [updateProjectVariable],
+    [updateMultipleProjectVariables, currentProject],
+  );
+
+  const handleProjectVariablesBatchUpdate = useCallback(
+    async (input: {
+      projectId: string;
+      creates?: {
+        name: string;
+        defaultValue: any;
+        type: ProjectVariableType["type"];
+        required: boolean;
+        publicValue: boolean;
+        index?: number;
+      }[];
+      updates?: {
+        paramId: string;
+        name?: string;
+        defaultValue?: any;
+        type?: ProjectVariableType["type"];
+        required?: boolean;
+        publicValue?: boolean;
+      }[];
+      deletes?: string[];
+    }) => {
+      await updateMultipleProjectVariables(input);
+    },
+    [updateMultipleProjectVariables],
   );
 
   const handleProjectVariableDelete = useCallback(
@@ -199,6 +232,7 @@ const TopBar: React.FC<Props> = ({
         onChange={handleProjectVariableChange}
         onDelete={handleProjectVariableDelete}
         onDeleteBatch={handleProjectVariablesBatchDelete}
+        onBatchUpdate={handleProjectVariablesBatchUpdate}
         projectId={currentProject?.id}
       />
     </div>

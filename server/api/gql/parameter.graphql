@@ -61,6 +61,23 @@ input RemoveParametersInput {
   paramIds: [ID!]!
 }
 
+input ParameterBatchInput {
+  projectId: ID!
+  creates: [DeclareParameterInput!]
+  updates: [ParameterUpdateItem!]
+  deletes: [ID!]
+  reorders: [UpdateParameterOrderInput!]
+}
+
+input ParameterUpdateItem {
+  paramId: ID!
+  name: String
+  type: ParameterType
+  required: Boolean
+  public: Boolean
+  defaultValue: Any
+}
+
 # Query and Mutation
 
 extend type Query {
@@ -80,4 +97,6 @@ extend type Mutation {
   removeParameter(input: RemoveParameterInput!): Boolean!
 
   removeParameters(input: RemoveParametersInput!): Boolean!
+
+  updateParameters(input: ParameterBatchInput!): [Parameter!]!
 }

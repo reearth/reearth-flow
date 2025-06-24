@@ -1,10 +1,6 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
-import type {
-  CreateProjectVariable,
-  UpdateProjectVariable,
-  VarType,
-} from "@flow/types";
+import type { CreateProjectVariable, VarType } from "@flow/types";
 
 import { useQueries } from "./useQueries";
 
@@ -12,7 +8,7 @@ export const useProjectVariables = () => {
   const {
     useProjectVariablesQuery,
     createProjectVariablesMutation,
-    updateProjectVariablesMutation,
+    updateMultipleProjectVariablesMutation,
     deleteProjectVariableMutation,
     deleteProjectVariablesMutation,
   } = useQueries();
@@ -69,43 +65,6 @@ export const useProjectVariables = () => {
     }
   };
 
-  const updateProjectVariable = async (
-    paramId: string,
-    name: string,
-    defaultValue: any,
-    type: VarType,
-    required: boolean,
-    publicValue: boolean,
-  ): Promise<UpdateProjectVariable> => {
-    const { mutateAsync, ...rest } = updateProjectVariablesMutation;
-
-    try {
-      const projectVariable = await mutateAsync({
-        paramId,
-        name,
-        defaultValue,
-        type,
-        required,
-        publicValue,
-      });
-
-      toast({
-        title: t("Project Variable Updated"),
-        description: t("Project variable has been updated successfully."),
-      });
-
-      return { projectVariable, ...rest };
-    } catch (_err) {
-      toast({
-        title: t("Project Variable Update Failed"),
-        description: t("There was an error updating a project variable."),
-        variant: "warning",
-      });
-
-      return { projectVariable: undefined, ...rest };
-    }
-  };
-
   const deleteProjectVariable = async (paramId: string, projectId: string) => {
     const { mutateAsync, ...rest } = deleteProjectVariableMutation;
     try {
@@ -127,6 +86,51 @@ export const useProjectVariables = () => {
         variant: "warning",
       });
       return { success: false, ...rest };
+    }
+  };
+
+  const updateMultipleProjectVariables = async (input: {
+    projectId: string;
+    creates?: {
+      name: string;
+      defaultValue: any;
+      type: VarType;
+      required: boolean;
+      publicValue: boolean;
+      index?: number;
+    }[];
+    updates?: {
+      paramId: string;
+      name?: string;
+      defaultValue?: any;
+      type?: VarType;
+      required?: boolean;
+      publicValue?: boolean;
+    }[];
+    deletes?: string[];
+    reorders?: {
+      paramId: string;
+      newIndex: number;
+    }[];
+  }) => {
+    const { mutateAsync, ...rest } = updateMultipleProjectVariablesMutation;
+    try {
+      const projectVariables = await mutateAsync(input);
+
+      toast({
+        title: t("Project Variables Updated"),
+        description: t("Project variables have been updated successfully."),
+      });
+
+      return { projectVariables, ...rest };
+    } catch (err) {
+      console.error("Error updating project variables:", err);
+      toast({
+        title: t("Project Variables Update Failed"),
+        description: t("There was an error updating project variables."),
+        variant: "warning",
+      });
+      return { projectVariables: [], ...rest };
     }
   };
 
@@ -160,7 +164,7 @@ export const useProjectVariables = () => {
   return {
     useGetProjectVariables,
     createProjectVariable,
-    updateProjectVariable,
+    updateMultipleProjectVariables,
     deleteProjectVariable,
     deleteProjectVariables,
   };

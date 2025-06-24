@@ -8,7 +8,7 @@ import (
 )
 
 type DeclareParameterParam struct {
-	Index        *int // Optional, will be set to last position if nil
+	Index        *int
 	Name         string
 	ProjectID    id.ProjectID
 	Required     bool
@@ -32,6 +32,23 @@ type UpdateParameterParam struct {
 	TypeValue     parameter.Type
 }
 
+type UpdateParameterBatchItemParam struct {
+	ParamID       id.ParameterID
+	DefaultValue  any
+	NameValue     *string
+	RequiredValue *bool
+	PublicValue   *bool
+	TypeValue     *parameter.Type
+}
+
+type UpdateParametersParam struct {
+	ProjectID id.ProjectID
+	Creates   []DeclareParameterParam
+	Updates   []UpdateParameterBatchItemParam
+	Deletes   id.ParameterIDList
+	Reorders  []UpdateParameterOrderParam
+}
+
 type Parameter interface {
 	DeclareParameter(context.Context, DeclareParameterParam) (*parameter.Parameter, error)
 	Fetch(context.Context, id.ParameterIDList) (*parameter.ParameterList, error)
@@ -40,4 +57,5 @@ type Parameter interface {
 	RemoveParameters(context.Context, id.ParameterIDList) (id.ParameterIDList, error)
 	UpdateParameterOrder(context.Context, UpdateParameterOrderParam) (*parameter.ParameterList, error)
 	UpdateParameter(context.Context, UpdateParameterParam) (*parameter.Parameter, error)
+	UpdateParameters(context.Context, UpdateParametersParam) (*parameter.ParameterList, error)
 }

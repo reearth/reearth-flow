@@ -92,6 +92,103 @@ func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.Decla
 	return p, nil
 }
 
+func (i *Parameter) UpdateParameters(ctx context.Context, param interfaces.UpdateParametersParam) (*parameter.ParameterList, error) {
+	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+
+	tx, err := i.transaction.Begin(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ctx = tx.Context()
+	defer func() {
+		if err2 := tx.End(ctx); err == nil && err2 != nil {
+			err = err2
+		}
+	}()
+
+	proj, err := i.projectRepo.FindByID(ctx, param.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	if proj == nil {
+		return nil, rerror.ErrNotFound
+	}
+
+	if len(param.Deletes) > 0 {
+		_, err = i.RemoveParameters(ctx, param.Deletes)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for _, createParam := range param.Creates {
+		createParam.ProjectID = param.ProjectID
+		_, err = i.DeclareParameter(ctx, createParam)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for _, updateParam := range param.Updates {
+		currentParam, err := i.paramRepo.FindByID(ctx, updateParam.ParamID)
+		if err != nil {
+			return nil, err
+		}
+		if currentParam == nil {
+			return nil, rerror.ErrNotFound
+		}
+
+		completeUpdateParam := interfaces.UpdateParameterParam{
+			ParamID:       updateParam.ParamID,
+			DefaultValue:  currentParam.DefaultValue(),
+			NameValue:     currentParam.Name(),
+			RequiredValue: currentParam.Required(),
+			PublicValue:   currentParam.Public(),
+			TypeValue:     currentParam.Type(),
+		}
+
+		if updateParam.DefaultValue != nil {
+			completeUpdateParam.DefaultValue = updateParam.DefaultValue
+		}
+		if updateParam.NameValue != nil {
+			completeUpdateParam.NameValue = *updateParam.NameValue
+		}
+		if updateParam.RequiredValue != nil {
+			completeUpdateParam.RequiredValue = *updateParam.RequiredValue
+		}
+		if updateParam.PublicValue != nil {
+			completeUpdateParam.PublicValue = *updateParam.PublicValue
+		}
+		if updateParam.TypeValue != nil {
+			completeUpdateParam.TypeValue = *updateParam.TypeValue
+		}
+
+		_, err = i.UpdateParameter(ctx, completeUpdateParam)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for _, reorderParam := range param.Reorders {
+		reorderParam.ProjectID = param.ProjectID
+		_, err = i.UpdateParameterOrder(ctx, reorderParam)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	finalParams, err := i.paramRepo.FindByProject(ctx, param.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+
+	tx.Commit()
+	return finalParams, nil
+}
+
 func (i *Parameter) Fetch(ctx context.Context, ids id.ParameterIDList) (*parameter.ParameterList, error) {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return nil, err

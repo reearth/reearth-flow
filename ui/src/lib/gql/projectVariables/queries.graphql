@@ -19,6 +19,12 @@ mutation UpdateProjectVariable($paramId: ID!, $input: UpdateParameterInput!) {
   }
 }
 
+mutation UpdateProjectVariables($input: ParameterBatchInput!) {
+  updateParameters(input: $input) {
+    ...Parameter
+  }
+}
+
 mutation DeleteProjectVariable($input: RemoveParameterInput!) {
   removeParameter(input: $input)
 }

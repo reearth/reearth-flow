@@ -31,7 +31,6 @@ func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Co
 	ctx = adapter.AttachAuthInfo(ctx, mockAuthInfo)
 	ctx = adapter.AttachUser(ctx, mockUser)
 
-	// Create memory-based repositories for testing
 	paramRepo := memory.NewParameter()
 	projectRepo := memory.NewProject()
 	workspaceRepo := accountmemory.NewWorkspace()
@@ -42,11 +41,9 @@ func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Co
 		Transaction: &usecasex.NopTransaction{},
 	}
 
-	// Set up a workspace, project and operator
 	ws := workspace.New().NewID().MustBuild()
 	_ = workspaceRepo.Save(ctx, ws)
 
-	// We'll need a project
 	pid := project.NewID()
 	defer project.MockNewID(pid)()
 	prj := project.New().ID(pid).Workspace(ws.ID()).Name("testproject").UpdatedAt(time.Now()).MustBuild()
@@ -63,7 +60,6 @@ func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Co
 func TestParameter_DeclareParameter(t *testing.T) {
 	i, ctx, _, pid := setupParameterInteractor()
 
-	// Declare a parameter
 	name := "param1"
 	typ := parameter.TypeText
 	val := "initial value"
@@ -76,7 +72,7 @@ func TestParameter_DeclareParameter(t *testing.T) {
 		Required:     req,
 		Public:       pub,
 		DefaultValue: val,
-		Index:        nil, // let it auto-determine
+		Index:        nil,
 	})
 	assert.NoError(t, err)
 	assert.NotNil(t, p)
@@ -355,5 +351,174 @@ func TestParameter_RemoveParameters_NotFound(t *testing.T) {
 	nonexistentID2 := id.NewParameterID()
 	removedIDs, err := i.RemoveParameters(ctx, id.ParameterIDList{nonexistentID1, nonexistentID2})
 	assert.Nil(t, removedIDs)
+	assert.Same(t, rerror.ErrNotFound, err)
+}
+
+func TestParameter_UpdateParameters(t *testing.T) {
+	i, ctx, _, pid := setupParameterInteractor()
+
+	// Create some initial parameters
+	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
+		ProjectID:    pid,
+		Name:         "param1",
+		Type:         parameter.TypeText,
+		DefaultValue: "val1",
+		Required:     true,
+		Public:       false,
+	})
+	assert.NoError(t, err)
+
+	p2, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
+		ProjectID:    pid,
+		Name:         "param2",
+		Type:         parameter.TypeNumber,
+		DefaultValue: 42,
+		Required:     false,
+		Public:       true,
+	})
+	assert.NoError(t, err)
+
+	// Test batch operations: create, update, delete, reorder
+	newName := "updatedParam1"
+	newType := parameter.TypePassword
+	newRequired := false
+	newPublic := true
+
+	result, err := i.UpdateParameters(ctx, interfaces.UpdateParametersParam{
+		ProjectID: pid,
+		Creates: []interfaces.DeclareParameterParam{
+			{
+				ProjectID:    pid,
+				Name:         "newParam",
+				Type:         parameter.TypeColor,
+				DefaultValue: "#FF0000",
+				Required:     true,
+				Public:       false,
+			},
+		},
+		Updates: []interfaces.UpdateParameterBatchItemParam{
+			{
+				ParamID:       p1.ID(),
+				NameValue:     &newName,
+				TypeValue:     &newType,
+				RequiredValue: &newRequired,
+				PublicValue:   &newPublic,
+				DefaultValue:  "newDefaultValue",
+			},
+		},
+		Deletes: id.ParameterIDList{p2.ID()},
+		Reorders: []interfaces.UpdateParameterOrderParam{
+			{
+				ParamID:   p1.ID(),
+				NewIndex:  1,
+				ProjectID: pid,
+			},
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Len(t, *result, 2) // p1 (updated) + newParam
+
+	// Verify the results
+	updatedP1 := result.FindByID(p1.ID())
+	assert.NotNil(t, updatedP1)
+	assert.Equal(t, newName, updatedP1.Name())
+	assert.Equal(t, newType, updatedP1.Type())
+	assert.Equal(t, newRequired, updatedP1.Required())
+	assert.Equal(t, newPublic, updatedP1.Public())
+	assert.Equal(t, "newDefaultValue", updatedP1.DefaultValue())
+	assert.Equal(t, 1, updatedP1.Index()) // Reordered to index 1
+
+	// Find the new parameter
+	var newParam *parameter.Parameter
+	for _, p := range *result {
+		if p.Name() == "newParam" {
+			newParam = p
+			break
+		}
+	}
+	assert.NotNil(t, newParam)
+	assert.Equal(t, parameter.TypeColor, newParam.Type())
+	assert.Equal(t, "#FF0000", newParam.DefaultValue())
+	assert.Equal(t, 0, newParam.Index()) // Should be at index 0
+
+	// Verify p2 was deleted (should not be in result)
+	deletedP2 := result.FindByID(p2.ID())
+	assert.Nil(t, deletedP2)
+}
+
+func TestParameter_UpdateParameters_PartialUpdates(t *testing.T) {
+	i, ctx, _, pid := setupParameterInteractor()
+
+	// Create a parameter
+	p1, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{
+		ProjectID:    pid,
+		Name:         "param1",
+		Type:         parameter.TypeText,
+		DefaultValue: "originalValue",
+		Required:     true,
+		Public:       false,
+	})
+	assert.NoError(t, err)
+
+	// Test partial update (only update name and defaultValue)
+	newName := "updatedName"
+	result, err := i.UpdateParameters(ctx, interfaces.UpdateParametersParam{
+		ProjectID: pid,
+		Updates: []interfaces.UpdateParameterBatchItemParam{
+			{
+				ParamID:      p1.ID(),
+				NameValue:    &newName,
+				DefaultValue: "newValue",
+				// Don't provide Type, Required, Public - should preserve original values
+			},
+		},
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Len(t, *result, 1)
+
+	updatedP1 := result.FindByID(p1.ID())
+	assert.NotNil(t, updatedP1)
+	assert.Equal(t, newName, updatedP1.Name())
+	assert.Equal(t, "newValue", updatedP1.DefaultValue())
+	// These should be preserved from original
+	assert.Equal(t, parameter.TypeText, updatedP1.Type())
+	assert.Equal(t, true, updatedP1.Required())
+	assert.Equal(t, false, updatedP1.Public())
+}
+
+func TestParameter_UpdateParameters_EmptyOperations(t *testing.T) {
+	i, ctx, _, pid := setupParameterInteractor()
+
+	// Test with no operations
+	result, err := i.UpdateParameters(ctx, interfaces.UpdateParametersParam{
+		ProjectID: pid,
+	})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Len(t, *result, 0) // No parameters in project
+}
+
+func TestParameter_UpdateParameters_NonexistentProject(t *testing.T) {
+	i, ctx, _, _ := setupParameterInteractor()
+
+	nonexistentPID := id.NewProjectID()
+	result, err := i.UpdateParameters(ctx, interfaces.UpdateParametersParam{
+		ProjectID: nonexistentPID,
+		Creates: []interfaces.DeclareParameterParam{
+			{
+				ProjectID:    nonexistentPID,
+				Name:         "param1",
+				Type:         parameter.TypeText,
+				DefaultValue: "value",
+			},
+		},
+	})
+
+	assert.Nil(t, result)
 	assert.Same(t, rerror.ErrNotFound, err)
 }

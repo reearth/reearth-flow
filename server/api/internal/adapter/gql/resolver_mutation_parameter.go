@@ -38,7 +38,7 @@ func (r *mutationResolver) UpdateParameter(ctx context.Context, paramID gqlmodel
 
 	res, err := usecases(ctx).Parameter.UpdateParameter(ctx, interfaces.UpdateParameterParam{
 		ParamID:       pid,
-		DefaultValue:  &input.DefaultValue,
+		DefaultValue:  input.DefaultValue,
 		PublicValue:   input.Public,
 		RequiredValue: input.Required,
 		NameValue:     input.Name,
@@ -86,6 +86,90 @@ func (r *mutationResolver) RemoveParameter(ctx context.Context, input gqlmodel.R
 	}
 
 	return true, nil
+}
+
+func (r *mutationResolver) UpdateParameters(ctx context.Context, input gqlmodel.ParameterBatchInput) ([]*gqlmodel.Parameter, error) {
+	pid, err := gqlmodel.ToID[id.Project](input.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+
+	creates := make([]interfaces.DeclareParameterParam, len(input.Creates))
+	for i, create := range input.Creates {
+		creates[i] = interfaces.DeclareParameterParam{
+			Index:        create.Index,
+			Name:         create.Name,
+			ProjectID:    pid,
+			Required:     create.Required,
+			Public:       create.Public,
+			Type:         gqlmodel.FromParameterType(create.Type),
+			DefaultValue: create.DefaultValue,
+		}
+	}
+
+	updates := make([]interfaces.UpdateParameterBatchItemParam, len(input.Updates))
+	for i, update := range input.Updates {
+		paramID, err := gqlmodel.ToID[id.Parameter](update.ParamID)
+		if err != nil {
+			return nil, err
+		}
+
+		updateParam := interfaces.UpdateParameterBatchItemParam{
+			ParamID:      paramID,
+			DefaultValue: update.DefaultValue,
+		}
+
+		if update.Name != nil {
+			updateParam.NameValue = update.Name
+		}
+		if update.Type != nil {
+			paramType := gqlmodel.FromParameterType(*update.Type)
+			updateParam.TypeValue = &paramType
+		}
+		if update.Required != nil {
+			updateParam.RequiredValue = update.Required
+		}
+		if update.Public != nil {
+			updateParam.PublicValue = update.Public
+		}
+
+		updates[i] = updateParam
+	}
+
+	deletes := make(id.ParameterIDList, len(input.Deletes))
+	for i, deleteID := range input.Deletes {
+		paramID, err := gqlmodel.ToID[id.Parameter](deleteID)
+		if err != nil {
+			return nil, err
+		}
+		deletes[i] = paramID
+	}
+
+	reorders := make([]interfaces.UpdateParameterOrderParam, len(input.Reorders))
+	for i, reorder := range input.Reorders {
+		paramID, err := gqlmodel.ToID[id.Parameter](reorder.ParamID)
+		if err != nil {
+			return nil, err
+		}
+		reorders[i] = interfaces.UpdateParameterOrderParam{
+			NewIndex:  reorder.NewIndex,
+			ParamID:   paramID,
+			ProjectID: pid,
+		}
+	}
+
+	res, err := usecases(ctx).Parameter.UpdateParameters(ctx, interfaces.UpdateParametersParam{
+		ProjectID: pid,
+		Creates:   creates,
+		Updates:   updates,
+		Deletes:   deletes,
+		Reorders:  reorders,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return gqlmodel.ToParameters(res), nil
 }
 
 func (r *mutationResolver) RemoveParameters(ctx context.Context, input gqlmodel.RemoveParametersInput) (bool, error) {

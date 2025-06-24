@@ -209,6 +209,7 @@ type ComplexityRoot struct {
 		UpdateMemberOfWorkspace   func(childComplexity int, input gqlmodel.UpdateMemberOfWorkspaceInput) int
 		UpdateParameter           func(childComplexity int, paramID gqlmodel.ID, input gqlmodel.UpdateParameterInput) int
 		UpdateParameterOrder      func(childComplexity int, projectID gqlmodel.ID, input gqlmodel.UpdateParameterOrderInput) int
+		UpdateParameters          func(childComplexity int, input gqlmodel.ParameterBatchInput) int
 		UpdateProject             func(childComplexity int, input gqlmodel.UpdateProjectInput) int
 		UpdateTrigger             func(childComplexity int, input gqlmodel.UpdateTriggerInput) int
 		UpdateWorkspace           func(childComplexity int, input gqlmodel.UpdateWorkspaceInput) int
@@ -450,6 +451,7 @@ type MutationResolver interface {
 	UpdateParameterOrder(ctx context.Context, projectID gqlmodel.ID, input gqlmodel.UpdateParameterOrderInput) ([]*gqlmodel.Parameter, error)
 	RemoveParameter(ctx context.Context, input gqlmodel.RemoveParameterInput) (bool, error)
 	RemoveParameters(ctx context.Context, input gqlmodel.RemoveParametersInput) (bool, error)
+	UpdateParameters(ctx context.Context, input gqlmodel.ParameterBatchInput) ([]*gqlmodel.Parameter, error)
 	CreateProject(ctx context.Context, input gqlmodel.CreateProjectInput) (*gqlmodel.ProjectPayload, error)
 	UpdateProject(ctx context.Context, input gqlmodel.UpdateProjectInput) (*gqlmodel.ProjectPayload, error)
 	DeleteProject(ctx context.Context, input gqlmodel.DeleteProjectInput) (*gqlmodel.DeleteProjectPayload, error)
@@ -1370,6 +1372,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.UpdateParameterOrder(childComplexity, args["projectId"].(gqlmodel.ID), args["input"].(gqlmodel.UpdateParameterOrderInput)), true
+
+	case "Mutation.updateParameters":
+		if e.complexity.Mutation.UpdateParameters == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateParameters_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateParameters(childComplexity, args["input"].(gqlmodel.ParameterBatchInput)), true
 
 	case "Mutation.updateProject":
 		if e.complexity.Mutation.UpdateProject == nil {
@@ -2379,6 +2393,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputGetHeadInput,
 		ec.unmarshalInputPageBasedPagination,
 		ec.unmarshalInputPagination,
+		ec.unmarshalInputParameterBatchInput,
+		ec.unmarshalInputParameterUpdateItem,
 		ec.unmarshalInputRemoveAssetInput,
 		ec.unmarshalInputRemoveMemberFromWorkspaceInput,
 		ec.unmarshalInputRemoveMyAuthInput,
@@ -2939,6 +2955,23 @@ input RemoveParametersInput {
   paramIds: [ID!]!
 }
 
+input ParameterBatchInput {
+  projectId: ID!
+  creates: [DeclareParameterInput!]
+  updates: [ParameterUpdateItem!]
+  deletes: [ID!]
+  reorders: [UpdateParameterOrderInput!]
+}
+
+input ParameterUpdateItem {
+  paramId: ID!
+  name: String
+  type: ParameterType
+  required: Boolean
+  public: Boolean
+  defaultValue: Any
+}
+
 # Query and Mutation
 
 extend type Query {
@@ -2958,6 +2991,8 @@ extend type Mutation {
   removeParameter(input: RemoveParameterInput!): Boolean!
 
   removeParameters(input: RemoveParametersInput!): Boolean!
+
+  updateParameters(input: ParameterBatchInput!): [Parameter!]!
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/project.graphql", Input: `type Project implements Node {
@@ -3871,6 +3906,21 @@ func (ec *executionContext) field_Mutation_updateParameter_args(ctx context.Cont
 		}
 	}
 	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateParameters_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.ParameterBatchInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNParameterBatchInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterBatchInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -8565,6 +8615,83 @@ func (ec *executionContext) fieldContext_Mutation_removeParameters(ctx context.C
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_removeParameters_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateParameters(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateParameters(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateParameters(rctx, fc.Args["input"].(gqlmodel.ParameterBatchInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlmodel.Parameter)
+	fc.Result = res
+	return ec.marshalNParameter2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateParameters(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "createdAt":
+				return ec.fieldContext_Parameter_createdAt(ctx, field)
+			case "id":
+				return ec.fieldContext_Parameter_id(ctx, field)
+			case "index":
+				return ec.fieldContext_Parameter_index(ctx, field)
+			case "name":
+				return ec.fieldContext_Parameter_name(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Parameter_projectId(ctx, field)
+			case "required":
+				return ec.fieldContext_Parameter_required(ctx, field)
+			case "public":
+				return ec.fieldContext_Parameter_public(ctx, field)
+			case "type":
+				return ec.fieldContext_Parameter_type(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Parameter_updatedAt(ctx, field)
+			case "defaultValue":
+				return ec.fieldContext_Parameter_defaultValue(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateParameters_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -18332,6 +18459,123 @@ func (ec *executionContext) unmarshalInputPagination(ctx context.Context, obj in
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputParameterBatchInput(ctx context.Context, obj interface{}) (gqlmodel.ParameterBatchInput, error) {
+	var it gqlmodel.ParameterBatchInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"projectId", "creates", "updates", "deletes", "reorders"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "projectId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProjectID = data
+		case "creates":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("creates"))
+			data, err := ec.unmarshalODeclareParameterInput2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeclareParameterInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Creates = data
+		case "updates":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("updates"))
+			data, err := ec.unmarshalOParameterUpdateItem2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterUpdateItemᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Updates = data
+		case "deletes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deletes"))
+			data, err := ec.unmarshalOID2ᚕgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIDᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Deletes = data
+		case "reorders":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("reorders"))
+			data, err := ec.unmarshalOUpdateParameterOrderInput2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateParameterOrderInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Reorders = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputParameterUpdateItem(ctx context.Context, obj interface{}) (gqlmodel.ParameterUpdateItem, error) {
+	var it gqlmodel.ParameterUpdateItem
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"paramId", "name", "type", "required", "public", "defaultValue"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "paramId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("paramId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ParamID = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalOParameterType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "required":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("required"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Required = data
+		case "public":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("public"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Public = data
+		case "defaultValue":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("defaultValue"))
+			data, err := ec.unmarshalOAny2interface(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DefaultValue = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRemoveAssetInput(ctx context.Context, obj interface{}) (gqlmodel.RemoveAssetInput, error) {
 	var it gqlmodel.RemoveAssetInput
 	asMap := map[string]interface{}{}
@@ -20310,6 +20554,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "removeParameters":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_removeParameters(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateParameters":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateParameters(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -22995,6 +23246,11 @@ func (ec *executionContext) unmarshalNDeclareParameterInput2githubᚗcomᚋreear
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNDeclareParameterInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeclareParameterInput(ctx context.Context, v interface{}) (*gqlmodel.DeclareParameterInput, error) {
+	res, err := ec.unmarshalInputDeclareParameterInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNDeleteDeploymentInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeleteDeploymentInput(ctx context.Context, v interface{}) (gqlmodel.DeleteDeploymentInput, error) {
 	res, err := ec.unmarshalInputDeleteDeploymentInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -23498,6 +23754,11 @@ func (ec *executionContext) marshalNParameter2ᚖgithubᚗcomᚋreearthᚋreeart
 	return ec._Parameter(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNParameterBatchInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterBatchInput(ctx context.Context, v interface{}) (gqlmodel.ParameterBatchInput, error) {
+	res, err := ec.unmarshalInputParameterBatchInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNParameterType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType(ctx context.Context, v interface{}) (gqlmodel.ParameterType, error) {
 	var res gqlmodel.ParameterType
 	err := res.UnmarshalGQL(v)
@@ -23506,6 +23767,11 @@ func (ec *executionContext) unmarshalNParameterType2githubᚗcomᚋreearthᚋree
 
 func (ec *executionContext) marshalNParameterType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType(ctx context.Context, sel ast.SelectionSet, v gqlmodel.ParameterType) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) unmarshalNParameterUpdateItem2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterUpdateItem(ctx context.Context, v interface{}) (*gqlmodel.ParameterUpdateItem, error) {
+	res, err := ec.unmarshalInputParameterUpdateItem(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalNProject2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProject(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.Project) graphql.Marshaler {
@@ -23867,6 +24133,11 @@ func (ec *executionContext) unmarshalNUpdateParameterInput2githubᚗcomᚋreeart
 func (ec *executionContext) unmarshalNUpdateParameterOrderInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateParameterOrderInput(ctx context.Context, v interface{}) (gqlmodel.UpdateParameterOrderInput, error) {
 	res, err := ec.unmarshalInputUpdateParameterOrderInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateParameterOrderInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateParameterOrderInput(ctx context.Context, v interface{}) (*gqlmodel.UpdateParameterOrderInput, error) {
+	res, err := ec.unmarshalInputUpdateParameterOrderInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNUpdateProjectInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateProjectInput(ctx context.Context, v interface{}) (gqlmodel.UpdateProjectInput, error) {
@@ -24380,6 +24651,26 @@ func (ec *executionContext) marshalODateTime2ᚖtimeᚐTime(ctx context.Context,
 	return res
 }
 
+func (ec *executionContext) unmarshalODeclareParameterInput2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeclareParameterInputᚄ(ctx context.Context, v interface{}) ([]*gqlmodel.DeclareParameterInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*gqlmodel.DeclareParameterInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNDeclareParameterInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeclareParameterInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
 func (ec *executionContext) marshalODeleteDeploymentPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeleteDeploymentPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.DeleteDeploymentPayload) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -24420,6 +24711,44 @@ func (ec *executionContext) marshalODeploymentPayload2ᚖgithubᚗcomᚋreearth�
 		return graphql.Null
 	}
 	return ec._DeploymentPayload(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOID2ᚕgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIDᚄ(ctx context.Context, v interface{}) ([]gqlmodel.ID, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]gqlmodel.ID, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOID2ᚕgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIDᚄ(ctx context.Context, sel ast.SelectionSet, v []gqlmodel.ID) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	for i := range v {
+		ret[i] = ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, sel, v[i])
+	}
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx context.Context, v interface{}) (*gqlmodel.ID, error) {
@@ -24576,6 +24905,42 @@ func (ec *executionContext) unmarshalOPagination2ᚖgithubᚗcomᚋreearthᚋree
 	}
 	res, err := ec.unmarshalInputPagination(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOParameterType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType(ctx context.Context, v interface{}) (*gqlmodel.ParameterType, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(gqlmodel.ParameterType)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOParameterType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterType(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.ParameterType) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalOParameterUpdateItem2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterUpdateItemᚄ(ctx context.Context, v interface{}) ([]*gqlmodel.ParameterUpdateItem, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*gqlmodel.ParameterUpdateItem, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNParameterUpdateItem2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterUpdateItem(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOPreviewSnapshot2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPreviewSnapshot(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.PreviewSnapshot) graphql.Marshaler {
@@ -24745,6 +25110,26 @@ func (ec *executionContext) marshalOUpdateMemberOfWorkspacePayload2ᚖgithubᚗc
 		return graphql.Null
 	}
 	return ec._UpdateMemberOfWorkspacePayload(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOUpdateParameterOrderInput2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateParameterOrderInputᚄ(ctx context.Context, v interface{}) ([]*gqlmodel.UpdateParameterOrderInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*gqlmodel.UpdateParameterOrderInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNUpdateParameterOrderInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateParameterOrderInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) marshalOUpdateWorkspacePayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateWorkspacePayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.UpdateWorkspacePayload) graphql.Marshaler {

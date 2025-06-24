@@ -79,6 +79,26 @@ type Props = {
   onChange: (projectVariable: ProjectVariable) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onDeleteBatch?: (ids: string[]) => Promise<void>;
+  onBatchUpdate?: (input: {
+    projectId: string;
+    creates?: {
+      name: string;
+      defaultValue: any;
+      type: VarType;
+      required: boolean;
+      publicValue: boolean;
+      index?: number;
+    }[];
+    updates?: {
+      paramId: string;
+      name?: string;
+      defaultValue?: any;
+      type?: VarType;
+      required?: boolean;
+      publicValue?: boolean;
+    }[];
+    deletes?: string[];
+  }) => Promise<void>;
   projectId?: string;
 };
 
@@ -119,12 +139,13 @@ const allVarTypes: VarType[] = [
 const ProjectVariableDialog: React.FC<Props> = ({
   isOpen,
   currentProjectVariables,
+  projectId,
   onClose,
   onAdd,
   onChange,
   onDelete,
   onDeleteBatch,
-  projectId: _projectId,
+  onBatchUpdate,
 }) => {
   const t = useT();
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
@@ -256,22 +277,57 @@ const ProjectVariableDialog: React.FC<Props> = ({
         (change) => change.type === "delete",
       );
 
-      for (const change of addChanges) {
-        await onAdd(change.projectVariable);
-      }
+      if (
+        onBatchUpdate &&
+        projectId &&
+        (addChanges.length > 0 ||
+          updateChanges.length > 0 ||
+          deleteChanges.length > 0)
+      ) {
+        const creates = addChanges.map((change) => ({
+          name: change.projectVariable.name,
+          defaultValue: change.projectVariable.defaultValue,
+          type: change.projectVariable.type,
+          required: change.projectVariable.required,
+          publicValue: change.projectVariable.public,
+          index: localProjectVariables.length,
+        }));
 
-      for (const change of updateChanges) {
-        await onChange(change.projectVariable);
-      }
+        const updates = updateChanges.map((change) => ({
+          paramId: change.projectVariable.id,
+          name: change.projectVariable.name,
+          defaultValue: change.projectVariable.defaultValue,
+          type: change.projectVariable.type,
+          required: change.projectVariable.required,
+          publicValue: change.projectVariable.public,
+        }));
 
-      if (deleteChanges.length > 0) {
-        const deleteIds = deleteChanges.map((change) => change.id);
+        const deletes = deleteChanges.map((change) => change.id);
 
-        if (onDeleteBatch && deleteChanges.length > 1) {
-          await onDeleteBatch(deleteIds);
-        } else {
-          for (const change of deleteChanges) {
-            await onDelete(change.id);
+        await onBatchUpdate({
+          projectId,
+          ...(creates.length > 0 && { creates }),
+          ...(updates.length > 0 && { updates }),
+          ...(deletes.length > 0 && { deletes }),
+        });
+      } else {
+        for (const change of addChanges) {
+          await onAdd(change.projectVariable);
+        }
+
+        for (const change of updateChanges) {
+          await onChange(change.projectVariable);
+        }
+
+        if (deleteChanges.length > 0) {
+          const deleteIds = deleteChanges.map((change) => change.id);
+
+          if (onDeleteBatch && deleteChanges.length > 1) {
+            await onDeleteBatch(deleteIds);
+          } else {
+            for (const change of deleteChanges) {
+              await onDelete(change.id);
+            }
           }
         }
       }
