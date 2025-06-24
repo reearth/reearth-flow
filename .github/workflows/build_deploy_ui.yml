@@ -141,9 +141,10 @@ jobs:
           docker push ${{ secrets.WEB_IMAGE_GC }}
 
       - name: Deploy to Cloud Run
-        run: |
-          gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \
-            --image ${{ secrets.WEB_IMAGE_GC }} \
-            --region ${{ secrets.GC_REGION }} \
-            --platform managed \
-            --quiet
+        uses: google-github-actions/deploy-cloudrun@9c5864eab7354d2e132307e685a2272655932799 # v2.7.3
+        with:
+          service: ${{ env.CLOUD_RUN_SERVICE }}
+          skip_default_labels: true
+          image: ${{ secrets.WEB_IMAGE_GC }}
+          region: ${{ secrets.GC_REGION }}
+          revision_traffic: 'LATEST=100'
