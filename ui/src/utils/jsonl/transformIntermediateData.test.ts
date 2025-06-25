@@ -392,6 +392,80 @@ describe("intermediateDataTransform", () => {
       expect(intermediateDataTransform(data)).toEqual(expected);
     });
 
+    it("should transform triangle geometry correctly", () => {
+      const data = {
+        id: "123",
+        attributes: { name: "Test Triangle" },
+        geometry: {
+          value: {
+            flowGeometry2D: {
+              triangle: [
+                { x: 0, y: 0 },
+                { x: 10, y: 0 },
+                { x: 5, y: 10 },
+              ],
+            },
+          },
+        },
+      };
+
+      const expected = {
+        id: "123",
+        type: "Feature",
+        properties: { name: "Test Triangle" },
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [0, 0],
+              [10, 0],
+              [5, 10],
+              [0, 0],
+            ],
+          ],
+        },
+      };
+
+      expect(intermediateDataTransform(data)).toEqual(expected);
+    });
+
+    it("should transform rectangle geometry correctly", () => {
+      const data = {
+        id: "123",
+        attributes: { name: "Test Rectangle" },
+        geometry: {
+          value: {
+            flowGeometry2D: {
+              rect: {
+                min: { x: 0, y: 0 },
+                max: { x: 10, y: 20 },
+              },
+            },
+          },
+        },
+      };
+
+      const expected = {
+        id: "123",
+        type: "Feature",
+        properties: { name: "Test Rectangle" },
+        geometry: {
+          type: "Polygon",
+          coordinates: [
+            [
+              [0, 0],
+              [10, 0],
+              [10, 20],
+              [0, 20],
+              [0, 0],
+            ],
+          ],
+        },
+      };
+
+      expect(intermediateDataTransform(data)).toEqual(expected);
+    });
+
     it("should return the original geometry if no recognized type is found", () => {
       const unknownGeometry = {
         unknownType: {

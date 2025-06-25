@@ -166,7 +166,7 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 }
 
 func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(15 * time.Second)
 	defer ticker.Stop()
 
 	jobID := j.ID().String()

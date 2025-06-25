@@ -1,6 +1,7 @@
 pub use super::kv as store;
+use super::kv::keys::{key_doc, key_state_vector, key_update};
 use super::kv::keys::{KEYSPACE_DOC, SUB_DOC, SUB_STATE_VEC, SUB_UPDATE, V1};
-use super::kv::{get_oid, DocOps, KVEntry, KVStore};
+use super::kv::{get_oid, get_or_create_oid, DocOps, KVEntry, KVStore};
 use super::redis::RedisStore;
 use anyhow::Result;
 use futures::future::join_all;
@@ -109,8 +110,227 @@ impl GcsStore {
         update: &bytes::Bytes,
         redis: &RedisStore,
     ) -> Result<u32, store::error::Error> {
-        use super::kv::DocOps;
-        DocOps::push_update(self, doc_id, update, redis).await
+        let oid = get_oid(self, doc_id.as_bytes()).await?;
+        let oid = match oid {
+            Some(oid) => oid,
+            None => get_or_create_oid(self, doc_id.as_bytes(), redis).await?,
+        };
+
+        let last_clock = {
+            let end = key_update(oid, u32::MAX)?;
+            if let Some(e) = self.peek_back(&end).await? {
+                let last_key = e.key();
+                let len = last_key.len();
+                let last_clock = &last_key[(len - 5)..(len - 1)]; // update key scheme: 01{name:n}1{clock:4}0
+                u32::from_be_bytes(last_clock.try_into().unwrap())
+            } else {
+                0
+            }
+        };
+        let clock = last_clock + 1;
+        let update_key = key_update(oid, clock)?;
+        self.upsert(&update_key, update).await?;
+
+        if clock % 10 == 0 {
+            let doc = Doc::new();
+            let mut txn = doc.transact_mut();
+
+            let doc_key = key_doc(oid)?;
+            if let Some(doc_state) = self.get(&doc_key).await? {
+                if let Ok(base_update) = Update::decode_v1(doc_state.as_ref()) {
+                    let _ = txn.apply_update(base_update);
+                }
+            }
+
+            let update_range_start = key_update(oid, 0)?;
+            let update_range_end = key_update(oid, clock)?;
+            let mut updates: Vec<Update> = Vec::new();
+            for entry in self
+                .iter_range(&update_range_start, &update_range_end)
+                .await?
+            {
+                let value = entry.value();
+                if let Ok(update) = Update::decode_v1(value) {
+                    updates.push(update);
+                }
+            }
+
+            for update in updates {
+                let _ = txn.apply_update(update);
+            }
+
+            let doc_state = txn.encode_state_as_update_v1(&StateVector::default());
+            let state_vector = txn.state_vector().encode_v1();
+
+            self.upsert(&doc_key, &doc_state).await?;
+            let sv_key = key_state_vector(oid)?;
+            self.upsert(&sv_key, &state_vector).await?;
+
+            let checkpoint_key = format!("checkpoint:{}", hex::encode(doc_id.as_bytes()));
+            self.upsert(checkpoint_key.as_bytes(), &clock.to_be_bytes())
+                .await?;
+        }
+
+        Ok(clock)
+    }
+
+    pub async fn get_last_checkpoint(
+        &self,
+        doc_id: &str,
+    ) -> Result<Option<u32>, store::error::Error> {
+        let checkpoint_key = format!("checkpoint:{}", hex::encode(doc_id.as_bytes()));
+        if let Some(data) = self.get(checkpoint_key.as_bytes()).await? {
+            let data_ref: &[u8] = data.as_ref();
+            if data_ref.len() >= 4 {
+                let clock_bytes: [u8; 4] = data_ref[..4].try_into().unwrap();
+                Ok(Some(u32::from_be_bytes(clock_bytes)))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub async fn rollback_to(&self, doc_id: &str, target_clock: u32) -> Result<Doc> {
+        let oid = match get_oid(self, doc_id.as_bytes()).await? {
+            Some(oid) => oid,
+            None => anyhow::bail!("Document not found"),
+        };
+
+        // Try to find the nearest checkpoint before target_clock
+        let last_checkpoint = self.get_last_checkpoint(doc_id).await?;
+        let start_clock = if let Some(checkpoint_clock) = last_checkpoint {
+            if checkpoint_clock <= target_clock {
+                // Load from checkpoint
+                let doc_key = key_doc(oid)?;
+                let doc = Doc::new();
+                let mut txn = doc.transact_mut();
+
+                if let Some(doc_state) = self.get(&doc_key).await? {
+                    if let Ok(update) = Update::decode_v1(doc_state.as_ref()) {
+                        let _ = txn.apply_update(update);
+                    }
+                }
+                drop(txn);
+                checkpoint_clock
+            } else {
+                0
+            }
+        } else {
+            0
+        };
+
+        let prefix_bytes = [V1, KEYSPACE_DOC]
+            .iter()
+            .chain(&oid.to_be_bytes())
+            .chain(&[SUB_UPDATE])
+            .copied()
+            .collect::<Vec<_>>();
+        let prefix_str = hex::encode(&prefix_bytes);
+
+        let mut all_objects = Vec::new();
+        let mut page_token = None;
+
+        loop {
+            let request = ListObjectsRequest {
+                bucket: self.bucket.clone(),
+                prefix: Some(prefix_str.clone()),
+                page_token: page_token.clone(),
+                ..Default::default()
+            };
+
+            let response = self.client.list_objects(&request).await?;
+            let items = response.items.unwrap_or_default();
+            all_objects.extend(items);
+
+            if let Some(token) = response.next_page_token {
+                page_token = Some(token);
+            } else {
+                break;
+            }
+        }
+
+        let mut filtered_objects = Vec::new();
+        for obj in all_objects {
+            let key_bytes = hex::decode(&obj.name)?;
+
+            if key_bytes.len() < 12 {
+                continue;
+            }
+
+            let clock_bytes: [u8; 4] = key_bytes[7..11].try_into()?;
+            let clock = u32::from_be_bytes(clock_bytes);
+
+            if clock > start_clock && clock <= target_clock {
+                filtered_objects.push((obj, clock));
+            }
+        }
+
+        filtered_objects.sort_by_key(|(_, clock)| *clock);
+
+        let doc = if start_clock == 0 {
+            Doc::new()
+        } else {
+            let doc_key = key_doc(oid)?;
+            let doc = Doc::new();
+            let mut txn = doc.transact_mut();
+
+            if let Some(doc_state) = self.get(&doc_key).await? {
+                if let Ok(update) = Update::decode_v1(doc_state.as_ref()) {
+                    let _ = txn.apply_update(update);
+                }
+            }
+            drop(txn);
+            doc
+        };
+
+        let mut txn = doc.transact_mut();
+
+        for chunk in filtered_objects.chunks(BATCH_SIZE) {
+            let chunk_futures = chunk.iter().map(|(obj, clock)| {
+                let bucket = self.bucket.clone();
+                let object = obj.name.clone();
+                let clock = *clock;
+
+                async move {
+                    let request = GetObjectRequest {
+                        bucket,
+                        object: object.clone(),
+                        ..Default::default()
+                    };
+
+                    match self
+                        .client
+                        .download_object(&request, &Range::default())
+                        .await
+                    {
+                        Ok(data) => {
+                            if let Ok(update) = Update::decode_v1(&data) {
+                                Some((clock, update))
+                            } else {
+                                error!("Failed to decode update from object: {}", object);
+                                None
+                            }
+                        }
+                        Err(e) => {
+                            error!("Failed to download object {}: {:?}", object, e);
+                            None
+                        }
+                    }
+                }
+            });
+
+            let batch_results = join_all(chunk_futures).await;
+
+            for result in batch_results.into_iter().flatten() {
+                let (_, update) = result;
+                let _ = txn.apply_update(update);
+            }
+        }
+
+        drop(txn);
+        Ok(doc)
     }
 
     pub async fn get_updates(&self, doc_id: &str) -> Result<Vec<UpdateInfo>> {
@@ -240,109 +460,6 @@ impl GcsStore {
         }
 
         Ok(None)
-    }
-
-    pub async fn rollback_to(&self, doc_id: &str, target_clock: u32) -> Result<Doc> {
-        let oid = match get_oid(self, doc_id.as_bytes()).await? {
-            Some(oid) => oid,
-            None => anyhow::bail!("Document not found"),
-        };
-
-        let prefix_bytes = [V1, KEYSPACE_DOC]
-            .iter()
-            .chain(&oid.to_be_bytes())
-            .chain(&[SUB_UPDATE])
-            .copied()
-            .collect::<Vec<_>>();
-        let prefix_str = hex::encode(&prefix_bytes);
-
-        let mut all_objects = Vec::new();
-        let mut page_token = None;
-
-        loop {
-            let request = ListObjectsRequest {
-                bucket: self.bucket.clone(),
-                prefix: Some(prefix_str.clone()),
-                page_token: page_token.clone(),
-                ..Default::default()
-            };
-
-            let response = self.client.list_objects(&request).await?;
-            let items = response.items.unwrap_or_default();
-            all_objects.extend(items);
-
-            if let Some(token) = response.next_page_token {
-                page_token = Some(token);
-            } else {
-                break;
-            }
-        }
-
-        let mut filtered_objects = Vec::new();
-        for obj in all_objects {
-            let key_bytes = hex::decode(&obj.name)?;
-
-            if key_bytes.len() < 12 {
-                continue;
-            }
-
-            let clock_bytes: [u8; 4] = key_bytes[7..11].try_into()?;
-            let clock = u32::from_be_bytes(clock_bytes);
-
-            if clock <= target_clock {
-                filtered_objects.push((obj, clock));
-            }
-        }
-
-        filtered_objects.sort_by_key(|(_, clock)| *clock);
-
-        let doc = Doc::new();
-        let mut txn = doc.transact_mut();
-
-        for chunk in filtered_objects.chunks(BATCH_SIZE) {
-            let chunk_futures = chunk.iter().map(|(obj, clock)| {
-                let bucket = self.bucket.clone();
-                let object = obj.name.clone();
-                let clock = *clock;
-
-                async move {
-                    let request = GetObjectRequest {
-                        bucket,
-                        object: object.clone(),
-                        ..Default::default()
-                    };
-
-                    match self
-                        .client
-                        .download_object(&request, &Range::default())
-                        .await
-                    {
-                        Ok(data) => {
-                            if let Ok(update) = Update::decode_v1(&data) {
-                                Some((clock, update))
-                            } else {
-                                error!("Failed to decode update from object: {}", object);
-                                None
-                            }
-                        }
-                        Err(e) => {
-                            error!("Failed to download object {}: {:?}", object, e);
-                            None
-                        }
-                    }
-                }
-            });
-
-            let batch_results = join_all(chunk_futures).await;
-
-            for result in batch_results.into_iter().flatten() {
-                let (_, update) = result;
-                let _ = txn.apply_update(update);
-            }
-        }
-
-        drop(txn);
-        Ok(doc)
     }
 
     pub async fn get_latest_update_metadata(

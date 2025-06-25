@@ -202,15 +202,16 @@ pub fn slice_to_tiles<E>(
                                             .filter(|(k, _)| {
                                                 feature_schema.fields().contains(&k.to_string())
                                             })
-                                            .map(|(k, v)| {
-                                                if let AttributeValue::Number(value) = v {
-                                                    (
-                                                        k.to_string(),
-                                                        AttributeValue::String(value.to_string()),
-                                                    )
-                                                } else {
-                                                    (k.to_string(), v.clone())
-                                                }
+                                            .map(|(k, v)| match v {
+                                                AttributeValue::Number(value) => (
+                                                    k.to_string(),
+                                                    AttributeValue::String(value.to_string()),
+                                                ),
+                                                AttributeValue::DateTime(value) => (
+                                                    k.to_string(),
+                                                    AttributeValue::String(value.to_string()),
+                                                ),
+                                                _ => (k.to_string(), v),
                                             })
                                             .collect(),
                                         polygon_material_ids: Default::default(),
