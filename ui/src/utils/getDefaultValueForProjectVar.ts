@@ -15,16 +15,16 @@ import { VarType } from "@flow/types";
 export function getDefaultValueForProjectVar(type: VarType): any {
   switch (type) {
     case "attribute_name":
-      // Default could be an empty string (or you might use a specific attribute pattern)
-      return "new name";
+      // Default should be empty for user input
+      return "";
 
     case "choice":
-      // For a choice, you might return an empty string or the first valid option depending on your use-case.
+      // For a choice, return empty string as default
       return "";
 
     case "color":
-      // A default color (e.g., black)
-      return "#000000";
+      // Default color should be empty for user selection
+      return "";
 
     case "coordinate_system":
       // Default coordinate system might be an empty string or a standard EPSG code.

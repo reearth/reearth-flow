@@ -1,3 +1,4 @@
+import { CaretUpIcon, CaretDownIcon } from "@phosphor-icons/react";
 import {
   ColumnDef,
   flexRender,
@@ -7,6 +8,7 @@ import {
 
 import {
   Checkbox,
+  IconButton,
   Table,
   TableBody,
   TableCell,
@@ -23,6 +25,8 @@ type Props = {
   columns: ColumnDef<ProjectVariable, unknown>[];
   selectedIndices: number[];
   onSelectionChange: (selectedIndices: number[]) => void;
+  onMoveUp?: (index: number) => void;
+  onMoveDown?: (index: number) => void;
 };
 
 const ProjectVariablesTable: React.FC<Props> = ({
@@ -31,6 +35,8 @@ const ProjectVariablesTable: React.FC<Props> = ({
   columns,
   selectedIndices,
   onSelectionChange,
+  onMoveUp,
+  onMoveDown,
 }) => {
   const t = useT();
 
@@ -52,7 +58,6 @@ const ProjectVariablesTable: React.FC<Props> = ({
     onSelectionChange(newSelectedIndices);
   };
 
-  // Create columns with selection column prepended
   const columnsWithSelection: ColumnDef<ProjectVariable>[] = [
     {
       id: "select",
@@ -75,7 +80,43 @@ const ProjectVariablesTable: React.FC<Props> = ({
       ),
       enableSorting: false,
       enableHiding: false,
+      size: 40,
     },
+    ...(onMoveUp || onMoveDown
+      ? [
+          {
+            id: "move",
+            header: "",
+            cell: ({ row }: { row: any }) => (
+              <div className="flex">
+                <IconButton
+                  icon={<CaretUpIcon size={16} />}
+                  size="sm"
+                  variant="ghost"
+                  disabled={row.index === 0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMoveUp?.(row.index);
+                  }}
+                />
+                <IconButton
+                  icon={<CaretDownIcon size={16} />}
+                  size="sm"
+                  variant="ghost"
+                  disabled={row.index === projectVariables.length - 1}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMoveDown?.(row.index);
+                  }}
+                />
+              </div>
+            ),
+            enableSorting: false,
+            enableHiding: false,
+            size: 80,
+          } as ColumnDef<ProjectVariable>,
+        ]
+      : []),
     ...columns,
   ];
 
@@ -108,8 +149,6 @@ const ProjectVariablesTable: React.FC<Props> = ({
     },
     // manualPagination: true,
   });
-
-  console.log("asdfs", table.getRowModel().rows);
 
   return (
     <Table className={`rounded-md bg-inherit ${className}`}>

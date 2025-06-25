@@ -4,7 +4,7 @@ import {
   PlusIcon,
 } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import {
   Dialog,
@@ -21,6 +21,11 @@ import {
   DropdownMenuTrigger,
   IconButton,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Switch,
 } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
@@ -71,6 +76,141 @@ const NameInput: React.FC<{
   );
 };
 
+const DefaultValueInput: React.FC<{
+  variable: ProjectVariable;
+  onUpdate: (variable: ProjectVariable) => void;
+}> = ({ variable, onUpdate }) => {
+  const t = useT();
+  const [localValue, setLocalValue] = useState(variable.defaultValue || "");
+
+  useEffect(() => {
+    setLocalValue(variable.defaultValue || "");
+  }, [variable.defaultValue]);
+
+  const handleBlur = () => {
+    if (localValue !== variable.defaultValue) {
+      onUpdate({ ...variable, defaultValue: localValue });
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
+    }
+  };
+
+  const handleSelectChange = (value: string) => {
+    setLocalValue(value);
+    onUpdate({ ...variable, defaultValue: value });
+  };
+
+  // Determine the original type from the user-facing name
+  const getOriginalType = (type: VarType): VarType => {
+    const typeMapping: Record<string, VarType> = {
+      [t("Attribute Name")]: "attribute_name",
+      [t("Choice")]: "choice",
+      [t("Color")]: "color",
+      [t("Coordinate System")]: "coordinate_system",
+      [t("Database Connection")]: "database_connection",
+      [t("Date and Time")]: "datetime",
+      [t("File or Folder")]: "file_folder",
+      [t("Geometry")]: "geometry",
+      [t("Message")]: "message",
+      [t("Number")]: "number",
+      [t("Password")]: "password",
+      [t("Reprojection File")]: "reprojection_file",
+      [t("Text")]: "text",
+      [t("Web Connection")]: "web_connection",
+      [t("Yes/No")]: "yes_no",
+      [t("Unsupported")]: "unsupported",
+    };
+
+    return typeMapping[type] || type;
+  };
+
+  const originalType = getOriginalType(variable.type);
+
+  switch (originalType) {
+    case "attribute_name":
+      return (
+        <Input
+          value={localValue}
+          onChange={(e) => {
+            e.stopPropagation();
+            setLocalValue(e.currentTarget.value);
+          }}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          onClick={(e) => e.stopPropagation()}
+          onFocus={(e) => e.stopPropagation()}
+          placeholder={t("Enter attribute name")}
+        />
+      );
+
+    case "choice":
+      return (
+        <Select value={localValue} onValueChange={handleSelectChange}>
+          <SelectTrigger onClick={(e) => e.stopPropagation()}>
+            <SelectValue placeholder={t("Select option")} />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="option1">{t("Option 1")}</SelectItem>
+            <SelectItem value="option2">{t("Option 2")}</SelectItem>
+            <SelectItem value="option3">{t("Option 3")}</SelectItem>
+          </SelectContent>
+        </Select>
+      );
+
+    case "color":
+      return (
+        <div className="flex items-center gap-2">
+          <Input
+            type="color"
+            value={localValue || "#000000"}
+            onChange={(e) => {
+              e.stopPropagation();
+              const newValue = e.currentTarget.value;
+              setLocalValue(newValue);
+              onUpdate({ ...variable, defaultValue: newValue });
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onFocus={(e) => e.stopPropagation()}
+            className="h-8 w-12 rounded border p-1"
+          />
+          <Input
+            value={localValue}
+            onChange={(e) => {
+              e.stopPropagation();
+              setLocalValue(e.currentTarget.value);
+            }}
+            onBlur={handleBlur}
+            onKeyDown={handleKeyDown}
+            onClick={(e) => e.stopPropagation()}
+            onFocus={(e) => e.stopPropagation()}
+            placeholder={t("Enter color (e.g., #ff0000)")}
+            className="flex-1"
+          />
+        </div>
+      );
+
+    default:
+      return (
+        <Input
+          value={localValue}
+          onChange={(e) => {
+            e.stopPropagation();
+            setLocalValue(e.currentTarget.value);
+          }}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          onClick={(e) => e.stopPropagation()}
+          onFocus={(e) => e.stopPropagation()}
+          placeholder={t("Enter default value")}
+        />
+      );
+  }
+};
+
 type Props = {
   isOpen: boolean;
   currentProjectVariables?: ProjectVariable[];
@@ -98,6 +238,10 @@ type Props = {
       publicValue?: boolean;
     }[];
     deletes?: string[];
+    reorders?: {
+      paramId: string;
+      newIndex: number;
+    }[];
   }) => Promise<void>;
   projectId?: string;
 };
@@ -115,6 +259,11 @@ type PendingChange =
   | {
       type: "delete";
       id: string;
+    }
+  | {
+      type: "reorder";
+      paramId: string;
+      newIndex: number;
     };
 
 const allVarTypes: VarType[] = [
@@ -155,6 +304,48 @@ const ProjectVariableDialog: React.FC<Props> = ({
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const getUserFacingName = useCallback(
+    (type: VarType): string => {
+      switch (type) {
+        case "attribute_name":
+          return t("Attribute Name");
+        case "choice":
+          return t("Choice");
+        case "color":
+          return t("Color");
+        case "coordinate_system":
+          return t("Coordinate System");
+        case "database_connection":
+          return t("Database Connection");
+        case "datetime":
+          return t("Date and Time");
+        case "file_folder":
+          return t("File or Folder");
+        case "geometry":
+          return t("Geometry");
+        case "message":
+          return t("Message");
+        case "number":
+          return t("Number");
+        case "password":
+          return t("Password");
+        case "reprojection_file":
+          return t("Reprojection File");
+        case "text":
+          return t("Text");
+        case "web_connection":
+          return t("Web Connection");
+        case "yes_no":
+          return t("Yes/No");
+        case "unsupported":
+          return t("Unsupported");
+        default:
+          return t("Unknown");
+      }
+    },
+    [t],
+  );
+
   // Initialize local state when dialog opens or currentProjectVariables changes
   useEffect(() => {
     if (currentProjectVariables) {
@@ -162,7 +353,7 @@ const ProjectVariableDialog: React.FC<Props> = ({
       setPendingChanges([]);
       setSelectedIndices([]);
     }
-  }, [currentProjectVariables, isOpen]);
+  }, [currentProjectVariables, isOpen, getUserFacingName]);
 
   const handleLocalAdd = (type: VarType) => {
     const tempId = `temp_${generateUUID()}`;
@@ -264,6 +455,60 @@ const ProjectVariableDialog: React.FC<Props> = ({
     setSelectedIndices([]);
   };
 
+  const handleMoveUp = (index: number) => {
+    if (index <= 0) return;
+
+    const newProjectVariables = [...localProjectVariables];
+    const temp = newProjectVariables[index];
+    newProjectVariables[index] = newProjectVariables[index - 1];
+    newProjectVariables[index - 1] = temp;
+
+    setLocalProjectVariables(newProjectVariables);
+
+    // Track reorder for non-temp variables
+    if (!temp.id.startsWith("temp_")) {
+      setPendingChanges((prev) => [
+        ...prev,
+        { type: "reorder", paramId: temp.id, newIndex: index - 1 },
+      ]);
+    }
+    // Also track reorder for the swapped variable if it's not temp
+    const swappedVar = newProjectVariables[index];
+    if (!swappedVar.id.startsWith("temp_")) {
+      setPendingChanges((prev) => [
+        ...prev,
+        { type: "reorder", paramId: swappedVar.id, newIndex: index },
+      ]);
+    }
+  };
+
+  const handleMoveDown = (index: number) => {
+    if (index >= localProjectVariables.length - 1) return;
+
+    const newProjectVariables = [...localProjectVariables];
+    const temp = newProjectVariables[index];
+    newProjectVariables[index] = newProjectVariables[index + 1];
+    newProjectVariables[index + 1] = temp;
+
+    setLocalProjectVariables(newProjectVariables);
+
+    // Track reorder for non-temp variables
+    if (!temp.id.startsWith("temp_")) {
+      setPendingChanges((prev) => [
+        ...prev,
+        { type: "reorder", paramId: temp.id, newIndex: index + 1 },
+      ]);
+    }
+    // Also track reorder for the swapped variable if it's not temp
+    const swappedVar = newProjectVariables[index];
+    if (!swappedVar.id.startsWith("temp_")) {
+      setPendingChanges((prev) => [
+        ...prev,
+        { type: "reorder", paramId: swappedVar.id, newIndex: index },
+      ]);
+    }
+  };
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
@@ -276,13 +521,17 @@ const ProjectVariableDialog: React.FC<Props> = ({
       const deleteChanges = pendingChanges.filter(
         (change) => change.type === "delete",
       );
+      const reorderChanges = pendingChanges.filter(
+        (change) => change.type === "reorder",
+      );
 
       if (
         onBatchUpdate &&
         projectId &&
         (addChanges.length > 0 ||
           updateChanges.length > 0 ||
-          deleteChanges.length > 0)
+          deleteChanges.length > 0 ||
+          reorderChanges.length > 0)
       ) {
         const creates = addChanges.map((change) => ({
           name: change.projectVariable.name,
@@ -304,11 +553,17 @@ const ProjectVariableDialog: React.FC<Props> = ({
 
         const deletes = deleteChanges.map((change) => change.id);
 
+        const reorders = reorderChanges.map((change) => ({
+          paramId: change.paramId,
+          newIndex: change.newIndex,
+        }));
+
         await onBatchUpdate({
           projectId,
           ...(creates.length > 0 && { creates }),
           ...(updates.length > 0 && { updates }),
           ...(deletes.length > 0 && { deletes }),
+          ...(reorders.length > 0 && { reorders }),
         });
       } else {
         for (const change of addChanges) {
@@ -352,45 +607,6 @@ const ProjectVariableDialog: React.FC<Props> = ({
     onClose();
   };
 
-  const getUserFacingName = (type: VarType): string => {
-    switch (type) {
-      case "attribute_name":
-        return t("Attribute Name");
-      case "choice":
-        return t("Choice");
-      case "color":
-        return t("Color");
-      case "coordinate_system":
-        return t("Coordinate System");
-      case "database_connection":
-        return t("Database Connection");
-      case "datetime":
-        return t("Date and Time");
-      case "file_folder":
-        return t("File or Folder");
-      case "geometry":
-        return t("Geometry");
-      case "message":
-        return t("Message");
-      case "number":
-        return t("Number");
-      case "password":
-        return t("Password");
-      case "reprojection_file":
-        return t("Reprojection File");
-      case "text":
-        return t("Text");
-      case "web_connection":
-        return t("Web Connection");
-      case "yes_no":
-        return t("Yes/No");
-      case "unsupported":
-        return t("Unsupported");
-      default:
-        return t("Unknown");
-    }
-  };
-
   const columns: ColumnDef<ProjectVariable>[] = [
     {
       accessorKey: "name",
@@ -409,6 +625,12 @@ const ProjectVariableDialog: React.FC<Props> = ({
     {
       accessorKey: "defaultValue",
       header: t("Default Value"),
+      cell: ({ row }) => {
+        const variable = localProjectVariables[row.index];
+        return (
+          <DefaultValueInput variable={variable} onUpdate={handleLocalUpdate} />
+        );
+      },
     },
     {
       accessorKey: "type",
@@ -508,6 +730,8 @@ const ProjectVariableDialog: React.FC<Props> = ({
                   columns={columns}
                   selectedIndices={selectedIndices}
                   onSelectionChange={handleRowSelect}
+                  onMoveUp={handleMoveUp}
+                  onMoveDown={handleMoveDown}
                 />
               </DialogContentSection>
             </DialogContentSection>
