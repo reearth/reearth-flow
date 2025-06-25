@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { LoadingSplashscreen } from "@flow/components";
 import ErrorPage from "@flow/components/errors/ErrorPage";
 import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
+import NotFound from "@flow/features/NotFound";
 import { NotificationSystem } from "@flow/features/NotificationSystem";
 import { useAuth } from "@flow/lib/auth";
 import { GraphQLProvider, useUser } from "@flow/lib/gql";
@@ -22,6 +23,8 @@ export const Route = createFileRoute("/workspaces")({
       <WorkspaceRoute />
     </AuthenticationWrapper>
   ),
+  errorComponent: () => <ErrorPage errorMessage={"Something Went Wrong"} />,
+  notFoundComponent: () => <NotFound />,
 });
 
 const WorkspaceRoute = () => {

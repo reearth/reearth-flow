@@ -8,7 +8,7 @@ function ErrorPage({ errorMessage }: { errorMessage: string }) {
     <div className="flex h-screen items-center justify-center">
       <div className="flex flex-col items-center gap-10">
         <div className="flex items-center gap-4">
-          <div className="rounded bg-logo p-2">
+          <div className="rounded p-2">
             <FlowLogo className="size-[75px]" />
           </div>
         </div>

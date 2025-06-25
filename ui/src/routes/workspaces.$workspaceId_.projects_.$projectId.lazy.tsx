@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Button, FlowLogo, LoadingSplashscreen } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import ErrorPage from "@flow/components/errors/ErrorPage";
+import { ProjectCorruptionError } from "@flow/errors";
 import Editor from "@flow/features/Editor";
 import { VersionDialog } from "@flow/features/Editor/components/TopBar/components/ActionBar/components/Version/VersionDialog";
 import {
@@ -141,7 +142,7 @@ const ErrorComponent = ({
 
   return (
     <>
-      {error.stack?.includes("reassembleNode") ? (
+      {error instanceof ProjectCorruptionError ? (
         <div className="flex h-screen w-full flex-col items-center justify-center">
           <div className="flex flex-col items-center justify-center gap-8">
             <BasicBoiler

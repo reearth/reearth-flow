@@ -9,7 +9,9 @@ import {
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
 import ErrorPage from "@flow/components/errors/ErrorPage";
+import { ProjectCorruptionError } from "@flow/errors";
 import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
+import NotFound from "@flow/features/NotFound";
 import SharedCanvas from "@flow/features/SharedCanvas";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useFullscreen, useShortcuts } from "@flow/hooks";
@@ -93,7 +95,7 @@ const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
 
   const { sharedToken } = useParams({ strict: false });
 
-  const { sharedProject } = useGetSharedProject(sharedToken);
+  const { sharedProject, isError } = useGetSharedProject(sharedToken);
 
   const { yWorkflows, yDocState, isSynced, undoTrackerActionWrapper } =
     useYjsSetup({
@@ -101,7 +103,12 @@ const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
       workflowId: DEFAULT_ENTRY_GRAPH_ID,
     });
 
-  return !yWorkflows || !isSynced || !undoTrackerActionWrapper ? (
+  return isError ? (
+    <NotFound />
+  ) : !yWorkflows ||
+    !isSynced ||
+    !undoTrackerActionWrapper ||
+    !sharedProject ? (
     <LoadingSplashscreen />
   ) : (
     <SharedCanvas
@@ -119,7 +126,7 @@ const ErrorComponent = ({ error }: { error: Error }) => {
 
   return (
     <>
-      {error.stack?.includes("reassembleNode") ? (
+      {error instanceof ProjectCorruptionError ? (
         <div className="flex h-screen w-full flex-col items-center justify-center">
           <BasicBoiler
             text={t("Project or version is corrupted.")}
