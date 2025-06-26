@@ -29,6 +29,11 @@ export const useSharedProject = () => {
       });
       return { ...sharedProject, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Project Could Not Be Shared"),
+        description: t("There was an error when sharing the project."),
+        variant: "destructive",
+      });
       return { projectId: undefined, sharingUrl: undefined, ...rest };
     }
   };
@@ -45,6 +50,11 @@ export const useSharedProject = () => {
       });
       return { ...unsharedProject, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Project Could Not Be UnShared"),
+        description: t("There was an error when unsharing the project."),
+        variant: "destructive",
+      });
       return { projectId: undefined, ...rest };
     }
   };

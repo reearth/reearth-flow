@@ -19,6 +19,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  RenderFallback,
   LoadingSkeleton,
   Select,
   SelectContent,
@@ -134,17 +135,35 @@ const DebugPreview: React.FC = () => {
           <TabsContent
             className="h-[calc(100%-35px)] overflow-scroll"
             value="data-viewer">
-            <DataTable fileContent={selectedOutputData} fileType={fileType} />
+            <RenderFallback
+              message={t(
+                "Table Viewer Could Not Be Loaded. Check if the data is valid.",
+              )}
+              textSize="sm">
+              <DataTable fileContent={selectedOutputData} fileType={fileType} />
+            </RenderFallback>
           </TabsContent>
           <TabsContent
             className="m-0 h-[calc(100%-32px)] p-1"
             value="2d-viewer">
-            <MapLibre fileContent={selectedOutputData} fileType={fileType} />
+            <RenderFallback
+              message={t(
+                "2D Viewer Could Not Be Loaded. Check if the data is valid.",
+              )}
+              textSize="sm">
+              <MapLibre fileContent={selectedOutputData} fileType={fileType} />
+            </RenderFallback>
           </TabsContent>
           <TabsContent
             className="m-0 h-[calc(100%-32px)] p-1"
             value="3d-viewer">
-            <GeoMap fileContent={selectedOutputData} fileType={fileType} />
+            <RenderFallback
+              message={t(
+                "3D Viewer Could Not Be Loaded. Check if the data is valid.",
+              )}
+              textSize="sm">
+              <GeoMap fileContent={selectedOutputData} fileType={fileType} />
+            </RenderFallback>
           </TabsContent>
         </>
       )}

@@ -67,8 +67,17 @@ export const useWorkspace = () => {
     const { mutateAsync, ...rest } = updateWorkspaceMutation;
     try {
       const data = await mutateAsync({ workspaceId, name });
+      toast({
+        title: t("Workspace Updated"),
+        description: t("Workspace has been successfully Updated."),
+      });
       return { workspace: data, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Workspace Could Not Be Updated"),
+        description: t("There was an error when updating the workspace."),
+        variant: "warning",
+      });
       return { workspace: undefined, ...rest };
     }
   };
@@ -86,6 +95,11 @@ export const useWorkspace = () => {
       });
       return { workspaceId: data, ...rest };
     } catch (_err) {
+      toast({
+        title: t("Workspace Not Deleted"),
+        description: t("Workspace could not be deleted."),
+        variant: "warning",
+      });
       return { workspaceId: undefined, ...rest };
     }
   };
