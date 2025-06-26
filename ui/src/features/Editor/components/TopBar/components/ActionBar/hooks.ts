@@ -6,7 +6,7 @@ export default ({ projectId }: { projectId: string }) => {
   const [showDialog, setShowDialog] = useState<
     "deploy" | "share" | "version" | "debugStop" | undefined
   >(undefined);
-  const { handleProjectSnapshotSave } = useProjectSave({ projectId });
+  const { handleProjectSnapshotSave, isSaving } = useProjectSave({ projectId });
 
   const handleShowDeployDialog = () => setShowDialog("deploy");
 
@@ -17,6 +17,7 @@ export default ({ projectId }: { projectId: string }) => {
   const handleDialogClose = () => setShowDialog(undefined);
   return {
     showDialog,
+    isSaving,
     handleProjectSnapshotSave,
     handleShowDeployDialog,
     handleShowVersionDialog,
