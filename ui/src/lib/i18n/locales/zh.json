@@ -423,5 +423,6 @@
   "Subworkflow": "子工作流",
   "Please check the shared URL is correct.": "请检查共享URL是否正确。",
   "Project or version is corrupted.": "项目或版本已损坏。",
-  "Revert to a previous version": "回滚到先前版本"
+  "Revert to a previous version": "回滚到先前版本",
+  "Could not fetch user": ""
 }

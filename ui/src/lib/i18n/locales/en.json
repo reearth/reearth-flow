@@ -423,5 +423,6 @@
   "Subworkflow": "",
   "Please check the shared URL is correct.": "",
   "Project or version is corrupted.": "",
-  "Revert to a previous version": ""
+  "Revert to a previous version": "",
+  "Could not fetch user": ""
 }

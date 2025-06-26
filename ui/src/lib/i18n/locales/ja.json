@@ -423,5 +423,6 @@
   "Subworkflow": "サブワークフロー",
   "Please check the shared URL is correct.": "共有URLが正しいか確認してください。",
   "Project or version is corrupted.": "プロジェクトまたはバージョンが破損しています。",
-  "Revert to a previous version": "以前のバージョンに戻す"
+  "Revert to a previous version": "以前のバージョンに戻す",
+  "Could not fetch user": "ユーザーを取得できませんでした",
 }
