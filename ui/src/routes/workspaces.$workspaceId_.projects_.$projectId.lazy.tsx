@@ -166,7 +166,7 @@ const ErrorComponent = ({
           )}
         </div>
       ) : (
-        <ErrorPage errorMessage={"Something Went Wrong"} />
+        <ErrorPage />
       )}
     </>
   );

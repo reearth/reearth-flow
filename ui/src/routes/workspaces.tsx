@@ -23,7 +23,7 @@ export const Route = createFileRoute("/workspaces")({
       <WorkspaceRoute />
     </AuthenticationWrapper>
   ),
-  errorComponent: () => <ErrorPage errorMessage={"Something Went Wrong"} />,
+  errorComponent: () => <ErrorPage />,
   notFoundComponent: () => <NotFound />,
 });
 

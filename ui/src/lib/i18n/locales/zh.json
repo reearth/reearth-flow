@@ -5,6 +5,7 @@
   "Columns": "列",
   "No Results": "没有结果",
   "Time": "时间",
+  "Something Went Wrong": "出了点问题",
   "Reload": "重新加载",
   "Loading": "加载中",
   "Error": "错误",
@@ -399,6 +400,7 @@
   "There was an error when trying to update the members persmissons.": "更新成员权限时发生错误。",
   "Batch": "批处理",
   "Subworkflow": "子工作流",
-  "Project or version is corrupted.": "",
-  "Revert to a previous version": ""
+  "Please check the shared URL is correct.": "请检查共享URL是否正确。",
+  "Project or version is corrupted.": "项目或版本已损坏。",
+  "Revert to a previous version": "回滚到先前版本"
 }

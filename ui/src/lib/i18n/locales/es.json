@@ -5,6 +5,7 @@
   "Columns": "Columnas",
   "No Results": "Sin resultados",
   "Time": "Tiempo",
+  "Something Went Wrong": "Algo salió mal",
   "Reload": "Recargar",
   "Loading": "Cargando",
   "Error": "Error",
@@ -399,6 +400,7 @@
   "There was an error when trying to update the members persmissons.": "",
   "Batch": "Lote",
   "Subworkflow": "Subflujo de trabajo",
+  "Please check the shared URL is correct.": "Por favor, verifica que la URL compartida sea correcta.",
   "Project or version is corrupted.": "",
   "Revert to a previous version": ""
 }

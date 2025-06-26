@@ -5,6 +5,7 @@
   "Columns": "カラム",
   "No Results": "結果なし",
   "Time": "時間",
+  "Something Went Wrong": "何かがうまくいきませんでした",
   "Reload": "リロード",
   "Loading": "読み込み中",
   "Error": "エラー",
@@ -399,6 +400,7 @@
   "There was an error when trying to update the members persmissons.": "メンバーの権限を更新しようとした際にエラーが発生しました。",
   "Batch": "バッチ",
   "Subworkflow": "サブワークフロー",
+  "Please check the shared URL is correct.": "共有URLが正しいか確認してください。",
   "Project or version is corrupted.": "プロジェクトまたはバージョンが破損しています。",
   "Revert to a previous version": "以前のバージョンに戻す"
 }

@@ -24,6 +24,7 @@ import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
 export const Route = createLazyFileRoute("/shared/$sharedToken")({
   component: () => <SharedRoute />,
   errorComponent: ({ error }) => <ErrorComponent error={error} />,
+  notFoundComponent: () => <NotFound />,
 });
 
 const SharedRoute = () => {
@@ -70,6 +71,7 @@ const SharedRoute = () => {
 };
 
 const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
+  const t = useT();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const { handleFullscreenToggle } = useFullscreen();
   useShortcuts([
@@ -104,7 +106,7 @@ const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
     });
 
   return isError ? (
-    <NotFound />
+    <ErrorPage errorMessage={t("Please check the shared URL is correct.")} />
   ) : !yWorkflows ||
     !isSynced ||
     !undoTrackerActionWrapper ||
@@ -134,7 +136,7 @@ const ErrorComponent = ({ error }: { error: Error }) => {
           />
         </div>
       ) : (
-        <ErrorPage errorMessage={"Something Went Wrong"} />
+        <ErrorPage />
       )}
     </>
   );

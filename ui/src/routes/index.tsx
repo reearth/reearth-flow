@@ -5,7 +5,7 @@ import ErrorPage from "@flow/components/errors/ErrorPage";
 
 export const Route = createFileRoute("/")({
   component: () => <LoadingSplashscreen />,
-  errorComponent: () => <ErrorPage errorMessage={"Something Went Wrong"} />,
+  errorComponent: () => <ErrorPage />,
   loader: () => {
     throw redirect({ to: "/workspaces" });
   },
