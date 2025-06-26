@@ -87,7 +87,7 @@ export default ({
 
   const [currentProject] = useCurrentProject();
 
-  const { handleProjectSnapshotSave } = useProjectSave({
+  const { handleProjectSnapshotSave, isSaving } = useProjectSave({
     projectId: currentProject?.id,
   });
 
@@ -333,7 +333,7 @@ export default ({
     },
     {
       keyBinding: { key: "s", commandKey: true },
-      callback: () => handleProjectSnapshotSave(),
+      callback: isSaving ? () => undefined : handleProjectSnapshotSave,
     },
     // {
     //   keyBinding: { key: "s", commandKey: false },
