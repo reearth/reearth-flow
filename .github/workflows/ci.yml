@@ -236,3 +236,65 @@ jobs:
     uses: ./.github/workflows/build_deploy_policies_cerbos.yml
     if: ${{ !failure() && needs.ci-policies.result == 'success' && github.event_name == 'push' && github.ref_name == 'main' }}
     secrets: inherit
+
+  prepare-info-pr:
+    runs-on: ubuntu-latest
+    if: ${{ needs.prepare.outputs.ui == 'true' && github.event_name == 'pull_request' && github.base_ref == 'main' && (github.event.action == 'opened' || github.event.action == 'synchronize') }}
+    needs:
+      - prepare
+    outputs:
+      build: ${{ steps.prepare.outputs.build }}
+      sha_short: ${{ steps.prepare.outputs.sha_short }}
+      new_tag: ${{ steps.prepare.outputs.new_tag }}
+      new_tag_short: ${{ steps.prepare.outputs.new_tag_short }}
+      name: ${{ steps.prepare.outputs.name }}
+    steps:
+      - uses: reearth/actions/prepare-build@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5
+        id: prepare
+
+  build-ui-pr:
+    needs:
+      - prepare-info-pr
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: reearth/actions/build-docker-image@f9ec7fd6b26255566358e46c0764b367a6d063fb
+        with:
+          image: ghcr.io/reearth/reearth-flow/reearth-flow-web
+          context: ui
+          use_dockerhub: false
+          name: ${{ needs.prepare-info-pr.outputs.sha_short }}
+          sha_short: ${{ needs.prepare-info-pr.outputs.sha_short }}
+
+  deploy-ui-pr:
+    needs:
+      - prepare-info-pr
+      - build-ui-pr
+    runs-on: ubuntu-latest
+    outputs:
+      preview_url: ${{ steps.deploy.outputs.url }}
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+      packages: write
+      pull-requests: write
+    steps:
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: reearth/actions/deploy-cloud-run-with-tag@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5 # main
+        id: deploy
+        with:
+            image: ghcr.io/reearth/reearth-flow/reearth-flow-web:${{ needs.prepare-info-pr.outputs.sha_short }}
+            image_internal: '${{ secrets.GC_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/reearth/reearth-flow-web:${{ needs.prepare-info-pr.outputs.sha_short }}'
+            region: ${{ secrets.GC_REGION }}
+            service: reearth-flow-web
+            service_account: ${{ secrets.GC_SA_EMAIL }}
+            tag: pr-${{ github.event.pull_request.number }}
+            workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
