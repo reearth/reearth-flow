@@ -68,6 +68,25 @@ export const useQueries = () => {
       refetchOnWindowFocus: false,
     });
 
+  const usePreviewSnapshot = useMutation({
+    mutationFn: async ({
+      projectId,
+      version,
+    }: {
+      projectId: string;
+      version: number;
+    }) => {
+      const data = await graphQLContext?.PreviewSnapshot({
+        projectId,
+        version,
+      });
+
+      if (data?.previewSnapshot) {
+        return data?.previewSnapshot;
+      }
+    },
+  });
+
   const rollbackProjectMutation = useMutation({
     mutationFn: async ({
       projectId,
@@ -100,21 +119,14 @@ export const useQueries = () => {
     },
   });
 
-  const usePreviewSnapshot = useMutation({
-    mutationFn: async ({
-      projectId,
-      version,
-    }: {
-      projectId: string;
-      version: number;
-    }) => {
-      const data = await graphQLContext?.PreviewSnapshot({
+  const snapshotSaveMutation = useMutation({
+    mutationFn: async ({ projectId }: { projectId: string }) => {
+      const data = await graphQLContext?.SaveSnapshot({
         projectId,
-        version,
       });
 
-      if (data?.previewSnapshot) {
-        return data?.previewSnapshot;
+      if (data?.saveSnapshot) {
+        return data.saveSnapshot;
       }
     },
   });
@@ -125,5 +137,6 @@ export const useQueries = () => {
     useProjectHistoryQuery,
     usePreviewSnapshot,
     rollbackProjectMutation,
+    snapshotSaveMutation,
   };
 };

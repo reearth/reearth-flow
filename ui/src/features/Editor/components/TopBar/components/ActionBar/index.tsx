@@ -4,11 +4,13 @@ import {
   ExportIcon,
   PaperPlaneTiltIcon,
   RocketIcon,
+  FloppyDiskIcon,
 } from "@phosphor-icons/react";
 import { memo } from "react";
 import { Doc } from "yjs";
 
 import {
+  ContextMenuShortcut,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -50,11 +52,13 @@ const ActionBar: React.FC<Props> = ({
   const t = useT();
   const {
     showDialog,
+    isSaving,
     handleShowDeployDialog,
     handleShowVersionDialog,
     handleShowSharePopover,
     handleDialogClose,
-  } = useHooks();
+    handleProjectSnapshotSave,
+  } = useHooks({ projectId: project?.id ?? "" });
 
   return (
     <>
@@ -95,21 +99,43 @@ const ActionBar: React.FC<Props> = ({
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="flex flex-col gap-2"
+              className="min-w-[170px] rounded-md bg-primary p-1 text-popover-foreground shadow-md select-none"
               align="end"
               sideOffset={10}
               alignOffset={2}>
               <DropdownMenuItem
-                className="flex justify-between gap-4"
-                onClick={onProjectExport}>
-                <p>{t("Export Project")}</p>
-                <ExportIcon weight="thin" size={18} />
+                className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs"
+                onSelect={(e) => {
+                  e.preventDefault();
+                }}
+                disabled={isSaving}
+                onClick={handleProjectSnapshotSave}>
+                <div className="flex items-center gap-1">
+                  <FloppyDiskIcon weight="light" />
+                  <p>{t("Manual Save")}</p>
+                </div>
+
+                <div className="flex flex-row gap-1">
+                  <ContextMenuShortcut
+                    keyBinding={{ key: "s", commandKey: true }}
+                  />
+                </div>
               </DropdownMenuItem>
               <DropdownMenuItem
-                className="flex justify-between gap-4"
+                className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs"
                 onClick={handleShowVersionDialog}>
-                <p>{t("Version History")}</p>
-                <ClockCounterClockwiseIcon weight="thin" size={18} />
+                <div className="flex items-center gap-1">
+                  <ClockCounterClockwiseIcon weight="light" />
+                  <p>{t("Version History")}</p>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs"
+                onClick={onProjectExport}>
+                <div className="flex items-center gap-1">
+                  <ExportIcon weight="light" />
+                  <p>{t("Export Project")}</p>
+                </div>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
