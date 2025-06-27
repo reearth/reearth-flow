@@ -11,7 +11,7 @@ import { useY } from "react-yjs";
 import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
-import { useProjectExport, useShortcuts } from "@flow/hooks";
+import { useProjectExport, useProjectSave, useShortcuts } from "@flow/hooks";
 import { useSharedProject } from "@flow/lib/gql";
 import { checkForReader } from "@flow/lib/reactFlow";
 import { useYjsStore } from "@flow/lib/yjs";
@@ -82,6 +82,15 @@ export default ({
   });
 
   const { handleProjectExport } = useProjectExport();
+
+  const { shareProject, unshareProject } = useSharedProject();
+
+  const [currentProject] = useCurrentProject();
+
+  const { handleProjectSnapshotSave, isSaving } = useProjectSave({
+    projectId: currentProject?.id,
+  });
+
   const [showBeforeDeleteDialog, setShowBeforeDeleteDialog] =
     useState<boolean>(false);
   const deferredDeleteRef = useRef<{
@@ -207,10 +216,6 @@ export default ({
     yWorkflows,
   });
 
-  const { shareProject, unshareProject } = useSharedProject();
-
-  const [currentProject] = useCurrentProject();
-
   const handleProjectShare = useCallback(
     (share: boolean) => {
       if (!currentProject) return;
@@ -325,6 +330,10 @@ export default ({
     {
       keyBinding: { key: "z", commandKey: true },
       callback: handleYWorkflowUndo,
+    },
+    {
+      keyBinding: { key: "s", commandKey: true },
+      callback: isSaving ? () => undefined : handleProjectSnapshotSave,
     },
     // {
     //   keyBinding: { key: "s", commandKey: false },

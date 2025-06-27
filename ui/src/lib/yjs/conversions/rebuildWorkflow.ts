@@ -1,5 +1,6 @@
 import * as Y from "yjs";
 
+import { ProjectCorruptionError } from "@flow/errors";
 import { Workflow } from "@flow/types";
 import type { Edge, Node, NodeData, NodeType } from "@flow/types";
 
@@ -7,6 +8,7 @@ import type { YWorkflow, YEdge, YNode, YNodesMap, YEdgesMap } from "../types";
 
 export const reassembleNode = (yNode: YNode): Node => {
   const id = yNode.get("id")?.toString() as string;
+
   const position = {
     x: (yNode.get("position") as Y.Map<any>).get("x"),
     y: (yNode.get("position") as Y.Map<any>).get("y"),
@@ -119,9 +121,16 @@ export const rebuildWorkflow = (yWorkflow: YWorkflow): Workflow => {
       workflow.name = value.toString();
     } else if (key === "nodes" && value instanceof Y.Map) {
       // Convert map of nodes to array of plain objects
-      workflow.nodes = Array.from(value as YNodesMap).map(([, yNode]) =>
-        reassembleNode(yNode as YNode),
-      );
+
+      try {
+        workflow.nodes = Array.from(value as YNodesMap).map(([, yNode]) =>
+          reassembleNode(yNode as YNode),
+        );
+      } catch {
+        throw new ProjectCorruptionError(
+          "Could not reassemble node. This project may be corrupted.",
+        );
+      }
     } else if (key === "edges" && value instanceof Y.Map) {
       // Convert map of edges to array of plain objects
       workflow.edges = Array.from(value as YEdgesMap).map(([, yEdge]) =>
