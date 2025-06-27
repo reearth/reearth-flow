@@ -24,7 +24,7 @@ import type {
   NodeStatus,
   ProjectSnapshotMeta,
   VarType,
-  ProjectVariable,
+  AnyProjectVariable,
   Workspace,
   Member,
   ProjectSnapshot,
@@ -180,7 +180,7 @@ export const toNodeStatus = (
 
 export const toProjectVariable = (
   parameter: ParameterFragment,
-): ProjectVariable => ({
+): AnyProjectVariable => ({
   id: parameter.id,
   name: parameter.name,
   type: toUserParamVarType(parameter.type),

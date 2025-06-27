@@ -75,7 +75,8 @@ export default ({
   >([]);
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editingVariable, setEditingVariable] = useState<ProjectVariable | null>(null);
+  const [editingVariable, setEditingVariable] =
+    useState<ProjectVariable | null>(null);
 
   const getUserFacingName = useCallback(
     (type: VarType): string => {
@@ -149,6 +150,7 @@ export default ({
   );
 
   const handleLocalUpdate = useCallback((updatedVariable: ProjectVariable) => {
+    console.log("Updating variable (handleLocalUpdate):", updatedVariable);
     setLocalProjectVariables((prev) =>
       prev.map((variable) =>
         variable.id === updatedVariable.id ? updatedVariable : variable,
@@ -317,6 +319,7 @@ export default ({
         const creates = addChanges.map((change) => ({
           name: change.projectVariable.name,
           defaultValue: change.projectVariable.defaultValue,
+          config: change.projectVariable.config,
           type: change.projectVariable.type,
           required: change.projectVariable.required,
           publicValue: change.projectVariable.public,
@@ -327,6 +330,7 @@ export default ({
           paramId: change.projectVariable.id,
           name: change.projectVariable.name,
           defaultValue: change.projectVariable.defaultValue,
+          config: change.projectVariable.config,
           type: change.projectVariable.type,
           required: change.projectVariable.required,
           publicValue: change.projectVariable.public,

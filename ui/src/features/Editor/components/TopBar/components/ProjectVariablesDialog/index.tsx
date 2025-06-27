@@ -24,7 +24,7 @@ import {
 } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
 import { useT } from "@flow/lib/i18n";
-import { ProjectVariable, VarType } from "@flow/types";
+import { AnyProjectVariable, VarType } from "@flow/types";
 
 import { DefaultValueDisplay, NameInput } from "./components/index";
 import useProjectVariablesDialog from "./hooks";
@@ -33,10 +33,10 @@ import VariableEditDialog from "./VariableEditDialog";
 
 type Props = {
   isOpen: boolean;
-  currentProjectVariables?: ProjectVariable[];
+  currentProjectVariables?: AnyProjectVariable[];
   onClose: () => void;
-  onAdd: (projectVariable: ProjectVariable) => Promise<void>;
-  onChange: (projectVariable: ProjectVariable) => Promise<void>;
+  onAdd: (projectVariable: AnyProjectVariable) => Promise<void>;
+  onChange: (projectVariable: AnyProjectVariable) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onDeleteBatch?: (ids: string[]) => Promise<void>;
   onBatchUpdate?: (input: {
@@ -127,7 +127,7 @@ const ProjectVariableDialog: React.FC<Props> = ({
     onBatchUpdate,
   });
 
-  const columns: ColumnDef<ProjectVariable>[] = [
+  const columns: ColumnDef<AnyProjectVariable>[] = [
     {
       accessorKey: "name",
       header: t("Name"),

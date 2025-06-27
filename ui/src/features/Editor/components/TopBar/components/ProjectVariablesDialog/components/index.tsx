@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 
 import { Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { ProjectVariable, VarType } from "@flow/types";
+import { AnyProjectVariable, VarType } from "@flow/types";
 
 export const NameInput: React.FC<{
-  variable: ProjectVariable;
-  onUpdate: (variable: ProjectVariable) => void;
+  variable: AnyProjectVariable;
+  onUpdate: (variable: AnyProjectVariable) => void;
   placeholder: string;
 }> = ({ variable, onUpdate, placeholder }) => {
   const [localValue, setLocalValue] = useState(variable.name);
@@ -44,7 +44,7 @@ export const NameInput: React.FC<{
 };
 
 export const DefaultValueDisplay: React.FC<{
-  variable: ProjectVariable;
+  variable: AnyProjectVariable;
 }> = ({ variable }) => {
   const t = useT();
 

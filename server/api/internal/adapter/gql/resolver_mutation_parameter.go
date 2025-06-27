@@ -22,6 +22,7 @@ func (r *mutationResolver) DeclareParameter(ctx context.Context, projectID gqlmo
 		Public:       input.Public,
 		Type:         gqlmodel.FromParameterType(input.Type),
 		DefaultValue: input.DefaultValue,
+		Config:       input.Config,
 	})
 	if err != nil {
 		return nil, err
@@ -43,6 +44,7 @@ func (r *mutationResolver) UpdateParameter(ctx context.Context, paramID gqlmodel
 		RequiredValue: input.Required,
 		NameValue:     input.Name,
 		TypeValue:     gqlmodel.FromParameterType(input.Type),
+		Config:        input.Config,
 	})
 	if err != nil {
 		return nil, err
@@ -104,6 +106,7 @@ func (r *mutationResolver) UpdateParameters(ctx context.Context, input gqlmodel.
 			Public:       create.Public,
 			Type:         gqlmodel.FromParameterType(create.Type),
 			DefaultValue: create.DefaultValue,
+			Config:       create.Config,
 		}
 	}
 
@@ -117,6 +120,7 @@ func (r *mutationResolver) UpdateParameters(ctx context.Context, input gqlmodel.
 		updateParam := interfaces.UpdateParameterBatchItemParam{
 			ParamID:      paramID,
 			DefaultValue: update.DefaultValue,
+			Config:       update.Config,
 		}
 
 		if update.Name != nil {

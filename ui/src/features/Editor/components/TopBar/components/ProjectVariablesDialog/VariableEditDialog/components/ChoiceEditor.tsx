@@ -14,29 +14,41 @@ import {
   Label,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { ProjectVariable } from "@flow/types";
+import { AnyProjectVariable, ChoiceConfig } from "@flow/types";
 
-type ChoiceConfig = {
+// Legacy choice config for backward compatibility
+type LegacyChoiceConfig = {
   options: string[];
   selectedOption?: string;
 };
 
 type Props = {
-  variable: ProjectVariable;
-  onUpdate: (variable: ProjectVariable) => void;
+  variable: AnyProjectVariable;
+  onUpdate: (variable: AnyProjectVariable) => void;
 };
 
 export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
   const t = useT();
 
-  // Parse the current choice configuration
-  const getChoiceConfig = useCallback((): ChoiceConfig => {
+  // Parse the current choice configuration - prioritize config field over defaultValue
+  const getChoiceConfig = useCallback((): LegacyChoiceConfig => {
+    // Check if we have the new config field
+    if (variable.type === "choice" && variable.config) {
+      const config = variable.config as ChoiceConfig;
+      return {
+        options: config.choices || ["Option 1", "Option 2", "Option 3"],
+        selectedOption: typeof variable.defaultValue === "string" ? variable.defaultValue : undefined,
+      };
+    }
+    
+    // Fallback to legacy defaultValue format
     if (
       typeof variable.defaultValue === "object" &&
       variable.defaultValue?.options
     ) {
-      return variable.defaultValue as ChoiceConfig;
+      return variable.defaultValue as LegacyChoiceConfig;
     }
+    
     // Fallback for old string-based choices
     if (typeof variable.defaultValue === "string") {
       return {
@@ -44,14 +56,16 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
         selectedOption: variable.defaultValue || undefined,
       };
     }
+    
+    // Default fallback
     return {
       options: ["Option 1", "Option 2", "Option 3"],
       selectedOption: undefined,
     };
-  }, [variable.defaultValue]);
+  }, [variable.defaultValue, variable.config, variable.type]);
 
   const [choiceConfig, setChoiceConfig] =
-    useState<ChoiceConfig>(getChoiceConfig());
+    useState<LegacyChoiceConfig>(getChoiceConfig());
   const [newOptionText, setNewOptionText] = useState("");
 
   // Sync config when variable changes
@@ -59,12 +73,20 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
     setChoiceConfig(getChoiceConfig());
   }, [getChoiceConfig]);
 
-  const updateVariable = (config: ChoiceConfig) => {
+  const updateVariable = (config: LegacyChoiceConfig) => {
     setChoiceConfig(config);
-    onUpdate({
+    
+    // Update both config and defaultValue fields for proper typing and backward compatibility
+    const updatedVariable: AnyProjectVariable = {
       ...variable,
-      defaultValue: config,
-    });
+      config: variable.type === "choice" ? {
+        choices: config.options,
+        displayMode: "dropdown",
+      } as ChoiceConfig : variable.config,
+      defaultValue: config.selectedOption || "", // Store selected option in defaultValue
+    };
+    
+    onUpdate(updatedVariable);
   };
 
   const handleAddOption = () => {

@@ -78,6 +78,7 @@ func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.Decla
 		Required(param.Required).
 		Public(param.Public).
 		DefaultValue(param.DefaultValue).
+		Config(param.Config).
 		Index(index).
 		Build()
 	if err != nil {
@@ -148,6 +149,7 @@ func (i *Parameter) UpdateParameters(ctx context.Context, param interfaces.Updat
 			RequiredValue: currentParam.Required(),
 			PublicValue:   currentParam.Public(),
 			TypeValue:     currentParam.Type(),
+			Config:        currentParam.Config(),
 		}
 
 		if updateParam.DefaultValue != nil {
@@ -164,6 +166,9 @@ func (i *Parameter) UpdateParameters(ctx context.Context, param interfaces.Updat
 		}
 		if updateParam.TypeValue != nil {
 			completeUpdateParam.TypeValue = *updateParam.TypeValue
+		}
+		if updateParam.Config != nil {
+			completeUpdateParam.Config = updateParam.Config
 		}
 
 		_, err = i.UpdateParameter(ctx, completeUpdateParam)
@@ -383,6 +388,7 @@ func (i *Parameter) UpdateParameter(ctx context.Context, param interfaces.Update
 	p.SetType(param.TypeValue)
 	p.SetRequired(param.RequiredValue)
 	p.SetPublic(param.PublicValue)
+	p.SetConfig(param.Config)
 
 	if err := i.paramRepo.Save(ctx, p); err != nil {
 		return nil, err

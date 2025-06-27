@@ -11,7 +11,9 @@ export default ({
   onClose: () => void;
   onUpdate: (variable: ProjectVariable) => void;
 }) => {
-  const [localVariable, setLocalVariable] = useState<ProjectVariable | null>(null);
+  const [localVariable, setLocalVariable] = useState<ProjectVariable | null>(
+    null,
+  );
   const [hasChanges, setHasChanges] = useState(false);
 
   // Initialize local state when variable changes
@@ -32,6 +34,7 @@ export default ({
 
   const handleSave = useCallback(() => {
     if (localVariable && hasChanges) {
+      console.log("Saving variable:", localVariable);
       onUpdate(localVariable);
     }
     onClose();

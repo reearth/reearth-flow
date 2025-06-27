@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { ProjectVariable, VarType } from "@flow/types";
+import type { AnyProjectVariable, VarType } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 import { toGqlParameterType, toProjectVariable } from "../convert";
@@ -24,10 +24,10 @@ export const useQueries = () => {
 
         if (!data) return;
         const { parameters } = data;
-        const projectVars: ProjectVariable[] = parameters
+        const projectVars: AnyProjectVariable[] = parameters
           .filter(isDefined)
           .map((p) => toProjectVariable(p));
-
+        console.log("project vars", projectVars);
         return projectVars;
       },
       enabled: !!projectId,
@@ -182,8 +182,7 @@ export const useQueries = () => {
             updateItem.required = update.required;
           if (update.publicValue !== undefined)
             updateItem.public = update.publicValue;
-          if (update.config !== undefined)
-            updateItem.config = update.config;
+          if (update.config !== undefined) updateItem.config = update.config;
           return updateItem;
         });
       }

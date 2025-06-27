@@ -6,7 +6,11 @@ import { IconButton } from "@flow/components";
 import { useProjectVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentProject } from "@flow/stores";
-import { ProjectVariable as ProjectVariableType, Project } from "@flow/types";
+import {
+  ProjectVariable as ProjectVariableType,
+  Project,
+  AnyProjectVariable,
+} from "@flow/types";
 
 import { WorkflowTabs } from "..";
 
@@ -84,6 +88,7 @@ const TopBar: React.FC<Props> = ({
         projectVariable.required,
         projectVariable.public,
         currentProjectVariables.length,
+        projectVariable.config,
       );
     },
     [currentProject, createProjectVariable, currentProjectVariables.length],
@@ -103,6 +108,7 @@ const TopBar: React.FC<Props> = ({
             type: projectVariable.type,
             required: projectVariable.required,
             publicValue: projectVariable.public,
+            config: projectVariable.config,
           },
         ],
       });
@@ -120,6 +126,7 @@ const TopBar: React.FC<Props> = ({
         required: boolean;
         publicValue: boolean;
         index?: number;
+        config?: AnyProjectVariable["config"];
       }[];
       updates?: {
         paramId: string;
@@ -128,6 +135,7 @@ const TopBar: React.FC<Props> = ({
         type?: ProjectVariableType["type"];
         required?: boolean;
         publicValue?: boolean;
+        config?: AnyProjectVariable["config"];
       }[];
       deletes?: string[];
     }) => {

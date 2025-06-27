@@ -15,6 +15,7 @@ type DeclareParameterParam struct {
 	Public       bool
 	Type         parameter.Type
 	DefaultValue any
+	Config       any
 }
 
 type UpdateParameterOrderParam struct {
@@ -30,6 +31,7 @@ type UpdateParameterParam struct {
 	RequiredValue bool
 	PublicValue   bool
 	TypeValue     parameter.Type
+	Config        any
 }
 
 type UpdateParameterBatchItemParam struct {
@@ -39,6 +41,7 @@ type UpdateParameterBatchItemParam struct {
 	RequiredValue *bool
 	PublicValue   *bool
 	TypeValue     *parameter.Type
+	Config        any
 }
 
 type UpdateParametersParam struct {
