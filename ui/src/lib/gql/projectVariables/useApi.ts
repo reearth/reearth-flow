@@ -32,6 +32,7 @@ export const useProjectVariables = () => {
     required: boolean,
     publicValue: boolean,
     index: number,
+    config?: any,
   ): Promise<CreateProjectVariable> => {
     const { mutateAsync, ...rest } = createProjectVariablesMutation;
     try {
@@ -43,6 +44,7 @@ export const useProjectVariables = () => {
         required,
         publicValue,
         index,
+        config,
       });
 
       toast({
@@ -98,6 +100,7 @@ export const useProjectVariables = () => {
       required: boolean;
       publicValue: boolean;
       index?: number;
+      config?: any;
     }[];
     updates?: {
       paramId: string;
@@ -106,6 +109,7 @@ export const useProjectVariables = () => {
       type?: VarType;
       required?: boolean;
       publicValue?: boolean;
+      config?: any;
     }[];
     deletes?: string[];
     reorders?: {

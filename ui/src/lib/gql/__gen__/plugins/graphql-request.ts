@@ -1148,7 +1148,7 @@ export type ProjectFragment = { __typename?: 'Project', id: string, name: string
 
 export type WorkspaceFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> };
 
-export type ParameterFragment = { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, createdAt: any, updatedAt: any };
+export type ParameterFragment = { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any };
 
 export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
 
@@ -1244,7 +1244,7 @@ export type GetProjectParametersQueryVariables = Exact<{
 }>;
 
 
-export type GetProjectParametersQuery = { __typename?: 'Query', parameters: Array<{ __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, createdAt: any, updatedAt: any }> };
+export type GetProjectParametersQuery = { __typename?: 'Query', parameters: Array<{ __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any }> };
 
 export type CreateProjectVariableMutationVariables = Exact<{
   projectId: Scalars['ID']['input'];
@@ -1252,7 +1252,7 @@ export type CreateProjectVariableMutationVariables = Exact<{
 }>;
 
 
-export type CreateProjectVariableMutation = { __typename?: 'Mutation', declareParameter: { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, createdAt: any, updatedAt: any } };
+export type CreateProjectVariableMutation = { __typename?: 'Mutation', declareParameter: { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any } };
 
 export type UpdateProjectVariableMutationVariables = Exact<{
   paramId: Scalars['ID']['input'];
@@ -1260,14 +1260,14 @@ export type UpdateProjectVariableMutationVariables = Exact<{
 }>;
 
 
-export type UpdateProjectVariableMutation = { __typename?: 'Mutation', updateParameter: { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, createdAt: any, updatedAt: any } };
+export type UpdateProjectVariableMutation = { __typename?: 'Mutation', updateParameter: { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any } };
 
 export type UpdateProjectVariablesMutationVariables = Exact<{
   input: ParameterBatchInput;
 }>;
 
 
-export type UpdateProjectVariablesMutation = { __typename?: 'Mutation', updateParameters: Array<{ __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, createdAt: any, updatedAt: any }> };
+export type UpdateProjectVariablesMutation = { __typename?: 'Mutation', updateParameters: Array<{ __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any }> };
 
 export type DeleteProjectVariableMutationVariables = Exact<{
   input: RemoveParameterInput;
@@ -1495,6 +1495,7 @@ export const ParameterFragmentDoc = gql`
   type
   required
   public
+  config
   createdAt
   updatedAt
 }

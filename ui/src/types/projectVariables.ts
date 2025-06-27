@@ -25,6 +25,7 @@ export type ProjectVariable = {
   type: VarType; // TODO: use ParameterType
   required: boolean;
   public: boolean;
+  config?: any;
   createdAt?: string;
   updatedAt?: string;
   projectId?: string;

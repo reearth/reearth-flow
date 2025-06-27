@@ -44,6 +44,7 @@ export const useQueries = () => {
       required,
       publicValue,
       index,
+      config,
     }: {
       projectId: string;
       name: string;
@@ -52,6 +53,7 @@ export const useQueries = () => {
       required: boolean;
       publicValue: boolean;
       index: number;
+      config?: any;
     }) => {
       const gqlType = toGqlParameterType(type);
       if (!gqlType) return;
@@ -64,6 +66,7 @@ export const useQueries = () => {
           required,
           public: publicValue,
           index,
+          config,
         },
       });
 
@@ -123,6 +126,7 @@ export const useQueries = () => {
         required: boolean;
         publicValue: boolean;
         index?: number;
+        config?: any;
       }[];
       updates?: {
         paramId: string;
@@ -131,6 +135,7 @@ export const useQueries = () => {
         type?: VarType;
         required?: boolean;
         publicValue?: boolean;
+        config?: any;
       }[];
       deletes?: string[];
       reorders?: {
@@ -154,6 +159,7 @@ export const useQueries = () => {
             required: create.required,
             public: create.publicValue,
             index: create.index,
+            config: create.config,
           };
         });
       }
@@ -176,6 +182,8 @@ export const useQueries = () => {
             updateItem.required = update.required;
           if (update.publicValue !== undefined)
             updateItem.public = update.publicValue;
+          if (update.config !== undefined)
+            updateItem.config = update.config;
           return updateItem;
         });
       }

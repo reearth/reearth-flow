@@ -187,6 +187,7 @@ export const toProjectVariable = (
   defaultValue: parameter.defaultValue,
   required: parameter.required,
   public: parameter.public,
+  config: parameter.config,
   createdAt: parameter.createdAt,
   updatedAt: parameter.updatedAt,
   projectId: parameter.projectId,
