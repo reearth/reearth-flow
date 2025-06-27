@@ -9,6 +9,7 @@ type Parameter {
   type: ParameterType!
   updatedAt: DateTime!
   defaultValue: Any!
+  config: Any
 }
 
 enum ParameterType {
@@ -37,6 +38,7 @@ input DeclareParameterInput {
   required: Boolean!
   public: Boolean!
   defaultValue: Any
+  config: Any
   index: Int
 }
 
@@ -46,6 +48,7 @@ input UpdateParameterInput {
   required: Boolean!
   public: Boolean!
   type: ParameterType!
+  config: Any
 }
 
 input UpdateParameterOrderInput {
@@ -76,6 +79,7 @@ input ParameterUpdateItem {
   required: Boolean
   public: Boolean
   defaultValue: Any
+  config: Any
 }
 
 # Query and Mutation

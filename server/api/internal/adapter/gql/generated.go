@@ -232,6 +232,7 @@ type ComplexityRoot struct {
 	}
 
 	Parameter struct {
+		Config       func(childComplexity int) int
 		CreatedAt    func(childComplexity int) int
 		DefaultValue func(childComplexity int) int
 		ID           func(childComplexity int) int
@@ -1490,6 +1491,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.PageInfo.TotalPages(childComplexity), true
+
+	case "Parameter.config":
+		if e.complexity.Parameter.Config == nil {
+			break
+		}
+
+		return e.complexity.Parameter.Config(childComplexity), true
 
 	case "Parameter.createdAt":
 		if e.complexity.Parameter.CreatedAt == nil {
@@ -2903,6 +2911,7 @@ extend type Query {
   type: ParameterType!
   updatedAt: DateTime!
   defaultValue: Any!
+  config: Any
 }
 
 enum ParameterType {
@@ -2931,6 +2940,7 @@ input DeclareParameterInput {
   required: Boolean!
   public: Boolean!
   defaultValue: Any
+  config: Any
   index: Int
 }
 
@@ -2940,6 +2950,7 @@ input UpdateParameterInput {
   required: Boolean!
   public: Boolean!
   type: ParameterType!
+  config: Any
 }
 
 input UpdateParameterOrderInput {
@@ -2970,6 +2981,7 @@ input ParameterUpdateItem {
   required: Boolean
   public: Boolean
   defaultValue: Any
+  config: Any
 }
 
 # Query and Mutation
@@ -8339,6 +8351,8 @@ func (ec *executionContext) fieldContext_Mutation_declareParameter(ctx context.C
 				return ec.fieldContext_Parameter_updatedAt(ctx, field)
 			case "defaultValue":
 				return ec.fieldContext_Parameter_defaultValue(ctx, field)
+			case "config":
+				return ec.fieldContext_Parameter_config(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
 		},
@@ -8416,6 +8430,8 @@ func (ec *executionContext) fieldContext_Mutation_updateParameter(ctx context.Co
 				return ec.fieldContext_Parameter_updatedAt(ctx, field)
 			case "defaultValue":
 				return ec.fieldContext_Parameter_defaultValue(ctx, field)
+			case "config":
+				return ec.fieldContext_Parameter_config(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
 		},
@@ -8493,6 +8509,8 @@ func (ec *executionContext) fieldContext_Mutation_updateParameterOrder(ctx conte
 				return ec.fieldContext_Parameter_updatedAt(ctx, field)
 			case "defaultValue":
 				return ec.fieldContext_Parameter_defaultValue(ctx, field)
+			case "config":
+				return ec.fieldContext_Parameter_config(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
 		},
@@ -8680,6 +8698,8 @@ func (ec *executionContext) fieldContext_Mutation_updateParameters(ctx context.C
 				return ec.fieldContext_Parameter_updatedAt(ctx, field)
 			case "defaultValue":
 				return ec.fieldContext_Parameter_defaultValue(ctx, field)
+			case "config":
+				return ec.fieldContext_Parameter_config(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
 		},
@@ -10680,6 +10700,47 @@ func (ec *executionContext) fieldContext_Parameter_defaultValue(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Parameter_config(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Parameter) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Parameter_config(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Config, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(interface{})
+	fc.Result = res
+	return ec.marshalOAny2interface(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Parameter_config(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Parameter",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Any does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PreviewSnapshot_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.PreviewSnapshot) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_PreviewSnapshot_id(ctx, field)
 	if err != nil {
@@ -11375,6 +11436,8 @@ func (ec *executionContext) fieldContext_Project_parameters(_ context.Context, f
 				return ec.fieldContext_Parameter_updatedAt(ctx, field)
 			case "defaultValue":
 				return ec.fieldContext_Parameter_defaultValue(ctx, field)
+			case "config":
+				return ec.fieldContext_Parameter_config(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
 		},
@@ -13265,6 +13328,8 @@ func (ec *executionContext) fieldContext_Query_parameters(ctx context.Context, f
 				return ec.fieldContext_Parameter_updatedAt(ctx, field)
 			case "defaultValue":
 				return ec.fieldContext_Parameter_defaultValue(ctx, field)
+			case "config":
+				return ec.fieldContext_Parameter_config(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
 		},
@@ -18098,7 +18163,7 @@ func (ec *executionContext) unmarshalInputDeclareParameterInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "type", "required", "public", "defaultValue", "index"}
+	fieldsInOrder := [...]string{"name", "type", "required", "public", "defaultValue", "config", "index"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -18140,6 +18205,13 @@ func (ec *executionContext) unmarshalInputDeclareParameterInput(ctx context.Cont
 				return it, err
 			}
 			it.DefaultValue = data
+		case "config":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("config"))
+			data, err := ec.unmarshalOAny2interface(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Config = data
 		case "index":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("index"))
 			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
@@ -18521,7 +18593,7 @@ func (ec *executionContext) unmarshalInputParameterUpdateItem(ctx context.Contex
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"paramId", "name", "type", "required", "public", "defaultValue"}
+	fieldsInOrder := [...]string{"paramId", "name", "type", "required", "public", "defaultValue", "config"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -18570,6 +18642,13 @@ func (ec *executionContext) unmarshalInputParameterUpdateItem(ctx context.Contex
 				return it, err
 			}
 			it.DefaultValue = data
+		case "config":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("config"))
+			data, err := ec.unmarshalOAny2interface(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Config = data
 		}
 	}
 
@@ -19032,7 +19111,7 @@ func (ec *executionContext) unmarshalInputUpdateParameterInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"defaultValue", "name", "required", "public", "type"}
+	fieldsInOrder := [...]string{"defaultValue", "name", "required", "public", "type", "config"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -19074,6 +19153,13 @@ func (ec *executionContext) unmarshalInputUpdateParameterInput(ctx context.Conte
 				return it, err
 			}
 			it.Type = data
+		case "config":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("config"))
+			data, err := ec.unmarshalOAny2interface(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Config = data
 		}
 	}
 
@@ -20837,6 +20923,8 @@ func (ec *executionContext) _Parameter(ctx context.Context, sel ast.SelectionSet
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "config":
+			out.Values[i] = ec._Parameter_config(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

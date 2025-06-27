@@ -76,3 +76,8 @@ func (b *Builder) Public(public bool) *Builder {
 	b.p.public = public
 	return b
 }
+
+func (b *Builder) Config(config interface{}) *Builder {
+	b.p.config = config
+	return b
+}

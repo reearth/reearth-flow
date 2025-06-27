@@ -20,6 +20,7 @@ func ToParameter(p *parameter.Parameter) *Parameter {
 		Type:         ToParameterType(p.Type()),
 		UpdatedAt:    p.UpdatedAt(),
 		DefaultValue: p.DefaultValue(),
+		Config:       p.Config(),
 	}
 }
 

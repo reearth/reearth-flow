@@ -32,6 +32,7 @@ type Parameter struct {
 	required     bool
 	public       bool
 	defaultValue interface{}
+	config       interface{}
 	index        int
 	createdAt    time.Time
 	updatedAt    time.Time
@@ -65,6 +66,10 @@ func (p *Parameter) DefaultValue() interface{} {
 	return p.defaultValue
 }
 
+func (p *Parameter) Config() interface{} {
+	return p.config
+}
+
 func (p *Parameter) Index() int {
 	return p.index
 }
@@ -79,6 +84,11 @@ func (p *Parameter) UpdatedAt() time.Time {
 
 func (p *Parameter) SetDefaultValue(v interface{}) {
 	p.defaultValue = v
+	p.updatedAt = time.Now()
+}
+
+func (p *Parameter) SetConfig(v interface{}) {
+	p.config = v
 	p.updatedAt = time.Now()
 }
 

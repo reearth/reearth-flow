@@ -18,6 +18,7 @@ type ParameterDocument struct {
 	Type         string      `bson:"type"`
 	UpdatedAt    time.Time   `bson:"updated_at"`
 	DefaultValue interface{} `bson:"default_value"`
+	Config       interface{} `bson:"config"`
 }
 
 type ParameterConsumer = Consumer[*ParameterDocument, *parameter.Parameter]
@@ -41,6 +42,7 @@ func NewParameter(p *parameter.Parameter) (*ParameterDocument, string) {
 		Type:         string(p.Type()),
 		UpdatedAt:    p.UpdatedAt(),
 		DefaultValue: p.DefaultValue(),
+		Config:       p.Config(),
 	}, id
 }
 
@@ -81,6 +83,7 @@ func (d *ParameterDocument) Model() (*parameter.Parameter, error) {
 		Required(d.Required).
 		Public(d.Public).
 		DefaultValue(d.DefaultValue).
+		Config(d.Config).
 		Index(d.Index).
 		CreatedAt(d.CreatedAt).
 		UpdatedAt(d.UpdatedAt).
