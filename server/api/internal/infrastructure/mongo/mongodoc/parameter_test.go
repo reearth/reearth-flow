@@ -125,6 +125,75 @@ func TestParameterDocument_Model(t *testing.T) {
 	}
 }
 
+func TestParameterDocument_Config(t *testing.T) {
+	pid := id.NewParameterID()
+	projID := id.NewProjectID()
+	now := time.Now().UTC()
+
+	// Test with config data
+	configData := map[string]interface{}{
+		"choices": []string{"option1", "option2", "option3"},
+		"multiSelect": true,
+		"placeholder": "Select an option",
+	}
+
+	param, err := parameter.New().
+		ID(pid).
+		ProjectID(projID).
+		Name("choice-param").
+		Type(parameter.TypeChoice).
+		Required(false).
+		Public(true).
+		DefaultValue("option1").
+		Config(configData).
+		Index(0).
+		CreatedAt(now).
+		UpdatedAt(now).
+		Build()
+	if err != nil {
+		t.Fatalf("unexpected error building parameter: %v", err)
+	}
+
+	// Test NewParameter conversion
+	doc, docID := NewParameter(param)
+	if docID != pid.String() {
+		t.Errorf("expected docID %s, got %s", pid.String(), docID)
+	}
+
+	// Verify config is stored properly
+	if doc.Config == nil {
+		t.Fatal("expected config to be stored, got nil")
+	}
+
+	storedConfig, ok := doc.Config.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected config to be map[string]interface{}, got %T", doc.Config)
+	}
+
+	if !reflect.DeepEqual(storedConfig, configData) {
+		t.Errorf("config data mismatch.\nExpected: %+v\nGot: %+v", configData, storedConfig)
+	}
+
+	// Test Model() conversion back to domain
+	reconstructedParam, err := doc.Model()
+	if err != nil {
+		t.Fatalf("unexpected error from Model(): %v", err)
+	}
+
+	if reconstructedParam.Config() == nil {
+		t.Fatal("expected reconstructed config to not be nil")
+	}
+
+	reconstructedConfig, ok := reconstructedParam.Config().(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected reconstructed config to be map[string]interface{}, got %T", reconstructedParam.Config())
+	}
+
+	if !reflect.DeepEqual(reconstructedConfig, configData) {
+		t.Errorf("reconstructed config data mismatch.\nExpected: %+v\nGot: %+v", configData, reconstructedConfig)
+	}
+}
+
 func TestNewParameters(t *testing.T) {
 	pid1 := id.NewParameterID()
 	pid2 := id.NewParameterID()

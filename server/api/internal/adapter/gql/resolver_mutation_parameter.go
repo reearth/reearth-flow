@@ -8,6 +8,13 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
+func convertJSONToInterface(val gqlmodel.JSON) interface{} {
+	if val == nil {
+		return nil
+	}
+	return map[string]interface{}(val)
+}
+
 func (r *mutationResolver) DeclareParameter(ctx context.Context, projectID gqlmodel.ID, input gqlmodel.DeclareParameterInput) (*gqlmodel.Parameter, error) {
 	pid, err := gqlmodel.ToID[id.Project](projectID)
 	if err != nil {
@@ -22,7 +29,7 @@ func (r *mutationResolver) DeclareParameter(ctx context.Context, projectID gqlmo
 		Public:       input.Public,
 		Type:         gqlmodel.FromParameterType(input.Type),
 		DefaultValue: input.DefaultValue,
-		Config:       input.Config,
+		Config:       convertJSONToInterface(input.Config),
 	})
 	if err != nil {
 		return nil, err
@@ -44,7 +51,7 @@ func (r *mutationResolver) UpdateParameter(ctx context.Context, paramID gqlmodel
 		RequiredValue: input.Required,
 		NameValue:     input.Name,
 		TypeValue:     gqlmodel.FromParameterType(input.Type),
-		Config:        input.Config,
+		Config:        convertJSONToInterface(input.Config),
 	})
 	if err != nil {
 		return nil, err
@@ -106,7 +113,7 @@ func (r *mutationResolver) UpdateParameters(ctx context.Context, input gqlmodel.
 			Public:       create.Public,
 			Type:         gqlmodel.FromParameterType(create.Type),
 			DefaultValue: create.DefaultValue,
-			Config:       create.Config,
+			Config:       convertJSONToInterface(create.Config),
 		}
 	}
 
@@ -120,7 +127,7 @@ func (r *mutationResolver) UpdateParameters(ctx context.Context, input gqlmodel.
 		updateParam := interfaces.UpdateParameterBatchItemParam{
 			ParamID:      paramID,
 			DefaultValue: update.DefaultValue,
-			Config:       update.Config,
+			Config:       convertJSONToInterface(update.Config),
 		}
 
 		if update.Name != nil {

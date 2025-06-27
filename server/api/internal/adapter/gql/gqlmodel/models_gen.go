@@ -104,7 +104,7 @@ type DeclareParameterInput struct {
 	Required     bool          `json:"required"`
 	Public       bool          `json:"public"`
 	DefaultValue interface{}   `json:"defaultValue,omitempty"`
-	Config       interface{}   `json:"config,omitempty"`
+	Config       JSON          `json:"config,omitempty"`
 	Index        *int          `json:"index,omitempty"`
 }
 
@@ -278,7 +278,7 @@ type Parameter struct {
 	Type         ParameterType `json:"type"`
 	UpdatedAt    time.Time     `json:"updatedAt"`
 	DefaultValue interface{}   `json:"defaultValue"`
-	Config       interface{}   `json:"config,omitempty"`
+	Config       JSON          `json:"config,omitempty"`
 }
 
 type ParameterBatchInput struct {
@@ -296,7 +296,7 @@ type ParameterUpdateItem struct {
 	Required     *bool          `json:"required,omitempty"`
 	Public       *bool          `json:"public,omitempty"`
 	DefaultValue interface{}    `json:"defaultValue,omitempty"`
-	Config       interface{}    `json:"config,omitempty"`
+	Config       JSON           `json:"config,omitempty"`
 }
 
 type PreviewSnapshot struct {
@@ -504,7 +504,7 @@ type UpdateParameterInput struct {
 	Required     bool          `json:"required"`
 	Public       bool          `json:"public"`
 	Type         ParameterType `json:"type"`
-	Config       interface{}   `json:"config,omitempty"`
+	Config       JSON          `json:"config,omitempty"`
 }
 
 type UpdateParameterOrderInput struct {

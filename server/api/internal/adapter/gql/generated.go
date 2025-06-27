@@ -2911,7 +2911,7 @@ extend type Query {
   type: ParameterType!
   updatedAt: DateTime!
   defaultValue: Any!
-  config: Any
+  config: JSON
 }
 
 enum ParameterType {
@@ -2940,7 +2940,7 @@ input DeclareParameterInput {
   required: Boolean!
   public: Boolean!
   defaultValue: Any
-  config: Any
+  config: JSON
   index: Int
 }
 
@@ -2950,7 +2950,7 @@ input UpdateParameterInput {
   required: Boolean!
   public: Boolean!
   type: ParameterType!
-  config: Any
+  config: JSON
 }
 
 input UpdateParameterOrderInput {
@@ -2981,7 +2981,7 @@ input ParameterUpdateItem {
   required: Boolean
   public: Boolean
   defaultValue: Any
-  config: Any
+  config: JSON
 }
 
 # Query and Mutation
@@ -10723,9 +10723,9 @@ func (ec *executionContext) _Parameter_config(ctx context.Context, field graphql
 	if resTmp == nil {
 		return graphql.Null
 	}
-	res := resTmp.(interface{})
+	res := resTmp.(gqlmodel.JSON)
 	fc.Result = res
-	return ec.marshalOAny2interface(ctx, field.Selections, res)
+	return ec.marshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Parameter_config(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -10735,7 +10735,7 @@ func (ec *executionContext) fieldContext_Parameter_config(_ context.Context, fie
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Any does not have child fields")
+			return nil, errors.New("field of type JSON does not have child fields")
 		},
 	}
 	return fc, nil
@@ -18207,7 +18207,7 @@ func (ec *executionContext) unmarshalInputDeclareParameterInput(ctx context.Cont
 			it.DefaultValue = data
 		case "config":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("config"))
-			data, err := ec.unmarshalOAny2interface(ctx, v)
+			data, err := ec.unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -18644,7 +18644,7 @@ func (ec *executionContext) unmarshalInputParameterUpdateItem(ctx context.Contex
 			it.DefaultValue = data
 		case "config":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("config"))
-			data, err := ec.unmarshalOAny2interface(ctx, v)
+			data, err := ec.unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -19155,7 +19155,7 @@ func (ec *executionContext) unmarshalInputUpdateParameterInput(ctx context.Conte
 			it.Type = data
 		case "config":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("config"))
-			data, err := ec.unmarshalOAny2interface(ctx, v)
+			data, err := ec.unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -24869,6 +24869,22 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 		return graphql.Null
 	}
 	res := graphql.MarshalInt(*v)
+	return res
+}
+
+func (ec *executionContext) unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx context.Context, v interface{}) (gqlmodel.JSON, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := gqlmodel.UnmarshalJSON(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx context.Context, sel ast.SelectionSet, v gqlmodel.JSON) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	res := gqlmodel.MarshalJSON(v)
 	return res
 }
 
