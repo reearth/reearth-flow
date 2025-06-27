@@ -75,6 +75,7 @@ export default ({
   >([]);
   const [pendingChanges, setPendingChanges] = useState<PendingChange[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingVariable, setEditingVariable] = useState<ProjectVariable | null>(null);
 
   const getUserFacingName = useCallback(
     (type: VarType): string => {
@@ -401,11 +402,20 @@ export default ({
     setSelectedIndices(selectedIndicesFromTable);
   }, []);
 
+  const handleEditVariable = useCallback((variable: ProjectVariable) => {
+    setEditingVariable(variable);
+  }, []);
+
+  const handleCloseEdit = useCallback(() => {
+    setEditingVariable(null);
+  }, []);
+
   return {
     selectedIndices,
     localProjectVariables,
     pendingChanges,
     isSubmitting,
+    editingVariable,
     getUserFacingName,
     handleLocalAdd,
     handleLocalUpdate,
@@ -415,5 +425,7 @@ export default ({
     handleSubmit,
     handleCancel,
     handleRowSelect,
+    handleEditVariable,
+    handleCloseEdit,
   };
 };

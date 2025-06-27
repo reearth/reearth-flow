@@ -1,6 +1,7 @@
 import {
   ChalkboardTeacherIcon,
   MinusIcon,
+  PencilSimpleIcon,
   PlusIcon,
 } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
@@ -25,9 +26,10 @@ import { Button } from "@flow/components/buttons/BaseButton";
 import { useT } from "@flow/lib/i18n";
 import { ProjectVariable, VarType } from "@flow/types";
 
-import { DefaultValueInput, NameInput } from "./components/index";
+import { DefaultValueDisplay, NameInput } from "./components/index";
 import useProjectVariablesDialog from "./hooks";
 import { ProjectVariablesTable } from "./ProjectVariablesTable";
+import VariableEditDialog from "./VariableEditDialog";
 
 type Props = {
   isOpen: boolean;
@@ -95,12 +97,13 @@ const ProjectVariableDialog: React.FC<Props> = ({
   onBatchUpdate,
 }) => {
   const t = useT();
-  
+
   const {
     selectedIndices,
     localProjectVariables,
     pendingChanges,
     isSubmitting,
+    editingVariable,
     getUserFacingName,
     handleLocalAdd,
     handleLocalUpdate,
@@ -110,6 +113,8 @@ const ProjectVariableDialog: React.FC<Props> = ({
     handleSubmit,
     handleCancel,
     handleRowSelect,
+    handleEditVariable,
+    handleCloseEdit,
   } = useProjectVariablesDialog({
     isOpen,
     currentProjectVariables,
@@ -138,18 +143,16 @@ const ProjectVariableDialog: React.FC<Props> = ({
       },
     },
     {
+      accessorKey: "type",
+      header: t("Type"),
+    },
+    {
       accessorKey: "defaultValue",
       header: t("Default Value"),
       cell: ({ row }) => {
         const variable = localProjectVariables[row.index];
-        return (
-          <DefaultValueInput variable={variable} onUpdate={handleLocalUpdate} />
-        );
+        return <DefaultValueDisplay variable={variable} />;
       },
-    },
-    {
-      accessorKey: "type",
-      header: t("Type"),
     },
     {
       accessorKey: "required",
@@ -185,84 +188,116 @@ const ProjectVariableDialog: React.FC<Props> = ({
         );
       },
     },
+    {
+      id: "actions",
+      header: t("Actions"),
+      cell: ({ row }) => {
+        const variable = localProjectVariables[row.index];
+        return (
+          <div className="flex items-center gap-1">
+            <IconButton
+              icon={<PencilSimpleIcon size={18} />}
+              size="default"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleEditVariable(variable);
+              }}
+              tooltipText={t("Edit default value and advanced options")}
+              className="hover:bg-accent"
+            />
+          </div>
+        );
+      },
+      size: 80,
+    },
   ];
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleCancel}>
-      <DialogContent className="h-[50vh]" size="2xl" position="off-center">
-        <div className="flex h-full flex-col">
-          <DialogHeader>
-            <DialogTitle>
-              <div className="flex items-center gap-2">
-                <ChalkboardTeacherIcon />
-                {t("Project Variables")}
-              </div>
-            </DialogTitle>
-          </DialogHeader>
-          <div className="flex h-full">
-            <DialogContentSection className="flex-3 bg-card">
-              <DialogContentSection className="flex flex-row items-center gap-2 p-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <IconButton icon={<PlusIcon />} />
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    <DropdownMenuLabel>
-                      {t("Add a new project variable")}
-                    </DropdownMenuLabel>
-                    <DropdownMenuGroup>
-                      {allVarTypes.map((type) => (
-                        <DropdownMenuItem
-                          key={type}
-                          disabled={type === "unsupported"}
-                          onClick={() => {
-                            handleLocalAdd(type);
-                          }}>
-                          {getUserFacingName(type)}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <IconButton
-                  icon={<MinusIcon />}
-                  onClick={handleLocalDelete}
-                  disabled={selectedIndices.length === 0}
-                  tooltipText={
-                    selectedIndices.length === 0
-                      ? t("Select variables to delete")
-                      : t("Delete selected variables")
-                  }
-                />
+    <>
+      <Dialog open={isOpen} onOpenChange={handleCancel}>
+        <DialogContent className="h-[50vh]" size="2xl" position="off-center">
+          <div className="flex h-full flex-col">
+            <DialogHeader>
+              <DialogTitle>
+                <div className="flex items-center gap-2">
+                  <ChalkboardTeacherIcon />
+                  {t("Project Variables")}
+                </div>
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex h-full">
+              <DialogContentSection className="flex-3 bg-card">
+                <DialogContentSection className="flex flex-row items-center gap-2 p-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <IconButton icon={<PlusIcon />} />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuLabel>
+                        {t("Add a new project variable")}
+                      </DropdownMenuLabel>
+                      <DropdownMenuGroup>
+                        {allVarTypes.map((type) => (
+                          <DropdownMenuItem
+                            key={type}
+                            disabled={type === "unsupported"}
+                            onClick={() => {
+                              handleLocalAdd(type);
+                            }}>
+                            {getUserFacingName(type)}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuGroup>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <IconButton
+                    icon={<MinusIcon />}
+                    onClick={handleLocalDelete}
+                    disabled={selectedIndices.length === 0}
+                    tooltipText={
+                      selectedIndices.length === 0
+                        ? t("Select variables to delete")
+                        : t("Delete selected variables")
+                    }
+                  />
+                </DialogContentSection>
+                <DialogContentSection>
+                  <ProjectVariablesTable
+                    projectVariables={localProjectVariables}
+                    columns={columns}
+                    selectedIndices={selectedIndices}
+                    onSelectionChange={handleRowSelect}
+                    onMoveUp={handleMoveUp}
+                    onMoveDown={handleMoveDown}
+                  />
+                </DialogContentSection>
               </DialogContentSection>
-              <DialogContentSection>
-                <ProjectVariablesTable
-                  projectVariables={localProjectVariables}
-                  columns={columns}
-                  selectedIndices={selectedIndices}
-                  onSelectionChange={handleRowSelect}
-                  onMoveUp={handleMoveUp}
-                  onMoveDown={handleMoveDown}
-                />
-              </DialogContentSection>
-            </DialogContentSection>
+            </div>
+            <DialogFooter className="flex justify-end gap-2 p-4">
+              <Button
+                variant="outline"
+                onClick={handleCancel}
+                disabled={isSubmitting}>
+                {t("Cancel")}
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={isSubmitting || pendingChanges.length === 0}>
+                {isSubmitting ? t("Saving...") : t("Save Changes")}
+              </Button>
+            </DialogFooter>
           </div>
-          <DialogFooter className="flex justify-end gap-2 p-4">
-            <Button
-              variant="outline"
-              onClick={handleCancel}
-              disabled={isSubmitting}>
-              {t("Cancel")}
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={isSubmitting || pendingChanges.length === 0}>
-              {isSubmitting ? t("Saving...") : t("Save Changes")}
-            </Button>
-          </DialogFooter>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <VariableEditDialog
+        isOpen={!!editingVariable}
+        variable={editingVariable}
+        onClose={handleCloseEdit}
+        onUpdate={handleLocalUpdate}
+      />
+    </>
   );
 };
 

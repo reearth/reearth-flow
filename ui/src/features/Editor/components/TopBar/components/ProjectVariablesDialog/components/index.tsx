@@ -1,13 +1,6 @@
 import { useState, useEffect } from "react";
 
-import {
-  Input,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@flow/components";
+import { Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { ProjectVariable, VarType } from "@flow/types";
 
@@ -50,33 +43,10 @@ export const NameInput: React.FC<{
   );
 };
 
-export const DefaultValueInput: React.FC<{
+export const DefaultValueDisplay: React.FC<{
   variable: ProjectVariable;
-  onUpdate: (variable: ProjectVariable) => void;
-}> = ({ variable, onUpdate }) => {
+}> = ({ variable }) => {
   const t = useT();
-  const [localValue, setLocalValue] = useState(variable.defaultValue || "");
-
-  useEffect(() => {
-    setLocalValue(variable.defaultValue || "");
-  }, [variable.defaultValue]);
-
-  const handleBlur = () => {
-    if (localValue !== variable.defaultValue) {
-      onUpdate({ ...variable, defaultValue: localValue });
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.currentTarget.blur();
-    }
-  };
-
-  const handleSelectChange = (value: string) => {
-    setLocalValue(value);
-    onUpdate({ ...variable, defaultValue: value });
-  };
 
   // Determine the original type from the user-facing name
   const getOriginalType = (type: VarType): VarType => {
@@ -103,84 +73,89 @@ export const DefaultValueInput: React.FC<{
   };
 
   const originalType = getOriginalType(variable.type);
+  const { defaultValue } = variable;
+
+  // Handle empty/undefined values
+  if (
+    defaultValue === undefined ||
+    defaultValue === null ||
+    defaultValue === ""
+  ) {
+    return (
+      <span className="text-muted-foreground italic">{t("(Not set)")}</span>
+    );
+  }
 
   switch (originalType) {
-    case "attribute_name":
-      return (
-        <Input
-          value={localValue}
-          onChange={(e) => {
-            e.stopPropagation();
-            setLocalValue(e.currentTarget.value);
-          }}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          onClick={(e) => e.stopPropagation()}
-          onFocus={(e) => e.stopPropagation()}
-          placeholder={t("Enter attribute name")}
-        />
-      );
+    case "choice": {
+      if (typeof defaultValue === "object" && defaultValue?.options) {
+        const selectedOption = defaultValue.selectedOption;
+        const optionsCount = defaultValue.options.length;
 
-    case "choice":
+        if (selectedOption) {
+          return (
+            <div className="flex items-center gap-2">
+              <span className="font-medium">{selectedOption}</span>
+              <span className="text-sm text-muted-foreground">
+                ({optionsCount} {t("options")})
+              </span>
+            </div>
+          );
+        } else {
+          return (
+            <span className="text-muted-foreground">
+              {t("No default")} ({optionsCount} {t("options")})
+            </span>
+          );
+        }
+      }
       return (
-        <Select value={localValue} onValueChange={handleSelectChange}>
-          <SelectTrigger onClick={(e) => e.stopPropagation()}>
-            <SelectValue placeholder={t("Select option")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="option1">{t("Option 1")}</SelectItem>
-            <SelectItem value="option2">{t("Option 2")}</SelectItem>
-            <SelectItem value="option3">{t("Option 3")}</SelectItem>
-          </SelectContent>
-        </Select>
+        <span className="text-muted-foreground">
+          {t("Legacy choice format")}
+        </span>
       );
+    }
 
     case "color":
+      if (typeof defaultValue === "string" && defaultValue.startsWith("#")) {
+        return (
+          <div className="flex items-center gap-2">
+            <div
+              className="h-4 w-4 rounded border"
+              style={{ backgroundColor: defaultValue }}
+            />
+            <span className="font-mono text-sm">{defaultValue}</span>
+          </div>
+        );
+      }
+      return <span>{defaultValue}</span>;
+
+    case "yes_no":
       return (
-        <div className="flex items-center gap-2">
-          <Input
-            type="color"
-            value={localValue || "#000000"}
-            onChange={(e) => {
-              e.stopPropagation();
-              const newValue = e.currentTarget.value;
-              setLocalValue(newValue);
-              onUpdate({ ...variable, defaultValue: newValue });
-            }}
-            onClick={(e) => e.stopPropagation()}
-            onFocus={(e) => e.stopPropagation()}
-            className="h-8 w-12 rounded border p-1"
-          />
-          <Input
-            value={localValue}
-            onChange={(e) => {
-              e.stopPropagation();
-              setLocalValue(e.currentTarget.value);
-            }}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            onClick={(e) => e.stopPropagation()}
-            onFocus={(e) => e.stopPropagation()}
-            placeholder={t("Enter color (e.g., #ff0000)")}
-            className="flex-1"
-          />
-        </div>
+        <span className="font-medium">{defaultValue ? t("Yes") : t("No")}</span>
       );
 
-    default:
-      return (
-        <Input
-          value={localValue}
-          onChange={(e) => {
-            e.stopPropagation();
-            setLocalValue(e.currentTarget.value);
-          }}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          onClick={(e) => e.stopPropagation()}
-          onFocus={(e) => e.stopPropagation()}
-          placeholder={t("Enter default value")}
-        />
-      );
+    case "datetime":
+      if (defaultValue instanceof Date) {
+        return <span>{defaultValue.toLocaleString()}</span>;
+      }
+      return <span>{defaultValue}</span>;
+
+    case "number":
+      return <span className="font-mono">{defaultValue}</span>;
+
+    case "password":
+      return <span className="text-muted-foreground">••••••••</span>;
+
+    default: {
+      // For text, attribute_name, and other simple types
+      const displayValue = String(defaultValue);
+      if (displayValue.length > 50) {
+        return (
+          <span title={displayValue}>{displayValue.substring(0, 47)}...</span>
+        );
+      }
+      return <span>{displayValue}</span>;
+    }
   }
 };

@@ -19,8 +19,11 @@ export function getDefaultValueForProjectVar(type: VarType): any {
       return "";
 
     case "choice":
-      // For a choice, return empty string as default
-      return "";
+      // For a choice, return a choice configuration object
+      return {
+        options: ["Option 1", "Option 2", "Option 3"],
+        selectedOption: undefined,
+      };
 
     case "color":
       // Default color should be empty for user selection
