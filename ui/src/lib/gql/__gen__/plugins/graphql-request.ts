@@ -115,6 +115,7 @@ export type CreateWorkspacePayload = {
 };
 
 export type DeclareParameterInput = {
+  config?: InputMaybe<Scalars['Any']['input']>;
   defaultValue?: InputMaybe<Scalars['Any']['input']>;
   index?: InputMaybe<Scalars['Int']['input']>;
   name: Scalars['String']['input'];
@@ -556,6 +557,7 @@ export type Pagination = {
 
 export type Parameter = {
   __typename?: 'Parameter';
+  config?: Maybe<Scalars['Any']['output']>;
   createdAt: Scalars['DateTime']['output'];
   defaultValue: Scalars['Any']['output'];
   id: Scalars['ID']['output'];
@@ -595,6 +597,7 @@ export enum ParameterType {
 }
 
 export type ParameterUpdateItem = {
+  config?: InputMaybe<Scalars['Any']['input']>;
   defaultValue?: InputMaybe<Scalars['Any']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
   paramId: Scalars['ID']['input'];
@@ -976,6 +979,7 @@ export type UpdateMemberOfWorkspacePayload = {
 };
 
 export type UpdateParameterInput = {
+  config?: InputMaybe<Scalars['Any']['input']>;
   defaultValue: Scalars['Any']['input'];
   name: Scalars['String']['input'];
   public: Scalars['Boolean']['input'];
@@ -1132,6 +1136,13 @@ export type RollbackProjectMutationVariables = Exact<{
 
 
 export type RollbackProjectMutation = { __typename?: 'Mutation', rollbackProject?: { __typename?: 'ProjectDocument', id: string, timestamp: any, updates: Array<number>, version: number } | null };
+
+export type SaveSnapshotMutationVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+}>;
+
+
+export type SaveSnapshotMutation = { __typename?: 'Mutation', saveSnapshot: boolean };
 
 export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
@@ -1665,6 +1676,11 @@ export const RollbackProjectDocument = gql`
   }
 }
     `;
+export const SaveSnapshotDocument = gql`
+    mutation SaveSnapshot($projectId: ID!) {
+  saveSnapshot(projectId: $projectId)
+}
+    `;
 export const GetJobsDocument = gql`
     query GetJobs($workspaceId: ID!, $pagination: PageBasedPagination!) {
   jobs(workspaceId: $workspaceId, pagination: $pagination) {
@@ -2041,6 +2057,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     RollbackProject(variables: RollbackProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RollbackProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<RollbackProjectMutation>({ document: RollbackProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RollbackProject', 'mutation', variables);
+    },
+    SaveSnapshot(variables: SaveSnapshotMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<SaveSnapshotMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<SaveSnapshotMutation>({ document: SaveSnapshotDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'SaveSnapshot', 'mutation', variables);
     },
     GetJobs(variables: GetJobsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetJobsQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetJobsQuery>({ document: GetJobsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetJobs', 'query', variables);

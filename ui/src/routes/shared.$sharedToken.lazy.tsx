@@ -8,7 +8,10 @@ import {
   TooltipProvider,
 } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
+import ErrorPage from "@flow/components/errors/ErrorPage";
+import { ProjectCorruptionError } from "@flow/errors";
 import AuthenticationWrapper from "@flow/features/AuthenticationWrapper";
+import NotFound from "@flow/features/NotFound";
 import SharedCanvas from "@flow/features/SharedCanvas";
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useFullscreen, useShortcuts } from "@flow/hooks";
@@ -20,7 +23,8 @@ import useYjsSetup from "@flow/lib/yjs/useYjsSetup";
 
 export const Route = createLazyFileRoute("/shared/$sharedToken")({
   component: () => <SharedRoute />,
-  errorComponent: () => <ErrorComponent />,
+  errorComponent: ({ error }) => <ErrorComponent error={error} />,
+  notFoundComponent: () => <NotFound />,
 });
 
 const SharedRoute = () => {
@@ -67,6 +71,7 @@ const SharedRoute = () => {
 };
 
 const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
+  const t = useT();
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const { handleFullscreenToggle } = useFullscreen();
   useShortcuts([
@@ -92,7 +97,7 @@ const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
 
   const { sharedToken } = useParams({ strict: false });
 
-  const { sharedProject } = useGetSharedProject(sharedToken);
+  const { sharedProject, isError } = useGetSharedProject(sharedToken);
 
   const { yWorkflows, yDocState, isSynced, undoTrackerActionWrapper } =
     useYjsSetup({
@@ -100,7 +105,12 @@ const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
       workflowId: DEFAULT_ENTRY_GRAPH_ID,
     });
 
-  return !yWorkflows || !isSynced || !undoTrackerActionWrapper ? (
+  return isError ? (
+    <ErrorPage errorMessage={t("Please check the shared URL is correct.")} />
+  ) : !yWorkflows ||
+    !isSynced ||
+    !undoTrackerActionWrapper ||
+    !sharedProject ? (
     <LoadingSplashscreen />
   ) : (
     <SharedCanvas
@@ -113,15 +123,21 @@ const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
   );
 };
 
-const ErrorComponent = () => {
+const ErrorComponent = ({ error }: { error: Error }) => {
   const t = useT();
 
   return (
-    <div className="flex h-screen w-full flex-col items-center justify-center">
-      <BasicBoiler
-        text={t("Project or version is corrupted.")}
-        icon={<FlowLogo className="size-16 text-accent" />}
-      />
-    </div>
+    <>
+      {error instanceof ProjectCorruptionError ? (
+        <div className="flex h-screen w-full flex-col items-center justify-center">
+          <BasicBoiler
+            text={t("Project or version is corrupted.")}
+            icon={<FlowLogo className="size-16 text-accent" />}
+          />
+        </div>
+      ) : (
+        <ErrorPage />
+      )}
+    </>
   );
 };

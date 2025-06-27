@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 
 import { Button, FlowLogo, LoadingSplashscreen } from "@flow/components";
 import BasicBoiler from "@flow/components/BasicBoiler";
+import ErrorPage from "@flow/components/errors/ErrorPage";
+import { ProjectCorruptionError } from "@flow/errors";
 import Editor from "@flow/features/Editor";
 import { VersionDialog } from "@flow/features/Editor/components/TopBar/components/ActionBar/components/Version/VersionDialog";
 import {
@@ -35,7 +37,9 @@ export const Route = createLazyFileRoute(
       </ProjectIdWrapper>
     </WorkspaceIdWrapper>
   ),
-  errorComponent: ({ reset }) => <ErrorComponent onErrorReset={reset} />,
+  errorComponent: ({ error, reset }) => (
+    <ErrorComponent error={error} onErrorReset={reset} />
+  ),
 });
 
 const EditorComponent = () => {
@@ -114,7 +118,13 @@ const EditorComponent = () => {
   );
 };
 
-const ErrorComponent = ({ onErrorReset }: { onErrorReset: () => void }) => {
+const ErrorComponent = ({
+  error,
+  onErrorReset,
+}: {
+  error: Error;
+  onErrorReset: () => void;
+}) => {
   const [openVersionDialog, setOpenVersionDialog] = useState(false);
   const t = useT();
 
@@ -129,29 +139,34 @@ const ErrorComponent = ({ onErrorReset }: { onErrorReset: () => void }) => {
   const handleCloseDialog = () => {
     setOpenVersionDialog(false);
   };
+
   return (
     <>
-      <div className="flex h-screen w-full flex-col items-center justify-center">
-        <div className="flex flex-col items-center justify-center gap-8">
-          <BasicBoiler
-            text={t("Project or version is corrupted.")}
-            icon={<FlowLogo className="size-16 text-accent" />}
-          />
-          <Button
-            onClick={() => setOpenVersionDialog(true)}
-            variant="default"
-            className="ml-4">
-            {t("Revert to a previous version")}
-          </Button>
+      {error instanceof ProjectCorruptionError ? (
+        <div className="flex h-screen w-full flex-col items-center justify-center">
+          <div className="flex flex-col items-center justify-center gap-8">
+            <BasicBoiler
+              text={t("Project or version is corrupted.")}
+              icon={<FlowLogo className="size-16 text-accent" />}
+            />
+            <Button
+              onClick={() => setOpenVersionDialog(true)}
+              variant="default"
+              className="ml-4">
+              {t("Revert to a previous version")}
+            </Button>
+          </div>
+          {openVersionDialog && (
+            <VersionDialog
+              yDoc={yDocState}
+              project={currentProject}
+              onDialogClose={handleCloseDialog}
+              onErrorReset={onErrorReset}
+            />
+          )}
         </div>
-      </div>
-      {openVersionDialog && (
-        <VersionDialog
-          yDoc={yDocState}
-          project={currentProject}
-          onDialogClose={handleCloseDialog}
-          onErrorReset={onErrorReset}
-        />
+      ) : (
+        <ErrorPage />
       )}
     </>
   );
