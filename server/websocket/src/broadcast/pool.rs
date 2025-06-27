@@ -254,7 +254,7 @@ impl BroadcastPool {
 
                 self.manager
                     .store
-                    .flush_doc_v2(doc_id, awareness_doc)
+                    .flush_doc_v2(doc_id, &awareness_txn)
                     .await?;
             }
 
@@ -374,8 +374,9 @@ impl BroadcastPool {
 
         let update = Update::decode_v1(&update_bytes)?;
         gcs_txn.apply_update(update)?;
-        drop(gcs_txn);
-        self.manager.store.flush_doc_v2(doc_id, &doc).await?;
+        drop(gcs_txn); // drop the mut txn
+        let gcs_txn = gcs_doc.transact();
+        self.manager.store.flush_doc_v2(doc_id, &gcs_txn).await?;
         Ok(())
     }
 

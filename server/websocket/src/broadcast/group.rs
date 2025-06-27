@@ -634,7 +634,7 @@ impl BroadcastGroup {
                                 &self.redis_store,
                             );
                             let flush_future =
-                                self.storage.flush_doc_v2(&self.doc_name, awareness_doc);
+                                self.storage.flush_doc_v2(&self.doc_name, &awareness_txn);
 
                             let (update_result, flush_result) =
                                 tokio::join!(update_future, flush_future);
