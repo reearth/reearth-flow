@@ -24,7 +24,6 @@ pub struct UserFacingLogEvent {
     pub job_id: Uuid,
     pub timestamp: DateTime<Utc>,
     pub level: UserFacingLogLevel,
-    pub node_id: Option<String>,
     pub node_name: Option<String>,
     pub display_message: String,
 }

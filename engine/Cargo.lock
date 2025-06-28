@@ -6458,6 +6458,7 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-telemetry",
  "reearth-flow-types",
+ "regex",
  "schemars",
  "serde",
  "serde_json",

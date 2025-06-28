@@ -1,3 +1,4 @@
+mod action_log_parser;
 mod artifact;
 mod asset;
 mod command;

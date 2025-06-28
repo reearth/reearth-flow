@@ -102,15 +102,21 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
 
             let mut source = source_runner.source;
             let sender = source_runner.sender;
+            let node_name = source_runner.node_name;
 
             handles.push(Some(self.runtime.spawn(async move {
+                event_hub.info_log(
+                    Some(span.clone()),
+                    format!("{} ({}) source start...", source.name(), node_name),
+                );
                 let now = time::Instant::now();
                 let result = source.start(ctx, sender).await;
                 event_hub.info_log(
                     Some(span.clone()),
                     format!(
-                        "{:?} finish source complete. elapsed = {:?}",
+                        "{} ({}) finish source complete. elapsed = {:?}",
                         source.name(),
+                        node_name,
                         now.elapsed()
                     ),
                 );
@@ -265,12 +271,14 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
 struct RunningSource {
     channel_manager: ChannelManager,
     state: SourceState,
+    node_name: String,
 }
 
 #[derive(Debug)]
 struct SourceRunner {
     source: Box<dyn Source>,
     sender: Sender<(Port, IngestionMessage)>,
+    node_name: String,
 }
 
 /// Returns if the operation is sent successfully.
@@ -307,6 +315,7 @@ pub async fn create_source_node<F>(
         }
         let node = dag.node_weight_mut(node_index);
         let node_handle = node.handle.clone();
+        let node_name = node.name.clone();
         let NodeKind::Source(source) = node.kind.take().unwrap() else {
             continue;
         };
@@ -323,12 +332,17 @@ pub async fn create_source_node<F>(
         sources.push(RunningSource {
             channel_manager,
             state: SourceState::NotStarted,
+            node_name: node_name.clone(),
         });
 
         let (sender, receiver) = channel(options.channel_buffer_sz);
         let ctx = ctx.clone();
         source.initialize(ctx).await;
-        source_runners.push(SourceRunner { source, sender });
+        source_runners.push(SourceRunner {
+            source,
+            sender,
+            node_name,
+        });
         receivers.push(receiver);
     }
 

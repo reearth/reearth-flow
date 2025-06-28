@@ -42,6 +42,7 @@ nutype.workspace = true
 object_store.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
+regex = "1.10"
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true

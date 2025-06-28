@@ -41,6 +41,8 @@ static NODE_STATUS_PROPAGATION_DELAY: Lazy<Duration> = Lazy::new(|| {
 pub struct SinkNode<F> {
     /// Node handle in description DAG.
     node_handle: NodeHandle,
+    /// Node name from workflow definition.
+    node_name: String,
     /// Input node handles.
     node_handles: Vec<NodeHandle>,
     /// Input data channels.
@@ -73,6 +75,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             panic!("Must pass in a node")
         };
         let node_handle = node.handle.clone();
+        let node_name = node.name.clone();
         let NodeKind::Sink(sink) = kind else {
             panic!("Must pass in a sink node");
         };
@@ -90,6 +93,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
         );
         Self {
             node_handle,
+            node_name,
             node_handles,
             receivers,
             sink,
@@ -166,7 +170,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         self.event_hub.info_log_with_node_handle(
             Some(span.clone()),
             self.node_handle.clone(),
-            format!("{:?} sink start...", self.sink.name()),
+            format!("{} ({}) sink start...", self.sink.name(), self.node_name),
         );
 
         loop {
@@ -199,8 +203,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                             Some(span.clone()),
                             self.node_handle.clone(),
                             format!(
-                                "{:?} sink finish. elapsed = {:?}",
+                                "{} ({}) sink finish. elapsed = {:?}",
                                 self.sink.name(),
+                                self.node_name,
                                 now.elapsed()
                             ),
                         );
@@ -251,7 +256,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)));
         self.event_hub.send(Event::SinkFinished {
             node: self.node_handle.clone(),
-            name: self.sink.name().to_string(),
+            name: self.node_name.clone(),
         });
         result
     }

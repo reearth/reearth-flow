@@ -177,8 +177,6 @@ impl RunWorkerCommand {
 
         let workflow_id = workflow.id;
         let node_failure_handler = Arc::new(NodeFailureHandler::new());
-        let user_facing_runtime_handler = Arc::new(crate::logger::UserFacingRuntimeEventHandler)
-            as Arc<dyn reearth_flow_runtime::event::EventHandler>;
         let result = AsyncRunner::run_with_event_handler(
             meta.job_id,
             workflow,
@@ -186,11 +184,7 @@ impl RunWorkerCommand {
             logger_factory,
             storage_resolver.clone(),
             state,
-            vec![
-                handler,
-                node_failure_handler.clone(),
-                user_facing_runtime_handler,
-            ],
+            vec![handler, node_failure_handler.clone()],
         )
         .await;
         let job_result = match result {

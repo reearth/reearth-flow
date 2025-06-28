@@ -197,19 +197,6 @@ where
     }
 }
 
-// Runtime Event Handler for User-Facing Logs
-#[derive(Clone)]
-pub struct UserFacingRuntimeEventHandler;
-
-#[async_trait::async_trait]
-impl reearth_flow_runtime::event::EventHandler for UserFacingRuntimeEventHandler {
-    async fn on_event(&self, event: &reearth_flow_runtime::event::Event) {
-        if let Some(handler) = USER_FACING_LOG_HANDLER.get() {
-            handler.handle_runtime_event(event);
-        }
-    }
-}
-
 #[derive(Clone)]
 struct DynamicFileWriter;
 impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for DynamicFileWriter {
