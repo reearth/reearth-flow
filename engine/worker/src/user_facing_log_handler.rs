@@ -83,6 +83,8 @@ pub struct UserFacingLogHandler {
     active_node_count: Arc<RwLock<usize>>,
     // Store pending workflow completion message
     pending_workflow_completion: Arc<RwLock<Option<UserFacingLogEvent>>>,
+    // Track if workflow failed message was already emitted
+    workflow_failed_emitted: Arc<RwLock<bool>>,
 }
 
 impl UserFacingLogHandler {
@@ -111,6 +113,7 @@ impl UserFacingLogHandler {
             active_node_instances: Arc::new(RwLock::new(HashMap::new())),
             active_node_count: Arc::new(RwLock::new(0)),
             pending_workflow_completion: Arc::new(RwLock::new(None)),
+            workflow_failed_emitted: Arc::new(RwLock::new(false)),
         }
     }
 
@@ -147,15 +150,37 @@ impl UserFacingLogHandler {
             let mut sorted_steps: Vec<_> = step_mapping.iter().collect();
             sorted_steps.sort_by_key(|(_, &step)| step);
 
+            // Create mapping from node_name to list of steps for duplicate names
+            let mut node_name_steps: HashMap<String, Vec<usize>> = HashMap::new();
             for (node_id, &step_num) in sorted_steps {
                 if let Some(node_name) = name_mapping.get(node_id) {
-                    name_to_step.insert(node_name.clone(), step_num);
+                    node_name_steps
+                        .entry(node_name.clone())
+                        .or_default()
+                        .push(step_num);
                     tracing::debug!(
                         "Mapping node {} ({}) to step {}",
                         node_name,
                         node_id,
                         step_num
                     );
+                }
+            }
+
+            // For each node name, create entries for each step
+            for (node_name, mut steps) in node_name_steps {
+                steps.sort();
+                for (index, &step_num) in steps.iter().enumerate() {
+                    let key = if steps.len() > 1 {
+                        format!("{}#{}", node_name, index + 1)
+                    } else {
+                        node_name.clone()
+                    };
+                    name_to_step.insert(key, step_num);
+                }
+                // Also add the base name mapping to first step
+                if let Some(&first_step) = steps.first() {
+                    name_to_step.insert(node_name, first_step);
                 }
             }
 
@@ -233,31 +258,14 @@ impl UserFacingLogHandler {
         let mut name_mapping = HashMap::new();
         let mut step_counter = 0;
 
-        let mut name_count: HashMap<String, usize> = HashMap::new();
-        for node in &graph.nodes {
-            if node.node_type == "action" {
-                *name_count.entry(node.name.clone()).or_insert(0) += 1;
-            }
-        }
-
-        let mut name_seen_count: HashMap<String, usize> = HashMap::new();
-
         for node_id in result {
             if let Some(node) = graph.nodes.iter().find(|n| n.id == node_id) {
                 if node.node_type == "action" {
                     step_counter += 1;
                     step_mapping.insert(node_id.clone(), step_counter);
 
-                    let display_name = if *name_count.get(&node.name).unwrap_or(&1) > 1 {
-                        let count = name_seen_count.entry(node.name.clone()).or_insert(0);
-                        *count += 1;
-                        format!("{} ({})", node.name, count)
-                    } else {
-                        node.name.clone()
-                    };
-
-                    name_mapping.insert(node_id.clone(), display_name.clone());
-                    tracing::debug!("Step {}: {} ({})", step_counter, display_name, node_id);
+                    name_mapping.insert(node_id.clone(), node.name.clone());
+                    tracing::debug!("Step {}: {} ({})", step_counter, node.name, node_id);
                 } else {
                     name_mapping.insert(node_id.clone(), node.name.clone());
                 }
@@ -313,12 +321,11 @@ impl UserFacingLogHandler {
                 let count = total_count.get(&node_name).copied().unwrap_or(1);
                 drop(total_count);
 
-                let display_name = if count > 1 {
+                let (display_name, step_number) = if count > 1 {
                     let mut seen_count = self.node_name_seen_count.write();
                     let seen = seen_count.entry(node_name.clone()).or_insert(0);
                     *seen += 1;
                     let instance_num = *seen;
-                    let display_name = format!("{} ({})", node_name, instance_num);
 
                     let mut active_instances = self.active_node_instances.write();
                     active_instances
@@ -330,15 +337,22 @@ impl UserFacingLogHandler {
 
                     *self.active_node_count.write() += 1;
 
-                    display_name
+                    // Look up step number using the indexed key
+                    let name_to_step = self.node_name_to_step.read();
+                    let lookup_key = format!("{}#{}", node_name, instance_num);
+                    let step_number = name_to_step.get(&lookup_key).copied().unwrap_or(0);
+                    drop(name_to_step);
+
+                    (node_name.clone(), step_number)
                 } else {
                     *self.active_node_count.write() += 1;
-                    node_name.clone()
-                };
 
-                let name_to_step = self.node_name_to_step.read();
-                let step_number = name_to_step.get(&display_name).copied().unwrap_or(0);
-                drop(name_to_step);
+                    let name_to_step = self.node_name_to_step.read();
+                    let step_number = name_to_step.get(&node_name).copied().unwrap_or(0);
+                    drop(name_to_step);
+
+                    (node_name.clone(), step_number)
+                };
 
                 if step_number > 0 {
                     Some(UserFacingLogEvent {
@@ -362,27 +376,37 @@ impl UserFacingLogHandler {
                 let count = total_count.get(&node_name).copied().unwrap_or(1);
                 drop(total_count);
 
-                let display_name = if count > 1 {
+                let (display_name, step_number) = if count > 1 {
                     let mut active_instances = self.active_node_instances.write();
                     if let Some(instances) = active_instances.get_mut(&node_name) {
                         if let Some(instance_num) = instances.first().copied() {
                             instances.remove(0);
-                            format!("{} ({})", node_name, instance_num)
+
+                            let name_to_step = self.node_name_to_step.read();
+                            let lookup_key = format!("{}#{}", node_name, instance_num);
+                            let step_number = name_to_step.get(&lookup_key).copied().unwrap_or(0);
+                            drop(name_to_step);
+
+                            (node_name.clone(), step_number)
                         } else {
-                            node_name.clone()
+                            (node_name.clone(), 0)
                         }
                     } else {
-                        node_name.clone()
+                        (node_name.clone(), 0)
                     }
                 } else {
-                    node_name.clone()
+                    let name_to_step = self.node_name_to_step.read();
+                    let step_number = name_to_step.get(&node_name).copied().unwrap_or(0);
+                    drop(name_to_step);
+
+                    (node_name.clone(), step_number)
                 };
 
-                let name_to_step = self.node_name_to_step.read();
-                let step_number = name_to_step.get(&display_name).copied().unwrap_or(0);
-                drop(name_to_step);
-
-                *self.active_node_count.write() -= 1;
+                let mut active_count = self.active_node_count.write();
+                if *active_count > 0 {
+                    *active_count -= 1;
+                }
+                drop(active_count);
 
                 let result = if step_number > 0 {
                     let is_failed = self.failed_nodes.read().contains(&display_name);
@@ -420,30 +444,40 @@ impl UserFacingLogHandler {
                 drop(total_count);
 
                 // For error events, get the first active instance and remove it
-                let display_name = if count > 1 {
+                let (display_name, step_number) = if count > 1 {
                     let mut active_instances = self.active_node_instances.write();
                     if let Some(instances) = active_instances.get_mut(&node_name) {
                         if let Some(instance_num) = instances.first().copied() {
                             instances.remove(0);
-                            format!("{} ({})", node_name, instance_num)
+
+                            let name_to_step = self.node_name_to_step.read();
+                            let lookup_key = format!("{}#{}", node_name, instance_num);
+                            let step_number = name_to_step.get(&lookup_key).copied().unwrap_or(0);
+                            drop(name_to_step);
+
+                            (node_name.clone(), step_number)
                         } else {
-                            node_name.clone()
+                            (node_name.clone(), 0)
                         }
                     } else {
-                        node_name.clone()
+                        (node_name.clone(), 0)
                     }
                 } else {
-                    node_name.clone()
-                };
+                    let name_to_step = self.node_name_to_step.read();
+                    let step_number = name_to_step.get(&node_name).copied().unwrap_or(0);
+                    drop(name_to_step);
 
-                let name_to_step = self.node_name_to_step.read();
-                let step_number = name_to_step.get(&display_name).copied().unwrap_or(0);
-                drop(name_to_step);
+                    (node_name.clone(), step_number)
+                };
 
                 self.failed_nodes.write().insert(display_name.clone());
                 *self.workflow_error_occurred.write() = true;
 
-                *self.active_node_count.write() -= 1;
+                let mut active_count = self.active_node_count.write();
+                if *active_count > 0 {
+                    *active_count -= 1;
+                }
+                drop(active_count);
 
                 let simple_error = if error.contains("Failed to process attributes") {
                     "Failed to process attributes".to_string()
@@ -487,30 +521,40 @@ impl UserFacingLogHandler {
                 drop(total_count);
 
                 // For error events, get the first active instance and remove it
-                let display_name = if count > 1 {
+                let (display_name, step_number) = if count > 1 {
                     let mut active_instances = self.active_node_instances.write();
                     if let Some(instances) = active_instances.get_mut(&node_name) {
                         if let Some(instance_num) = instances.first().copied() {
                             instances.remove(0);
-                            format!("{} ({})", node_name, instance_num)
+
+                            let name_to_step = self.node_name_to_step.read();
+                            let lookup_key = format!("{}#{}", node_name, instance_num);
+                            let step_number = name_to_step.get(&lookup_key).copied().unwrap_or(0);
+                            drop(name_to_step);
+
+                            (node_name.clone(), step_number)
                         } else {
-                            node_name.clone()
+                            (node_name.clone(), 0)
                         }
                     } else {
-                        node_name.clone()
+                        (node_name.clone(), 0)
                     }
                 } else {
-                    node_name.clone()
-                };
+                    let name_to_step = self.node_name_to_step.read();
+                    let step_number = name_to_step.get(&node_name).copied().unwrap_or(0);
+                    drop(name_to_step);
 
-                let name_to_step = self.node_name_to_step.read();
-                let step_number = name_to_step.get(&display_name).copied().unwrap_or(0);
-                drop(name_to_step);
+                    (node_name.clone(), step_number)
+                };
 
                 self.failed_nodes.write().insert(display_name.clone());
                 *self.workflow_error_occurred.write() = true;
 
-                *self.active_node_count.write() -= 1;
+                let mut active_count = self.active_node_count.write();
+                if *active_count > 0 {
+                    *active_count -= 1;
+                }
+                drop(active_count);
 
                 let result = if step_number > 0 {
                     Some(UserFacingLogEvent {
@@ -543,48 +587,64 @@ impl UserFacingLogHandler {
 
             LogPattern::WorkflowCompleted => {
                 let error_occurred = *self.workflow_error_occurred.read();
-                let completion_event = if !error_occurred {
-                    UserFacingLogEvent {
-                        workflow_id: self.workflow_id,
-                        job_id: self.job_id,
-                        timestamp: Utc::now(),
-                        level: UserFacingLogLevel::Success,
-                        node_name: None,
-                        display_message: "Workflow finished successfully.".to_string(),
-                    }
+                let workflow_failed_emitted = *self.workflow_failed_emitted.read();
+                
+                // If we already emitted a workflow failed message, skip the completion message
+                if error_occurred && workflow_failed_emitted {
+                    None
                 } else {
-                    UserFacingLogEvent {
+                    let completion_event = if !error_occurred {
+                        UserFacingLogEvent {
+                            workflow_id: self.workflow_id,
+                            job_id: self.job_id,
+                            timestamp: Utc::now(),
+                            level: UserFacingLogLevel::Success,
+                            node_name: None,
+                            display_message: "Workflow finished successfully.".to_string(),
+                        }
+                    } else {
+                        UserFacingLogEvent {
+                            workflow_id: self.workflow_id,
+                            job_id: self.job_id,
+                            timestamp: Utc::now(),
+                            level: UserFacingLogLevel::Error,
+                            node_name: None,
+                            display_message: "Workflow execution failed.".to_string(),
+                        }
+                    };
+
+                    // Check if all nodes are already completed
+                    let active_count = *self.active_node_count.read();
+                    if active_count == 0 {
+                        // All nodes completed, emit immediately
+                        Some(completion_event)
+                    } else {
+                        // Store for later emission when all nodes complete
+                        *self.pending_workflow_completion.write() = Some(completion_event);
+                        None
+                    }
+                }
+            }
+
+            LogPattern::WorkflowFailed(error_message) => {
+                *self.workflow_error_occurred.write() = true;
+                
+                // Check if we should suppress this message to avoid duplicates
+                let mut workflow_failed_emitted = self.workflow_failed_emitted.write();
+                if *workflow_failed_emitted {
+                    // Already emitted a workflow failed message, skip this one
+                    None
+                } else {
+                    *workflow_failed_emitted = true;
+                    Some(UserFacingLogEvent {
                         workflow_id: self.workflow_id,
                         job_id: self.job_id,
                         timestamp: Utc::now(),
                         level: UserFacingLogLevel::Error,
                         node_name: None,
-                        display_message: "Workflow execution failed.".to_string(),
-                    }
-                };
-
-                // Check if all nodes are already completed
-                let active_count = *self.active_node_count.read();
-                if active_count == 0 {
-                    // All nodes completed, emit immediately
-                    Some(completion_event)
-                } else {
-                    // Store for later emission when all nodes complete
-                    *self.pending_workflow_completion.write() = Some(completion_event);
-                    None
+                        display_message: error_message,
+                    })
                 }
-            }
-
-            LogPattern::WorkflowFailed(_) => {
-                *self.workflow_error_occurred.write() = true;
-                Some(UserFacingLogEvent {
-                    workflow_id: self.workflow_id,
-                    job_id: self.job_id,
-                    timestamp: Utc::now(),
-                    level: UserFacingLogLevel::Error,
-                    node_name: None,
-                    display_message: "Workflow execution failed.".to_string(),
-                })
             }
         }
     }
@@ -690,7 +750,7 @@ where
 
     fn on_close(&self, _id: tracing::span::Id, _ctx: Context<'_, S>) {}
 
-    fn on_event(&self, event: &Event<'_>, ctx: Context<'_, S>) {
+    fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
         let meta = event.metadata();
         let level = meta.level();
         let target = meta.target();

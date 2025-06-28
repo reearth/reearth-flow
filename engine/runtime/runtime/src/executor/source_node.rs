@@ -271,6 +271,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
 struct RunningSource {
     channel_manager: ChannelManager,
     state: SourceState,
+    #[allow(dead_code)]
     node_name: String,
 }
 

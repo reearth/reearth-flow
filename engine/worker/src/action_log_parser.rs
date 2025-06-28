@@ -63,14 +63,24 @@ impl LogParser {
         // Check specific error patterns before generic workflow error
         if let Some(caps) = self.factory_error.captures(log_line) {
             let factory_name = caps.get(1).unwrap().as_str();
-            let node_name = if factory_name.ends_with("Factory") {
+            let action_name = if factory_name.ends_with("Factory") {
                 factory_name.strip_suffix("Factory").unwrap_or(factory_name)
             } else {
                 factory_name
-            }
-            .to_string();
-            let error = "Configuration error".to_string();
-            return Some(LogPattern::NodeError { node_name, error });
+            };
+            // Factory errors occur before node execution, so treat as workflow-level error
+            // Extract the actual error message from the log
+            let error_detail = if let Some(error_match) = log_line.split(&format!("{}(\"", factory_name)).nth(1) {
+                if let Some(msg_end) = error_match.find("\")") {
+                    let msg = &error_match[..msg_end];
+                    format!("Invalid configuration for {}: {}", action_name, msg)
+                } else {
+                    format!("Invalid configuration for {}", action_name)
+                }
+            } else {
+                format!("Invalid configuration for {}", action_name)
+            };
+            return Some(LogPattern::WorkflowFailed(error_detail));
         }
 
         if let Some(caps) = self.source_error.captures(log_line) {
@@ -85,11 +95,8 @@ impl LogParser {
             return Some(LogPattern::WorkflowFailed(error));
         }
 
-        // Check for generic workflow errors (Failed to workflow:)
-        if self.workflow_error.is_match(log_line) {
-            let error = "Workflow execution failed".to_string();
-            return Some(LogPattern::WorkflowFailed(error));
-        }
+        // Skip generic workflow errors - they're handled by specific error patterns above
+        // (Factory errors, Source errors, etc.)
 
         if let Some(caps) = self.node_starting.captures(log_line) {
             let node_name = caps.get(1).unwrap().as_str().to_string();
