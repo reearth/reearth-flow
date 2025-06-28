@@ -104,7 +104,8 @@ impl RunWorkerCommand {
         let metadata_path =
             Uri::from_str(metadata_path.as_str()).map_err(crate::errors::Error::init)?;
         let worker_num = matches
-            .remove_one::<usize>("worker_num")
+            .remove_one::<String>("worker_num")
+            .and_then(|s| s.parse::<usize>().ok())
             .unwrap_or(num_cpus::get());
         let pubsub_backend = matches
             .remove_one::<String>("pubsub_backend")
@@ -145,7 +146,8 @@ impl RunWorkerCommand {
     async fn run(&self) -> crate::errors::Result<()> {
         tracing::info!("Starting worker");
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
-        let (workflow, state, logger_factory, meta) = self.prepare(&storage_resolver).await?;
+        let (workflow, state, logger_factory, meta, workflow_yaml) =
+            self.prepare(&storage_resolver).await?;
         enable_file_logging(meta.job_id)?;
 
         let pubsub = PubSubBackend::try_from(self.pubsub_backend.as_str())
@@ -156,6 +158,13 @@ impl RunWorkerCommand {
 
         set_pubsub_context(pubsub.clone(), workflow.id, meta.job_id, handle)
             .map_err(crate::errors::Error::init)?;
+
+        crate::logger::analyze_workflow_for_step_mapping(&workflow_yaml).map_err(|e| {
+            crate::errors::Error::init(format!(
+                "Failed to analyze workflow for step mapping: {}",
+                e
+            ))
+        })?;
 
         let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match &pubsub {
             PubSubBackend::Google(p) => {
@@ -220,7 +229,7 @@ impl RunWorkerCommand {
     async fn prepare(
         &self,
         storage_resolver: &Arc<StorageResolver>,
-    ) -> crate::errors::Result<(Workflow, Arc<State>, Arc<LoggerFactory>, Metadata)> {
+    ) -> crate::errors::Result<(Workflow, Arc<State>, Arc<LoggerFactory>, Metadata, String)> {
         let json = if self.workflow == "-" {
             io::read_to_string(io::stdin()).map_err(crate::errors::Error::init)?
         } else {
@@ -294,7 +303,7 @@ impl RunWorkerCommand {
             create_root_logger(action_log_uri.path()),
             action_log_uri.path(),
         ));
-        Ok((workflow, state, logger_factory, meta))
+        Ok((workflow, state, logger_factory, meta, json))
     }
 
     async fn cleanup(

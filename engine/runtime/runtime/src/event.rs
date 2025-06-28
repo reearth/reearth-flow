@@ -113,6 +113,21 @@ impl EventHub {
         tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
     }
 
+    pub async fn enhanced_flush(&self, max_wait_ms: u64) {
+        let start = std::time::Instant::now();
+        let max_duration = tokio::time::Duration::from_millis(max_wait_ms);
+
+        while start.elapsed() < max_duration {
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+            if self.sender.receiver_count() == 0 {
+                break;
+            }
+        }
+
+        tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+    }
+
     pub fn warn_log<T: ToString>(&self, span: Option<Span>, message: T) {
         self.send(Event::Log {
             level: Level::WARN,

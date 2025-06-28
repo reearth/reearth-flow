@@ -50,6 +50,8 @@ static SLOW_ACTION_THRESHOLD: Lazy<Duration> = Lazy::new(|| {
 pub struct ProcessorNode<F> {
     /// Node handle in description DAG.
     node_handle: NodeHandle,
+    /// Node name from workflow definition.
+    node_name: String,
     /// Input node handles.
     node_handles: Vec<NodeHandle>,
     /// Input data channels.
@@ -86,6 +88,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             panic!("Must pass in a node")
         };
         let node_handle = node.handle.clone();
+        let node_name = node.name.clone();
         let NodeKind::Processor(processor) = kind else {
             panic!("Must pass in a processor node");
         };
@@ -117,6 +120,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let num_threads = processor.num_threads();
         Self {
             node_handle,
+            node_name,
             node_handles,
             receivers,
             processor: Arc::new(parking_lot::RwLock::new(processor)),
@@ -185,7 +189,11 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         self.event_hub.info_log_with_node_handle(
             Some(span.clone()),
             self.node_handle.clone(),
-            format!("{:?} process start...", self.processor.read().name()),
+            format!(
+                "{} ({}) process start...",
+                self.processor.read().name(),
+                self.node_name
+            ),
         );
 
         let has_failed = Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -201,8 +209,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         Some(span.clone()),
                         self.node_handle.clone(),
                         format!(
-                            "{:?} process finish. elapsed = {:?}",
+                            "{} ({}) process finish. elapsed = {:?}",
                             self.processor.read().name(),
+                            self.node_name,
                             now.elapsed()
                         ),
                     );
@@ -278,6 +287,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
 
         let span = self.span.clone();
         let node_handle = self.node_handle.clone();
+        let node_name = self.node_name.clone();
         let counter = Arc::clone(&self.thread_counter);
         let event_hub = self.event_hub.clone();
         counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
@@ -285,6 +295,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             process(
                 ctx,
                 node_handle,
+                node_name,
                 span,
                 event_hub,
                 channel_manager,
@@ -318,8 +329,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             Some(span),
             self.node_handle.clone(),
             format!(
-                "{:?} finish process complete. elapsed = {:?}",
+                "{} ({}) finish process complete. elapsed = {:?}",
                 processor.read().name(),
+                self.node_name,
                 now.elapsed()
             ),
         );
@@ -334,9 +346,11 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn process(
     ctx: ExecutorContext,
     node_handle: NodeHandle,
+    node_name: String,
     span: Span,
     event_hub: EventHub,
     channel_manager: Arc<parking_lot::RwLock<ProcessorChannelForwarder>>,
@@ -374,8 +388,9 @@ fn process(
             Some(span.clone()),
             node_handle.clone(),
             format!(
-                "Error operation, processor node name = {:?}, node_id = {}, feature id = {:?}, error = {:?}",
+                "Error operation, processor node name = {} ({}), node_id = {}, feature id = {:?}, error = {:?}",
                 processor.name(),
+                node_name,
                 node_handle.id,
                 feature_id,
                 e,
@@ -384,7 +399,7 @@ fn process(
 
         event_hub.send(Event::ProcessorFailed {
             node: node_handle.clone(),
-            name: name.to_string(),
+            name: node_name.clone(),
         });
     }
 }
