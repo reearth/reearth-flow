@@ -700,7 +700,6 @@ where
             event.record(&mut message_extractor);
             let message = message_extractor.0.unwrap_or_default();
 
-
             const INTERNAL_LOG_FILTERS: &[(&str, &str)] = &[
                 ("reearth_flow_worker::event_handler", "Node failed:"),
                 ("reearth_flow_worker::command", "Failed nodes:"),
