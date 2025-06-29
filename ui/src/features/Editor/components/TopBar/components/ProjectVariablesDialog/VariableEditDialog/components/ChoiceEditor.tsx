@@ -16,11 +16,6 @@ import {
 import { useT } from "@flow/lib/i18n";
 import { AnyProjectVariable, ChoiceConfig } from "@flow/types";
 
-// Legacy choice config for backward compatibility
-type LegacyChoiceConfig = {
-  options: string[];
-  selectedOption?: string;
-};
 
 type Props = {
   variable: AnyProjectVariable;
@@ -30,42 +25,21 @@ type Props = {
 export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
   const t = useT();
 
-  // Parse the current choice configuration - prioritize config field over defaultValue
-  const getChoiceConfig = useCallback((): LegacyChoiceConfig => {
-    // Check if we have the new config field
+  // Get the current choice configuration from the config field
+  const getChoiceConfig = useCallback((): ChoiceConfig => {
     if (variable.type === "choice" && variable.config) {
-      const config = variable.config as ChoiceConfig;
-      return {
-        options: config.choices || ["Option 1", "Option 2", "Option 3"],
-        selectedOption: typeof variable.defaultValue === "string" ? variable.defaultValue : undefined,
-      };
-    }
-    
-    // Fallback to legacy defaultValue format
-    if (
-      typeof variable.defaultValue === "object" &&
-      variable.defaultValue?.options
-    ) {
-      return variable.defaultValue as LegacyChoiceConfig;
-    }
-    
-    // Fallback for old string-based choices
-    if (typeof variable.defaultValue === "string") {
-      return {
-        options: ["Option 1", "Option 2", "Option 3"],
-        selectedOption: variable.defaultValue || undefined,
-      };
+      return variable.config as ChoiceConfig;
     }
     
     // Default fallback
     return {
-      options: ["Option 1", "Option 2", "Option 3"],
-      selectedOption: undefined,
+      choices: ["Option 1", "Option 2", "Option 3"],
+      displayMode: "dropdown",
     };
-  }, [variable.defaultValue, variable.config, variable.type]);
+  }, [variable.config, variable.type]);
 
   const [choiceConfig, setChoiceConfig] =
-    useState<LegacyChoiceConfig>(getChoiceConfig());
+    useState<ChoiceConfig>(getChoiceConfig());
   const [newOptionText, setNewOptionText] = useState("");
 
   // Sync config when variable changes
@@ -73,17 +47,13 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
     setChoiceConfig(getChoiceConfig());
   }, [getChoiceConfig]);
 
-  const updateVariable = (config: LegacyChoiceConfig) => {
+  const updateVariable = (config: ChoiceConfig, selectedOption?: string) => {
     setChoiceConfig(config);
     
-    // Update both config and defaultValue fields for proper typing and backward compatibility
     const updatedVariable: AnyProjectVariable = {
       ...variable,
-      config: variable.type === "choice" ? {
-        choices: config.options,
-        displayMode: "dropdown",
-      } as ChoiceConfig : variable.config,
-      defaultValue: config.selectedOption || "", // Store selected option in defaultValue
+      config: variable.type === "choice" ? config : variable.config,
+      defaultValue: selectedOption !== undefined ? selectedOption : variable.defaultValue,
     };
     
     onUpdate(updatedVariable);
@@ -92,11 +62,11 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
   const handleAddOption = () => {
     if (
       newOptionText.trim() &&
-      !choiceConfig.options.includes(newOptionText.trim())
+      !choiceConfig.choices.includes(newOptionText.trim())
     ) {
       const newConfig = {
         ...choiceConfig,
-        options: [...choiceConfig.options, newOptionText.trim()],
+        choices: [...choiceConfig.choices, newOptionText.trim()],
       };
       updateVariable(newConfig);
       setNewOptionText("");
@@ -104,58 +74,57 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
   };
 
   const handleRemoveOption = (index: number) => {
-    const removedOption = choiceConfig.options[index];
-    const newOptions = choiceConfig.options.filter((_, i) => i !== index);
+    const removedOption = choiceConfig.choices[index];
+    const newChoices = choiceConfig.choices.filter((_, i) => i !== index);
     const newConfig = {
       ...choiceConfig,
-      options: newOptions,
-      selectedOption:
-        choiceConfig.selectedOption === removedOption
-          ? newOptions.length > 0
-            ? newOptions[0]
-            : undefined
-          : choiceConfig.selectedOption,
+      choices: newChoices,
     };
-    updateVariable(newConfig);
+    
+    // Update selected option if it was the removed one
+    const currentSelected = typeof variable.defaultValue === "string" ? variable.defaultValue : "";
+    const newSelected = currentSelected === removedOption
+      ? newChoices.length > 0 ? newChoices[0] : ""
+      : currentSelected;
+    
+    updateVariable(newConfig, newSelected);
   };
 
   const handleMoveOption = (index: number, direction: "up" | "down") => {
-    const newOptions = [...choiceConfig.options];
+    const newChoices = [...choiceConfig.choices];
     const targetIndex = direction === "up" ? index - 1 : index + 1;
 
-    if (targetIndex >= 0 && targetIndex < newOptions.length) {
-      [newOptions[index], newOptions[targetIndex]] = [
-        newOptions[targetIndex],
-        newOptions[index],
+    if (targetIndex >= 0 && targetIndex < newChoices.length) {
+      [newChoices[index], newChoices[targetIndex]] = [
+        newChoices[targetIndex],
+        newChoices[index],
       ];
       updateVariable({
         ...choiceConfig,
-        options: newOptions,
+        choices: newChoices,
       });
     }
   };
 
   const handleUpdateOption = (index: number, newText: string) => {
-    const newOptions = [...choiceConfig.options];
-    const oldOption = newOptions[index];
-    newOptions[index] = newText;
+    const newChoices = [...choiceConfig.choices];
+    const oldOption = newChoices[index];
+    newChoices[index] = newText;
 
     const newConfig = {
       ...choiceConfig,
-      options: newOptions,
-      selectedOption:
-        choiceConfig.selectedOption === oldOption
-          ? newText
-          : choiceConfig.selectedOption,
+      choices: newChoices,
     };
-    updateVariable(newConfig);
+    
+    // Update selected option if it was the old option
+    const currentSelected = typeof variable.defaultValue === "string" ? variable.defaultValue : "";
+    const newSelected = currentSelected === oldOption ? newText : currentSelected;
+    
+    updateVariable(newConfig, newSelected);
   };
 
   const handleSelectDefault = (option: string) => {
-    updateVariable({
-      ...choiceConfig,
-      selectedOption: option === "" ? undefined : option,
-    });
+    updateVariable(choiceConfig, option === "" ? "" : option);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -184,7 +153,7 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
             onClick={handleAddOption}
             disabled={
               !newOptionText.trim() ||
-              choiceConfig.options.includes(newOptionText.trim())
+              choiceConfig.choices.includes(newOptionText.trim())
             }
             tooltipText={t("Add option")}
           />
@@ -192,13 +161,13 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
 
         {/* Options list */}
         <div className="space-y-2">
-          {choiceConfig.options.map((option, index) => (
+          {choiceConfig.choices.map((option, index) => (
             <OptionRow
               key={`${option}-${index}`}
               option={option}
               index={index}
               isFirst={index === 0}
-              isLast={index === choiceConfig.options.length - 1}
+              isLast={index === choiceConfig.choices.length - 1}
               onUpdate={(newText) => handleUpdateOption(index, newText)}
               onRemove={() => handleRemoveOption(index)}
               onMoveUp={() => handleMoveOption(index, "up")}
@@ -209,11 +178,11 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
       </div>
 
       {/* Default selection */}
-      {choiceConfig.options.length > 0 && (
+      {choiceConfig.choices.length > 0 && (
         <div>
           <h3 className="mb-4 text-lg font-medium">{t("Default Selection")}</h3>
           <RadioGroup
-            value={choiceConfig.selectedOption ?? ""}
+            value={typeof variable.defaultValue === "string" ? variable.defaultValue : ""}
             onValueChange={handleSelectDefault}>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="" id="no-default" />
@@ -221,7 +190,7 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
                 {t("No default")}
               </Label>
             </div>
-            {choiceConfig.options.map((option, index) => (
+            {choiceConfig.choices.map((option, index) => (
               <div
                 key={`radio-${option}-${index}`}
                 className="flex items-center space-x-2">

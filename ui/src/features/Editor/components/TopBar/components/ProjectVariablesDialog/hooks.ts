@@ -2,7 +2,11 @@ import { useState, useEffect, useCallback } from "react";
 
 import { useT } from "@flow/lib/i18n";
 import { ProjectVariable, VarType } from "@flow/types";
-import { generateUUID, getDefaultValueForProjectVar } from "@flow/utils";
+import {
+  generateUUID,
+  getDefaultConfigForProjectVar,
+  getDefaultValueForProjectVar,
+} from "@flow/utils";
 
 type PendingChange =
   | {
@@ -135,10 +139,13 @@ export default ({
         id: tempId,
         name: t("New Project Variable"),
         defaultValue: getDefaultValueForProjectVar(type),
+        config: getDefaultConfigForProjectVar(type),
         type,
         required: true,
         public: true,
       };
+
+      console.log("Adding new variable (handleLocalAdd):", newVariable);
 
       setLocalProjectVariables((prev) => [...prev, newVariable]);
       setPendingChanges((prev) => [
@@ -342,6 +349,14 @@ export default ({
           paramId: change.paramId,
           newIndex: change.newIndex,
         }));
+
+        console.log("Submitting batch update:", {
+          projectId,
+          creates,
+          updates,
+          deletes,
+          reorders,
+        });
 
         await onBatchUpdate({
           projectId,
