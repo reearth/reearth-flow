@@ -51,7 +51,7 @@ export const useSharedProject = () => {
       return { ...unsharedProject, ...rest };
     } catch (_err) {
       toast({
-        title: t("Project Could Not Be UnShared"),
+        title: t("Project Could Not Be Unshared"),
         description: t("There was an error when unsharing the project."),
         variant: "destructive",
       });

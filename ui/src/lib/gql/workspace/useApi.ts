@@ -76,7 +76,7 @@ export const useWorkspace = () => {
       toast({
         title: t("Workspace Could Not Be Updated"),
         description: t("There was an error when updating the workspace."),
-        variant: "warning",
+        variant: "destructive",
       });
       return { workspace: undefined, ...rest };
     }
@@ -91,14 +91,13 @@ export const useWorkspace = () => {
       toast({
         title: t("Workspace Deleted"),
         description: t("Workspace has been successfully deleted."),
-        variant: "destructive",
       });
       return { workspaceId: data, ...rest };
     } catch (_err) {
       toast({
-        title: t("Workspace Not Deleted"),
-        description: t("Workspace could not be deleted."),
-        variant: "warning",
+        title: t("Workspace Could Not Be Deleted"),
+        description: t("There was an error when deleting the workspace."),
+        variant: "destructive",
       });
       return { workspaceId: undefined, ...rest };
     }
@@ -122,7 +121,7 @@ export const useWorkspace = () => {
       toast({
         title: t("Member Could Not Be Added"),
         description: t("There was an error when adding a new member"),
-        variant: "warning",
+        variant: "destructive",
       });
       return { workspace: undefined, ...rest };
     }
@@ -147,7 +146,7 @@ export const useWorkspace = () => {
       toast({
         title: t("Member Could Not Be Removed"),
         description: t("There was an error when trying to remove the member."),
-        variant: "warning",
+        variant: "destructive",
       });
       return { workspace: undefined, ...rest };
     }
@@ -173,7 +172,7 @@ export const useWorkspace = () => {
         description: t(
           "There was an error when trying to update the members persmissons.",
         ),
-        variant: "warning",
+        variant: "destructive",
       });
       return { workspace: undefined, ...rest };
     }
