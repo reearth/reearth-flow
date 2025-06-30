@@ -345,7 +345,7 @@ pub(super) fn write_prj(
     if wkt.is_none() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidInput,
-            format!("Invalid EPSG code: {}", epsg),
+            format!("Invalid EPSG code: {epsg}"),
         ));
     } else {
         writer.write_all(wkt.unwrap().as_bytes())?;

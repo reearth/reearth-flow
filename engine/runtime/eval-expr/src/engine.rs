@@ -93,8 +93,7 @@ impl Engine {
         match scr.eval_with_scope::<T>(&mut scope, expr) {
             Ok(ret) => Ok(ret),
             Err(err) => Err(Error::ExprInternalRuntime(format!(
-                "expr code = {}, err = {}",
-                expr, err
+                "expr code = {expr}, err = {err}"
             ))),
         }
     }
@@ -108,8 +107,7 @@ impl Engine {
         match scr.eval_ast_with_scope::<T>(&mut scope, ast) {
             Ok(ret) => Ok(ret),
             Err(err) => Err(Error::ExprInternalRuntime(format!(
-                "ast = {:?} err = {}",
-                ast, err
+                "ast = {ast:?} err = {err}"
             ))),
         }
     }
@@ -125,8 +123,7 @@ impl Engine {
         match scr.eval_with_scope::<T>(&mut scope, expr) {
             Ok(ret) => Ok(ret),
             Err(err) => Err(Error::ExprInternalRuntime(format!(
-                "expr code = {}, err = {}",
-                expr, err
+                "expr code = {expr}, err = {err}"
             ))),
         }
     }
@@ -142,8 +139,7 @@ impl Engine {
         match scr.eval_ast_with_scope::<T>(&mut scope, ast) {
             Ok(ret) => Ok(ret),
             Err(err) => Err(Error::ExprInternalRuntime(format!(
-                "ast = {:?} err = {}",
-                ast, err
+                "ast = {ast:?} err = {err}"
             ))),
         }
     }
@@ -151,7 +147,7 @@ impl Engine {
     pub fn compile(&self, expr: &str) -> crate::Result<rhai::AST> {
         let scr = Arc::clone(&self.script_engine);
         scr.compile(expr)
-            .map_err(|err| Error::ExprCompile(format!("expr code = {}, err = {}", expr, err)))
+            .map_err(|err| Error::ExprCompile(format!("expr code = {expr}, err = {err}")))
     }
 
     pub fn get(&self, name: &str) -> Option<Value> {
@@ -216,7 +212,7 @@ mod tests {
         a
         "#;
         let result = engine.eval::<i64>(script);
-        print!("hogehoge {:?}", result);
+        print!("hogehoge {result:?}");
         assert_eq!(result.unwrap(), 10);
     }
 

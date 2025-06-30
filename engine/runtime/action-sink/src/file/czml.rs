@@ -63,13 +63,10 @@ impl SinkFactory for CzmlWriterFactory {
     ) -> Result<Box<dyn Sink>, BoxedError> {
         let params = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                SinkError::CzmlWriterFactory(format!("Failed to serialize `with` parameter: {}", e))
+                SinkError::CzmlWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                SinkError::CzmlWriterFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
-                ))
+                SinkError::CzmlWriterFactory(format!("Failed to deserialize `with` parameter: {e}"))
             })?
         } else {
             return Err(SinkError::CzmlWriterFactory(
@@ -202,7 +199,7 @@ fn map_to_html_table(map: &IndexMap<Attribute, AttributeValue>) -> String {
     html.push_str("<table>");
     for (key, value) in map {
         let value: serde_json::Value = value.clone().into();
-        html.push_str(&format!("<tr><td>{}</td><td>{}</td></tr>", key, value));
+        html.push_str(&format!("<tr><td>{key}</td><td>{value}</td></tr>"));
     }
     html.push_str("</table>");
     html

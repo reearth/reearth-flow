@@ -55,14 +55,12 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
         let params: StatisticsCalculatorParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 AttributeProcessorError::StatisticsCalculatorFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 AttributeProcessorError::StatisticsCalculatorFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -76,7 +74,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
         for calculation in &params.calculations {
             let expr = &calculation.expr;
             let template_ast = expr_engine.compile(expr.as_ref()).map_err(|e| {
-                AttributeProcessorError::StatisticsCalculatorFactory(format!("{:?}", e))
+                AttributeProcessorError::StatisticsCalculatorFactory(format!("{e:?}"))
             })?;
             calculations.push(CompiledCalculation {
                 expr: template_ast,

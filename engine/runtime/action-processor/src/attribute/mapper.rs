@@ -54,14 +54,12 @@ impl ProcessorFactory for AttributeMapperFactory {
         let params: AttributeMapperParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 AttributeProcessorError::MapperFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 AttributeProcessorError::MapperFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -77,7 +75,7 @@ impl ProcessorFactory for AttributeMapperFactory {
                 Some(
                     expr_engine
                         .compile(expr.as_ref())
-                        .map_err(|e| AttributeProcessorError::MapperFactory(format!("{:?}", e)))?,
+                        .map_err(|e| AttributeProcessorError::MapperFactory(format!("{e:?}")))?,
                 )
             } else {
                 None
@@ -86,7 +84,7 @@ impl ProcessorFactory for AttributeMapperFactory {
                 Some(
                     expr_engine
                         .compile(multiple_expr.as_ref())
-                        .map_err(|e| AttributeProcessorError::MapperFactory(format!("{:?}", e)))?,
+                        .map_err(|e| AttributeProcessorError::MapperFactory(format!("{e:?}")))?,
                 )
             } else {
                 None

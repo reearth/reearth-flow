@@ -250,7 +250,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             let index = sel.ready();
             let op = receivers[index]
                 .recv()
-                .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)))?;
+                .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")))?;
             match op {
                 ExecutorOperation::Op { ctx } => {
                     let has_failed_clone = has_failed.clone();
@@ -311,7 +311,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         let result = processor
             .write()
             .finish(ctx.clone(), channel_manager)
-            .map_err(|e| ExecutionError::CannotSendToChannel(format!("{:?}", e)));
+            .map_err(|e| ExecutionError::CannotSendToChannel(format!("{e:?}")));
 
         let span = self.span.clone();
         self.event_hub.info_log_with_node_handle(

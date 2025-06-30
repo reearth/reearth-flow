@@ -74,7 +74,7 @@ pub async fn ensure_bucket(client: &Client, bucket_name: &str) -> Result<()> {
 }
 
 pub async fn start_server(state: Arc<AppState>, port: &str, config: &crate::Config) -> Result<()> {
-    let addr = format!("0.0.0.0:{}", port);
+    let addr = format!("0.0.0.0:{port}");
     let listener = TcpListener::bind(&addr).await?;
 
     info!("Starting server on {}", addr);

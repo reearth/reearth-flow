@@ -29,21 +29,18 @@ impl TryFrom<Uri> for FilePath {
         let name = uri
             .file_name()
             .ok_or(crate::error::Error::validate(format!(
-                "invalid uri with {:?}",
-                uri
+                "invalid uri with {uri:?}"
             )))?;
         let extension = uri
             .extension()
             .ok_or(crate::error::Error::validate(format!(
-                "invalid uri with {:?}",
-                uri
+                "invalid uri with {uri:?}"
             )))?;
         Ok(Self::new(
             path,
             name.to_str()
                 .ok_or(crate::error::Error::validate(format!(
-                    "invalid uri with {:?}",
-                    uri
+                    "invalid uri with {uri:?}"
                 )))?
                 .to_string(),
             extension.to_string(),

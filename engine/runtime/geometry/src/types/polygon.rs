@@ -158,14 +158,13 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
 
         let exterior = self.exterior();
         if exterior.coords().count() < 3 {
-            let error_message =
-                format!("Exterior Ring {:?} must contain 3 or more coords", exterior);
+            let error_message = format!("Exterior Ring {exterior:?} must contain 3 or more coords");
             errors.push(error_message);
         }
         for interior in self.interiors() {
             if interior.coords().count() < 3 {
                 let error_message =
-                    format!("Interior Ring {:?} must contain 3 or more coords", interior);
+                    format!("Interior Ring {interior:?} must contain 3 or more coords");
                 errors.push(error_message);
             }
         }
@@ -179,12 +178,12 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
         let mut errors: Vec<String> = vec![];
         let exterior = self.exterior();
         if !exterior.is_closed() {
-            let error_message = format!("Exterior ring {:?} is not closed", exterior);
+            let error_message = format!("Exterior ring {exterior:?} is not closed");
             errors.push(error_message);
         }
         for interior in self.interiors() {
             if !interior.is_closed() {
-                let error_message = format!("Interior ring {:?} is not closed", interior);
+                let error_message = format!("Interior ring {interior:?} is not closed");
                 errors.push(error_message);
             }
         }
@@ -198,12 +197,12 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
         let mut errors: Vec<String> = vec![];
         let exterior = self.exterior();
         if !exterior.is_closed() {
-            let error_message = format!("Exterior ring {:?} is not closed", exterior);
+            let error_message = format!("Exterior ring {exterior:?} is not closed");
             errors.push(error_message);
         }
         for interior in self.interiors() {
             if !interior.is_closed() {
-                let error_message = format!("Interior ring {:?} is not closed", interior);
+                let error_message = format!("Interior ring {interior:?} is not closed");
                 errors.push(error_message);
             }
         }
@@ -284,13 +283,13 @@ pub fn validate_self_intersection<T: GeoFloat, Z: GeoFloat>(polygon: &Polygon<T,
             if let Some(intersection) = line_intersection(*line, *line2) {
                 let intersection_message = match intersection {
                     LineIntersection::Collinear { intersection } => {
-                        Some(format!("Found collinear at {:?}", intersection))
+                        Some(format!("Found collinear at {intersection:?}"))
                     }
 
                     LineIntersection::SinglePoint {
                         intersection,
                         is_proper: true,
-                    } => Some(format!("Found self intersection at {:?}", intersection)),
+                    } => Some(format!("Found self intersection at {intersection:?}")),
                     _ => None,
                 };
                 if let Some(error_message) = intersection_message {
@@ -320,8 +319,7 @@ pub fn validate_interiors_are_not_within<T: GeoFloat, Z: GeoFloat>(
             let polygon2 = Polygon::<T, Z>::new(interior2.clone(), vec![]);
             if polygon.contains(&polygon2) {
                 let error_message = format!(
-                    "Interior ring {:?} is contains another interior ring {:?}",
-                    interior, interior2
+                    "Interior ring {interior:?} is contains another interior ring {interior2:?}"
                 );
                 errors.push(error_message);
             }

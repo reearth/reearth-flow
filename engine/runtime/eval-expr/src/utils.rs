@@ -75,8 +75,7 @@ pub fn map_to_dynamic(map: &JsonMap<String, Value>) -> Map {
 #[allow(dead_code)]
 pub fn value_to_hash_map(value: &Value) -> crate::Result<HashMap<String, Vec<String>>> {
     let arr = value.as_object().ok_or(Error::ExprConvert(format!(
-        "cannot convert json '{}' to hash_map, it is not object",
-        value
+        "cannot convert json '{value}' to hash_map, it is not object"
     )))?;
 
     let mut ret = HashMap::new();
@@ -84,8 +83,7 @@ pub fn value_to_hash_map(value: &Value) -> crate::Result<HashMap<String, Vec<Str
         let items = v
             .as_array()
             .ok_or(Error::ExprConvert(format!(
-                "cannot convert json to vec, it is not array type in key '{}'",
-                k
+                "cannot convert json to vec, it is not array type in key '{k}'"
             )))?
             .iter()
             .map(|v| v.as_str().unwrap().to_string())

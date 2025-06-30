@@ -86,61 +86,6 @@ graphs:
             - path
           order: ascending
 
-      - id: dc498449-5478-4bff-abaa-59f2d160925f
-        name: PLATEAU4.MaxLodExtractor
-        type: action
-        action: PLATEAU4.MaxLodExtractor
-        with:
-          cityGmlPathAttribute: path
-          maxLodAttribute: maxLod
-
-      - id: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        name: AttributeAggregatorByMaxLod
-        type: action
-        action: AttributeAggregator
-        with:
-          aggregateAttributes:
-          - newAttribute: file
-            attributeValue: |
-              file::extract_filename(env.get("__value")["path"])
-          - newAttribute: type
-            attributeValue: |
-              env.get("__feature_type")
-          - newAttribute: maxLod
-            attributeValue: |
-              env.get("__value").maxLod
-          calculation: |
-            1
-          calculationAttribute: count
-          method: count
-
-      - id: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-        name: AttributeMapperByMaxLod
-        type: action
-        action: AttributeMapper
-        with:
-          mappers:
-          - attribute: code
-            expr: |
-              env.get("__value").file.split("_")[0]
-          - attribute: type
-            expr: |
-              env.get("__value")["type"].split(":")[0]
-          - attribute: maxLod
-            expr: |
-              env.get("__value").maxLod
-          - attribute: file
-            expr: |
-              env.get("__value").file
-
-      - id: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
-        name: FileWriterTsvFilePath
-        type: action
-        action: FileWriter
-        with:
-          format: csv
-          output: |
-            file::join_path(env.get("outputPath"), "maxLod.csv")
 
       - id: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         name: AttributeFlattener
@@ -622,26 +567,6 @@ graphs:
       - id: f79ef31d-45f5-4aa5-ade2-620ab74bb35a
         from: ae9c558d-ce05-4b40-ae04-a4477d96db5a
         to: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
-        fromPort: default
-        toPort: default
-      - id: f7c94aaf-e43c-4779-893c-e5b23c0cf643
-        from: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
-        to: dc498449-5478-4bff-abaa-59f2d160925f
-        fromPort: default
-        toPort: default
-      - id: 046c94ea-9937-4439-b5f8-c8a616f6599d
-        from: dc498449-5478-4bff-abaa-59f2d160925f
-        to: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        fromPort: default
-        toPort: default
-      - id: 59c14dab-0e56-4f90-85e6-0c8cfa6d1d14
-        from: 1fb4ce1c-538a-436d-8dfa-79185e032de3
-        to: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-        fromPort: default
-        toPort: default
-      - id: 993360df-5cfd-4525-9626-bfe13fa62117
-        from: 52ff7b3c-5fbb-4ad2-86d9-5df50429e3b4
-        to: 65074ffc-9113-4fbf-8957-9ba1de4c56ab
         fromPort: default
         toPort: default
       - id: 60ee038e-db4c-4c70-8c0a-a9cbfba726d0
