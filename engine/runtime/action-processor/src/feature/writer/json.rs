@@ -48,7 +48,7 @@ pub(super) fn write_json(
         );
         scope.set("__features", value);
         let convert = scope.eval_ast::<Dynamic>(converter).map_err(|e| {
-            FeatureProcessorError::FeatureWriter(format!("Failed to evaluate converter: {:?}", e))
+            FeatureProcessorError::FeatureWriter(format!("Failed to evaluate converter: {e:?}"))
         })?;
         dynamic_to_value(&convert)
     } else {
@@ -68,9 +68,9 @@ pub(super) fn write_json(
     };
     let storage = storage_resolver
         .resolve(output)
-        .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{:?}", e)))?;
+        .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?;
     storage
         .put_sync(output.path().as_path(), Bytes::from(json_value.to_string()))
-        .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{:?}", e)))?;
+        .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?;
     Ok(())
 }

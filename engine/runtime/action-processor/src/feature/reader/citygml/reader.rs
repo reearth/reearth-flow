@@ -36,19 +36,18 @@ pub(super) fn read_citygml(
     let scope = feature.new_scope(expr_engine.clone(), &global_params);
     let city_gml_path = scope.eval_ast::<String>(&dataset).map_err(|e| {
         crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!(
-            "Failed to evaluate expr: {}",
-            e
+            "Failed to evaluate expr: {e}"
         ))
     })?;
     let input_path = Uri::from_str(city_gml_path.as_str()).map_err(|e| {
-        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
+        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
     })?;
     let storage_resolver = Arc::clone(&ctx.storage_resolver);
     let storage = storage_resolver.resolve(&input_path).map_err(|e| {
-        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
+        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
     })?;
     let byte = storage.get_sync(input_path.path().as_path()).map_err(|e| {
-        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
+        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
     })?;
     let cursor = Cursor::new(byte);
     let buf_reader = BufReader::new(cursor);
@@ -58,7 +57,7 @@ pub(super) fn read_citygml(
     let context = nusamai_citygml::ParseContext::new(base_url.clone(), &code_resolver);
     let mut citygml_reader = CityGmlReader::new(context);
     let mut st = citygml_reader.start_root(&mut xml_reader).map_err(|e| {
-        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
+        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
     })?;
     parse_tree_reader(
         &mut st,
@@ -69,7 +68,7 @@ pub(super) fn read_citygml(
         &fw,
     )
     .map_err(|e| {
-        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
+        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
     })?;
     Ok(())
 }
@@ -131,13 +130,13 @@ fn parse_tree_reader<R: BufRead>(
         }
     })
     .map_err(|e| {
-        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
+        crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
     })?;
     let mut transformer = GeometricMergedownTransform::new();
     for entity in entities {
         {
             let geom_store = entity.geometry_store.read().map_err(|e| {
-                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
+                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
             })?;
             entity.appearance_store.write().unwrap().merge_global(
                 &mut global_appearances,
@@ -212,7 +211,7 @@ fn parse_tree_reader<R: BufRead>(
                 continue;
             };
             let geometry: Geometry = ent.try_into().map_err(|e| {
-                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{:?}", e))
+                crate::feature::errors::FeatureProcessorError::FileCityGmlReader(format!("{e:?}"))
             })?;
             let mut feature: Feature = geometry.into();
             feature.extend(attributes.clone());

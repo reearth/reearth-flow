@@ -84,8 +84,7 @@ pub(super) fn make_table_builder(
             .try_into()
             .map_err(|e| {
                 crate::errors::SinkError::ShapefileWriter(format!(
-                    "Failed to convert field name to FieldName: {}",
-                    e
+                    "Failed to convert field name to FieldName: {e}"
                 ))
             })?;
         let key = field_name.to_string();

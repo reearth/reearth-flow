@@ -76,51 +76,43 @@ impl Processor for BuildingInstallationGeometryTypeExtractor {
             )?;
         let path_uri = Uri::from_str(city_gml_path.to_string().as_str()).map_err(|err| {
             PlateauProcessorError::BuildingInstallationGeometryTypeExtractor(format!(
-                "cityGmlPath is not a valid uri: {}",
-                err
+                "cityGmlPath is not a valid uri: {err}"
             ))
         })?;
         let storage = ctx.storage_resolver.resolve(&path_uri).map_err(|err| {
             PlateauProcessorError::BuildingInstallationGeometryTypeExtractor(format!(
-                "cityGmlPath is not a valid uri: {}",
-                err
+                "cityGmlPath is not a valid uri: {err}"
             ))
         })?;
         let xml_content = storage.get_sync(path_uri.path().as_path()).map_err(|err| {
             PlateauProcessorError::BuildingInstallationGeometryTypeExtractor(format!(
-                "cityGmlPath is not a valid uri: {}",
-                err
+                "cityGmlPath is not a valid uri: {err}"
             ))
         })?;
         let xml_content = String::from_utf8(xml_content.to_vec()).map_err(|err| {
             PlateauProcessorError::BuildingInstallationGeometryTypeExtractor(format!(
-                "cityGmlPath is not a valid uri: {}",
-                err
+                "cityGmlPath is not a valid uri: {err}"
             ))
         })?;
         let document = xml::parse(xml_content.as_str()).map_err(|err| {
             PlateauProcessorError::BuildingInstallationGeometryTypeExtractor(format!(
-                "invalid xml: {}",
-                err
+                "invalid xml: {err}"
             ))
         })?;
         let root_node = xml::get_root_readonly_node(&document).map_err(|err| {
             PlateauProcessorError::BuildingInstallationGeometryTypeExtractor(format!(
-                "invalid xml: {}",
-                err
+                "invalid xml: {err}"
             ))
         })?;
         let xml_ctx = xml::create_context(&document).map_err(|err| {
             PlateauProcessorError::BuildingInstallationGeometryTypeExtractor(format!(
-                "failed to create context: {}",
-                err
+                "failed to create context: {err}"
             ))
         })?;
         let buildings = xml::find_readonly_nodes_by_xpath(&xml_ctx, "*//bldg:Building", &root_node)
             .map_err(|err| {
                 PlateauProcessorError::BuildingInstallationGeometryTypeExtractor(format!(
-                    "failed to find buildings: {}",
-                    err
+                    "failed to find buildings: {err}"
                 ))
             })?;
         for building in &buildings {
@@ -131,8 +123,7 @@ impl Processor for BuildingInstallationGeometryTypeExtractor {
             )
             .map_err(|err| {
                 PlateauProcessorError::BuildingInstallationGeometryTypeExtractor(format!(
-                    "failed to find building installations: {}",
-                    err
+                    "failed to find building installations: {err}"
                 ))
             })?;
             for building_installation in &building_installations {
@@ -140,13 +131,12 @@ impl Processor for BuildingInstallationGeometryTypeExtractor {
                 for n in [2, 3, 4] {
                     let geom = xml::find_readonly_nodes_by_xpath(
                         &xml_ctx,
-                        format!("./bldg:lod{}Geometry/*", n).as_str(),
+                        format!("./bldg:lod{n}Geometry/*").as_str(),
                         building_installation,
                     )
                     .map_err(|err| {
                         PlateauProcessorError::BuildingInstallationGeometryTypeExtractor(format!(
-                            "failed to find geometry: {}",
-                            err
+                            "failed to find geometry: {err}"
                         ))
                     })?;
                     geom.iter().for_each(|g| {

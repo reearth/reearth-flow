@@ -49,8 +49,7 @@ impl<'a> MetadataEncoder<'a> {
     ) -> crate::errors::Result<usize> {
         let Some(TypeDef::Feature(feature_def)) = self.original_schema.types.get(typename) else {
             return Err(crate::errors::Error::metadata(format!(
-                "Feature type not found: {}",
-                typename
+                "Feature type not found: {typename}"
             )));
         };
 

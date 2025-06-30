@@ -60,10 +60,10 @@ impl SinkFactory for FileWriterSinkFactory {
     ) -> Result<Box<dyn Sink>, BoxedError> {
         let params: FileWriterParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                SinkError::BuildFactory(format!("Failed to serialize `with` parameter: {}", e))
+                SinkError::BuildFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                SinkError::BuildFactory(format!("Failed to deserialize `with` parameter: {}", e))
+                SinkError::BuildFactory(format!("Failed to deserialize `with` parameter: {e}"))
             })?
         } else {
             return Err(
@@ -270,7 +270,7 @@ fn write_json(
         );
         scope.set("__features", value);
         let convert = scope.eval::<Dynamic>(converter.as_ref()).map_err(|e| {
-            crate::errors::SinkError::FileWriter(format!("Failed to evaluate converter: {:?}", e))
+            crate::errors::SinkError::FileWriter(format!("Failed to evaluate converter: {e:?}"))
         })?;
         dynamic_to_value(&convert)
     } else {
@@ -290,10 +290,10 @@ fn write_json(
     };
     let storage = storage_resolver
         .resolve(output)
-        .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SinkError::FileWriter(format!("{e:?}")))?;
     storage
         .put_sync(output.path().as_path(), Bytes::from(json_value.to_string()))
-        .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SinkError::FileWriter(format!("{e:?}")))?;
     Ok(())
 }
 
@@ -319,7 +319,7 @@ fn write_csv(
         // Write header
         if !fields.is_empty() {
             wtr.write_record(fields.clone())
-                .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
+                .map_err(|e| crate::errors::SinkError::FileWriter(format!("{e:?}")))?;
         }
     }
 
@@ -328,12 +328,12 @@ fn write_csv(
             Some(ref fields) if !fields.is_empty() => {
                 let values = get_row_values(&row, &fields.clone())?;
                 wtr.write_record(values)
-                    .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
+                    .map_err(|e| crate::errors::SinkError::FileWriter(format!("{e:?}")))?;
             }
             _ => match row {
                 AttributeValue::String(s) => wtr
                     .write_record(vec![s])
-                    .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?,
+                    .map_err(|e| crate::errors::SinkError::FileWriter(format!("{e:?}")))?,
                 AttributeValue::Array(s) => {
                     let values = s
                         .into_iter()
@@ -343,7 +343,7 @@ fn write_csv(
                         })
                         .collect::<Vec<_>>();
                     wtr.write_record(values)
-                        .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?
+                        .map_err(|e| crate::errors::SinkError::FileWriter(format!("{e:?}")))?
                 }
                 _ => {
                     return Err(crate::errors::SinkError::FileWriter(
@@ -354,18 +354,18 @@ fn write_csv(
         }
     }
     wtr.flush()
-        .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SinkError::FileWriter(format!("{e:?}")))?;
     let data = String::from_utf8(
         wtr.into_inner()
-            .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?,
+            .map_err(|e| crate::errors::SinkError::FileWriter(format!("{e:?}")))?,
     )
-    .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
+    .map_err(|e| crate::errors::SinkError::FileWriter(format!("{e:?}")))?;
     let storage = storage_resolver
         .resolve(output)
-        .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SinkError::FileWriter(format!("{e:?}")))?;
     storage
         .put_sync(output.path().as_path(), Bytes::from(data))
-        .map_err(|e| crate::errors::SinkError::FileWriter(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SinkError::FileWriter(format!("{e:?}")))?;
     Ok(())
 }
 
@@ -384,7 +384,7 @@ fn get_row_values(
         .iter()
         .map(|field| match row {
             AttributeValue::Map(row) => row.get(field).map(|v| v.to_string()).ok_or_else(|| {
-                crate::errors::SinkError::FileWriter(format!("Field not found: {}", field))
+                crate::errors::SinkError::FileWriter(format!("Field not found: {field}"))
             }),
             _ => Err(crate::errors::SinkError::FileWriter(
                 "Unsupported input".to_string(),

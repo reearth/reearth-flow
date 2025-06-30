@@ -60,8 +60,7 @@ impl Runner {
             .build()
             .map_err(|e| {
                 crate::errors::Error::RuntimeError(format!(
-                    "Failed to init tokio runtime with {:?}",
-                    e
+                    "Failed to init tokio runtime with {e:?}"
                 ))
             })?;
 
@@ -153,7 +152,7 @@ impl AsyncRunner {
         let workflow_name = workflow.name.clone();
         info!(parent: &span, "Start workflow = {:?}", workflow_name.as_str());
         let runtime = tokio::runtime::Handle::try_current()
-            .map_err(|e| crate::errors::Error::RuntimeError(format!("{:?}", e)))?;
+            .map_err(|e| crate::errors::Error::RuntimeError(format!("{e:?}")))?;
         let (_shutdown_sender, shutdown_receiver) = shutdown::new(&runtime);
         let orchestrator = Orchestrator::new(Arc::new(runtime));
         let mut handlers: Vec<Arc<dyn EventHandler>> = vec![Arc::new(LogEventHandler::new(
