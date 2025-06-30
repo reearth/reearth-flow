@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Source, Marker, Layer, LayerProps } from "react-map-gl/maplibre";
 
 type Props = {
@@ -8,28 +9,35 @@ type Props = {
   >;
   onSelectedFeature: (value: any) => void;
 };
-const polygonLayer: LayerProps = {
-  id: "polygon-layer",
-  type: "fill",
-  paint: {
-    "fill-color": "#3f3f45",
-    "fill-opacity": 0.8,
-  },
-};
 
-const lineStringLayer: LayerProps = {
-  id: "line-layer",
-  type: "line",
-  paint: {
-    "line-color": "#3f3f45",
-    "line-width": 2,
-  },
-};
 const GeoJsonDataSource: React.FC<Props> = ({
   fileType,
   fileContent,
   onSelectedFeature,
 }) => {
+  const polygonLayer: LayerProps = useMemo(
+    () => ({
+      id: "polygon-layer",
+      type: "fill",
+      paint: {
+        "fill-color": "#3f3f45",
+        "fill-opacity": 0.8,
+      },
+    }),
+    [],
+  );
+
+  const lineStringLayer: LayerProps = useMemo(
+    () => ({
+      id: "line-layer",
+      type: "line",
+      paint: {
+        "line-color": "#3f3f45",
+        "line-width": 2,
+      },
+    }),
+    [],
+  );
   return (
     <Source type={fileType} data={fileContent}>
       {fileContent?.features?.some(
