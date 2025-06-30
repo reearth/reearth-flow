@@ -5,6 +5,7 @@ use tokio::sync::RwLock;
 pub mod infrastructure;
 
 pub mod auth;
+pub mod domain;
 
 mod broadcast;
 pub mod conn;
