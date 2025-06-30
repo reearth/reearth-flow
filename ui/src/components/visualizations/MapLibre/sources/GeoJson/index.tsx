@@ -38,6 +38,17 @@ const GeoJsonDataSource: React.FC<Props> = ({
     }),
     [],
   );
+
+  const pointerMarker = useMemo(
+    () => ({
+      color: "#3f3f45",
+      onClick: (e: any, feature: any) => {
+        e.originalEvent.stopPropagation();
+        onSelectedFeature(feature);
+      },
+    }),
+    [onSelectedFeature],
+  );
   return (
     <Source type={fileType} data={fileContent}>
       {fileContent?.features?.some(
@@ -62,14 +73,11 @@ const GeoJsonDataSource: React.FC<Props> = ({
         if (feature.geometry?.type === "MultiPoint") {
           return feature.geometry.coordinates.map((coords: any, j: number) => (
             <Marker
-              key={`${i}-${j}`}
-              color="#3f3f45"
+              key={i}
               longitude={coords[0]}
               latitude={coords[1]}
-              onClick={(e) => {
-                e.originalEvent.stopPropagation();
-                onSelectedFeature(feature);
-              }}
+              color={pointerMarker.color}
+              onClick={(e) => pointerMarker.onClick(e, feature)}
             />
           ));
         } else if (feature.geometry?.type === "Point") {
@@ -77,13 +85,10 @@ const GeoJsonDataSource: React.FC<Props> = ({
           return (
             <Marker
               key={i}
-              color="#3f3f45"
               longitude={coords[0]}
               latitude={coords[1]}
-              onClick={(e) => {
-                e.originalEvent.stopPropagation();
-                onSelectedFeature(feature);
-              }}
+              color={pointerMarker.color}
+              onClick={(e) => pointerMarker.onClick(e, feature)}
             />
           );
         } else return null;
