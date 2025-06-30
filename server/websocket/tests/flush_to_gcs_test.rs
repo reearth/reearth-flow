@@ -20,7 +20,7 @@ impl TestBroadcastPool {
     }
 
     async fn test_flush_to_gcs_scenario_simulation(&self, doc_id: &str) -> anyhow::Result<()> {
-        let lock_id = format!("gcs:lock:{}", doc_id);
+        let lock_id = format!("gcs:lock:{doc_id}");
         let instance_id = "test-instance-123".to_string();
 
         let lock_acquired = self
@@ -40,7 +40,7 @@ impl TestBroadcastPool {
         for update_bytes in updates {
             if let Ok(update) = Update::decode_v1(&update_bytes) {
                 if let Err(e) = txn.apply_update(update) {
-                    eprintln!("Failed to apply Redis update: {}", e);
+                    eprintln!("Failed to apply Redis update: {e}");
                 }
             }
         }
@@ -54,7 +54,7 @@ impl TestBroadcastPool {
             .release_doc_lock(&lock_id, &instance_id)
             .await
         {
-            eprintln!("Failed to release GCS lock: {}", e);
+            eprintln!("Failed to release GCS lock: {e}");
         }
 
         Ok(())
@@ -100,15 +100,13 @@ mod tests {
 
         assert!(
             content.contains("Initial content"),
-            "Should contain initial content, got: {}",
-            content
+            "Should contain initial content, got: {content}"
         );
         assert!(
             content.contains("Redis update"),
-            "Should contain Redis update, got: {}",
-            content
+            "Should contain Redis update, got: {content}"
         );
 
-        println!("Final content: {}", content);
+        println!("Final content: {content}");
     }
 }
