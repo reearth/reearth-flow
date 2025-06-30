@@ -4,12 +4,14 @@ import bbox from "@turf/bbox";
 import maplibregl, { LngLatBounds } from "maplibre-gl";
 import * as React from "react";
 import { useRef, useState, useMemo, useCallback } from "react";
-import { Map, Source, Marker, Layer, LayerProps } from "react-map-gl/maplibre";
+import { Map } from "react-map-gl/maplibre";
 
 import { Button, IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
+
 import "maplibre-gl/dist/maplibre-gl.css";
+import { GeoJsonDataSource } from "./sources";
 
 type Props = {
   className?: string;
@@ -21,24 +23,6 @@ type MapSidePanelProps = {
   selectedFeature: any;
   setSelectedFeature: (value: any) => void;
   onFlyToSelectedFeature?: (selectedFeature: any) => void;
-};
-
-const polygonLayer: LayerProps = {
-  id: "polygon-layer",
-  type: "fill",
-  paint: {
-    "fill-color": "#3f3f45",
-    "fill-opacity": 0.8,
-  },
-};
-
-const lineStringLayer: LayerProps = {
-  id: "line-layer",
-  type: "line",
-  paint: {
-    "line-color": "#3f3f45",
-    "line-width": 2,
-  },
 };
 
 const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
@@ -98,59 +82,13 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
           setSelectedFeature(e.features?.[0]);
         }}
         onLoad={handleMapLoad}>
-        <Source type={fileType || "geojson"} data={fileContent}>
-          {fileContent?.features?.some(
-            (feature: GeoJSON.Feature) =>
-              feature.geometry.type === "LineString",
-          ) && (
-            <Layer
-              {...lineStringLayer}
-              filter={["==", ["geometry-type"], "LineString"]}
-            />
-          )}
-
-          {fileContent?.features?.some(
-            (feature: GeoJSON.Feature) => feature.geometry.type === "Polygon",
-          ) && (
-            <Layer
-              {...polygonLayer}
-              filter={["==", ["geometry-type"], "Polygon"]}
-            />
-          )}
-
-          {fileContent?.features?.map((feature: any, i: number) => {
-            if (feature.geometry?.type === "MultiPoint") {
-              return feature.geometry.coordinates.map(
-                (coords: any, j: number) => (
-                  <Marker
-                    key={`${i}-${j}`}
-                    color="#3f3f45"
-                    longitude={coords[0]}
-                    latitude={coords[1]}
-                    onClick={(e) => {
-                      e.originalEvent.stopPropagation();
-                      setSelectedFeature(feature);
-                    }}
-                  />
-                ),
-              );
-            } else if (feature.geometry?.type === "Point") {
-              const coords = feature.geometry.coordinates;
-              return (
-                <Marker
-                  key={i}
-                  color="#3f3f45"
-                  longitude={coords[0]}
-                  latitude={coords[1]}
-                  onClick={(e) => {
-                    e.originalEvent.stopPropagation();
-                    setSelectedFeature(feature);
-                  }}
-                />
-              );
-            } else return null;
-          })}
-        </Source>
+        {fileType === "geojson" && (
+          <GeoJsonDataSource
+            fileType={fileType}
+            fileContent={fileContent}
+            onSelectedFeature={setSelectedFeature}
+          />
+        )}
       </Map>
 
       {selectedFeature && (
