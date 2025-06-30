@@ -143,7 +143,7 @@ WORKFLOW_EXAMPLES=(
   "01-bldg"
 )
 
-for example in "${WORKFLOW_EXAMPLES}"; do
+for example in "${WORKFLOW_EXAMPLES[@]}"; do
   (
     cd $BASE_PATH;
     yaml-include ${example}/workflow.yml > ${example}.yml
