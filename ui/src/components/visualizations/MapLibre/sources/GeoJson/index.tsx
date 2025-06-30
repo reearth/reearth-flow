@@ -73,7 +73,7 @@ const GeoJsonDataSource: React.FC<Props> = ({
         if (feature.geometry?.type === "MultiPoint") {
           return feature.geometry.coordinates.map((coords: any, j: number) => (
             <Marker
-              key={i}
+              key={`${i}-${j}`}
               longitude={coords[0]}
               latitude={coords[1]}
               color={pointerMarker.color}
@@ -85,10 +85,13 @@ const GeoJsonDataSource: React.FC<Props> = ({
           return (
             <Marker
               key={i}
+              color="#3f3f45"
               longitude={coords[0]}
               latitude={coords[1]}
-              color={pointerMarker.color}
-              onClick={(e) => pointerMarker.onClick(e, feature)}
+              onClick={(e) => {
+                e.originalEvent.stopPropagation();
+                onSelectedFeature(feature);
+              }}
             />
           );
         } else return null;
