@@ -171,15 +171,15 @@ async fn get_content(
     if let Some(input_path) = get_input_path(ctx, common_property)? {
         let storage = storage_resolver
             .resolve(&input_path)
-            .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+            .map_err(|e| crate::errors::SourceError::FileReader(format!("{e:?}")))?;
         let result = storage
             .get(input_path.path().as_path())
             .await
-            .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+            .map_err(|e| crate::errors::SourceError::FileReader(format!("{e:?}")))?;
         let byte = result
             .bytes()
             .await
-            .map_err(|e| crate::errors::SourceError::FileReader(format!("{:?}", e)))?;
+            .map_err(|e| crate::errors::SourceError::FileReader(format!("{e:?}")))?;
         return Ok(byte);
     }
     Err(crate::errors::SourceError::FileReader(

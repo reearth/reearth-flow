@@ -62,12 +62,11 @@ impl SinkFactory for MVTSinkFactory {
     ) -> Result<Box<dyn Sink>, BoxedError> {
         let params: MVTWriterParam = if let Some(with) = with.clone() {
             let value: JsonValue = serde_json::to_value(with).map_err(|e| {
-                SinkError::MvtWriterFactory(format!("Failed to serialize `with` parameter: {}", e))
+                SinkError::MvtWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 SinkError::MvtWriterFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -80,15 +79,15 @@ impl SinkFactory for MVTSinkFactory {
         let expr_output = &params.output;
         let output = expr_engine
             .compile(expr_output.as_ref())
-            .map_err(|e| SinkError::MvtWriterFactory(format!("{:?}", e)))?;
+            .map_err(|e| SinkError::MvtWriterFactory(format!("{e:?}")))?;
         let expr_layer_name = &params.layer_name;
         let layer_name = expr_engine
             .compile(expr_layer_name.as_ref())
-            .map_err(|e| SinkError::MvtWriterFactory(format!("{:?}", e)))?;
+            .map_err(|e| SinkError::MvtWriterFactory(format!("{e:?}")))?;
         let compress_output = if let Some(compress_output) = &params.compress_output {
             let compress_output = expr_engine
                 .compile(compress_output.as_ref())
-                .map_err(|e| SinkError::MvtWriterFactory(format!("{:?}", e)))?;
+                .map_err(|e| SinkError::MvtWriterFactory(format!("{e:?}")))?;
             Some(compress_output)
         } else {
             None
@@ -162,12 +161,12 @@ impl Sink for MVTWriter {
                 let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
                 let path = scope
                     .eval_ast::<String>(&output)
-                    .map_err(|e| SinkError::MvtWriter(format!("{:?}", e)))?;
+                    .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))?;
                 let compress_output = if let Some(compress_output) = &self.params.compress_output {
                     let compress_output = compress_output.clone();
                     let path = scope
                         .eval_ast::<String>(&compress_output)
-                        .map_err(|e| SinkError::MvtWriter(format!("{:?}", e)))?;
+                        .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))?;
                     Some(Uri::from_str(path.as_str())?)
                 } else {
                     None
@@ -175,7 +174,7 @@ impl Sink for MVTWriter {
                 let output = Uri::from_str(path.as_str())?;
                 let layer_name = scope
                     .eval_ast::<String>(&self.params.layer_name)
-                    .map_err(|e| SinkError::MvtWriter(format!("{:?}", e)))?;
+                    .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))?;
                 if !self.buffer.contains_key(&(
                     output.clone(),
                     layer_name.clone(),
@@ -212,12 +211,12 @@ impl Sink for MVTWriter {
             match join.lock().recv_timeout(timeout) {
                 Ok(_) => continue,
                 Err(mpsc::RecvTimeoutError::Timeout) => {
-                    errors.push(format!("Worker thread {} timed out after {:?}", i, timeout));
+                    errors.push(format!("Worker thread {i} timed out after {timeout:?}"));
                 }
                 Err(mpsc::RecvTimeoutError::Disconnected) => {
                     ctx.event_hub.warn_log(
                         None,
-                        format!("Worker thread {} disconnected unexpectedly", i),
+                        format!("Worker thread {i} disconnected unexpectedly"),
                     );
                 }
             }
@@ -293,7 +292,7 @@ impl MVTWriter {
             if let Err(err) = &result {
                 gctx.event_hub.error_log(
                     None,
-                    format!("Failed to geometry_slicing_stage with error =  {:?}", err),
+                    format!("Failed to geometry_slicing_stage with error =  {err:?}"),
                 );
                 gctx.event_hub
                     .send(Event::SinkFinishFailed { name: name.clone() });
@@ -309,7 +308,7 @@ impl MVTWriter {
             if let Err(err) = &result {
                 ctx.event_hub.error_log(
                     None,
-                    format!("Failed to feature_sorting_stage with error =  {:?}", err),
+                    format!("Failed to feature_sorting_stage with error =  {err:?}"),
                 );
                 ctx.event_hub
                     .send(Event::SinkFinishFailed { name: name.clone() });
@@ -337,7 +336,7 @@ impl MVTWriter {
                 if let Err(err) = &result {
                     gctx.event_hub.error_log(
                         None,
-                        format!("Failed to tile_writing_stage with error =  {:?}", err),
+                        format!("Failed to tile_writing_stage with error =  {err:?}"),
                     );
                     gctx.event_hub
                         .send(Event::SinkFinishFailed { name: name.clone() });
@@ -367,8 +366,7 @@ impl MVTWriter {
                                             gctx.event_hub.error_log(
                                                 None,
                                                 format!(
-                                                    "Failed to remove directory with error = {:?}",
-                                                    e
+                                                    "Failed to remove directory with error = {e:?}"
                                                 ),
                                             );
                                         }
@@ -377,8 +375,7 @@ impl MVTWriter {
                                         gctx.event_hub.error_log(
                                             None,
                                             format!(
-                                                "Failed to write zip file with error = {:?}",
-                                                e
+                                                "Failed to write zip file with error = {e:?}"
                                             ),
                                         );
                                     }
@@ -387,7 +384,7 @@ impl MVTWriter {
                             Err(e) => {
                                 gctx.event_hub.error_log(
                                     None,
-                                    format!("Failed to write zip file with error = {:?}", e),
+                                    format!("Failed to write zip file with error = {e:?}"),
                                 );
                             }
                         }

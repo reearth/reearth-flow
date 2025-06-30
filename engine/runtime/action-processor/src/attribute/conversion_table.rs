@@ -54,14 +54,12 @@ impl ProcessorFactory for AttributeConversionTableFactory {
         let params: AttributeConversionTableParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 AttributeProcessorError::ConversionTableFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 AttributeProcessorError::ConversionTableFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -83,18 +81,17 @@ impl ProcessorFactory for AttributeConversionTableFactory {
                 .eval::<String>(dataset.to_string().as_str())
                 .map_err(|e| {
                     super::errors::AttributeProcessorError::ConversionTable(format!(
-                        "Failed to evaluate expr: {}",
-                        e
+                        "Failed to evaluate expr: {e}"
                     ))
                 })?;
             let input_path = Uri::from_str(input_path.as_str()).map_err(|e| {
-                super::errors::AttributeProcessorError::ConversionTable(format!("{:?}", e))
+                super::errors::AttributeProcessorError::ConversionTable(format!("{e:?}"))
             })?;
             let storage = storage_resolver.resolve(&input_path).map_err(|e| {
-                super::errors::AttributeProcessorError::ConversionTable(format!("{:?}", e))
+                super::errors::AttributeProcessorError::ConversionTable(format!("{e:?}"))
             })?;
             storage.get_sync(input_path.path().as_path()).map_err(|e| {
-                super::errors::AttributeProcessorError::ConversionTable(format!("{:?}", e))
+                super::errors::AttributeProcessorError::ConversionTable(format!("{e:?}"))
             })?
         } else if let Some(inline) = params.inline {
             Bytes::from(inline.into_bytes())
@@ -245,11 +242,11 @@ fn read_csv(
         .deserialize()
         .next()
         .unwrap_or(Ok(Vec::<String>::new()))
-        .map_err(|e| super::errors::AttributeProcessorError::ConversionTable(format!("{:?}", e)))?;
+        .map_err(|e| super::errors::AttributeProcessorError::ConversionTable(format!("{e:?}")))?;
     let mut rows = HashMap::new();
     for rd in rdr.deserialize() {
         let record: Vec<String> = rd.map_err(|e| {
-            super::errors::AttributeProcessorError::ConversionTable(format!("{:?}", e))
+            super::errors::AttributeProcessorError::ConversionTable(format!("{e:?}"))
         })?;
         if record.len() < header.len() {
             return Err(super::errors::AttributeProcessorError::ConversionTable(
@@ -278,9 +275,9 @@ fn read_json(
 > {
     let value: serde_json::Value =
         serde_json::from_str(std::str::from_utf8(&byte).map_err(|e| {
-            super::errors::AttributeProcessorError::ConversionTable(format!("{:?}", e))
+            super::errors::AttributeProcessorError::ConversionTable(format!("{e:?}"))
         })?)
-        .map_err(|e| super::errors::AttributeProcessorError::ConversionTable(format!("{:?}", e)))?;
+        .map_err(|e| super::errors::AttributeProcessorError::ConversionTable(format!("{e:?}")))?;
     let mut rows = HashMap::new();
     match value {
         serde_json::Value::Array(arr) => {
@@ -342,7 +339,7 @@ fn generate_index_key(keys: &[String]) -> String {
 fn generate_index_value(row: &HashMap<String, AttributeValue>, keys: &[String]) -> String {
     keys.iter().fold("".to_string(), |acc, key| {
         if let Some(AttributeValue::String(value)) = row.get(key) {
-            format!("{}{}", acc, value)
+            format!("{acc}{value}")
         } else {
             acc
         }
@@ -352,7 +349,7 @@ fn generate_index_value(row: &HashMap<String, AttributeValue>, keys: &[String]) 
 fn generate_index_value_by_attribute_value(values: &[AttributeValue]) -> AttributeValue {
     let value = values.iter().fold("".to_string(), |acc, value| {
         if let AttributeValue::String(value) = value {
-            format!("{}{}", acc, value)
+            format!("{acc}{value}")
         } else {
             acc
         }

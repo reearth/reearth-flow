@@ -79,8 +79,7 @@ impl Processor for MaxLodExtractor {
 
         let path_uri = Uri::from_str(city_gml_path.to_string().as_str()).map_err(|err| {
             PlateauProcessorError::MaxLodExtractor(format!(
-                "cityGmlPath is not a valid uri: {}",
-                err
+                "cityGmlPath is not a valid uri: {err}"
             ))
         })?;
 

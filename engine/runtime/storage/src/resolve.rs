@@ -23,7 +23,7 @@ impl StorageResolver {
         }
         drop(storages);
         let mut storages = self.storages.write();
-        let op = resolve_operator(uri).map_err(|e| crate::Error::Resolve(format!("{}", e)))?;
+        let op = resolve_operator(uri).map_err(|e| crate::Error::Resolve(format!("{e}")))?;
         let storage = Arc::new(Storage::new(uri.root_uri(), op));
         storages.insert(uri.root_uri(), Arc::clone(&storage));
         Ok(storage)

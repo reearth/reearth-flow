@@ -32,10 +32,10 @@ pub(crate) async fn read_csv(
         .deserialize()
         .nth(offset)
         .unwrap_or(Ok(Vec::<String>::new()))
-        .map_err(|e| crate::errors::SourceError::CsvFileReader(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SourceError::CsvFileReader(format!("{e:?}")))?;
     for rd in rdr.deserialize() {
         let record: Vec<String> =
-            rd.map_err(|e| crate::errors::SourceError::CsvFileReader(format!("{:?}", e)))?;
+            rd.map_err(|e| crate::errors::SourceError::CsvFileReader(format!("{e:?}")))?;
         let row = record
             .iter()
             .enumerate()
@@ -48,7 +48,7 @@ pub(crate) async fn read_csv(
                 IngestionMessage::OperationEvent { feature },
             ))
             .await
-            .map_err(|e| crate::errors::SourceError::CsvFileReader(format!("{:?}", e)))?;
+            .map_err(|e| crate::errors::SourceError::CsvFileReader(format!("{e:?}")))?;
     }
     Ok(())
 }

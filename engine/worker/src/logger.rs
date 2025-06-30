@@ -70,7 +70,7 @@ impl Visit for MessageExtractor {
     }
     fn record_debug(&mut self, field: &Field, value: &dyn std::fmt::Debug) {
         if field.name() == "message" && self.0.is_none() {
-            self.0 = Some(format!("{:?}", value));
+            self.0 = Some(format!("{value:?}"));
         }
     }
 }
@@ -105,7 +105,7 @@ where
             event.record(&mut extractor);
             let core_message = extractor.0.unwrap_or_else(|| "".to_string());
 
-            let message = format!("{}  {} {}: {}", timestamp_str, level, target, core_message);
+            let message = format!("{timestamp_str}  {level} {target}: {core_message}");
 
             let log_event = StdoutLogEvent {
                 workflow_id,
@@ -122,11 +122,11 @@ where
                         p.publish(log_event).await.map_err(|e| e.to_string())
                     }
                     PubSubBackend::Noop(p) => {
-                        p.publish(log_event).await.map_err(|e| format!("{:?}", e))
+                        p.publish(log_event).await.map_err(|e| format!("{e:?}"))
                     }
                 };
                 if let Err(e) = result {
-                    eprintln!("Failed to publish stdout log event: {}", e);
+                    eprintln!("Failed to publish stdout log event: {e}");
                 }
             });
         }

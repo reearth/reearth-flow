@@ -25,22 +25,19 @@ pub(crate) fn extract_archive(
 ) -> super::errors::Result<Vec<FilePath>> {
     let storage = storage_resolver.resolve(source_dataset).map_err(|e| {
         super::errors::ProcessorUtilError::Decompressor(format!(
-            "Failed to resolve `source_dataset` error: {}",
-            e
+            "Failed to resolve `source_dataset` error: {e}"
         ))
     })?;
     let root_output_storage = storage_resolver.resolve(root_output_path).map_err(|e| {
         super::errors::ProcessorUtilError::Decompressor(format!(
-            "Failed to resolve `root_output_path` error: {}",
-            e
+            "Failed to resolve `root_output_path` error: {e}"
         ))
     })?;
     let bytes = storage
         .get_sync(source_dataset.path().as_path())
         .map_err(|e| {
             super::errors::ProcessorUtilError::Decompressor(format!(
-                "Failed to get `source_dataset` error: {}",
-                e
+                "Failed to get `source_dataset` error: {e}"
             ))
         })?;
     if let Some(ext) = source_dataset.path().as_path().extension() {
@@ -63,23 +60,20 @@ fn extract_zip(
 ) -> super::errors::Result<Vec<FilePath>> {
     let mut zip_archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| {
         super::errors::ProcessorUtilError::Decompressor(format!(
-            "Failed to open `source_dataset` as zip archive: {}",
-            e
+            "Failed to open `source_dataset` as zip archive: {e}"
         ))
     })?;
     let mut file_paths = Vec::<FilePath>::new();
     for i in 0..zip_archive.len() {
         let mut entry = zip_archive.by_index(i).map_err(|e| {
             super::errors::ProcessorUtilError::Decompressor(format!(
-                "Failed to get `source_dataset` entry: {}",
-                e
+                "Failed to get `source_dataset` entry: {e}"
             ))
         })?;
         let filename = entry.name();
         let outpath = root_output_path.join(filename).map_err(|e| {
             super::errors::ProcessorUtilError::Decompressor(format!(
-                "Output path join error with: error = {:?}",
-                e
+                "Output path join error with: error = {e:?}"
             ))
         })?;
         let filepath = Path::new(filename);
@@ -93,8 +87,7 @@ fn extract_zip(
         if entry.is_dir() {
             if storage.exists_sync(outpath.path().as_path()).map_err(|e| {
                 super::errors::ProcessorUtilError::Decompressor(format!(
-                    "Storage exists error with: error = {:?}",
-                    e
+                    "Storage exists error with: error = {e:?}"
                 ))
             })? {
                 continue;
@@ -103,8 +96,7 @@ fn extract_zip(
                 .create_dir_sync(outpath.path().as_path())
                 .map_err(|e| {
                     super::errors::ProcessorUtilError::Decompressor(format!(
-                        "Failed to create directory: error = {:?}",
-                        e
+                        "Failed to create directory: error = {e:?}"
                     ))
                 })?;
             continue;
@@ -112,14 +104,12 @@ fn extract_zip(
         if let Some(p) = outpath.parent() {
             if !storage.exists_sync(p.path().as_path()).map_err(|e| {
                 super::errors::ProcessorUtilError::Decompressor(format!(
-                    "Storage exists error with: error = {:?}",
-                    e
+                    "Storage exists error with: error = {e:?}"
                 ))
             })? {
                 storage.create_dir_sync(p.path().as_path()).map_err(|e| {
                     super::errors::ProcessorUtilError::Decompressor(format!(
-                        "Create dir error with: error = {:?}",
-                        e
+                        "Create dir error with: error = {e:?}"
                     ))
                 })?;
             }
@@ -127,22 +117,19 @@ fn extract_zip(
         let mut buf = Vec::<u8>::new();
         entry.read_to_end(&mut buf).map_err(|e| {
             super::errors::ProcessorUtilError::Decompressor(format!(
-                "Failed to read `source_dataset` entry: {}",
-                e
+                "Failed to read `source_dataset` entry: {e}"
             ))
         })?;
         let file_path = FilePath::try_from(outpath.clone()).map_err(|e| {
             super::errors::ProcessorUtilError::Decompressor(format!(
-                "Filepath convert error with: error = {:?}",
-                e
+                "Filepath convert error with: error = {e:?}"
             ))
         })?;
         storage
             .put_sync(outpath.path().as_path(), bytes::Bytes::from(buf))
             .map_err(|e| {
                 super::errors::ProcessorUtilError::Decompressor(format!(
-                    "Storage put error with: error = {:?}",
-                    e
+                    "Storage put error with: error = {e:?}"
                 ))
             })?;
         file_paths.push(file_path);
@@ -160,8 +147,7 @@ fn extract_sevenz(
         if !entry.is_directory {
             let dest_uri = Uri::try_from(dest.clone()).map_err(|e| {
                 reearth_flow_sevenz::Error::Unknown(format!(
-                    "Failed to convert `dest` to URI: {}",
-                    e
+                    "Failed to convert `dest` to URI: {e}"
                 ))
             });
             if let Ok(dest_uri) = dest_uri {
@@ -172,8 +158,7 @@ fn extract_sevenz(
     })
     .map_err(|e| {
         super::errors::ProcessorUtilError::Decompressor(format!(
-            "Failed to extract `source_dataset` archive: {}",
-            e
+            "Failed to extract `source_dataset` archive: {e}"
         ))
     })?;
     let result = entries
@@ -182,8 +167,7 @@ fn extract_sevenz(
             let file_path = FilePath::try_from(entry.clone())
                 .map_err(|e| {
                     super::errors::ProcessorUtilError::Decompressor(format!(
-                        "Filepath convert error with: error = {:?}",
-                        e
+                        "Filepath convert error with: error = {e:?}"
                     ))
                 })
                 .ok()?;

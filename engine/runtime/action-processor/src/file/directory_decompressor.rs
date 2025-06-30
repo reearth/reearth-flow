@@ -52,14 +52,12 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
         let param: DirectoryDecompressorParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 super::errors::FileProcessorError::DirectoryDecompressorFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 super::errors::FileProcessorError::DirectoryDecompressorFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -109,8 +107,7 @@ impl Processor for DirectoryDecompressor {
             let root_output_path = extract_archive(&source_dataset, ctx.storage_resolver.clone())
                 .map_err(|e| {
                 super::errors::FileProcessorError::DirectoryDecompressor(format!(
-                    "Failed to extract archive: {}",
-                    e
+                    "Failed to extract archive: {e}"
                 ))
             })?;
             feature.insert(
@@ -138,8 +135,7 @@ fn extract_archive(
     let root_output_path =
         project_temp_dir(uuid::Uuid::new_v4().to_string().as_str()).map_err(|e| {
             super::errors::FileProcessorError::DirectoryDecompressor(format!(
-                "Failed to create temp directory: {}",
-                e
+                "Failed to create temp directory: {e}"
             ))
         })?;
     let root_output_path = Uri::from_str(root_output_path.to_str().ok_or(
@@ -147,8 +143,7 @@ fn extract_archive(
     )?)
     .map_err(|e| {
         super::errors::FileProcessorError::DirectoryDecompressor(format!(
-            "Failed to convert `root_output_path` to URI: {}",
-            e
+            "Failed to convert `root_output_path` to URI: {e}"
         ))
     })?;
     let _ = crate::utils::decompressor::extract_archive(
@@ -158,8 +153,7 @@ fn extract_archive(
     )
     .map_err(|e| {
         super::errors::FileProcessorError::DirectoryDecompressor(format!(
-            "Failed to extract archive: {}",
-            e
+            "Failed to extract archive: {e}"
         ))
     })?;
     let root_output_path = get_single_subfolder_or_self(&root_output_path)?;
@@ -168,7 +162,7 @@ fn extract_archive(
 
 fn get_single_subfolder_or_self(parent_dir: &Uri) -> super::errors::Result<Uri> {
     let subfolders: Vec<PathBuf> = fs::read_dir(parent_dir.path())
-        .map_err(|e| super::errors::FileProcessorError::DirectoryDecompressor(format!("{:?}", e)))?
+        .map_err(|e| super::errors::FileProcessorError::DirectoryDecompressor(format!("{e:?}")))?
         .filter_map(|entry| {
             let entry = entry.ok()?;
             let path = entry.path();
@@ -182,8 +176,7 @@ fn get_single_subfolder_or_self(parent_dir: &Uri) -> super::errors::Result<Uri> 
         )?)
         .map_err(|e| {
             super::errors::FileProcessorError::DirectoryDecompressor(format!(
-                "Failed to convert `subfolders[0]` to URI: {}",
-                e
+                "Failed to convert `subfolders[0]` to URI: {e}"
             ))
         })?)
     } else {
