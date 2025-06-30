@@ -16,7 +16,6 @@ import {
 import { useT } from "@flow/lib/i18n";
 import { AnyProjectVariable, ChoiceConfig } from "@flow/types";
 
-
 type Props = {
   variable: AnyProjectVariable;
   onUpdate: (variable: AnyProjectVariable) => void;
@@ -30,7 +29,7 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
     if (variable.type === "choice" && variable.config) {
       return variable.config as ChoiceConfig;
     }
-    
+
     // Default fallback
     return {
       choices: ["Option 1", "Option 2", "Option 3"],
@@ -49,13 +48,14 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
 
   const updateVariable = (config: ChoiceConfig, selectedOption?: string) => {
     setChoiceConfig(config);
-    
+
     const updatedVariable: AnyProjectVariable = {
       ...variable,
       config: variable.type === "choice" ? config : variable.config,
-      defaultValue: selectedOption !== undefined ? selectedOption : variable.defaultValue,
+      defaultValue:
+        selectedOption !== undefined ? selectedOption : variable.defaultValue,
     };
-    
+
     onUpdate(updatedVariable);
   };
 
@@ -80,13 +80,17 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
       ...choiceConfig,
       choices: newChoices,
     };
-    
+
     // Update selected option if it was the removed one
-    const currentSelected = typeof variable.defaultValue === "string" ? variable.defaultValue : "";
-    const newSelected = currentSelected === removedOption
-      ? newChoices.length > 0 ? newChoices[0] : ""
-      : currentSelected;
-    
+    const currentSelected =
+      typeof variable.defaultValue === "string" ? variable.defaultValue : "";
+    const newSelected =
+      currentSelected === removedOption
+        ? newChoices.length > 0
+          ? newChoices[0]
+          : ""
+        : currentSelected;
+
     updateVariable(newConfig, newSelected);
   };
 
@@ -115,11 +119,13 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
       ...choiceConfig,
       choices: newChoices,
     };
-    
+
     // Update selected option if it was the old option
-    const currentSelected = typeof variable.defaultValue === "string" ? variable.defaultValue : "";
-    const newSelected = currentSelected === oldOption ? newText : currentSelected;
-    
+    const currentSelected =
+      typeof variable.defaultValue === "string" ? variable.defaultValue : "";
+    const newSelected =
+      currentSelected === oldOption ? newText : currentSelected;
+
     updateVariable(newConfig, newSelected);
   };
 
@@ -182,7 +188,11 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
         <div>
           <h3 className="mb-4 text-lg font-medium">{t("Default Selection")}</h3>
           <RadioGroup
-            value={typeof variable.defaultValue === "string" ? variable.defaultValue : ""}
+            value={
+              typeof variable.defaultValue === "string"
+                ? variable.defaultValue
+                : ""
+            }
             onValueChange={handleSelectDefault}>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="" id="no-default" />

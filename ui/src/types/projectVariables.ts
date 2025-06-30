@@ -46,7 +46,13 @@ export type DatabaseConnectionConfig = {
 };
 
 export type GeometryConfig = {
-  geometryType?: "Point" | "LineString" | "Polygon" | "MultiPoint" | "MultiLineString" | "MultiPolygon";
+  geometryType?:
+    | "Point"
+    | "LineString"
+    | "Polygon"
+    | "MultiPoint"
+    | "MultiLineString"
+    | "MultiPolygon";
   coordinateSystem?: string;
   allowEmpty?: boolean;
 };
@@ -88,18 +94,27 @@ export type FileConfig = {
 };
 
 // Conditional config type based on VarType
-export type ProjectVariableConfig<T extends VarType> = 
-  T extends "choice" ? ChoiceConfig :
-  T extends "coordinate_system" ? CoordinateConfig :
-  T extends "color" ? ColorConfig :
-  T extends "database_connection" ? DatabaseConnectionConfig :
-  T extends "geometry" ? GeometryConfig :
-  T extends "number" ? NumberConfig :
-  T extends "text" ? TextConfig :
-  T extends "datetime" ? DateTimeConfig :
-  T extends "web_connection" ? WebConnectionConfig :
-  T extends "file_folder" ? FileConfig :
-  undefined;
+export type ProjectVariableConfig<T extends VarType> = T extends "choice"
+  ? ChoiceConfig
+  : T extends "coordinate_system"
+    ? CoordinateConfig
+    : T extends "color"
+      ? ColorConfig
+      : T extends "database_connection"
+        ? DatabaseConnectionConfig
+        : T extends "geometry"
+          ? GeometryConfig
+          : T extends "number"
+            ? NumberConfig
+            : T extends "text"
+              ? TextConfig
+              : T extends "datetime"
+                ? DateTimeConfig
+                : T extends "web_connection"
+                  ? WebConnectionConfig
+                  : T extends "file_folder"
+                    ? FileConfig
+                    : undefined;
 
 export type ProjectVariable<T extends VarType = VarType> = {
   id: string;

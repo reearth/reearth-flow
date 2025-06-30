@@ -7,7 +7,10 @@ type Props = {
   onUpdate: (variable: ProjectVariable) => void;
 };
 
-export const AttributeNameEditor: React.FC<Props> = ({ variable, onUpdate }) => {
+export const AttributeNameEditor: React.FC<Props> = ({
+  variable,
+  onUpdate,
+}) => {
   const t = useT();
 
   const handleDefaultValueChange = (value: string) => {
@@ -31,7 +34,9 @@ export const AttributeNameEditor: React.FC<Props> = ({ variable, onUpdate }) => 
           className="mt-1"
         />
         <p className="mt-1 text-sm text-muted-foreground">
-          {t("The default attribute name to use when this variable is not set.")}
+          {t(
+            "The default attribute name to use when this variable is not set.",
+          )}
         </p>
       </div>
     </div>
