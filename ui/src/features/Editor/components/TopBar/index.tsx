@@ -1,6 +1,9 @@
+import { HardDriveIcon } from "@phosphor-icons/react";
 import { memo } from "react";
 import { Doc } from "yjs";
 
+import { IconButton } from "@flow/components";
+import { useT } from "@flow/lib/i18n";
 import { Project } from "@flow/types";
 
 import { WorkflowTabs } from "..";
@@ -42,6 +45,7 @@ const TopBar: React.FC<Props> = ({
   onWorkflowClose,
   onWorkflowChange,
 }) => {
+  const t = useT();
   return (
     <div className="flex w-[100vw] shrink-0 justify-between gap-2 bg-secondary">
       <div className="flex items-center gap-1">
@@ -52,6 +56,15 @@ const TopBar: React.FC<Props> = ({
         />
         <div className="pr-4 pl-2">
           <Breadcrumb />
+        </div>
+        <div className="flex items-center gap-2 rounded-md p-1">
+          <IconButton
+            className="h-[30px]"
+            variant="outline"
+            tooltipText={t("Resources")}
+            icon={<HardDriveIcon weight="thin" size={18} />}
+            disabled
+          />
         </div>
       </div>
       <div className="flex h-full flex-1 gap-2 overflow-hidden">
