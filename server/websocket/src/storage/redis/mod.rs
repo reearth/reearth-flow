@@ -201,7 +201,7 @@ impl RedisStore {
         instance_id: &str,
         ttl_seconds: u64,
     ) -> Result<bool> {
-        let key = format!("doc:instance:{}", doc_id);
+        let key = format!("doc:instance:{doc_id}");
         let mut conn = self.pool.get().await?;
         let effective_ttl = if ttl_seconds < 2 { 2 } else { ttl_seconds };
         let result: bool = redis::cmd("SET")
@@ -217,7 +217,7 @@ impl RedisStore {
     }
 
     pub async fn get_doc_instance(&self, doc_id: &str) -> Result<Option<String>> {
-        let key = format!("doc:instance:{}", doc_id);
+        let key = format!("doc:instance:{doc_id}");
         let mut conn = self.pool.get().await?;
         let result: Option<String> = conn.get(&key).await?;
         Ok(result)
@@ -272,7 +272,7 @@ impl RedisStore {
     }
 
     pub async fn delete_stream(&self, doc_id: &str) -> Result<()> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
+        let stream_key = format!("yjs:stream:{doc_id}");
         let mut conn = self.pool.get().await?;
         let _: () = redis::cmd("DEL")
             .arg(&stream_key)
@@ -283,7 +283,7 @@ impl RedisStore {
     }
 
     pub async fn acquire_doc_lock(&self, doc_id: &str, instance_id: &str) -> Result<bool> {
-        let lock_key = format!("lock:doc:{}", doc_id);
+        let lock_key = format!("lock:doc:{doc_id}");
         let ttl = 10;
 
         let mut conn = self.pool.get().await?;
@@ -300,7 +300,7 @@ impl RedisStore {
     }
 
     pub async fn release_doc_lock(&self, doc_id: &str, instance_id: &str) -> Result<bool> {
-        let lock_key = format!("lock:doc:{}", doc_id);
+        let lock_key = format!("lock:doc:{doc_id}");
 
         let mut conn = self.pool.get().await?;
         let script = redis::Script::new(
@@ -323,7 +323,7 @@ impl RedisStore {
     }
 
     pub async fn update_instance_heartbeat(&self, doc_id: &str, instance_id: &str) -> Result<()> {
-        let key = format!("doc:instances:{}", doc_id);
+        let key = format!("doc:instances:{doc_id}");
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -349,7 +349,7 @@ impl RedisStore {
     }
 
     pub async fn get_active_instances(&self, doc_id: &str, timeout_secs: u64) -> Result<i64> {
-        let key = format!("doc:instances:{}", doc_id);
+        let key = format!("doc:instances:{doc_id}");
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -386,7 +386,7 @@ impl RedisStore {
     }
 
     pub async fn remove_instance_heartbeat(&self, doc_id: &str, instance_id: &str) -> Result<bool> {
-        let key = format!("doc:instances:{}", doc_id);
+        let key = format!("doc:instances:{doc_id}");
 
         let mut conn = self.pool.get().await?;
 
@@ -413,9 +413,9 @@ impl RedisStore {
     }
 
     pub async fn safe_delete_stream(&self, doc_id: &str, instance_id: &str) -> Result<()> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        let instances_key = format!("doc:instances:{}", doc_id);
-        let read_lock_key = format!("read:lock:{}", doc_id);
+        let stream_key = format!("yjs:stream:{doc_id}");
+        let instances_key = format!("doc:instances:{doc_id}");
+        let read_lock_key = format!("read:lock:{doc_id}");
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -478,7 +478,7 @@ impl RedisStore {
             "#,
         );
 
-        let lock_key = format!("lock:doc:{}", doc_id);
+        let lock_key = format!("lock:doc:{doc_id}");
 
         let _: redis::Value = script
             .key(&lock_key)
@@ -497,7 +497,7 @@ impl RedisStore {
     }
 
     pub async fn check_stream_exists(&self, doc_id: &str) -> Result<bool> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
+        let stream_key = format!("yjs:stream:{doc_id}");
 
         let mut conn = self.pool.get().await?;
         let exists: bool = redis::cmd("EXISTS")
@@ -515,7 +515,7 @@ impl RedisStore {
     }
 
     pub async fn read_all_stream_data(&self, doc_id: &str) -> Result<Vec<Bytes>> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
+        let stream_key = format!("yjs:stream:{doc_id}");
 
         let mut conn = self.pool.get().await?;
         let script = redis::Script::new(
@@ -552,8 +552,8 @@ impl RedisStore {
         is_final_batch: bool,
         lock_value: &mut Option<String>,
     ) -> Result<(Vec<Bytes>, String)> {
-        let stream_key = format!("yjs:stream:{}", doc_id);
-        let protection_lock_key = format!("read:lock:{}", doc_id);
+        let stream_key = format!("yjs:stream:{doc_id}");
+        let protection_lock_key = format!("read:lock:{doc_id}");
 
         if is_first_batch {
             let lock_id = uuid::Uuid::new_v4().to_string();

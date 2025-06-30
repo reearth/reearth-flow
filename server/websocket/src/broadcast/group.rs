@@ -195,7 +195,7 @@ impl BroadcastGroup {
             tokio::sync::oneshot::channel();
 
         let redis_subscriber_task = tokio::spawn(async move {
-            let stream_key = format!("yjs:stream:{}", doc_name_for_sub_clone);
+            let stream_key = format!("yjs:stream:{doc_name_for_sub_clone}");
 
             let mut conn = match redis_store_for_sub_clone
                 .create_dedicated_connection()
@@ -407,7 +407,7 @@ impl BroadcastGroup {
             let awareness = self.awareness().clone();
             let redis_store = self.redis_store.clone();
             let doc_name = self.doc_name.clone();
-            let stream_key = format!("yjs:stream:{}", doc_name);
+            let stream_key = format!("yjs:stream:{doc_name}");
             let instance_id = self.instance_id.clone();
             let mut conn = match redis_store.create_dedicated_connection().await {
                 Ok(conn) => conn,
