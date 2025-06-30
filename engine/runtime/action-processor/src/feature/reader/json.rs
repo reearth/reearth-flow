@@ -31,11 +31,11 @@ pub(crate) fn read_json(
     let byte = storage
         .get_sync(input_path.path().as_path())
         .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{e:?}")))?;
-    let value: serde_json::Value =
-        serde_json::from_str(std::str::from_utf8(&byte).map_err(|e| {
-            super::errors::FeatureProcessorError::FileJsonReader(format!("{e:?}"))
-        })?)
-        .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{e:?}")))?;
+    let value: serde_json::Value = serde_json::from_str(
+        std::str::from_utf8(&byte)
+            .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{e:?}")))?,
+    )
+    .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{e:?}")))?;
     match value {
         serde_json::Value::Array(arr) => {
             for v in arr {

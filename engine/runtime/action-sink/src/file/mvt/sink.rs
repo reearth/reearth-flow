@@ -65,9 +65,7 @@ impl SinkFactory for MVTSinkFactory {
                 SinkError::MvtWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                SinkError::MvtWriterFactory(format!(
-                    "Failed to deserialize `with` parameter: {e}"
-                ))
+                SinkError::MvtWriterFactory(format!("Failed to deserialize `with` parameter: {e}"))
             })?
         } else {
             return Err(SinkError::MvtWriterFactory(
@@ -214,10 +212,8 @@ impl Sink for MVTWriter {
                     errors.push(format!("Worker thread {i} timed out after {timeout:?}"));
                 }
                 Err(mpsc::RecvTimeoutError::Disconnected) => {
-                    ctx.event_hub.warn_log(
-                        None,
-                        format!("Worker thread {i} disconnected unexpectedly"),
-                    );
+                    ctx.event_hub
+                        .warn_log(None, format!("Worker thread {i} disconnected unexpectedly"));
                 }
             }
         }
@@ -374,9 +370,7 @@ impl MVTWriter {
                                     Err(e) => {
                                         gctx.event_hub.error_log(
                                             None,
-                                            format!(
-                                                "Failed to write zip file with error = {e:?}"
-                                            ),
+                                            format!("Failed to write zip file with error = {e:?}"),
                                         );
                                     }
                                 }

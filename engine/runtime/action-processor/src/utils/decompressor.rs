@@ -146,9 +146,7 @@ fn extract_sevenz(
     decompress_with_extract_fn(cursor, root_output_path.as_path(), |entry, reader, dest| {
         if !entry.is_directory {
             let dest_uri = Uri::try_from(dest.clone()).map_err(|e| {
-                reearth_flow_sevenz::Error::Unknown(format!(
-                    "Failed to convert `dest` to URI: {e}"
-                ))
+                reearth_flow_sevenz::Error::Unknown(format!("Failed to convert `dest` to URI: {e}"))
             });
             if let Ok(dest_uri) = dest_uri {
                 entries.push(dest_uri);

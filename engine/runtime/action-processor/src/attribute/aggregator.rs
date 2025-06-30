@@ -187,9 +187,7 @@ impl Processor for AttributeAggregator {
         for aggregate_attribute in &self.aggregate_attributes {
             if let Some(attribute) = &aggregate_attribute.attribute {
                 let result = feature.get(attribute).ok_or_else(|| {
-                    AttributeProcessorError::Aggregator(format!(
-                        "Attribute not found: {attribute}"
-                    ))
+                    AttributeProcessorError::Aggregator(format!("Attribute not found: {attribute}"))
                 })?;
                 aggregates.push(result.clone());
                 continue;
@@ -207,9 +205,7 @@ impl Processor for AttributeAggregator {
             value
         } else if let Some(calculation) = &self.calculation {
             scope.eval_ast::<i64>(calculation).map_err(|e| {
-                AttributeProcessorError::Aggregator(format!(
-                    "Failed to evaluate calculation: {e}"
-                ))
+                AttributeProcessorError::Aggregator(format!("Failed to evaluate calculation: {e}"))
             })?
         } else {
             return Err(

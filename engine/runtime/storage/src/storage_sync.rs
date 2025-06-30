@@ -172,14 +172,14 @@ impl Storage {
                 path: format!("{prefix:?}").into(),
             },
         })?;
-        let path =
-            p.to_str()
-                .map(|v| format!("{v}/"))
-                .ok_or(object_store::Error::InvalidPath {
-                    source: object_store::path::Error::InvalidPath {
-                        path: format!("{prefix:?}").into(),
-                    },
-                })?;
+        let path = p
+            .to_str()
+            .map(|v| format!("{v}/"))
+            .ok_or(object_store::Error::InvalidPath {
+                source: object_store::path::Error::InvalidPath {
+                    path: format!("{prefix:?}").into(),
+                },
+            })?;
         let ds = self
             .inner
             .blocking()

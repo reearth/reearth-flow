@@ -66,9 +66,7 @@ impl SinkFactory for CzmlWriterFactory {
                 SinkError::CzmlWriterFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                SinkError::CzmlWriterFactory(format!(
-                    "Failed to deserialize `with` parameter: {e}"
-                ))
+                SinkError::CzmlWriterFactory(format!("Failed to deserialize `with` parameter: {e}"))
             })?
         } else {
             return Err(SinkError::CzmlWriterFactory(

@@ -169,10 +169,8 @@ impl Processor for FeatureCityGmlReader {
                     errors.push(format!("Worker thread {i} timed out after {timeout:?}"));
                 }
                 Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
-                    ctx.event_hub.warn_log(
-                        None,
-                        format!("Worker thread {i} disconnected unexpectedly"),
-                    );
+                    ctx.event_hub
+                        .warn_log(None, format!("Worker thread {i} disconnected unexpectedly"));
                 }
             }
         }

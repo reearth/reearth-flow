@@ -210,9 +210,7 @@ impl WasmRuntimeExecutor {
         attributes: &HashMap<Attribute, AttributeValue>,
     ) -> super::errors::Result<String> {
         serde_json::to_string(attributes).map_err(|e| {
-            WasmProcessorError::RuntimeExecutor(format!(
-                "Failed to serialize Feature to JSON: {e}"
-            ))
+            WasmProcessorError::RuntimeExecutor(format!("Failed to serialize Feature to JSON: {e}"))
         })
     }
 

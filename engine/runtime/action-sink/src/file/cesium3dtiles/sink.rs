@@ -146,10 +146,9 @@ impl Sink for Cesium3DTilesWriter {
             port if *port == *DEFAULT_PORT => self.process_default(&ctx)?,
             port if *port == SCHEMA_PORT.clone() => self.process_schema(&ctx)?,
             port => {
-                return Err(SinkError::Cesium3DTilesWriter(format!(
-                    "Unknown port with: {port:?}"
-                ))
-                .into())
+                return Err(
+                    SinkError::Cesium3DTilesWriter(format!("Unknown port with: {port:?}")).into(),
+                )
             }
         }
         Ok(())
@@ -408,9 +407,7 @@ impl Cesium3DTilesWriter {
                                     Err(e) => {
                                         ctx.event_hub.error_log(
                                             None,
-                                            format!(
-                                                "Failed to write zip file with error = {e:?}"
-                                            ),
+                                            format!("Failed to write zip file with error = {e:?}"),
                                         );
                                     }
                                 }
