@@ -414,7 +414,7 @@ impl AttributeState {
 
 fn open_workbook(bytes: Bytes) -> Result<Xlsx<Cursor<Bytes>>, Error> {
     let reader = Cursor::new(bytes);
-    calamine::open_workbook_from_rs(reader).map_err(|e| Error::Parse(format!("{:?}", e)))
+    calamine::open_workbook_from_rs(reader).map_err(|e| Error::Parse(format!("{e:?}")))
 }
 
 fn should_process_row(columns: &[String]) -> bool {
@@ -453,16 +453,16 @@ pub(crate) fn parse(bytes: Bytes) -> Result<(FeatureTypes, ObjectListMap)> {
     let mut workbook = open_workbook(bytes)?;
     let range = workbook
         .worksheet_range("A.3.1_取得項目一覧")
-        .map_err(|e| Error::Parse(format!("{:?}", e)))?;
+        .map_err(|e| Error::Parse(format!("{e:?}")))?;
     let iter = RangeDeserializerBuilder::new()
         .from_range(&range)
-        .map_err(|e| Error::Parse(format!("{:?}", e)))?;
+        .map_err(|e| Error::Parse(format!("{e:?}")))?;
 
     let mut prefixes = HashMap::<String, Vec<Record>>::new();
     let mut state = AttributeState::default();
 
     for row in iter {
-        let columns: Vec<String> = row.map_err(|e| Error::Parse(format!("{:?}", e)))?;
+        let columns: Vec<String> = row.map_err(|e| Error::Parse(format!("{e:?}")))?;
         if let Some(feature_type) = columns.get(1) {
             state.update_feature_type(feature_type);
         }

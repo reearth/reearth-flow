@@ -55,14 +55,12 @@ impl SinkFactory for GeoJsonWriterFactory {
         let params = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::GeoJsonWriterFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 SinkError::GeoJsonWriterFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -151,7 +149,7 @@ impl Sink for GeoJsonWriter {
                     buffer.push(b',');
                 }
                 let bytes = serde_json::to_vec(&geojson)
-                    .map_err(|e| crate::errors::SinkError::GeoJsonWriter(format!("{}", e)))?;
+                    .map_err(|e| crate::errors::SinkError::GeoJsonWriter(format!("{e}")))?;
                 buffer.extend(bytes);
             }
             buffer.extend(Vec::from(b"]}\n"));

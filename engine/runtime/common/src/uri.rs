@@ -85,7 +85,7 @@ impl FromStr for Protocol {
             "gs" => Ok(Protocol::Google),
             "http" => Ok(Protocol::Http),
             "https" => Ok(Protocol::Https),
-            _ => Err(crate::Error::Uri(format!("Unknown protocol: {}", protocol))),
+            _ => Err(crate::Error::Uri(format!("Unknown protocol: {protocol}"))),
         }
     }
 }
@@ -290,7 +290,7 @@ impl Uri {
             }
             if Path::new(&path).is_relative() {
                 let current_dir =
-                    env::current_dir().map_err(|e| crate::Error::Uri(format!("{:?}", e)))?;
+                    env::current_dir().map_err(|e| crate::Error::Uri(format!("{e:?}")))?;
                 path = current_dir.join(path).to_string_lossy().to_string();
             }
             path = normalize_path(Path::new(&path))

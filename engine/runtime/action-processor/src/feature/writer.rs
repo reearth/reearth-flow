@@ -57,14 +57,12 @@ impl ProcessorFactory for FeatureWriterFactory {
         let params: FeatureWriterParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::FeatureWriterFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 FeatureProcessorError::FeatureWriterFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -81,7 +79,7 @@ impl ProcessorFactory for FeatureWriterFactory {
                     output: expr_engine
                         .compile(common_param.output.as_ref())
                         .map_err(|e| {
-                            FeatureProcessorError::FeatureWriterFactory(format!("{:?}", e))
+                            FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
                         })?,
                 };
                 let process = FeatureWriter {
@@ -96,7 +94,7 @@ impl ProcessorFactory for FeatureWriterFactory {
                     output: expr_engine
                         .compile(common_param.output.as_ref())
                         .map_err(|e| {
-                            FeatureProcessorError::FeatureWriterFactory(format!("{:?}", e))
+                            FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
                         })?,
                 };
                 let process = FeatureWriter {
@@ -114,12 +112,12 @@ impl ProcessorFactory for FeatureWriterFactory {
                     output: expr_engine
                         .compile(common_param.output.as_ref())
                         .map_err(|e| {
-                            FeatureProcessorError::FeatureWriterFactory(format!("{:?}", e))
+                            FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
                         })?,
                 };
                 let converter = if let Some(expr) = param.converter {
                     Some(expr_engine.compile(expr.as_ref()).map_err(|e| {
-                        FeatureProcessorError::FeatureWriterFactory(format!("{:?}", e))
+                        FeatureProcessorError::FeatureWriterFactory(format!("{e:?}"))
                     })?)
                 } else {
                     None
@@ -214,7 +212,7 @@ impl Processor for FeatureWriter {
         let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
         let path = scope
             .eval_ast::<String>(&output)
-            .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{:?}", e)))?;
+            .map_err(|e| FeatureProcessorError::FeatureWriterFactory(format!("{e:?}")))?;
         let output = Uri::from_str(path.as_str())?;
         let buffer = self.buffer.entry(output).or_default();
         buffer.push(ctx.feature);

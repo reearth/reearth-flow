@@ -40,7 +40,7 @@ impl Flattener {
             let admin = admin.unwrap();
             let scale = scale.unwrap();
 
-            let basename = format!("{}（{}管理区間）_{}", desc, admin, scale);
+            let basename = format!("{desc}（{admin}管理区間）_{scale}");
 
             let mut rank = risk_obj.get("uro:rank").map(|v| v.to_string());
             let mut rank_code = risk_obj.get("uro:rank_code").map(|v| v.to_string());
@@ -65,7 +65,7 @@ impl Flattener {
 
             for (label, value, value_opt) in attribs {
                 if let Some(value_str) = value_opt {
-                    let name = format!("{}_{}", basename, label);
+                    let name = format!("{basename}_{label}");
                     result.insert(
                         Attribute::new(name.clone()),
                         AttributeValue::String(value_str),
@@ -119,7 +119,7 @@ impl Flattener {
                     continue;
                 }
                 let desc = desc_opt.unwrap();
-                let basename = format!("{}_{}", title, desc);
+                let basename = format!("{title}_{desc}");
 
                 let mut rank_opt = risk_obj.get("uro:rank").map(|v| v.to_string());
                 let mut rank_code_opt = risk_obj.get("uro:rank_code").map(|v| v.to_string());
@@ -142,7 +142,7 @@ impl Flattener {
 
                 for (label, value_str_opt, value_type) in attribs {
                     if let Some(value_str) = value_str_opt {
-                        let name = format!("{}_{}", basename, label);
+                        let name = format!("{basename}_{label}");
                         result.insert(
                             Attribute::new(name.clone()),
                             AttributeValue::String(value_str),
@@ -199,12 +199,12 @@ impl Flattener {
 
             let entries = vec![
                 (
-                    format!("土砂災害リスク_{}_区域区分", desc),
+                    format!("土砂災害リスク_{desc}_区域区分"),
                     area_type_opt.unwrap_or("".to_string()),
                     AttributeValue::default_string(),
                 ),
                 (
-                    format!("土砂災害リスク_{}_区域区分コード", desc),
+                    format!("土砂災害リスク_{desc}_区域区分コード"),
                     type_code_str,
                     AttributeValue::default_number(),
                 ),
@@ -267,13 +267,13 @@ impl CommonAttributeProcessor {
         if let (Some(AttributeValue::String(name)), Some(AttributeValue::String(typ))) =
             (attribute.get("name"), attribute.get("type"))
         {
-            let name = format!("{}{}", prefix, name);
+            let name = format!("{prefix}{name}");
             let value = attribute.get("value").unwrap_or(&AttributeValue::Null);
             if typ == "attributeSet" {
                 if let AttributeValue::Array(attribute_set) = value {
                     for attribute in attribute_set {
                         if let AttributeValue::Map(attribute) = attribute {
-                            let prefix = format!("{}_", name);
+                            let prefix = format!("{name}_");
                             self.flatten_generic_attribute(attribute, prefix.as_str());
                         }
                     }
@@ -287,7 +287,7 @@ impl CommonAttributeProcessor {
                 .insert(name.clone(), typ.clone());
             if typ == "measure" {
                 if let Some(uom) = attribute.get("uom") {
-                    let name = format!("{}_uom", name);
+                    let name = format!("{name}_uom");
                     result.insert(Attribute::new(name.clone()), uom.clone());
                     self.attribute_to_attribute_type
                         .insert(name, "string".to_string());
@@ -332,7 +332,7 @@ impl CommonAttributeProcessor {
                 None => continue,
             };
             if s.to_string() == "2" || s.to_string() == "3" || s.to_string() == "4" {
-                let key = format!("lod_type_{}", s);
+                let key = format!("lod_type_{s}");
                 let attribute_name = Attribute::new(key.clone());
                 result.insert(attribute_name, lod_type.clone());
             }

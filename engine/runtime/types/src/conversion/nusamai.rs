@@ -208,7 +208,7 @@ impl AttributeValue {
                     AttributeValue::String(v.value().to_owned()),
                 );
                 result.insert(
-                    format!("{}_code", key),
+                    format!("{key}_code"),
                     AttributeValue::String(v.code().to_owned()),
                 );
             }
@@ -249,7 +249,7 @@ impl AttributeValue {
         if let Some(key) = key {
             result.insert(key.clone(), AttributeValue::String(code.value().to_owned()));
             result.insert(
-                format!("{}_code", key),
+                format!("{key}_code"),
                 AttributeValue::String(code.code().to_owned()),
             );
         }

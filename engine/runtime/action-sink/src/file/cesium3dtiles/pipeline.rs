@@ -72,8 +72,7 @@ pub(super) fn geometry_slicing_stage(
                 let serialized_feature = (tile_id, feature_type.to_string(), bytes);
                 sender_sliced.send(serialized_feature).map_err(|e| {
                     crate::errors::SinkError::cesium3dtiles_writer(format!(
-                        "Failed to send sliced feature with error = {:?}",
-                        e
+                        "Failed to send sliced feature with error = {e:?}"
                     ))
                 })?;
                 Ok(())
@@ -126,8 +125,7 @@ pub(super) fn feature_sorting_stage(
                 let typename = typename_to_seq[key.type_seq as usize].clone();
                 if let Err(e) = sender_sorted.send((tile_id, typename, serialized_feats)) {
                     return Err(crate::errors::SinkError::cesium3dtiles_writer(format!(
-                        "Failed to send sorted features with error = {:?}",
-                        e
+                        "Failed to send sorted features with error = {e:?}"
                     )));
                 }
             }
@@ -138,8 +136,7 @@ pub(super) fn feature_sorting_stage(
             }
             Err(err) => {
                 return Err(crate::errors::SinkError::cesium3dtiles_writer(format!(
-                    "Failed to sort features: {:?}",
-                    err
+                    "Failed to sort features: {err:?}"
                 )));
             }
         }
@@ -236,8 +233,7 @@ pub(super) fn tile_writing_stage(
                             bincode::serde::decode_from_slice(&serialized_feat, bincode_config)
                                 .map_err(|e| {
                                     crate::errors::SinkError::cesium3dtiles_writer(format!(
-                                        "Failed to decode_from_slice with {:?}",
-                                        e
+                                        "Failed to decode_from_slice with {e:?}"
                                     ))
                                 })?;
 
@@ -282,7 +278,7 @@ pub(super) fn tile_writing_stage(
                     let result = metadata_encoder.add_feature(&typename, &feature.attributes);
                     if let Err(e) = result {
                         ctx.event_hub
-                            .error_log(None, format!("Failed to add feature with error = {:?}", e));
+                            .error_log(None, format!("Failed to add feature with error = {e:?}"));
                         false
                     } else {
                         true
@@ -291,9 +287,8 @@ pub(super) fn tile_writing_stage(
                 .collect::<Vec<_>>();
             // A unique ID used when planning the atlas layout
             //  and when obtaining the UV coordinates after the layout has been completed
-            let generate_texture_id = |z, x, y, feature_id, poly_count| {
-                format!("{}_{}_{}_{}_{}", z, x, y, feature_id, poly_count)
-            };
+            let generate_texture_id =
+                |z, x, y, feature_id, poly_count| format!("{z}_{x}_{y}_{feature_id}_{poly_count}");
 
             // Check the size of all the textures and calculate the power of 2 of the largest size
             let mut max_width = 0;

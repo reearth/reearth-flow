@@ -146,14 +146,12 @@ impl ProcessorFactory for UnmatchedXlinkDetectorFactory {
         let params: UnmatchedXlinkDetectorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::UnmatchedXlinkDetectorFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 PlateauProcessorError::UnmatchedXlinkDetectorFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -202,10 +200,10 @@ impl Processor for UnmatchedXlinkDetector {
         let storage = ctx
             .storage_resolver
             .resolve(&uri)
-            .map_err(|e| PlateauProcessorError::UnmatchedXlinkDetector(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::UnmatchedXlinkDetector(format!("{e:?}")))?;
         let content = storage
             .get_sync(uri.path().as_path())
-            .map_err(|e| PlateauProcessorError::UnmatchedXlinkDetector(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::UnmatchedXlinkDetector(format!("{e:?}")))?;
         let xml_content = String::from_utf8(content.to_vec()).map_err(|_| {
             PlateauProcessorError::UnmatchedXlinkDetector("Invalid UTF-8".to_string())
         })?;
@@ -217,16 +215,14 @@ impl Processor for UnmatchedXlinkDetector {
         };
         let xml_ctx = xml::create_context(&document).map_err(|e| {
             PlateauProcessorError::UnmatchedXlinkDetector(format!(
-                "Failed to create xml context: {}",
-                e
+                "Failed to create xml context: {e}"
             ))
         })?;
         let root_node = match xml::get_root_readonly_node(&document) {
             Ok(node) => node,
             Err(e) => {
                 return Err(PlateauProcessorError::UnmatchedXlinkDetector(format!(
-                    "Failed to get root node: {}",
-                    e
+                    "Failed to get root node: {e}"
                 ))
                 .into());
             }
@@ -234,8 +230,7 @@ impl Processor for UnmatchedXlinkDetector {
         let nodes = xml::find_readonly_nodes_by_xpath(&xml_ctx, "//bldg:Building[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface] | //bldg:BuildingPart[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface] | //bldg:Room[bldg:lod2Solid or bldg:lod3Solid or bldg:lod4Solid or bldg:lod4MultiSurface]" , &root_node)
         .map_err(|e| {
             PlateauProcessorError::UnmatchedXlinkDetector(format!(
-                "Failed to find_readonly_nodes_in_elements with {}",
-                e
+                "Failed to find_readonly_nodes_in_elements with {e}"
             ))
         })?;
         let mut summary = Summary::default();
@@ -288,7 +283,7 @@ fn extract_xlink_gml_element(
         .get_attribute_ns(
             "id",
             String::from_utf8(GML31_NS.into_inner().to_vec())
-                .map_err(|e| PlateauProcessorError::UnmatchedXlinkDetector(format!("{:?}", e)))?
+                .map_err(|e| PlateauProcessorError::UnmatchedXlinkDetector(format!("{e:?}")))?
                 .as_str(),
         )
         .ok_or(PlateauProcessorError::UnmatchedXlinkDetector(
@@ -303,8 +298,7 @@ fn extract_xlink_gml_element(
             node,
         ).map_err(|e| {
             PlateauProcessorError::UnmatchedXlinkDetector(format!(
-                "Failed to find_readonly_nodes_in_elements with {}",
-                e
+                "Failed to find_readonly_nodes_in_elements with {e}"
             ))
         })?;
         let from = elements
@@ -320,8 +314,7 @@ fn extract_xlink_gml_element(
         xml::find_readonly_nodes_by_xpath(xml_ctx, "bldg:boundedBy/*//gml:Polygon[@gml:id]", node)
             .map_err(|e| {
                 PlateauProcessorError::UnmatchedXlinkDetector(format!(
-                    "Failed to find_readonly_nodes_in_elements with {}",
-                    e
+                    "Failed to find_readonly_nodes_in_elements with {e}"
                 ))
             })?;
     for element in &elements {

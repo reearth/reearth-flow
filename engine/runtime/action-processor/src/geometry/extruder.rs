@@ -53,14 +53,12 @@ impl ProcessorFactory for ExtruderFactory {
         let params: ExtruderParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::ExtruderFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 GeometryProcessorError::ExtruderFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -74,7 +72,7 @@ impl ProcessorFactory for ExtruderFactory {
         let expr = &params.distance;
         let template_ast = expr_engine
             .compile(expr.as_ref())
-            .map_err(|e| GeometryProcessorError::ExtruderFactory(format!("{:?}", e)))?;
+            .map_err(|e| GeometryProcessorError::ExtruderFactory(format!("{e:?}")))?;
         let process = Extruder {
             global_params: with,
             distance: template_ast,

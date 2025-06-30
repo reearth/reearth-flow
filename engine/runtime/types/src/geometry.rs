@@ -365,7 +365,7 @@ impl GeometryType {
 impl Display for GmlGeometry {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let msg = format!("lod{}{:?}", self.lod.unwrap_or_default(), self.ty);
-        write!(f, "{}", msg)
+        write!(f, "{msg}")
     }
 }
 

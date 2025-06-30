@@ -25,8 +25,8 @@ pub fn convert_hsl_to_rgba(
 
 fn percent_to_hex_color(percent: f64) -> crate::Result<i64> {
     let hex = (255.0 * percent).round() as u8;
-    i64::from_str_radix(format!("{:02X}", hex).as_str(), 16)
-        .map_err(|e| crate::Error::Color(format!("{}", e)))
+    i64::from_str_radix(format!("{hex:02X}").as_str(), 16)
+        .map_err(|e| crate::Error::Color(format!("{e}")))
 }
 
 #[cfg(test)]

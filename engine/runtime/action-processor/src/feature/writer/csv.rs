@@ -33,7 +33,7 @@ pub(super) fn write_csv(
         // Write header
         if !fields.is_empty() {
             wtr.write_record(fields.clone())
-                .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{:?}", e)))?;
+                .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?;
         }
     }
 
@@ -42,12 +42,12 @@ pub(super) fn write_csv(
             Some(ref fields) if !fields.is_empty() => {
                 let values = get_row_values(&row, &fields.clone())?;
                 wtr.write_record(values)
-                    .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{:?}", e)))?;
+                    .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?;
             }
             _ => match row {
                 AttributeValue::String(s) => wtr
                     .write_record(vec![s])
-                    .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{:?}", e)))?,
+                    .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?,
                 AttributeValue::Array(s) => {
                     let values = s
                         .into_iter()
@@ -57,7 +57,7 @@ pub(super) fn write_csv(
                         })
                         .collect::<Vec<_>>();
                     wtr.write_record(values)
-                        .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{:?}", e)))?
+                        .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?
                 }
                 _ => {
                     return Err(FeatureProcessorError::FeatureWriter(
@@ -68,18 +68,18 @@ pub(super) fn write_csv(
         }
     }
     wtr.flush()
-        .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{:?}", e)))?;
+        .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?;
     let data = String::from_utf8(
         wtr.into_inner()
-            .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{:?}", e)))?,
+            .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?,
     )
-    .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{:?}", e)))?;
+    .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?;
     let storage = storage_resolver
         .resolve(output)
-        .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{:?}", e)))?;
+        .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?;
     storage
         .put_sync(output.path().as_path(), Bytes::from(data))
-        .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{:?}", e)))?;
+        .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?;
     Ok(())
 }
 
@@ -98,7 +98,7 @@ fn get_row_values(
         .iter()
         .map(|field| match row {
             AttributeValue::Map(row) => row.get(field).map(|v| v.to_string()).ok_or_else(|| {
-                FeatureProcessorError::FeatureWriter(format!("Field not found: {}", field))
+                FeatureProcessorError::FeatureWriter(format!("Field not found: {field}"))
             }),
             _ => Err(FeatureProcessorError::FeatureWriter(
                 "Unsupported input".to_string(),

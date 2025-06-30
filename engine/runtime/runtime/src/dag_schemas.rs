@@ -121,7 +121,7 @@ impl DagSchemas {
         let entry_graph = graphs
             .iter()
             .find(|dag| dag.id == entry_graph_id)
-            .unwrap_or_else(|| panic!("Entry graph not found. with id = {}", entry_graph_id));
+            .unwrap_or_else(|| panic!("Entry graph not found. with id = {entry_graph_id}"));
         let other_graphs = graphs
             .iter()
             .filter(|graph| graph.id != entry_graph_id)
@@ -145,7 +145,7 @@ impl DagSchemas {
                 }
                 let subgraph = other_graphs
                     .get(sub_graph_id)
-                    .unwrap_or_else(|| panic!("Subgraph not found. with id = {}", sub_graph_id));
+                    .unwrap_or_else(|| panic!("Subgraph not found. with id = {sub_graph_id}"));
                 let params = if let Some(with) = &entity.with {
                     if let Some(global_params) = &global_params {
                         let mut global_with = global_params.clone();
@@ -193,7 +193,7 @@ impl DagSchemas {
             };
             let subgraph = other_graph_schemas
                 .get_mut(sub_graph_id)
-                .unwrap_or_else(|| panic!("Subgraph not found. with id = {}", sub_graph_id));
+                .unwrap_or_else(|| panic!("Subgraph not found. with id = {sub_graph_id}"));
             for edge in subgraph.graph.edge_weights_mut() {
                 edge.id = EdgeId::new(format!("{}.{}", entity.id, edge.id));
             }
@@ -577,7 +577,7 @@ impl DagSchemas {
                 for next_node in next_node_indices.keys() {
                     let Some(old_edge) = next_old_edges
                         .get(next_node)
-                        .unwrap_or_else(|| panic!("next_node not found: {:?}", next_node))
+                        .unwrap_or_else(|| panic!("next_node not found: {next_node:?}"))
                         .iter()
                         .find(|old_edge| old_edge.from_port() == Port::new(routing_port.clone()))
                     else {

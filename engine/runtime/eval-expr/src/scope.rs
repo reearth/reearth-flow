@@ -55,8 +55,7 @@ impl Scope {
         match self.engine.eval_scope_ast::<T>(ast, self) {
             Ok(ret) => Ok(ret),
             Err(err) => Err(Error::ExprInternalRuntime(format!(
-                "ast = {:?}, err = {}",
-                ast, err
+                "ast = {ast:?}, err = {err}"
             ))),
         }
     }

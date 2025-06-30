@@ -33,7 +33,7 @@ impl EncodableMessage for StdoutLogEvent {
 
     fn encode(&self) -> Result<ValidatedMessage<Bytes>, Self::Error> {
         let data = serde_json::to_vec(self).map_err(|e| {
-            eprintln!("Failed to serialize StdoutLogEvent: {}", e);
+            eprintln!("Failed to serialize StdoutLogEvent: {e}");
             e.to_string()
         })?;
         Ok(ValidatedMessage::new(

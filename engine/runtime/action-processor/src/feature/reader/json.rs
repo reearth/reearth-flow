@@ -20,23 +20,22 @@ pub(crate) fn read_json(
     let scope = feature.new_scope(expr_engine.clone(), global_params);
     let json_path = scope.eval_ast::<String>(&params.expr).map_err(|e| {
         super::errors::FeatureProcessorError::FileJsonReader(format!(
-            "Failed to evaluate expr: {}",
-            e
+            "Failed to evaluate expr: {e}"
         ))
     })?;
     let input_path = Uri::from_str(json_path.as_str())
-        .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{:?}", e)))?;
+        .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{e:?}")))?;
     let storage = storage_resolver
         .resolve(&input_path)
-        .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{:?}", e)))?;
+        .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{e:?}")))?;
     let byte = storage
         .get_sync(input_path.path().as_path())
-        .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{:?}", e)))?;
-    let value: serde_json::Value =
-        serde_json::from_str(std::str::from_utf8(&byte).map_err(|e| {
-            super::errors::FeatureProcessorError::FileJsonReader(format!("{:?}", e))
-        })?)
-        .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{:?}", e)))?;
+        .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{e:?}")))?;
+    let value: serde_json::Value = serde_json::from_str(
+        std::str::from_utf8(&byte)
+            .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{e:?}")))?,
+    )
+    .map_err(|e| super::errors::FeatureProcessorError::FileJsonReader(format!("{e:?}")))?;
     match value {
         serde_json::Value::Array(arr) => {
             for v in arr {

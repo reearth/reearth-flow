@@ -219,8 +219,7 @@ impl ChannelManager {
         let node_id = self.owner.id.clone().into_inner();
         self.send_op(ctx).unwrap_or_else(|e| {
             panic!(
-                "Failed to send operation: node_id = {:?}, feature_id = {:?}, port = {:?}, error = {:?}",
-                node_id, feature_id, port, e
+                "Failed to send operation: node_id = {node_id:?}, feature_id = {feature_id:?}, port = {port:?}, error = {e:?}"
             )
         })
     }

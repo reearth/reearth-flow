@@ -52,14 +52,12 @@ impl ProcessorFactory for ObjectListExtractorFactory {
         let params: ObjectListExtractorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::ObjectListExtractorFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 PlateauProcessorError::ObjectListExtractorFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -101,26 +99,23 @@ impl Processor for ObjectListExtractor {
                 "objectListPath attribute empty".to_string(),
             ))?;
         let object_list_path = Uri::from_str(object_list_path.as_str())
-            .map_err(|e| PlateauProcessorError::ObjectListExtractor(format!("{}", e)))?;
+            .map_err(|e| PlateauProcessorError::ObjectListExtractor(format!("{e}")))?;
         let storage_resolver = ctx.storage_resolver.clone();
         let storage = storage_resolver.resolve(&object_list_path).map_err(|e| {
             PlateauProcessorError::ObjectListExtractor(format!(
-                "Failed to resolve objectList path: {}",
-                e
+                "Failed to resolve objectList path: {e}"
             ))
         })?;
         let bytes = storage
             .get_sync(object_list_path.path().as_path())
             .map_err(|e| {
                 PlateauProcessorError::ObjectListExtractor(format!(
-                    "Failed to get objectList file: {}",
-                    e
+                    "Failed to get objectList file: {e}"
                 ))
             })?;
         let (feature_types, object_list) = crate::object_list::parse(bytes).map_err(|e| {
             PlateauProcessorError::ObjectListExtractor(format!(
-                "Failed to parse objectList file: {}",
-                e
+                "Failed to parse objectList file: {e}"
             ))
         })?;
         feature.insert(

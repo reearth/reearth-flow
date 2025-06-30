@@ -16,8 +16,7 @@ pub(crate) async fn upload_artifact(
     let local_artifact_root_path =
         dir::get_job_root_dir_path("workers", metadata.job_id).map_err(|e| {
             crate::errors::Error::failed_to_upload_artifact(format!(
-                "Failed to get job root dir: {}",
-                e
+                "Failed to get job root dir: {e}"
             ))
         })?;
     let remote_artifact_root_path = Uri::from_str(metadata.artifact_base_url.as_str())

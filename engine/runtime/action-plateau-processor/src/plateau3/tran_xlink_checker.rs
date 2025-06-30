@@ -83,17 +83,16 @@ impl Processor for TranXLinkChecker {
 
         let uri = Uri::from_str(city_gml_path.to_string().as_str()).map_err(|err| {
             PlateauProcessorError::TranXLinkChecker(format!(
-                "cityGmlPath is not a valid uri: {}",
-                err
+                "cityGmlPath is not a valid uri: {err}"
             ))
         })?;
         let storage = ctx
             .storage_resolver
             .resolve(&uri)
-            .map_err(|e| PlateauProcessorError::TranXLinkChecker(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::TranXLinkChecker(format!("{e:?}")))?;
         let content = storage
             .get_sync(uri.path().as_path())
-            .map_err(|e| PlateauProcessorError::TranXLinkChecker(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::TranXLinkChecker(format!("{e:?}")))?;
         let xml_content = String::from_utf8(content.to_vec())
             .map_err(|_| PlateauProcessorError::TranXLinkChecker("Invalid UTF-8".to_string()))?;
         let Ok(document) = xml::parse(xml_content) else {
@@ -102,14 +101,13 @@ impl Processor for TranXLinkChecker {
             );
         };
         let xml_ctx = xml::create_context(&document).map_err(|e| {
-            PlateauProcessorError::TranXLinkChecker(format!("Failed to create xml context: {}", e))
+            PlateauProcessorError::TranXLinkChecker(format!("Failed to create xml context: {e}"))
         })?;
         let root_node = match xml::get_root_readonly_node(&document) {
             Ok(node) => node,
             Err(e) => {
                 return Err(PlateauProcessorError::TranXLinkChecker(format!(
-                    "Failed to get root node: {}",
-                    e
+                    "Failed to get root node: {e}"
                 ))
                 .into());
             }
@@ -117,8 +115,7 @@ impl Processor for TranXLinkChecker {
         let nodes = xml::find_readonly_nodes_by_xpath(&xml_ctx, "*//tran:Road", &root_node)
             .map_err(|e| {
                 PlateauProcessorError::TranXLinkChecker(format!(
-                    "Failed to find_readonly_nodes_in_elements with {}",
-                    e
+                    "Failed to find_readonly_nodes_in_elements with {e}"
                 ))
             })?;
         for road in &nodes {
@@ -129,8 +126,7 @@ impl Processor for TranXLinkChecker {
                 xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//tran:TrafficArea", road).map_err(
                     |e| {
                         PlateauProcessorError::TranXLinkChecker(format!(
-                            "Failed to find_readonly_nodes_in_elements with {}",
-                            e
+                            "Failed to find_readonly_nodes_in_elements with {e}"
                         ))
                     },
                 )?;
@@ -152,8 +148,7 @@ impl Processor for TranXLinkChecker {
                 xml::find_readonly_nodes_by_xpath(&xml_ctx, ".//tran:AuxiliaryTrafficArea", road)
                     .map_err(|e| {
                     PlateauProcessorError::TranXLinkChecker(format!(
-                        "Failed to find_readonly_nodes_in_elements with {}",
-                        e
+                        "Failed to find_readonly_nodes_in_elements with {e}"
                     ))
                 })?;
             let mut lod2_aux_gml_ids = Vec::new();

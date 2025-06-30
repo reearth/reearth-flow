@@ -56,8 +56,7 @@ pub fn setup_job_directory(key: &str, sub_dir: &str, job_id: uuid::Uuid) -> crat
     )
     .map_err(|e| {
         Error::dir(format!(
-            "Failed to create URI from job directory path with error: {}",
-            e
+            "Failed to create URI from job directory path with error: {e}"
         ))
     })
 }

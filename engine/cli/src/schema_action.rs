@@ -52,10 +52,10 @@ impl SchemaActionCliCommand {
     pub fn execute(&self) -> crate::Result<()> {
         let i18n = if let Some(language_file_path) = &self.language_file_path {
             let file = File::open(language_file_path)
-                .map_err(|e| crate::errors::Error::init(format!("{:?}", e)))?;
+                .map_err(|e| crate::errors::Error::init(format!("{e:?}")))?;
             let reader = BufReader::new(file);
             let i18n: RootI18nSchema = serde_json::from_reader(reader)
-                .map_err(|e| crate::errors::Error::init(format!("{:?}", e)))?;
+                .map_err(|e| crate::errors::Error::init(format!("{e:?}")))?;
             i18n.actions
                 .into_iter()
                 .map(|action| (action.name.clone(), action.clone()))

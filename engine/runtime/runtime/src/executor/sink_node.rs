@@ -173,7 +173,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             let index = sel.ready();
             let op = receivers[index]
                 .recv()
-                .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)))?;
+                .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")))?;
             match op {
                 ExecutorOperation::Op { ctx } => {
                     let result = self.on_op(ctx.clone());
@@ -241,14 +241,14 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
     fn on_op(&mut self, ctx: ExecutorContext) -> Result<(), ExecutionError> {
         self.sink
             .process(ctx)
-            .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)))
+            .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")))
     }
 
     fn on_terminate(&mut self, ctx: NodeContext) -> Result<(), ExecutionError> {
         let result = self
             .sink
             .finish(ctx)
-            .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{:?}", e)));
+            .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")));
         self.event_hub.send(Event::SinkFinished {
             node: self.node_handle.clone(),
             name: self.sink.name().to_string(),

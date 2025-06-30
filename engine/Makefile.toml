@@ -23,6 +23,12 @@ script = ['''
 cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker -- -D warnings
 ''']
 
+[tasks.clippy-fix]
+script = ['''
+#!/usr/bin/env bash -eux
+cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --fix ${@}
+''']
+
 [tasks.test]
 script = ['''
 #!/usr/bin/env bash -eux

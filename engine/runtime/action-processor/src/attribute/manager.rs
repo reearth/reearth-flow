@@ -55,14 +55,12 @@ impl ProcessorFactory for AttributeManagerFactory {
         let params: AttributeManagerParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 AttributeProcessorError::ManagerFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 AttributeProcessorError::ManagerFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -186,7 +184,7 @@ fn process_feature(
                         }
                     } else if let Err(e) = new_value {
                         ctx.event_hub
-                            .warn_log(None, format!("convert error with: {:?}", e));
+                            .warn_log(None, format!("convert error with: {e:?}"));
                     }
                 }
             }
@@ -200,7 +198,7 @@ fn process_feature(
                         }
                     } else if let Err(e) = new_value {
                         ctx.event_hub
-                            .warn_log(None, format!("create error with: {:?}", e));
+                            .warn_log(None, format!("create error with: {e:?}"));
                     }
                 }
             }
@@ -239,7 +237,7 @@ fn convert_single_operation(
             Some(
                 expr_engine
                     .compile(expr.as_ref())
-                    .map_err(|e| AttributeProcessorError::ManagerFactory(format!("{:?}", e)))?,
+                    .map_err(|e| AttributeProcessorError::ManagerFactory(format!("{e:?}")))?,
             )
         } else {
             None

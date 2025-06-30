@@ -48,15 +48,11 @@ impl SourceFactory for SqlReaderFactory {
     ) -> Result<Box<dyn Source>, BoxedError> {
         let param: SqlReaderParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                SourceError::SqlReaderFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
-                ))
+                SourceError::SqlReaderFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 SourceError::SqlReaderFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -105,19 +101,20 @@ impl Source for SqlReader {
         let database_url = scope
             .eval::<String>(self.param.database_url.to_string().as_str())
             .map_err(|e| {
-                crate::errors::SourceError::SqlReader(format!("Failed to evaluate: {}", e))
+                crate::errors::SourceError::SqlReader(format!("Failed to evaluate: {e}"))
             })?;
         let sql = scope
             .eval::<String>(self.param.sql.to_string().as_str())
             .map_err(|e| {
-                crate::errors::SourceError::SqlReader(format!("Failed to evaluate: {}", e))
+                crate::errors::SourceError::SqlReader(format!("Failed to evaluate: {e}"))
             })?;
         let adapter = SqlAdapter::new(database_url, 10).await.map_err(|e| {
-            crate::errors::SourceError::SqlReader(format!("Failed to create adapter: {}", e))
+            crate::errors::SourceError::SqlReader(format!("Failed to create adapter: {e}"))
         })?;
-        let result = adapter.fetch_many(sql.as_str()).await.map_err(|e| {
-            crate::errors::SourceError::SqlReader(format!("Failed to fetch: {}", e))
-        })?;
+        let result = adapter
+            .fetch_many(sql.as_str())
+            .await
+            .map_err(|e| crate::errors::SourceError::SqlReader(format!("Failed to fetch: {e}")))?;
         let features = result
             .into_iter()
             .map(|row| row.try_into())

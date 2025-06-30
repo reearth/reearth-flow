@@ -124,14 +124,12 @@ impl ProcessorFactory for XmlValidatorFactory {
         let params: XmlValidatorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 XmlProcessorError::ValidatorFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 XmlProcessorError::ValidatorFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -387,10 +385,10 @@ impl XmlValidator {
                 let storage = ctx
                     .storage_resolver
                     .resolve(&uri)
-                    .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?;
+                    .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
                 let content = storage
                     .get_sync(uri.path().as_path())
-                    .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?;
+                    .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
                 String::from_utf8(content.to_vec())
                     .map_err(|_| XmlProcessorError::Validator("Invalid UTF-8".to_string()))
             }
@@ -419,7 +417,7 @@ impl XmlValidator {
         document: &XmlDocument,
     ) -> Result<Vec<ValidationResult>> {
         let schema_locations = xml::parse_schema_locations(document)
-            .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?;
+            .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
 
         let result = if !self.schema_store.read().contains_key(&schema_locations) {
             let mut combined_schema = String::from(
@@ -445,17 +443,16 @@ impl XmlValidator {
                     continue;
                 }
                 combined_schema.push_str(&format!(
-                    r#"<xs:import namespace="{}" schemaLocation="{}"/>"#,
-                    ns, target
+                    r#"<xs:import namespace="{ns}" schemaLocation="{target}"/>"#
                 ));
             }
             combined_schema.push_str("</xs:schema>");
             let schema_context =
                 xml::create_xml_schema_validation_context_from_buffer(combined_schema.as_bytes())
-                    .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?;
+                    .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
 
             let result = xml::validate_document_by_schema_context(document, &schema_context)
-                .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?;
+                .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?;
             self.schema_store
                 .write()
                 .insert(schema_locations, schema_context);
@@ -465,7 +462,7 @@ impl XmlValidator {
                 document,
                 self.schema_store.read().get(&schema_locations).unwrap(),
             )
-            .map_err(|e| XmlProcessorError::Validator(format!("{:?}", e)))?
+            .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?
         };
         let result = result
             .into_iter()
@@ -505,7 +502,7 @@ fn recursive_check_namespace(
                 if !namespaces.iter().any(|n| n.get_prefix() == prefix) {
                     result.push(ValidationResult::new(
                         "NamespaceError",
-                        format!("No namespace declaration for {}", prefix).as_str(),
+                        format!("No namespace declaration for {prefix}").as_str(),
                     ));
                 }
             } else {

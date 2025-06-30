@@ -53,14 +53,12 @@ impl ProcessorFactory for GeometryExtractorFactory {
         let processor: GeometryExtractor = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 GeometryProcessorError::GeometryExtractorFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 GeometryProcessorError::GeometryExtractorFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -93,10 +91,7 @@ impl Processor for GeometryExtractor {
         };
         let mut feature = feature.clone();
         let value = serde_json::to_value(geometry).map_err(|e| {
-            GeometryProcessorError::GeometryExtractor(format!(
-                "Failed to serialize geometry: {}",
-                e
-            ))
+            GeometryProcessorError::GeometryExtractor(format!("Failed to serialize geometry: {e}"))
         })?;
         let dump = serde_json::to_string(&value)?;
         let dump = compress(&dump)?;

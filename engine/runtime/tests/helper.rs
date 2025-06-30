@@ -44,18 +44,18 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir
         .resolve(&Uri::for_test("ram:///fixture/"))
         .unwrap();
     for fixture in fixture_files {
-        let file = Fixtures::get(format!("{}/{}", test_id, fixture).as_str())
+        let file = Fixtures::get(format!("{test_id}/{fixture}").as_str())
             .unwrap()
             .data
             .to_vec();
         storage
             .put_sync(
-                PathBuf::from(format!("/fixture/testdata/{}/{}", test_id, fixture)).as_path(),
+                PathBuf::from(format!("/fixture/testdata/{test_id}/{fixture}")).as_path(),
                 bytes::Bytes::from(file),
             )
             .unwrap();
     }
-    let workflow_file = WorkflowFiles::get(format!("{}.yaml", test_id).as_str()).unwrap();
+    let workflow_file = WorkflowFiles::get(format!("{test_id}.yaml").as_str()).unwrap();
     let workflow = std::str::from_utf8(workflow_file.data.as_ref()).unwrap();
     let binding = tempdir().unwrap();
     let folder_path = binding.path();
@@ -94,7 +94,7 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir
 pub(crate) fn execute_with_test_assert(test_id: &str, assert_file: &str) {
     let tempdir = execute(test_id, vec![]).unwrap();
     let storage_resolver = Arc::new(StorageResolver::new());
-    let file = Fixtures::get(format!("{}/{}", test_id, assert_file).as_str())
+    let file = Fixtures::get(format!("{test_id}/{assert_file}").as_str())
         .unwrap()
         .data
         .to_vec();

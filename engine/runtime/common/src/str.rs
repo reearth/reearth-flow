@@ -21,7 +21,7 @@ pub fn base64_decode<T: AsRef<[u8]>>(s: T) -> crate::Result<String> {
 pub fn base64_decode_byte<T: AsRef<[u8]>>(s: T) -> crate::Result<Vec<u8>> {
     general_purpose::STANDARD
         .decode(s)
-        .map_err(|e| crate::Error::Str(format!("{}", e)))
+        .map_err(|e| crate::Error::Str(format!("{e}")))
 }
 
 pub fn remove_trailing_slash(s: &str) -> String {
@@ -52,7 +52,7 @@ pub fn to_hash(s: &str) -> String {
     hasher.update(s.as_bytes());
     let mut result = String::new();
     for b in hasher.finalize() {
-        result.push_str(&format!("{:02x}", b));
+        result.push_str(&format!("{b:02x}"));
     }
     result
 }

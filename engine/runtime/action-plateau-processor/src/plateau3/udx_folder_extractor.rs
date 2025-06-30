@@ -92,14 +92,12 @@ impl ProcessorFactory for UdxFolderExtractorFactory {
         let params: UdxFolderExtractorParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::UdxFolderExtractorFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 PlateauProcessorError::UdxFolderExtractorFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -114,8 +112,7 @@ impl ProcessorFactory for UdxFolderExtractorFactory {
             .compile(params.city_gml_path.as_ref())
             .map_err(|e| {
                 PlateauProcessorError::UdxFolderExtractorFactory(format!(
-                    "Failed to compile city_gml_path: {}",
-                    e
+                    "Failed to compile city_gml_path: {e}"
                 ))
             })?;
         let process = UdxFolderExtractor {
@@ -197,14 +194,14 @@ fn mapper(
         let scope = feature.new_scope(expr_engine.clone(), global_params);
         scope
             .eval_ast::<String>(expr)
-            .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{:?}", e)))?
+            .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?
     };
     let folders = city_gml_path
         .split(MAIN_SEPARATOR)
         .map(String::from)
         .collect::<Vec<String>>();
     let city_gml_path = Uri::from_str(city_gml_path.to_string().as_str())
-        .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?;
     let (mut root, mut pkg, mut admin, mut area, mut dirs) = (
         String::new(),
         String::new(),
@@ -228,7 +225,7 @@ fn mapper(
             root = fifth_last.to_string();
             pkg = third_last.to_string();
             area = second_last.to_string();
-            dirs = format!("{}{}{}", pkg, MAIN_SEPARATOR_STR, area);
+            dirs = format!("{pkg}{MAIN_SEPARATOR_STR}{area}");
             rtdir = PathBuf::from(folders[..folders.len() - 4].join(MAIN_SEPARATOR_STR));
         }
         [.., sixth_last, _fifth_last, fourth_last, third_last, second_last, _last]
@@ -238,10 +235,7 @@ fn mapper(
             pkg = fourth_last.to_string();
             admin = third_last.to_string();
             area = second_last.to_string();
-            dirs = format!(
-                "{}{}{}{}{}",
-                pkg, MAIN_SEPARATOR_STR, admin, MAIN_SEPARATOR_STR, area
-            );
+            dirs = format!("{pkg}{MAIN_SEPARATOR_STR}{admin}{MAIN_SEPARATOR_STR}{area}");
             rtdir = PathBuf::from(folders[..folders.len() - 5].join(MAIN_SEPARATOR_STR));
         }
         _ => (),
@@ -284,49 +278,49 @@ fn gen_codelists_and_schemas_path(
 ) -> super::errors::Result<(Uri, Uri, Uri)> {
     let rtdir: Uri = rtdir
         .try_into()
-        .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?;
     let storage = storage_resolver
         .resolve(&rtdir)
-        .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?;
 
     let dir_codelists = rtdir
         .join("codelists")
-        .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?;
     let dir_schemas = rtdir
         .join("schemas")
-        .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?;
 
     if PKG_FOLDERS.contains(&pkg.as_str()) {
         if !storage
             .exists_sync(dir_codelists.path().as_path())
-            .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{:?}", e)))?
+            .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?
         {
             let dir = Uri::for_test(&codelists_path.clone().ok_or(
                 PlateauProcessorError::UdxFolderExtractor("Invalid codelists path".to_string()),
             )?);
             if !storage
                 .exists_sync(dir.path().as_path())
-                .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{:?}", e)))?
+                .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?
             {
                 storage
                     .copy_sync(dir.path().as_path(), dir_codelists.path().as_path())
-                    .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{:?}", e)))?;
+                    .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?;
             }
         }
         if !storage
             .exists_sync(dir_schemas.path().as_path())
-            .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{:?}", e)))?
+            .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?
         {
             let dir = Uri::for_test(&schemas_path.clone().ok_or(
                 PlateauProcessorError::UdxFolderExtractor("Invalid codelists path".to_string()),
             )?);
             if !storage
                 .exists_sync(dir.path().as_path())
-                .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{:?}", e)))?
+                .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?
             {
                 storage
                     .copy_sync(dir.path().as_path(), dir_codelists.path().as_path())
-                    .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{:?}", e)))?;
+                    .map_err(|e| PlateauProcessorError::UdxFolderExtractor(format!("{e:?}")))?;
             }
         }
     }

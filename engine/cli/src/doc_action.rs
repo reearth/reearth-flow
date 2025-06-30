@@ -66,15 +66,15 @@ impl DocActionCliCommand {
             }
             println!("### Input Ports");
             action.input_ports.iter().for_each(|port| {
-                println!("* {}", port);
+                println!("* {port}");
             });
             println!("### Output Ports");
             action.output_ports.iter().for_each(|port| {
-                println!("* {}", port);
+                println!("* {port}");
             });
             println!("### Category");
             action.categories.iter().for_each(|category| {
-                println!("* {}", category);
+                println!("* {category}");
             });
         });
         Ok(())

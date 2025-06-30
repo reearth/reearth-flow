@@ -30,7 +30,7 @@ where
     Z: GeoFloat,
 {
     fn is_adjacent_segments(i1: usize, i2: usize) -> bool {
-        let difference = if i1 > i2 { i1 - i2 } else { i2 - i1 };
+        let difference = i1.abs_diff(i2);
         difference == 1
     }
 

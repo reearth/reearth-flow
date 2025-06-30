@@ -55,14 +55,12 @@ impl ProcessorFactory for WasmRuntimeExecutorFactory {
         let params: WasmRuntimeExecutorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 WasmProcessorError::RuntimeExecutorFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 WasmProcessorError::RuntimeExecutorFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -89,8 +87,7 @@ impl WasmRuntimeExecutorFactory {
     ) -> super::errors::Result<Vec<u8>> {
         let temp_wasm_file = NamedTempFile::new().map_err(|e| {
             WasmProcessorError::RuntimeExecutorFactory(format!(
-                "Failed to create temporary file: {}",
-                e
+                "Failed to create temporary file: {e}"
             ))
         })?;
         let temp_wasm_path = temp_wasm_file.path();
@@ -103,7 +100,7 @@ impl WasmRuntimeExecutorFactory {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let source_code_file_path = expr_engine
             .eval::<String>(params.source_code_file_path.clone().into_inner().as_str())
-            .map_err(|e| WasmProcessorError::RuntimeExecutorFactory(format!("{:?}", e)))?;
+            .map_err(|e| WasmProcessorError::RuntimeExecutorFactory(format!("{e:?}")))?;
 
         let wasm_binary = match params.programming_language {
             ProgrammingLanguage::Python => {
@@ -112,16 +109,14 @@ impl WasmRuntimeExecutorFactory {
                     .output()
                     .map_err(|e| {
                         WasmProcessorError::RuntimeExecutorFactory(format!(
-                            "Failed to run py2wasm: {}. Command: py2wasm {} -o {}",
-                            e, source_code_file_path, temp_wasm_path_str
+                            "Failed to run py2wasm: {e}. Command: py2wasm {source_code_file_path} -o {temp_wasm_path_str}"
                         ))
                     })?;
 
                 if !py2wasm_output.status.success() {
                     let error_msg = String::from_utf8_lossy(&py2wasm_output.stderr);
                     return Err(WasmProcessorError::RuntimeExecutorFactory(format!(
-                        "Python compilation failed: {}",
-                        error_msg
+                        "Python compilation failed: {error_msg}"
                     )));
                 }
 
@@ -130,8 +125,7 @@ impl WasmRuntimeExecutorFactory {
                     .and_then(|mut file| file.read_to_end(&mut binary))
                     .map_err(|e| {
                         WasmProcessorError::RuntimeExecutorFactory(format!(
-                            "Failed to read compiled Wasm file: {}",
-                            e
+                            "Failed to read compiled Wasm file: {e}"
                         ))
                     })?;
                 binary
@@ -216,17 +210,14 @@ impl WasmRuntimeExecutor {
         attributes: &HashMap<Attribute, AttributeValue>,
     ) -> super::errors::Result<String> {
         serde_json::to_string(attributes).map_err(|e| {
-            WasmProcessorError::RuntimeExecutor(format!(
-                "Failed to serialize Feature to JSON: {}",
-                e
-            ))
+            WasmProcessorError::RuntimeExecutor(format!("Failed to serialize Feature to JSON: {e}"))
         })
     }
 
     fn execute_wasm_module(&self, input: &str) -> super::errors::Result<String> {
         let mut store = Store::default();
         let module = Module::new(&store, &self.wasm_binary).map_err(|e| {
-            WasmProcessorError::RuntimeExecutor(format!("Failed to compile module: {}", e))
+            WasmProcessorError::RuntimeExecutor(format!("Failed to compile module: {e}"))
         })?;
 
         let program_name = "WasmRuntimeExecutor";
@@ -236,14 +227,13 @@ impl WasmRuntimeExecutor {
             .stdout(Box::new(stdout_tx))
             .run_with_store(module, &mut store)
             .map_err(|e| {
-                WasmProcessorError::RuntimeExecutor(format!("Failed to execute module: {}", e))
+                WasmProcessorError::RuntimeExecutor(format!("Failed to execute module: {e}"))
             })?;
 
         let mut output = String::new();
         stdout_rx.read_to_string(&mut output).map_err(|e| {
             WasmProcessorError::RuntimeExecutor(format!(
-                "Failed to read stdout from Wasm module: {}",
-                e
+                "Failed to read stdout from Wasm module: {e}"
             ))
         })?;
         Ok(output)
@@ -261,8 +251,7 @@ impl WasmRuntimeExecutor {
 
         let parsed_output: serde_json::Value = serde_json::from_str(output).map_err(|e| {
             WasmProcessorError::RuntimeExecutor(format!(
-                "Failed to parse Wasm module output as JSON. Output: '{}', Error: {}",
-                output, e
+                "Failed to parse Wasm module output as JSON. Output: '{output}', Error: {e}"
             ))
         })?;
 
@@ -271,29 +260,26 @@ impl WasmRuntimeExecutor {
                 if let Some(attributes_value) = parsed_output.get(FIELD_ATTRIBUTES) {
                     serde_json::from_value(attributes_value.clone()).map_err(|e| {
                         WasmProcessorError::RuntimeExecutor(format!(
-                            "Failed to deserialize '{}': {}",
-                            FIELD_ATTRIBUTES, e
+                            "Failed to deserialize '{FIELD_ATTRIBUTES}': {e}"
                         ))
                     })
                 } else {
                     Err(WasmProcessorError::RuntimeExecutor(format!(
-                        "Missing '{}' in Wasm module output",
-                        FIELD_ATTRIBUTES
+                        "Missing '{FIELD_ATTRIBUTES}' in Wasm module output"
                     )))
                 }
             }
             Some(serde_json::Value::String(status)) if status == STATUS_ERROR => {
                 let error_msg = match parsed_output.get(FIELD_ERROR) {
                     Some(serde_json::Value::String(err)) => {
-                        format!("Wasm module execution failed with error: {}", err)
+                        format!("Wasm module execution failed with error: {err}")
                     }
                     _ => "Wasm module execution failed with an unknown error.".to_string(),
                 };
                 Err(WasmProcessorError::RuntimeExecutor(error_msg))
             }
             _ => Err(WasmProcessorError::RuntimeExecutor(format!(
-                "Unexpected '{}' in Wasm module output",
-                FIELD_STATUS
+                "Unexpected '{FIELD_STATUS}' in Wasm module output"
             ))),
         }
     }

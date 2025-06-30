@@ -30,19 +30,16 @@ pub(crate) fn read_csv(
     let storage_resolver = &ctx.storage_resolver;
     let scope = feature.new_scope(expr_engine.clone(), global_params);
     let csv_path = scope.eval_ast::<String>(&params.expr).map_err(|e| {
-        super::errors::FeatureProcessorError::FileCsvReader(format!(
-            "Failed to evaluate expr: {}",
-            e
-        ))
+        super::errors::FeatureProcessorError::FileCsvReader(format!("Failed to evaluate expr: {e}"))
     })?;
     let input_path = Uri::from_str(csv_path.as_str())
-        .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{:?}", e)))?;
+        .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
     let storage = storage_resolver
         .resolve(&input_path)
-        .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{:?}", e)))?;
+        .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
     let byte = storage
         .get_sync(input_path.path().as_path())
-        .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{:?}", e)))?;
+        .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
     let cursor = Cursor::new(byte);
     let mut rdr = csv::ReaderBuilder::new()
         .flexible(true)
@@ -54,10 +51,10 @@ pub(crate) fn read_csv(
         .deserialize()
         .nth(offset)
         .unwrap_or(Ok(Vec::<String>::new()))
-        .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{:?}", e)))?;
+        .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
     for rd in rdr.deserialize() {
-        let record: Vec<String> = rd
-            .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{:?}", e)))?;
+        let record: Vec<String> =
+            rd.map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
         let row = record
             .iter()
             .enumerate()

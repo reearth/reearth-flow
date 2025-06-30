@@ -65,14 +65,12 @@ impl ProcessorFactory for DictionariesInitiatorFactory {
         let params: DictionariesInitiatorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::DictionariesInitiatorFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 PlateauProcessorError::DictionariesInitiatorFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -135,8 +133,7 @@ impl Processor for DictionariesInitiator {
             Some(AttributeValue::String(dir)) => dir,
             v => {
                 return Err(PlateauProcessorError::DictionariesInitiator(format!(
-                    "No dirCodelists value with {:?}",
-                    v
+                    "No dirCodelists value with {v:?}"
                 ))
                 .into())
             }
@@ -144,8 +141,7 @@ impl Processor for DictionariesInitiator {
         if !self.codelists_map.contains_key(dir_codelists) {
             let dir = Uri::from_str(dir_codelists).map_err(|e| {
                 PlateauProcessorError::DictionariesInitiator(format!(
-                    "Cannot parse uri with error = {:?}",
-                    e
+                    "Cannot parse uri with error = {e:?}"
                 ))
             })?;
             if dir.is_dir() {

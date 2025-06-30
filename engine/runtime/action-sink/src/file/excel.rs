@@ -132,7 +132,7 @@ fn write_cell_formatting(
     row_data: &IndexMap<Attribute, AttributeValue>,
 ) -> Result<(), crate::errors::SinkError> {
     if let Some(AttributeValue::String(formatting_str)) =
-        row_data.get(&Attribute::new(format!("{}.formatting", key)))
+        row_data.get(&Attribute::new(format!("{key}.formatting")))
     {
         let format = parse_formatting(formatting_str.as_str())?;
         worksheet
@@ -151,7 +151,7 @@ fn write_cell_formula(
     row_data: &IndexMap<Attribute, AttributeValue>,
 ) -> Result<(), crate::errors::SinkError> {
     if let Some(AttributeValue::String(formula_str)) =
-        row_data.get(&Attribute::new(format!("{}.formula", key)))
+        row_data.get(&Attribute::new(format!("{key}.formula")))
     {
         worksheet
             .write_formula(row as u32, col as u16, Formula::new(formula_str))
@@ -169,7 +169,7 @@ fn write_cell_hyperlink(
     row_data: &IndexMap<Attribute, AttributeValue>,
 ) -> Result<(), crate::errors::SinkError> {
     if let Some(AttributeValue::String(hyperlink_str)) =
-        row_data.get(&Attribute::new(format!("{}.hyperlink", key)))
+        row_data.get(&Attribute::new(format!("{key}.hyperlink")))
     {
         worksheet
             .write_url(row as u32, col as u16, Url::new(hyperlink_str))
@@ -403,8 +403,7 @@ impl TryFrom<&str> for ExcelFormatAlign {
             "VerticalJustify" => Ok(ExcelFormatAlign(FormatAlign::VerticalJustify)),
             "VerticalDistributed" => Ok(ExcelFormatAlign(FormatAlign::VerticalDistributed)),
             _ => Err(crate::errors::SinkError::file_writer(format!(
-                "Invalid alignment value: {}",
-                value
+                "Invalid alignment value: {value}"
             ))),
         }
     }
@@ -423,8 +422,7 @@ impl TryFrom<&str> for ExcelFormatUnderline {
             "SingleAccounting" => Ok(ExcelFormatUnderline(FormatUnderline::SingleAccounting)),
             "DoubleAccounting" => Ok(ExcelFormatUnderline(FormatUnderline::DoubleAccounting)),
             _ => Err(crate::errors::SinkError::file_writer(format!(
-                "Invalid underline value: {}",
-                value
+                "Invalid underline value: {value}"
             ))),
         }
     }

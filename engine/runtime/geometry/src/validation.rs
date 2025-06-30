@@ -28,7 +28,7 @@ impl std::fmt::Display for RingRole {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             RingRole::Exterior => write!(f, "exterior ring"),
-            RingRole::Interior(i) => write!(f, "interior ring n°{}", i),
+            RingRole::Interior(i) => write!(f, "interior ring n°{i}"),
         }
     }
 }
@@ -133,7 +133,7 @@ impl Display for ValidationProblemPosition {
             }
             ValidationProblemPosition::Polygon(ring_role, coord) => {
                 if coord.0 == -1 {
-                    str_buffer.push(format!(" on the {}", ring_role))
+                    str_buffer.push(format!(" on the {ring_role}"))
                 } else {
                     str_buffer.push(format!(" at coordinate {} of the {}", coord.0, ring_role))
                 }
@@ -219,7 +219,7 @@ impl Display for ValidationProblemReport {
                         | ValidationProblemPosition::MultiPolygon(_, _, _)
                 );
 
-                str_buffer.push(format!("{}", position));
+                str_buffer.push(format!("{position}"));
 
                 match *problem {
                     ValidationProblem::NotFinite => {
@@ -263,7 +263,7 @@ impl Display for ValidationProblemReport {
             .collect::<Vec<String>>()
             .join("\n");
 
-        write!(f, "{}", buffer)
+        write!(f, "{buffer}")
     }
 }
 

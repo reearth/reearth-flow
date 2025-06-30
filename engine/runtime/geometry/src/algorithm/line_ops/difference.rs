@@ -134,7 +134,7 @@ mod tests {
         let line1 = Line2D::new((0.0, 0.0), (3.0, 3.0));
 
         let result = line_difference_2d(line0, line1, EPSILON);
-        println!("{:?}", result);
+        println!("{result:?}");
         assert!(result.is_empty());
     }
 

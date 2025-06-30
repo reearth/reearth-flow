@@ -55,14 +55,12 @@ impl SinkFactory for ZipFileWriterFactory {
         let params: ZipFileWriterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::ZipFileWriterFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 SinkError::ZipFileWriterFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -128,8 +126,7 @@ impl Sink for ZipFileWriter {
             .map_err(|e| crate::errors::SinkError::ZipFileWriter(e.to_string()))?;
         let storage = storage_resolver.resolve(&output).map_err(|e| {
             crate::errors::SinkError::ZipFileWriter(format!(
-                "Failed to resolve storage for {}: {}",
-                output, e
+                "Failed to resolve storage for {output}: {e}"
             ))
         })?;
         storage.put_sync(

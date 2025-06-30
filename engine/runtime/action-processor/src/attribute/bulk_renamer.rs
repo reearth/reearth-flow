@@ -50,14 +50,12 @@ impl ProcessorFactory for BulkAttributeRenamerFactory {
         let params: BulkAttributeRenamerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 AttributeProcessorError::BulkRenamerFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 AttributeProcessorError::BulkRenamerFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -71,8 +69,7 @@ impl ProcessorFactory for BulkAttributeRenamerFactory {
             if let Some(ref find) = params.text_to_find {
                 Some(Regex::new(find).map_err(|e| {
                     AttributeProcessorError::BulkRenamerFactory(format!(
-                        "Invalid regex pattern '{}': {}",
-                        find, e
+                        "Invalid regex pattern '{find}': {e}"
                     ))
                 })?)
             } else {
@@ -238,8 +235,7 @@ impl BulkAttributeRenamer {
                     .to_string())
             } else {
                 Err(AttributeProcessorError::BulkRenamer(format!(
-                    "Attribute '{}' does not match the regex pattern",
-                    attr_name
+                    "Attribute '{attr_name}' does not match the regex pattern"
                 )))
             }
         } else {

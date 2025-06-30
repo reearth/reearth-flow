@@ -24,16 +24,16 @@ fn main() {
     let command = match RunWorkerCommand::parse_cli_args(matches) {
         Ok(command) => command,
         Err(err) => {
-            eprintln!("Failed to parse cli args: {:?}\n", err);
+            eprintln!("Failed to parse cli args: {err:?}\n");
             std::process::exit(1);
         }
     };
     if let Err(err) = logger::setup_logging_and_tracing() {
-        eprintln!("Failed to setup logging: {}\n", err);
+        eprintln!("Failed to setup logging: {err}\n");
         std::process::exit(1);
     }
     let return_code: i32 = if let Err(err) = command.execute() {
-        eprintln!("Command failed: {:?}\n", err);
+        eprintln!("Command failed: {err:?}\n");
         1
     } else {
         0

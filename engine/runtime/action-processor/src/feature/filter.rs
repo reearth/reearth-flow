@@ -55,14 +55,12 @@ impl ProcessorFactory for FeatureFilterFactory {
         let params: FeatureFilterParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::FilterFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 FeatureProcessorError::FilterFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -77,7 +75,7 @@ impl ProcessorFactory for FeatureFilterFactory {
             let expr = &condition.expr;
             let template_ast = expr_engine
                 .compile(expr.as_ref())
-                .map_err(|e| FeatureProcessorError::FilterFactory(format!("{:?}", e)))?;
+                .map_err(|e| FeatureProcessorError::FilterFactory(format!("{e:?}")))?;
             let output_port = &condition.output_port;
             conditions.push(CompiledCondition {
                 expr: template_ast,
@@ -146,7 +144,7 @@ impl Processor for FeatureFilter {
                 Err(err) => {
                     ctx.event_hub.error_log(
                         Some(ctx.error_span()),
-                        format!("filter eval error = {:?}", err),
+                        format!("filter eval error = {err:?}"),
                     );
                     continue;
                 }
