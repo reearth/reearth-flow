@@ -846,11 +846,11 @@ export const resolvers = {
     deleteAsset: (_: any, args: { input: { assetId: string } }) => {
       const { input } = args;
       const assetIndex = assets.findIndex((a) => a.id === input.assetId);
-      
+
       if (assetIndex !== -1) {
         assets.splice(assetIndex, 1);
       }
-      
+
       return { assetId: input.assetId };
     },
 
