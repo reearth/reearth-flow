@@ -206,7 +206,7 @@ impl RunWorkerCommand {
                     job_result.clone(),
                 ))
                 .await
-                .map_err(|e| crate::errors::Error::run(format!("{:?}", e))),
+                .map_err(|e| crate::errors::Error::run(format!("{e:?}"))),
         }?;
         tracing::info!(
             "Job completed with workflow_id: {:?}, job_id: {:?} result: {:?}",

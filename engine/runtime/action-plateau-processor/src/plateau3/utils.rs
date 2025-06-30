@@ -77,38 +77,38 @@ pub(super) fn create_codelist_map(
 ) -> super::errors::Result<HashMap<String, HashMap<String, String>>> {
     let storage = storage_resolver
         .resolve(dir)
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
     let mut codelist_map: HashMap<String, HashMap<String, String>> = HashMap::new();
     if storage
         .exists_sync(dir.path().as_path())
-        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?
+        .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?
     {
         for f in storage
             .list_sync(Some(dir.path().as_path()), true)
-            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?
+            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?
         {
             if !f.is_file() || f.extension().is_none() || f.extension().unwrap() != "xml" {
                 continue;
             }
             let bytes = storage.get_sync(f.path().as_path()).map_err(|e| {
-                PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e))
+                PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
             })?;
             let text = String::from_utf8(bytes.to_vec()).map_err(|e| {
-                PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e))
+                PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
             })?;
             let document = xml::parse(text).map_err(|e| {
-                PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e))
+                PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}"))
             })?;
             let names = xml::evaluate(
                 &document,
                 "/gml:Dictionary/gml:dictionaryEntry/gml:Definition/gml:name/text()",
             )
-            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
             let descriptions = xml::evaluate(
                 &document,
                 "/gml:Dictionary/gml:dictionaryEntry/gml:Definition/gml:description/text()",
             )
-            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{:?}", e)))?;
+            .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
             let codelist = xml::collect_text_values(&names)
                 .into_iter()
                 .zip(xml::collect_text_values(&descriptions))
@@ -128,8 +128,7 @@ pub(super) fn generate_xpath_to_properties(
 ) -> super::errors::Result<HashMap<String, HashMap<String, SchemaFeature>>> {
     let schema: Schema = serde_json::from_str(&schema_json).map_err(|e| {
         PlateauProcessorError::DomainOfDefinitionValidator(format!(
-            "Cannot parse schema with error = {:?}",
-            e
+            "Cannot parse schema with error = {e:?}"
         ))
     })?;
     let mut complex_types = schema
@@ -201,7 +200,7 @@ fn create_xpath(
                 },
             );
             for child in children {
-                let xp = format!("{}/{}", xpath, child);
+                let xp = format!("{xpath}/{child}");
                 insert_map_element(
                     xpath_to_properties,
                     key.clone(),

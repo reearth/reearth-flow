@@ -30,9 +30,7 @@ pub fn init_metrics(service_name: String) -> Result<SdkMeterProvider> {
                 .with_tonic()
                 .with_endpoint(endpoint)
                 .build()
-                .map_err(|e| {
-                    Error::Metrics(format!("Failed to build metrics controller: {}", e))
-                })?;
+                .map_err(|e| Error::Metrics(format!("Failed to build metrics controller: {e}")))?;
             let reader = PeriodicReader::builder(exporter).build();
 
             SdkMeterProvider::builder()
@@ -86,7 +84,7 @@ pub fn init_tracing(service_name: String) -> Result<Tracer> {
                     .with_endpoint(endpoint)
                     .build()
                     .map_err(|e| {
-                        Error::Tracing(format!("Failed to build tracing exporter: {}", e))
+                        Error::Tracing(format!("Failed to build tracing exporter: {e}"))
                     })?,
             )
             .build(),

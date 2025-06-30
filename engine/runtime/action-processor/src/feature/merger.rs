@@ -61,14 +61,12 @@ impl ProcessorFactory for FeatureMergerFactory {
         let params: FeatureMergerParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::MergerFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 FeatureProcessorError::MergerFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -84,8 +82,7 @@ impl ProcessorFactory for FeatureMergerFactory {
                     .compile(requestor_attribute_value.as_ref())
                     .map_err(|e| {
                         FeatureProcessorError::MergerFactory(format!(
-                            "Failed to compile requestor attribute value: {}",
-                            e
+                            "Failed to compile requestor attribute value: {e}"
                         ))
                     })?;
                 Some(result)
@@ -98,8 +95,7 @@ impl ProcessorFactory for FeatureMergerFactory {
                     .compile(supplier_attribute_value.as_ref())
                     .map_err(|e| {
                         FeatureProcessorError::MergerFactory(format!(
-                            "Failed to compile supplier attribute value: {}",
-                            e
+                            "Failed to compile supplier attribute value: {e}"
                         ))
                     })?;
                 Some(result)

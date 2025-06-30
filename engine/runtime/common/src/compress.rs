@@ -5,14 +5,14 @@ use crate::{
 
 pub fn compress(source: &str) -> Result<String> {
     let compressed = zstd::encode_all(source.as_bytes(), 3)
-        .map_err(|e| Error::Compress(format!("Failed to compress: {}", e)))?;
+        .map_err(|e| Error::Compress(format!("Failed to compress: {e}")))?;
     Ok(base64_encode(&compressed))
 }
 
 pub fn decode<T: AsRef<[u8]>>(source: T) -> Result<String> {
     let bytes = base64_decode_byte(source)?;
     let decoded = zstd::decode_all(bytes.as_slice())
-        .map_err(|e| Error::Compress(format!("Failed to decompress: {}", e)))?;
+        .map_err(|e| Error::Compress(format!("Failed to decompress: {e}")))?;
     Ok(String::from_utf8_lossy(&decoded).to_string())
 }
 #[cfg(test)]

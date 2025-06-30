@@ -25,7 +25,7 @@ impl<S: serde::Serializer> SerdeSerializer<S> {
     fn start(ser: S, len: Option<usize>) -> result::Result<Self, slog::Error> {
         let ser_map = ser
             .serialize_map(len)
-            .map_err(|e| io::Error::other(format!("serde serialization error: {}", e)))?;
+            .map_err(|e| io::Error::other(format!("serde serialization error: {e}")))?;
         Ok(SerdeSerializer { ser_map })
     }
 
@@ -116,7 +116,7 @@ where
             let mut buf = buf.borrow_mut();
 
             buf.write_fmt(*val)
-                .map_err(|e| io::Error::other(format!("Error formatting arguments: {}", e)))?;
+                .map_err(|e| io::Error::other(format!("Error formatting arguments: {e}")))?;
 
             let res = { || impl_m!(self, key, &*buf) }();
             buf.clear();
@@ -186,8 +186,8 @@ where
             self.log_impl(&mut serializer, record, values)?;
             serializer.into_inner();
             let json_str = String::from_utf8(buffer)
-                .map_err(|e| io::Error::other(format!("Invalid UTF-8 sequence: {}", e)))?;
-            writeln!(decorator, "{}", json_str)?;
+                .map_err(|e| io::Error::other(format!("Invalid UTF-8 sequence: {e}")))?;
+            writeln!(decorator, "{json_str}")?;
             decorator.flush()?;
             Ok(())
         })

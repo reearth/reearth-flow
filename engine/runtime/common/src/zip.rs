@@ -21,8 +21,7 @@ where
             Ok(p) => p,
             Err(e) => {
                 return Err(crate::Error::zip(format!(
-                    "Failed to strip prefix with err: {:?}",
-                    e
+                    "Failed to strip prefix with err: {e:?}"
                 )))
             }
         };

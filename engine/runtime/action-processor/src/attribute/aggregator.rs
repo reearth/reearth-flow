@@ -54,14 +54,12 @@ impl ProcessorFactory for AttributeAggregatorFactory {
         let params: AttributeAggregatorParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 AttributeProcessorError::AggregatorFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 AttributeProcessorError::AggregatorFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -77,7 +75,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
             if let Some(expr) = &aggregte_attribute.attribute_value {
                 let template_ast = expr_engine
                     .compile(expr.as_ref())
-                    .map_err(|e| AttributeProcessorError::AggregatorFactory(format!("{:?}", e)))?;
+                    .map_err(|e| AttributeProcessorError::AggregatorFactory(format!("{e:?}")))?;
                 aggregate_attributes.push(CompliledAggregateAttribute {
                     attribute_value: Some(template_ast),
                     new_attribute: aggregte_attribute.new_attribute.clone(),
@@ -95,8 +93,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
         let calculation = if let Some(expr) = params.calculation {
             let ast = expr_engine.compile(expr.as_ref()).map_err(|e| {
                 AttributeProcessorError::AggregatorFactory(format!(
-                    "Failed to compile calculation: {}",
-                    e
+                    "Failed to compile calculation: {e}"
                 ))
             })?;
             Some(ast)
@@ -190,10 +187,7 @@ impl Processor for AttributeAggregator {
         for aggregate_attribute in &self.aggregate_attributes {
             if let Some(attribute) = &aggregate_attribute.attribute {
                 let result = feature.get(attribute).ok_or_else(|| {
-                    AttributeProcessorError::Aggregator(format!(
-                        "Attribute not found: {}",
-                        attribute
-                    ))
+                    AttributeProcessorError::Aggregator(format!("Attribute not found: {attribute}"))
                 })?;
                 aggregates.push(result.clone());
                 continue;
@@ -201,8 +195,7 @@ impl Processor for AttributeAggregator {
             if let Some(ast) = &aggregate_attribute.attribute_value {
                 let result = scope.eval_ast::<rhai::Dynamic>(ast).map_err(|e| {
                     AttributeProcessorError::Aggregator(format!(
-                        "Failed to evaluate aggregation: {}",
-                        e
+                        "Failed to evaluate aggregation: {e}"
                     ))
                 })?;
                 aggregates.push(dynamic_to_value(&result).into());
@@ -212,10 +205,7 @@ impl Processor for AttributeAggregator {
             value
         } else if let Some(calculation) = &self.calculation {
             scope.eval_ast::<i64>(calculation).map_err(|e| {
-                AttributeProcessorError::Aggregator(format!(
-                    "Failed to evaluate calculation: {}",
-                    e
-                ))
+                AttributeProcessorError::Aggregator(format!("Failed to evaluate calculation: {e}"))
             })?
         } else {
             return Err(
