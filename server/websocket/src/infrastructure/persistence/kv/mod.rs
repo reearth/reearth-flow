@@ -38,7 +38,7 @@
 pub mod error;
 pub mod keys;
 
-use crate::storage::redis::RedisStore;
+use crate::infrastructure::persistence::redis::RedisStore;
 use crate::tools::{compress_brotli, decompress_brotli};
 use anyhow;
 use async_trait::async_trait;

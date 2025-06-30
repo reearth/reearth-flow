@@ -73,7 +73,11 @@ pub async fn ensure_bucket(client: &Client, bucket_name: &str) -> Result<()> {
     }
 }
 
-pub async fn start_server(state: Arc<AppState>, port: &str, config: &crate::Config) -> Result<()> {
+pub async fn start_server(
+    state: Arc<AppState>,
+    port: &str,
+    config: &crate::infrastructure::config::AppConfig,
+) -> Result<()> {
     let addr = format!("0.0.0.0:{}", port);
     let listener = TcpListener::bind(&addr).await?;
 
@@ -95,7 +99,7 @@ pub async fn start_server(state: Arc<AppState>, port: &str, config: &crate::Conf
             ServiceBuilder::new()
                 .layer({
                     let origins: Vec<_> = config
-                        .app
+                        .server
                         .origins
                         .iter()
                         .map(|s| s.parse().unwrap())

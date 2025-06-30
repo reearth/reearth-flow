@@ -2,13 +2,13 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 #[cfg(feature = "auth")]
+pub mod infrastructure;
+
 pub mod auth;
 
 mod broadcast;
-pub mod conf;
 pub mod conn;
 pub mod doc;
-pub mod storage;
 pub mod tools;
 pub mod ws;
 
@@ -53,9 +53,9 @@ pub struct AppState {
 pub use auth::AuthService;
 
 pub use broadcast::sub::Subscription;
-pub use conf::Config;
 pub use group::BroadcastGroup;
+pub use infrastructure::config::AppConfig;
+pub use infrastructure::persistence::gcs::GcsStore;
+pub use infrastructure::persistence::kv::DocOps;
 pub use pool::BroadcastPool;
 pub use server::{ensure_bucket, start_server};
-pub use storage::gcs::GcsStore;
-pub use storage::kv::DocOps;
