@@ -120,7 +120,7 @@ impl State {
     pub fn id_to_location(&self, id: &str, ext: &str) -> PathBuf {
         PathBuf::new()
             .join(self.root.clone())
-            .join(format!("{}.{}", id, ext))
+            .join(format!("{id}.{ext}"))
     }
 
     pub fn string_to_object<T>(&self, s: &str) -> Result<T>

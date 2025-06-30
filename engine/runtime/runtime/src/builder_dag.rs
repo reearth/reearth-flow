@@ -132,7 +132,7 @@ impl BuilderDag {
                     .into_iter()
                     .next()
                     .ok_or(ExecutionError::InvalidSink(
-                        format!("Target source is not exists. with {:?}", node).to_string(),
+                        format!("Target source is not exists. with {node:?}").to_string(),
                     ))?;
                 let node_index = NodeIndex::new(node_index);
                 if sink.name() != node.node.action() {

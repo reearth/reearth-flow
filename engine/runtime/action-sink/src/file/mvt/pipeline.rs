@@ -44,7 +44,7 @@ pub(super) fn geometry_slicing_stage(
     let storage = ctx
         .storage_resolver
         .resolve(output_path)
-        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
 
     // Convert CityObjects to sliced features
     upstream.iter().par_bridge().try_for_each(|feature| {
@@ -67,8 +67,7 @@ pub(super) fn geometry_slicing_stage(
                 let bytes =
                     bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
                         crate::errors::SinkError::MvtWriter(format!(
-                            "Failed to serialize a sliced feature: {:?}",
-                            err
+                            "Failed to serialize a sliced feature: {err:?}"
                         ))
                     })?;
                 let tile_id = tile_id_conv.zxy_to_id(z, x, y);
@@ -87,8 +86,7 @@ pub(super) fn geometry_slicing_stage(
                 let bytes =
                     bincode::serde::encode_to_vec(&feature, bincode_config).map_err(|err| {
                         crate::errors::SinkError::MvtWriter(format!(
-                            "Failed to serialize a sliced feature: {:?}",
-                            err
+                            "Failed to serialize a sliced feature: {err:?}"
                         ))
                     })?;
                 let tile_id = tile_id_conv.zxy_to_id(z, x, y);
@@ -100,7 +98,7 @@ pub(super) fn geometry_slicing_stage(
         )?;
         tile_contents
             .lock()
-            .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {}", e)))?
+            .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {e}")))?
             .push(tile_content);
         Ok::<(), crate::errors::SinkError>(())
     })?;
@@ -108,7 +106,7 @@ pub(super) fn geometry_slicing_stage(
     let mut tile_content = TileContent::default();
     for content in tile_contents
         .lock()
-        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {}", e)))?
+        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("Mutex poisoned: {e}")))?
         .iter()
     {
         tile_content.min_lng = tile_content.min_lng.min(content.min_lng);
@@ -129,17 +127,17 @@ pub(super) fn geometry_slicing_stage(
     );
 
     serde_json::to_string_pretty(&metadata)
-        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{:?}", e)))
+        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))
         .and_then(|metadata| {
             storage
                 .put_sync(
                     &output_path
                         .join(Path::new("metadata.json"))
-                        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{:?}", e)))?
+                        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?
                         .path(),
                     bytes::Bytes::from(metadata),
                 )
-                .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{:?}", e)))
+                .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))
         })?;
 
     Ok(())
@@ -177,8 +175,7 @@ pub(super) fn feature_sorting_stage(
             }
             Err(err) => {
                 return Err(crate::errors::SinkError::MvtWriter(format!(
-                    "Failed to sort features: {:?}",
-                    err
+                    "Failed to sort features: {err:?}"
                 )));
             }
         }
@@ -205,7 +202,7 @@ pub(super) fn tile_writing_stage(
     let storage = ctx
         .storage_resolver
         .resolve(output_path)
-        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
 
     receiver_sorted
         .into_iter()
@@ -215,7 +212,7 @@ pub(super) fn tile_writing_stage(
 
             let path = output_path
                 .join(Path::new(&format!("{zoom}/{x}/{y}.pbf")))
-                .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{:?}", e)))?;
+                .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
             for detail in (min_detail..=default_detail).rev() {
                 // Make a MVT tile binary
                 let bytes = make_tile(detail, &serialized_feats)?;
@@ -224,10 +221,10 @@ pub(super) fn tile_writing_stage(
                 let compressed_size = {
                     let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
                     e.write_all(&bytes)
-                        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{:?}", e)))?;
+                        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
                     let compressed_bytes = e
                         .finish()
-                        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{:?}", e)))?;
+                        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
                     compressed_bytes.len()
                 };
                 if detail != min_detail && compressed_size > 500_000 {
@@ -236,7 +233,7 @@ pub(super) fn tile_writing_stage(
                 }
                 storage
                     .put_sync(&path.path(), bytes::Bytes::from(bytes))
-                    .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{:?}", e)))?;
+                    .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
                 break;
             }
             Ok::<(), crate::errors::SinkError>(())
@@ -258,8 +255,7 @@ pub(super) fn make_tile(
         let (feature, _): (super::slice::SlicedFeature, _) =
             bincode::serde::decode_from_slice(serialized_feat, bincode_config).map_err(|err| {
                 crate::errors::SinkError::MvtWriter(format!(
-                    "Failed to deserialize a sliced feature: {:?}",
-                    err
+                    "Failed to deserialize a sliced feature: {err:?}"
                 ))
             })?;
 

@@ -57,14 +57,12 @@ impl ProcessorFactory for FeatureReaderFactory {
         let params: FeatureReaderParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::FileReaderFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 FeatureProcessorError::FileReaderFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -83,9 +81,7 @@ impl ProcessorFactory for FeatureReaderFactory {
                 let common_param = CompiledCommonReaderParam {
                     expr: expr_engine
                         .compile(common_param.dataset.as_ref())
-                        .map_err(|e| {
-                            FeatureProcessorError::FileReaderFactory(format!("{:?}", e))
-                        })?,
+                        .map_err(|e| FeatureProcessorError::FileReaderFactory(format!("{e:?}")))?,
                 };
                 let process = FeatureReader {
                     global_params: with,
@@ -103,9 +99,7 @@ impl ProcessorFactory for FeatureReaderFactory {
                 let common_param = CompiledCommonReaderParam {
                     expr: expr_engine
                         .compile(common_param.dataset.as_ref())
-                        .map_err(|e| {
-                            FeatureProcessorError::FileReaderFactory(format!("{:?}", e))
-                        })?,
+                        .map_err(|e| FeatureProcessorError::FileReaderFactory(format!("{e:?}")))?,
                 };
                 let process = FeatureReader {
                     global_params: with,
@@ -120,9 +114,7 @@ impl ProcessorFactory for FeatureReaderFactory {
                 let common_param = CompiledCommonReaderParam {
                     expr: expr_engine
                         .compile(common_param.dataset.as_ref())
-                        .map_err(|e| {
-                            FeatureProcessorError::FileReaderFactory(format!("{:?}", e))
-                        })?,
+                        .map_err(|e| FeatureProcessorError::FileReaderFactory(format!("{e:?}")))?,
                 };
                 let process = FeatureReader {
                     global_params: with,

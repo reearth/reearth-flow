@@ -53,14 +53,12 @@ impl ProcessorFactory for RhaiCallerFactory {
         let params: RhaiCallerParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::RhaiCallerFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 FeatureProcessorError::RhaiCallerFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -73,10 +71,10 @@ impl ProcessorFactory for RhaiCallerFactory {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let is_target_ast = expr_engine
             .compile(params.is_target.into_inner().as_str())
-            .map_err(|e| FeatureProcessorError::RhaiCallerFactory(format!("{:?}", e)))?;
+            .map_err(|e| FeatureProcessorError::RhaiCallerFactory(format!("{e:?}")))?;
         let process_ast = expr_engine
             .compile(params.process.into_inner().as_str())
-            .map_err(|e| FeatureProcessorError::RhaiCallerFactory(format!("{:?}", e)))?;
+            .map_err(|e| FeatureProcessorError::RhaiCallerFactory(format!("{e:?}")))?;
         let process = RhaiCaller {
             global_params: with,
             is_target: is_target_ast,
@@ -113,7 +111,7 @@ impl Processor for RhaiCaller {
         let scope = feature.new_scope(expr_engine.clone(), &self.global_params);
         let is_target = scope.eval_ast::<bool>(&self.is_target);
         if let Err(e) = is_target {
-            return Err(FeatureProcessorError::RhaiCaller(format!("{:?}", e)).into());
+            return Err(FeatureProcessorError::RhaiCaller(format!("{e:?}")).into());
         }
         if !is_target.unwrap() {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));

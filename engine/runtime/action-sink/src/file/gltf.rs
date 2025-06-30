@@ -72,10 +72,10 @@ impl SinkFactory for GltfWriterSinkFactory {
     ) -> Result<Box<dyn Sink>, BoxedError> {
         let params: GltfWriterParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                SinkError::BuildFactory(format!("Failed to serialize `with` parameter: {}", e))
+                SinkError::BuildFactory(format!("Failed to serialize `with` parameter: {e}"))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                SinkError::BuildFactory(format!("Failed to deserialize `with` parameter: {}", e))
+                SinkError::BuildFactory(format!("Failed to deserialize `with` parameter: {e}"))
             })?
         } else {
             return Err(
@@ -342,8 +342,7 @@ impl Sink for GltfWriter {
                 let atlas_dir = folder_path.join(texture_folder_name);
                 std::fs::create_dir_all(&atlas_dir).map_err(|e| {
                     crate::errors::SinkError::GltfWriter(format!(
-                        "Failed to create directory {:?} with : {:?}",
-                        atlas_dir, e
+                        "Failed to create directory {atlas_dir:?} with : {e:?}"
                     ))
                 })?;
 
@@ -414,7 +413,7 @@ impl Sink for GltfWriter {
                 //  and when obtaining the UV coordinates after the layout has been completed
                 let generate_texture_id =
                     |folder_name: &str, feature_id: usize, poly_count: usize| {
-                        format!("{}_{}_{}", folder_name, feature_id, poly_count)
+                        format!("{folder_name}_{feature_id}_{poly_count}")
                     };
 
                 // Load all textures into the Packer
@@ -600,8 +599,7 @@ impl Sink for GltfWriter {
                     tileset_content_files.lock().unwrap().push(filename.clone());
                     self.output.join(filename).map_err(|e| {
                         crate::errors::SinkError::GltfWriter(format!(
-                            "Failed to join uri with {:?}",
-                            e
+                            "Failed to join uri with {e:?}"
                         ))
                     })?
                 };
@@ -619,8 +617,7 @@ impl Sink for GltfWriter {
                 )
                 .map_err(|e| {
                     crate::errors::SinkError::GltfWriter(format!(
-                        "Failed to write_gltf_glb with : {:?}",
-                        e
+                        "Failed to write_gltf_glb with : {e:?}"
                     ))
                 })?;
                 let storage = ctx

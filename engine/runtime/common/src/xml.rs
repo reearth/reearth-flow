@@ -83,7 +83,7 @@ pub fn parse<T: AsRef<[u8]>>(xml: T) -> crate::Result<XmlDocument> {
                 encoding: None,
             },
         )
-        .map_err(|e| crate::Error::Xml(format!("{}", e)))
+        .map_err(|e| crate::Error::Xml(format!("{e}")))
 }
 
 pub fn evaluate<T: AsRef<str>>(document: &XmlDocument, xpath: T) -> crate::Result<XmlXpathValue> {
@@ -171,7 +171,7 @@ pub fn get_node_id(uri: &Uri, node: &XmlNode) -> String {
             let mut key_values = node
                 .get_properties()
                 .iter()
-                .map(|(k, v)| format!("{}={}", k, v))
+                .map(|(k, v)| format!("{k}={v}"))
                 .collect::<Vec<_>>();
             key_values.sort();
             to_hash(format!("{}:{}[{}]", uri, tag, key_values.join(",")).as_str())
@@ -199,7 +199,7 @@ pub fn get_root_readonly_node(document: &XmlDocument) -> crate::Result<XmlRoNode
 
 pub fn node_to_xml_string(document: &XmlDocument, node: &mut XmlNode) -> crate::Result<String> {
     let doc =
-        parse(document.node_to_string(node)).map_err(|e| crate::Error::Xml(format!("{}", e)))?;
+        parse(document.node_to_string(node)).map_err(|e| crate::Error::Xml(format!("{e}")))?;
     Ok(doc.to_string())
 }
 
@@ -208,7 +208,7 @@ pub fn readonly_node_to_xml_string(
     node: &XmlRoNode,
 ) -> crate::Result<String> {
     let doc =
-        parse(document.ronode_to_string(node)).map_err(|e| crate::Error::Xml(format!("{}", e)))?;
+        parse(document.ronode_to_string(node)).map_err(|e| crate::Error::Xml(format!("{e}")))?;
     Ok(doc.to_string())
 }
 
@@ -242,7 +242,7 @@ pub fn create_xml_schema_validation_context(
 ) -> crate::Result<XmlSchemaValidationContext> {
     let mut xsd_parser = XmlSchemaParserContext::from_file(schema_location.as_str());
     let ctx = SchemaValidationContext::from_parser(&mut xsd_parser)
-        .map_err(|e| crate::Error::Xml(format!("Failed to parse schema: {:?}", e)))?;
+        .map_err(|e| crate::Error::Xml(format!("Failed to parse schema: {e:?}")))?;
     Ok(XmlSchemaValidationContext {
         inner: parking_lot::RwLock::new(ctx),
         _marker: PhantomData,
@@ -254,7 +254,7 @@ pub fn create_xml_schema_validation_context_from_buffer(
 ) -> crate::Result<XmlSchemaValidationContext> {
     let mut xsd_parser = XmlSchemaParserContext::from_buffer(schema);
     let ctx = SchemaValidationContext::from_parser(&mut xsd_parser)
-        .map_err(|e| crate::Error::Xml(format!("Failed to parse schema: {:?}", e)))?;
+        .map_err(|e| crate::Error::Xml(format!("Failed to parse schema: {e:?}")))?;
     Ok(XmlSchemaValidationContext {
         inner: parking_lot::RwLock::new(ctx),
         _marker: PhantomData,
@@ -364,13 +364,13 @@ pub fn find_readonly_nodes_in_elements(
 ) -> crate::Result<Vec<XmlRoNode>> {
     let elements_to_match = elements_to_match
         .iter()
-        .map(|element| format!("name()='{}'", element))
+        .map(|element| format!("name()='{element}'"))
         .collect::<Vec<_>>();
     let elements_to_match_query = elements_to_match.join(" or ");
-    let elements_to_match_query = format!("({})", elements_to_match_query);
-    let xpath = format!("//*[{}]", elements_to_match_query);
+    let elements_to_match_query = format!("({elements_to_match_query})");
+    let xpath = format!("//*[{elements_to_match_query}]");
     let nodes = find_readonly_nodes_by_xpath(ctx, &xpath, node)
-        .map_err(|e| crate::Error::Xml(format!("Failed to evaluate xpath with {}", e)))?;
+        .map_err(|e| crate::Error::Xml(format!("Failed to evaluate xpath with {e}")))?;
     Ok(nodes)
 }
 
@@ -381,13 +381,13 @@ pub fn find_safe_readonly_nodes_in_elements(
 ) -> crate::Result<Vec<XmlRoNode>> {
     let elements_to_match = elements_to_match
         .iter()
-        .map(|element| format!("name()='{}'", element))
+        .map(|element| format!("name()='{element}'"))
         .collect::<Vec<_>>();
     let elements_to_match_query = elements_to_match.join(" or ");
-    let elements_to_match_query = format!("({})", elements_to_match_query);
-    let xpath = format!("//*[{}]", elements_to_match_query);
+    let elements_to_match_query = format!("({elements_to_match_query})");
+    let xpath = format!("//*[{elements_to_match_query}]");
     let nodes = find_safe_readonly_nodes_by_xpath(ctx, &xpath, node)
-        .map_err(|e| crate::Error::Xml(format!("Failed to evaluate xpath with {}", e)))?;
+        .map_err(|e| crate::Error::Xml(format!("Failed to evaluate xpath with {e}")))?;
     Ok(nodes)
 }
 
@@ -462,7 +462,7 @@ mod tests {
                 "gml id: {:?}",
                 node.get_attribute_ns("id", "http://www.opengis.net/gml")
             );
-            println!("tag: {}", tag);
+            println!("tag: {tag}");
         }
     }
 

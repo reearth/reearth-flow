@@ -29,12 +29,12 @@ pub fn load_image(path: &Path) -> std::io::Result<(Vec<u8>, MimeType)> {
             }
             Some("jpg" | "jpeg") => Ok((std::fs::read(path)?, MimeType::ImageJpeg)),
             _ => {
-                let err = format!("Unsupported image format: {:?}", path);
+                let err = format!("Unsupported image format: {path:?}");
                 Err(std::io::Error::new(std::io::ErrorKind::InvalidData, err))
             }
         }
     } else {
-        let err = format!("Unsupported image format: {:?}", path);
+        let err = format!("Unsupported image format: {path:?}");
         Err(std::io::Error::new(std::io::ErrorKind::InvalidData, err))
     }
 }

@@ -9,9 +9,9 @@ pub(crate) async fn read_json(
     sender: Sender<(Port, IngestionMessage)>,
 ) -> Result<(), crate::errors::SourceError> {
     let text = String::from_utf8(content.to_vec())
-        .map_err(|e| crate::errors::SourceError::JsonFileReader(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SourceError::JsonFileReader(format!("{e:?}")))?;
     let value: serde_json::Value = serde_json::from_str(&text)
-        .map_err(|e| crate::errors::SourceError::JsonFileReader(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SourceError::JsonFileReader(format!("{e:?}")))?;
     let features: AttributeValue = value.into();
     match features {
         AttributeValue::Array(features) => {
@@ -31,7 +31,7 @@ pub(crate) async fn read_json(
                         IngestionMessage::OperationEvent { feature },
                     ))
                     .await
-                    .map_err(|e| crate::errors::SourceError::JsonFileReader(format!("{:?}", e)))?;
+                    .map_err(|e| crate::errors::SourceError::JsonFileReader(format!("{e:?}")))?;
             }
         }
         AttributeValue::Map(_) => {
@@ -42,7 +42,7 @@ pub(crate) async fn read_json(
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await
-                .map_err(|e| crate::errors::SourceError::JsonFileReader(format!("{:?}", e)))?;
+                .map_err(|e| crate::errors::SourceError::JsonFileReader(format!("{e:?}")))?;
         }
         _ => Err(crate::errors::SourceError::JsonFileReader(
             "Invalid JSON format".to_string(),
