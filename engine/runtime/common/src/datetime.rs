@@ -11,9 +11,9 @@ pub fn try_from(s: &str) -> crate::Result<chrono::DateTime<Utc>> {
         if let Some(v) = v.and_hms_opt(0, 0, 0) {
             Ok(DateTime::<Utc>::from_naive_utc_and_offset(v, Utc))
         } else {
-            Err(crate::Error::datetime(format!("Invalid datetime: {}", s)))
+            Err(crate::Error::datetime(format!("Invalid datetime: {s}")))
         }
     } else {
-        Err(crate::Error::datetime(format!("Invalid datetime: {}", s)))
+        Err(crate::Error::datetime(format!("Invalid datetime: {s}")))
     }
 }

@@ -24,16 +24,16 @@ async fn verify_message_reception(
         .await
         .map_err(|_| "Timeout waiting for response")?
         .ok_or("Connection closed unexpectedly")?
-        .map_err(|e| format!("WebSocket error: {}", e))?;
+        .map_err(|e| format!("WebSocket error: {e}"))?;
 
     match msg {
         Message::Binary(data) => {
             // Try to apply the update to verify it's valid CRDT data
             let update =
-                Update::decode_v1(&data).map_err(|e| format!("Invalid CRDT update: {}", e))?;
+                Update::decode_v1(&data).map_err(|e| format!("Invalid CRDT update: {e}"))?;
             let mut txn = expected_doc.transact_mut();
             txn.apply_update(update)
-                .map_err(|e| format!("Failed to apply update: {}", e))?;
+                .map_err(|e| format!("Failed to apply update: {e}"))?;
             Ok(())
         }
         Message::Close(_) => Err("Received unexpected close frame".into()),
@@ -44,7 +44,7 @@ async fn verify_message_reception(
 async fn connect_client(
     doc_id: &str,
 ) -> tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>> {
-    let url = format!("ws://127.0.0.1:8080/{}", doc_id);
+    let url = format!("ws://127.0.0.1:8080/{doc_id}");
     let (ws_stream, _) = connect_async(url).await.expect("Failed to connect");
     ws_stream
 }
@@ -201,7 +201,7 @@ fn bench_concurrent_clients(c: &mut Criterion) {
                         let text = doc.get_or_insert_text("test");
                         {
                             let mut txn = doc.transact_mut();
-                            text.push(&mut txn, &format!("Change from client {}\n", i));
+                            text.push(&mut txn, &format!("Change from client {i}\n"));
                         }
                         let txn = doc.transact();
                         let update = txn.encode_diff_v1(&StateVector::default());
@@ -270,7 +270,7 @@ fn bench_broadcast(c: &mut Criterion) {
                 {
                     let mut txn = doc.transact_mut();
                     for i in 0..20 {
-                        text.push(&mut txn, &format!("Broadcast message line {}\n", i));
+                        text.push(&mut txn, &format!("Broadcast message line {i}\n"));
                     }
                 }
 
@@ -328,7 +328,7 @@ fn bench_large_update(c: &mut Criterion) {
                 {
                     let mut txn = doc.transact_mut();
                     for i in 0..100 {
-                        text.push(&mut txn, &format!("Large update line {}\n", i));
+                        text.push(&mut txn, &format!("Large update line {i}\n"));
                     }
                 }
 
@@ -400,7 +400,7 @@ fn bench_concurrent_clients_variable(c: &mut Criterion) {
     for num_clients in [2, 4, 8].iter() {
         // Remove 16 clients test to reduce time
         group.bench_with_input(
-            format!("clients_{}", num_clients),
+            format!("clients_{num_clients}"),
             num_clients,
             |b, &num_clients| {
                 b.iter(|| {
@@ -416,7 +416,7 @@ fn bench_concurrent_clients_variable(c: &mut Criterion) {
                                 let text = doc.get_or_insert_text("test");
                                 {
                                     let mut txn = doc.transact_mut();
-                                    text.push(&mut txn, &format!("Change from client {}\n", i));
+                                    text.push(&mut txn, &format!("Change from client {i}\n"));
                                 }
                                 let txn = doc.transact();
                                 let update = txn.encode_diff_v1(&StateVector::default());
@@ -459,7 +459,7 @@ fn bench_long_connection(c: &mut Criterion) {
                     let text = doc.get_or_insert_text("test");
                     {
                         let mut txn = doc.transact_mut();
-                        text.push(&mut txn, &format!("Update {} in long connection\n", i));
+                        text.push(&mut txn, &format!("Update {i} in long connection\n"));
                     }
                     let txn = doc.transact();
                     let update = txn.encode_diff_v1(&StateVector::default());

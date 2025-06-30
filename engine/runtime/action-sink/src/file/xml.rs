@@ -33,17 +33,17 @@ pub(super) fn write_xml(
     attributes
         .iter()
         .try_for_each(|attribute| writer.write_serializable("feature", attribute))
-        .map_err(|e| crate::errors::SinkError::XmlWriter(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SinkError::XmlWriter(format!("{e:?}")))?;
     writer.write_event(Event::End(end))?;
 
     let result = writer.into_inner();
     let xml = String::from_utf8(result)
-        .map_err(|e| crate::errors::SinkError::XmlWriter(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SinkError::XmlWriter(format!("{e:?}")))?;
     let storage = storage_resolver
         .resolve(output)
-        .map_err(|e| crate::errors::SinkError::XmlWriter(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SinkError::XmlWriter(format!("{e:?}")))?;
     storage
         .put_sync(output.path().as_path(), Bytes::from(xml))
-        .map_err(|e| crate::errors::SinkError::XmlWriter(format!("{:?}", e)))?;
+        .map_err(|e| crate::errors::SinkError::XmlWriter(format!("{e:?}")))?;
     Ok(())
 }

@@ -240,13 +240,13 @@ impl TryFrom<sqlx::any::AnyRow> for Feature {
             .iter()
             .map(|column| {
                 let raw = value.try_get_raw(column.name()).map_err(|e| {
-                    crate::error::Error::Conversion(format!("Failed to get column: {}", e))
+                    crate::error::Error::Conversion(format!("Failed to get column: {e}"))
                 })?;
                 let type_info = raw.type_info();
                 let result = match type_info.kind() {
                     AnyTypeInfoKind::Text => {
                         let value: String = value.try_get(column.ordinal()).map_err(|e| {
-                            crate::error::Error::Conversion(format!("Failed to get text: {}", e))
+                            crate::error::Error::Conversion(format!("Failed to get text: {e}"))
                         })?;
                         (
                             Attribute::new(column.name.to_string()),
@@ -257,7 +257,7 @@ impl TryFrom<sqlx::any::AnyRow> for Feature {
                     | AnyTypeInfoKind::BigInt
                     | AnyTypeInfoKind::Integer => {
                         let value: i64 = value.try_get(column.ordinal()).map_err(|e| {
-                            crate::error::Error::Conversion(format!("Failed to get integer: {}", e))
+                            crate::error::Error::Conversion(format!("Failed to get integer: {e}"))
                         })?;
                         (
                             Attribute::new(column.name.to_string()),
@@ -266,7 +266,7 @@ impl TryFrom<sqlx::any::AnyRow> for Feature {
                     }
                     AnyTypeInfoKind::Double | AnyTypeInfoKind::Real => {
                         let value: f64 = value.try_get(column.ordinal()).map_err(|e| {
-                            crate::error::Error::Conversion(format!("Failed to get float: {}", e))
+                            crate::error::Error::Conversion(format!("Failed to get float: {e}"))
                         })?;
                         (
                             Attribute::new(column.name.to_string()),
@@ -277,7 +277,7 @@ impl TryFrom<sqlx::any::AnyRow> for Feature {
                     }
                     AnyTypeInfoKind::Bool => {
                         let value: bool = value.try_get(column.ordinal()).map_err(|e| {
-                            crate::error::Error::Conversion(format!("Failed to get bool: {}", e))
+                            crate::error::Error::Conversion(format!("Failed to get bool: {e}"))
                         })?;
                         (
                             Attribute::new(column.name.to_string()),

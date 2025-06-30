@@ -244,20 +244,20 @@ impl Display for AttributeValue {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AttributeValue::Null => write!(f, "null"),
-            AttributeValue::Bool(v) => write!(f, "{}", v),
-            AttributeValue::Number(v) => write!(f, "{}", v),
-            AttributeValue::String(v) => write!(f, "{}", v),
+            AttributeValue::Bool(v) => write!(f, "{v}"),
+            AttributeValue::Number(v) => write!(f, "{v}"),
+            AttributeValue::String(v) => write!(f, "{v}"),
             AttributeValue::Array(v) => {
                 for (i, value) in v.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}", value)?;
+                    write!(f, "{value}")?;
                 }
                 Ok(())
             }
-            AttributeValue::Bytes(v) => write!(f, "{:?}", v),
-            AttributeValue::Map(v) => write!(f, "{:?}", v),
+            AttributeValue::Bytes(v) => write!(f, "{v:?}"),
+            AttributeValue::Map(v) => write!(f, "{v:?}"),
             AttributeValue::DateTime(v) => write!(f, "{}", v.to_rfc3339()),
         }
     }

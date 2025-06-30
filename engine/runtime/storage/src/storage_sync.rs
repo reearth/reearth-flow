@@ -16,7 +16,7 @@ impl Storage {
     pub fn put_sync(&self, location: &Path, bytes: Bytes) -> Result<()> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
+                path: format!("{location:?}").into(),
             },
         })?;
         let _ = self
@@ -30,11 +30,11 @@ impl Storage {
     pub fn create_dir_sync(&self, location: &Path) -> Result<()> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
+                path: format!("{location:?}").into(),
             },
         })?;
         let p = if !p.ends_with('/') {
-            format!("{}/", p)
+            format!("{p}/")
         } else {
             p.to_string()
         };
@@ -47,7 +47,7 @@ impl Storage {
     pub fn append_sync(&self, location: &Path, bytes: Bytes) -> Result<()> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
+                path: format!("{location:?}").into(),
             },
         })?;
         let mut w = self
@@ -90,7 +90,7 @@ impl Storage {
             _ => {
                 let p = location.to_str().ok_or(object_store::Error::InvalidPath {
                     source: object_store::path::Error::InvalidPath {
-                        path: format!("{:?}", location).into(),
+                        path: format!("{location:?}").into(),
                     },
                 })?;
                 let r = self
@@ -106,7 +106,7 @@ impl Storage {
     pub fn exists_sync(&self, location: &Path) -> Result<bool> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
+                path: format!("{location:?}").into(),
             },
         })?;
         fs::exists(p).map_err(|err| object_store::Error::Generic {
@@ -118,7 +118,7 @@ impl Storage {
     pub fn get_range_sync(&self, location: &Path, range: Range<usize>) -> Result<Bytes> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
+                path: format!("{location:?}").into(),
             },
         })?;
         let bs = self
@@ -135,7 +135,7 @@ impl Storage {
     pub fn head_sync(&self, location: &Path) -> Result<ObjectMeta> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
+                path: format!("{location:?}").into(),
             },
         })?;
         let meta = self
@@ -156,7 +156,7 @@ impl Storage {
     pub fn delete_sync(&self, location: &Path) -> Result<()> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
+                path: format!("{location:?}").into(),
             },
         })?;
         self.inner
@@ -169,17 +169,17 @@ impl Storage {
     pub fn list_sync(&self, prefix: Option<&Path>, recursive: bool) -> Result<Vec<Uri>> {
         let p = prefix.ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", prefix).into(),
+                path: format!("{prefix:?}").into(),
             },
         })?;
-        let path =
-            p.to_str()
-                .map(|v| format!("{}/", v))
-                .ok_or(object_store::Error::InvalidPath {
-                    source: object_store::path::Error::InvalidPath {
-                        path: format!("{:?}", prefix).into(),
-                    },
-                })?;
+        let path = p
+            .to_str()
+            .map(|v| format!("{v}/"))
+            .ok_or(object_store::Error::InvalidPath {
+                source: object_store::path::Error::InvalidPath {
+                    path: format!("{prefix:?}").into(),
+                },
+            })?;
         let ds = self
             .inner
             .blocking()
@@ -203,12 +203,12 @@ impl Storage {
     pub fn copy_sync(&self, from: &Path, to: &Path) -> Result<()> {
         let from = from.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", from).into(),
+                path: format!("{from:?}").into(),
             },
         })?;
         let to = to.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", to).into(),
+                path: format!("{to:?}").into(),
             },
         })?;
         self.inner

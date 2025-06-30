@@ -157,6 +157,6 @@ impl RunCliCommand {
             storage_resolver,
             state,
         )
-        .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {}", e)))
+        .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {e}")))
     }
 }

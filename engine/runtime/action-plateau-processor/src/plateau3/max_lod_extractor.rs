@@ -78,10 +78,7 @@ impl Processor for MaxLodExtractor {
             .clone();
 
         let path_uri = Uri::from_str(city_gml_path.to_string().as_str()).map_err(|err| {
-            PlateauProcessorError::MaxLodExtractor(format!(
-                "cityGmlPath is not a valid uri: {}",
-                err
-            ))
+            PlateauProcessorError::MaxLodExtractor(format!("cityGmlPath is not a valid uri: {err}"))
         })?;
 
         let file_name = path_uri

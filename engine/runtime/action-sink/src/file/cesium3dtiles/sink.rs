@@ -62,14 +62,12 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
         let params: Cesium3DTilesWriterParam = if let Some(with) = with.clone() {
             let value: serde_json::Value = serde_json::to_value(with).map_err(|e| {
                 SinkError::Cesium3DTilesWriterFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 SinkError::Cesium3DTilesWriterFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -83,11 +81,11 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
         let expr_output = &params.output;
         let output = expr_engine
             .compile(expr_output.as_ref())
-            .map_err(|e| SinkError::Cesium3DTilesWriterFactory(format!("{:?}", e)))?;
+            .map_err(|e| SinkError::Cesium3DTilesWriterFactory(format!("{e:?}")))?;
         let compress_output = if let Some(compress_output) = &params.compress_output {
             let compress_output = expr_engine
                 .compile(compress_output.as_ref())
-                .map_err(|e| SinkError::Cesium3DTilesWriterFactory(format!("{:?}", e)))?;
+                .map_err(|e| SinkError::Cesium3DTilesWriterFactory(format!("{e:?}")))?;
             Some(compress_output)
         } else {
             None
@@ -148,11 +146,9 @@ impl Sink for Cesium3DTilesWriter {
             port if *port == *DEFAULT_PORT => self.process_default(&ctx)?,
             port if *port == SCHEMA_PORT.clone() => self.process_schema(&ctx)?,
             port => {
-                return Err(SinkError::Cesium3DTilesWriter(format!(
-                    "Unknown port with: {:?}",
-                    port
-                ))
-                .into())
+                return Err(
+                    SinkError::Cesium3DTilesWriter(format!("Unknown port with: {port:?}")).into(),
+                )
             }
         }
         Ok(())
@@ -191,13 +187,13 @@ impl Cesium3DTilesWriter {
         let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
         let path = scope
             .eval_ast::<String>(&output)
-            .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;
+            .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
         let output = Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)?;
         let compress_output = if let Some(compress_output) = &self.params.compress_output {
             let compress_output = compress_output.clone();
             let path = scope
                 .eval_ast::<String>(&compress_output)
-                .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{:?}", e)))?;
+                .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
             Some(Uri::from_str(path.as_str()).map_err(SinkError::cesium3dtiles_writer)?)
         } else {
             None
@@ -282,7 +278,7 @@ impl Cesium3DTilesWriter {
                     if let Err(e) = &result {
                         ctx.event_hub.error_log(
                             None,
-                            format!("Failed to geometry_slicing_stage with error = {:?}", e),
+                            format!("Failed to geometry_slicing_stage with error = {e:?}"),
                         );
                         ctx.event_hub.send(Event::SinkFinishFailed {
                             name: "geometry_slicing_stage".to_string(),
@@ -308,7 +304,7 @@ impl Cesium3DTilesWriter {
                     if let Err(e) = &result {
                         ctx.event_hub.error_log(
                             None,
-                            format!("Failed to feature_sorting_stage with error = {:?}", e),
+                            format!("Failed to feature_sorting_stage with error = {e:?}"),
                         );
                         ctx.event_hub.send(Event::SinkFinishFailed {
                             name: "feature_sorting_stage".to_string(),
@@ -346,7 +342,7 @@ impl Cesium3DTilesWriter {
                             let ctx = ctx.clone();
                             ctx.event_hub.error_log(
                                 None,
-                                format!("Failed to tile_writing_stage with error = {:?}", e),
+                                format!("Failed to tile_writing_stage with error = {e:?}"),
                             );
                             ctx.event_hub.send(Event::SinkFinishFailed {
                                 name: "tile_writing_stage".to_string(),
@@ -392,8 +388,7 @@ impl Cesium3DTilesWriter {
                                                         ctx.event_hub.error_log(
                                                             None,
                                                             format!(
-                                                    "Failed to remove directory with error = {:?}",
-                                                    e
+                                                    "Failed to remove directory with error = {e:?}"
                                                 ),
                                                         );
                                                     }
@@ -403,8 +398,7 @@ impl Cesium3DTilesWriter {
                                                 ctx.event_hub.error_log(
                                                     None,
                                                     format!(
-                                                    "Failed to write zip file with error = {:?}",
-                                                    e
+                                                    "Failed to write zip file with error = {e:?}"
                                                 ),
                                                 );
                                             }
@@ -413,10 +407,7 @@ impl Cesium3DTilesWriter {
                                     Err(e) => {
                                         ctx.event_hub.error_log(
                                             None,
-                                            format!(
-                                                "Failed to write zip file with error = {:?}",
-                                                e
-                                            ),
+                                            format!("Failed to write zip file with error = {e:?}"),
                                         );
                                     }
                                 }
