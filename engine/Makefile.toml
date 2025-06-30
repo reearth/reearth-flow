@@ -133,3 +133,20 @@ for feature_type in "${FEATURES[@]}"; do
 done
 
 ''']
+
+[tasks.generate-examples-cms-workflow]
+script = ['''
+#!/usr/bin/env bash -eux
+
+BASE_PATH=./runtime/examples/fixture/workflow/data-convert/plateau4/
+WORKFLOW_EXAMPLES=(
+  "01-bldg"
+)
+
+for example in "${WORKFLOW_EXAMPLES[@]}"; do
+  (
+    cd $BASE_PATH;
+    yaml-include ${example}/workflow.yml > ${example}.yml
+  )
+done
+''']

@@ -220,7 +220,7 @@ impl BroadcastPool {
             }
         };
 
-        let lock_id = format!("gcs:lock:{}", doc_id);
+        let lock_id = format!("gcs:lock:{doc_id}");
         let instance_id = format!("sync-{}", rand::random::<u64>());
 
         let lock_acquired = self

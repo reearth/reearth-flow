@@ -158,6 +158,7 @@
   "Deployments": "部署",
   "Triggers": "触发器",
   "Jobs": "任务",
+  "Resources": "",
   "Main Workflow": "主工作流",
   "Reader node cannot be copied": "读者节点无法复制",
   "Only one reader can be present in any project.": "任何项目中只能存在一个读者。",
