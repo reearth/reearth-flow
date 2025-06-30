@@ -286,9 +286,7 @@ fn generate_fragment(
         if elements_to_exclude_query.is_empty() {
             format!("//*[{elements_to_match_query}]")
         } else {
-            format!(
-                "//*[{elements_to_match_query} and not({elements_to_exclude_query})]"
-            )
+            format!("//*[{elements_to_match_query} and not({elements_to_exclude_query})]")
         }
     };
     let xctx = xml::create_context(document)

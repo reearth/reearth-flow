@@ -158,8 +158,7 @@ impl<T: CoordNum, Z: CoordNum> Polygon<T, Z> {
 
         let exterior = self.exterior();
         if exterior.coords().count() < 3 {
-            let error_message =
-                format!("Exterior Ring {exterior:?} must contain 3 or more coords");
+            let error_message = format!("Exterior Ring {exterior:?} must contain 3 or more coords");
             errors.push(error_message);
         }
         for interior in self.interiors() {

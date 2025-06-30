@@ -235,9 +235,7 @@ fn mapper(
             pkg = fourth_last.to_string();
             admin = third_last.to_string();
             area = second_last.to_string();
-            dirs = format!(
-                "{pkg}{MAIN_SEPARATOR_STR}{admin}{MAIN_SEPARATOR_STR}{area}"
-            );
+            dirs = format!("{pkg}{MAIN_SEPARATOR_STR}{admin}{MAIN_SEPARATOR_STR}{area}");
             rtdir = PathBuf::from(folders[..folders.len() - 5].join(MAIN_SEPARATOR_STR));
         }
         _ => (),

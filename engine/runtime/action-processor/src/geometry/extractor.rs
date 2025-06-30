@@ -91,9 +91,7 @@ impl Processor for GeometryExtractor {
         };
         let mut feature = feature.clone();
         let value = serde_json::to_value(geometry).map_err(|e| {
-            GeometryProcessorError::GeometryExtractor(format!(
-                "Failed to serialize geometry: {e}"
-            ))
+            GeometryProcessorError::GeometryExtractor(format!("Failed to serialize geometry: {e}"))
         })?;
         let dump = serde_json::to_string(&value)?;
         let dump = compress(&dump)?;

@@ -81,9 +81,7 @@ impl ProcessorFactory for FeatureReaderFactory {
                 let common_param = CompiledCommonReaderParam {
                     expr: expr_engine
                         .compile(common_param.dataset.as_ref())
-                        .map_err(|e| {
-                            FeatureProcessorError::FileReaderFactory(format!("{e:?}"))
-                        })?,
+                        .map_err(|e| FeatureProcessorError::FileReaderFactory(format!("{e:?}")))?,
                 };
                 let process = FeatureReader {
                     global_params: with,
@@ -101,9 +99,7 @@ impl ProcessorFactory for FeatureReaderFactory {
                 let common_param = CompiledCommonReaderParam {
                     expr: expr_engine
                         .compile(common_param.dataset.as_ref())
-                        .map_err(|e| {
-                            FeatureProcessorError::FileReaderFactory(format!("{e:?}"))
-                        })?,
+                        .map_err(|e| FeatureProcessorError::FileReaderFactory(format!("{e:?}")))?,
                 };
                 let process = FeatureReader {
                     global_params: with,
@@ -118,9 +114,7 @@ impl ProcessorFactory for FeatureReaderFactory {
                 let common_param = CompiledCommonReaderParam {
                     expr: expr_engine
                         .compile(common_param.dataset.as_ref())
-                        .map_err(|e| {
-                            FeatureProcessorError::FileReaderFactory(format!("{e:?}"))
-                        })?,
+                        .map_err(|e| FeatureProcessorError::FileReaderFactory(format!("{e:?}")))?,
                 };
                 let process = FeatureReader {
                     global_params: with,

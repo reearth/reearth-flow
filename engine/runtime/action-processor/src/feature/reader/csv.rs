@@ -30,9 +30,7 @@ pub(crate) fn read_csv(
     let storage_resolver = &ctx.storage_resolver;
     let scope = feature.new_scope(expr_engine.clone(), global_params);
     let csv_path = scope.eval_ast::<String>(&params.expr).map_err(|e| {
-        super::errors::FeatureProcessorError::FileCsvReader(format!(
-            "Failed to evaluate expr: {e}"
-        ))
+        super::errors::FeatureProcessorError::FileCsvReader(format!("Failed to evaluate expr: {e}"))
     })?;
     let input_path = Uri::from_str(csv_path.as_str())
         .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
@@ -55,8 +53,8 @@ pub(crate) fn read_csv(
         .unwrap_or(Ok(Vec::<String>::new()))
         .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
     for rd in rdr.deserialize() {
-        let record: Vec<String> = rd
-            .map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
+        let record: Vec<String> =
+            rd.map_err(|e| super::errors::FeatureProcessorError::FileCsvReader(format!("{e:?}")))?;
         let row = record
             .iter()
             .enumerate()

@@ -73,33 +73,25 @@ impl ProcessorFactory for ThreeDimensionRotatorFactory {
         let expr_engine = Arc::clone(&ctx.expr_engine);
         let angle_degree = expr_engine
             .compile(params.angle_degree.as_ref())
-            .map_err(|e| {
-                GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}"))
-            })?;
-        let origin_x = expr_engine.compile(params.origin_x.as_ref()).map_err(|e| {
-            GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}"))
-        })?;
-        let origin_y = expr_engine.compile(params.origin_y.as_ref()).map_err(|e| {
-            GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}"))
-        })?;
-        let origin_z = expr_engine.compile(params.origin_z.as_ref()).map_err(|e| {
-            GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}"))
-        })?;
+            .map_err(|e| GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}")))?;
+        let origin_x = expr_engine
+            .compile(params.origin_x.as_ref())
+            .map_err(|e| GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}")))?;
+        let origin_y = expr_engine
+            .compile(params.origin_y.as_ref())
+            .map_err(|e| GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}")))?;
+        let origin_z = expr_engine
+            .compile(params.origin_z.as_ref())
+            .map_err(|e| GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}")))?;
         let direction_x = expr_engine
             .compile(params.direction_x.as_ref())
-            .map_err(|e| {
-                GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}"))
-            })?;
+            .map_err(|e| GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}")))?;
         let direction_y = expr_engine
             .compile(params.direction_y.as_ref())
-            .map_err(|e| {
-                GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}"))
-            })?;
+            .map_err(|e| GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}")))?;
         let direction_z = expr_engine
             .compile(params.direction_z.as_ref())
-            .map_err(|e| {
-                GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}"))
-            })?;
+            .map_err(|e| GeometryProcessorError::ThreeDimensionRotatorFactory(format!("{e:?}")))?;
         Ok(Box::new(ThreeDimensionRotator {
             global_params: with,
             angle_degree,

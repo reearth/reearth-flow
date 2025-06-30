@@ -61,9 +61,7 @@ pub(super) fn pipeline(
             let shp_path = output
                 .join(format!("{}.shp", key.to_string().replace('/', "-")))
                 .map_err(|err| {
-                    crate::errors::SinkError::ShapefileWriter(format!(
-                        "Failed to join path: {err}"
-                    ))
+                    crate::errors::SinkError::ShapefileWriter(format!("Failed to join path: {err}"))
                 })?;
             let feature_count = shapes.len();
             let has_no_geometry = shapes

@@ -317,9 +317,7 @@ impl MissingAttributeDetector {
             .get_attribute_ns(
                 "id",
                 String::from_utf8(GML31_NS.into_inner().to_vec())
-                    .map_err(|e| {
-                        PlateauProcessorError::MissingAttributeDetector(format!("{e:?}"))
-                    })?
+                    .map_err(|e| PlateauProcessorError::MissingAttributeDetector(format!("{e:?}")))?
                     .as_str(),
             )
             .ok_or(PlateauProcessorError::MissingAttributeDetector(
