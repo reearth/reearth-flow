@@ -14,6 +14,7 @@ export type Config = {
   brandLogoUrl?: string;
   brandName?: string;
   devMode?: boolean;
+  mockEnabled?: boolean;
   tosUrl?: string;
   documentationUrl?: string;
   multiTenant?: Record<string, AuthInfo>;
@@ -32,9 +33,14 @@ export default async function loadConfig() {
 
   window.REEARTH_CONFIG = defaultConfig;
 
+  const rawConfig = await (await fetch("/reearth_config.json")).json();
+  
   const config: Config = {
     ...defaultConfig,
-    ...(await (await fetch("/reearth_config.json")).json()),
+    ...rawConfig,
+    // Convert string "true"/"false" to boolean for GCP deployment compatibility
+    devMode: rawConfig.devMode === "true" || rawConfig.devMode === true,
+    mockEnabled: rawConfig.mockEnabled === "true" || rawConfig.mockEnabled === true,
   };
 
   window.REEARTH_CONFIG = config;

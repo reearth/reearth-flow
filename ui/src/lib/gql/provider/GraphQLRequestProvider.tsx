@@ -26,8 +26,7 @@ export const GraphQLRequestProvider = ({
 }) => {
   const [graphQLSdk, setGraphQLSdk] = useState<Sdk | undefined>();
 
-  const isMockMode =
-    import.meta.env.FLOW_ENABLE_MOCK === "true" || config().devMode;
+  const isMockMode = config().mockEnabled || config().devMode;
   const endpoint = isMockMode
     ? `${window.location.origin}/api/graphql`
     : `${config().api}/api/graphql`;
