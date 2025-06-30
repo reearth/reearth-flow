@@ -34,13 +34,14 @@ export default async function loadConfig() {
   window.REEARTH_CONFIG = defaultConfig;
 
   const rawConfig = await (await fetch("/reearth_config.json")).json();
-  
+
   const config: Config = {
     ...defaultConfig,
     ...rawConfig,
     // Convert string "true"/"false" to boolean for GCP deployment compatibility
     devMode: rawConfig.devMode === "true" || rawConfig.devMode === true,
-    mockEnabled: rawConfig.mockEnabled === "true" || rawConfig.mockEnabled === true,
+    mockEnabled:
+      rawConfig.mockEnabled === "true" || rawConfig.mockEnabled === true,
   };
 
   window.REEARTH_CONFIG = config;
