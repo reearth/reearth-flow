@@ -1,0 +1,27 @@
+query GetAssets($workspaceId: ID!, $pagination: PageBasedPagination!) {
+  assets(workspaceId: $workspaceId, pagination: $pagination) {
+    totalCount
+    nodes {
+      ...Asset
+    }
+    pageInfo {
+      totalCount
+      currentPage
+      totalPages
+    }
+  }
+}
+
+mutation CreateAsset($input: CreateAssetInput!) {
+  createAsset(input: $input) {
+    asset {
+      ...Asset
+    }
+  }
+}
+
+mutation RemoveAsset($input: RemoveAssetInput!) {
+  removeAsset(input: $input) {
+    assetId
+  }
+}

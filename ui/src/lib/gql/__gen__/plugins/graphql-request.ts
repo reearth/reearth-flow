@@ -300,7 +300,7 @@ export type Mutation = {
   removeParameter: Scalars['Boolean']['output'];
   rollbackProject?: Maybe<ProjectDocument>;
   runProject?: Maybe<RunProjectPayload>;
-  saveSnapshot?: Maybe<Scalars['Boolean']['output']>;
+  saveSnapshot: Scalars['Boolean']['output'];
   shareProject?: Maybe<ShareProjectPayload>;
   signup?: Maybe<SignupPayload>;
   unshareProject?: Maybe<UnshareProjectPayload>;
@@ -1007,6 +1007,28 @@ export type WorkspaceMember = {
   userId: Scalars['ID']['output'];
 };
 
+export type GetAssetsQueryVariables = Exact<{
+  workspaceId: Scalars['ID']['input'];
+  pagination: PageBasedPagination;
+}>;
+
+
+export type GetAssetsQuery = { __typename?: 'Query', assets: { __typename?: 'AssetConnection', totalCount: number, nodes: Array<{ __typename?: 'Asset', id: string, workspaceId: string, name: string, contentType: string, size: any, createdAt: any, url: string } | null>, pageInfo: { __typename?: 'PageInfo', totalCount: number, currentPage?: number | null, totalPages?: number | null } } };
+
+export type CreateAssetMutationVariables = Exact<{
+  input: CreateAssetInput;
+}>;
+
+
+export type CreateAssetMutation = { __typename?: 'Mutation', createAsset?: { __typename?: 'CreateAssetPayload', asset: { __typename?: 'Asset', id: string, workspaceId: string, name: string, contentType: string, size: any, createdAt: any, url: string } } | null };
+
+export type RemoveAssetMutationVariables = Exact<{
+  input: RemoveAssetInput;
+}>;
+
+
+export type RemoveAssetMutation = { __typename?: 'Mutation', removeAsset?: { __typename?: 'RemoveAssetPayload', assetId: string } | null };
+
 export type CreateDeploymentMutationVariables = Exact<{
   input: CreateDeploymentInput;
 }>;
@@ -1093,7 +1115,7 @@ export type SaveSnapshotMutationVariables = Exact<{
 }>;
 
 
-export type SaveSnapshotMutation = { __typename?: 'Mutation', saveSnapshot?: boolean | null };
+export type SaveSnapshotMutation = { __typename?: 'Mutation', saveSnapshot: boolean };
 
 export type ProjectFragment = { __typename?: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken?: string | null, deployment?: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } | null };
 
@@ -1106,6 +1128,8 @@ export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: a
 export type NodeExecutionFragment = { __typename?: 'NodeExecution', id: string, nodeId: string, jobId: string, status: NodeStatus, createdAt?: any | null, startedAt?: any | null, completedAt?: any | null };
 
 export type JobFragment = { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, debug?: boolean | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null };
+
+export type AssetFragment = { __typename?: 'Asset', id: string, workspaceId: string, name: string, contentType: string, size: any, createdAt: any, url: string };
 
 export type ProjectDocumentFragment = { __typename?: 'ProjectDocument', id: string, timestamp: any, updates: Array<number>, version: number };
 
@@ -1434,6 +1458,17 @@ export const JobFragmentDoc = gql`
   }
 }
     `;
+export const AssetFragmentDoc = gql`
+    fragment Asset on Asset {
+  id
+  workspaceId
+  name
+  contentType
+  size
+  createdAt
+  url
+}
+    `;
 export const ProjectDocumentFragmentDoc = gql`
     fragment ProjectDocument on ProjectDocument {
   id
@@ -1462,6 +1497,37 @@ export const LogFragmentDoc = gql`
   timestamp
   logLevel
   message
+}
+    `;
+export const GetAssetsDocument = gql`
+    query GetAssets($workspaceId: ID!, $pagination: PageBasedPagination!) {
+  assets(workspaceId: $workspaceId, pagination: $pagination) {
+    totalCount
+    nodes {
+      ...Asset
+    }
+    pageInfo {
+      totalCount
+      currentPage
+      totalPages
+    }
+  }
+}
+    ${AssetFragmentDoc}`;
+export const CreateAssetDocument = gql`
+    mutation CreateAsset($input: CreateAssetInput!) {
+  createAsset(input: $input) {
+    asset {
+      ...Asset
+    }
+  }
+}
+    ${AssetFragmentDoc}`;
+export const RemoveAssetDocument = gql`
+    mutation RemoveAsset($input: RemoveAssetInput!) {
+  removeAsset(input: $input) {
+    assetId
+  }
 }
     `;
 export const CreateDeploymentDocument = gql`
@@ -1878,6 +1944,15 @@ const defaultWrapper: SdkFunctionWrapper = (action, _operationName, _operationTy
 
 export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = defaultWrapper) {
   return {
+    GetAssets(variables: GetAssetsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetAssetsQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetAssetsQuery>({ document: GetAssetsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetAssets', 'query', variables);
+    },
+    CreateAsset(variables: CreateAssetMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateAssetMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CreateAssetMutation>({ document: CreateAssetDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateAsset', 'mutation', variables);
+    },
+    RemoveAsset(variables: RemoveAssetMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RemoveAssetMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<RemoveAssetMutation>({ document: RemoveAssetDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RemoveAsset', 'mutation', variables);
+    },
     CreateDeployment(variables: CreateDeploymentMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateDeploymentMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<CreateDeploymentMutation>({ document: CreateDeploymentDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateDeployment', 'mutation', variables);
     },

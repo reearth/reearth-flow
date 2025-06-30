@@ -1,3 +1,4 @@
+import { MockAsset, mockAssets } from "../data/asset";
 import { mockDeployments, type MockDeployment } from "../data/deployments";
 import { mockJobs, mockLogs, type MockJob, type MockLog } from "../data/jobs";
 import {
@@ -17,6 +18,7 @@ import { mockWorkspaces, type MockWorkspace } from "../data/workspaces";
 // In-memory storage for mutations
 let users = [...mockUsers];
 let workspaces = [...mockWorkspaces];
+const assets = [...mockAssets];
 let projects = [...mockProjects];
 const jobs = [...mockJobs];
 let deployments = [...mockDeployments];
@@ -172,11 +174,25 @@ export const resolvers = {
         totalCount: workspaceProjects.length,
       };
     },
-    assets: () => ({
-      nodes: [],
-      pageInfo: { totalCount: 0, currentPage: 1, totalPages: 0 },
-      totalCount: 0,
-    }),
+    assets: (workspace: MockWorkspace, args: any) => {
+      const workspaceAssets = assets.filter(
+        (asset) => asset.workspaceId === workspace.id,
+      );
+
+      if (args.pagination) {
+        return paginateResults(workspaceAssets, args.pagination);
+      }
+
+      return {
+        nodes: workspaceAssets,
+        pageInfo: {
+          totalCount: workspaceAssets.length,
+          currentPage: 1,
+          totalPages: 1,
+        },
+        totalCount: workspaceAssets.length,
+      };
+    },
   },
 
   Project: {
@@ -258,6 +274,18 @@ export const resolvers = {
       workspaces.find((w) => w.id === deployment.workspaceId),
   },
 
+  Asset: {
+    id: (asset: MockAsset) => asset.id,
+    name: (asset: MockAsset) => asset.name,
+    workspaceId: (asset: MockAsset) => asset.workspaceId,
+    createdAt: (asset: MockAsset) => asset.createdAt,
+    contentType: (asset: MockAsset) => asset.contentType,
+    size: (asset: MockAsset) => asset.size,
+    url: (asset: MockAsset) => asset.url,
+    // workspace: (asset: MockAsset) =>
+    //   workspaces.find((w) => w.id === asset.workspaceId),
+  },
+
   // Query resolvers
   Query: {
     node: (_: any, args: { id: string; type: string }) => {
@@ -270,7 +298,7 @@ export const resolvers = {
         case "PROJECT":
           return projects.find((p) => p.id === id);
         case "ASSET":
-          return null; // No assets in mock data yet
+          return assets.find((a) => a.id === id);
         default:
           return null;
       }
@@ -285,6 +313,8 @@ export const resolvers = {
           return workspaces.filter((w) => ids.includes(w.id));
         case "PROJECT":
           return projects.filter((p) => ids.includes(p.id));
+        case "ASSET":
+          return assets.filter((a) => ids.includes(a.id));
         default:
           return [];
       }
@@ -338,8 +368,10 @@ export const resolvers = {
         sort?: string;
       },
     ) => {
-      // No assets in mock data yet
-      return paginateResults([], args.pagination);
+      const workspaceAssets = assets.filter(
+        (a) => a.workspaceId === args.workspaceId,
+      );
+      return paginateResults(workspaceAssets, args.pagination);
     },
 
     deployments: (_: any, args: { workspaceId: string; pagination: any }) => {
@@ -797,7 +829,7 @@ export const resolvers = {
     // Asset mutations
     createAsset: (_: any, args: { input: any }) => {
       // Mock asset creation
-      const newAsset = {
+      const newAsset: MockAsset = {
         id: generateId("asset"),
         name: "uploaded-file.png",
         contentType: "image/png",
@@ -807,11 +839,19 @@ export const resolvers = {
         createdAt: new Date().toISOString(),
       };
 
+      assets.push(newAsset);
       return { asset: newAsset };
     },
 
     deleteAsset: (_: any, args: { input: { assetId: string } }) => {
-      return { assetId: args.input.assetId };
+      const { input } = args;
+      const assetIndex = assets.findIndex((a) => a.id === input.assetId);
+      
+      if (assetIndex !== -1) {
+        assets.splice(assetIndex, 1);
+      }
+      
+      return { assetId: input.assetId };
     },
 
     // Deployment mutations
