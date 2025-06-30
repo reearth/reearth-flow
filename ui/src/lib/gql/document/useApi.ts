@@ -82,7 +82,7 @@ export const useDocument = () => {
       toast({
         title: t("Project Rollback Failed"),
         description: t("There was an error rolling back the project."),
-        variant: "warning",
+        variant: "destructive",
       });
 
       return { projectDocument: undefined, ...rest };
@@ -107,7 +107,7 @@ export const useDocument = () => {
       toast({
         title: t("Project failed to save"),
         description: t("There was an error saving the project."),
-        variant: "warning",
+        variant: "destructive",
       });
 
       return { saveSnapshot: false, ...rest };

@@ -14,7 +14,7 @@ import NotFound from "@flow/features/NotFound";
 import { NotificationSystem } from "@flow/features/NotificationSystem";
 import { useAuth } from "@flow/lib/auth";
 import { GraphQLProvider, useUser } from "@flow/lib/gql";
-import { I18nProvider } from "@flow/lib/i18n";
+import { I18nProvider, useT } from "@flow/lib/i18n";
 import { ThemeProvider } from "@flow/lib/theme";
 
 export const Route = createFileRoute("/workspaces")({
@@ -61,7 +61,7 @@ const WorkspaceNavigation = () => {
   const navigate = useNavigate();
   const { useGetMe } = useUser();
   const { me, isLoading, isError } = useGetMe();
-
+  const t = useT();
   useEffect(() => {
     if (!me || !me?.myWorkspaceId || workspaceId) return;
     navigate({
@@ -73,6 +73,6 @@ const WorkspaceNavigation = () => {
   return isLoading ? (
     <LoadingSplashscreen />
   ) : isError || !me || !me?.myWorkspaceId ? (
-    <ErrorPage errorMessage={"Could not fetch user"} />
+    <ErrorPage errorMessage={t("Could not fetch user")} />
   ) : null;
 };

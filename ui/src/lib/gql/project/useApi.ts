@@ -78,6 +78,10 @@ export const useProject = () => {
     const { mutateAsync, ...rest } = updateProjectMutation;
     try {
       const project = await mutateAsync(input);
+      toast({
+        title: t("Project Updated"),
+        description: t("Project has been successfully updated."),
+      });
       return { project, ...rest };
     } catch (_err) {
       toast({
