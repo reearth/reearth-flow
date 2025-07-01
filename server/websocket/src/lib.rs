@@ -1,61 +1,19 @@
-use std::sync::Arc;
-use tokio::sync::RwLock;
+pub mod application;
+pub mod domain;
+pub mod infrastructure;
+pub mod interface;
 
-#[cfg(feature = "auth")]
-pub mod auth;
+// 从各层重新导出常用类型
+pub use domain::{
+    BroadcastMessage, BroadcastService, ConnectionId, ConnectionInfo, Document, DocumentId,
+    DocumentService, MessageType,
+};
 
-mod broadcast;
-pub mod conf;
-pub mod conn;
-pub mod doc;
-pub mod storage;
-pub mod tools;
-pub mod ws;
+pub use application::{AppState, Config, ConfigService, DocumentAppService, WebSocketService};
 
-pub use broadcast::group;
-pub use broadcast::pool;
+pub use infrastructure::{BroadcastGroup, BroadcastPool, Connection, GcsStore, RedisStore};
 
-pub type AwarenessRef = Arc<RwLock<yrs::sync::Awareness>>;
+pub use interface::{create_ws_router, document_routes, start_server};
 
-pub mod server;
-
-#[cfg(feature = "auth")]
-#[derive(Debug, serde::Deserialize)]
-pub struct AuthQuery {
-    #[serde(default)]
-    pub token: String,
-}
-
-#[derive(Debug, serde::Deserialize)]
-pub struct RollbackQuery {
-    pub clock: u32,
-    #[cfg(feature = "auth")]
-    #[serde(default)]
-    pub token: String,
-}
-
-#[cfg(feature = "auth")]
-#[derive(Clone, Debug)]
-pub struct AppState {
-    pub pool: Arc<BroadcastPool>,
-    pub auth: Arc<AuthService>,
-    pub instance_id: String,
-}
-
-#[cfg(not(feature = "auth"))]
-#[derive(Clone, Debug)]
-pub struct AppState {
-    pub pool: Arc<BroadcastPool>,
-    pub instance_id: String,
-}
-
-#[cfg(feature = "auth")]
-pub use auth::AuthService;
-
-pub use broadcast::sub::Subscription;
-pub use conf::Config;
-pub use group::BroadcastGroup;
-pub use pool::BroadcastPool;
-pub use server::{ensure_bucket, start_server};
-pub use storage::gcs::GcsStore;
-pub use storage::kv::DocOps;
+// 保持向后兼容的类型别名
+pub type AwarenessRef = std::sync::Arc<tokio::sync::RwLock<yrs::sync::Awareness>>;
