@@ -73,7 +73,6 @@ export default ({
   }) => Promise<void>;
 }) => {
   const t = useT();
-  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [localProjectVariables, setLocalProjectVariables] = useState<
     ProjectVariable[]
   >([]);
@@ -128,7 +127,6 @@ export default ({
     if (currentProjectVariables) {
       setLocalProjectVariables([...currentProjectVariables]);
       setPendingChanges([]);
-      setSelectedIndices([]);
     }
   }, [currentProjectVariables, isOpen, getUserFacingName]);
 
@@ -209,18 +207,20 @@ export default ({
     });
   }, []);
 
-  const handleLocalDelete = useCallback(() => {
-    if (selectedIndices.length === 0 || !localProjectVariables) return;
+  const handleDeleteSingle = useCallback(
+    (variableId: string) => {
+      const variableIndex = localProjectVariables.findIndex(
+        (variable) => variable.id === variableId,
+      );
 
-    const varsToDelete = selectedIndices.map(
-      (index) => localProjectVariables[index],
-    );
+      if (variableIndex === -1) return;
 
-    setLocalProjectVariables((prev) =>
-      prev.filter((_, index) => !selectedIndices.includes(index)),
-    );
+      const varToDelete = localProjectVariables[variableIndex];
 
-    varsToDelete.forEach((varToDelete) => {
+      setLocalProjectVariables((prev) =>
+        prev.filter((variable) => variable.id !== variableId),
+      );
+
       if (!varToDelete.id.startsWith("temp_")) {
         setPendingChanges((prev) => [
           ...prev,
@@ -234,67 +234,42 @@ export default ({
           ),
         );
       }
-    });
-
-    setSelectedIndices([]);
-  }, [selectedIndices, localProjectVariables]);
-
-  const handleMoveUp = useCallback(
-    (index: number) => {
-      if (index <= 0) return;
-
-      const newProjectVariables = [...localProjectVariables];
-      const temp = newProjectVariables[index];
-      newProjectVariables[index] = newProjectVariables[index - 1];
-      newProjectVariables[index - 1] = temp;
-
-      setLocalProjectVariables(newProjectVariables);
-
-      // Track reorder for non-temp variables
-      if (!temp.id.startsWith("temp_")) {
-        setPendingChanges((prev) => [
-          ...prev,
-          { type: "reorder", paramId: temp.id, newIndex: index - 1 },
-        ]);
-      }
-      // Also track reorder for the swapped variable if it's not temp
-      const swappedVar = newProjectVariables[index];
-      if (!swappedVar.id.startsWith("temp_")) {
-        setPendingChanges((prev) => [
-          ...prev,
-          { type: "reorder", paramId: swappedVar.id, newIndex: index },
-        ]);
-      }
     },
     [localProjectVariables],
   );
 
-  const handleMoveDown = useCallback(
-    (index: number) => {
-      if (index >= localProjectVariables.length - 1) return;
+  const handleReorder = useCallback(
+    (oldIndex: number, newIndex: number) => {
+      if (oldIndex === newIndex) return;
 
       const newProjectVariables = [...localProjectVariables];
-      const temp = newProjectVariables[index];
-      newProjectVariables[index] = newProjectVariables[index + 1];
-      newProjectVariables[index + 1] = temp;
+      const [movedItem] = newProjectVariables.splice(oldIndex, 1);
+      newProjectVariables.splice(newIndex, 0, movedItem);
 
       setLocalProjectVariables(newProjectVariables);
 
-      // Track reorder for non-temp variables
-      if (!temp.id.startsWith("temp_")) {
-        setPendingChanges((prev) => [
-          ...prev,
-          { type: "reorder", paramId: temp.id, newIndex: index + 1 },
-        ]);
-      }
-      // Also track reorder for the swapped variable if it's not temp
-      const swappedVar = newProjectVariables[index];
-      if (!swappedVar.id.startsWith("temp_")) {
-        setPendingChanges((prev) => [
-          ...prev,
-          { type: "reorder", paramId: swappedVar.id, newIndex: index },
-        ]);
-      }
+      // Track reorder changes for all affected non-temp variables
+      newProjectVariables.forEach((variable, index) => {
+        if (!variable.id.startsWith("temp_")) {
+          const originalIndex = localProjectVariables.findIndex(
+            (v) => v.id === variable.id,
+          );
+          if (originalIndex !== index) {
+            setPendingChanges((prev) => {
+              const filteredChanges = prev.filter(
+                (change) =>
+                  !(
+                    change.type === "reorder" && change.paramId === variable.id
+                  ),
+              );
+              return [
+                ...filteredChanges,
+                { type: "reorder", paramId: variable.id, newIndex: index },
+              ];
+            });
+          }
+        }
+      });
     },
     [localProjectVariables],
   );
@@ -413,13 +388,8 @@ export default ({
       setLocalProjectVariables([...currentProjectVariables]);
     }
     setPendingChanges([]);
-    setSelectedIndices([]);
     onClose();
   }, [currentProjectVariables, onClose]);
-
-  const handleRowSelect = useCallback((selectedIndicesFromTable: number[]) => {
-    setSelectedIndices(selectedIndicesFromTable);
-  }, []);
 
   const handleEditVariable = useCallback((variable: ProjectVariable) => {
     setEditingVariable(variable);
@@ -430,7 +400,6 @@ export default ({
   }, []);
 
   return {
-    selectedIndices,
     localProjectVariables,
     pendingChanges,
     isSubmitting,
@@ -438,12 +407,10 @@ export default ({
     getUserFacingName,
     handleLocalAdd,
     handleLocalUpdate,
-    handleLocalDelete,
-    handleMoveUp,
-    handleMoveDown,
+    handleDeleteSingle,
+    handleReorder,
     handleSubmit,
     handleCancel,
-    handleRowSelect,
     handleEditVariable,
     handleCloseEdit,
   };

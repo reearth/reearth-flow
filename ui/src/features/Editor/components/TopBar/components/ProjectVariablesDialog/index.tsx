@@ -1,8 +1,8 @@
 import {
   ChalkboardTeacherIcon,
-  MinusIcon,
   PencilSimpleIcon,
   PlusIcon,
+  TrashIcon,
 } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
@@ -99,7 +99,6 @@ const ProjectVariableDialog: React.FC<Props> = ({
   const t = useT();
 
   const {
-    selectedIndices,
     localProjectVariables,
     pendingChanges,
     isSubmitting,
@@ -107,12 +106,10 @@ const ProjectVariableDialog: React.FC<Props> = ({
     getUserFacingName,
     handleLocalAdd,
     handleLocalUpdate,
-    handleLocalDelete,
-    handleMoveUp,
-    handleMoveDown,
+    handleDeleteSingle,
+    handleReorder,
     handleSubmit,
     handleCancel,
-    handleRowSelect,
     handleEditVariable,
     handleCloseEdit,
   } = useProjectVariablesDialog({
@@ -206,10 +203,21 @@ const ProjectVariableDialog: React.FC<Props> = ({
               tooltipText={t("Edit default value and advanced options")}
               className="hover:bg-accent"
             />
+            <IconButton
+              icon={<TrashIcon size={18} />}
+              size="default"
+              variant="ghost"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteSingle(variable.id);
+              }}
+              tooltipText={t("Delete variable")}
+              className="hover:bg-accent"
+            />
           </div>
         );
       },
-      size: 80,
+      size: 100,
     },
   ];
 
@@ -231,7 +239,10 @@ const ProjectVariableDialog: React.FC<Props> = ({
                 <DialogContentSection className="flex flex-row items-center gap-2 p-2">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <IconButton icon={<PlusIcon />} />
+                      <Button variant="default" size="sm" className="gap-2">
+                        <PlusIcon size={16} />
+                        {t("Add Variable")}
+                      </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="start">
                       <DropdownMenuLabel>
@@ -251,25 +262,12 @@ const ProjectVariableDialog: React.FC<Props> = ({
                       </DropdownMenuGroup>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  <IconButton
-                    icon={<MinusIcon />}
-                    onClick={handleLocalDelete}
-                    disabled={selectedIndices.length === 0}
-                    tooltipText={
-                      selectedIndices.length === 0
-                        ? t("Select variables to delete")
-                        : t("Delete selected variables")
-                    }
-                  />
                 </DialogContentSection>
                 <DialogContentSection>
                   <ProjectVariablesTable
                     projectVariables={localProjectVariables}
                     columns={columns}
-                    selectedIndices={selectedIndices}
-                    onSelectionChange={handleRowSelect}
-                    onMoveUp={handleMoveUp}
-                    onMoveDown={handleMoveDown}
+                    onReorder={handleReorder}
                   />
                 </DialogContentSection>
               </DialogContentSection>
