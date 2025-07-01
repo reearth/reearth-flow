@@ -6,3 +6,4 @@ export * from "./isDefined";
 export * from "./lastOfUrl";
 export * from "./openLinkInNewTab";
 export * from "./timestamp";
+export * from "./fileSize";

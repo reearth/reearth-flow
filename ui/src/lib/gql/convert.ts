@@ -1,4 +1,5 @@
 import type {
+  AssetFragment,
   DeploymentFragment,
   ProjectFragment,
   WorkspaceFragment,
@@ -28,9 +29,7 @@ import type {
   Member,
   Asset,
 } from "@flow/types";
-import { formatDate } from "@flow/utils";
-
-import { AssetFragment } from "./__gen__/graphql";
+import { formatDate, formatFileSize } from "@flow/utils";
 
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
@@ -146,9 +145,9 @@ export const toAsset = (asset: AssetFragment): Asset => ({
   id: asset.id,
   name: asset.name,
   workspaceId: asset.workspaceId,
-  createdAt: asset.createdAt,
+  createdAt: formatDate(asset.createdAt),
   contentType: asset.contentType,
-  size: asset.size,
+  size: formatFileSize(asset.size),
   url: asset.url,
 });
 

@@ -8,7 +8,13 @@ import { Project } from "@flow/types";
 
 import { WorkflowTabs } from "..";
 
-import { ActionBar, Breadcrumb, DebugActionBar, HomeMenu } from "./components";
+import {
+  ActionBar,
+  Breadcrumb,
+  DebugActionBar,
+  HomeMenu,
+  AssetsDialog,
+} from "./components";
 
 type Props = {
   currentWorkflowId: string;
@@ -61,7 +67,7 @@ const TopBar: React.FC<Props> = ({
           <IconButton
             className="h-[30px]"
             variant="outline"
-            tooltipText={t("Resources")}
+            tooltipText={t("Assets")}
             icon={<HardDriveIcon weight="thin" size={18} />}
             disabled
           />
@@ -91,6 +97,7 @@ const TopBar: React.FC<Props> = ({
           onWorkflowDeployment={onWorkflowDeployment}
         />
       </div>
+      <AssetsDialog />
     </div>
   );
 };

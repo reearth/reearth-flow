@@ -7,7 +7,7 @@ export type Asset = {
   workspaceId: string;
   createdAt: string;
   contentType: string;
-  size: number;
+  size: string;
   url: string;
 };
 
