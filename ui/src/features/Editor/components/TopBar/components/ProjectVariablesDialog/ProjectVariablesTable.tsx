@@ -153,94 +153,107 @@ const ProjectVariablesTable: React.FC<Props> = ({
   if (!onReorder) {
     // Render table without drag and drop if onReorder is not provided
     return (
-      <Table className={`rounded-md bg-inherit ${className}`}>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id} className="h-8 whitespace-nowrap">
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows?.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id} className="hover:bg-primary/50">
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id} className="px-2 py-[2px]">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </TableCell>
+      <div className="max-h-[50vh] overflow-auto">
+        <Table className={`rounded-md bg-inherit ${className}`}>
+          <TableHeader className="sticky top-0 z-10 bg-background">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className="h-8 bg-background whitespace-nowrap">
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                  </TableHead>
                 ))}
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell
-                colSpan={tableColumns.length}
-                className="h-24 text-center">
-                {t("No Results")}
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    );
-  }
-
-  // Render table with drag and drop
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}>
-      <Table className={`rounded-md bg-inherit ${className}`}>
-        <TableHeader>
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              <TableHead className="w-10" />
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id} className="h-8 whitespace-nowrap">
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(
-                        header.column.columnDef.header,
-                        header.getContext(),
-                      )}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          <SortableContext items={items} strategy={verticalListSortingStrategy}>
+            ))}
+          </TableHeader>
+          <TableBody>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => {
-                const variable = projectVariables[row.index];
-                return (
-                  <SortableRow key={row.id} row={row} variable={variable} />
-                );
-              })
+              table.getRowModel().rows.map((row) => (
+                <TableRow key={row.id} className="hover:bg-primary/50">
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id} className="px-2 py-[2px]">
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext(),
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={tableColumns.length + 1}
+                  colSpan={tableColumns.length}
                   className="h-24 text-center">
                   {t("No Results")}
                 </TableCell>
               </TableRow>
             )}
-          </SortableContext>
-        </TableBody>
-      </Table>
-    </DndContext>
+          </TableBody>
+        </Table>
+      </div>
+    );
+  }
+
+  // Render table with drag and drop
+  return (
+    <div className="max-h-[50vh] overflow-auto">
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}>
+        <Table className={`rounded-md bg-inherit ${className}`}>
+          <TableHeader className="sticky top-0 z-10 bg-background">
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                <TableHead className="w-10 bg-background" />
+                {headerGroup.headers.map((header) => (
+                  <TableHead
+                    key={header.id}
+                    className="h-8 bg-background whitespace-nowrap">
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
+                  </TableHead>
+                ))}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            <SortableContext
+              items={items}
+              strategy={verticalListSortingStrategy}>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => {
+                  const variable = projectVariables[row.index];
+                  return (
+                    <SortableRow key={row.id} row={row} variable={variable} />
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={tableColumns.length + 1}
+                    className="h-24 text-center">
+                    {t("No Results")}
+                  </TableCell>
+                </TableRow>
+              )}
+            </SortableContext>
+          </TableBody>
+        </Table>
+      </DndContext>
+    </div>
   );
 };
 

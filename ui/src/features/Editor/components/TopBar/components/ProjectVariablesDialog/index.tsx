@@ -17,7 +17,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuTrigger,
   IconButton,
   Switch,
@@ -224,19 +223,20 @@ const ProjectVariableDialog: React.FC<Props> = ({
   return (
     <>
       <Dialog open={isOpen} onOpenChange={handleCancel}>
-        <DialogContent className="h-[50vh]" size="2xl" position="off-center">
+        <DialogContent
+          className="h-[50vh]"
+          size="2xl"
+          position="off-center"
+          hideCloseButton
+          onInteractOutside={(e) => e.preventDefault()}>
           <div className="flex h-full flex-col">
             <DialogHeader>
               <DialogTitle>
-                <div className="flex items-center gap-2">
-                  <ChalkboardTeacherIcon />
-                  {t("Project Variables")}
-                </div>
-              </DialogTitle>
-            </DialogHeader>
-            <div className="flex h-full">
-              <DialogContentSection className="flex-3 bg-card">
-                <DialogContentSection className="flex flex-row items-center gap-2 p-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <ChalkboardTeacherIcon />
+                    {t("Project Variables")}
+                  </div>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="default" size="sm" className="gap-2">
@@ -244,10 +244,7 @@ const ProjectVariableDialog: React.FC<Props> = ({
                         {t("Add Variable")}
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start">
-                      <DropdownMenuLabel>
-                        {t("Add a new project variable")}
-                      </DropdownMenuLabel>
+                    <DropdownMenuContent align="end">
                       <DropdownMenuGroup>
                         {allVarTypes.map((type) => (
                           <DropdownMenuItem
@@ -262,8 +259,12 @@ const ProjectVariableDialog: React.FC<Props> = ({
                       </DropdownMenuGroup>
                     </DropdownMenuContent>
                   </DropdownMenu>
-                </DialogContentSection>
-                <DialogContentSection>
+                </div>
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex h-full min-h-0">
+              <DialogContentSection className="flex min-h-0 flex-3 flex-col bg-card">
+                <DialogContentSection className="min-h-0 flex-1 overflow-hidden">
                   <ProjectVariablesTable
                     projectVariables={localProjectVariables}
                     columns={columns}
