@@ -18,16 +18,16 @@ type Props = {
   totalPages: number;
   setAssetToBeDeleted: (asset: string | undefined) => void;
   setCurrentPage?: (page: number) => void;
-  orderDirections: Record<string, string>;
-  currentOrder?: string;
-  handleOrderChange?: () => void;
+  sortOptions: { value: string; label: string }[];
+  currentSortValue: string;
+  handleOrderChange: (value: string) => void;
 };
 const AssetsGridView: React.FC<Props> = ({
   assets,
   currentPage,
   totalPages,
-  orderDirections,
-  currentOrder,
+  sortOptions,
+  currentSortValue,
   handleOrderChange,
   setAssetToBeDeleted,
   setCurrentPage,
@@ -43,22 +43,20 @@ const AssetsGridView: React.FC<Props> = ({
           className="max-w-sm"
         />
 
-        {currentOrder && (
-          <Select
-            value={currentOrder || "DESC"}
-            onValueChange={handleOrderChange}>
-            <SelectTrigger className="h-[32px] w-[100px]">
-              <SelectValue placeholder={orderDirections.ASC} />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(orderDirections).map(([value, label]) => (
-                <SelectItem key={value} value={value}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        <Select
+          value={currentSortValue}
+          onValueChange={handleOrderChange}>
+          <SelectTrigger className="h-[32px] w-[150px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {sortOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid min-w-0 grid-cols-1 gap-2 pb-2 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">

@@ -38,8 +38,8 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
     currentPage,
     totalPages,
     isFetching,
-    currentOrder,
-    orderDirections,
+    sortOptions,
+    currentSortValue,
     layoutView,
     handleOrderChange,
     handleAssetUploadClick,
@@ -94,8 +94,8 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
                 assets={assets}
                 currentPage={currentPage}
                 totalPages={totalPages}
-                orderDirections={orderDirections}
-                currentOrder={currentOrder}
+                sortOptions={sortOptions}
+                currentSortValue={currentSortValue}
                 handleOrderChange={handleOrderChange}
                 setAssetToBeDeleted={setAssetToBeDeleted}
                 setCurrentPage={setCurrentPage}
@@ -107,8 +107,9 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
                 totalPages={totalPages}
                 setAssetToBeDeleted={setAssetToBeDeleted}
                 setCurrentPage={setCurrentPage}
-                currentOrder={currentOrder}
-                setCurrentOrder={handleOrderChange}
+                sortOptions={sortOptions}
+                currentSortValue={currentSortValue}
+                handleSortChange={handleOrderChange}
               />
             ) : (
               <BasicBoiler

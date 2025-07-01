@@ -53,6 +53,9 @@ type DataTableProps<TData, TValue> = {
   resultsPerPage?: number;
   currentOrder?: OrderDirection;
   setCurrentOrder?: (order: OrderDirection) => void;
+  sortOptions?: { value: string; label: string }[];
+  currentSortValue?: string;
+  handleSortChange?: (value: string) => void;
 };
 
 function DataTable<TData, TValue>({
@@ -69,6 +72,9 @@ function DataTable<TData, TValue>({
   resultsPerPage,
   currentOrder = OrderDirection.Desc,
   setCurrentOrder,
+  sortOptions,
+  currentSortValue,
+  handleSortChange,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -143,7 +149,20 @@ function DataTable<TData, TValue>({
               className="max-w-sm"
             />
           )}
-          {currentOrder && (
+          {sortOptions && handleSortChange ? (
+            <Select value={currentSortValue} onValueChange={handleSortChange}>
+              <SelectTrigger className="h-[32px] w-[150px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {sortOptions.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
             <Select
               value={currentOrder || "DESC"}
               onValueChange={handleOrderChange}>

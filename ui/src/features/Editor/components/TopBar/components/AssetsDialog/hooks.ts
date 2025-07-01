@@ -2,6 +2,7 @@ import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { useAsset } from "@flow/lib/gql/assets";
 import { useT } from "@flow/lib/i18n";
+import { AssetOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
 export default ({ workspaceId }: { workspaceId: string }) => {
@@ -10,7 +11,10 @@ export default ({ workspaceId }: { workspaceId: string }) => {
 
   const { useGetAssets, createAsset, removeAsset } = useAsset();
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [currentOrder, setCurrentOrder] = useState<OrderDirection>(
+  const [currentOrderBy, setCurrentOrderBy] = useState<AssetOrderBy>(
+    AssetOrderBy.CreatedAt,
+  );
+  const [currentOrderDir, setCurrentOrder] = useState<OrderDirection>(
     OrderDirection.Desc,
   );
 
@@ -25,29 +29,49 @@ export default ({ workspaceId }: { workspaceId: string }) => {
 
   const { page, refetch, isFetching } = useGetAssets(workspaceId, {
     page: currentPage,
-    orderDir: currentOrder,
-    orderBy: "createdAt",
+    orderDir: currentOrderDir,
+    orderBy: currentOrderBy,
   });
   const totalPages = page?.totalPages as number;
 
   const assets = page?.assets;
-  const orderDirections: Record<OrderDirection, string> = {
-    DESC: t("Newest"),
-    ASC: t("Oldest"),
-  };
-  const handleOrderChange = () => {
-    setCurrentOrder?.(
-      currentOrder === OrderDirection.Asc
-        ? OrderDirection.Desc
-        : OrderDirection.Asc,
-    );
+  const sortOptions = [
+    {
+      value: `${AssetOrderBy.CreatedAt}_${OrderDirection.Desc}`,
+      label: t("Newest"),
+    },
+    {
+      value: `${AssetOrderBy.CreatedAt}_${OrderDirection.Asc}`,
+      label: t("Oldest"),
+    },
+    { value: `${AssetOrderBy.Name}_${OrderDirection.Asc}`, label: t("A-Z") },
+    { value: `${AssetOrderBy.Name}_${OrderDirection.Desc}`, label: t("Z-A") },
+    {
+      value: `${AssetOrderBy.Size}_${OrderDirection.Desc}`,
+      label: t("Largest"),
+    },
+    {
+      value: `${AssetOrderBy.Size}_${OrderDirection.Asc}`,
+      label: t("Smallest"),
+    },
+  ];
+
+  const currentSortValue = `${currentOrderBy}_${currentOrderDir}`;
+
+  const handleOrderChange = (newSortValue: string) => {
+    const [orderBy, orderDir] = newSortValue.split("_") as [
+      AssetOrderBy,
+      OrderDirection,
+    ];
+    setCurrentOrderBy(orderBy);
+    setCurrentOrder(orderDir);
   };
 
   useEffect(() => {
     (async () => {
       await refetch();
     })();
-  }, [currentPage, currentOrder, refetch]);
+  }, [currentPage, currentOrderDir, currentOrderBy, refetch]);
 
   const handleAssetUploadClick = useCallback(() => {
     fileInputRefProject.current?.click();
@@ -85,8 +109,8 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     currentPage,
     totalPages,
     isFetching,
-    currentOrder,
-    orderDirections,
+    sortOptions,
+    currentSortValue,
     layoutView,
     handleOrderChange,
     handleAssetUploadClick,

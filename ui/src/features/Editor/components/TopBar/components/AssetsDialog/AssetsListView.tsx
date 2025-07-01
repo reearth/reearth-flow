@@ -1,29 +1,31 @@
 import { PencilLineIcon, TrashIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
-import { ButtonWithTooltip, DataTable as Table } from "@flow/components";
+import { ButtonWithTooltip } from "@flow/components";
+import { DataTable as Table } from "@flow/components/DataTable";
 import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { Asset } from "@flow/types";
-import { OrderDirection } from "@flow/types/paginationOptions";
 
 type Props = {
   assets: Asset[];
   currentPage: number;
   totalPages: number;
-  currentOrder?: OrderDirection;
+  sortOptions: { value: string; label: string }[];
+  currentSortValue: string;
+  handleSortChange: (value: string) => void;
   setCurrentPage?: (page: number) => void;
   setAssetToBeDeleted: (asset: string | undefined) => void;
-  setCurrentOrder?: (order: OrderDirection) => void;
 };
 const AssetsListView: React.FC<Props> = ({
   assets,
   currentPage,
   totalPages,
-  currentOrder,
+  sortOptions,
+  currentSortValue,
+  handleSortChange,
   setCurrentPage,
   setAssetToBeDeleted,
-  setCurrentOrder,
 }) => {
   const t = useT();
 
@@ -79,8 +81,9 @@ const AssetsListView: React.FC<Props> = ({
         setCurrentPage={setCurrentPage}
         totalPages={totalPages}
         resultsPerPage={resultsPerPage}
-        currentOrder={currentOrder}
-        setCurrentOrder={setCurrentOrder}
+        sortOptions={sortOptions}
+        currentSortValue={currentSortValue}
+        handleSortChange={handleSortChange}
       />
     </div>
   );
