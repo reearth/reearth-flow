@@ -2,7 +2,6 @@ import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { useAsset } from "@flow/lib/gql/assets";
 import { useT } from "@flow/lib/i18n";
-import { AssetSortType } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 
 export default ({ workspaceId }: { workspaceId: string }) => {
@@ -24,15 +23,11 @@ export default ({ workspaceId }: { workspaceId: string }) => {
 
   const handleListView = () => setLayoutView("list");
 
-  const { page, refetch, isFetching } = useGetAssets(
-    workspaceId,
-    AssetSortType.Date,
-    {
-      page: currentPage,
-      orderDir: currentOrder,
-      orderBy: "createdAt",
-    },
-  );
+  const { page, refetch, isFetching } = useGetAssets(workspaceId, {
+    page: currentPage,
+    orderDir: currentOrder,
+    orderBy: "createdAt",
+  });
   const totalPages = page?.totalPages as number;
 
   const assets = page?.assets;

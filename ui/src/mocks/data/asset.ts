@@ -13,7 +13,7 @@ export const mockAssets: MockAsset[] = [
     id: "asset-1",
     name: "BuildingModel.glb",
     contentType: "model/gltf-binary",
-    createdAt: "2025-05-12T10:32:45.123Z",
+    createdAt: "2024-05-12T10:32:45.123Z",
     size: 5242880, // 5MB
     url: "https://mockserver.local/assets/buildingmodel.glb",
     workspaceId: "workspace-1",
@@ -22,7 +22,7 @@ export const mockAssets: MockAsset[] = [
     id: "asset-2",
     name: "SiteMap.png",
     contentType: "image/png",
-    createdAt: "2025-05-14T13:45:22.987Z",
+    createdAt: "1998-05-14T13:45:22.987Z",
     size: 1048576, // 1MB
     url: "https://mockserver.local/assets/sitemap.png",
     workspaceId: "workspace-1",
