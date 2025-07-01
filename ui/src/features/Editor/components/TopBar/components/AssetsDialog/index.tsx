@@ -1,4 +1,4 @@
-import { PlusIcon } from "@phosphor-icons/react";
+import { ListIcon, PlusIcon } from "@phosphor-icons/react";
 import { SquaresFourIcon } from "@phosphor-icons/react/dist/ssr";
 
 import {
@@ -9,12 +9,6 @@ import {
   DialogTitle,
   LoadingSkeleton,
   FlowLogo,
-  Pagination,
-  Select,
-  SelectTrigger,
-  SelectValue,
-  SelectContent,
-  SelectItem,
   Button,
   IconButton,
 } from "@flow/components";
@@ -23,8 +17,9 @@ import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 
-import { Assetcard } from "./AssetCard";
 import { AssetDeletionDialog } from "./AssetDeletionDialog";
+import { AssetsGridView } from "./AssetsGridView";
+import { AssetsListView } from "./AssetsListView";
 import useHooks from "./hooks";
 
 type Props = {
@@ -45,10 +40,13 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
     isFetching,
     currentOrder,
     orderDirections,
+    layoutView,
     handleOrderChange,
     handleAssetUploadClick,
     handleAssetCreate,
     handleAssetDelete,
+    handleGridView,
+    handleListView,
     setCurrentPage,
   } = useHooks({ workspaceId: currentWorkspace?.id ?? "" });
 
@@ -67,34 +65,22 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
             </Button>
 
             <div className="flex items-center gap-4">
-              {currentOrder && (
-                <Select
-                  value={currentOrder || "DESC"}
-                  onValueChange={handleOrderChange}>
-                  <SelectTrigger className="w-[100px]">
-                    <SelectValue placeholder={orderDirections.ASC} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(orderDirections).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
               <div className="flex items-center gap-2">
                 <IconButton
                   size="icon"
                   variant="outline"
+                  className={layoutView === "grid" ? "bg-accent" : ""}
                   tooltipText={t("Grid Layout")}
+                  onClick={handleGridView}
                   icon={<SquaresFourIcon />}
                 />
                 <IconButton
                   size="icon"
                   variant="outline"
+                  className={layoutView === "list" ? "bg-accent" : ""}
                   tooltipText={t("List Layout")}
-                  icon={<SquaresFourIcon />}
+                  onClick={handleListView}
+                  icon={<ListIcon />}
                 />
               </div>
             </div>
@@ -103,32 +89,33 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
           <DialogContentSection className="flex max-h-[60vh] flex-col overflow-hidden">
             {isFetching ? (
               <LoadingSkeleton />
-            ) : assets && assets.length > 0 ? (
-              <div className="flex-1 overflow-y-auto">
-                <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-                  {assets.map((a) => (
-                    <Assetcard
-                      key={a.id}
-                      asset={a}
-                      setAssetToBeDeleted={setAssetToBeDeleted}
-                    />
-                  ))}
-                </div>
-              </div>
+            ) : assets && assets.length > 0 && layoutView === "grid" ? (
+              <AssetsGridView
+                assets={assets}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                orderDirections={orderDirections}
+                currentOrder={currentOrder}
+                handleOrderChange={handleOrderChange}
+                setAssetToBeDeleted={setAssetToBeDeleted}
+                setCurrentPage={setCurrentPage}
+              />
+            ) : assets && assets.length > 0 && layoutView === "list" ? (
+              <AssetsListView
+                assets={assets}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                setAssetToBeDeleted={setAssetToBeDeleted}
+                setCurrentPage={setCurrentPage}
+                currentOrder={currentOrder}
+                setCurrentOrder={handleOrderChange}
+              />
             ) : (
               <BasicBoiler
                 text={t("No Assets")}
                 icon={<FlowLogo className="size-16 text-accent" />}
               />
             )}
-
-            <div className="mb-3">
-              <Pagination
-                currentPage={currentPage}
-                setCurrentPage={setCurrentPage}
-                totalPages={totalPages}
-              />
-            </div>
           </DialogContentSection>
         </DialogContentWrapper>
       </DialogContent>

@@ -1,6 +1,10 @@
 import type { ApiResponse } from "./api";
 
-export type AssetSortType = "DATE" | "SIZE" | "NAME";
+export enum AssetSortType {
+  Date = "DATE",
+  Size = "SIZE",
+  Name = "NAME",
+}
 export type Asset = {
   id: string;
   name: string;

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { Asset } from "@flow/types";
+import { Asset, AssetSortType } from "@flow/types";
 import {
   OrderDirection,
   type PaginationOptions,
@@ -23,6 +23,7 @@ export const useQueries = () => {
 
   const useGetAssetsQuery = (
     workspaceId: string,
+    sort?: AssetSortType,
     paginationOptions?: PaginationOptions,
   ) =>
     useQuery({
@@ -30,6 +31,7 @@ export const useQueries = () => {
       queryFn: async () => {
         const data = await graphQLContext?.GetAssets({
           workspaceId: workspaceId ?? "",
+          sort: sort ?? AssetSortType.Date,
           pagination: {
             page: paginationOptions?.page ?? 1,
             pageSize: ASSET_FETCH_RATE,

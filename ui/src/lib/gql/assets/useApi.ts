@@ -1,6 +1,6 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
-import { Asset, CreateAsset, RemoveAsset } from "@flow/types";
+import { Asset, AssetSortType, CreateAsset, RemoveAsset } from "@flow/types";
 import type { PaginationOptions } from "@flow/types/paginationOptions";
 
 import { CreateAssetInput, RemoveAssetInput } from "../__gen__/graphql";
@@ -14,9 +14,14 @@ export const useAsset = () => {
   const t = useT();
   const useGetAssets = (
     workspaceId: string,
+    sort?: AssetSortType.Date,
     paginationOptions?: PaginationOptions,
   ) => {
-    const { data, ...rest } = useGetAssetsQuery(workspaceId, paginationOptions);
+    const { data, ...rest } = useGetAssetsQuery(
+      workspaceId,
+      sort,
+      paginationOptions,
+    );
     return {
       page: data,
       ...rest,

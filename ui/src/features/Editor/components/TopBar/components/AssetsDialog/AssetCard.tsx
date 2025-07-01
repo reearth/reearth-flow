@@ -29,7 +29,7 @@ type Props = {
   setAssetToBeDeleted: (asset: string | undefined) => void;
 };
 
-const Assetcard: React.FC<Props> = ({ asset, setAssetToBeDeleted }) => {
+const AssetCard: React.FC<Props> = ({ asset, setAssetToBeDeleted }) => {
   const t = useT();
   const { toast } = useToast();
   const [persistOverlay, setPersistOverlay] = useState(false);
@@ -109,4 +109,4 @@ const Assetcard: React.FC<Props> = ({ asset, setAssetToBeDeleted }) => {
   );
 };
 
-export { Assetcard };
+export { AssetCard };

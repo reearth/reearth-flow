@@ -1009,6 +1009,7 @@ export type WorkspaceMember = {
 
 export type GetAssetsQueryVariables = Exact<{
   workspaceId: Scalars['ID']['input'];
+  sort?: InputMaybe<AssetSortType>;
   pagination: PageBasedPagination;
 }>;
 
@@ -1500,8 +1501,8 @@ export const LogFragmentDoc = gql`
 }
     `;
 export const GetAssetsDocument = gql`
-    query GetAssets($workspaceId: ID!, $pagination: PageBasedPagination!) {
-  assets(workspaceId: $workspaceId, pagination: $pagination) {
+    query GetAssets($workspaceId: ID!, $sort: AssetSortType, $pagination: PageBasedPagination!) {
+  assets(workspaceId: $workspaceId, sort: $sort, pagination: $pagination) {
     totalCount
     nodes {
       ...Asset
