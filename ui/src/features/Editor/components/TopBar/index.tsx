@@ -190,7 +190,6 @@ const TopBar: React.FC<Props> = ({
           <Breadcrumb />
         </div>
         <div className="flex items-center gap-2 rounded-md p-1">
-          {/* <div className="border-r border-primary h-4/5" /> */}
           <IconButton
             className="h-[30px]"
             variant="outline"
@@ -205,7 +204,6 @@ const TopBar: React.FC<Props> = ({
             icon={<HardDriveIcon weight="thin" size={18} />}
             disabled
           />
-          {/* <div className="border-r border-primary h-4/5" /> */}
         </div>
       </div>
       <div className="flex h-full flex-1 gap-2 overflow-hidden">

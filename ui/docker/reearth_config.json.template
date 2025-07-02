@@ -7,6 +7,7 @@
   "brandFaviconUrl": "${FLOW_BRAND_FAVICON_URL}",
   "brandName": "${FLOW_BRAND_NAME}",
   "devMode": "${FLOW_DEV_MODE}",
+  "mockEnabled": "${FLOW_MOCK_SERVER_ENABLED}",
   "documentationUrl": "${FLOW_DOCUMENTATION_URL}",
   "tosUrl": "${FLOW_TOS_URL}",
   "version": "${FLOW_VERSION}",
