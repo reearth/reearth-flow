@@ -15,6 +15,7 @@ func New() *repo.Container {
 		Project:       NewProject(),
 		ProjectAccess: NewProjectAccess(),
 		Trigger:       NewTrigger(),
+		User:          accountmemory.NewUser(),
 		Workspace:     accountmemory.NewWorkspace(),
 		Lock:          NewLock(),
 		Transaction:   &usecasex.NopTransaction{},
