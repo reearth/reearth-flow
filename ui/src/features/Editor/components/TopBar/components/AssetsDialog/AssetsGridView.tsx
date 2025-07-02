@@ -67,7 +67,7 @@ const AssetsGridView: React.FC<Props> = ({
         </Select>
       </div>
       {isFetching ? (
-        <LoadingSkeleton />
+        <LoadingSkeleton className="mt-40" />
       ) : assets && assets.length > 0 ? (
         <div className="grid min-w-0 grid-cols-1 gap-2 pb-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
           {assets?.map((a) => (
@@ -81,16 +81,18 @@ const AssetsGridView: React.FC<Props> = ({
       ) : (
         <BasicBoiler
           text={t("No Assets")}
-          icon={<FlowLogo className="mt-3 mb-3 size-16 text-accent" />}
+          icon={<FlowLogo className="mt-40 mb-3 size-16 text-accent" />}
         />
       )}
-      <div className="mb-3">
-        <Pagination
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          totalPages={totalPages}
-        />
-      </div>
+      {assets && assets.length > 0 && (
+        <div className="mb-3">
+          <Pagination
+            currentPage={currentPage}
+            setCurrentPage={setCurrentPage}
+            totalPages={totalPages}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -85,7 +85,7 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
             </div>
           </div>
 
-          <DialogContentSection className="flex max-h-[60vh] flex-col overflow-hidden">
+          <DialogContentSection className="flex max-h-[500px] flex-col overflow-hidden">
             {layoutView === "grid" ? (
               <AssetsGridView
                 assets={assets}

@@ -109,7 +109,7 @@ const AssetsListView: React.FC<Props> = ({
     },
   ];
   return (
-    <div className="flex flex-1 flex-col gap-4 overflow-scroll pb-2">
+    <div className="overflow-scroll">
       <Table
         columns={columns}
         data={assets}

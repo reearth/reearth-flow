@@ -287,7 +287,7 @@ function DataTable<TData, TValue>({
         </div>
       </div>
 
-      {enablePagination && (
+      {enablePagination && rows.length > 0 && (
         <Pagination
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}

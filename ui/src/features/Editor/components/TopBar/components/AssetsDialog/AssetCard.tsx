@@ -41,7 +41,7 @@ const AssetCard: React.FC<Props> = ({ asset, setAssetToBeDeleted }) => {
     toast({
       title: t("Copied to clipboard"),
       description: t("{{asset}} asset's URL copied to clipboard", {
-        resource: name,
+        asset: name,
       }),
     });
   };
