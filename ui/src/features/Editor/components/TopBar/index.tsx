@@ -15,6 +15,7 @@ import {
   HomeMenu,
   AssetsDialog,
 } from "./components";
+import useHooks from "./hooks";
 
 type Props = {
   currentWorkflowId: string;
@@ -52,6 +53,14 @@ const TopBar: React.FC<Props> = ({
   onWorkflowChange,
 }) => {
   const t = useT();
+  const {
+    showDialog,
+    handleShowDeployDialog,
+    handleShowVersionDialog,
+    handleShowAssetsDialog,
+    handleShowSharePopover,
+    handleDialogClose,
+  } = useHooks();
   return (
     <div className="flex w-[100vw] shrink-0 justify-between gap-2 bg-secondary">
       <div className="flex items-center gap-1">
@@ -69,7 +78,7 @@ const TopBar: React.FC<Props> = ({
             variant="outline"
             tooltipText={t("Assets")}
             icon={<HardDriveIcon weight="thin" size={18} />}
-            disabled
+            onClick={handleShowAssetsDialog}
           />
         </div>
       </div>
@@ -92,12 +101,19 @@ const TopBar: React.FC<Props> = ({
           project={project}
           yDoc={yDoc}
           allowedToDeploy={allowedToDeploy}
+          showDialog={showDialog}
           onProjectShare={onProjectShare}
           onProjectExport={onProjectExport}
           onWorkflowDeployment={onWorkflowDeployment}
+          onShowDeployDialog={handleShowDeployDialog}
+          onShowVersionDialog={handleShowVersionDialog}
+          onShowSharePopover={handleShowSharePopover}
+          onDialogClose={handleDialogClose}
         />
       </div>
-      <AssetsDialog />
+      {showDialog === "assets" && (
+        <AssetsDialog onDialogClose={handleDialogClose} />
+      )}
     </div>
   );
 };

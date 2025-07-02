@@ -1,26 +1,29 @@
 import { useState } from "react";
 
-import { useProjectSave } from "@flow/hooks";
-
-export default ({ projectId }: { projectId: string }) => {
-  const [showDialog, setShowDialog] = useState<
-    "deploy" | "share" | "version" | "debugStop" | undefined
-  >(undefined);
-  const { handleProjectSnapshotSave, isSaving } = useProjectSave({ projectId });
+export type DialogOptions =
+  | "deploy"
+  | "share"
+  | "version"
+  | "assets"
+  | "debugStop"
+  | undefined;
+export default () => {
+  const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
 
   const handleShowDeployDialog = () => setShowDialog("deploy");
 
   const handleShowVersionDialog = () => setShowDialog("version");
+
+  const handleShowAssetsDialog = () => setShowDialog("assets");
 
   const handleShowSharePopover = () => setShowDialog("share");
 
   const handleDialogClose = () => setShowDialog(undefined);
   return {
     showDialog,
-    isSaving,
-    handleProjectSnapshotSave,
     handleShowDeployDialog,
     handleShowVersionDialog,
+    handleShowAssetsDialog,
     handleShowSharePopover,
     handleDialogClose,
   };

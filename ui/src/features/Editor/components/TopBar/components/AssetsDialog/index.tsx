@@ -24,10 +24,10 @@ import { AssetsListView } from "./AssetsListView";
 import useHooks from "./hooks";
 
 type Props = {
-  // setShowDialog: (show: boolean) => void;
+  onDialogClose: () => void;
 };
 
-const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
+const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
   const t = useT();
   const [currentWorkspace] = useCurrentWorkspace();
 
@@ -56,7 +56,7 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
   } = useHooks({ workspaceId: currentWorkspace?.id ?? "" });
 
   return (
-    <Dialog open={true}>
+    <Dialog open={true} onOpenChange={onDialogClose}>
       <DialogContent className="h-[80vh] w-full max-w-4xl overflow-hidden">
         <DialogTitle className="flex items-center font-thin">
           <HardDriveIcon size={24} className="mr-2 inline-block font-thin" />
