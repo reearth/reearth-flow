@@ -18,6 +18,8 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+var _ gateway.CMS = (*grpcClient)(nil)
+
 type grpcClient struct {
 	conn     *grpc.ClientConn
 	client   proto.ReEarthCMSClient
@@ -31,7 +33,7 @@ func NewGRPCClient(endpoint, token, userID string) (gateway.CMS, error) {
 		return nil, fmt.Errorf("CMS endpoint is required")
 	}
 
-	conn, err := grpc.Dial(endpoint,
+	conn, err := grpc.NewClient(endpoint,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
 	if err != nil {

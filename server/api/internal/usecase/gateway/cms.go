@@ -6,7 +6,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/cms"
 )
 
-// CMS is the gateway interface for interacting with ReEarth CMS
 type CMS interface {
 	GetProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error)
 	ListProjects(ctx context.Context, input cms.ListProjectsInput) ([]*cms.Project, int32, error)
