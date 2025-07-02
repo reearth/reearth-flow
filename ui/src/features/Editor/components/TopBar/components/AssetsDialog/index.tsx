@@ -51,7 +51,7 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
 
   return (
     <Dialog open={true}>
-      <DialogContent size="2xl">
+      <DialogContent className="h-[80vh] w-full max-w-4xl overflow-hidden">
         <DialogTitle>{t("Assets")}</DialogTitle>
         <DialogContentWrapper>
           <div className="mb-3 flex items-center justify-between overflow-auto">

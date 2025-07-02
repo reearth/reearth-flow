@@ -78,7 +78,6 @@ const AssetCard: React.FC<Props> = ({ asset, setAssetToBeDeleted }) => {
             <DropdownMenuContent
               align="end"
               onClick={(e) => e.stopPropagation()}>
-              <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="justify-between gap-2"
                 disabled={!url}
