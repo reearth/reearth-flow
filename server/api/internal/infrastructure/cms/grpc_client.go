@@ -11,7 +11,11 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	protobuf "google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/anypb"
+	"google.golang.org/protobuf/types/known/structpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 type grpcClient struct {
@@ -260,8 +264,78 @@ func convertAnyToInterface(a *anypb.Any) interface{} {
 	if a == nil {
 		return nil
 	}
-	// TODO: Implement proper Any unpacking based on type URL
-	// For now, return the value as-is
-	log.Debugf("Unpacking Any type: %s", a.TypeUrl)
+
+	// Handle common well-known types
+	switch a.TypeUrl {
+	case "type.googleapis.com/google.protobuf.StringValue":
+		var sv wrapperspb.StringValue
+		if err := protobuf.Unmarshal(a.Value, &sv); err == nil {
+			return sv.Value
+		}
+
+	case "type.googleapis.com/google.protobuf.Int32Value":
+		var iv wrapperspb.Int32Value
+		if err := protobuf.Unmarshal(a.Value, &iv); err == nil {
+			return iv.Value
+		}
+
+	case "type.googleapis.com/google.protobuf.Int64Value":
+		var iv wrapperspb.Int64Value
+		if err := protobuf.Unmarshal(a.Value, &iv); err == nil {
+			return iv.Value
+		}
+
+	case "type.googleapis.com/google.protobuf.DoubleValue":
+		var dv wrapperspb.DoubleValue
+		if err := protobuf.Unmarshal(a.Value, &dv); err == nil {
+			return dv.Value
+		}
+
+	case "type.googleapis.com/google.protobuf.FloatValue":
+		var fv wrapperspb.FloatValue
+		if err := protobuf.Unmarshal(a.Value, &fv); err == nil {
+			return fv.Value
+		}
+
+	case "type.googleapis.com/google.protobuf.BoolValue":
+		var bv wrapperspb.BoolValue
+		if err := protobuf.Unmarshal(a.Value, &bv); err == nil {
+			return bv.Value
+		}
+
+	case "type.googleapis.com/google.protobuf.Timestamp":
+		var ts timestamppb.Timestamp
+		if err := protobuf.Unmarshal(a.Value, &ts); err == nil {
+			return ts.AsTime()
+		}
+
+	case "type.googleapis.com/google.protobuf.Struct":
+		var s structpb.Struct
+		if err := protobuf.Unmarshal(a.Value, &s); err == nil {
+			return s.AsMap()
+		}
+
+	case "type.googleapis.com/google.protobuf.Value":
+		var v structpb.Value
+		if err := protobuf.Unmarshal(a.Value, &v); err == nil {
+			return v.AsInterface()
+		}
+
+	case "type.googleapis.com/google.protobuf.ListValue":
+		var lv structpb.ListValue
+		if err := protobuf.Unmarshal(a.Value, &lv); err == nil {
+			return lv.AsSlice()
+		}
+	}
+
+	// Try to unmarshal as a generic message
+	var msg protobuf.Message
+	if err := anypb.UnmarshalTo(a, msg, protobuf.UnmarshalOptions{}); err == nil {
+		log.Debugf("Successfully unmarshaled Any type: %s", a.TypeUrl)
+		return msg
+	}
+
+	// If all else fails, log warning and return the raw value
+	log.Warnf("Unable to unmarshal Any type: %s, returning raw value", a.TypeUrl)
 	return a.Value
 }
