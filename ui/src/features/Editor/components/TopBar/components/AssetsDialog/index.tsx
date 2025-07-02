@@ -1,4 +1,8 @@
-import { ListIcon, UploadSimpleIcon } from "@phosphor-icons/react";
+import {
+  HardDriveIcon,
+  ListIcon,
+  UploadSimpleIcon,
+} from "@phosphor-icons/react";
 import { SquaresFourIcon } from "@phosphor-icons/react/dist/ssr";
 
 import {
@@ -54,7 +58,10 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
   return (
     <Dialog open={true}>
       <DialogContent className="h-[80vh] w-full max-w-4xl overflow-hidden">
-        <DialogTitle>{t("Assets")}</DialogTitle>
+        <DialogTitle className="flex items-center font-thin">
+          <HardDriveIcon size={24} className="mr-2 inline-block font-thin" />
+          {t("Assets")}
+        </DialogTitle>
         <DialogContentWrapper>
           <div className="mb-3 flex items-center justify-between overflow-auto">
             <Button
