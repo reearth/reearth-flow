@@ -1,0 +1,96 @@
+# CMS types
+
+type CMSProject {
+  id: ID!
+  name: String!
+  alias: String!
+  description: String
+  license: String
+  readme: String
+  workspaceId: ID!
+  visibility: CMSVisibility!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum CMSVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+type CMSModel {
+  id: ID!
+  projectId: ID!
+  name: String!
+  description: String!
+  key: String!
+  schema: CMSSchema!
+  publicApiEp: String!
+  editorUrl: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type CMSSchema {
+  schemaId: ID!
+  fields: [CMSSchemaField!]!
+}
+
+type CMSSchemaField {
+  fieldId: ID!
+  name: String!
+  type: CMSSchemaFieldType!
+  key: String!
+  description: String
+}
+
+enum CMSSchemaFieldType {
+  TEXT
+  TEXTAREA
+  RICHTEXT
+  MARKDOWNTEXT
+  ASSET
+  DATE
+  BOOL
+  SELECT
+  TAG
+  INTEGER
+  NUMBER
+  REFERENCE
+  CHECKBOX
+  URL
+  GROUP
+  GEOMETRYOBJECT
+  GEOMETRYEDITOR
+}
+
+type CMSItem {
+  id: ID!
+  fields: JSON!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type CMSItemsConnection {
+  items: [CMSItem!]!
+  totalCount: Int!
+}
+
+# Queries
+
+extend type Query {
+  # Get a CMS project by ID or alias
+  cmsProject(projectIdOrAlias: ID!): CMSProject
+  
+  # List CMS projects for a workspace
+  cmsProjects(workspaceId: ID!, publicOnly: Boolean): [CMSProject!]!
+  
+  # List CMS models for a project
+  cmsModels(projectId: ID!): [CMSModel!]!
+  
+  # List CMS items for a model
+  cmsItems(projectId: ID!, modelId: ID!, page: Int, pageSize: Int): CMSItemsConnection!
+  
+  # Get GeoJSON export URL for a CMS model
+  cmsModelExportUrl(projectId: ID!, modelId: ID!): String!
+} 
