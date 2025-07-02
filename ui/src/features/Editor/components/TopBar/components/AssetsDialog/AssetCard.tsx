@@ -1,7 +1,6 @@
 import {
   ClipboardTextIcon,
   DotsThreeVerticalIcon,
-  PencilSimpleIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
@@ -61,7 +60,7 @@ const AssetCard: React.FC<Props> = ({ asset, setAssetToBeDeleted }) => {
       </CardHeader>
       <CardFooter className="flex px-2 pb-1">
         <p className="text-xs text-zinc-400 dark:font-thin">
-          {t("Created At:")} {createdAt}
+          {t("Uploaded At:")} {createdAt}
         </p>
       </CardFooter>
       <div
@@ -79,10 +78,6 @@ const AssetCard: React.FC<Props> = ({ asset, setAssetToBeDeleted }) => {
             <DropdownMenuContent
               align="end"
               onClick={(e) => e.stopPropagation()}>
-              <DropdownMenuItem className="justify-between gap-2 text-warning">
-                {t("Edit Asset Details")}
-                <PencilSimpleIcon />
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="justify-between gap-2"

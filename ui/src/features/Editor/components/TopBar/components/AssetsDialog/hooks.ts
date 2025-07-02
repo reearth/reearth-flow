@@ -1,5 +1,6 @@
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
+import { useDebouncedSearch } from "@flow/hooks";
 import { useAsset } from "@flow/lib/gql/assets";
 import { useT } from "@flow/lib/i18n";
 import { AssetOrderBy } from "@flow/types";
@@ -18,6 +19,13 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     OrderDirection.Desc,
   );
 
+  const { searchTerm, setSearchTerm } = useDebouncedSearch({
+    initialTerm: "",
+    delay: 500,
+    onDebounced: () => {
+      refetch();
+    },
+  });
   const [assetToBeDeleted, setAssetToBeDeleted] = useState<string | undefined>(
     undefined,
   );
@@ -27,7 +35,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
 
   const handleListView = () => setLayoutView("list");
 
-  const { page, refetch, isFetching } = useGetAssets(workspaceId, {
+  const { page, refetch, isFetching } = useGetAssets(workspaceId, searchTerm, {
     page: currentPage,
     orderDir: currentOrderDir,
     orderBy: currentOrderBy,
@@ -38,21 +46,24 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   const sortOptions = [
     {
       value: `${AssetOrderBy.CreatedAt}_${OrderDirection.Desc}`,
-      label: t("Newest"),
+      label: t("Last Uploaded"),
     },
     {
       value: `${AssetOrderBy.CreatedAt}_${OrderDirection.Asc}`,
-      label: t("Oldest"),
+      label: t("First Uploaded"),
     },
-    { value: `${AssetOrderBy.Name}_${OrderDirection.Asc}`, label: t("A-Z") },
-    { value: `${AssetOrderBy.Name}_${OrderDirection.Desc}`, label: t("Z-A") },
+    { value: `${AssetOrderBy.Name}_${OrderDirection.Asc}`, label: t("A To Z") },
+    {
+      value: `${AssetOrderBy.Name}_${OrderDirection.Desc}`,
+      label: t("Z To A"),
+    },
     {
       value: `${AssetOrderBy.Size}_${OrderDirection.Desc}`,
-      label: t("Largest"),
+      label: t("Size Small to Large"),
     },
     {
       value: `${AssetOrderBy.Size}_${OrderDirection.Asc}`,
-      label: t("Smallest"),
+      label: t("Size Large to Small"),
     },
   ];
 
@@ -112,6 +123,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     sortOptions,
     currentSortValue,
     layoutView,
+    searchTerm,
     handleOrderChange,
     handleAssetUploadClick,
     handleAssetCreate,
@@ -119,5 +131,6 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     handleGridView,
     handleListView,
     setCurrentPage,
+    setSearchTerm,
   };
 };

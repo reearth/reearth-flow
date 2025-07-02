@@ -15,7 +15,7 @@ export enum AssetQueryKeys {
   GetAssets = "getAssets",
 }
 
-export const ASSET_FETCH_RATE = 2;
+export const ASSET_FETCH_RATE = 15;
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
@@ -23,6 +23,7 @@ export const useQueries = () => {
 
   const useGetAssetsQuery = (
     workspaceId: string,
+    keyword?: string,
     paginationOptions?: PaginationOptions,
   ) =>
     useQuery({
@@ -30,6 +31,7 @@ export const useQueries = () => {
       queryFn: async () => {
         const data = await graphQLContext?.GetAssets({
           workspaceId: workspaceId ?? "",
+          keyword,
           pagination: {
             page: paginationOptions?.page ?? 1,
             pageSize: ASSET_FETCH_RATE,

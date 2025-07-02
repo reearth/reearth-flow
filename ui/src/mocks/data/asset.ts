@@ -162,4 +162,22 @@ export const mockAssets: MockAsset[] = [
     url: "https://mockserver.local/assets/projectconfig.json",
     workspaceId: "workspace-2",
   },
+  {
+    id: "asset-18",
+    name: "ProjectConfig.json",
+    contentType: "application/json",
+    createdAt: "2025-05-22T16:05:19.789Z",
+    size: 102400, // 100KB
+    url: "https://mockserver.local/assets/projectconfig.json",
+    workspaceId: "workspace-1",
+  },
+  {
+    id: "asset-19",
+    name: "SearchJson.json",
+    contentType: "application/json",
+    createdAt: "2025-05-22T16:05:19.789Z",
+    size: 102400, // 100KB
+    url: "https://mockserver.local/assets/projectconfig.json",
+    workspaceId: "workspace-1",
+  },
 ];

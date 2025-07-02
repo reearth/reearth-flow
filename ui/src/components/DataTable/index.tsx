@@ -41,7 +41,7 @@ import {
 
 type DataTableProps<TData, TValue> = {
   columns: ColumnDef<TData, TValue>[];
-  data: TData[];
+  data?: TData[];
   selectColumns?: boolean;
   showFiltering?: boolean;
   enablePagination?: boolean;
@@ -56,6 +56,8 @@ type DataTableProps<TData, TValue> = {
   sortOptions?: { value: string; label: string }[];
   currentSortValue?: string;
   handleSortChange?: (value: string) => void;
+  searchTerm?: string;
+  setSearchTerm: (term: string) => void;
 };
 
 function DataTable<TData, TValue>({
@@ -75,6 +77,8 @@ function DataTable<TData, TValue>({
   sortOptions,
   currentSortValue,
   handleSortChange,
+  searchTerm,
+  setSearchTerm,
 }: DataTableProps<TData, TValue>) {
   const t = useT();
   const [sorting, setSorting] = useState<SortingState>([]);
@@ -144,8 +148,14 @@ function DataTable<TData, TValue>({
           {showFiltering && (
             <Input
               placeholder={t("Search") + "..."}
-              value={globalFilter ?? ""}
-              onChange={(e) => setGlobalFilter(String(e.target.value))}
+              value={searchTerm ?? globalFilter}
+              onChange={(e) => {
+                const value = String(e.target.value);
+                if (setSearchTerm) {
+                  setSearchTerm(value);
+                }
+                setGlobalFilter(value);
+              }}
               className="max-w-sm"
             />
           )}

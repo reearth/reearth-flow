@@ -36,13 +36,27 @@ const paginateResults = <T>(
     orderBy?: string;
     orderDir?: "ASC" | "DESC";
   },
+  keyword?: string,
 ) => {
   const { page, pageSize, orderBy, orderDir = "ASC" } = pagination;
 
+  // Filter by keyword if provided
+  let filteredItems = [...items];
+  if (keyword && keyword.trim() !== "") {
+    filteredItems = filteredItems.filter((item) => {
+      // Search through all string properties of the item
+      return Object.entries(item as any).some(([_, value]) => {
+        if (typeof value === "string") {
+          return value.toLowerCase().includes(keyword.toLowerCase());
+        }
+        return false;
+      });
+    });
+  }
+
   // Sort if orderBy is specified
-  const sortedItems = [...items];
   if (orderBy) {
-    sortedItems.sort((a, b) => {
+    filteredItems.sort((a, b) => {
       const aVal = (a as any)[orderBy];
       const bVal = (b as any)[orderBy];
       const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
@@ -52,16 +66,16 @@ const paginateResults = <T>(
 
   const startIndex = (page - 1) * pageSize;
   const endIndex = startIndex + pageSize;
-  const paginatedItems = sortedItems.slice(startIndex, endIndex);
+  const paginatedItems = filteredItems.slice(startIndex, endIndex);
 
   return {
     nodes: paginatedItems,
     pageInfo: {
-      totalCount: items.length,
+      totalCount: filteredItems.length,
       currentPage: page,
-      totalPages: Math.ceil(items.length / pageSize),
+      totalPages: Math.ceil(filteredItems.length / pageSize) || 1, // Ensure at least 1 page
     },
-    totalCount: items.length,
+    totalCount: filteredItems.length,
   };
 };
 
@@ -371,7 +385,7 @@ export const resolvers = {
       const workspaceAssets = assets.filter(
         (a) => a.workspaceId === args.workspaceId,
       );
-      return paginateResults(workspaceAssets, args.pagination);
+      return paginateResults(workspaceAssets, args.pagination, args.keyword);
     },
 
     deployments: (_: any, args: { workspaceId: string; pagination: any }) => {

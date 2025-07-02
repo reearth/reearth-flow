@@ -7,12 +7,9 @@ import {
   DialogContentSection,
   DialogContentWrapper,
   DialogTitle,
-  LoadingSkeleton,
-  FlowLogo,
   Button,
   IconButton,
 } from "@flow/components";
-import BasicBoiler from "@flow/components/BasicBoiler";
 import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
@@ -41,6 +38,7 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
     sortOptions,
     currentSortValue,
     layoutView,
+    searchTerm,
     handleOrderChange,
     handleAssetUploadClick,
     handleAssetCreate,
@@ -48,6 +46,7 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
     handleGridView,
     handleListView,
     setCurrentPage,
+    setSearchTerm,
   } = useHooks({ workspaceId: currentWorkspace?.id ?? "" });
 
   return (
@@ -87,11 +86,10 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
           </div>
 
           <DialogContentSection className="flex max-h-[60vh] flex-col overflow-hidden">
-            {isFetching ? (
-              <LoadingSkeleton />
-            ) : assets && assets.length > 0 && layoutView === "grid" ? (
+            {layoutView === "grid" ? (
               <AssetsGridView
                 assets={assets}
+                isFetching={isFetching}
                 currentPage={currentPage}
                 totalPages={totalPages}
                 sortOptions={sortOptions}
@@ -99,10 +97,13 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
                 handleOrderChange={handleOrderChange}
                 setAssetToBeDeleted={setAssetToBeDeleted}
                 setCurrentPage={setCurrentPage}
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
               />
-            ) : assets && assets.length > 0 && layoutView === "list" ? (
+            ) : (
               <AssetsListView
                 assets={assets}
+                isFetching={isFetching}
                 currentPage={currentPage}
                 totalPages={totalPages}
                 setAssetToBeDeleted={setAssetToBeDeleted}
@@ -110,11 +111,8 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
                 sortOptions={sortOptions}
                 currentSortValue={currentSortValue}
                 handleSortChange={handleOrderChange}
-              />
-            ) : (
-              <BasicBoiler
-                text={t("No Assets")}
-                icon={<FlowLogo className="size-16 text-accent" />}
+                searchTerm={searchTerm}
+                setSearchTerm={setSearchTerm}
               />
             )}
           </DialogContentSection>

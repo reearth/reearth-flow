@@ -1,14 +1,24 @@
-import { PencilLineIcon, TrashIcon } from "@phosphor-icons/react";
+import { ClipboardTextIcon, TrashIcon } from "@phosphor-icons/react";
+import { DotsHorizontalIcon } from "@radix-ui/react-icons";
 import { ColumnDef } from "@tanstack/react-table";
 
-import { ButtonWithTooltip } from "@flow/components";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@flow/components";
 import { DataTable as Table } from "@flow/components/DataTable";
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { Asset } from "@flow/types";
+import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 type Props = {
-  assets: Asset[];
+  assets?: Asset[];
+  isFetching: boolean;
   currentPage: number;
   totalPages: number;
   sortOptions: { value: string; label: string }[];
@@ -16,6 +26,8 @@ type Props = {
   handleSortChange: (value: string) => void;
   setCurrentPage?: (page: number) => void;
   setAssetToBeDeleted: (asset: string | undefined) => void;
+  searchTerm?: string;
+  setSearchTerm: (term: string) => void;
 };
 const AssetsListView: React.FC<Props> = ({
   assets,
@@ -26,9 +38,22 @@ const AssetsListView: React.FC<Props> = ({
   handleSortChange,
   setCurrentPage,
   setAssetToBeDeleted,
+  searchTerm,
+  setSearchTerm,
 }) => {
   const t = useT();
+  const { toast } = useToast();
 
+  const handleCopyURLToClipBoard = (url: string) => {
+    if (!url) return;
+    copyToClipboard(url);
+    toast({
+      title: t("Copied to clipboard"),
+      description: t("{{asset}} asset's URL copied to clipboard", {
+        resource: name,
+      }),
+    });
+  };
   const resultsPerPage = DEPLOYMENT_FETCH_RATE;
   const columns: ColumnDef<Asset>[] = [
     {
@@ -37,7 +62,7 @@ const AssetsListView: React.FC<Props> = ({
     },
     {
       accessorKey: "createdAt",
-      header: t("Created At"),
+      header: t("Uploaded At"),
     },
     {
       accessorKey: "size",
@@ -49,23 +74,37 @@ const AssetsListView: React.FC<Props> = ({
     },
     {
       accessorKey: "quickActions",
-      header: t("Quick Actions"),
+      header: t("Actions"),
       cell: (row) => (
-        <div className="flex gap-2">
-          <ButtonWithTooltip
-            variant="outline"
-            size="icon"
-            tooltipText={t("Edit Asset")}>
-            <PencilLineIcon />
-          </ButtonWithTooltip>
-          <ButtonWithTooltip
-            variant="destructive"
-            size="icon"
-            tooltipText={t("Delete Asset")}
-            onClick={() => setAssetToBeDeleted(row.row.original.id)}>
-            <TrashIcon />
-          </ButtonWithTooltip>
-        </div>
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger
+            className="flex h-full w-[40px] items-center justify-center rounded-md hover:bg-accent"
+            onClick={(e) => e.stopPropagation()}>
+            <DotsHorizontalIcon className="size-[24px]" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuItem
+              className="justify-between gap-2"
+              disabled={!row.row.original.url}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCopyURLToClipBoard(row.row.original.url);
+              }}>
+              {t("Copy Asset URL")}
+              <ClipboardTextIcon weight="light" />
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="justify-between gap-4 text-destructive"
+              onClick={(e) => {
+                e.stopPropagation();
+                setAssetToBeDeleted(row.row.original.id);
+              }}>
+              {t("Delete Asset")}
+              <TrashIcon weight="light" />
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       ),
     },
   ];
@@ -84,6 +123,8 @@ const AssetsListView: React.FC<Props> = ({
         sortOptions={sortOptions}
         currentSortValue={currentSortValue}
         handleSortChange={handleSortChange}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
       />
     </div>
   );

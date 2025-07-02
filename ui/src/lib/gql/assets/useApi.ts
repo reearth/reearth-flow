@@ -14,9 +14,14 @@ export const useAsset = () => {
   const t = useT();
   const useGetAssets = (
     workspaceId: string,
+    keyword?: string,
     paginationOptions?: PaginationOptions,
   ) => {
-    const { data, ...rest } = useGetAssetsQuery(workspaceId, paginationOptions);
+    const { data, ...rest } = useGetAssetsQuery(
+      workspaceId,
+      keyword,
+      paginationOptions,
+    );
     return {
       page: data,
       ...rest,
