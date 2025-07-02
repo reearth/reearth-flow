@@ -96,6 +96,120 @@ func TestConvertProtoToVisibility(t *testing.T) {
 	}
 }
 
+func TestConvertProtoToProject(t *testing.T) {
+	now := time.Now()
+	protoProject := &proto.Project{
+		Id:          "project-123",
+		Name:        "Test Project",
+		Alias:       "test-project",
+		Description: stringPtr("Test description"),
+		License:     stringPtr("MIT"),
+		Readme:      stringPtr("Test readme"),
+		WorkspaceId: "workspace-123",
+		Visibility:  proto.Visibility_PUBLIC,
+		CreatedAt:   timestamppb.New(now),
+		UpdatedAt:   timestamppb.New(now),
+	}
+
+	expected := &cms.Project{
+		ID:          "project-123",
+		Name:        "Test Project",
+		Alias:       "test-project",
+		Description: stringPtr("Test description"),
+		License:     stringPtr("MIT"),
+		Readme:      stringPtr("Test readme"),
+		WorkspaceID: "workspace-123",
+		Visibility:  cms.VisibilityPublic,
+		CreatedAt:   now,
+		UpdatedAt:   now,
+	}
+
+	result := convertProtoToProject(protoProject)
+	assert.Equal(t, expected.ID, result.ID)
+	assert.Equal(t, expected.Name, result.Name)
+	assert.Equal(t, expected.Alias, result.Alias)
+	assert.Equal(t, expected.WorkspaceID, result.WorkspaceID)
+	assert.Equal(t, expected.Visibility, result.Visibility)
+
+	// Test nil input
+	result = convertProtoToProject(nil)
+	assert.Nil(t, result)
+}
+
+func TestConvertProtoToModel(t *testing.T) {
+	now := time.Now()
+	protoModel := &proto.Model{
+		Id:          "model-123",
+		ProjectId:   "project-123",
+		Name:        "Test Model",
+		Description: "Test model description",
+		Key:         "test-model",
+		Schema: &proto.Schema{
+			SchemaId: "schema-123",
+			Fields: []*proto.SchemaField{
+				{
+					FieldId:     "field-1",
+					Name:        "Title",
+					Type:        proto.SchemaFieldType_Text,
+					Key:         "title",
+					Description: stringPtr("Title field"),
+				},
+			},
+		},
+		PublicApiEp: "https://api.example.com",
+		EditorUrl:   "https://editor.example.com",
+		CreatedAt:   timestamppb.New(now),
+		UpdatedAt:   timestamppb.New(now),
+	}
+
+	result := convertProtoToModel(protoModel)
+	assert.Equal(t, "model-123", result.ID)
+	assert.Equal(t, "project-123", result.ProjectID)
+	assert.Equal(t, "Test Model", result.Name)
+	assert.Equal(t, "Test model description", result.Description)
+	assert.Equal(t, "test-model", result.Key)
+	assert.Equal(t, "https://api.example.com", result.PublicAPIEP)
+	assert.Equal(t, "https://editor.example.com", result.EditorURL)
+
+	// Test schema conversion
+	assert.Equal(t, "schema-123", result.Schema.SchemaID)
+	assert.Len(t, result.Schema.Fields, 1)
+	assert.Equal(t, "field-1", result.Schema.Fields[0].FieldID)
+	assert.Equal(t, "Title", result.Schema.Fields[0].Name)
+	assert.Equal(t, cms.SchemaFieldTypeText, result.Schema.Fields[0].Type)
+
+	// Test nil input
+	result = convertProtoToModel(nil)
+	assert.Nil(t, result)
+}
+
+func TestConvertProtoToItem(t *testing.T) {
+	now := time.Now()
+
+	// Create test fields
+	stringField, _ := anypb.New(&wrapperspb.StringValue{Value: "test value"})
+	intField, _ := anypb.New(&wrapperspb.Int32Value{Value: 42})
+
+	protoItem := &proto.Item{
+		Id: "item-123",
+		Fields: map[string]*anypb.Any{
+			"title":  stringField,
+			"number": intField,
+		},
+		CreatedAt: timestamppb.New(now),
+		UpdatedAt: timestamppb.New(now),
+	}
+
+	result := convertProtoToItem(protoItem)
+	assert.Equal(t, "item-123", result.ID)
+	assert.Equal(t, "test value", result.Fields["title"])
+	assert.Equal(t, int32(42), result.Fields["number"])
+
+	// Test nil input
+	result = convertProtoToItem(nil)
+	assert.Nil(t, result)
+}
+
 func TestConvertAnyToInterface(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -175,4 +289,135 @@ func TestConvertAnyToInterface(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test helper functions for new write operations
+
+func TestGRPCClient_WriteOperations_InputValidation(t *testing.T) {
+	client := &grpcClient{
+		client: nil, // Nil client to test validation
+		token:  "test-token",
+		userID: "user-123",
+	}
+
+	ctx := context.Background()
+
+	t.Run("CreateProject with nil client", func(t *testing.T) {
+		input := cms.CreateProjectInput{
+			WorkspaceID: "workspace-123",
+			Name:        "Test Project",
+			Alias:       "test-project",
+			Visibility:  cms.VisibilityPublic,
+		}
+
+		result, err := client.CreateProject(ctx, input)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "gRPC client not initialized")
+	})
+
+	t.Run("UpdateProject with nil client", func(t *testing.T) {
+		input := cms.UpdateProjectInput{
+			ProjectID: "project-123",
+			Name:      stringPtr("Updated Name"),
+		}
+
+		result, err := client.UpdateProject(ctx, input)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "gRPC client not initialized")
+	})
+
+	t.Run("DeleteProject with nil client", func(t *testing.T) {
+		input := cms.DeleteProjectInput{
+			ProjectID: "project-123",
+		}
+
+		result, err := client.DeleteProject(ctx, input)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "gRPC client not initialized")
+	})
+
+	t.Run("CheckAliasAvailability with nil client", func(t *testing.T) {
+		input := cms.CheckAliasAvailabilityInput{
+			Alias: "test-alias",
+		}
+
+		result, err := client.CheckAliasAvailability(ctx, input)
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "gRPC client not initialized")
+	})
+}
+
+func TestVisibilityConversion(t *testing.T) {
+	tests := []struct {
+		name            string
+		cmsVisibility   cms.Visibility
+		protoVisibility proto.Visibility
+	}{
+		{
+			name:            "public visibility",
+			cmsVisibility:   cms.VisibilityPublic,
+			protoVisibility: proto.Visibility_PUBLIC,
+		},
+		{
+			name:            "private visibility",
+			cmsVisibility:   cms.VisibilityPrivate,
+			protoVisibility: proto.Visibility_PRIVATE,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Test CMS to Proto conversion (implicit in CreateProject method)
+			// This would be tested in integration tests with actual gRPC calls
+
+			// Test Proto to CMS conversion
+			result := convertProtoToVisibility(tt.protoVisibility)
+			assert.Equal(t, tt.cmsVisibility, result)
+		})
+	}
+}
+
+func TestConvertProtoToSchemaFieldType(t *testing.T) {
+	tests := []struct {
+		name      string
+		protoType proto.SchemaFieldType
+		cmsType   cms.SchemaFieldType
+	}{
+		{
+			name:      "text field",
+			protoType: proto.SchemaFieldType_Text,
+			cmsType:   cms.SchemaFieldTypeText,
+		},
+		{
+			name:      "textarea field",
+			protoType: proto.SchemaFieldType_TextArea,
+			cmsType:   cms.SchemaFieldTypeTextArea,
+		},
+		{
+			name:      "asset field",
+			protoType: proto.SchemaFieldType_Asset,
+			cmsType:   cms.SchemaFieldTypeAsset,
+		},
+		{
+			name:      "geometry object field",
+			protoType: proto.SchemaFieldType_GeometryObject,
+			cmsType:   cms.SchemaFieldTypeGeometryObject,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := convertProtoToSchemaFieldType(tt.protoType)
+			assert.Equal(t, tt.cmsType, result)
+		})
+	}
+}
+
+// Helper function to create string pointers
+func stringPtr(s string) *string {
+	return &s
 }
