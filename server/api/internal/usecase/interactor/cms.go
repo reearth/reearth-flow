@@ -18,7 +18,6 @@ type cmsInteractor struct {
 	permissionChecker gateway.PermissionChecker
 }
 
-// NewCMS creates a new CMS interactor
 func NewCMS(r *repo.Container, gr *gateway.Container, permissionChecker gateway.PermissionChecker) interfaces.CMS {
 	return &cmsInteractor{
 		repos:             r,
@@ -27,7 +26,6 @@ func NewCMS(r *repo.Container, gr *gateway.Container, permissionChecker gateway.
 	}
 }
 
-// GetCMSProject retrieves a CMS project by ID or alias
 func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error) {
 	op := adapter.Operator(ctx)
 	if op == nil {
@@ -45,7 +43,6 @@ func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias stri
 		return nil, fmt.Errorf("failed to get CMS project: %w", err)
 	}
 
-	// Check if user has access to the workspace
 	authInfo := adapter.GetAuthInfo(ctx)
 	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
 		fmt.Sprintf("workspace:%s", project.WorkspaceID), "read")
@@ -59,7 +56,6 @@ func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias stri
 	return project, nil
 }
 
-// ListCMSProjects lists CMS projects for a workspace
 func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceID string, publicOnly bool) ([]*cms.Project, int32, error) {
 	op := adapter.Operator(ctx)
 	if op == nil {
@@ -70,7 +66,6 @@ func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceID string,
 		return nil, 0, fmt.Errorf("CMS gateway not configured")
 	}
 
-	// Check if user has access to the workspace
 	if !publicOnly {
 		authInfo := adapter.GetAuthInfo(ctx)
 		allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
@@ -91,7 +86,6 @@ func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceID string,
 	})
 }
 
-// ListCMSModels lists models for a CMS project
 func (i *cmsInteractor) ListCMSModels(ctx context.Context, projectID string) ([]*cms.Model, int32, error) {
 	op := adapter.Operator(ctx)
 	if op == nil {
@@ -102,13 +96,11 @@ func (i *cmsInteractor) ListCMSModels(ctx context.Context, projectID string) ([]
 		return nil, 0, fmt.Errorf("CMS gateway not configured")
 	}
 
-	// First get the project to check permissions
 	project, err := i.gateways.CMS.GetProject(ctx, projectID)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get CMS project: %w", err)
 	}
 
-	// Check if user has access to the workspace
 	authInfo := adapter.GetAuthInfo(ctx)
 	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
 		fmt.Sprintf("workspace:%s", project.WorkspaceID), "read")
@@ -126,7 +118,6 @@ func (i *cmsInteractor) ListCMSModels(ctx context.Context, projectID string) ([]
 	})
 }
 
-// ListCMSItems lists items for a CMS model
 func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID string, page, pageSize *int32) (*cms.ListItemsOutput, error) {
 	op := adapter.Operator(ctx)
 	if op == nil {
@@ -137,13 +128,11 @@ func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID str
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
 
-	// First get the project to check permissions
 	project, err := i.gateways.CMS.GetProject(ctx, projectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CMS project: %w", err)
 	}
 
-	// Check if user has access to the workspace
 	authInfo := adapter.GetAuthInfo(ctx)
 	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
 		fmt.Sprintf("workspace:%s", project.WorkspaceID), "read")
@@ -164,7 +153,6 @@ func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID str
 	})
 }
 
-// GetCMSModelExportURL gets the GeoJSON export URL for a CMS model
 func (i *cmsInteractor) GetCMSModelExportURL(ctx context.Context, projectID, modelID string) (string, error) {
 	op := adapter.Operator(ctx)
 	if op == nil {
@@ -175,13 +163,11 @@ func (i *cmsInteractor) GetCMSModelExportURL(ctx context.Context, projectID, mod
 		return "", fmt.Errorf("CMS gateway not configured")
 	}
 
-	// First get the project to check permissions
 	project, err := i.gateways.CMS.GetProject(ctx, projectID)
 	if err != nil {
 		return "", fmt.Errorf("failed to get CMS project: %w", err)
 	}
 
-	// Check if user has access to the workspace
 	authInfo := adapter.GetAuthInfo(ctx)
 	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
 		fmt.Sprintf("workspace:%s", project.WorkspaceID), "read")
@@ -205,7 +191,6 @@ func (i *cmsInteractor) GetCMSModelExportURL(ctx context.Context, projectID, mod
 	return output.URL, nil
 }
 
-// CreateCMSProject creates a new CMS project
 func (i *cmsInteractor) CreateCMSProject(ctx context.Context, input cms.CreateProjectInput) (*cms.Project, error) {
 	op := adapter.Operator(ctx)
 	if op == nil {
@@ -216,7 +201,6 @@ func (i *cmsInteractor) CreateCMSProject(ctx context.Context, input cms.CreatePr
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
 
-	// Check if user has write access to the workspace
 	authInfo := adapter.GetAuthInfo(ctx)
 	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
 		fmt.Sprintf("workspace:%s", input.WorkspaceID), "write")
@@ -232,7 +216,6 @@ func (i *cmsInteractor) CreateCMSProject(ctx context.Context, input cms.CreatePr
 	return i.gateways.CMS.CreateProject(ctx, input)
 }
 
-// UpdateCMSProject updates an existing CMS project
 func (i *cmsInteractor) UpdateCMSProject(ctx context.Context, input cms.UpdateProjectInput) (*cms.Project, error) {
 	op := adapter.Operator(ctx)
 	if op == nil {
@@ -243,13 +226,11 @@ func (i *cmsInteractor) UpdateCMSProject(ctx context.Context, input cms.UpdatePr
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
 
-	// First get the project to check permissions
 	project, err := i.gateways.CMS.GetProject(ctx, input.ProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CMS project: %w", err)
 	}
 
-	// Check if user has write access to the workspace
 	authInfo := adapter.GetAuthInfo(ctx)
 	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
 		fmt.Sprintf("workspace:%s", project.WorkspaceID), "write")
@@ -265,7 +246,6 @@ func (i *cmsInteractor) UpdateCMSProject(ctx context.Context, input cms.UpdatePr
 	return i.gateways.CMS.UpdateProject(ctx, input)
 }
 
-// DeleteCMSProject deletes a CMS project
 func (i *cmsInteractor) DeleteCMSProject(ctx context.Context, input cms.DeleteProjectInput) (*cms.DeleteProjectOutput, error) {
 	op := adapter.Operator(ctx)
 	if op == nil {
@@ -276,13 +256,11 @@ func (i *cmsInteractor) DeleteCMSProject(ctx context.Context, input cms.DeletePr
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
 
-	// First get the project to check permissions
 	project, err := i.gateways.CMS.GetProject(ctx, input.ProjectID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get CMS project: %w", err)
 	}
 
-	// Check if user has write access to the workspace
 	authInfo := adapter.GetAuthInfo(ctx)
 	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
 		fmt.Sprintf("workspace:%s", project.WorkspaceID), "write")
@@ -298,7 +276,6 @@ func (i *cmsInteractor) DeleteCMSProject(ctx context.Context, input cms.DeletePr
 	return i.gateways.CMS.DeleteProject(ctx, input)
 }
 
-// CheckCMSAliasAvailability checks if a project alias is available
 func (i *cmsInteractor) CheckCMSAliasAvailability(ctx context.Context, input cms.CheckAliasAvailabilityInput) (*cms.CheckAliasAvailabilityOutput, error) {
 	op := adapter.Operator(ctx)
 	if op == nil {
