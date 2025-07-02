@@ -1,4 +1,4 @@
-import { ListIcon, PlusIcon } from "@phosphor-icons/react";
+import { ListIcon, UploadSimpleIcon } from "@phosphor-icons/react";
 import { SquaresFourIcon } from "@phosphor-icons/react/dist/ssr";
 
 import {
@@ -59,8 +59,8 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
               className="flex gap-2"
               variant="default"
               onClick={handleAssetUploadClick}>
-              <PlusIcon weight="thin" />
-              <p className="text-xs dark:font-light">{t("New Asset")}</p>
+              <UploadSimpleIcon weight="thin" />
+              <p className="text-xs dark:font-light">{t("Upload Asset")}</p>
             </Button>
 
             <div className="flex items-center gap-4">
@@ -71,7 +71,7 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
                   className={layoutView === "grid" ? "bg-accent" : ""}
                   tooltipText={t("Grid Layout")}
                   onClick={handleGridView}
-                  icon={<SquaresFourIcon />}
+                  icon={<SquaresFourIcon size={"18px"} />}
                 />
                 <IconButton
                   size="icon"
@@ -79,7 +79,7 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
                   className={layoutView === "list" ? "bg-accent" : ""}
                   tooltipText={t("List Layout")}
                   onClick={handleListView}
-                  icon={<ListIcon />}
+                  icon={<ListIcon size={"18px"} />}
                 />
               </div>
             </div>
