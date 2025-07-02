@@ -1,5 +1,3 @@
-# CMS types
-
 type CMSProject {
   id: ID!
   name: String!
@@ -76,26 +74,17 @@ type CMSItemsConnection {
   totalCount: Int!
 }
 
-# Queries
-
 extend type Query {
-  # Get a CMS project by ID or alias
   cmsProject(projectIdOrAlias: ID!): CMSProject
   
-  # List CMS projects for a workspace
   cmsProjects(workspaceId: ID!, publicOnly: Boolean): [CMSProject!]!
   
-  # List CMS models for a project
   cmsModels(projectId: ID!): [CMSModel!]!
   
-  # List CMS items for a model
   cmsItems(projectId: ID!, modelId: ID!, page: Int, pageSize: Int): CMSItemsConnection!
   
-  # Get GeoJSON export URL for a CMS model
   cmsModelExportUrl(projectId: ID!, modelId: ID!): String!
 }
-
-# Input types for mutations
 
 input CreateCMSProjectInput {
   workspaceId: ID!
@@ -125,8 +114,6 @@ input CheckCMSAliasAvailabilityInput {
   alias: String!
 }
 
-# Payload types for mutations
-
 type CMSProjectPayload {
   project: CMSProject!
 }
@@ -139,18 +126,13 @@ type CheckCMSAliasAvailabilityPayload {
   available: Boolean!
 }
 
-# Mutations
 
 extend type Mutation {
-  # Create a new CMS project
   createCMSProject(input: CreateCMSProjectInput!): CMSProjectPayload
   
-  # Update an existing CMS project
   updateCMSProject(input: UpdateCMSProjectInput!): CMSProjectPayload
   
-  # Delete a CMS project
   deleteCMSProject(input: DeleteCMSProjectInput!): DeleteCMSProjectPayload
   
-  # Check if a CMS project alias is available
   checkCMSAliasAvailability(input: CheckCMSAliasAvailabilityInput!): CheckCMSAliasAvailabilityPayload
 } 
