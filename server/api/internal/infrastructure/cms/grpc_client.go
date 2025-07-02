@@ -22,17 +22,15 @@ type grpcClient struct {
 	conn     *grpc.ClientConn
 	client   proto.ReEarthCMSClient
 	endpoint string
-	token    string // M2M token for authentication
-	userID   string // User ID for metadata
+	token    string
+	userID   string
 }
 
-// NewGRPCClient creates a new CMS gRPC client
 func NewGRPCClient(endpoint, token, userID string) (gateway.CMS, error) {
 	if endpoint == "" {
 		return nil, fmt.Errorf("CMS endpoint is required")
 	}
 
-	// Create gRPC connection without timeout to keep connection alive
 	conn, err := grpc.Dial(endpoint,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 	)
@@ -51,7 +49,6 @@ func NewGRPCClient(endpoint, token, userID string) (gateway.CMS, error) {
 	}, nil
 }
 
-// addAuthMetadata adds authentication metadata to the context
 func (c *grpcClient) addAuthMetadata(ctx context.Context) context.Context {
 	md := metadata.New(map[string]string{
 		"authorization": fmt.Sprintf("Bearer %s", c.token),
@@ -60,7 +57,6 @@ func (c *grpcClient) addAuthMetadata(ctx context.Context) context.Context {
 	return metadata.NewOutgoingContext(ctx, md)
 }
 
-// GetProject retrieves a project by ID or alias
 func (c *grpcClient) GetProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error) {
 	ctx = c.addAuthMetadata(ctx)
 
@@ -74,7 +70,6 @@ func (c *grpcClient) GetProject(ctx context.Context, projectIDOrAlias string) (*
 	return convertProtoToProject(resp.Project), nil
 }
 
-// ListProjects lists projects
 func (c *grpcClient) ListProjects(ctx context.Context, input cms.ListProjectsInput) ([]*cms.Project, int32, error) {
 	ctx = c.addAuthMetadata(ctx)
 
@@ -94,7 +89,6 @@ func (c *grpcClient) ListProjects(ctx context.Context, input cms.ListProjectsInp
 	return projects, resp.TotalCount, nil
 }
 
-// ListModels lists models for a project
 func (c *grpcClient) ListModels(ctx context.Context, input cms.ListModelsInput) ([]*cms.Model, int32, error) {
 	ctx = c.addAuthMetadata(ctx)
 
@@ -113,7 +107,6 @@ func (c *grpcClient) ListModels(ctx context.Context, input cms.ListModelsInput) 
 	return models, resp.TotalCount, nil
 }
 
-// ListItems lists items for a model
 func (c *grpcClient) ListItems(ctx context.Context, input cms.ListItemsInput) (*cms.ListItemsOutput, error) {
 	ctx = c.addAuthMetadata(ctx)
 
@@ -138,7 +131,6 @@ func (c *grpcClient) ListItems(ctx context.Context, input cms.ListItemsInput) (*
 	}, nil
 }
 
-// GetModelGeoJSONExportURL gets the GeoJSON export URL for a model
 func (c *grpcClient) GetModelGeoJSONExportURL(ctx context.Context, input cms.ExportInput) (*cms.ExportOutput, error) {
 	ctx = c.addAuthMetadata(ctx)
 
@@ -155,15 +147,121 @@ func (c *grpcClient) GetModelGeoJSONExportURL(ctx context.Context, input cms.Exp
 	}, nil
 }
 
-// Close closes the gRPC connection
+func (c *grpcClient) CreateProject(ctx context.Context, input cms.CreateProjectInput) (*cms.Project, error) {
+	if c.client == nil {
+		return nil, fmt.Errorf("gRPC client not initialized")
+	}
+
+	ctx = c.addAuthMetadata(ctx)
+
+	var visibility proto.Visibility
+	switch input.Visibility {
+	case cms.VisibilityPublic:
+		visibility = proto.Visibility_PUBLIC
+	case cms.VisibilityPrivate:
+		visibility = proto.Visibility_PRIVATE
+	default:
+		visibility = proto.Visibility_PRIVATE
+	}
+
+	resp, err := c.client.CreateProject(ctx, &proto.CreateProjectRequest{
+		WorkspaceId: input.WorkspaceID,
+		Name:        input.Name,
+		Description: input.Description,
+		License:     input.License,
+		Readme:      input.Readme,
+		Alias:       input.Alias,
+		Visibility:  visibility,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create project: %w", err)
+	}
+
+	return convertProtoToProject(resp.Project), nil
+}
+
+// UpdateProject updates an existing CMS project
+func (c *grpcClient) UpdateProject(ctx context.Context, input cms.UpdateProjectInput) (*cms.Project, error) {
+	if c.client == nil {
+		return nil, fmt.Errorf("gRPC client not initialized")
+	}
+
+	ctx = c.addAuthMetadata(ctx)
+
+	req := &proto.UpdateProjectRequest{
+		ProjectId:   input.ProjectID,
+		Name:        input.Name,
+		Description: input.Description,
+		License:     input.License,
+		Readme:      input.Readme,
+		Alias:       input.Alias,
+	}
+
+	if input.Visibility != nil {
+		var visibility proto.Visibility
+		switch *input.Visibility {
+		case cms.VisibilityPublic:
+			visibility = proto.Visibility_PUBLIC
+		case cms.VisibilityPrivate:
+			visibility = proto.Visibility_PRIVATE
+		default:
+			visibility = proto.Visibility_PRIVATE
+		}
+		req.Visibility = &visibility
+	}
+
+	resp, err := c.client.UpdateProject(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update project: %w", err)
+	}
+
+	return convertProtoToProject(resp.Project), nil
+}
+
+func (c *grpcClient) DeleteProject(ctx context.Context, input cms.DeleteProjectInput) (*cms.DeleteProjectOutput, error) {
+	if c.client == nil {
+		return nil, fmt.Errorf("gRPC client not initialized")
+	}
+
+	ctx = c.addAuthMetadata(ctx)
+
+	resp, err := c.client.DeleteProject(ctx, &proto.DeleteProjectRequest{
+		ProjectId: input.ProjectID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to delete project: %w", err)
+	}
+
+	return &cms.DeleteProjectOutput{
+		ProjectID: resp.ProjectId,
+	}, nil
+}
+
+func (c *grpcClient) CheckAliasAvailability(ctx context.Context, input cms.CheckAliasAvailabilityInput) (*cms.CheckAliasAvailabilityOutput, error) {
+	if c.client == nil {
+		return nil, fmt.Errorf("gRPC client not initialized")
+	}
+
+	ctx = c.addAuthMetadata(ctx)
+
+	resp, err := c.client.CheckAliasAvailability(ctx, &proto.AliasAvailabilityRequest{
+		Alias: input.Alias,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to check alias availability: %w", err)
+	}
+
+	return &cms.CheckAliasAvailabilityOutput{
+		Available: resp.Available,
+	}, nil
+}
+
 func (c *grpcClient) Close() error {
 	if c.conn != nil {
 		return c.conn.Close()
 	}
 	return nil
 }
-
-// Converter functions between proto and domain types
 
 func convertProtoToProject(p *proto.Project) *cms.Project {
 	if p == nil {
@@ -265,7 +363,6 @@ func convertAnyToInterface(a *anypb.Any) interface{} {
 		return nil
 	}
 
-	// Handle common well-known types
 	switch a.TypeUrl {
 	case "type.googleapis.com/google.protobuf.StringValue":
 		var sv wrapperspb.StringValue
@@ -328,14 +425,12 @@ func convertAnyToInterface(a *anypb.Any) interface{} {
 		}
 	}
 
-	// Try to unmarshal as a generic message
 	var msg protobuf.Message
 	if err := anypb.UnmarshalTo(a, msg, protobuf.UnmarshalOptions{}); err == nil {
 		log.Debugf("Successfully unmarshaled Any type: %s", a.TypeUrl)
 		return msg
 	}
 
-	// If all else fails, log warning and return the raw value
 	log.Warnf("Unable to unmarshal Any type: %s, returning raw value", a.TypeUrl)
 	return a.Value
 }

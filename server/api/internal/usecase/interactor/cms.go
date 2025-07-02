@@ -204,3 +204,112 @@ func (i *cmsInteractor) GetCMSModelExportURL(ctx context.Context, projectID, mod
 
 	return output.URL, nil
 }
+
+// CreateCMSProject creates a new CMS project
+func (i *cmsInteractor) CreateCMSProject(ctx context.Context, input cms.CreateProjectInput) (*cms.Project, error) {
+	op := adapter.Operator(ctx)
+	if op == nil {
+		return nil, fmt.Errorf("operator not found")
+	}
+
+	if i.gateways.CMS == nil {
+		return nil, fmt.Errorf("CMS gateway not configured")
+	}
+
+	// Check if user has write access to the workspace
+	authInfo := adapter.GetAuthInfo(ctx)
+	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
+		fmt.Sprintf("workspace:%s", input.WorkspaceID), "write")
+	if err != nil {
+		return nil, fmt.Errorf("failed to check permission: %w", err)
+	}
+	if !allowed {
+		return nil, fmt.Errorf("permission denied: cannot create project in workspace %s", input.WorkspaceID)
+	}
+
+	log.Debugfc(ctx, "Creating CMS project: %s in workspace: %s for user: %s", input.Name, input.WorkspaceID, op.AcOperator.User)
+
+	return i.gateways.CMS.CreateProject(ctx, input)
+}
+
+// UpdateCMSProject updates an existing CMS project
+func (i *cmsInteractor) UpdateCMSProject(ctx context.Context, input cms.UpdateProjectInput) (*cms.Project, error) {
+	op := adapter.Operator(ctx)
+	if op == nil {
+		return nil, fmt.Errorf("operator not found")
+	}
+
+	if i.gateways.CMS == nil {
+		return nil, fmt.Errorf("CMS gateway not configured")
+	}
+
+	// First get the project to check permissions
+	project, err := i.gateways.CMS.GetProject(ctx, input.ProjectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get CMS project: %w", err)
+	}
+
+	// Check if user has write access to the workspace
+	authInfo := adapter.GetAuthInfo(ctx)
+	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
+		fmt.Sprintf("workspace:%s", project.WorkspaceID), "write")
+	if err != nil {
+		return nil, fmt.Errorf("failed to check permission: %w", err)
+	}
+	if !allowed {
+		return nil, fmt.Errorf("permission denied: cannot update project in workspace %s", project.WorkspaceID)
+	}
+
+	log.Debugfc(ctx, "Updating CMS project: %s for user: %s", input.ProjectID, op.AcOperator.User)
+
+	return i.gateways.CMS.UpdateProject(ctx, input)
+}
+
+// DeleteCMSProject deletes a CMS project
+func (i *cmsInteractor) DeleteCMSProject(ctx context.Context, input cms.DeleteProjectInput) (*cms.DeleteProjectOutput, error) {
+	op := adapter.Operator(ctx)
+	if op == nil {
+		return nil, fmt.Errorf("operator not found")
+	}
+
+	if i.gateways.CMS == nil {
+		return nil, fmt.Errorf("CMS gateway not configured")
+	}
+
+	// First get the project to check permissions
+	project, err := i.gateways.CMS.GetProject(ctx, input.ProjectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get CMS project: %w", err)
+	}
+
+	// Check if user has write access to the workspace
+	authInfo := adapter.GetAuthInfo(ctx)
+	allowed, err := i.permissionChecker.CheckPermission(ctx, authInfo, op.AcOperator.User.String(),
+		fmt.Sprintf("workspace:%s", project.WorkspaceID), "write")
+	if err != nil {
+		return nil, fmt.Errorf("failed to check permission: %w", err)
+	}
+	if !allowed {
+		return nil, fmt.Errorf("permission denied: cannot delete project in workspace %s", project.WorkspaceID)
+	}
+
+	log.Debugfc(ctx, "Deleting CMS project: %s for user: %s", input.ProjectID, op.AcOperator.User)
+
+	return i.gateways.CMS.DeleteProject(ctx, input)
+}
+
+// CheckCMSAliasAvailability checks if a project alias is available
+func (i *cmsInteractor) CheckCMSAliasAvailability(ctx context.Context, input cms.CheckAliasAvailabilityInput) (*cms.CheckAliasAvailabilityOutput, error) {
+	op := adapter.Operator(ctx)
+	if op == nil {
+		return nil, fmt.Errorf("operator not found")
+	}
+
+	if i.gateways.CMS == nil {
+		return nil, fmt.Errorf("CMS gateway not configured")
+	}
+
+	log.Debugfc(ctx, "Checking CMS alias availability: %s for user: %s", input.Alias, op.AcOperator.User)
+
+	return i.gateways.CMS.CheckAliasAvailability(ctx, input)
+}

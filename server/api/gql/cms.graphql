@@ -93,4 +93,64 @@ extend type Query {
   
   # Get GeoJSON export URL for a CMS model
   cmsModelExportUrl(projectId: ID!, modelId: ID!): String!
+}
+
+# Input types for mutations
+
+input CreateCMSProjectInput {
+  workspaceId: ID!
+  name: String!
+  alias: String!
+  description: String
+  license: String
+  readme: String
+  visibility: CMSVisibility!
+}
+
+input UpdateCMSProjectInput {
+  projectId: ID!
+  name: String
+  alias: String
+  description: String
+  license: String
+  readme: String
+  visibility: CMSVisibility
+}
+
+input DeleteCMSProjectInput {
+  projectId: ID!
+}
+
+input CheckCMSAliasAvailabilityInput {
+  alias: String!
+}
+
+# Payload types for mutations
+
+type CMSProjectPayload {
+  project: CMSProject!
+}
+
+type DeleteCMSProjectPayload {
+  projectId: ID!
+}
+
+type CheckCMSAliasAvailabilityPayload {
+  available: Boolean!
+}
+
+# Mutations
+
+extend type Mutation {
+  # Create a new CMS project
+  createCMSProject(input: CreateCMSProjectInput!): CMSProjectPayload
+  
+  # Update an existing CMS project
+  updateCMSProject(input: UpdateCMSProjectInput!): CMSProjectPayload
+  
+  # Delete a CMS project
+  deleteCMSProject(input: DeleteCMSProjectInput!): DeleteCMSProjectPayload
+  
+  # Check if a CMS project alias is available
+  checkCMSAliasAvailability(input: CheckCMSAliasAvailabilityInput!): CheckCMSAliasAvailabilityPayload
 } 

@@ -89,6 +89,10 @@ type CMSProject struct {
 	UpdatedAt   time.Time     `json:"updatedAt"`
 }
 
+type CMSProjectPayload struct {
+	Project *CMSProject `json:"project"`
+}
+
 type CMSSchema struct {
 	SchemaID ID                `json:"schemaId"`
 	Fields   []*CMSSchemaField `json:"fields"`
@@ -110,6 +114,14 @@ type CancelJobPayload struct {
 	Job *Job `json:"job,omitempty"`
 }
 
+type CheckCMSAliasAvailabilityInput struct {
+	Alias string `json:"alias"`
+}
+
+type CheckCMSAliasAvailabilityPayload struct {
+	Available bool `json:"available"`
+}
+
 type CreateAssetInput struct {
 	WorkspaceID ID             `json:"workspaceId"`
 	File        graphql.Upload `json:"file"`
@@ -117,6 +129,16 @@ type CreateAssetInput struct {
 
 type CreateAssetPayload struct {
 	Asset *Asset `json:"asset"`
+}
+
+type CreateCMSProjectInput struct {
+	WorkspaceID ID            `json:"workspaceId"`
+	Name        string        `json:"name"`
+	Alias       string        `json:"alias"`
+	Description *string       `json:"description,omitempty"`
+	License     *string       `json:"license,omitempty"`
+	Readme      *string       `json:"readme,omitempty"`
+	Visibility  CMSVisibility `json:"visibility"`
 }
 
 type CreateDeploymentInput struct {
@@ -155,6 +177,14 @@ type DeclareParameterInput struct {
 	Required bool          `json:"required"`
 	Value    interface{}   `json:"value,omitempty"`
 	Index    *int          `json:"index,omitempty"`
+}
+
+type DeleteCMSProjectInput struct {
+	ProjectID ID `json:"projectId"`
+}
+
+type DeleteCMSProjectPayload struct {
+	ProjectID ID `json:"projectId"`
 }
 
 type DeleteDeploymentInput struct {
@@ -493,6 +523,16 @@ type UnshareProjectInput struct {
 
 type UnshareProjectPayload struct {
 	ProjectID ID `json:"projectId"`
+}
+
+type UpdateCMSProjectInput struct {
+	ProjectID   ID             `json:"projectId"`
+	Name        *string        `json:"name,omitempty"`
+	Alias       *string        `json:"alias,omitempty"`
+	Description *string        `json:"description,omitempty"`
+	License     *string        `json:"license,omitempty"`
+	Readme      *string        `json:"readme,omitempty"`
+	Visibility  *CMSVisibility `json:"visibility,omitempty"`
 }
 
 type UpdateDeploymentInput struct {

@@ -110,3 +110,39 @@ type ExportInput struct {
 type ExportOutput struct {
 	URL string
 }
+
+type CreateProjectInput struct {
+	WorkspaceID string
+	Name        string
+	Description *string
+	License     *string
+	Readme      *string
+	Alias       string
+	Visibility  Visibility
+}
+
+type UpdateProjectInput struct {
+	ProjectID   string
+	Name        *string
+	Description *string
+	License     *string
+	Readme      *string
+	Alias       *string
+	Visibility  *Visibility
+}
+
+type DeleteProjectInput struct {
+	ProjectID string
+}
+
+type CheckAliasAvailabilityInput struct {
+	Alias string
+}
+
+type CheckAliasAvailabilityOutput struct {
+	Available bool
+}
+
+type DeleteProjectOutput struct {
+	ProjectID string
+}

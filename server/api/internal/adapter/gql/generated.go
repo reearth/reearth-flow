@@ -117,6 +117,10 @@ type ComplexityRoot struct {
 		WorkspaceID func(childComplexity int) int
 	}
 
+	CMSProjectPayload struct {
+		Project func(childComplexity int) int
+	}
+
 	CMSSchema struct {
 		Fields   func(childComplexity int) int
 		SchemaID func(childComplexity int) int
@@ -134,12 +138,20 @@ type ComplexityRoot struct {
 		Job func(childComplexity int) int
 	}
 
+	CheckCMSAliasAvailabilityPayload struct {
+		Available func(childComplexity int) int
+	}
+
 	CreateAssetPayload struct {
 		Asset func(childComplexity int) int
 	}
 
 	CreateWorkspacePayload struct {
 		Workspace func(childComplexity int) int
+	}
+
+	DeleteCMSProjectPayload struct {
+		ProjectID func(childComplexity int) int
 	}
 
 	DeleteDeploymentPayload struct {
@@ -231,12 +243,15 @@ type ComplexityRoot struct {
 	Mutation struct {
 		AddMemberToWorkspace      func(childComplexity int, input gqlmodel.AddMemberToWorkspaceInput) int
 		CancelJob                 func(childComplexity int, input gqlmodel.CancelJobInput) int
+		CheckCMSAliasAvailability func(childComplexity int, input gqlmodel.CheckCMSAliasAvailabilityInput) int
 		CreateAsset               func(childComplexity int, input gqlmodel.CreateAssetInput) int
+		CreateCMSProject          func(childComplexity int, input gqlmodel.CreateCMSProjectInput) int
 		CreateDeployment          func(childComplexity int, input gqlmodel.CreateDeploymentInput) int
 		CreateProject             func(childComplexity int, input gqlmodel.CreateProjectInput) int
 		CreateTrigger             func(childComplexity int, input gqlmodel.CreateTriggerInput) int
 		CreateWorkspace           func(childComplexity int, input gqlmodel.CreateWorkspaceInput) int
 		DeclareParameter          func(childComplexity int, projectID gqlmodel.ID, input gqlmodel.DeclareParameterInput) int
+		DeleteCMSProject          func(childComplexity int, input gqlmodel.DeleteCMSProjectInput) int
 		DeleteDeployment          func(childComplexity int, input gqlmodel.DeleteDeploymentInput) int
 		DeleteMe                  func(childComplexity int, input gqlmodel.DeleteMeInput) int
 		DeleteProject             func(childComplexity int, input gqlmodel.DeleteProjectInput) int
@@ -254,6 +269,7 @@ type ComplexityRoot struct {
 		ShareProject              func(childComplexity int, input gqlmodel.ShareProjectInput) int
 		Signup                    func(childComplexity int, input gqlmodel.SignupInput) int
 		UnshareProject            func(childComplexity int, input gqlmodel.UnshareProjectInput) int
+		UpdateCMSProject          func(childComplexity int, input gqlmodel.UpdateCMSProjectInput) int
 		UpdateDeployment          func(childComplexity int, input gqlmodel.UpdateDeploymentInput) int
 		UpdateMe                  func(childComplexity int, input gqlmodel.UpdateMeInput) int
 		UpdateMemberOfWorkspace   func(childComplexity int, input gqlmodel.UpdateMemberOfWorkspaceInput) int
@@ -490,6 +506,10 @@ type MeResolver interface {
 type MutationResolver interface {
 	CreateAsset(ctx context.Context, input gqlmodel.CreateAssetInput) (*gqlmodel.CreateAssetPayload, error)
 	RemoveAsset(ctx context.Context, input gqlmodel.RemoveAssetInput) (*gqlmodel.RemoveAssetPayload, error)
+	CreateCMSProject(ctx context.Context, input gqlmodel.CreateCMSProjectInput) (*gqlmodel.CMSProjectPayload, error)
+	UpdateCMSProject(ctx context.Context, input gqlmodel.UpdateCMSProjectInput) (*gqlmodel.CMSProjectPayload, error)
+	DeleteCMSProject(ctx context.Context, input gqlmodel.DeleteCMSProjectInput) (*gqlmodel.DeleteCMSProjectPayload, error)
+	CheckCMSAliasAvailability(ctx context.Context, input gqlmodel.CheckCMSAliasAvailabilityInput) (*gqlmodel.CheckCMSAliasAvailabilityPayload, error)
 	CreateDeployment(ctx context.Context, input gqlmodel.CreateDeploymentInput) (*gqlmodel.DeploymentPayload, error)
 	UpdateDeployment(ctx context.Context, input gqlmodel.UpdateDeploymentInput) (*gqlmodel.DeploymentPayload, error)
 	DeleteDeployment(ctx context.Context, input gqlmodel.DeleteDeploymentInput) (*gqlmodel.DeleteDeploymentPayload, error)
@@ -861,6 +881,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.CMSProject.WorkspaceID(childComplexity), true
 
+	case "CMSProjectPayload.project":
+		if e.complexity.CMSProjectPayload.Project == nil {
+			break
+		}
+
+		return e.complexity.CMSProjectPayload.Project(childComplexity), true
+
 	case "CMSSchema.fields":
 		if e.complexity.CMSSchema.Fields == nil {
 			break
@@ -917,6 +944,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.CancelJobPayload.Job(childComplexity), true
 
+	case "CheckCMSAliasAvailabilityPayload.available":
+		if e.complexity.CheckCMSAliasAvailabilityPayload.Available == nil {
+			break
+		}
+
+		return e.complexity.CheckCMSAliasAvailabilityPayload.Available(childComplexity), true
+
 	case "CreateAssetPayload.asset":
 		if e.complexity.CreateAssetPayload.Asset == nil {
 			break
@@ -930,6 +964,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.CreateWorkspacePayload.Workspace(childComplexity), true
+
+	case "DeleteCMSProjectPayload.projectId":
+		if e.complexity.DeleteCMSProjectPayload.ProjectID == nil {
+			break
+		}
+
+		return e.complexity.DeleteCMSProjectPayload.ProjectID(childComplexity), true
 
 	case "DeleteDeploymentPayload.deploymentId":
 		if e.complexity.DeleteDeploymentPayload.DeploymentID == nil {
@@ -1310,6 +1351,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.CancelJob(childComplexity, args["input"].(gqlmodel.CancelJobInput)), true
 
+	case "Mutation.checkCMSAliasAvailability":
+		if e.complexity.Mutation.CheckCMSAliasAvailability == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_checkCMSAliasAvailability_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CheckCMSAliasAvailability(childComplexity, args["input"].(gqlmodel.CheckCMSAliasAvailabilityInput)), true
+
 	case "Mutation.createAsset":
 		if e.complexity.Mutation.CreateAsset == nil {
 			break
@@ -1321,6 +1374,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.CreateAsset(childComplexity, args["input"].(gqlmodel.CreateAssetInput)), true
+
+	case "Mutation.createCMSProject":
+		if e.complexity.Mutation.CreateCMSProject == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createCMSProject_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.CreateCMSProject(childComplexity, args["input"].(gqlmodel.CreateCMSProjectInput)), true
 
 	case "Mutation.createDeployment":
 		if e.complexity.Mutation.CreateDeployment == nil {
@@ -1381,6 +1446,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.DeclareParameter(childComplexity, args["projectId"].(gqlmodel.ID), args["input"].(gqlmodel.DeclareParameterInput)), true
+
+	case "Mutation.deleteCMSProject":
+		if e.complexity.Mutation.DeleteCMSProject == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteCMSProject_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DeleteCMSProject(childComplexity, args["input"].(gqlmodel.DeleteCMSProjectInput)), true
 
 	case "Mutation.deleteDeployment":
 		if e.complexity.Mutation.DeleteDeployment == nil {
@@ -1585,6 +1662,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.UnshareProject(childComplexity, args["input"].(gqlmodel.UnshareProjectInput)), true
+
+	case "Mutation.updateCMSProject":
+		if e.complexity.Mutation.UpdateCMSProject == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateCMSProject_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UpdateCMSProject(childComplexity, args["input"].(gqlmodel.UpdateCMSProjectInput)), true
 
 	case "Mutation.updateDeployment":
 		if e.complexity.Mutation.UpdateDeployment == nil {
@@ -2680,12 +2769,15 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAPIDriverInput,
 		ec.unmarshalInputAddMemberToWorkspaceInput,
 		ec.unmarshalInputCancelJobInput,
+		ec.unmarshalInputCheckCMSAliasAvailabilityInput,
 		ec.unmarshalInputCreateAssetInput,
+		ec.unmarshalInputCreateCMSProjectInput,
 		ec.unmarshalInputCreateDeploymentInput,
 		ec.unmarshalInputCreateProjectInput,
 		ec.unmarshalInputCreateTriggerInput,
 		ec.unmarshalInputCreateWorkspaceInput,
 		ec.unmarshalInputDeclareParameterInput,
+		ec.unmarshalInputDeleteCMSProjectInput,
 		ec.unmarshalInputDeleteDeploymentInput,
 		ec.unmarshalInputDeleteMeInput,
 		ec.unmarshalInputDeleteProjectInput,
@@ -2704,6 +2796,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputSignupInput,
 		ec.unmarshalInputTimeDriverInput,
 		ec.unmarshalInputUnshareProjectInput,
+		ec.unmarshalInputUpdateCMSProjectInput,
 		ec.unmarshalInputUpdateDeploymentInput,
 		ec.unmarshalInputUpdateMeInput,
 		ec.unmarshalInputUpdateMemberOfWorkspaceInput,
@@ -3049,6 +3142,66 @@ extend type Query {
   
   # Get GeoJSON export URL for a CMS model
   cmsModelExportUrl(projectId: ID!, modelId: ID!): String!
+}
+
+# Input types for mutations
+
+input CreateCMSProjectInput {
+  workspaceId: ID!
+  name: String!
+  alias: String!
+  description: String
+  license: String
+  readme: String
+  visibility: CMSVisibility!
+}
+
+input UpdateCMSProjectInput {
+  projectId: ID!
+  name: String
+  alias: String
+  description: String
+  license: String
+  readme: String
+  visibility: CMSVisibility
+}
+
+input DeleteCMSProjectInput {
+  projectId: ID!
+}
+
+input CheckCMSAliasAvailabilityInput {
+  alias: String!
+}
+
+# Payload types for mutations
+
+type CMSProjectPayload {
+  project: CMSProject!
+}
+
+type DeleteCMSProjectPayload {
+  projectId: ID!
+}
+
+type CheckCMSAliasAvailabilityPayload {
+  available: Boolean!
+}
+
+# Mutations
+
+extend type Mutation {
+  # Create a new CMS project
+  createCMSProject(input: CreateCMSProjectInput!): CMSProjectPayload
+  
+  # Update an existing CMS project
+  updateCMSProject(input: UpdateCMSProjectInput!): CMSProjectPayload
+  
+  # Delete a CMS project
+  deleteCMSProject(input: DeleteCMSProjectInput!): DeleteCMSProjectPayload
+  
+  # Check if a CMS project alias is available
+  checkCMSAliasAvailability(input: CheckCMSAliasAvailabilityInput!): CheckCMSAliasAvailabilityPayload
 } `, BuiltIn: false},
 	{Name: "../../../gql/deployment.graphql", Input: `type Deployment implements Node {
   createdAt: DateTime!
@@ -3786,6 +3939,21 @@ func (ec *executionContext) field_Mutation_cancelJob_args(ctx context.Context, r
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_checkCMSAliasAvailability_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.CheckCMSAliasAvailabilityInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNCheckCMSAliasAvailabilityInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCheckCMSAliasAvailabilityInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_createAsset_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -3793,6 +3961,21 @@ func (ec *executionContext) field_Mutation_createAsset_args(ctx context.Context,
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNCreateAssetInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCreateAssetInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createCMSProject_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.CreateCMSProjectInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNCreateCMSProjectInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCreateCMSProjectInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -3882,6 +4065,21 @@ func (ec *executionContext) field_Mutation_declareParameter_args(ctx context.Con
 		}
 	}
 	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteCMSProject_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.DeleteCMSProjectInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNDeleteCMSProjectInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeleteCMSProjectInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -4159,6 +4357,21 @@ func (ec *executionContext) field_Mutation_unshareProject_args(ctx context.Conte
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
 		arg0, err = ec.unmarshalNUnshareProjectInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUnshareProjectInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateCMSProject_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 gqlmodel.UpdateCMSProjectInput
+	if tmp, ok := rawArgs["input"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+		arg0, err = ec.unmarshalNUpdateCMSProjectInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateCMSProjectInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -6688,6 +6901,72 @@ func (ec *executionContext) fieldContext_CMSProject_updatedAt(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _CMSProjectPayload_project(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSProjectPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CMSProjectPayload_project(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Project, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.CMSProject)
+	fc.Result = res
+	return ec.marshalNCMSProject2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSProject(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CMSProjectPayload_project(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CMSProjectPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CMSProject_id(ctx, field)
+			case "name":
+				return ec.fieldContext_CMSProject_name(ctx, field)
+			case "alias":
+				return ec.fieldContext_CMSProject_alias(ctx, field)
+			case "description":
+				return ec.fieldContext_CMSProject_description(ctx, field)
+			case "license":
+				return ec.fieldContext_CMSProject_license(ctx, field)
+			case "readme":
+				return ec.fieldContext_CMSProject_readme(ctx, field)
+			case "workspaceId":
+				return ec.fieldContext_CMSProject_workspaceId(ctx, field)
+			case "visibility":
+				return ec.fieldContext_CMSProject_visibility(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_CMSProject_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_CMSProject_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CMSProject", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CMSSchema_schemaId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CMSSchema) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CMSSchema_schemaId(ctx, field)
 	if err != nil {
@@ -7074,6 +7353,50 @@ func (ec *executionContext) fieldContext_CancelJobPayload_job(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _CheckCMSAliasAvailabilityPayload_available(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CheckCMSAliasAvailabilityPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_CheckCMSAliasAvailabilityPayload_available(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Available, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_CheckCMSAliasAvailabilityPayload_available(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CheckCMSAliasAvailabilityPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _CreateAssetPayload_asset(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.CreateAssetPayload) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_CreateAssetPayload_asset(ctx, field)
 	if err != nil {
@@ -7189,6 +7512,50 @@ func (ec *executionContext) fieldContext_CreateWorkspacePayload_workspace(_ cont
 				return ec.fieldContext_Workspace_projects(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Workspace", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _DeleteCMSProjectPayload_projectId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.DeleteCMSProjectPayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_DeleteCMSProjectPayload_projectId(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ProjectID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlmodel.ID)
+	fc.Result = res
+	return ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_DeleteCMSProjectPayload_projectId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "DeleteCMSProjectPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
 		},
 	}
 	return fc, nil
@@ -9719,6 +10086,230 @@ func (ec *executionContext) fieldContext_Mutation_removeAsset(ctx context.Contex
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_removeAsset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createCMSProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_createCMSProject(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CreateCMSProject(rctx, fc.Args["input"].(gqlmodel.CreateCMSProjectInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.CMSProjectPayload)
+	fc.Result = res
+	return ec.marshalOCMSProjectPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSProjectPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createCMSProject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "project":
+				return ec.fieldContext_CMSProjectPayload_project(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CMSProjectPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createCMSProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateCMSProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_updateCMSProject(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UpdateCMSProject(rctx, fc.Args["input"].(gqlmodel.UpdateCMSProjectInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.CMSProjectPayload)
+	fc.Result = res
+	return ec.marshalOCMSProjectPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSProjectPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateCMSProject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "project":
+				return ec.fieldContext_CMSProjectPayload_project(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CMSProjectPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateCMSProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteCMSProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_deleteCMSProject(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DeleteCMSProject(rctx, fc.Args["input"].(gqlmodel.DeleteCMSProjectInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.DeleteCMSProjectPayload)
+	fc.Result = res
+	return ec.marshalODeleteCMSProjectPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeleteCMSProjectPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteCMSProject(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "projectId":
+				return ec.fieldContext_DeleteCMSProjectPayload_projectId(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type DeleteCMSProjectPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteCMSProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_checkCMSAliasAvailability(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_checkCMSAliasAvailability(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().CheckCMSAliasAvailability(rctx, fc.Args["input"].(gqlmodel.CheckCMSAliasAvailabilityInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*gqlmodel.CheckCMSAliasAvailabilityPayload)
+	fc.Result = res
+	return ec.marshalOCheckCMSAliasAvailabilityPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCheckCMSAliasAvailabilityPayload(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_checkCMSAliasAvailability(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "available":
+				return ec.fieldContext_CheckCMSAliasAvailabilityPayload_available(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CheckCMSAliasAvailabilityPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_checkCMSAliasAvailability_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -19871,6 +20462,33 @@ func (ec *executionContext) unmarshalInputCancelJobInput(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputCheckCMSAliasAvailabilityInput(ctx context.Context, obj interface{}) (gqlmodel.CheckCMSAliasAvailabilityInput, error) {
+	var it gqlmodel.CheckCMSAliasAvailabilityInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"alias"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "alias":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("alias"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Alias = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputCreateAssetInput(ctx context.Context, obj interface{}) (gqlmodel.CreateAssetInput, error) {
 	var it gqlmodel.CreateAssetInput
 	asMap := map[string]interface{}{}
@@ -19899,6 +20517,75 @@ func (ec *executionContext) unmarshalInputCreateAssetInput(ctx context.Context, 
 				return it, err
 			}
 			it.File = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCreateCMSProjectInput(ctx context.Context, obj interface{}) (gqlmodel.CreateCMSProjectInput, error) {
+	var it gqlmodel.CreateCMSProjectInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"workspaceId", "name", "alias", "description", "license", "readme", "visibility"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "workspaceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("workspaceId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WorkspaceID = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "alias":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("alias"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Alias = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "license":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("license"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.License = data
+		case "readme":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("readme"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Readme = data
+		case "visibility":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("visibility"))
+			data, err := ec.unmarshalNCMSVisibility2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSVisibility(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Visibility = data
 		}
 	}
 
@@ -20132,6 +20819,33 @@ func (ec *executionContext) unmarshalInputDeclareParameterInput(ctx context.Cont
 				return it, err
 			}
 			it.Index = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputDeleteCMSProjectInput(ctx context.Context, obj interface{}) (gqlmodel.DeleteCMSProjectInput, error) {
+	var it gqlmodel.DeleteCMSProjectInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"projectId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "projectId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProjectID = data
 		}
 	}
 
@@ -20723,6 +21437,75 @@ func (ec *executionContext) unmarshalInputUnshareProjectInput(ctx context.Contex
 				return it, err
 			}
 			it.ProjectID = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateCMSProjectInput(ctx context.Context, obj interface{}) (gqlmodel.UpdateCMSProjectInput, error) {
+	var it gqlmodel.UpdateCMSProjectInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"projectId", "name", "alias", "description", "license", "readme", "visibility"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "projectId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProjectID = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "alias":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("alias"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Alias = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "license":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("license"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.License = data
+		case "readme":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("readme"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Readme = data
+		case "visibility":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("visibility"))
+			data, err := ec.unmarshalOCMSVisibility2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSVisibility(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Visibility = data
 		}
 	}
 
@@ -21581,6 +22364,45 @@ func (ec *executionContext) _CMSProject(ctx context.Context, sel ast.SelectionSe
 	return out
 }
 
+var cMSProjectPayloadImplementors = []string{"CMSProjectPayload"}
+
+func (ec *executionContext) _CMSProjectPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.CMSProjectPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, cMSProjectPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CMSProjectPayload")
+		case "project":
+			out.Values[i] = ec._CMSProjectPayload_project(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var cMSSchemaImplementors = []string{"CMSSchema"}
 
 func (ec *executionContext) _CMSSchema(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.CMSSchema) graphql.Marshaler {
@@ -21717,6 +22539,45 @@ func (ec *executionContext) _CancelJobPayload(ctx context.Context, sel ast.Selec
 	return out
 }
 
+var checkCMSAliasAvailabilityPayloadImplementors = []string{"CheckCMSAliasAvailabilityPayload"}
+
+func (ec *executionContext) _CheckCMSAliasAvailabilityPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.CheckCMSAliasAvailabilityPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, checkCMSAliasAvailabilityPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CheckCMSAliasAvailabilityPayload")
+		case "available":
+			out.Values[i] = ec._CheckCMSAliasAvailabilityPayload_available(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var createAssetPayloadImplementors = []string{"CreateAssetPayload"}
 
 func (ec *executionContext) _CreateAssetPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.CreateAssetPayload) graphql.Marshaler {
@@ -21769,6 +22630,45 @@ func (ec *executionContext) _CreateWorkspacePayload(ctx context.Context, sel ast
 			out.Values[i] = graphql.MarshalString("CreateWorkspacePayload")
 		case "workspace":
 			out.Values[i] = ec._CreateWorkspacePayload_workspace(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var deleteCMSProjectPayloadImplementors = []string{"DeleteCMSProjectPayload"}
+
+func (ec *executionContext) _DeleteCMSProjectPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.DeleteCMSProjectPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, deleteCMSProjectPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("DeleteCMSProjectPayload")
+		case "projectId":
+			out.Values[i] = ec._DeleteCMSProjectPayload_projectId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -22654,6 +23554,22 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "removeAsset":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_removeAsset(ctx, field)
+			})
+		case "createCMSProject":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createCMSProject(ctx, field)
+			})
+		case "updateCMSProject":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateCMSProject(ctx, field)
+			})
+		case "deleteCMSProject":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteCMSProject(ctx, field)
+			})
+		case "checkCMSAliasAvailability":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_checkCMSAliasAvailability(ctx, field)
 			})
 		case "createDeployment":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
@@ -25697,8 +26613,18 @@ func (ec *executionContext) marshalNCancelJobPayload2ᚖgithubᚗcomᚋreearth�
 	return ec._CancelJobPayload(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNCheckCMSAliasAvailabilityInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCheckCMSAliasAvailabilityInput(ctx context.Context, v interface{}) (gqlmodel.CheckCMSAliasAvailabilityInput, error) {
+	res, err := ec.unmarshalInputCheckCMSAliasAvailabilityInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNCreateAssetInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCreateAssetInput(ctx context.Context, v interface{}) (gqlmodel.CreateAssetInput, error) {
 	res, err := ec.unmarshalInputCreateAssetInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNCreateCMSProjectInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCreateCMSProjectInput(ctx context.Context, v interface{}) (gqlmodel.CreateCMSProjectInput, error) {
+	res, err := ec.unmarshalInputCreateCMSProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -25739,6 +26665,11 @@ func (ec *executionContext) marshalNDateTime2timeᚐTime(ctx context.Context, se
 
 func (ec *executionContext) unmarshalNDeclareParameterInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeclareParameterInput(ctx context.Context, v interface{}) (gqlmodel.DeclareParameterInput, error) {
 	res, err := ec.unmarshalInputDeclareParameterInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNDeleteCMSProjectInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeleteCMSProjectInput(ctx context.Context, v interface{}) (gqlmodel.DeleteCMSProjectInput, error) {
+	res, err := ec.unmarshalInputDeleteCMSProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -26607,6 +27538,11 @@ func (ec *executionContext) unmarshalNUnshareProjectInput2githubᚗcomᚋreearth
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNUpdateCMSProjectInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateCMSProjectInput(ctx context.Context, v interface{}) (gqlmodel.UpdateCMSProjectInput, error) {
+	res, err := ec.unmarshalInputUpdateCMSProjectInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNUpdateDeploymentInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUpdateDeploymentInput(ctx context.Context, v interface{}) (gqlmodel.UpdateDeploymentInput, error) {
 	res, err := ec.unmarshalInputUpdateDeploymentInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -27120,6 +28056,36 @@ func (ec *executionContext) marshalOCMSProject2ᚖgithubᚗcomᚋreearthᚋreear
 	return ec._CMSProject(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOCMSProjectPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSProjectPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.CMSProjectPayload) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._CMSProjectPayload(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOCMSVisibility2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSVisibility(ctx context.Context, v interface{}) (*gqlmodel.CMSVisibility, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(gqlmodel.CMSVisibility)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOCMSVisibility2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSVisibility(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.CMSVisibility) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) marshalOCheckCMSAliasAvailabilityPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCheckCMSAliasAvailabilityPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.CheckCMSAliasAvailabilityPayload) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._CheckCMSAliasAvailabilityPayload(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOCreateAssetPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCreateAssetPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.CreateAssetPayload) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -27148,6 +28114,13 @@ func (ec *executionContext) marshalODateTime2ᚖtimeᚐTime(ctx context.Context,
 	}
 	res := graphql.MarshalTime(*v)
 	return res
+}
+
+func (ec *executionContext) marshalODeleteCMSProjectPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeleteCMSProjectPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.DeleteCMSProjectPayload) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._DeleteCMSProjectPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalODeleteDeploymentPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐDeleteDeploymentPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.DeleteDeploymentPayload) graphql.Marshaler {
