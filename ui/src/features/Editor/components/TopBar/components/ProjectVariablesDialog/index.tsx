@@ -66,22 +66,21 @@ type Props = {
 };
 
 const allVarTypes: VarType[] = [
-  "attribute_name",
-  "choice",
-  "color",
-  "coordinate_system",
-  "database_connection",
-  "datetime",
-  "file_folder",
-  "geometry",
-  "message",
-  "number",
-  "password",
-  "reprojection_file",
+  // "attribute_name",
   "text",
-  "web_connection",
+  "number",
+  "choice",
+  "file_folder",
   "yes_no",
-  "unsupported",
+  "datetime",
+  "color",
+  // "coordinate_system",
+  // "database_connection",
+  // "geometry",
+  // "message",
+  // "password",
+  // "reprojection_file",
+  // "web_connection",
 ];
 
 const ProjectVariableDialog: React.FC<Props> = ({

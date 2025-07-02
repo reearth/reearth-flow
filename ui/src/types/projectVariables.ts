@@ -60,16 +60,16 @@ export type GeometryConfig = {
 export type NumberConfig = {
   min?: number;
   max?: number;
-  step?: number;
-  precision?: number;
-  unit?: string;
+  // step?: number;
+  // precision?: number;
+  // unit?: string;
 };
 
 export type TextConfig = {
   minLength?: number;
   maxLength?: number;
-  pattern?: string;
   multiline?: boolean;
+  // pattern?: string;
 };
 
 export type DateTimeConfig = {

@@ -142,16 +142,12 @@ export function getDefaultConfigForProjectVar<T extends VarType>(
       return {
         min: undefined,
         max: undefined,
-        step: 1,
-        precision: undefined,
-        unit: undefined,
       } as ProjectVariableConfig<T>;
 
     case "text":
       return {
         minLength: undefined,
         maxLength: undefined,
-        pattern: undefined,
         multiline: false,
       } as ProjectVariableConfig<T>;
 

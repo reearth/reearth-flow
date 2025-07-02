@@ -11,10 +11,13 @@ import { Button } from "@flow/components/buttons/BaseButton";
 import { useT } from "@flow/lib/i18n";
 import { ProjectVariable, VarType } from "@flow/types";
 
-import { AttributeNameEditor } from "./components/AttributeNameEditor";
+// import { AttributeNameEditor } from "./components/AttributeNameEditor";
 import { ChoiceEditor } from "./components/ChoiceEditor";
 import { ColorEditor } from "./components/ColorEditor";
+import { DateTimeEditor } from "./components/DateTimeEditor";
 import { DefaultEditor } from "./components/DefaultEditor";
+import { NumberEditor } from "./components/NumberEditor";
+import { YesNoEditor } from "./components/YesNoEditor";
 import useVariableEditDialog from "./hooks";
 
 type Props = {
@@ -74,9 +77,31 @@ const VariableEditDialog: React.FC<Props> = ({
 
   const renderEditor = () => {
     switch (originalType) {
-      case "attribute_name":
+      // case "attribute_name":
+      //   return (
+      //     <AttributeNameEditor
+      //       variable={localVariable}
+      //       onUpdate={handleFieldUpdate}
+      //     />
+      //   );
+      case "text":
         return (
-          <AttributeNameEditor
+          <DefaultEditor
+            variable={localVariable}
+            onUpdate={handleFieldUpdate}
+          />
+        );
+      case "number":
+        return (
+          <NumberEditor variable={localVariable} onUpdate={handleFieldUpdate} />
+        );
+      case "yes_no":
+        return (
+          <YesNoEditor variable={localVariable} onUpdate={handleFieldUpdate} />
+        );
+      case "datetime":
+        return (
+          <DateTimeEditor
             variable={localVariable}
             onUpdate={handleFieldUpdate}
           />
@@ -111,7 +136,7 @@ const VariableEditDialog: React.FC<Props> = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto p-2">{renderEditor()}</div>
+        <div className="flex-1 overflow-y-auto p-4">{renderEditor()}</div>
 
         <DialogFooter className="flex justify-end gap-2">
           <Button variant="outline" onClick={handleCancel}>
