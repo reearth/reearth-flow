@@ -211,6 +211,8 @@
   "Include Time": "",
   "Date and time input": "",
   "Date only input": "",
+  "Date and time values will use the browser's local timezone": "",
+  "Date values are timezone-independent": "",
   "Date Range": "",
   "Minimum Date": "",
   "No minimum": "",

@@ -211,6 +211,8 @@
   "Include Time": "時間を含める",
   "Date and time input": "日付と時刻の入力",
   "Date only input": "日付のみの入力",
+  "Date and time values will use the browser's local timezone": "日付と時刻の値はブラウザのローカルタイムゾーンを使用します",
+  "Date values are timezone-independent": "日付値はタイムゾーンに依存しません",
   "Date Range": "日付範囲",
   "Minimum Date": "最小日付",
   "No minimum": "最小なし",

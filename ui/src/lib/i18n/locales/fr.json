@@ -211,6 +211,8 @@
   "Include Time": "Inclure l'heure",
   "Date and time input": "Saisie de date et d'heure",
   "Date only input": "Saisie de date uniquement",
+  "Date and time values will use the browser's local timezone": "Les valeurs de date et d'heure utiliseront le fuseau horaire local du navigateur",
+  "Date values are timezone-independent": "Les valeurs de date sont indépendantes du fuseau horaire",
   "Date Range": "Plage de dates",
   "Minimum Date": "Date minimale",
   "No minimum": "Pas de minimum",

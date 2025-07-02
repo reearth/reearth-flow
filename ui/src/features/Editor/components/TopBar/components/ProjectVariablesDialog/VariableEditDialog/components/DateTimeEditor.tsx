@@ -138,6 +138,12 @@ export const DateTimeEditor: React.FC<Props> = ({ variable, onUpdate }) => {
               {allowTime ? t("Date and time input") : t("Date only input")}
             </span>
           </div>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {allowTime 
+              ? t("Date and time values will use the browser's local timezone")
+              : t("Date values are timezone-independent")
+            }
+          </p>
         </div>
       </div>
 

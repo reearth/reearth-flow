@@ -211,6 +211,8 @@
   "Include Time": "包含时间",
   "Date and time input": "日期和时间输入",
   "Date only input": "仅日期输入",
+  "Date and time values will use the browser's local timezone": "日期和时间值将使用浏览器的本地时区",
+  "Date values are timezone-independent": "日期值不受时区影响",
   "Date Range": "日期范围",
   "Minimum Date": "最小日期",
   "No minimum": "无最小值",
