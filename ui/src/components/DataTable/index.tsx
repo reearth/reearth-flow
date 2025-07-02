@@ -55,7 +55,7 @@ type DataTableProps<TData, TValue> = {
   setCurrentOrder?: (order: OrderDirection) => void;
   sortOptions?: { value: string; label: string }[];
   currentSortValue?: string;
-  handleSortChange?: (value: string) => void;
+  onSortChange?: (value: string) => void;
   searchTerm?: string;
   setSearchTerm: (term: string) => void;
 };
@@ -76,7 +76,7 @@ function DataTable<TData, TValue>({
   setCurrentOrder,
   sortOptions,
   currentSortValue,
-  handleSortChange,
+  onSortChange,
   searchTerm,
   setSearchTerm,
 }: DataTableProps<TData, TValue>) {
@@ -159,8 +159,8 @@ function DataTable<TData, TValue>({
               className="max-w-sm"
             />
           )}
-          {sortOptions && handleSortChange ? (
-            <Select value={currentSortValue} onValueChange={handleSortChange}>
+          {sortOptions && onSortChange ? (
+            <Select value={currentSortValue} onValueChange={onSortChange}>
               <SelectTrigger className="h-[32px] w-[150px]">
                 <SelectValue />
               </SelectTrigger>

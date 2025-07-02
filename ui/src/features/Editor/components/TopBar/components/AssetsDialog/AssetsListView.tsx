@@ -1,20 +1,11 @@
-import { ClipboardTextIcon, TrashIcon } from "@phosphor-icons/react";
-import { DotsHorizontalIcon } from "@radix-ui/react-icons";
+import { CopyIcon, DownloadIcon, TrashIcon } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@flow/components";
+import { IconButton } from "@flow/components";
 import { DataTable as Table } from "@flow/components/DataTable";
-import { useToast } from "@flow/features/NotificationSystem/useToast";
-import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
+import { ASSET_FETCH_RATE } from "@flow/lib/gql/assets/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { Asset } from "@flow/types";
-import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 type Props = {
   assets?: Asset[];
@@ -23,7 +14,12 @@ type Props = {
   totalPages: number;
   sortOptions: { value: string; label: string }[];
   currentSortValue: string;
-  handleSortChange: (value: string) => void;
+  onSortChange: (value: string) => void;
+  onCopyUrlToClipBoard: (url: string) => void;
+  onAssetDownload: (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    asset: Asset,
+  ) => void;
   setCurrentPage?: (page: number) => void;
   setAssetToBeDeleted: (asset: string | undefined) => void;
   searchTerm?: string;
@@ -35,26 +31,17 @@ const AssetsListView: React.FC<Props> = ({
   totalPages,
   sortOptions,
   currentSortValue,
-  handleSortChange,
+  onSortChange,
+  onCopyUrlToClipBoard,
+  onAssetDownload,
   setCurrentPage,
   setAssetToBeDeleted,
   searchTerm,
   setSearchTerm,
 }) => {
   const t = useT();
-  const { toast } = useToast();
 
-  const handleCopyURLToClipBoard = (url: string) => {
-    if (!url) return;
-    copyToClipboard(url);
-    toast({
-      title: t("Copied to clipboard"),
-      description: t("{{asset}} asset's URL copied to clipboard", {
-        resource: name,
-      }),
-    });
-  };
-  const resultsPerPage = DEPLOYMENT_FETCH_RATE;
+  const resultsPerPage = ASSET_FETCH_RATE;
   const columns: ColumnDef<Asset>[] = [
     {
       accessorKey: "name",
@@ -74,37 +61,27 @@ const AssetsListView: React.FC<Props> = ({
     },
     {
       accessorKey: "quickActions",
-      header: t("Actions"),
+      header: t("Quick Actions"),
       cell: (row) => (
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger
-            className="flex h-full w-[40px] items-center justify-center rounded-md hover:bg-accent"
-            onClick={(e) => e.stopPropagation()}>
-            <DotsHorizontalIcon className="size-[24px]" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-            <DropdownMenuItem
-              className="justify-between gap-2"
-              disabled={!row.row.original.url}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleCopyURLToClipBoard(row.row.original.url);
-              }}>
-              {t("Copy Asset URL")}
-              <ClipboardTextIcon weight="light" />
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="justify-between gap-4 text-destructive"
-              onClick={(e) => {
-                e.stopPropagation();
-                setAssetToBeDeleted(row.row.original.id);
-              }}>
-              {t("Delete Asset")}
-              <TrashIcon weight="light" />
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex gap-1">
+          <IconButton
+            icon={<CopyIcon />}
+            onClick={(e) => {
+              e.stopPropagation();
+              onCopyUrlToClipBoard(row.row.original.url);
+            }}
+          />
+          <a
+            href={row.row.original.url}
+            onClick={(e) => onAssetDownload(e, row.row.original)}>
+            <IconButton icon={<DownloadIcon />} />
+          </a>
+
+          <IconButton
+            icon={<TrashIcon />}
+            onClick={() => setAssetToBeDeleted(row.row.original.id)}
+          />
+        </div>
       ),
     },
   ];
@@ -122,7 +99,7 @@ const AssetsListView: React.FC<Props> = ({
         resultsPerPage={resultsPerPage}
         sortOptions={sortOptions}
         currentSortValue={currentSortValue}
-        handleSortChange={handleSortChange}
+        onSortChange={onSortChange}
         searchTerm={searchTerm}
         setSearchTerm={setSearchTerm}
       />

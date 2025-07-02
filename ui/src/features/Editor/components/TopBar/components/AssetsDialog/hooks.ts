@@ -1,15 +1,17 @@
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 
+import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useDebouncedSearch } from "@flow/hooks";
 import { useAsset } from "@flow/lib/gql/assets";
 import { useT } from "@flow/lib/i18n";
-import { AssetOrderBy } from "@flow/types";
+import { Asset, AssetOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
+import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 export default ({ workspaceId }: { workspaceId: string }) => {
   const fileInputRefProject = useRef<HTMLInputElement>(null);
   const t = useT();
-
+  const { toast } = useToast();
   const { useGetAssets, createAsset, removeAsset } = useAsset();
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [currentOrderBy, setCurrentOrderBy] = useState<AssetOrderBy>(
@@ -69,15 +71,6 @@ export default ({ workspaceId }: { workspaceId: string }) => {
 
   const currentSortValue = `${currentOrderBy}_${currentOrderDir}`;
 
-  const handleOrderChange = (newSortValue: string) => {
-    const [orderBy, orderDir] = newSortValue.split("_") as [
-      AssetOrderBy,
-      OrderDirection,
-    ];
-    setCurrentOrderBy(orderBy);
-    setCurrentOrder(orderDir);
-  };
-
   useEffect(() => {
     (async () => {
       await refetch();
@@ -112,6 +105,60 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     await removeAsset({ assetId: id });
   };
 
+  const handleSortChange = useCallback((newSortValue: string) => {
+    const [orderBy, orderDir] = newSortValue.split("_") as [
+      AssetOrderBy,
+      OrderDirection,
+    ];
+    setCurrentOrderBy(orderBy);
+    setCurrentOrder(orderDir);
+  }, []);
+
+  const handleCopyUrlToClipBoard = useCallback(
+    (url: string) => {
+      if (!url) return;
+      copyToClipboard(url);
+      toast({
+        title: t("Copied to clipboard"),
+        description: t("asset's URL copied to clipboard"),
+      });
+    },
+    [t, toast],
+  );
+
+  const handleAssetDownload = useCallback(
+    async (e: React.MouseEvent<HTMLAnchorElement>, asset: Asset) => {
+      e.preventDefault();
+      try {
+        const response = await fetch(asset.url);
+        if (!response.ok) throw new Error("Failed to fetch");
+
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+
+        const link = document.createElement("a");
+        link.href = blobUrl;
+
+        const contentDisposition = response.headers.get("Content-Disposition");
+        const fileName =
+          contentDisposition?.split("filename=")[1] ??
+          asset.url.split("/").pop() ??
+          asset.name;
+
+        link.download = fileName.replace(/"/g, "");
+        document.body.appendChild(link);
+        link.click();
+
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(blobUrl);
+      } catch (error) {
+        console.error("Download failed:", error);
+        window.location.href = asset.url;
+      }
+    },
+    [],
+  );
+
   return {
     assets,
     fileInputRefProject,
@@ -124,12 +171,14 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     currentSortValue,
     layoutView,
     searchTerm,
-    handleOrderChange,
+    handleSortChange,
     handleAssetUploadClick,
     handleAssetCreate,
     handleAssetDelete,
     handleGridView,
     handleListView,
+    handleCopyUrlToClipBoard,
+    handleAssetDownload,
     setCurrentPage,
     setSearchTerm,
   };

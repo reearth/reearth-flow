@@ -39,12 +39,14 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
     currentSortValue,
     layoutView,
     searchTerm,
-    handleOrderChange,
+    handleSortChange,
     handleAssetUploadClick,
     handleAssetCreate,
     handleAssetDelete,
     handleGridView,
     handleListView,
+    handleCopyUrlToClipBoard,
+    handleAssetDownload,
     setCurrentPage,
     setSearchTerm,
   } = useHooks({ workspaceId: currentWorkspace?.id ?? "" });
@@ -94,7 +96,9 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
                 totalPages={totalPages}
                 sortOptions={sortOptions}
                 currentSortValue={currentSortValue}
-                handleOrderChange={handleOrderChange}
+                onSortChange={handleSortChange}
+                onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
+                onAssetDownload={handleAssetDownload}
                 setAssetToBeDeleted={setAssetToBeDeleted}
                 setCurrentPage={setCurrentPage}
                 searchTerm={searchTerm}
@@ -110,7 +114,9 @@ const AssetsDialog: React.FC<Props> = ({ setShowDialog }) => {
                 setCurrentPage={setCurrentPage}
                 sortOptions={sortOptions}
                 currentSortValue={currentSortValue}
-                handleSortChange={handleOrderChange}
+                onSortChange={handleSortChange}
+                onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
+                onAssetDownload={handleAssetDownload}
                 searchTerm={searchTerm}
                 setSearchTerm={setSearchTerm}
               />

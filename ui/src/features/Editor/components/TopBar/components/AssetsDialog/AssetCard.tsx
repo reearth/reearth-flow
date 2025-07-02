@@ -1,6 +1,7 @@
 import {
   ClipboardTextIcon,
   DotsThreeVerticalIcon,
+  DownloadIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
@@ -18,33 +19,29 @@ import {
   DropdownMenuTrigger,
   FlowLogo,
 } from "@flow/components";
-import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
 import { Asset } from "@flow/types";
-import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 type Props = {
   asset: Asset;
+  onCopyUrlToClipBoard: (url: string) => void;
+  onAssetDownload: (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    asset: Asset,
+  ) => void;
   setAssetToBeDeleted: (asset: string | undefined) => void;
 };
 
-const AssetCard: React.FC<Props> = ({ asset, setAssetToBeDeleted }) => {
+const AssetCard: React.FC<Props> = ({
+  asset,
+  onCopyUrlToClipBoard,
+  onAssetDownload,
+  setAssetToBeDeleted,
+}) => {
   const t = useT();
-  const { toast } = useToast();
   const [persistOverlay, setPersistOverlay] = useState(false);
 
   const { id, name, createdAt, url } = asset;
-
-  const handleCopyURLToClipBoard = () => {
-    if (!url) return;
-    copyToClipboard(url);
-    toast({
-      title: t("Copied to clipboard"),
-      description: t("{{asset}} asset's URL copied to clipboard", {
-        asset: name,
-      }),
-    });
-  };
 
   return (
     <Card
@@ -81,10 +78,19 @@ const AssetCard: React.FC<Props> = ({ asset, setAssetToBeDeleted }) => {
               <DropdownMenuItem
                 className="justify-between gap-2"
                 disabled={!url}
-                onClick={handleCopyURLToClipBoard}>
+                onClick={() => onCopyUrlToClipBoard(url)}>
                 {t("Copy Asset URL")}
                 <ClipboardTextIcon weight="light" />
               </DropdownMenuItem>
+              <a href={url} onClick={(e) => onAssetDownload(e, asset)}>
+                <DropdownMenuItem
+                  className="justify-between gap-2"
+                  disabled={!url}>
+                  {t("Download Asset")}
+                  <DownloadIcon weight="light" />
+                </DropdownMenuItem>
+              </a>
+
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="justify-between gap-4 text-destructive"

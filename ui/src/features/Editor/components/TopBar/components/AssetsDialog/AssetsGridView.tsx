@@ -24,7 +24,12 @@ type Props = {
   setCurrentPage?: (page: number) => void;
   sortOptions: { value: string; label: string }[];
   currentSortValue: string;
-  handleOrderChange: (value: string) => void;
+  onSortChange: (value: string) => void;
+  onCopyUrlToClipBoard: (url: string) => void;
+  onAssetDownload: (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    asset: Asset,
+  ) => void;
   searchTerm?: string;
   setSearchTerm: (term: string) => void;
 };
@@ -35,7 +40,9 @@ const AssetsGridView: React.FC<Props> = ({
   totalPages,
   sortOptions,
   currentSortValue,
-  handleOrderChange,
+  onSortChange,
+  onCopyUrlToClipBoard,
+  onAssetDownload,
   setAssetToBeDeleted,
   setCurrentPage,
   searchTerm,
@@ -53,7 +60,7 @@ const AssetsGridView: React.FC<Props> = ({
           className="max-w-sm"
         />
 
-        <Select value={currentSortValue} onValueChange={handleOrderChange}>
+        <Select value={currentSortValue} onValueChange={onSortChange}>
           <SelectTrigger className="h-[32px] w-[150px]">
             <SelectValue />
           </SelectTrigger>
@@ -74,6 +81,8 @@ const AssetsGridView: React.FC<Props> = ({
             <AssetCard
               key={a.id}
               asset={a}
+              onCopyUrlToClipBoard={onCopyUrlToClipBoard}
+              onAssetDownload={onAssetDownload}
               setAssetToBeDeleted={setAssetToBeDeleted}
             />
           ))}
