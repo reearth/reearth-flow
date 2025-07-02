@@ -12,6 +12,8 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
+var _ interfaces.CMS = (*cmsInteractor)(nil)
+
 type cmsInteractor struct {
 	repos             *repo.Container
 	gateways          *gateway.Container
