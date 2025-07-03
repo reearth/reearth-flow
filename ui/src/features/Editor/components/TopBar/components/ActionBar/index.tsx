@@ -42,9 +42,7 @@ type Props = {
   ) => Promise<void>;
   onProjectShare: (share: boolean) => void;
   onProjectExport: () => void;
-  onShowDeployDialog: () => void;
-  onShowVersionDialog: () => void;
-  onShowSharePopover: () => void;
+  onDialogOpen: (dialog: DialogOptions) => void;
   onDialogClose: () => void;
 };
 
@@ -56,9 +54,7 @@ const ActionBar: React.FC<Props> = ({
   onWorkflowDeployment,
   onProjectShare,
   onProjectExport,
-  onShowDeployDialog,
-  onShowVersionDialog,
-  onShowSharePopover,
+  onDialogOpen,
   onDialogClose,
 }) => {
   const t = useT();
@@ -74,7 +70,7 @@ const ActionBar: React.FC<Props> = ({
             tooltipText={t("Deploy project's workflow")}
             tooltipOffset={tooltipOffset}
             icon={<RocketIcon weight="thin" size={18} />}
-            onClick={onShowDeployDialog}
+            onClick={() => onDialogOpen("deploy")}
           />
           <Popover
             open={showDialog === "share"}
@@ -86,7 +82,7 @@ const ActionBar: React.FC<Props> = ({
                 tooltipText={t("Share Project")}
                 tooltipOffset={tooltipOffset}
                 icon={<PaperPlaneTiltIcon weight="thin" size={18} />}
-                onClick={onShowSharePopover}
+                onClick={() => onDialogOpen("share")}
               />
             </PopoverTrigger>
             <PopoverContent>
@@ -129,7 +125,7 @@ const ActionBar: React.FC<Props> = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="flex items-center justify-between rounded-sm px-2 py-1.5 text-xs"
-                onClick={onShowVersionDialog}>
+                onClick={() => onDialogOpen("version")}>
                 <div className="flex items-center gap-1">
                   <ClockCounterClockwiseIcon weight="light" />
                   <p>{t("Version History")}</p>

@@ -9,22 +9,11 @@ export type DialogOptions =
   | undefined;
 export default () => {
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
-
-  const handleShowDeployDialog = () => setShowDialog("deploy");
-
-  const handleShowVersionDialog = () => setShowDialog("version");
-
-  const handleShowAssetsDialog = () => setShowDialog("assets");
-
-  const handleShowSharePopover = () => setShowDialog("share");
-
+  const handleDialogOpen = (dialog: DialogOptions) => setShowDialog(dialog);
   const handleDialogClose = () => setShowDialog(undefined);
   return {
     showDialog,
-    handleShowDeployDialog,
-    handleShowVersionDialog,
-    handleShowAssetsDialog,
-    handleShowSharePopover,
+    handleDialogOpen,
     handleDialogClose,
   };
 };

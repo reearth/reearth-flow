@@ -53,14 +53,7 @@ const TopBar: React.FC<Props> = ({
   onWorkflowChange,
 }) => {
   const t = useT();
-  const {
-    showDialog,
-    handleShowDeployDialog,
-    handleShowVersionDialog,
-    handleShowAssetsDialog,
-    handleShowSharePopover,
-    handleDialogClose,
-  } = useHooks();
+  const { showDialog, handleDialogOpen, handleDialogClose } = useHooks();
   return (
     <div className="flex w-[100vw] shrink-0 justify-between gap-2 bg-secondary">
       <div className="flex items-center gap-1">
@@ -78,7 +71,7 @@ const TopBar: React.FC<Props> = ({
             variant="outline"
             tooltipText={t("Assets")}
             icon={<HardDriveIcon weight="thin" size={18} />}
-            onClick={handleShowAssetsDialog}
+            onClick={() => handleDialogOpen("assets")}
           />
         </div>
       </div>
@@ -105,9 +98,7 @@ const TopBar: React.FC<Props> = ({
           onProjectShare={onProjectShare}
           onProjectExport={onProjectExport}
           onWorkflowDeployment={onWorkflowDeployment}
-          onShowDeployDialog={handleShowDeployDialog}
-          onShowVersionDialog={handleShowVersionDialog}
-          onShowSharePopover={handleShowSharePopover}
+          onDialogOpen={handleDialogOpen}
           onDialogClose={handleDialogClose}
         />
       </div>

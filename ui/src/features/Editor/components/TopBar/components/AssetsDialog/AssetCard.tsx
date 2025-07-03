@@ -2,6 +2,7 @@ import {
   ClipboardTextIcon,
   DotsThreeVerticalIcon,
   DownloadIcon,
+  FileIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { useState } from "react";
@@ -17,7 +18,6 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  FlowLogo,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { Asset } from "@flow/types";
@@ -48,9 +48,7 @@ const AssetCard: React.FC<Props> = ({
       className="group relative cursor-pointer border-transparent bg-secondary hover:border-border"
       key={id}>
       <CardContent className="relative flex h-[80px] items-center justify-center p-0">
-        <FlowLogo
-          className={`size-[80px] translate-x-20  opacity-50 ${"group:hover:opacity-90"}`}
-        />
+        <FileIcon className="group:hover:opacity-90 size-[80px]  translate-x-20 opacity-50" />
       </CardContent>
       <CardHeader className="px-2 py-1">
         <CardTitle className="truncate dark:font-extralight">{name}</CardTitle>
