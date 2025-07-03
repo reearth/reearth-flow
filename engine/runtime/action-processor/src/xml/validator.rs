@@ -77,8 +77,7 @@ impl HttpSchemaFetcher {
     fn try_fetch(&self, url: &str) -> Result<String> {
         let response = self.client.get(url).send().map_err(|e| {
             XmlProcessorError::Validator(format!(
-                "Failed to fetch HTTP/HTTPS schema from {}: {}",
-                url, e
+                "Failed to fetch HTTP/HTTPS schema from {url}: {e}"
             ))
         })?;
 
@@ -93,8 +92,7 @@ impl HttpSchemaFetcher {
 
         let content = response.text().map_err(|e| {
             XmlProcessorError::Validator(format!(
-                "Failed to read schema content from {}: {}",
-                url, e
+                "Failed to read schema content from {url}: {e}"
             ))
         })?;
 
@@ -581,8 +579,7 @@ impl XmlValidator {
                         resolved_schemas.push((ns.clone(), content.to_string()));
                         // Inline the schema content to bypass network access
                         format!(
-                            r#"<xs:import namespace="{ns}"><xs:schema targetNamespace="{ns}">{}</xs:schema></xs:import>"#,
-                            content
+                            r#"<xs:import namespace="{ns}"><xs:schema targetNamespace="{ns}">{content}</xs:schema></xs:import>"#
                         )
                     })?;
                     combined_schema.push_str(&schema_content);
@@ -722,8 +719,7 @@ mod tests {
 
             self.responses.get(url).cloned().unwrap_or_else(|| {
                 Err(XmlProcessorError::Validator(format!(
-                    "No mock response for URL: {}",
-                    url
+                    "No mock response for URL: {url}"
                 )))
             })
         }
@@ -1164,8 +1160,7 @@ mod tests {
                             send_features[0].attributes.get(&Attribute::new("xmlError"))
                         {
                             println!(
-                                "Mock schema validation failed (which may be correct): {:?}",
-                                errors
+                                "Mock schema validation failed (which may be correct): {errors:?}"
                             );
                             // Verify we have proper schema error handling
                             assert!(
@@ -1514,8 +1509,7 @@ mod tests {
             for (url, content) in schema_content_store.iter() {
                 assert!(
                     !content.is_empty(),
-                    "Cached schema content should not be empty for {}",
-                    url
+                    "Cached schema content should not be empty for {url}"
                 );
             }
         }
@@ -1592,8 +1586,7 @@ mod tests {
                 msg.contains("Failed to fetch HTTP/HTTPS schema")
                     || msg.contains("HTTP error")
                     || msg.contains("Unknown error during schema fetch"),
-                "Error message should indicate fetch failure: {}",
-                msg
+                "Error message should indicate fetch failure: {msg}"
             );
         }
     }
@@ -1617,8 +1610,7 @@ mod tests {
         if let Err(XmlProcessorError::Validator(msg)) = result {
             assert!(
                 msg.contains("HTTP error 404") || msg.contains("Failed to fetch"),
-                "Error message should indicate HTTP error: {}",
-                msg
+                "Error message should indicate HTTP error: {msg}"
             );
         }
     }
