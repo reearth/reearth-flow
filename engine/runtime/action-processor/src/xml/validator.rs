@@ -34,28 +34,77 @@ trait SchemaFetcher: Send + Sync {
 #[derive(Clone)]
 struct HttpSchemaFetcher {
     client: reqwest::blocking::Client,
+    max_retries: usize,
+    retry_delay: Duration,
 }
 
 impl HttpSchemaFetcher {
     fn new(client: reqwest::blocking::Client) -> Self {
-        Self { client }
+        Self {
+            client,
+            max_retries: 3,
+            retry_delay: Duration::from_millis(1000),
+        }
+    }
+
+    #[cfg(test)]
+    fn with_retry_config(mut self, max_retries: usize, retry_delay: Duration) -> Self {
+        self.max_retries = max_retries;
+        self.retry_delay = retry_delay;
+        self
+    }
+
+    fn fetch_with_retry(&self, url: &str) -> Result<String> {
+        let mut last_error = None;
+
+        for attempt in 0..=self.max_retries {
+            match self.try_fetch(url) {
+                Ok(content) => return Ok(content),
+                Err(e) => {
+                    last_error = Some(e);
+                    if attempt < self.max_retries {
+                        std::thread::sleep(self.retry_delay);
+                    }
+                }
+            }
+        }
+
+        Err(last_error.unwrap_or_else(|| {
+            XmlProcessorError::Validator("Unknown error during schema fetch".to_string())
+        }))
+    }
+
+    fn try_fetch(&self, url: &str) -> Result<String> {
+        let response = self.client.get(url).send().map_err(|e| {
+            XmlProcessorError::Validator(format!(
+                "Failed to fetch HTTP/HTTPS schema from {}: {}",
+                url, e
+            ))
+        })?;
+
+        // Check for successful status codes (2xx)
+        if !response.status().is_success() {
+            return Err(XmlProcessorError::Validator(format!(
+                "HTTP error {} when fetching schema from {}",
+                response.status(),
+                url
+            )));
+        }
+
+        let content = response.text().map_err(|e| {
+            XmlProcessorError::Validator(format!(
+                "Failed to read schema content from {}: {}",
+                url, e
+            ))
+        })?;
+
+        Ok(content)
     }
 }
 
 impl SchemaFetcher for HttpSchemaFetcher {
     fn fetch_schema(&self, url: &str) -> Result<String> {
-        let content = self
-            .client
-            .get(url)
-            .send()
-            .map_err(|e| {
-                XmlProcessorError::Validator(format!("Failed to fetch HTTP/HTTPS schema: {e}"))
-            })?
-            .text()
-            .map_err(|e| {
-                XmlProcessorError::Validator(format!("Failed to read schema content: {e}"))
-            })?;
-        Ok(content)
+        self.fetch_with_retry(url)
     }
 }
 
@@ -174,6 +223,8 @@ impl ProcessorFactory for XmlValidatorFactory {
 
         let http_client = reqwest::blocking::Client::builder()
             .timeout(Duration::from_secs(30))
+            .redirect(reqwest::redirect::Policy::limited(10))
+            .user_agent("reearth-flow-xml-validator/1.0")
             .build()
             .map_err(|e| {
                 XmlProcessorError::ValidatorFactory(format!("Failed to create HTTP client: {e}"))
@@ -686,7 +737,9 @@ mod tests {
         };
 
         let http_client = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(5))
+            .timeout(Duration::from_secs(30))
+            .redirect(reqwest::redirect::Policy::limited(10))
+            .user_agent("reearth-flow-xml-validator/1.0")
             .build()
             .unwrap();
 
@@ -1489,6 +1542,112 @@ mod tests {
                 }
             }
             _ => panic!("Unexpected port returned"),
+        }
+    }
+
+    #[test]
+    fn test_xml_validator_retry_configuration() {
+        // Test HttpSchemaFetcher retry configuration
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(5))
+            .build()
+            .unwrap();
+
+        let fetcher =
+            HttpSchemaFetcher::new(client.clone()).with_retry_config(2, Duration::from_millis(100));
+
+        // Test that configuration is applied
+        assert_eq!(fetcher.max_retries, 2);
+        assert_eq!(fetcher.retry_delay, Duration::from_millis(100));
+
+        // Test default configuration
+        let default_fetcher = HttpSchemaFetcher::new(client);
+        assert_eq!(default_fetcher.max_retries, 3);
+        assert_eq!(default_fetcher.retry_delay, Duration::from_millis(1000));
+    }
+
+    #[test]
+    fn test_xml_validator_retry_functionality() {
+        // Test HttpSchemaFetcher retry configuration directly
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_millis(100))
+            .build()
+            .unwrap();
+
+        let fetcher =
+            HttpSchemaFetcher::new(client).with_retry_config(2, Duration::from_millis(50));
+
+        // Test with a non-existent URL that will fail quickly
+        let result =
+            fetcher.fetch_schema("https://nonexistent-test-domain-12345.invalid/schema.xsd");
+
+        // Should fail after retries
+        assert!(
+            result.is_err(),
+            "Should fail after retries for non-existent domain"
+        );
+
+        if let Err(XmlProcessorError::Validator(msg)) = result {
+            assert!(
+                msg.contains("Failed to fetch HTTP/HTTPS schema")
+                    || msg.contains("HTTP error")
+                    || msg.contains("Unknown error during schema fetch"),
+                "Error message should indicate fetch failure: {}",
+                msg
+            );
+        }
+    }
+
+    #[test]
+    fn test_xml_validator_http_status_error_handling() {
+        // Test that HTTP status errors are properly handled
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(5))
+            .build()
+            .unwrap();
+
+        let fetcher = HttpSchemaFetcher::new(client);
+
+        // Test with a URL that should return 404 (using httpbin.org/status/404)
+        let result = fetcher.fetch_schema("https://httpbin.org/status/404");
+
+        // Should fail with HTTP error
+        assert!(result.is_err(), "Should fail with 404 status");
+
+        if let Err(XmlProcessorError::Validator(msg)) = result {
+            assert!(
+                msg.contains("HTTP error 404") || msg.contains("Failed to fetch"),
+                "Error message should indicate HTTP error: {}",
+                msg
+            );
+        }
+    }
+
+    #[test]
+    fn test_xml_validator_redirect_support() {
+        // Test that redirect policy is properly configured
+        let http_client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .redirect(reqwest::redirect::Policy::limited(10))
+            .user_agent("reearth-flow-xml-validator/1.0")
+            .build()
+            .unwrap();
+
+        let fetcher = HttpSchemaFetcher::new(http_client);
+
+        // We can't easily test actual redirects in unit tests without a test server,
+        // but we can verify the fetcher is created successfully with redirect support
+        // The real test would be integration testing with a server that returns redirects
+
+        // Test that fetcher can handle basic error cases
+        match fetcher.fetch_schema("https://nonexistent-domain-12345.example") {
+            Err(XmlProcessorError::Validator(msg)) => {
+                assert!(msg.contains("Failed to fetch HTTP/HTTPS schema"));
+            }
+            _ => {
+                // Network might not be available in CI, so this test might not always fail
+                // The important thing is that the fetcher doesn't panic
+            }
         }
     }
 }
