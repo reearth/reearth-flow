@@ -1,9 +1,20 @@
 import {
-  CaretDownIcon,
-  CaretUpIcon,
-  MinusIcon,
-  PlusIcon,
-} from "@phosphor-icons/react";
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { PlusIcon, DotsSixIcon, TrashIcon } from "@phosphor-icons/react";
 import { useState, useEffect, useCallback } from "react";
 
 import {
@@ -54,7 +65,10 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
     setChoiceConfig(getChoiceConfig());
   }, [getChoiceConfig]);
 
-  const updateVariable = (config: ChoiceConfig, selectedOption?: string | string[]) => {
+  const updateVariable = (
+    config: ChoiceConfig,
+    selectedOption?: string | string[],
+  ) => {
     setChoiceConfig(config);
 
     const updatedVariable: AnyProjectVariable = {
@@ -102,19 +116,36 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
     updateVariable(newConfig, newSelected);
   };
 
-  const handleMoveOption = (index: number, direction: "up" | "down") => {
-    const newChoices = [...choiceConfig.choices];
-    const targetIndex = direction === "up" ? index - 1 : index + 1;
+  // Set up drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
 
-    if (targetIndex >= 0 && targetIndex < newChoices.length) {
-      [newChoices[index], newChoices[targetIndex]] = [
-        newChoices[targetIndex],
-        newChoices[index],
-      ];
-      updateVariable({
-        ...choiceConfig,
-        choices: newChoices,
-      });
+  // Handle drag end for reordering options
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (active.id !== over?.id) {
+      const oldIndex = choiceConfig.choices.findIndex(
+        (option, index) => `${option}-${index}` === active.id,
+      );
+      const newIndex = choiceConfig.choices.findIndex(
+        (option, index) => `${option}-${index}` === over?.id,
+      );
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newChoices = [...choiceConfig.choices];
+        const [movedOption] = newChoices.splice(oldIndex, 1);
+        newChoices.splice(newIndex, 0, movedOption);
+
+        updateVariable({
+          ...choiceConfig,
+          choices: newChoices,
+        });
+      }
     }
   };
 
@@ -261,19 +292,26 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
 
         {/* Options list */}
         <div className="space-y-2">
-          {choiceConfig.choices.map((option, index) => (
-            <OptionRow
-              key={`${option}-${index}`}
-              option={option}
-              index={index}
-              isFirst={index === 0}
-              isLast={index === choiceConfig.choices.length - 1}
-              onUpdate={(newText) => handleUpdateOption(index, newText)}
-              onRemove={() => handleRemoveOption(index)}
-              onMoveUp={() => handleMoveOption(index, "up")}
-              onMoveDown={() => handleMoveOption(index, "down")}
-            />
-          ))}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}>
+            <SortableContext
+              items={choiceConfig.choices.map(
+                (option, index) => `${option}-${index}`,
+              )}
+              strategy={verticalListSortingStrategy}>
+              {choiceConfig.choices.map((option, index) => (
+                <SortableOptionRow
+                  key={`${option}-${index}`}
+                  option={option}
+                  index={index}
+                  onUpdate={(newText) => handleUpdateOption(index, newText)}
+                  onRemove={() => handleRemoveOption(index)}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
       </div>
 
@@ -339,28 +377,32 @@ export const ChoiceEditor: React.FC<Props> = ({ variable, onUpdate }) => {
   );
 };
 
-// Individual option row component
-const OptionRow: React.FC<{
+// Sortable option row component
+const SortableOptionRow: React.FC<{
   option: string;
   index: number;
-  isFirst: boolean;
-  isLast: boolean;
   onUpdate: (newText: string) => void;
   onRemove: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-}> = ({
-  option,
-  index,
-  isFirst,
-  isLast,
-  onUpdate,
-  onRemove,
-  onMoveUp,
-  onMoveDown,
-}) => {
+}> = ({ option, index, onUpdate, onRemove }) => {
   const t = useT();
   const [localValue, setLocalValue] = useState(option);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: `${option}-${index}`,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
   // Sync local value when option prop changes (due to reordering)
   useEffect(() => {
@@ -384,7 +426,17 @@ const OptionRow: React.FC<{
   };
 
   return (
-    <div className="flex items-center gap-2 rounded-md border p-2">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2 rounded-md border p-2"
+      {...attributes}>
+      <div
+        className="flex cursor-grab touch-none items-center justify-center p-1 active:cursor-grabbing"
+        {...listeners}>
+        <DotsSixIcon size={16} className="text-muted-foreground" />
+      </div>
+
       <span className="w-8 text-sm text-muted-foreground">{index + 1}.</span>
 
       <Input
@@ -395,31 +447,13 @@ const OptionRow: React.FC<{
         className="flex-1"
       />
 
-      <div className="flex gap-1">
-        <IconButton
-          icon={<CaretUpIcon size={14} />}
-          size="sm"
-          variant="ghost"
-          disabled={isFirst}
-          onClick={onMoveUp}
-          tooltipText={t("Move up")}
-        />
-        <IconButton
-          icon={<CaretDownIcon size={14} />}
-          size="sm"
-          variant="ghost"
-          disabled={isLast}
-          onClick={onMoveDown}
-          tooltipText={t("Move down")}
-        />
-        <IconButton
-          icon={<MinusIcon size={14} />}
-          size="sm"
-          variant="ghost"
-          onClick={onRemove}
-          tooltipText={t("Remove option")}
-        />
-      </div>
+      <IconButton
+        icon={<TrashIcon size={14} />}
+        size="sm"
+        variant="ghost"
+        onClick={onRemove}
+        tooltipText={t("Remove option")}
+      />
     </div>
   );
 };
