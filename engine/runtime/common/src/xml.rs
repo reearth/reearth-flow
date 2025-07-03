@@ -81,6 +81,7 @@ pub fn parse<T: AsRef<[u8]>>(xml: T) -> crate::Result<XmlDocument> {
                 compact: true,
                 ignore_enc: false,
                 encoding: None,
+                huge: false,
             },
         )
         .map_err(|e| crate::Error::Xml(format!("{e}")))
