@@ -177,7 +177,7 @@ export const mockAssets: MockAsset[] = [
     contentType: "application/json",
     createdAt: "2025-05-22T16:05:19.789Z",
     size: 102400, // 100KB
-    url: "https://mockserver.local/assets/projectconfig.json",
+    url: "https://mockserver.local/assets/searchjson.json",
     workspaceId: "workspace-1",
   },
 ];

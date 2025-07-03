@@ -65,9 +65,9 @@ export const useQueries = () => {
         return toAsset(data.createAsset.asset);
       }
     },
-    onSuccess: (asset) => {
+    onSuccess: (variables) => {
       queryClient.invalidateQueries({
-        queryKey: [AssetQueryKeys.GetAssets, asset],
+        queryKey: [AssetQueryKeys.GetAssets, variables?.workspaceId],
       });
     },
   });
@@ -82,9 +82,10 @@ export const useQueries = () => {
         assetId: data?.removeAsset?.assetId,
       };
     },
+
     onSuccess: (asset) => {
       queryClient.invalidateQueries({
-        queryKey: [AssetQueryKeys.GetAssets, asset],
+        queryKey: [AssetQueryKeys.GetAssets, asset.assetId],
       });
     },
   });
