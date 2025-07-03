@@ -19,7 +19,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  RenderFallback,
   LoadingSkeleton,
   Select,
   SelectContent,
@@ -31,10 +30,10 @@ import {
   TabsList,
   TabsTrigger,
 } from "@flow/components";
-import { MapLibre } from "@flow/components/visualizations/MapLibre";
 import { useT } from "@flow/lib/i18n";
 
 import { DataTable, GeoMap } from "./components";
+import { VectorMap } from "./components/VectorMap";
 import useHooks from "./hooks";
 
 const DebugPreview: React.FC = () => {
@@ -135,35 +134,17 @@ const DebugPreview: React.FC = () => {
           <TabsContent
             className="h-[calc(100%-35px)] overflow-scroll"
             value="data-viewer">
-            <RenderFallback
-              message={t(
-                "Table Viewer Could Not Be Loaded. Check if the data is valid.",
-              )}
-              textSize="sm">
-              <DataTable fileContent={selectedOutputData} fileType={fileType} />
-            </RenderFallback>
+            <DataTable fileContent={selectedOutputData} fileType={fileType} />
           </TabsContent>
           <TabsContent
             className="m-0 h-[calc(100%-32px)] p-1"
             value="2d-viewer">
-            <RenderFallback
-              message={t(
-                "2D Viewer Could Not Be Loaded. Check if the data is valid.",
-              )}
-              textSize="sm">
-              <MapLibre fileContent={selectedOutputData} fileType={fileType} />
-            </RenderFallback>
+            <VectorMap fileContent={selectedOutputData} fileType={fileType} />
           </TabsContent>
           <TabsContent
             className="m-0 h-[calc(100%-32px)] p-1"
             value="3d-viewer">
-            <RenderFallback
-              message={t(
-                "3D Viewer Could Not Be Loaded. Check if the data is valid.",
-              )}
-              textSize="sm">
-              <GeoMap fileContent={selectedOutputData} fileType={fileType} />
-            </RenderFallback>
+            <GeoMap fileContent={selectedOutputData} fileType={fileType} />
           </TabsContent>
         </>
       )}
