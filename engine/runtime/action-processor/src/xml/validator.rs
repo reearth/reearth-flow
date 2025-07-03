@@ -91,9 +91,7 @@ impl HttpSchemaFetcher {
         }
 
         let content = response.text().map_err(|e| {
-            XmlProcessorError::Validator(format!(
-                "Failed to read schema content from {url}: {e}"
-            ))
+            XmlProcessorError::Validator(format!("Failed to read schema content from {url}: {e}"))
         })?;
 
         Ok(content)
