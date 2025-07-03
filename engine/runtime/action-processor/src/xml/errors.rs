@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone)]
 pub(super) enum XmlProcessorError {
     #[error("Xml Fragmenter Factory error: {0}")]
     FragmenterFactory(String),

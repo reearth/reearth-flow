@@ -5905,6 +5905,7 @@ dependencies = [
  "reearth-flow-storage",
  "reearth-flow-types",
  "regex",
+ "reqwest",
  "rhai",
  "rstar 0.12.2",
  "schemars",
