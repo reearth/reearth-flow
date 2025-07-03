@@ -28,7 +28,7 @@ func (r *projectResolver) Parameters(ctx context.Context, obj *gqlmodel.Project)
 		return nil, err
 	}
 
-	res := gqlmodel.ToParameters(*parameters)
+	res := gqlmodel.ToParameters(parameters)
 	return res, nil
 }
 
