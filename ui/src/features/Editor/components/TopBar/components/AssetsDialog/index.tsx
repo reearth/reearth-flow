@@ -33,26 +33,26 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
 
   const {
     assets,
+    isFetching,
+    fileInputRef,
     assetToBeDeleted,
-    fileInputRefProject,
-    setAssetToBeDeleted,
     currentPage,
     totalPages,
-    isFetching,
-    sortOptions,
     currentSortValue,
-    layoutView,
+    sortOptions,
     searchTerm,
-    handleSortChange,
+    layoutView,
+    setAssetToBeDeleted,
+    setCurrentPage,
+    setSearchTerm,
     handleAssetUploadClick,
     handleAssetCreate,
     handleAssetDelete,
+    handleSortChange,
     handleGridView,
     handleListView,
     handleCopyUrlToClipBoard,
     handleAssetDownload,
-    setCurrentPage,
-    setSearchTerm,
   } = useHooks({ workspaceId: currentWorkspace?.id ?? "" });
 
   return (
@@ -103,13 +103,13 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
                 totalPages={totalPages}
                 sortOptions={sortOptions}
                 currentSortValue={currentSortValue}
+                searchTerm={searchTerm}
+                setAssetToBeDeleted={setAssetToBeDeleted}
+                setCurrentPage={setCurrentPage}
+                setSearchTerm={setSearchTerm}
                 onSortChange={handleSortChange}
                 onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
                 onAssetDownload={handleAssetDownload}
-                setAssetToBeDeleted={setAssetToBeDeleted}
-                setCurrentPage={setCurrentPage}
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
               />
             ) : (
               <AssetsListView
@@ -117,15 +117,15 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
                 isFetching={isFetching}
                 currentPage={currentPage}
                 totalPages={totalPages}
-                setAssetToBeDeleted={setAssetToBeDeleted}
-                setCurrentPage={setCurrentPage}
                 sortOptions={sortOptions}
                 currentSortValue={currentSortValue}
+                searchTerm={searchTerm}
+                setAssetToBeDeleted={setAssetToBeDeleted}
+                setCurrentPage={setCurrentPage}
+                setSearchTerm={setSearchTerm}
                 onSortChange={handleSortChange}
                 onCopyUrlToClipBoard={handleCopyUrlToClipBoard}
                 onAssetDownload={handleAssetDownload}
-                searchTerm={searchTerm}
-                setSearchTerm={setSearchTerm}
               />
             )}
           </DialogContentSection>
@@ -139,7 +139,7 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose }) => {
       <input
         type="file"
         accept={ALLOWED_ASSET_IMPORT_EXTENSIONS}
-        ref={fileInputRefProject}
+        ref={fileInputRef}
         onChange={handleAssetCreate}
         style={{ display: "none" }}
       />

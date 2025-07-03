@@ -2,13 +2,17 @@ import { debounce } from "lodash-es";
 import { useEffect, useRef, useState } from "react";
 
 type Props = {
-  initialTerm: string;
+  initialSearchTerm: string;
   delay: number;
   onDebounced: (term: string) => void;
 };
 
-export default ({ initialTerm = "", delay = 300, onDebounced }: Props) => {
-  const [searchTerm, setSearchTerm] = useState(initialTerm);
+export default ({
+  initialSearchTerm = "",
+  delay = 300,
+  onDebounced,
+}: Props) => {
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
 
   const onDebouncedRef = useRef(onDebounced);
   useEffect(() => {

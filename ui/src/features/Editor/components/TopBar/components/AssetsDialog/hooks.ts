@@ -9,7 +9,7 @@ import { OrderDirection } from "@flow/types/paginationOptions";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 export default ({ workspaceId }: { workspaceId: string }) => {
-  const fileInputRefProject = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const t = useT();
   const { toast } = useToast();
   const { useGetAssets, createAsset, removeAsset } = useAsset();
@@ -22,7 +22,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   );
 
   const { searchTerm, setSearchTerm } = useDebouncedSearch({
-    initialTerm: "",
+    initialSearchTerm: "",
     delay: 500,
     onDebounced: () => {
       refetch();
@@ -32,10 +32,6 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     undefined,
   );
   const [layoutView, setLayoutView] = useState<"grid" | "list">("grid");
-
-  const handleGridView = () => setLayoutView("grid");
-
-  const handleListView = () => setLayoutView("list");
 
   const { page, refetch, isFetching } = useGetAssets(workspaceId, searchTerm, {
     page: currentPage,
@@ -77,8 +73,12 @@ export default ({ workspaceId }: { workspaceId: string }) => {
     })();
   }, [currentPage, currentOrderDir, currentOrderBy, refetch]);
 
+  const handleGridView = () => setLayoutView("grid");
+
+  const handleListView = () => setLayoutView("list");
+
   const handleAssetUploadClick = useCallback(() => {
-    fileInputRefProject.current?.click();
+    fileInputRef.current?.click();
   }, []);
 
   const handleAssetCreate = useCallback(
@@ -161,25 +161,25 @@ export default ({ workspaceId }: { workspaceId: string }) => {
 
   return {
     assets,
-    fileInputRefProject,
+    isFetching,
+    fileInputRef,
     assetToBeDeleted,
-    setAssetToBeDeleted,
     currentPage,
     totalPages,
-    isFetching,
-    sortOptions,
     currentSortValue,
-    layoutView,
+    sortOptions,
     searchTerm,
-    handleSortChange,
+    layoutView,
+    setAssetToBeDeleted,
+    setCurrentPage,
+    setSearchTerm,
     handleAssetUploadClick,
     handleAssetCreate,
     handleAssetDelete,
+    handleSortChange,
     handleGridView,
     handleListView,
     handleCopyUrlToClipBoard,
     handleAssetDownload,
-    setCurrentPage,
-    setSearchTerm,
   };
 };

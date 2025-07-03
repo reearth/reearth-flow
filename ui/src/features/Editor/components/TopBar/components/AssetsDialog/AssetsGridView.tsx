@@ -20,18 +20,18 @@ type Props = {
   isFetching: boolean;
   currentPage: number;
   totalPages: number;
-  setAssetToBeDeleted: (asset: string | undefined) => void;
-  setCurrentPage?: (page: number) => void;
   sortOptions: { value: string; label: string }[];
   currentSortValue: string;
+  searchTerm?: string;
+  setAssetToBeDeleted: (asset: string | undefined) => void;
+  setCurrentPage?: (page: number) => void;
+  setSearchTerm: (term: string) => void;
   onSortChange: (value: string) => void;
   onCopyUrlToClipBoard: (url: string) => void;
   onAssetDownload: (
     e: React.MouseEvent<HTMLAnchorElement>,
     asset: Asset,
   ) => void;
-  searchTerm?: string;
-  setSearchTerm: (term: string) => void;
 };
 const AssetsGridView: React.FC<Props> = ({
   assets,
@@ -40,13 +40,13 @@ const AssetsGridView: React.FC<Props> = ({
   totalPages,
   sortOptions,
   currentSortValue,
+  searchTerm,
+  setAssetToBeDeleted,
+  setCurrentPage,
+  setSearchTerm,
   onSortChange,
   onCopyUrlToClipBoard,
   onAssetDownload,
-  setAssetToBeDeleted,
-  setCurrentPage,
-  searchTerm,
-  setSearchTerm,
 }) => {
   const t = useT();
 
@@ -59,7 +59,6 @@ const AssetsGridView: React.FC<Props> = ({
           onChange={(e) => setSearchTerm(e.target.value)}
           className="max-w-sm"
         />
-
         <Select value={currentSortValue} onValueChange={onSortChange}>
           <SelectTrigger className="h-[32px] w-[150px]">
             <SelectValue />

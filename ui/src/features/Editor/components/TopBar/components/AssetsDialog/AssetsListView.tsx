@@ -14,16 +14,16 @@ type Props = {
   totalPages: number;
   sortOptions: { value: string; label: string }[];
   currentSortValue: string;
+  searchTerm?: string;
+  setCurrentPage?: (page: number) => void;
+  setAssetToBeDeleted: (asset: string | undefined) => void;
+  setSearchTerm: (term: string) => void;
   onSortChange: (value: string) => void;
   onCopyUrlToClipBoard: (url: string) => void;
   onAssetDownload: (
     e: React.MouseEvent<HTMLAnchorElement>,
     asset: Asset,
   ) => void;
-  setCurrentPage?: (page: number) => void;
-  setAssetToBeDeleted: (asset: string | undefined) => void;
-  searchTerm?: string;
-  setSearchTerm: (term: string) => void;
 };
 const AssetsListView: React.FC<Props> = ({
   assets,
@@ -31,13 +31,13 @@ const AssetsListView: React.FC<Props> = ({
   totalPages,
   sortOptions,
   currentSortValue,
+  searchTerm,
+  setCurrentPage,
+  setAssetToBeDeleted,
+  setSearchTerm,
   onSortChange,
   onCopyUrlToClipBoard,
   onAssetDownload,
-  setCurrentPage,
-  setAssetToBeDeleted,
-  searchTerm,
-  setSearchTerm,
 }) => {
   const t = useT();
 
