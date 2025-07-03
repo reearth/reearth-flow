@@ -57,7 +57,7 @@ type DataTableProps<TData, TValue> = {
   currentSortValue?: string;
   onSortChange?: (value: string) => void;
   searchTerm?: string;
-  setSearchTerm: (term: string) => void;
+  setSearchTerm?: (term: string) => void;
 };
 
 function DataTable<TData, TValue>({
