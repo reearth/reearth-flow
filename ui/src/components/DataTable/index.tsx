@@ -11,7 +11,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import {
   DropdownMenu,
@@ -84,11 +84,26 @@ function DataTable<TData, TValue>({
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = useState({});
-  const [globalFilter, setGlobalFilter] = useState("");
+  const [globalFilter, setGlobalFilter] = useState<string>("");
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: resultsPerPage ?? 10,
   });
+
+  useMemo(() => {
+    if (searchTerm !== undefined) {
+      setGlobalFilter(searchTerm);
+    }
+  }, [searchTerm, setGlobalFilter]);
+
+  const handleSearch = useCallback(
+    (value: string) => {
+      if (setSearchTerm) {
+        setSearchTerm(value);
+      }
+    },
+    [setSearchTerm],
+  );
 
   const defaultData = useMemo(() => [], []);
   const table = useReactTable({
@@ -148,13 +163,10 @@ function DataTable<TData, TValue>({
           {showFiltering && (
             <Input
               placeholder={t("Search") + "..."}
-              value={searchTerm ?? globalFilter}
+              value={globalFilter}
               onChange={(e) => {
                 const value = String(e.target.value);
-                if (setSearchTerm) {
-                  setSearchTerm(value);
-                }
-                setGlobalFilter(value);
+                handleSearch(value);
               }}
               className="max-w-sm"
             />
