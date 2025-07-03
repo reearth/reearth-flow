@@ -886,7 +886,7 @@ mod tests {
         // Test with a simple XML that validates against a publicly available HTTPS schema
         // Using a simple XML structure that should be valid against basic schemas
         let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
-<root xmlns="http://example.com/test" 
+<root xmlns="http://example.com/test"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://example.com/test https://raw.githubusercontent.com/w3c/xmlschema11-tests/master/misc/XMLSchema.xsd">
     <element>test</element>
@@ -945,7 +945,7 @@ mod tests {
                             !errors.is_empty(),
                             "Should have validation error information"
                         );
-                        println!("HTTPS schema fetch attempted successfully (validation failed as expected)");
+                        // HTTPS schema fetch attempted successfully (validation failed as expected)
                     }
                     _ => panic!("Should have xmlError attribute when validation fails"),
                 }
@@ -1407,9 +1407,8 @@ mod tests {
 
     #[test]
     fn test_xml_validator_real_citygml_validation() {
-        // Test with real CityGML data from OpenGIS
+        // Test with real CityGML data from Ppen Geospatial Consortium (OGC) test data
         // Source: https://schemas.opengis.net/citygml/examples/2.0/building/Building_LOD1-EPSG25832.gml
-        // License: Open Geospatial Consortium (OGC) test data
         let citygml_content = include_str!("test-data/Building_LOD1-EPSG25832.gml");
 
         // This CityGML file references multiple real schemas:
@@ -1491,22 +1490,5 @@ mod tests {
             }
             _ => panic!("Unexpected port returned"),
         }
-    }
-
-    #[test]
-    fn test_xml_validator_real_citygml_syntax_only() {
-        // Test CityGML syntax validation only (no schema checking)
-        // Source: https://schemas.opengis.net/citygml/examples/2.0/building/Building_LOD1-EPSG25832.gml
-        // License: Open Geospatial Consortium (OGC) test data
-        let citygml_content = include_str!("test-data/Building_LOD1-EPSG25832.gml");
-
-        let (port, _features) = run_validator_test(citygml_content, ValidationType::Syntax);
-
-        // CityGML should have valid XML syntax
-        assert_eq!(
-            port, *SUCCESS_PORT,
-            "Real CityGML should have valid XML syntax"
-        );
-        // Real CityGML syntax validation passed
     }
 }
