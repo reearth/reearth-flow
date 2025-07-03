@@ -75,7 +75,7 @@ const AssetsGridView: React.FC<Props> = ({
       {isFetching ? (
         <LoadingSkeleton className="mt-40" />
       ) : assets && assets.length > 0 ? (
-        <div className="grid min-w-0 grid-cols-1 gap-2 pb-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4">
+        <div className="grid min-w-0 grid-cols-1 gap-2 pb-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3">
           {assets?.map((a) => (
             <AssetCard
               key={a.id}
