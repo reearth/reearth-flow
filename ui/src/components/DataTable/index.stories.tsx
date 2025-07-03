@@ -46,6 +46,7 @@ const commonArgs = {
       email: "example@gmail.com",
     },
   ],
+  setSearchTerm: () => {},
 };
 
 export const Table: Story = {
