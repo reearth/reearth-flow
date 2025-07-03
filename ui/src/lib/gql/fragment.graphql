@@ -25,6 +25,20 @@ fragment Workspace on Workspace {
   }
 }
 
+fragment Parameter on Parameter {
+  id
+  projectId
+  index
+  name
+  defaultValue
+  type
+  required
+  public
+  config
+  createdAt
+  updatedAt
+}
+
 fragment Deployment on Deployment {
   id
   projectId

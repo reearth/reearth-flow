@@ -2,6 +2,7 @@ package gqlmodel
 
 import (
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func ToParameter(p *parameter.Parameter) *Parameter {
@@ -10,25 +11,27 @@ func ToParameter(p *parameter.Parameter) *Parameter {
 	}
 
 	return &Parameter{
-		CreatedAt: p.CreatedAt(),
-		ID:        IDFrom(p.ID()),
-		Index:     p.Index(),
-		Name:      p.Name(),
-		ProjectID: IDFrom(p.ProjectID()),
-		Required:  p.Required(),
-		Type:      ToParameterType(p.Type()),
-		UpdatedAt: p.UpdatedAt(),
-		Value:     p.Value(),
+		CreatedAt:    p.CreatedAt(),
+		ID:           IDFrom(p.ID()),
+		Index:        p.Index(),
+		Name:         p.Name(),
+		ProjectID:    IDFrom(p.ProjectID()),
+		Required:     p.Required(),
+		Public:       p.Public(),
+		Type:         ToParameterType(p.Type()),
+		UpdatedAt:    p.UpdatedAt(),
+		DefaultValue: p.DefaultValue(),
+		Config:       convertToJSON(p.Config()),
 	}
 }
 
-func ToParameters(params parameter.ParameterList) []*Parameter {
+func ToParameters(params *parameter.ParameterList) []*Parameter {
 	if params == nil {
 		return nil
 	}
 
-	res := make([]*Parameter, 0, len(params))
-	for _, p := range params {
+	res := make([]*Parameter, 0, len(*params))
+	for _, p := range *params {
 		if p != nil {
 			res = append(res, ToParameter(p))
 		}
@@ -108,4 +111,37 @@ func FromParameterType(t ParameterType) parameter.Type {
 	default:
 		return parameter.TypeText
 	}
+}
+
+func convertToJSON(val interface{}) JSON {
+	if val == nil {
+		return nil
+	}
+	
+	// Handle MongoDB's primitive.D type (ordered document)
+	if d, ok := val.(primitive.D); ok {
+		result := make(map[string]interface{})
+		for _, elem := range d {
+			result[elem.Key] = elem.Value
+		}
+		return JSON(result)
+	}
+	
+	// If it's already a map[string]any, use it directly
+	if m, ok := val.(map[string]any); ok {
+		return JSON(m)
+	}
+	
+	// Check for map[string]interface{} (common MongoDB type)
+	if m, ok := val.(map[string]interface{}); ok {
+		return JSON(m)
+	}
+	
+	// For other types, use UnmarshalJSON to convert consistently
+	json, err := UnmarshalJSON(val)
+	if err != nil {
+		return nil
+	}
+	
+	return json
 }
