@@ -42,7 +42,7 @@ impl Storage {
     pub async fn put(&self, location: &Path, bytes: Bytes) -> Result<()> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
+                path: format!("{location:?}").into(),
             },
         })?;
         let _ = self
@@ -56,11 +56,11 @@ impl Storage {
     pub async fn create_dir(&self, location: &Path) -> Result<()> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
+                path: format!("{location:?}").into(),
             },
         })?;
         let p = if !p.ends_with('/') {
-            format!("{}/", p)
+            format!("{p}/")
         } else {
             p.to_string()
         };
@@ -73,7 +73,7 @@ impl Storage {
     pub async fn append(&self, location: &Path, bytes: Bytes) -> Result<()> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
+                path: format!("{location:?}").into(),
             },
         })?;
         let mut w = self
@@ -90,7 +90,7 @@ impl Storage {
     pub async fn get(&self, location: &Path) -> Result<GetResult> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
+                path: format!("{location:?}").into(),
             },
         })?;
         let meta = self
@@ -122,7 +122,7 @@ impl Storage {
     pub async fn exists(&self, location: &Path) -> Result<bool> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
+                path: format!("{location:?}").into(),
             },
         })?;
         fs::exists(p).map_err(|err| object_store::Error::Generic {
@@ -134,7 +134,7 @@ impl Storage {
     pub async fn get_range(&self, location: &Path, range: Range<usize>) -> Result<Bytes> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
+                path: format!("{location:?}").into(),
             },
         })?;
         let bs = self
@@ -150,7 +150,7 @@ impl Storage {
     pub async fn head(&self, location: &Path) -> Result<ObjectMeta> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
+                path: format!("{location:?}").into(),
             },
         })?;
         let meta = self
@@ -171,7 +171,7 @@ impl Storage {
     pub async fn delete(&self, location: &Path) -> Result<()> {
         let p = location.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", location).into(),
+                path: format!("{location:?}").into(),
             },
         })?;
         self.inner
@@ -189,17 +189,17 @@ impl Storage {
     ) -> Result<BoxStream<'_, Result<Uri>>> {
         let p = prefix.ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", prefix).into(),
+                path: format!("{prefix:?}").into(),
             },
         })?;
-        let path =
-            p.to_str()
-                .map(|v| format!("{}/", v))
-                .ok_or(object_store::Error::InvalidPath {
-                    source: object_store::path::Error::InvalidPath {
-                        path: format!("{:?}", prefix).into(),
-                    },
-                })?;
+        let path = p
+            .to_str()
+            .map(|v| format!("{v}/"))
+            .ok_or(object_store::Error::InvalidPath {
+                source: object_store::path::Error::InvalidPath {
+                    path: format!("{prefix:?}").into(),
+                },
+            })?;
         let stream = self
             .inner
             .lister_with(&path)
@@ -235,12 +235,12 @@ impl Storage {
     pub async fn copy(&self, from: &Path, to: &Path) -> Result<()> {
         let from = from.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", from).into(),
+                path: format!("{from:?}").into(),
             },
         })?;
         let to = to.to_str().ok_or(object_store::Error::InvalidPath {
             source: object_store::path::Error::InvalidPath {
-                path: format!("{:?}", to).into(),
+                path: format!("{to:?}").into(),
             },
         })?;
         self.inner

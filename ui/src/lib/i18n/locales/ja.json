@@ -161,6 +161,7 @@
   "Deployments": "デプロイ",
   "Triggers": "トリガー",
   "Jobs": "ジョブ",
+  "Resources": "リソース",
   "Main Workflow": "メインワークフロー",
   "Reader node cannot be copied": "リーダーノードはコピーできません",
   "Only one reader can be present in any project.": "プロジェクトには1つのリーダーしか存在できません。",

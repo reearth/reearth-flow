@@ -1,7 +1,8 @@
 import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { createRoot } from "react-dom/client";
 
-import loadConfig from "@flow/config";
+import loadConfig, { config } from "@flow/config";
+import { enableMocking } from "@flow/mocks";
 import { routeTree } from "@flow/routeTree.gen.ts";
 
 import "@flow/index.css";
@@ -15,6 +16,15 @@ const router = createRouter({
 });
 
 loadConfig().finally(async () => {
+  // Enable mock server if configured
+  const flowConfig = config();
+  const enableMock = flowConfig.mockEnabled || flowConfig.devMode;
+
+  if (enableMock) {
+    console.log("🚀 Starting Mock Server for Re:Earth Flow");
+    await enableMocking({ disabled: false });
+  }
+
   const element = document.getElementById("root");
   if (!element) throw new Error("root element is not found");
 

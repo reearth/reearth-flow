@@ -56,14 +56,12 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
         let params: FeatureCityGmlReaderParam = if let Some(with) = with.clone() {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 FeatureProcessorError::FileCityGmlReaderFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 FeatureProcessorError::FileCityGmlReaderFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -76,7 +74,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
         let params = CompiledFeatureCityGmlReaderParam {
             dataset: expr_engine
                 .compile(params.dataset.as_ref())
-                .map_err(|e| FeatureProcessorError::FileCityGmlReaderFactory(format!("{:?}", e)))?,
+                .map_err(|e| FeatureProcessorError::FileCityGmlReaderFactory(format!("{e:?}")))?,
             flatten: params.flatten,
         };
         let threads_num = {
@@ -168,13 +166,11 @@ impl Processor for FeatureCityGmlReader {
             match join.lock().recv_timeout(timeout) {
                 Ok(_) => continue,
                 Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                    errors.push(format!("Worker thread {} timed out after {:?}", i, timeout));
+                    errors.push(format!("Worker thread {i} timed out after {timeout:?}"));
                 }
                 Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => {
-                    ctx.event_hub.warn_log(
-                        None,
-                        format!("Worker thread {} disconnected unexpectedly", i),
-                    );
+                    ctx.event_hub
+                        .warn_log(None, format!("Worker thread {i} disconnected unexpectedly"));
                 }
             }
         }

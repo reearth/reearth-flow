@@ -23,6 +23,12 @@ script = ['''
 cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker -- -D warnings
 ''']
 
+[tasks.clippy-fix]
+script = ['''
+#!/usr/bin/env bash -eux
+cargo clippy --workspace --all-targets --all-features --exclude plateau-gis-quality-checker --fix ${@}
+''']
+
 [tasks.test]
 script = ['''
 #!/usr/bin/env bash -eux
@@ -126,4 +132,21 @@ for feature_type in "${FEATURES[@]}"; do
   fi
 done
 
+''']
+
+[tasks.generate-examples-cms-workflow]
+script = ['''
+#!/usr/bin/env bash -eux
+
+BASE_PATH=./runtime/examples/fixture/workflow/data-convert/plateau4/
+WORKFLOW_EXAMPLES=(
+  "01-bldg"
+)
+
+for example in "${WORKFLOW_EXAMPLES[@]}"; do
+  (
+    cd $BASE_PATH;
+    yaml-include ${example}/workflow.yml > ${example}.yml
+  )
+done
 ''']

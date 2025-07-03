@@ -11,11 +11,11 @@ fn debug_print_generated(ast: &DeriveInput, toks: &TokenStream) {
     let debug = env::var("FLOW_MACRO_DEBUG");
     if let Ok(s) = debug {
         if s == "1" {
-            println!("{}", toks);
+            println!("{toks}");
         }
 
         if ast.ident == s {
-            println!("{}", toks);
+            println!("{toks}");
         }
     }
 }

@@ -161,6 +161,7 @@
   "Deployments": "",
   "Triggers": "",
   "Jobs": "",
+  "Resources": "",
   "Main Workflow": "",
   "Reader node cannot be copied": "",
   "Only one reader can be present in any project.": "",

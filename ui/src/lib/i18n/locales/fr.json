@@ -161,6 +161,7 @@
   "Deployments": "Déploiements",
   "Triggers": "Déclencheurs",
   "Jobs": "Emplois",
+  "Resources": "",
   "Main Workflow": "Flux de travail principal",
   "Reader node cannot be copied": "",
   "Only one reader can be present in any project.": "",

@@ -161,6 +161,7 @@
   "Deployments": "Despliegues",
   "Triggers": "Disparadores",
   "Jobs": "Trabajos",
+  "Resources": "",
   "Main Workflow": "Flujo de trabajo principal",
   "Reader node cannot be copied": "El nodo lector no se puede copiar",
   "Only one reader can be present in any project.": "Solo puede haber un lector en cualquier proyecto.",

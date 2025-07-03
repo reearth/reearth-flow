@@ -71,7 +71,7 @@ impl DocumentHandler {
                     StatusCode::INTERNAL_SERVER_ERROR
                 };
 
-                (status_code, format!("Error: {}", err)).into_response()
+                (status_code, format!("Error: {err}")).into_response()
             }
         }
     }
@@ -168,7 +168,7 @@ impl DocumentHandler {
                     StatusCode::INTERNAL_SERVER_ERROR
                 };
 
-                (status_code, format!("Error: {}", err)).into_response()
+                (status_code, format!("Error: {err}")).into_response()
             }
         }
     }
@@ -211,7 +211,7 @@ impl DocumentHandler {
                     StatusCode::INTERNAL_SERVER_ERROR
                 };
 
-                (status_code, format!("Error: {}", err)).into_response()
+                (status_code, format!("Error: {err}")).into_response()
             }
         }
     }
@@ -261,7 +261,7 @@ impl DocumentHandler {
                     StatusCode::INTERNAL_SERVER_ERROR
                 };
 
-                (status_code, format!("Error: {}", err)).into_response()
+                (status_code, format!("Error: {err}")).into_response()
             }
         }
     }
@@ -304,7 +304,7 @@ impl DocumentHandler {
                     StatusCode::INTERNAL_SERVER_ERROR
                 };
 
-                (status_code, format!("Error: {}", err)).into_response()
+                (status_code, format!("Error: {err}")).into_response()
             }
         }
     }
@@ -351,7 +351,7 @@ impl DocumentHandler {
                     StatusCode::INTERNAL_SERVER_ERROR
                 };
 
-                (status_code, format!("Error: {}", err)).into_response()
+                (status_code, format!("Error: {err}")).into_response()
             }
         }
     }

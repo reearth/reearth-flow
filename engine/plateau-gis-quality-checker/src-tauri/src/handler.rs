@@ -38,16 +38,16 @@ pub(crate) async fn run_flow(
     workflow_id: String,
     params: HashMap<String, String>,
 ) -> Result<(), crate::errors::Error> {
-    let bytes = WorkflowAsset::get(format!("{}.yml", workflow_id).as_str()).ok_or(
-        crate::errors::Error::invalid_workflow_id(format!("Workflow not found: {}", workflow_id)),
+    let bytes = WorkflowAsset::get(format!("{workflow_id}.yml").as_str()).ok_or(
+        crate::errors::Error::invalid_workflow_id(format!("Workflow not found: {workflow_id}")),
     )?;
     let json = String::from_utf8(bytes.data.iter().cloned().collect())
         .map_err(crate::errors::Error::io)?;
     let mut workflow = Workflow::try_from(json.as_str()).map_err(|e| {
-        crate::errors::Error::ExecuteFailed(format!("failed to parse workflow with {:?}", e))
+        crate::errors::Error::ExecuteFailed(format!("failed to parse workflow with {e:?}"))
     })?;
     workflow.merge_with(params).map_err(|e| {
-        crate::errors::Error::ExecuteFailed(format!("failed to merge params with {:?}", e))
+        crate::errors::Error::ExecuteFailed(format!("failed to merge params with {e:?}"))
     })?;
     let storage_resolver = Arc::new(resolve::StorageResolver::new());
     let job_id = uuid::Uuid::new_v4();

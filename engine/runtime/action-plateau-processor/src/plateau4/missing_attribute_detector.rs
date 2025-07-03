@@ -72,14 +72,12 @@ impl ProcessorFactory for MissingAttributeDetectorFactory {
         let params: MissingAttributeDetectorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
                 PlateauProcessorError::MissingAttributeDetectorFactory(format!(
-                    "Failed to serialize `with` parameter: {}",
-                    e
+                    "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
                 PlateauProcessorError::MissingAttributeDetectorFactory(format!(
-                    "Failed to deserialize `with` parameter: {}",
-                    e
+                    "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
@@ -304,16 +302,14 @@ impl MissingAttributeDetector {
         };
         let xml_ctx = xml::create_context(&document).map_err(|e| {
             PlateauProcessorError::MissingAttributeDetector(format!(
-                "Failed to create xml context: {}",
-                e
+                "Failed to create xml context: {e}"
             ))
         })?;
         let root_node = match xml::get_root_readonly_node(&document) {
             Ok(node) => node,
             Err(e) => {
                 return Err(PlateauProcessorError::MissingAttributeDetector(format!(
-                    "Failed to get root node: {}",
-                    e
+                    "Failed to get root node: {e}"
                 )));
             }
         };
@@ -321,9 +317,7 @@ impl MissingAttributeDetector {
             .get_attribute_ns(
                 "id",
                 String::from_utf8(GML31_NS.into_inner().to_vec())
-                    .map_err(|e| {
-                        PlateauProcessorError::MissingAttributeDetector(format!("{:?}", e))
-                    })?
+                    .map_err(|e| PlateauProcessorError::MissingAttributeDetector(format!("{e:?}")))?
                     .as_str(),
             )
             .ok_or(PlateauProcessorError::MissingAttributeDetector(
@@ -362,7 +356,7 @@ impl MissingAttributeDetector {
                         let p1 = s.remove(0);
                         if !s.is_empty() {
                             let p2 = s.remove(0);
-                            items.push(format!("{}/{}", p1, p2));
+                            items.push(format!("{p1}/{p2}"));
                         } else {
                             items.push(p1.to_string());
                             break;
@@ -390,7 +384,7 @@ impl MissingAttributeDetector {
                         let p1 = s.remove(0);
                         if !s.is_empty() {
                             let p2 = s.remove(0);
-                            items.push(format!("{}/{}", p1, p2));
+                            items.push(format!("{p1}/{p2}"));
                         } else {
                             items.push(p1.to_string());
                             break;
@@ -411,8 +405,7 @@ impl MissingAttributeDetector {
                 let node = xml::find_readonly_nodes_by_xpath(&xml_ctx, xpath, &root_node).map_err(
                     |e| {
                         PlateauProcessorError::MissingAttributeDetector(format!(
-                            "Failed to find node by xpath: {}",
-                            e
+                            "Failed to find node by xpath: {e}"
                         ))
                     },
                 )?;
@@ -437,8 +430,7 @@ impl MissingAttributeDetector {
                                 xml::find_readonly_nodes_by_xpath(&xml_ctx, &xpath, &root_node)
                                     .map_err(|e| {
                                         PlateauProcessorError::MissingAttributeDetector(format!(
-                                            "Failed to find node by xpath: {}",
-                                            e
+                                            "Failed to find node by xpath: {e}"
                                         ))
                                     })?;
 
@@ -449,12 +441,12 @@ impl MissingAttributeDetector {
                         2.. => {
                             let mut hit = true;
                             for p in &paths[..paths.len() - 1] {
-                                let xpath = format!(".//{}", p);
+                                let xpath = format!(".//{p}");
                                 let node =
                                     xml::find_readonly_nodes_by_xpath(&xml_ctx, &xpath, &root_node)
                                         .map_err(|e| {
                                             PlateauProcessorError::MissingAttributeDetector(
-                                                format!("Failed to find node by xpath: {}", e),
+                                                format!("Failed to find node by xpath: {e}"),
                                             )
                                         })?;
                                 if node.is_empty() {
@@ -468,7 +460,7 @@ impl MissingAttributeDetector {
                                     xml::find_readonly_nodes_by_xpath(&xml_ctx, &xpath, &root_node)
                                         .map_err(|e| {
                                             PlateauProcessorError::MissingAttributeDetector(
-                                                format!("Failed to find node by xpath: {}", e),
+                                                format!("Failed to find node by xpath: {e}"),
                                             )
                                         })?;
                                 if node.is_empty() {
@@ -498,8 +490,7 @@ impl MissingAttributeDetector {
                                 xml::find_readonly_nodes_by_xpath(&xml_ctx, &xpath, &root_node)
                                     .map_err(|e| {
                                         PlateauProcessorError::MissingAttributeDetector(format!(
-                                            "Failed to find node by xpath: {}",
-                                            e
+                                            "Failed to find node by xpath: {e}"
                                         ))
                                     })?;
 
@@ -510,12 +501,12 @@ impl MissingAttributeDetector {
                         2.. => {
                             let mut hit = true;
                             for p in &paths[..paths.len() - 1] {
-                                let xpath = format!(".//{}", p);
+                                let xpath = format!(".//{p}");
                                 let node =
                                     xml::find_readonly_nodes_by_xpath(&xml_ctx, &xpath, &root_node)
                                         .map_err(|e| {
                                             PlateauProcessorError::MissingAttributeDetector(
-                                                format!("Failed to find node by xpath: {}", e),
+                                                format!("Failed to find node by xpath: {e}"),
                                             )
                                         })?;
                                 if node.is_empty() {
@@ -529,7 +520,7 @@ impl MissingAttributeDetector {
                                     xml::find_readonly_nodes_by_xpath(&xml_ctx, &xpath, &root_node)
                                         .map_err(|e| {
                                             PlateauProcessorError::MissingAttributeDetector(
-                                                format!("Failed to find node by xpath: {}", e),
+                                                format!("Failed to find node by xpath: {e}"),
                                             )
                                         })?;
                                 if node.is_empty() {
@@ -548,8 +539,7 @@ impl MissingAttributeDetector {
             let node =
                 xml::find_readonly_nodes_by_xpath(&xml_ctx, xpath, &root_node).map_err(|e| {
                     PlateauProcessorError::MissingAttributeDetector(format!(
-                        "Failed to find node by xpath: {}",
-                        e
+                        "Failed to find node by xpath: {e}"
                     ))
                 })?;
             if node.is_empty() {
