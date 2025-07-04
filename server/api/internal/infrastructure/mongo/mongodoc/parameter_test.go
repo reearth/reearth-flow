@@ -20,7 +20,8 @@ func TestNewParameter(t *testing.T) {
 		Name("test-param").
 		Type(parameter.TypeText).
 		Required(true).
-		Value("some value").
+		Public(true).
+		DefaultValue("some value").
 		Index(5).
 		CreatedAt(now).
 		UpdatedAt(now).
@@ -49,8 +50,11 @@ func TestNewParameter(t *testing.T) {
 	if doc.Required != true {
 		t.Errorf("expected required to be true, got %v", doc.Required)
 	}
-	if doc.Value != "some value" {
-		t.Errorf("expected value 'some value', got '%v'", doc.Value)
+	if doc.Public != true {
+		t.Errorf("expected public to be true, got %v", doc.Public)
+	}
+	if doc.DefaultValue != "some value" {
+		t.Errorf("expected value 'some value', got '%v'", doc.DefaultValue)
 	}
 	if doc.Index != 5 {
 		t.Errorf("expected index 5, got %d", doc.Index)
@@ -69,15 +73,16 @@ func TestParameterDocument_Model(t *testing.T) {
 	now := time.Now().UTC()
 
 	doc := &ParameterDocument{
-		CreatedAt: now,
-		ID:        pid.String(),
-		Index:     3,
-		Name:      "my-param",
-		Project:   projID.String(),
-		Required:  false,
-		Type:      "NUMBER",
-		UpdatedAt: now,
-		Value:     123.45,
+		CreatedAt:    now,
+		ID:           pid.String(),
+		Index:        3,
+		Name:         "my-param",
+		Project:      projID.String(),
+		Required:     false,
+		Public:       true,
+		Type:         "NUMBER",
+		UpdatedAt:    now,
+		DefaultValue: 123.45,
 	}
 
 	param, err := doc.Model()
@@ -103,8 +108,11 @@ func TestParameterDocument_Model(t *testing.T) {
 	if param.Required() != false {
 		t.Errorf("expected required false, got %v", param.Required())
 	}
-	if param.Value() != 123.45 {
-		t.Errorf("expected value 123.45, got %v", param.Value())
+	if param.Public() != true {
+		t.Errorf("expected public true, got %v", param.Public())
+	}
+	if param.DefaultValue() != 123.45 {
+		t.Errorf("expected value 123.45, got %v", param.DefaultValue())
 	}
 	if param.Index() != 3 {
 		t.Errorf("expected index 3, got %d", param.Index())
@@ -114,6 +122,76 @@ func TestParameterDocument_Model(t *testing.T) {
 	}
 	if !param.UpdatedAt().Equal(now) {
 		t.Errorf("expected updatedAt %v, got %v", now, param.UpdatedAt())
+	}
+}
+
+func TestParameterDocument_Config(t *testing.T) {
+	pid := id.NewParameterID()
+	projID := id.NewProjectID()
+	now := time.Now().UTC()
+
+	// Test with config data
+	configData := map[string]interface{}{
+		"choices": []string{"option1", "option2", "option3"},
+
+		"multiSelect": true,
+		"placeholder": "Select an option",
+	}
+
+	param, err := parameter.New().
+		ID(pid).
+		ProjectID(projID).
+		Name("choice-param").
+		Type(parameter.TypeChoice).
+		Required(false).
+		Public(true).
+		DefaultValue("option1").
+		Config(configData).
+		Index(0).
+		CreatedAt(now).
+		UpdatedAt(now).
+		Build()
+	if err != nil {
+		t.Fatalf("unexpected error building parameter: %v", err)
+	}
+
+	// Test NewParameter conversion
+	doc, docID := NewParameter(param)
+	if docID != pid.String() {
+		t.Errorf("expected docID %s, got %s", pid.String(), docID)
+	}
+
+	// Verify config is stored properly
+	if doc.Config == nil {
+		t.Fatal("expected config to be stored, got nil")
+	}
+
+	storedConfig, ok := doc.Config.(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected config to be map[string]interface{}, got %T", doc.Config)
+	}
+
+	if !reflect.DeepEqual(storedConfig, configData) {
+		t.Errorf("config data mismatch.\nExpected: %+v\nGot: %+v", configData, storedConfig)
+	}
+
+	// Test Model() conversion back to domain
+	reconstructedParam, err := doc.Model()
+	if err != nil {
+		t.Fatalf("unexpected error from Model(): %v", err)
+	}
+
+	if reconstructedParam.Config() == nil {
+		t.Fatal("expected reconstructed config to not be nil")
+	}
+
+	reconstructedConfig, ok := reconstructedParam.Config().(map[string]interface{})
+	if !ok {
+		t.Fatalf("expected reconstructed config to be map[string]interface{}, got %T", reconstructedParam.Config())
+	}
+
+	if !reflect.DeepEqual(reconstructedConfig, configData) {
+		t.Errorf("reconstructed config data mismatch.\nExpected: %+v\nGot: %+v", configData, reconstructedConfig)
 	}
 }
 
@@ -128,7 +206,7 @@ func TestNewParameters(t *testing.T) {
 		ProjectID(projID).
 		Name("param1").
 		Type(parameter.TypeText).
-		Value("v1").
+		DefaultValue("v1").
 		Index(0).
 		CreatedAt(now).
 		UpdatedAt(now).
@@ -142,7 +220,7 @@ func TestNewParameters(t *testing.T) {
 		ProjectID(projID).
 		Name("param2").
 		Type(parameter.TypeNumber).
-		Value(42).
+		DefaultValue(42).
 		Index(1).
 		CreatedAt(now).
 		UpdatedAt(now).
@@ -174,10 +252,10 @@ func TestNewParameters(t *testing.T) {
 		t.Fatalf("expected doc2 to be *ParameterDocument, got %T", docs[1])
 	}
 
-	if doc1.Name != "param1" || doc1.Value != "v1" || doc1.Type != "TEXT" {
+	if doc1.Name != "param1" || doc1.DefaultValue != "v1" || doc1.Type != "TEXT" {
 		t.Errorf("doc1 did not match expected values")
 	}
-	if doc2.Name != "param2" || !reflect.DeepEqual(doc2.Value, 42) || doc2.Type != "NUMBER" {
+	if doc2.Name != "param2" || !reflect.DeepEqual(doc2.DefaultValue, 42) || doc2.Type != "NUMBER" {
 		t.Errorf("doc2 did not match expected values")
 	}
 }

@@ -19,6 +19,7 @@ type Loaders struct {
 	Job        *JobLoader
 	Log        *LogLoader
 	Node       *NodeExLoader
+	Parameter  *ParameterLoader
 	Project    *ProjectLoader
 	Trigger    *TriggerLoader
 	User       *UserLoader
@@ -29,6 +30,7 @@ type DataLoaders struct {
 	Asset      AssetDataLoader
 	Deployment DeploymentDataLoader
 	Job        JobDataLoader
+	Parameter  ParameterDataLoader
 	Project    ProjectDataLoader
 	Trigger    TriggerDataLoader
 	User       UserDataLoader
@@ -46,6 +48,7 @@ func NewLoaders(usecases *interfaces.Container) *Loaders {
 		Job:        NewJobLoader(usecases.Job),
 		Log:        NewLogLoader(usecases.Log),
 		Node:       NewNodeExLoader(usecases.NodeExecution),
+		Parameter:  NewParameterLoader(usecases.Parameter),
 		Project:    NewProjectLoader(usecases.Project),
 		Trigger:    NewTriggerLoader(usecases.Trigger),
 		User:       NewUserLoader(usecases.User),
@@ -65,6 +68,7 @@ func (l Loaders) DataLoaders(ctx context.Context) *DataLoaders {
 		Asset:      l.Asset.DataLoader(ctx),
 		Deployment: l.Deployment.DataLoader(ctx),
 		Job:        l.Job.DataLoader(ctx),
+		Parameter:  l.Parameter.DataLoader(ctx),
 		Project:    l.Project.DataLoader(ctx),
 		Trigger:    l.Trigger.DataLoader(ctx),
 		User:       l.User.DataLoader(ctx),
@@ -77,6 +81,7 @@ func (l Loaders) OrdinaryDataLoaders(ctx context.Context) *DataLoaders {
 		Asset:      l.Asset.OrdinaryDataLoader(ctx),
 		Deployment: l.Deployment.OrdinaryDataLoader(ctx),
 		Job:        l.Job.OrdinaryDataLoader(ctx),
+		Parameter:  l.Parameter.OrdinaryDataLoader(ctx),
 		Project:    l.Project.OrdinaryDataLoader(ctx),
 		Trigger:    l.Trigger.OrdinaryDataLoader(ctx),
 		User:       l.User.OrdinaryDataLoader(ctx),
