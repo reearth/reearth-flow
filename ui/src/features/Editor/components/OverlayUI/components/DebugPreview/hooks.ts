@@ -62,40 +62,36 @@ export default () => {
   }, [debugJob?.id, updateValue]);
 
   useEffect(() => {
-    if (debugJobState?.tempWorkflowHasPossibleIssuesFlag) return;
+    if (debugJobState?.tempWorkflowHasPossibleIssuesFlag !== undefined) return;
+
     if (
-      !outputURLs &&
-      (debugJobState?.status === "completed" ||
-        debugJobState?.status === "failed" ||
-        debugJobState?.status === "cancelled")
+      (!outputURLs && debugJobState?.status === "completed") ||
+      debugJobState?.status === "failed" ||
+      debugJobState?.status === "cancelled"
     ) {
       (async () => {
         try {
           const { data: job } = await refetch();
 
-          if (
-            !job?.outputURLs &&
-            debugJobState?.tempWorkflowHasPossibleIssuesFlag === undefined
-          ) {
+          const hasNoOutputURLs = !job?.outputURLs?.length;
+
+          if (job && debugJobState?.jobId === job.id && hasNoOutputURLs) {
             updateValue((prevState) => {
               const newJobs = prevState.jobs.map((pj) => {
                 if (
-                  job?.id === pj.jobId &&
+                  job.id === pj.jobId &&
                   !pj.tempWorkflowHasPossibleIssuesFlag
                 ) {
-                  const tempFlag = !!job.outputURLs?.length;
-                  setShowTempPossibleIssuesDialog(tempFlag);
+                  setShowTempPossibleIssuesDialog(true);
                   return {
                     ...pj,
-                    tempWorkflowHasPossibleIssuesFlag: tempFlag, // No logsURL + a completed/failed/cancelled status means potential issues. @KaWaite
+                    tempWorkflowHasPossibleIssuesFlag: hasNoOutputURLs, // No logsURL + a completed/failed/cancelled status means potential issues. @KaWaite
                   };
                 } else {
                   return pj;
                 }
               });
-              return {
-                jobs: newJobs,
-              };
+              return { jobs: newJobs };
             });
           }
         } catch (error) {
@@ -103,13 +99,7 @@ export default () => {
         }
       })();
     }
-  }, [
-    debugJobState?.status,
-    debugJobState?.tempWorkflowHasPossibleIssuesFlag,
-    outputURLs,
-    refetch,
-    updateValue,
-  ]);
+  }, [refetch, updateValue, debugJobState, outputURLs]);
 
   const intermediateDataURLs = useMemo(
     () => debugJobState?.selectedIntermediateData?.map((sid) => sid.url),
