@@ -1,0 +1,110 @@
+import { CopyIcon, DownloadIcon, TrashIcon } from "@phosphor-icons/react";
+import { ColumnDef } from "@tanstack/react-table";
+
+import { IconButton } from "@flow/components";
+import { DataTable as Table } from "@flow/components/DataTable";
+import { ASSET_FETCH_RATE } from "@flow/lib/gql/assets/useQueries";
+import { useT } from "@flow/lib/i18n";
+import type { Asset } from "@flow/types";
+
+type Props = {
+  assets?: Asset[];
+  isFetching: boolean;
+  currentPage: number;
+  totalPages: number;
+  sortOptions: { value: string; label: string }[];
+  currentSortValue: string;
+  searchTerm?: string;
+  setCurrentPage?: (page: number) => void;
+  setAssetToBeDeleted: (asset: string | undefined) => void;
+  setSearchTerm: (term: string) => void;
+  onSortChange: (value: string) => void;
+  onCopyUrlToClipBoard: (url: string) => void;
+  onAssetDownload: (
+    e: React.MouseEvent<HTMLAnchorElement>,
+    asset: Asset,
+  ) => void;
+};
+const AssetsListView: React.FC<Props> = ({
+  assets,
+  currentPage,
+  totalPages,
+  sortOptions,
+  currentSortValue,
+  searchTerm,
+  setCurrentPage,
+  setAssetToBeDeleted,
+  setSearchTerm,
+  onSortChange,
+  onCopyUrlToClipBoard,
+  onAssetDownload,
+}) => {
+  const t = useT();
+
+  const resultsPerPage = ASSET_FETCH_RATE;
+  const columns: ColumnDef<Asset>[] = [
+    {
+      accessorKey: "name",
+      header: t("Name"),
+    },
+    {
+      accessorKey: "createdAt",
+      header: t("Uploaded At"),
+    },
+    {
+      accessorKey: "size",
+      header: t("Size"),
+    },
+    {
+      accessorKey: "url",
+      header: t("Path"),
+    },
+    {
+      accessorKey: "quickActions",
+      header: t("Quick Actions"),
+      cell: (row) => (
+        <div className="flex gap-1">
+          <IconButton
+            icon={<CopyIcon />}
+            onClick={(e) => {
+              e.stopPropagation();
+              onCopyUrlToClipBoard(row.row.original.url);
+            }}
+          />
+          <a
+            href={row.row.original.url}
+            onClick={(e) => onAssetDownload(e, row.row.original)}>
+            <IconButton icon={<DownloadIcon />} />
+          </a>
+
+          <IconButton
+            icon={<TrashIcon />}
+            onClick={() => setAssetToBeDeleted(row.row.original.id)}
+          />
+        </div>
+      ),
+    },
+  ];
+  return (
+    <div className="overflow-scroll">
+      <Table
+        columns={columns}
+        data={assets}
+        selectColumns
+        showFiltering
+        enablePagination
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        totalPages={totalPages}
+        resultsPerPage={resultsPerPage}
+        sortOptions={sortOptions}
+        currentSortValue={currentSortValue}
+        onSortChange={onSortChange}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+      />
+    </div>
+  );
+};
+
+export { AssetsListView };

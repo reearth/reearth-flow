@@ -1,4 +1,5 @@
 import type {
+  AssetFragment,
   DeploymentFragment,
   ProjectFragment,
   WorkspaceFragment,
@@ -26,8 +27,9 @@ import type {
   ProjectSnapshot,
   Workspace,
   Member,
+  Asset,
 } from "@flow/types";
-import { formatDate } from "@flow/utils";
+import { formatDate, formatFileSize } from "@flow/utils";
 
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
@@ -137,6 +139,16 @@ export const toProjectSnapShot = (
   timestamp: projectSnapshot.timestamp,
   version: projectSnapshot.version,
   updates: projectSnapshot.updates,
+});
+
+export const toAsset = (asset: AssetFragment): Asset => ({
+  id: asset.id,
+  name: asset.name,
+  workspaceId: asset.workspaceId,
+  createdAt: formatDate(asset.createdAt),
+  contentType: asset.contentType,
+  size: formatFileSize(asset.size),
+  url: asset.url,
 });
 
 export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {

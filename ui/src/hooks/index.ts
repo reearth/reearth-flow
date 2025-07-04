@@ -10,3 +10,4 @@ export { default as useWorkflowFileUpload } from "./useWorkflowFileUpload";
 export { default as useWorkflowImport } from "./useWorkflowImport";
 export { default as useJobSubscriptionsSetup } from "./useJobSubscriptionsSetup";
 export { default as useProjectSave } from "./useProjectSave";
+export { default as useDebouncedSearch } from "./useDebouncedSearch";
