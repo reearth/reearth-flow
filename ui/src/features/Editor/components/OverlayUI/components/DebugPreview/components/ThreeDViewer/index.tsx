@@ -8,7 +8,11 @@ type Props = {
   fileType: SupportedDataTypes | null;
 };
 
-const GeoMap: React.FC<Props> = ({ className, fileContent, fileType }) => {
+const ThreeDViewer: React.FC<Props> = ({
+  className,
+  fileContent,
+  fileType,
+}) => {
   const t = useT();
   return (
     <RenderFallback
@@ -21,4 +25,4 @@ const GeoMap: React.FC<Props> = ({ className, fileContent, fileType }) => {
   );
 };
 
-export { GeoMap };
+export { ThreeDViewer };

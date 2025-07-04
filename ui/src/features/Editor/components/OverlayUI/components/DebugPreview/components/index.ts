@@ -1,2 +1,3 @@
 export * from "./DataTable";
-export * from "./GeoMap";
+export * from "./ThreeDViewer";
+export * from "./TwoDViewer";

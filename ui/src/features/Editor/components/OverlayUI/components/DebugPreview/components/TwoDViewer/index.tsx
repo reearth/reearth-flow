@@ -8,7 +8,7 @@ type Props = {
   fileType: SupportedDataTypes | null;
 };
 
-const VectorMap: React.FC<Props> = ({ fileContent, fileType }) => {
+const TwoDViewer: React.FC<Props> = ({ fileContent, fileType }) => {
   const t = useT();
   return (
     <RenderFallback
@@ -19,4 +19,4 @@ const VectorMap: React.FC<Props> = ({ fileContent, fileType }) => {
   );
 };
 
-export { VectorMap };
+export { TwoDViewer };

@@ -32,8 +32,7 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 
-import { DataTable, GeoMap } from "./components";
-import { VectorMap } from "./components/VectorMap";
+import { DataTable, ThreeDViewer, TwoDViewer } from "./components";
 import useHooks from "./hooks";
 
 const DebugPreview: React.FC = () => {
@@ -139,12 +138,15 @@ const DebugPreview: React.FC = () => {
           <TabsContent
             className="m-0 h-[calc(100%-32px)] p-1"
             value="2d-viewer">
-            <VectorMap fileContent={selectedOutputData} fileType={fileType} />
+            <TwoDViewer fileContent={selectedOutputData} fileType={fileType} />
           </TabsContent>
           <TabsContent
             className="m-0 h-[calc(100%-32px)] p-1"
             value="3d-viewer">
-            <GeoMap fileContent={selectedOutputData} fileType={fileType} />
+            <ThreeDViewer
+              fileContent={selectedOutputData}
+              fileType={fileType}
+            />
           </TabsContent>
         </>
       )}
