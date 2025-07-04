@@ -164,3 +164,10 @@ ls <working_dir>/projects/<project>/jobs/<job_id>/action-log/
 ## Git Commit Guidelines
 
 When creating git commits, do not include Claude Code attribution or "Generated with Claude Code" messages in commit messages. Keep commit messages clean and focused on the actual changes made.
+
+## Development Memo
+
+- Clippy Reminder: When using clippy, use `cargo make clippy`. Make sure to run it as the last step after completing modifications.
+
+## Commit Message Guidelines
+- コミットするときのメッセージはサブジェクトだけの1行で簡潔に済ませ、Claude Codeの表記や詳細な説明は不要。
