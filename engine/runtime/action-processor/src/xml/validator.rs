@@ -4,7 +4,7 @@ use std::{
     fmt::{Debug, Formatter},
     path::Path,
     str::FromStr,
-    sync::Arc,
+    sync::{Arc, Mutex},
     time::Duration,
 };
 
@@ -33,15 +33,15 @@ trait SchemaFetcher: Send + Sync {
 
 #[derive(Clone)]
 struct HttpSchemaFetcher {
-    client: reqwest::blocking::Client,
+    client: Arc<Mutex<Option<reqwest::blocking::Client>>>,
     max_retries: usize,
     retry_delay: Duration,
 }
 
 impl HttpSchemaFetcher {
-    fn new(client: reqwest::blocking::Client) -> Self {
+    fn new() -> Self {
         Self {
-            client,
+            client: Arc::new(Mutex::new(None)),
             max_retries: 3,
             retry_delay: Duration::from_millis(1000),
         }
@@ -52,6 +52,26 @@ impl HttpSchemaFetcher {
         self.max_retries = max_retries;
         self.retry_delay = retry_delay;
         self
+    }
+
+    fn get_or_create_client(&self) -> Result<reqwest::blocking::Client> {
+        let mut guard = self.client.lock().unwrap();
+        if let Some(client) = guard.as_ref() {
+            return Ok(client.clone());
+        }
+
+        // Create client outside of async context (in processor's thread)
+        let client = reqwest::blocking::Client::builder()
+            .timeout(Duration::from_secs(30))
+            .redirect(reqwest::redirect::Policy::limited(10))
+            .user_agent("reearth-flow-xml-validator/1.0")
+            .build()
+            .map_err(|e| {
+                XmlProcessorError::Validator(format!("Failed to create HTTP client: {e}"))
+            })?;
+
+        *guard = Some(client.clone());
+        Ok(client)
     }
 
     fn fetch_with_retry(&self, url: &str) -> Result<String> {
@@ -75,7 +95,8 @@ impl HttpSchemaFetcher {
     }
 
     fn try_fetch(&self, url: &str) -> Result<String> {
-        let response = self.client.get(url).send().map_err(|e| {
+        let client = self.get_or_create_client()?;
+        let response = client.get(url).send().map_err(|e| {
             XmlProcessorError::Validator(format!(
                 "Failed to fetch HTTP/HTTPS schema from {url}: {e}"
             ))
@@ -217,16 +238,7 @@ impl ProcessorFactory for XmlValidatorFactory {
             .into());
         };
 
-        let http_client = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(30))
-            .redirect(reqwest::redirect::Policy::limited(10))
-            .user_agent("reearth-flow-xml-validator/1.0")
-            .build()
-            .map_err(|e| {
-                XmlProcessorError::ValidatorFactory(format!("Failed to create HTTP client: {e}"))
-            })?;
-
-        let schema_fetcher = Arc::new(HttpSchemaFetcher::new(http_client));
+        let schema_fetcher = Arc::new(HttpSchemaFetcher::new());
 
         let process = XmlValidator {
             params,
@@ -730,14 +742,7 @@ mod tests {
             validation_type,
         };
 
-        let http_client = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(30))
-            .redirect(reqwest::redirect::Policy::limited(10))
-            .user_agent("reearth-flow-xml-validator/1.0")
-            .build()
-            .unwrap();
-
-        let schema_fetcher = Arc::new(HttpSchemaFetcher::new(http_client));
+        let schema_fetcher = Arc::new(HttpSchemaFetcher::new());
 
         XmlValidator {
             params,
@@ -1540,20 +1545,14 @@ mod tests {
     #[test]
     fn test_xml_validator_retry_configuration() {
         // Test HttpSchemaFetcher retry configuration
-        let client = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(5))
-            .build()
-            .unwrap();
-
-        let fetcher =
-            HttpSchemaFetcher::new(client.clone()).with_retry_config(2, Duration::from_millis(100));
+        let fetcher = HttpSchemaFetcher::new().with_retry_config(2, Duration::from_millis(100));
 
         // Test that configuration is applied
         assert_eq!(fetcher.max_retries, 2);
         assert_eq!(fetcher.retry_delay, Duration::from_millis(100));
 
         // Test default configuration
-        let default_fetcher = HttpSchemaFetcher::new(client);
+        let default_fetcher = HttpSchemaFetcher::new();
         assert_eq!(default_fetcher.max_retries, 3);
         assert_eq!(default_fetcher.retry_delay, Duration::from_millis(1000));
     }
@@ -1561,13 +1560,7 @@ mod tests {
     #[test]
     fn test_xml_validator_retry_functionality() {
         // Test HttpSchemaFetcher retry configuration directly
-        let client = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_millis(100))
-            .build()
-            .unwrap();
-
-        let fetcher =
-            HttpSchemaFetcher::new(client).with_retry_config(2, Duration::from_millis(50));
+        let fetcher = HttpSchemaFetcher::new().with_retry_config(2, Duration::from_millis(50));
 
         // Test with a non-existent URL that will fail quickly
         let result =
@@ -1592,12 +1585,7 @@ mod tests {
     #[test]
     fn test_xml_validator_http_status_error_handling() {
         // Test that HTTP status errors are properly handled
-        let client = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(5))
-            .build()
-            .unwrap();
-
-        let fetcher = HttpSchemaFetcher::new(client);
+        let fetcher = HttpSchemaFetcher::new();
 
         // Test with a URL that should return 404 (using httpbin.org/status/404)
         let result = fetcher.fetch_schema("https://httpbin.org/status/404");
@@ -1616,14 +1604,7 @@ mod tests {
     #[test]
     fn test_xml_validator_redirect_support() {
         // Test that redirect policy is properly configured
-        let http_client = reqwest::blocking::Client::builder()
-            .timeout(Duration::from_secs(30))
-            .redirect(reqwest::redirect::Policy::limited(10))
-            .user_agent("reearth-flow-xml-validator/1.0")
-            .build()
-            .unwrap();
-
-        let fetcher = HttpSchemaFetcher::new(http_client);
+        let fetcher = HttpSchemaFetcher::new();
 
         // We can't easily test actual redirects in unit tests without a test server,
         // but we can verify the fetcher is created successfully with redirect support
@@ -1639,5 +1620,121 @@ mod tests {
                 // The important thing is that the fetcher doesn't panic
             }
         }
+    }
+
+    #[test]
+    fn test_xml_validator_in_async_context() {
+        // Verify that lazy initialization prevents panic when creating reqwest::blocking::Client in async context
+        use reearth_flow_eval_expr::engine::Engine;
+        use reearth_flow_runtime::{
+            event::EventHub,
+            executor_operation::{ExecutorContext, NodeContext},
+            forwarder::{NoopChannelForwarder, ProcessorChannelForwarder},
+            kvs::create_kv_store,
+            node::ProcessorFactory,
+        };
+        use reearth_flow_storage::resolve::StorageResolver;
+
+        // Create a runtime to simulate the actual execution environment
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+
+        // Test that XmlValidator can be created and executed within runtime.block_on
+        runtime.block_on(async {
+            let factory = XmlValidatorFactory {};
+
+            // Create required dependencies for NodeContext
+            let expr_engine = Arc::new(Engine::new());
+            let storage_resolver = Arc::new(StorageResolver::new());
+            let kv_store = Arc::new(create_kv_store());
+            let event_hub = EventHub::new(1024);
+
+            let ctx = NodeContext::new(
+                expr_engine.clone(),
+                storage_resolver.clone(),
+                kv_store.clone(),
+                event_hub.clone(),
+            );
+
+            let mut with = HashMap::new();
+            with.insert(
+                "attribute".to_string(),
+                serde_json::Value::String("xml_content".to_string()),
+            );
+            with.insert(
+                "inputType".to_string(),
+                serde_json::Value::String("text".to_string()),
+            );
+            with.insert(
+                "validationType".to_string(),
+                serde_json::Value::String("syntaxAndSchema".to_string()),
+            );
+
+            // This should not panic with our lazy initialization
+            let result = factory.build(ctx, event_hub, "xmlValidator".to_string(), Some(with));
+
+            assert!(
+                result.is_ok(),
+                "Should be able to create XmlValidator in async context"
+            );
+
+            let mut processor = result.unwrap();
+
+            // Create a feature with XML content that includes HTTPS schema reference
+            let mut feature = Feature::default();
+            feature.attributes.insert(
+                Attribute::new("xml_content"),
+                AttributeValue::String(
+                    r#"<?xml version="1.0" encoding="UTF-8"?>
+                    <note xmlns="http://example.com/note"
+                          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                          xsi:schemaLocation="http://example.com/note https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/runtime/action-processor/fixtures/xml/simple_note_schema.xsd">
+                      <to>Tove</to>
+                      <from>Jani</from>
+                      <heading>Reminder</heading>
+                      <body>Don't forget me this weekend!</body>
+                    </note>"#.to_string()
+                )
+            );
+
+            // Execute the processor in spawn_blocking to simulate real runtime behavior
+            let handle = tokio::task::spawn_blocking(move || {
+                let exec_ctx = ExecutorContext::new(
+                    feature,
+                    DEFAULT_PORT.clone(),
+                    expr_engine,
+                    storage_resolver,
+                    kv_store,
+                    EventHub::new(1024),
+                );
+                let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+
+                // This should not panic - HTTP client creation happens here in blocking context
+                let result = processor.process(exec_ctx, &fw);
+
+                (result, fw)
+            });
+
+            let (process_result, fw) = handle.await.unwrap();
+
+            assert!(process_result.is_ok(), "Processing should complete without panic");
+
+            // Check that we received output
+            match &fw {
+                ProcessorChannelForwarder::Noop(noop_fw) => {
+                    let send_ports = noop_fw.send_ports.lock().unwrap();
+                    assert!(!send_ports.is_empty(), "Should have sent output");
+
+                    // The output should be on either success or failed port
+                    assert!(
+                        send_ports[0] == *SUCCESS_PORT || send_ports[0] == *FAILED_PORT,
+                        "Should output to success or failed port"
+                    );
+                }
+                _ => panic!("Expected Noop forwarder for testing"),
+            }
+        });
     }
 }
