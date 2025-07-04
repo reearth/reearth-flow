@@ -3,7 +3,6 @@ import {
   Background,
   BackgroundVariant,
   SelectionMode,
-  ProOptions,
   SnapGrid,
   XYPosition,
   NodeChange,
@@ -28,8 +27,6 @@ import "@xyflow/react/dist/style.css";
 const gridSize = 16.5;
 
 const snapGrid: SnapGrid = [gridSize, gridSize];
-
-const proOptions: ProOptions = { hideAttribution: false };
 
 type Props = {
   readonly?: boolean;
@@ -140,8 +137,7 @@ const Canvas: React.FC<Props> = ({
       onEdgeMouseLeave={onEdgeHover}
       onConnect={handleConnect}
       onReconnect={handleReconnect}
-      onBeforeDelete={onBeforeDelete}
-      proOptions={proOptions}>
+      onBeforeDelete={onBeforeDelete}>
       <Background
         className="bg-background"
         variant={BackgroundVariant["Lines"]}
