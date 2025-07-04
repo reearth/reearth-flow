@@ -7,8 +7,6 @@ import { SupportedDataTypes } from "@flow/utils/fetchAndReadGeoData";
 
 import GeoJsonData from "./GeoJson";
 
-const dummyCredit = document.createElement("div");
-
 const defaultCesiumProps: Partial<ViewerProps> = {
   // timeline: false,
   // baseLayerPicker: false,
@@ -19,7 +17,7 @@ const defaultCesiumProps: Partial<ViewerProps> = {
   geocoder: false,
   animation: false,
   navigationHelpButton: false,
-  creditContainer: dummyCredit,
+  creditContainer: undefined,
 };
 
 type Props = {

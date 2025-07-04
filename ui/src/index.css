@@ -199,6 +199,11 @@
   /* pulse 1.5s infinite; */
 }
 
+/* Allows for react flow logo to displayed without style conflicts */
+.react-flow__attribution {
+  background: none !important;
+}
+
 /* Animation for queued node - shadow */
 @keyframes cycleColorsShadow {
   0% {

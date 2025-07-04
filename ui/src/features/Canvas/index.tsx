@@ -29,7 +29,7 @@ const gridSize = 16.5;
 
 const snapGrid: SnapGrid = [gridSize, gridSize];
 
-const proOptions: ProOptions = { hideAttribution: true };
+const proOptions: ProOptions = { hideAttribution: false };
 
 type Props = {
   readonly?: boolean;
