@@ -51,12 +51,75 @@ type AssetConnection struct {
 	TotalCount int       `json:"totalCount"`
 }
 
+type CMSItem struct {
+	ID        ID        `json:"id"`
+	Fields    JSON      `json:"fields"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+type CMSItemsConnection struct {
+	Items      []*CMSItem `json:"items"`
+	TotalCount int        `json:"totalCount"`
+}
+
+type CMSModel struct {
+	ID          ID         `json:"id"`
+	ProjectID   ID         `json:"projectId"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Key         string     `json:"key"`
+	Schema      *CMSSchema `json:"schema"`
+	PublicAPIEp string     `json:"publicApiEp"`
+	EditorURL   string     `json:"editorUrl"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	UpdatedAt   time.Time  `json:"updatedAt"`
+}
+
+type CMSProject struct {
+	ID          ID            `json:"id"`
+	Name        string        `json:"name"`
+	Alias       string        `json:"alias"`
+	Description *string       `json:"description,omitempty"`
+	License     *string       `json:"license,omitempty"`
+	Readme      *string       `json:"readme,omitempty"`
+	WorkspaceID ID            `json:"workspaceId"`
+	Visibility  CMSVisibility `json:"visibility"`
+	CreatedAt   time.Time     `json:"createdAt"`
+	UpdatedAt   time.Time     `json:"updatedAt"`
+}
+
+type CMSProjectPayload struct {
+	Project *CMSProject `json:"project"`
+}
+
+type CMSSchema struct {
+	SchemaID ID                `json:"schemaId"`
+	Fields   []*CMSSchemaField `json:"fields"`
+}
+
+type CMSSchemaField struct {
+	FieldID     ID                 `json:"fieldId"`
+	Name        string             `json:"name"`
+	Type        CMSSchemaFieldType `json:"type"`
+	Key         string             `json:"key"`
+	Description *string            `json:"description,omitempty"`
+}
+
 type CancelJobInput struct {
 	JobID ID `json:"jobId"`
 }
 
 type CancelJobPayload struct {
 	Job *Job `json:"job,omitempty"`
+}
+
+type CheckCMSAliasAvailabilityInput struct {
+	Alias string `json:"alias"`
+}
+
+type CheckCMSAliasAvailabilityPayload struct {
+	Available bool `json:"available"`
 }
 
 type CreateAssetInput struct {
@@ -66,6 +129,16 @@ type CreateAssetInput struct {
 
 type CreateAssetPayload struct {
 	Asset *Asset `json:"asset"`
+}
+
+type CreateCMSProjectInput struct {
+	WorkspaceID ID            `json:"workspaceId"`
+	Name        string        `json:"name"`
+	Alias       string        `json:"alias"`
+	Description *string       `json:"description,omitempty"`
+	License     *string       `json:"license,omitempty"`
+	Readme      *string       `json:"readme,omitempty"`
+	Visibility  CMSVisibility `json:"visibility"`
 }
 
 type CreateDeploymentInput struct {
@@ -104,6 +177,14 @@ type DeclareParameterInput struct {
 	Required bool          `json:"required"`
 	Value    interface{}   `json:"value,omitempty"`
 	Index    *int          `json:"index,omitempty"`
+}
+
+type DeleteCMSProjectInput struct {
+	ProjectID ID `json:"projectId"`
+}
+
+type DeleteCMSProjectPayload struct {
+	ProjectID ID `json:"projectId"`
 }
 
 type DeleteDeploymentInput struct {
@@ -444,6 +525,16 @@ type UnshareProjectPayload struct {
 	ProjectID ID `json:"projectId"`
 }
 
+type UpdateCMSProjectInput struct {
+	ProjectID   ID             `json:"projectId"`
+	Name        *string        `json:"name,omitempty"`
+	Alias       *string        `json:"alias,omitempty"`
+	Description *string        `json:"description,omitempty"`
+	License     *string        `json:"license,omitempty"`
+	Readme      *string        `json:"readme,omitempty"`
+	Visibility  *CMSVisibility `json:"visibility,omitempty"`
+}
+
 type UpdateDeploymentInput struct {
 	DeploymentID ID              `json:"deploymentId"`
 	File         *graphql.Upload `json:"file,omitempty"`
@@ -576,6 +667,118 @@ func (e *AssetSortType) UnmarshalGQL(v interface{}) error {
 }
 
 func (e AssetSortType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type CMSSchemaFieldType string
+
+const (
+	CMSSchemaFieldTypeText           CMSSchemaFieldType = "TEXT"
+	CMSSchemaFieldTypeTextarea       CMSSchemaFieldType = "TEXTAREA"
+	CMSSchemaFieldTypeRichtext       CMSSchemaFieldType = "RICHTEXT"
+	CMSSchemaFieldTypeMarkdowntext   CMSSchemaFieldType = "MARKDOWNTEXT"
+	CMSSchemaFieldTypeAsset          CMSSchemaFieldType = "ASSET"
+	CMSSchemaFieldTypeDate           CMSSchemaFieldType = "DATE"
+	CMSSchemaFieldTypeBool           CMSSchemaFieldType = "BOOL"
+	CMSSchemaFieldTypeSelect         CMSSchemaFieldType = "SELECT"
+	CMSSchemaFieldTypeTag            CMSSchemaFieldType = "TAG"
+	CMSSchemaFieldTypeInteger        CMSSchemaFieldType = "INTEGER"
+	CMSSchemaFieldTypeNumber         CMSSchemaFieldType = "NUMBER"
+	CMSSchemaFieldTypeReference      CMSSchemaFieldType = "REFERENCE"
+	CMSSchemaFieldTypeCheckbox       CMSSchemaFieldType = "CHECKBOX"
+	CMSSchemaFieldTypeURL            CMSSchemaFieldType = "URL"
+	CMSSchemaFieldTypeGroup          CMSSchemaFieldType = "GROUP"
+	CMSSchemaFieldTypeGeometryobject CMSSchemaFieldType = "GEOMETRYOBJECT"
+	CMSSchemaFieldTypeGeometryeditor CMSSchemaFieldType = "GEOMETRYEDITOR"
+)
+
+var AllCMSSchemaFieldType = []CMSSchemaFieldType{
+	CMSSchemaFieldTypeText,
+	CMSSchemaFieldTypeTextarea,
+	CMSSchemaFieldTypeRichtext,
+	CMSSchemaFieldTypeMarkdowntext,
+	CMSSchemaFieldTypeAsset,
+	CMSSchemaFieldTypeDate,
+	CMSSchemaFieldTypeBool,
+	CMSSchemaFieldTypeSelect,
+	CMSSchemaFieldTypeTag,
+	CMSSchemaFieldTypeInteger,
+	CMSSchemaFieldTypeNumber,
+	CMSSchemaFieldTypeReference,
+	CMSSchemaFieldTypeCheckbox,
+	CMSSchemaFieldTypeURL,
+	CMSSchemaFieldTypeGroup,
+	CMSSchemaFieldTypeGeometryobject,
+	CMSSchemaFieldTypeGeometryeditor,
+}
+
+func (e CMSSchemaFieldType) IsValid() bool {
+	switch e {
+	case CMSSchemaFieldTypeText, CMSSchemaFieldTypeTextarea, CMSSchemaFieldTypeRichtext, CMSSchemaFieldTypeMarkdowntext, CMSSchemaFieldTypeAsset, CMSSchemaFieldTypeDate, CMSSchemaFieldTypeBool, CMSSchemaFieldTypeSelect, CMSSchemaFieldTypeTag, CMSSchemaFieldTypeInteger, CMSSchemaFieldTypeNumber, CMSSchemaFieldTypeReference, CMSSchemaFieldTypeCheckbox, CMSSchemaFieldTypeURL, CMSSchemaFieldTypeGroup, CMSSchemaFieldTypeGeometryobject, CMSSchemaFieldTypeGeometryeditor:
+		return true
+	}
+	return false
+}
+
+func (e CMSSchemaFieldType) String() string {
+	return string(e)
+}
+
+func (e *CMSSchemaFieldType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CMSSchemaFieldType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CMSSchemaFieldType", str)
+	}
+	return nil
+}
+
+func (e CMSSchemaFieldType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type CMSVisibility string
+
+const (
+	CMSVisibilityPublic  CMSVisibility = "PUBLIC"
+	CMSVisibilityPrivate CMSVisibility = "PRIVATE"
+)
+
+var AllCMSVisibility = []CMSVisibility{
+	CMSVisibilityPublic,
+	CMSVisibilityPrivate,
+}
+
+func (e CMSVisibility) IsValid() bool {
+	switch e {
+	case CMSVisibilityPublic, CMSVisibilityPrivate:
+		return true
+	}
+	return false
+}
+
+func (e CMSVisibility) String() string {
+	return string(e)
+}
+
+func (e *CMSVisibility) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CMSVisibility(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CMSVisibility", str)
+	}
+	return nil
+}
+
+func (e CMSVisibility) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

@@ -1,0 +1,138 @@
+type CMSProject {
+  id: ID!
+  name: String!
+  alias: String!
+  description: String
+  license: String
+  readme: String
+  workspaceId: ID!
+  visibility: CMSVisibility!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+enum CMSVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+type CMSModel {
+  id: ID!
+  projectId: ID!
+  name: String!
+  description: String!
+  key: String!
+  schema: CMSSchema!
+  publicApiEp: String!
+  editorUrl: String!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type CMSSchema {
+  schemaId: ID!
+  fields: [CMSSchemaField!]!
+}
+
+type CMSSchemaField {
+  fieldId: ID!
+  name: String!
+  type: CMSSchemaFieldType!
+  key: String!
+  description: String
+}
+
+enum CMSSchemaFieldType {
+  TEXT
+  TEXTAREA
+  RICHTEXT
+  MARKDOWNTEXT
+  ASSET
+  DATE
+  BOOL
+  SELECT
+  TAG
+  INTEGER
+  NUMBER
+  REFERENCE
+  CHECKBOX
+  URL
+  GROUP
+  GEOMETRYOBJECT
+  GEOMETRYEDITOR
+}
+
+type CMSItem {
+  id: ID!
+  fields: JSON!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type CMSItemsConnection {
+  items: [CMSItem!]!
+  totalCount: Int!
+}
+
+extend type Query {
+  cmsProject(projectIdOrAlias: ID!): CMSProject
+  
+  cmsProjects(workspaceId: ID!, publicOnly: Boolean): [CMSProject!]!
+  
+  cmsModels(projectId: ID!): [CMSModel!]!
+  
+  cmsItems(projectId: ID!, modelId: ID!, page: Int, pageSize: Int): CMSItemsConnection!
+  
+  cmsModelExportUrl(projectId: ID!, modelId: ID!): String!
+}
+
+input CreateCMSProjectInput {
+  workspaceId: ID!
+  name: String!
+  alias: String!
+  description: String
+  license: String
+  readme: String
+  visibility: CMSVisibility!
+}
+
+input UpdateCMSProjectInput {
+  projectId: ID!
+  name: String
+  alias: String
+  description: String
+  license: String
+  readme: String
+  visibility: CMSVisibility
+}
+
+input DeleteCMSProjectInput {
+  projectId: ID!
+}
+
+input CheckCMSAliasAvailabilityInput {
+  alias: String!
+}
+
+type CMSProjectPayload {
+  project: CMSProject!
+}
+
+type DeleteCMSProjectPayload {
+  projectId: ID!
+}
+
+type CheckCMSAliasAvailabilityPayload {
+  available: Boolean!
+}
+
+
+extend type Mutation {
+  createCMSProject(input: CreateCMSProjectInput!): CMSProjectPayload
+  
+  updateCMSProject(input: UpdateCMSProjectInput!): CMSProjectPayload
+  
+  deleteCMSProject(input: DeleteCMSProjectInput!): DeleteCMSProjectPayload
+  
+  checkCMSAliasAvailability(input: CheckCMSAliasAvailabilityInput!): CheckCMSAliasAvailabilityPayload
+} 

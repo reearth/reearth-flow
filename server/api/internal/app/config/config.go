@@ -93,6 +93,11 @@ type (
 
 		// websocket
 		WebsocketThriftServerURL string `envconfig:"REEARTH_FLOW_WEBSOCKET_THRIFT_SERVER_URL" default:"http://localhost:8000" pp:",omitempty"`
+
+		// cms
+		CMS_Endpoint string `envconfig:"REEARTH_CMS_ENDPOINT" pp:",omitempty"`
+		CMS_Token    string `envconfig:"REEARTH_CMS_TOKEN" pp:",omitempty"`
+		CMS_UserID   string `envconfig:"REEARTH_CMS_USER_ID" pp:",omitempty"`
 	}
 )
 
@@ -150,7 +155,7 @@ func (c *Config) Print() string {
 }
 
 func (c *Config) secrets() []string {
-	s := []string{c.DB, c.Auth0.ClientSecret}
+	s := []string{c.DB, c.Auth0.ClientSecret, c.CMS_Token}
 	for _, ac := range c.DB_Users {
 		s = append(s, ac.URI)
 	}
