@@ -22,6 +22,7 @@ type JobDocument struct {
 	CompletedAt   *time.Time `bson:"completedat"`
 	MetadataURL   string     `bson:"metadataurl"`
 	OutputURLs    []string   `bson:"outputurls"`
+	Version       int        `bson:"version"`
 }
 
 type JobConsumer = Consumer[*JobDocument, *job.Job]
@@ -53,6 +54,7 @@ func NewJob(j *job.Job) (*JobDocument, string) {
 		CompletedAt:   j.CompletedAt(),
 		MetadataURL:   j.MetadataURL(),
 		OutputURLs:    j.OutputURLs(),
+		Version:       j.Version(),
 	}
 
 	return doc, jid
@@ -89,7 +91,8 @@ func (d *JobDocument) Model() (*job.Job, error) {
 		GCPJobID(d.GCPJobID).
 		OutputURLs(d.OutputURLs).
 		LogsURL(d.LogsURL).
-		WorkerLogsURL(d.WorkerLogsURL)
+		WorkerLogsURL(d.WorkerLogsURL).
+		Version(d.Version)
 
 	if d.CompletedAt != nil {
 		j = j.CompletedAt(d.CompletedAt)

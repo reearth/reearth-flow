@@ -90,24 +90,38 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 		return nil, err
 	}
 
-	j.SetStatus(job.StatusCancelled)
-	now := time.Now()
-	j.SetCompletedAt(&now)
+	// Re-fetch to ensure we have the latest version
+	freshJob, err := i.jobRepo.FindByID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
 
-	if err := i.jobRepo.Save(ctx, j); err != nil {
+	// Check if status was already updated
+	if freshJob.Status() == job.StatusCancelled {
+		tx.Commit()
+		return freshJob, nil
+	}
+
+	// Update with version check
+	freshJob.SetStatus(job.StatusCancelled)
+	now := time.Now()
+	freshJob.SetCompletedAt(&now)
+	freshJob.IncrementVersion()
+
+	if err := i.jobRepo.Save(ctx, freshJob); err != nil {
 		return nil, err
 	}
 
 	tx.Commit()
 
-	if err := i.handleJobCompletion(ctx, j); err != nil {
+	if err := i.handleJobCompletion(ctx, freshJob); err != nil {
 		log.Errorfc(ctx, "job: completion handling failed: %v", err)
 	}
 
-	i.subscriptions.Notify(j.ID().String(), j.Status())
-	i.monitor.Remove(j.ID().String())
+	i.subscriptions.Notify(freshJob.ID().String(), freshJob.Status())
+	i.monitor.Remove(freshJob.ID().String())
 
-	return j, nil
+	return freshJob, nil
 }
 
 func (i *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
@@ -166,14 +180,21 @@ func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *
 }
 
 func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
-	ticker := time.NewTicker(15 * time.Second)
+	// Start with shorter interval for active jobs
+	baseInterval := 5 * time.Second
+	maxInterval := 30 * time.Second
+	currentInterval := baseInterval
+	consecutiveErrors := 0
+
+	ticker := time.NewTicker(currentInterval)
 	defer ticker.Stop()
 
 	jobID := j.ID().String()
-	log.Infof("Starting continuous monitoring for job ID %s", jobID)
+	log.Infof("Starting adaptive monitoring for job ID %s", jobID)
 
 	maxDuration := 24 * time.Hour
 	startTime := time.Now()
+	lastStatusChange := time.Now()
 
 	for {
 		select {
@@ -187,11 +208,29 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 				return
 			}
 
-			currentJob, err := i.jobRepo.FindByID(context.Background(), j.ID())
+			currentJob, err := i.jobRepo.FindByID(ctx, j.ID())
 			if err != nil {
-				log.Errorf("Failed to fetch current job state for job ID %s: %v", jobID, err)
+				consecutiveErrors++
+				log.Errorf("Failed to fetch current job state for job ID %s (error %d): %v",
+					jobID, consecutiveErrors, err)
+
+				// Exponential backoff on errors
+				if consecutiveErrors > 3 {
+					newInterval := time.Duration(float64(currentInterval) * 1.5)
+					if newInterval > maxInterval {
+						newInterval = maxInterval
+					}
+					if newInterval != currentInterval {
+						currentInterval = newInterval
+						ticker.Reset(currentInterval)
+						log.Warnf("Increased polling interval to %v due to errors", currentInterval)
+					}
+				}
 				continue
 			}
+
+			// Reset error counter on success
+			consecutiveErrors = 0
 
 			status := currentJob.Status()
 			if status == job.StatusCompleted || status == job.StatusFailed || status == job.StatusCancelled {
@@ -200,9 +239,38 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 				return
 			}
 
+			// Check if status changed
+			previousStatus := j.Status()
 			if err := i.checkJobStatus(ctx, currentJob); err != nil {
 				log.Errorfc(ctx, "job: status check failed: %v", err)
+				time.Sleep(time.Second * 2)
+				continue
 			}
+
+			// Adaptive polling: decrease interval on status changes, increase when stable
+			if currentJob.Status() != previousStatus {
+				lastStatusChange = time.Now()
+				// Status changed, use shorter interval
+				if currentInterval != baseInterval {
+					currentInterval = baseInterval
+					ticker.Reset(currentInterval)
+					log.Debugf("Status changed for job %s, using faster polling interval", jobID)
+				}
+			} else if time.Since(lastStatusChange) > 2*time.Minute {
+				// No changes for a while, slow down polling
+				newInterval := time.Duration(float64(currentInterval) * 1.2)
+				if newInterval > maxInterval {
+					newInterval = maxInterval
+				}
+				if newInterval != currentInterval {
+					currentInterval = newInterval
+					ticker.Reset(currentInterval)
+					log.Debugf("No status changes for job %s, reduced polling frequency to %v", jobID, currentInterval)
+				}
+			}
+
+			// Update our reference
+			*j = *currentJob
 		}
 	}
 }
@@ -210,22 +278,66 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 	status, err := i.batch.GetJobStatus(ctx, j.GCPJobID())
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get job status from batch service: %w", err)
 	}
 
 	newStatus := job.Status(status)
 	statusChanged := j.Status() != newStatus
 
-	isTerminalState := status == gateway.JobStatusCompleted || status == gateway.JobStatusFailed
+	isTerminalState := status == gateway.JobStatusCompleted || status == gateway.JobStatusFailed || status == gateway.JobStatusCancelled
 	isNewTerminalState := isTerminalState && statusChanged
 
 	if statusChanged {
-		if err := i.updateJobStatus(ctx, j, newStatus); err != nil {
-			return err
+		// Use optimistic locking with version check
+		retries := 3
+		for attempt := 1; attempt <= retries; attempt++ {
+			freshJob, err := i.jobRepo.FindByID(ctx, j.ID())
+			if err != nil {
+				return fmt.Errorf("failed to fetch fresh job state: %w", err)
+			}
+
+			// Check if job was already updated
+			if freshJob.Status() != j.Status() {
+				log.Warnfc(ctx, "job: status already changed by another process for job %s (expected %s, got %s)",
+					j.ID(), j.Status(), freshJob.Status())
+				// Update our local reference
+				*j = *freshJob
+				return nil
+			}
+
+			// Check version to prevent concurrent updates
+			if freshJob.Version() != j.Version() {
+				log.Warnfc(ctx, "job: version mismatch for job %s (expected %d, got %d), retrying...",
+					j.ID(), j.Version(), freshJob.Version())
+				// Update our reference and retry
+				*j = *freshJob
+				if attempt < retries {
+					time.Sleep(time.Duration(attempt*100) * time.Millisecond)
+					continue
+				}
+				return fmt.Errorf("version mismatch after %d retries", retries)
+			}
+
+			// Update status with version increment
+			freshJob.SetStatus(newStatus)
+			freshJob.IncrementVersion()
+
+			if err := i.updateJobWithVersion(ctx, freshJob, j.Version()); err != nil {
+				if attempt < retries {
+					log.Warnfc(ctx, "job: failed to update job status (attempt %d/%d): %v", attempt, retries, err)
+					time.Sleep(time.Duration(attempt*100) * time.Millisecond)
+					continue
+				}
+				return fmt.Errorf("failed to update job status after %d attempts: %w", retries, err)
+			}
+
+			// Success - update our reference
+			*j = *freshJob
+			break
 		}
 	}
 
-	if isNewTerminalState {
+	if isNewTerminalState && statusChanged {
 		log.Infof("Job %s transitioning to terminal state %s, handling completion", j.ID(), newStatus)
 		if err := i.handleJobCompletion(ctx, j); err != nil {
 			log.Errorfc(ctx, "job: completion handling failed: %v", err)
@@ -236,7 +348,7 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 	return nil
 }
 
-func (i *Job) updateJobStatus(ctx context.Context, j *job.Job, status job.Status) error {
+func (i *Job) updateJobWithVersion(ctx context.Context, j *job.Job, expectedVersion int) error {
 	if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 		return err
 	}
@@ -251,13 +363,26 @@ func (i *Job) updateJobStatus(ctx context.Context, j *job.Job, status job.Status
 		}
 	}()
 
-	j.SetStatus(status)
+	// Verify version hasn't changed during transaction
+	currentJob, err := i.jobRepo.FindByID(ctx, j.ID())
+	if err != nil {
+		return fmt.Errorf("failed to verify job version: %w", err)
+	}
+
+	if currentJob.Version() != expectedVersion {
+		return fmt.Errorf("version mismatch during update")
+	}
+
 	if err := i.jobRepo.Save(ctx, j); err != nil {
-		return err
+		return fmt.Errorf("failed to save job: %w", err)
 	}
 
 	tx.Commit()
+
 	i.subscriptions.Notify(j.ID().String(), j.Status())
+	log.Debugfc(ctx, "job: status updated to %s for job %s (version %d -> %d)",
+		j.Status(), j.ID(), expectedVersion, j.Version())
+
 	return nil
 }
 

@@ -91,3 +91,8 @@ func (b *JobBuilder) WorkerLogsURL(workerLogsURL string) *JobBuilder {
 	b.j.workerLogsURL = workerLogsURL
 	return b
 }
+
+func (b *JobBuilder) Version(version int) *JobBuilder {
+	b.j.version = version
+	return b
+}

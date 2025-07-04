@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/reearth/reearth-flow/api/pkg/job"
@@ -55,12 +56,34 @@ func (m *JobManager) Notify(jobID string, status job.Status) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	for _, ch := range m.subscribers[jobID] {
+	subscribers := m.subscribers[jobID]
+	droppedCount := 0
+
+	for _, ch := range subscribers {
 		select {
 		case ch <- status:
+			// Successfully sent
 		default:
-			// Log dropped message or implement retry logic
-			// For now, we'll still drop but with larger buffer this should be rare
+			// Channel is full, try to make room by removing oldest
+			select {
+			case <-ch:
+				// Removed oldest, now try to send again
+				select {
+				case ch <- status:
+					// Successfully sent after making room
+				default:
+					droppedCount++
+				}
+			default:
+				droppedCount++
+			}
 		}
+	}
+
+	if droppedCount > 0 {
+		// Log warning about dropped messages
+		// Note: We can't use log package here due to circular dependency
+		// This should be handled by the caller or consider using a callback
+		fmt.Printf("WARNING: Dropped %d status notifications for job %s\n", droppedCount, jobID)
 	}
 }

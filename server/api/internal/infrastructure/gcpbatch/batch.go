@@ -314,6 +314,8 @@ func convertGCPStatusToGatewayStatus(gcpStatus batchpb.JobStatus_State) gateway.
 		return gateway.JobStatusCompleted
 	case batchpb.JobStatus_FAILED:
 		return gateway.JobStatusFailed
+	case batchpb.JobStatus_DELETION_IN_PROGRESS:
+		return gateway.JobStatusCancelled
 	default:
 		return gateway.JobStatusUnknown
 	}
