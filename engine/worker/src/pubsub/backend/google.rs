@@ -23,7 +23,6 @@ impl CloudPubSubError {
     }
 }
 
-#[derive(Clone)]
 pub struct CloudPubSub {
     pub(crate) client: Client,
     pub(crate) publishers: Arc<parking_lot::RwLock<HashMap<Topic, Arc<Publisher>>>>,
@@ -49,24 +48,16 @@ impl crate::pubsub::publisher::Publisher for CloudPubSub {
             if let Some(publisher) = publishers.get(&topic) {
                 publisher.clone()
             } else {
-                let pubsub_topic = self.client.topic(topic.as_ref());
+                let pubsub_topic = self.client.topic(message.topic().to_string().as_str());
                 let publisher = Arc::new(pubsub_topic.new_publisher(None));
-                publishers.insert(topic.clone(), publisher.clone());
+                publishers.insert(topic, publisher.clone());
                 publisher
             }
         };
-        let validated_data = message.encode().map_err(CloudPubSubError::encode)?;
-
-        let message_id = validated_data.id.to_string();
-        let timestamp = validated_data.timestamp;
-        let data_bytes = validated_data.data;
-
+        let data = message.encode().map_err(CloudPubSubError::encode)?;
         let pubsub_msg = PubsubMessage {
-            message_id,
-            publish_time: Some(std::time::SystemTime::from(timestamp).into()),
-            data: data_bytes.to_vec(),
-            attributes: HashMap::new(),
-            ordering_key: String::new(),
+            data: data.data.into(),
+            ..Default::default()
         };
         let awaiter = publisher.publish(pubsub_msg).await;
         awaiter.get().await.map_err(CloudPubSubError::publish)?;
@@ -74,14 +65,19 @@ impl crate::pubsub::publisher::Publisher for CloudPubSub {
     }
 
     async fn shutdown(&self) {
-        tracing::debug!("CloudPubSub::shutdown called. Clearing publishers map.");
-        let mut guard = self.publishers.write();
-        if !guard.is_empty() {
-            tracing::info!("Clearing {} cached publishers.", guard.len());
-            guard.clear();
-        } else {
-            tracing::debug!("Publishers map already empty.");
+        let publishers = self.publishers.read().clone();
+        let mut handles = vec![];
+
+        for publisher in publishers.values() {
+            let publisher = Arc::clone(publisher);
+            handles.push(tokio::spawn(async move {
+                if let Ok(mut publisher) = Arc::try_unwrap(publisher) {
+                    publisher.shutdown().await;
+                }
+            }));
         }
-        tracing::info!("CloudPubSub shutdown logic finished (map cleared).");
+        for handle in handles {
+            let _ = handle.await;
+        }
     }
 }

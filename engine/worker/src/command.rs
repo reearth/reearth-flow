@@ -13,15 +13,13 @@ use crate::{
     asset::download_asset,
     event_handler::{EventHandler, NodeFailureHandler},
     factory::ALL_ACTION_FACTORIES,
-    logger::{enable_file_logging, set_pubsub_context},
+    logger::enable_file_logging,
     pubsub::{backend::PubSubBackend, publisher::Publisher},
     types::{
         job_complete_event::{JobCompleteEvent, JobResult},
         metadata::Metadata,
     },
 };
-
-use tokio::runtime::Handle;
 
 const WORKER_ASSET_GLOBAL_PARAMETER_VARIABLE: &str = "workerAssetPath";
 const WORKER_ARTIFACT_GLOBAL_PARAMETER_VARIABLE: &str = "workerArtifactPath";
@@ -147,25 +145,18 @@ impl RunWorkerCommand {
         let storage_resolver = Arc::new(resolve::StorageResolver::new());
         let (workflow, state, logger_factory, meta) = self.prepare(&storage_resolver).await?;
         enable_file_logging(meta.job_id)?;
-
         let pubsub = PubSubBackend::try_from(self.pubsub_backend.as_str())
             .await
             .map_err(crate::errors::Error::init)?;
 
-        let handle = Handle::current();
-
-        set_pubsub_context(pubsub.clone(), workflow.id, meta.job_id, handle)
-            .map_err(crate::errors::Error::init)?;
-
-        let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match &pubsub {
-            PubSubBackend::Google(p) => {
-                Arc::new(EventHandler::new(workflow.id, meta.job_id, p.clone()))
+        let handler: Arc<dyn reearth_flow_runtime::event::EventHandler> = match pubsub {
+            PubSubBackend::Google(pubsub) => {
+                Arc::new(EventHandler::new(workflow.id, meta.job_id, pubsub))
             }
-            PubSubBackend::Noop(p) => {
-                Arc::new(EventHandler::new(workflow.id, meta.job_id, p.clone()))
+            PubSubBackend::Noop(pubsub) => {
+                Arc::new(EventHandler::new(workflow.id, meta.job_id, pubsub))
             }
         };
-
         let workflow_id = workflow.id;
         let node_failure_handler = Arc::new(NodeFailureHandler::new());
         let result = AsyncRunner::run_with_event_handler(
@@ -190,8 +181,11 @@ impl RunWorkerCommand {
             Err(_) => JobResult::Failed,
         };
         self.cleanup(&meta, &storage_resolver).await?;
-        match &pubsub {
-            PubSubBackend::Google(p) => p
+        let pubsub = PubSubBackend::try_from(self.pubsub_backend.as_str())
+            .await
+            .map_err(crate::errors::Error::init)?;
+        match pubsub {
+            PubSubBackend::Google(pubsub) => pubsub
                 .publish(JobCompleteEvent::new(
                     workflow_id,
                     meta.job_id,
