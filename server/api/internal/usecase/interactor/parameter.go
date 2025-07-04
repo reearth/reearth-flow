@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"sort"
 
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -285,14 +286,10 @@ func (i *Parameter) RemoveParameters(ctx context.Context, pids id.ParameterIDLis
 		sortedParams := make([]*parameter.Parameter, len(*remainingParams))
 		copy(sortedParams, *remainingParams)
 
-		// Simple bubble sort by index (small datasets)
-		for i := 0; i < len(sortedParams)-1; i++ {
-			for j := 0; j < len(sortedParams)-i-1; j++ {
-				if sortedParams[j].Index() > sortedParams[j+1].Index() {
-					sortedParams[j], sortedParams[j+1] = sortedParams[j+1], sortedParams[j]
-				}
-			}
-		}
+		// Sort remaining parameters by current index using sort.Slice
+		sort.Slice(sortedParams, func(i, j int) bool {
+			return sortedParams[i].Index() < sortedParams[j].Index()
+		})
 
 		// Reassign sequential indexes starting from 0
 		for newIndex, param := range sortedParams {
