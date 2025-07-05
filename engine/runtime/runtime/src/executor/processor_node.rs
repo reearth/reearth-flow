@@ -1,6 +1,6 @@
 use std::env;
 use std::fmt::Debug;
-use std::sync::atomic::AtomicU32;
+use std::sync::atomic::{AtomicU32, AtomicU64};
 use std::sync::Arc;
 use std::time::{self, Duration};
 use std::{borrow::Cow, mem::swap};
@@ -50,6 +50,8 @@ static SLOW_ACTION_THRESHOLD: Lazy<Duration> = Lazy::new(|| {
 pub struct ProcessorNode<F> {
     /// Node handle in description DAG.
     node_handle: NodeHandle,
+    /// Node name from workflow definition.
+    node_name: String,
     /// Input node handles.
     node_handles: Vec<NodeHandle>,
     /// Input data channels.
@@ -67,6 +69,7 @@ pub struct ProcessorNode<F> {
     span: tracing::Span,
     thread_pool: rayon::ThreadPool,
     thread_counter: Arc<AtomicU32>,
+    features_processed: Arc<AtomicU64>,
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
@@ -86,6 +89,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             panic!("Must pass in a node")
         };
         let node_handle = node.handle.clone();
+        let node_name = node.name.clone();
         let NodeKind::Processor(processor) = kind else {
             panic!("Must pass in a processor node");
         };
@@ -117,6 +121,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let num_threads = processor.num_threads();
         Self {
             node_handle,
+            node_name,
             node_handles,
             receivers,
             processor: Arc::new(parking_lot::RwLock::new(processor)),
@@ -129,6 +134,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
                 .build()
                 .unwrap(),
             thread_counter: Arc::new(AtomicU32::new(0)),
+            features_processed: Arc::new(AtomicU64::new(0)),
             expr_engine,
             storage_resolver,
             kv_store,
@@ -185,7 +191,11 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         self.event_hub.info_log_with_node_handle(
             Some(span.clone()),
             self.node_handle.clone(),
-            format!("{:?} process start...", self.processor.read().name()),
+            format!(
+                "{} ({}) process start...",
+                self.processor.read().name(),
+                self.node_name
+            ),
         );
 
         let has_failed = Arc::new(std::sync::atomic::AtomicBool::new(false));
@@ -197,14 +207,31 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     .load(std::sync::atomic::Ordering::SeqCst)
                     == 0
                 {
+                    let features_count = self
+                        .features_processed
+                        .load(std::sync::atomic::Ordering::Relaxed);
+                    let is_failed = has_failed.load(std::sync::atomic::Ordering::SeqCst);
+
+                    let message = if features_count > 0 && !is_failed {
+                        format!(
+                            "{} ({}) process finish. elapsed = {:?}",
+                            self.processor.read().name(),
+                            self.node_name,
+                            now.elapsed()
+                        )
+                    } else {
+                        format!(
+                            "{} ({}) process terminate. elapsed = {:?}",
+                            self.processor.read().name(),
+                            self.node_name,
+                            now.elapsed()
+                        )
+                    };
+
                     self.event_hub.info_log_with_node_handle(
                         Some(span.clone()),
                         self.node_handle.clone(),
-                        format!(
-                            "{:?} process finish. elapsed = {:?}",
-                            self.processor.read().name(),
-                            now.elapsed()
-                        ),
+                        message,
                     );
 
                     let final_status = if has_failed.load(std::sync::atomic::Ordering::SeqCst) {
@@ -278,18 +305,22 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
 
         let span = self.span.clone();
         let node_handle = self.node_handle.clone();
+        let node_name = self.node_name.clone();
         let counter = Arc::clone(&self.thread_counter);
+        let features_processed = Arc::clone(&self.features_processed);
         let event_hub = self.event_hub.clone();
         counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         self.thread_pool.spawn(move || {
             process(
                 ctx,
                 node_handle,
+                node_name,
                 span,
                 event_hub,
                 channel_manager,
                 processor,
                 has_failed,
+                features_processed,
             );
             counter.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
         });
@@ -318,8 +349,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             Some(span),
             self.node_handle.clone(),
             format!(
-                "{:?} finish process complete. elapsed = {:?}",
+                "{} ({}) finish process complete. elapsed = {:?}",
                 processor.read().name(),
+                self.node_name,
                 now.elapsed()
             ),
         );
@@ -334,14 +366,17 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn process(
     ctx: ExecutorContext,
     node_handle: NodeHandle,
+    node_name: String,
     span: Span,
     event_hub: EventHub,
     channel_manager: Arc<parking_lot::RwLock<ProcessorChannelForwarder>>,
     processor: Arc<parking_lot::RwLock<Box<dyn Processor>>>,
     has_failed: Arc<std::sync::atomic::AtomicBool>,
+    features_processed: Arc<AtomicU64>,
 ) {
     let feature_id = ctx.feature.id;
     let channel_manager_guard = channel_manager.read();
@@ -374,8 +409,9 @@ fn process(
             Some(span.clone()),
             node_handle.clone(),
             format!(
-                "Error operation, processor node name = {:?}, node_id = {}, feature id = {:?}, error = {:?}",
+                "Error operation, processor node name = {} ({}), node_id = {}, feature id = {:?}, error = {:?}",
                 processor.name(),
+                node_name,
                 node_handle.id,
                 feature_id,
                 e,
@@ -384,7 +420,10 @@ fn process(
 
         event_hub.send(Event::ProcessorFailed {
             node: node_handle.clone(),
-            name: name.to_string(),
+            name: node_name.clone(),
         });
+    } else {
+        // Success - increment the counter
+        features_processed.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 }
