@@ -133,6 +133,30 @@ impl State {
     pub fn object_to_string<T: Serialize>(&self, obj: &T) -> Result<String> {
         serde_json::to_string(obj).map_err(Error::other)
     }
+
+    /// Get the root directory path of this State
+    /// This is useful when you need to work with file paths directly
+    pub fn root_path(&self) -> &Path {
+        &self.root
+    }
+
+    /// Put raw bytes to storage synchronously
+    /// This bypasses JSON serialization and allows saving arbitrary file content
+    pub fn put_raw_sync(&self, id: &str, ext: &str, bytes: bytes::Bytes) -> Result<()> {
+        let p = self.id_to_location(id, ext);
+        self.storage
+            .put_sync(p.as_path(), bytes)
+            .map_err(Error::other)
+    }
+
+    /// Get raw bytes from storage synchronously
+    /// This bypasses JSON deserialization and allows reading arbitrary file content
+    pub fn get_raw_sync(&self, id: &str, ext: &str) -> Result<bytes::Bytes> {
+        let p = self.id_to_location(id, ext);
+        self.storage
+            .get_sync(p.as_path())
+            .map_err(Error::other)
+    }
 }
 
 #[cfg(test)]

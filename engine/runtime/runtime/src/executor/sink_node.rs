@@ -58,6 +58,7 @@ pub struct SinkNode<F> {
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
+    node_cache: Option<Arc<reearth_flow_state::State>>,
 }
 
 impl<F: Future + Unpin + Debug> SinkNode<F> {
@@ -100,6 +101,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             expr_engine: ctx.expr_engine.clone(),
             storage_resolver: ctx.storage_resolver.clone(),
             kv_store: ctx.kv_store.clone(),
+            node_cache: ctx.node_cache.clone(),
         }
     }
 
@@ -135,14 +137,17 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             feature_id: None,
         });
 
+        let init_ctx = NodeContext::new(
+            self.expr_engine.clone(),
+            self.storage_resolver.clone(),
+            self.kv_store.clone(),
+            self.event_hub.clone(),
+            self.node_cache.clone(),
+        );
+        
         let init_result = self
             .sink
-            .initialize(NodeContext {
-                expr_engine: self.expr_engine.clone(),
-                kv_store: self.kv_store.clone(),
-                storage_resolver: self.storage_resolver.clone(),
-                event_hub: self.event_hub.clone(),
-            })
+            .initialize(init_ctx)
             .map_err(ExecutionError::Sink);
 
         if init_result.is_err() {
@@ -191,7 +196,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                     // Propagate the result
                     result?;
                 }
-                ExecutorOperation::Terminate { ctx } => {
+                ExecutorOperation::Terminate { ctx: _ } => {
                     is_terminated[index] = true;
                     sel.remove(index);
                     if is_terminated.iter().all(|value| *value) {
@@ -220,7 +225,15 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
 
                         std::thread::sleep(*NODE_STATUS_PROPAGATION_DELAY);
 
-                        let terminate_result = self.on_terminate(ctx);
+                        let terminate_ctx = NodeContext::new(
+                            self.expr_engine.clone(),
+                            self.storage_resolver.clone(),
+                            self.kv_store.clone(),
+                            self.event_hub.clone(),
+                            self.node_cache.clone(),
+                        );
+                        
+                        let terminate_result = self.on_terminate(terminate_ctx);
 
                         if terminate_result.is_err() && !has_failed {
                             tracing::error!("Sink node {} termination failed", self.node_handle.id);

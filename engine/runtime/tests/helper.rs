@@ -80,6 +80,7 @@ pub(crate) fn execute(test_id: &str, fixture_files: Vec<&str>) -> Result<TempDir
         )]))
         .unwrap();
     Runner::run(
+        "test".to_string(),
         uuid::Uuid::new_v4(),
         workflow,
         BUILTIN_ACTION_FACTORIES.clone(),

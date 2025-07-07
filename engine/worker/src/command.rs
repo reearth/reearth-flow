@@ -169,6 +169,7 @@ impl RunWorkerCommand {
         let workflow_id = workflow.id;
         let node_failure_handler = Arc::new(NodeFailureHandler::new());
         let result = AsyncRunner::run_with_event_handler(
+            "workers".to_string(),
             meta.job_id,
             workflow,
             ALL_ACTION_FACTORIES.clone(),

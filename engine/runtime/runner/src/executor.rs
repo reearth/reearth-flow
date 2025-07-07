@@ -48,6 +48,8 @@ impl Executor {
 
 #[allow(clippy::too_many_arguments)]
 pub fn run_dag_executor(
+    project_key: String,
+    job_id: uuid::Uuid,
     expr_engine: Arc<Engine>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
@@ -60,6 +62,8 @@ pub fn run_dag_executor(
     let shutdown_future = shutdown.create_shutdown_future();
 
     let mut join_handle = runtime.block_on(dag_executor.start(
+        project_key,
+        job_id,
         SharedFuture::new(Box::pin(shutdown_future)),
         runtime.clone(),
         expr_engine,

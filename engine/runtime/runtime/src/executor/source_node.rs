@@ -3,6 +3,7 @@ use std::{
     fmt::Debug,
     future::Future,
     pin::pin,
+    str::FromStr,
     sync::Arc,
     time::{self, Duration},
 };
@@ -29,6 +30,51 @@ use crate::{
     kvs::KvStore,
     node::{IngestionMessage, NodeStatus, Port, Source, SourceState},
 };
+
+/// Helper function to create a node cache for a specific node
+fn create_node_cache(
+    storage_resolver: &Arc<StorageResolver>,
+    project_key: &str,
+    job_id: uuid::Uuid,
+    node_id: &str,
+) -> Result<Arc<reearth_flow_state::State>, std::io::Error> {
+    // Create the cache directory path: projects/<project_key>/jobs/<job_id>/node-cache/<node_id>/
+    let cache_dir = reearth_flow_common::dir::get_job_root_dir_path(project_key, job_id)
+        .map_err(|e| {
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to get job root directory: {}", e),
+            )
+        })?
+        .join("node-cache")
+        .join(node_id);
+    
+    // Don't create the directory here - it will be created lazily when needed
+    
+    // Create the cache State using the directory
+    let cache_uri =
+        reearth_flow_common::uri::Uri::from_str(cache_dir.to_str().ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Invalid cache directory path",
+            )
+        })?)
+        .map_err(|e| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("Failed to create URI from cache directory: {}", e),
+            )
+        })?;
+    
+    let cache_state = reearth_flow_state::State::new(&cache_uri, storage_resolver).map_err(|e| {
+        std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!("Failed to create cache State: {}", e),
+        )
+    })?;
+    
+    Ok(Arc::new(cache_state))
+}
 
 use super::execution_dag::ExecutionDag;
 use super::node::Node;
@@ -89,6 +135,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                 Arc::clone(&self.storage_resolver),
                 Arc::clone(&self.kv_store),
                 self.event_hub.clone(),
+                None,
             );
             let span = self.span.clone();
             let event_hub = self.event_hub.clone();
@@ -144,6 +191,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                         Arc::clone(&self.storage_resolver),
                         Arc::clone(&self.kv_store),
                         self.event_hub.clone(),
+                        None,
                     );
 
                     for source in &self.sources {
@@ -179,6 +227,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                         Arc::clone(&self.storage_resolver),
                                         Arc::clone(&self.kv_store),
                                         self.event_hub.clone(),
+                                        None,
                                     );
 
                                     for source in &self.sources {
@@ -286,7 +335,11 @@ fn send_to_all_nodes(
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_source_node<F>(
-    ctx: NodeContext,
+    project_key: String,
+    job_id: uuid::Uuid,
+    expr_engine: Arc<Engine>,
+    storage_resolver: Arc<StorageResolver>,
+    kv_store: Arc<dyn KvStore>,
     dag: &mut ExecutionDag,
     options: &ExecutorOptions,
     shutdown: F,
@@ -314,7 +367,7 @@ pub async fn create_source_node<F>(
         let senders = dag.collect_senders(node_index);
         let record_writers = dag.collect_record_writers(node_index).await;
         let channel_manager = ChannelManager::new(
-            node_handle,
+            node_handle.clone(),
             record_writers,
             senders,
             runtime.clone(),
@@ -326,7 +379,21 @@ pub async fn create_source_node<F>(
         });
 
         let (sender, receiver) = channel(options.channel_buffer_sz);
-        let ctx = ctx.clone();
+        let node_cache = create_node_cache(
+            &storage_resolver,
+            &project_key,
+            job_id,
+            node_handle.id.as_ref(),
+        )
+        .expect("Failed to create node cache for source");
+        
+        let ctx = NodeContext::new(
+            expr_engine.clone(),
+            storage_resolver.clone(),
+            kv_store.clone(),
+            dag.event_hub().clone(),
+            Some(node_cache),
+        );
         source.initialize(ctx).await;
         source_runners.push(SourceRunner { source, sender });
         receivers.push(receiver);
@@ -347,9 +414,9 @@ pub async fn create_source_node<F>(
         receivers,
         shutdown,
         runtime,
-        expr_engine: Arc::clone(&ctx.expr_engine),
-        storage_resolver: Arc::clone(&ctx.storage_resolver),
-        kv_store: Arc::clone(&ctx.kv_store),
+        expr_engine,
+        storage_resolver,
+        kv_store,
         span,
         event_hub: dag.event_hub().clone(),
     }

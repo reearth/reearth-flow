@@ -27,6 +27,7 @@ pub struct Runner;
 
 impl Runner {
     pub fn run(
+        project_key: String,
         job_id: uuid::Uuid,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
@@ -35,6 +36,7 @@ impl Runner {
         state: Arc<State>,
     ) -> Result<(), crate::errors::Error> {
         Self::run_with_event_handler(
+            project_key,
             job_id,
             workflow,
             factories,
@@ -45,7 +47,9 @@ impl Runner {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn run_with_event_handler(
+        project_key: String,
         job_id: uuid::Uuid,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
@@ -89,6 +93,8 @@ impl Runner {
         let result = runtime.block_on(async move {
             orchestrator
                 .run_all(
+                    project_key,
+                    job_id,
                     workflow,
                     factories,
                     shutdown_receiver,
@@ -111,6 +117,7 @@ pub struct AsyncRunner;
 
 impl AsyncRunner {
     pub async fn run(
+        project_key: String,
         job_id: uuid::Uuid,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
@@ -119,6 +126,7 @@ impl AsyncRunner {
         state: Arc<State>,
     ) -> Result<(), crate::errors::Error> {
         Self::run_with_event_handler(
+            project_key,
             job_id,
             workflow,
             factories,
@@ -130,7 +138,9 @@ impl AsyncRunner {
         .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn run_with_event_handler(
+        project_key: String,
         job_id: uuid::Uuid,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
@@ -163,6 +173,8 @@ impl AsyncRunner {
         handlers.extend(event_handlers);
         let result = orchestrator
             .run_all(
+                project_key,
+                job_id,
                 workflow,
                 factories,
                 shutdown_receiver,

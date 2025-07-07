@@ -102,6 +102,8 @@ pub enum ExecutionError {
     SerializeRecordWriter(#[source] SerializationError),
     #[error("InValid Sink: {0}")]
     InvalidSink(String),
+    #[error("IO error: {0}")]
+    Io(String),
 }
 
 impl<T> From<crossbeam::channel::SendError<T>> for ExecutionError {

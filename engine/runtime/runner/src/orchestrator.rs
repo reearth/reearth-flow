@@ -61,6 +61,8 @@ impl Orchestrator {
     #[allow(clippy::too_many_arguments)]
     pub async fn run_apps(
         &self,
+        project_key: String,
+        job_id: uuid::Uuid,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
         shutdown: ShutdownReceiver,
@@ -95,6 +97,8 @@ impl Orchestrator {
         let shutdown_clone = shutdown.clone();
         let pipeline_future = self.runtime.spawn_blocking(move || {
             run_dag_executor(
+                project_key,
+                job_id,
                 expr_engine.clone(),
                 storage_resolver,
                 kv_store.clone(),
@@ -118,6 +122,8 @@ impl Orchestrator {
     #[allow(clippy::too_many_arguments)]
     pub async fn run_all(
         &self,
+        project_key: String,
+        job_id: uuid::Uuid,
         workflow: Workflow,
         factories: HashMap<String, NodeKind>,
         shutdown: ShutdownReceiver,
@@ -127,6 +133,8 @@ impl Orchestrator {
     ) -> Result<(), Error> {
         let pipeline_shutdown = shutdown.clone();
         self.run_apps(
+            project_key,
+            job_id,
             workflow,
             factories,
             pipeline_shutdown,
