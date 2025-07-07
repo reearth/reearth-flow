@@ -1,5 +1,5 @@
 import { ChalkboardTeacherIcon, HardDriveIcon } from "@phosphor-icons/react";
-import { memo, useState, useCallback } from "react";
+import { memo } from "react";
 import { Doc } from "yjs";
 
 import { IconButton } from "@flow/components";
@@ -66,16 +66,7 @@ const TopBar: React.FC<Props> = ({
     handleDialogOpen,
     handleDialogClose,
   } = useHooks();
-  const [showProjectVarsDialog, setShowProjectVarsDialog] = useState(false);
   const [currentProject] = useCurrentProject();
-
-  const handleShowProjectVarsDialog = useCallback(() => {
-    setShowProjectVarsDialog(true);
-  }, []);
-
-  const handleCloseProjectVarsDialog = useCallback(() => {
-    setShowProjectVarsDialog(false);
-  }, []);
 
   return (
     <div className="flex w-[100vw] shrink-0 justify-between gap-2 bg-secondary">
@@ -94,7 +85,7 @@ const TopBar: React.FC<Props> = ({
             variant="outline"
             tooltipText={t("Project Variables")}
             icon={<ChalkboardTeacherIcon weight="thin" size={18} />}
-            onClick={handleShowProjectVarsDialog}
+            onClick={() => handleDialogOpen("projectVariables")}
           />
           <IconButton
             className="h-[30px]"
@@ -135,18 +126,19 @@ const TopBar: React.FC<Props> = ({
       {showDialog === "assets" && (
         <AssetsDialog onDialogClose={handleDialogClose} />
       )}
-
-      <ProjectVariableDialog
-        isOpen={showProjectVarsDialog}
-        currentProjectVariables={currentProjectVariables}
-        onClose={handleCloseProjectVarsDialog}
-        onAdd={handleProjectVariableAdd}
-        onChange={handleProjectVariableChange}
-        onDelete={handleProjectVariableDelete}
-        onDeleteBatch={handleProjectVariablesBatchDelete}
-        onBatchUpdate={handleProjectVariablesBatchUpdate}
-        projectId={currentProject?.id}
-      />
+      {showDialog === "projectVariables" && (
+        <ProjectVariableDialog
+          isOpen={showDialog === "projectVariables"}
+          currentProjectVariables={currentProjectVariables}
+          projectId={currentProject?.id}
+          onClose={handleDialogClose}
+          onAdd={handleProjectVariableAdd}
+          onChange={handleProjectVariableChange}
+          onDelete={handleProjectVariableDelete}
+          onDeleteBatch={handleProjectVariablesBatchDelete}
+          onBatchUpdate={handleProjectVariablesBatchUpdate}
+        />
+      )}
     </div>
   );
 };
