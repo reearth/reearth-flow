@@ -81,28 +81,6 @@ input ParameterUpdateItem {
   defaultValue: Any
   config: JSON
 }
-
-input RemoveParametersInput {
-  paramIds: [ID!]!
-}
-
-input ParameterBatchInput {
-  projectId: ID!
-  creates: [DeclareParameterInput!]
-  updates: [ParameterUpdateItem!]
-  deletes: [ID!]
-  reorders: [UpdateParameterOrderInput!]
-}
-
-input ParameterUpdateItem {
-  paramId: ID!
-  name: String
-  type: ParameterType
-  required: Boolean
-  public: Boolean
-  defaultValue: Any
-  config: JSON
-}
 # Query and Mutation
 
 extend type Query {
