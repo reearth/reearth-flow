@@ -223,6 +223,11 @@ func (b *BatchRepo) GetJobStatus(ctx context.Context, jobName string) (gateway.J
 
 	job, err := b.client.GetJob(ctx, req)
 	if err != nil {
+		if strings.Contains(err.Error(), "NotFound") || strings.Contains(err.Error(), "404") {
+			log.Debugfc(ctx, "Job not found (possibly deleted): %s", jobName)
+			return gateway.JobStatusCancelled, nil
+		}
+
 		if strings.Contains(err.Error(), "RESOURCE_PROJECT_INVALID") {
 			log.Debugfc(ctx, "Detected project invalid error, inspecting job name: %s", jobName)
 
@@ -239,11 +244,17 @@ func (b *BatchRepo) GetJobStatus(ctx context.Context, jobName string) (gateway.J
 			}
 
 			job, err = b.client.GetJob(ctx, retryReq)
-			if err == nil {
-				status := convertGCPStatusToGatewayStatus(job.Status.State)
-				return status, nil
+			if err != nil {
+				if strings.Contains(err.Error(), "NotFound") || strings.Contains(err.Error(), "404") {
+					log.Debugfc(ctx, "Job not found after retry (possibly deleted): %s", fixedName)
+					return gateway.JobStatusCancelled, nil
+				}
+				log.Debugfc(ctx, "Retry failed: %v", err)
+				return gateway.JobStatusUnknown, fmt.Errorf("failed to get job status: %v", err)
 			}
-			log.Debugfc(ctx, "Retry failed: %v", err)
+
+			status := convertGCPStatusToGatewayStatus(job.Status.State)
+			return status, nil
 		}
 
 		return gateway.JobStatusUnknown, fmt.Errorf("failed to get job status: %v", err)
@@ -314,6 +325,8 @@ func convertGCPStatusToGatewayStatus(gcpStatus batchpb.JobStatus_State) gateway.
 		return gateway.JobStatusCompleted
 	case batchpb.JobStatus_FAILED:
 		return gateway.JobStatusFailed
+	case batchpb.JobStatus_DELETION_IN_PROGRESS:
+		return gateway.JobStatusCancelled
 	default:
 		return gateway.JobStatusUnknown
 	}
