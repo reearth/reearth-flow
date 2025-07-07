@@ -2915,21 +2915,21 @@ extend type Query {
 }
 
 enum ParameterType {
-  CHOICE
-  COLOR
-  DATETIME
-  FILE_FOLDER
-  MESSAGE
-  NUMBER
-  PASSWORD
   TEXT
+  NUMBER
+  CHOICE
+  FILE_FOLDER
   YES_NO
-  ATTRIBUTE_NAME
-  COORDINATE_SYSTEM
-  DATABASE_CONNECTION
-  GEOMETRY
-  REPROJECTION_FILE
-  WEB_CONNECTION
+  DATETIME
+  COLOR
+  # MESSAGE
+  # PASSWORD
+  # ATTRIBUTE_NAME
+  # COORDINATE_SYSTEM
+  # DATABASE_CONNECTION
+  # GEOMETRY
+  # REPROJECTION_FILE
+  # WEB_CONNECTION
 }
 
 # InputType
@@ -2983,7 +2983,6 @@ input ParameterUpdateItem {
   defaultValue: Any
   config: JSON
 }
-
 # Query and Mutation
 
 extend type Query {

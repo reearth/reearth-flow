@@ -7,6 +7,7 @@ import (
 
 	"github.com/gavv/httpexpect/v2"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -431,6 +432,9 @@ func TestRemoveParameter(t *testing.T) {
 	// Create a parameter to remove
 	paramID := createTestParameter(t, e, projectID, "param_to_remove", "TEXT", true, true, "remove me")
 
+	// Generate a valid but non-existent Parameter ID
+	nonExistentParamID := id.NewParameterID().String()
+
 	testCases := []struct {
 		name         string
 		paramID      string
@@ -446,7 +450,7 @@ func TestRemoveParameter(t *testing.T) {
 		},
 		{
 			name:         "remove non-existent parameter",
-			paramID:      "non-existent-id",
+			paramID:      nonExistentParamID,
 			expectedCode: http.StatusOK,
 			expectError:  true,
 			errorMessage: "not found",

@@ -881,44 +881,28 @@ func (e OrderDirection) MarshalGQL(w io.Writer) {
 type ParameterType string
 
 const (
-	ParameterTypeChoice             ParameterType = "CHOICE"
-	ParameterTypeColor              ParameterType = "COLOR"
-	ParameterTypeDatetime           ParameterType = "DATETIME"
-	ParameterTypeFileFolder         ParameterType = "FILE_FOLDER"
-	ParameterTypeMessage            ParameterType = "MESSAGE"
-	ParameterTypeNumber             ParameterType = "NUMBER"
-	ParameterTypePassword           ParameterType = "PASSWORD"
-	ParameterTypeText               ParameterType = "TEXT"
-	ParameterTypeYesNo              ParameterType = "YES_NO"
-	ParameterTypeAttributeName      ParameterType = "ATTRIBUTE_NAME"
-	ParameterTypeCoordinateSystem   ParameterType = "COORDINATE_SYSTEM"
-	ParameterTypeDatabaseConnection ParameterType = "DATABASE_CONNECTION"
-	ParameterTypeGeometry           ParameterType = "GEOMETRY"
-	ParameterTypeReprojectionFile   ParameterType = "REPROJECTION_FILE"
-	ParameterTypeWebConnection      ParameterType = "WEB_CONNECTION"
+	ParameterTypeText       ParameterType = "TEXT"
+	ParameterTypeNumber     ParameterType = "NUMBER"
+	ParameterTypeChoice     ParameterType = "CHOICE"
+	ParameterTypeFileFolder ParameterType = "FILE_FOLDER"
+	ParameterTypeYesNo      ParameterType = "YES_NO"
+	ParameterTypeDatetime   ParameterType = "DATETIME"
+	ParameterTypeColor      ParameterType = "COLOR"
 )
 
 var AllParameterType = []ParameterType{
-	ParameterTypeChoice,
-	ParameterTypeColor,
-	ParameterTypeDatetime,
-	ParameterTypeFileFolder,
-	ParameterTypeMessage,
-	ParameterTypeNumber,
-	ParameterTypePassword,
 	ParameterTypeText,
+	ParameterTypeNumber,
+	ParameterTypeChoice,
+	ParameterTypeFileFolder,
 	ParameterTypeYesNo,
-	ParameterTypeAttributeName,
-	ParameterTypeCoordinateSystem,
-	ParameterTypeDatabaseConnection,
-	ParameterTypeGeometry,
-	ParameterTypeReprojectionFile,
-	ParameterTypeWebConnection,
+	ParameterTypeDatetime,
+	ParameterTypeColor,
 }
 
 func (e ParameterType) IsValid() bool {
 	switch e {
-	case ParameterTypeChoice, ParameterTypeColor, ParameterTypeDatetime, ParameterTypeFileFolder, ParameterTypeMessage, ParameterTypeNumber, ParameterTypePassword, ParameterTypeText, ParameterTypeYesNo, ParameterTypeAttributeName, ParameterTypeCoordinateSystem, ParameterTypeDatabaseConnection, ParameterTypeGeometry, ParameterTypeReprojectionFile, ParameterTypeWebConnection:
+	case ParameterTypeText, ParameterTypeNumber, ParameterTypeChoice, ParameterTypeFileFolder, ParameterTypeYesNo, ParameterTypeDatetime, ParameterTypeColor:
 		return true
 	}
 	return false

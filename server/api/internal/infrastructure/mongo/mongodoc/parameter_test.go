@@ -132,7 +132,7 @@ func TestParameterDocument_Config(t *testing.T) {
 
 	// Test with config data
 	configData := map[string]interface{}{
-		"choices": []string{"option1", "option2", "option3"},
+		"choices":     []string{"option1", "option2", "option3"},
 		"multiSelect": true,
 		"placeholder": "Select an option",
 	}
