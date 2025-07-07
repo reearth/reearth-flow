@@ -126,18 +126,22 @@ func convertToJSON(val interface{}) JSON {
 		}
 		return JSON(result)
 	}
+
 	// If it's already a map[string]any, use it directly
 	if m, ok := val.(map[string]any); ok {
 		return JSON(m)
 	}
+
 	// Check for map[string]interface{} (common MongoDB type)
 	if m, ok := val.(map[string]interface{}); ok {
 		return JSON(m)
 	}
+
 	// For other types, use UnmarshalJSON to convert consistently
 	json, err := UnmarshalJSON(val)
 	if err != nil {
 		return nil
 	}
+
 	return json
 }

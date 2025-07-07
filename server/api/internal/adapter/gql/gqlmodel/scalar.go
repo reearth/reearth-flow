@@ -75,4 +75,3 @@ func UnmarshalMap(v interface{}) (map[string]string, error) {
 	}
 	return nil, fmt.Errorf("%T is not a map", v)
 }
-
