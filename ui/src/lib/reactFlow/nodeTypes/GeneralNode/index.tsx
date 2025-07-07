@@ -56,6 +56,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
             {data.customizations?.customName || officialName}
           </p>
         </div>
+        {/* <CaretRight weight="fill" /> */}
       </div>
       <Handles nodeType={type} inputs={inputs} outputs={outputs} />
     </div>

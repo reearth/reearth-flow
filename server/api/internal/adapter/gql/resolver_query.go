@@ -142,3 +142,7 @@ func (r *queryResolver) SearchUser(ctx context.Context, nameOrEmail string) (*gq
 func (r *queryResolver) Triggers(ctx context.Context, workspaceID gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error) {
 	return loaders(ctx).Trigger.FindByWorkspacePage(ctx, workspaceID, pagination)
 }
+
+func (r *queryResolver) Parameters(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.Parameter, error) {
+	return loaders(ctx).Parameter.FindByProject(ctx, projectID)
+}
