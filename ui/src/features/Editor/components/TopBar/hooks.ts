@@ -6,6 +6,7 @@ export type DialogOptions =
   | "version"
   | "assets"
   | "debugStop"
+  | "projectVariables"
   | undefined;
 export default () => {
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);

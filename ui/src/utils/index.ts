@@ -7,3 +7,4 @@ export * from "./lastOfUrl";
 export * from "./openLinkInNewTab";
 export * from "./timestamp";
 export * from "./fileSize";
+export * from "./getDefaultValueForProjectVar";

@@ -77,7 +77,7 @@ const ActionBar: React.FC<Props> = ({
             onOpenChange={(open) => {
               if (!open) onDialogClose();
             }}>
-            <PopoverTrigger>
+            <PopoverTrigger asChild>
               <IconButton
                 tooltipText={t("Share Project")}
                 tooltipOffset={tooltipOffset}

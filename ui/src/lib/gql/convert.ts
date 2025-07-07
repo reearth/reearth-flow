@@ -1,17 +1,19 @@
-import type {
-  AssetFragment,
-  DeploymentFragment,
-  ProjectFragment,
-  WorkspaceFragment,
+import {
+  type DeploymentFragment,
+  type ProjectFragment,
+  type JobFragment,
+  type JobStatus as GraphqlJobStatus,
+  type NodeStatus as GraphqlNodeStatus,
+  type TriggerFragment,
+  type LogFragment,
+  type ProjectDocumentFragment,
+  type NodeExecutionFragment,
+  type ProjectSnapshotMetadataFragment,
+  type ParameterFragment,
+  type AssetFragment,
+  type WorkspaceFragment,
+  ParameterType,
   ProjectSnapshotFragment,
-  JobFragment,
-  JobStatus as GraphqlJobStatus,
-  NodeStatus as GraphqlNodeStatus,
-  TriggerFragment,
-  LogFragment,
-  ProjectDocumentFragment,
-  NodeExecutionFragment,
-  ProjectSnapshotMetadataFragment,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import type {
   Log,
@@ -24,10 +26,12 @@ import type {
   NodeExecution,
   NodeStatus,
   ProjectSnapshotMeta,
-  ProjectSnapshot,
+  VarType,
+  AnyProjectVariable,
   Workspace,
   Member,
   Asset,
+  ProjectSnapshot,
 } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
 
@@ -181,6 +185,98 @@ export const toNodeStatus = (
       return "completed";
     case "FAILED":
       return "failed";
+    default:
+      return undefined;
+  }
+};
+
+export const toProjectVariable = (
+  parameter: ParameterFragment,
+): AnyProjectVariable => ({
+  id: parameter.id,
+  name: parameter.name,
+  type: toUserParamVarType(parameter.type),
+  defaultValue: parameter.defaultValue,
+  required: parameter.required,
+  public: parameter.public,
+  config: parameter.config,
+  createdAt: parameter.createdAt,
+  updatedAt: parameter.updatedAt,
+  projectId: parameter.projectId,
+  // description: parameter.description,
+});
+
+export const toUserParamVarType = (type: ParameterType): VarType => {
+  switch (type) {
+    case "CHOICE":
+      return "choice";
+    case "COLOR":
+      return "color";
+    case "NUMBER":
+      return "number";
+    case "TEXT":
+      return "text";
+    case "YES_NO":
+      return "yes_no";
+    case "DATETIME":
+      return "datetime";
+    case "FILE_FOLDER":
+      return "file_folder";
+    // case "GEOMETRY":
+    //   return "geometry";
+    // case "MESSAGE":
+    //   return "message";
+    // case "ATTRIBUTE_NAME":
+    //   return "attribute_name";
+    // case "COORDINATE_SYSTEM":
+    //   return "coordinate_system";
+    // case "DATABASE_CONNECTION":
+    //   return "database_connection";
+    // case "PASSWORD":
+    //   return "password";
+    // case "REPROJECTION_FILE":
+    //   return "reprojection_file";
+    // case "WEB_CONNECTION":
+    //   return "web_connection";
+    default:
+      return "unsupported";
+  }
+};
+
+export const toGqlParameterType = (
+  type: VarType,
+): ParameterType | undefined => {
+  switch (type) {
+    case "choice":
+      return ParameterType.Choice;
+    case "color":
+      return ParameterType.Color;
+    case "datetime":
+      return ParameterType.Datetime;
+    case "file_folder":
+      return ParameterType.FileFolder;
+    case "number":
+      return ParameterType.Number;
+    case "text":
+      return ParameterType.Text;
+    case "yes_no":
+      return ParameterType.YesNo;
+    // case "coordinate_system":
+    //   return ParameterType.CoordinateSystem;
+    // case "attribute_name":
+    //   return ParameterType.AttributeName;
+    // case "database_connection":
+    //   return ParameterType.DatabaseConnection;
+    // case "geometry":
+    //   return ParameterType.Geometry;
+    // case "message":
+    //   return ParameterType.Message;
+    // case "password":
+    //   return ParameterType.Password;
+    // case "reprojection_file":
+    //   return ParameterType.ReprojectionFile;
+    // case "web_connection":
+    //   return ParameterType.WebConnection;
     default:
       return undefined;
   }

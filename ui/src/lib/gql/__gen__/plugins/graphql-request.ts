@@ -115,11 +115,13 @@ export type CreateWorkspacePayload = {
 };
 
 export type DeclareParameterInput = {
+  config?: InputMaybe<Scalars['JSON']['input']>;
+  defaultValue?: InputMaybe<Scalars['Any']['input']>;
   index?: InputMaybe<Scalars['Int']['input']>;
   name: Scalars['String']['input'];
+  public: Scalars['Boolean']['input'];
   required: Scalars['Boolean']['input'];
   type: ParameterType;
-  value?: InputMaybe<Scalars['Any']['input']>;
 };
 
 export type DeleteDeploymentInput = {
@@ -298,6 +300,7 @@ export type Mutation = {
   removeMemberFromWorkspace?: Maybe<RemoveMemberFromWorkspacePayload>;
   removeMyAuth?: Maybe<UpdateMePayload>;
   removeParameter: Scalars['Boolean']['output'];
+  removeParameters: Scalars['Boolean']['output'];
   rollbackProject?: Maybe<ProjectDocument>;
   runProject?: Maybe<RunProjectPayload>;
   saveSnapshot: Scalars['Boolean']['output'];
@@ -307,8 +310,9 @@ export type Mutation = {
   updateDeployment?: Maybe<DeploymentPayload>;
   updateMe?: Maybe<UpdateMePayload>;
   updateMemberOfWorkspace?: Maybe<UpdateMemberOfWorkspacePayload>;
+  updateParameter: Parameter;
   updateParameterOrder: Array<Parameter>;
-  updateParameterValue: Parameter;
+  updateParameters: Array<Parameter>;
   updateProject?: Maybe<ProjectPayload>;
   updateTrigger: Trigger;
   updateWorkspace?: Maybe<UpdateWorkspacePayload>;
@@ -413,6 +417,11 @@ export type MutationRemoveParameterArgs = {
 };
 
 
+export type MutationRemoveParametersArgs = {
+  input: RemoveParametersInput;
+};
+
+
 export type MutationRollbackProjectArgs = {
   projectId: Scalars['ID']['input'];
   version: Scalars['Int']['input'];
@@ -459,15 +468,20 @@ export type MutationUpdateMemberOfWorkspaceArgs = {
 };
 
 
+export type MutationUpdateParameterArgs = {
+  input: UpdateParameterInput;
+  paramId: Scalars['ID']['input'];
+};
+
+
 export type MutationUpdateParameterOrderArgs = {
   input: UpdateParameterOrderInput;
   projectId: Scalars['ID']['input'];
 };
 
 
-export type MutationUpdateParameterValueArgs = {
-  input: UpdateParameterValueInput;
-  paramId: Scalars['ID']['input'];
+export type MutationUpdateParametersArgs = {
+  input: ParameterBatchInput;
 };
 
 
@@ -543,34 +557,46 @@ export type Pagination = {
 
 export type Parameter = {
   __typename?: 'Parameter';
+  config?: Maybe<Scalars['JSON']['output']>;
   createdAt: Scalars['DateTime']['output'];
+  defaultValue: Scalars['Any']['output'];
   id: Scalars['ID']['output'];
   index: Scalars['Int']['output'];
   name: Scalars['String']['output'];
   projectId: Scalars['ID']['output'];
+  public: Scalars['Boolean']['output'];
   required: Scalars['Boolean']['output'];
   type: ParameterType;
   updatedAt: Scalars['DateTime']['output'];
-  value: Scalars['Any']['output'];
+};
+
+export type ParameterBatchInput = {
+  creates?: InputMaybe<Array<DeclareParameterInput>>;
+  deletes?: InputMaybe<Array<Scalars['ID']['input']>>;
+  projectId: Scalars['ID']['input'];
+  reorders?: InputMaybe<Array<UpdateParameterOrderInput>>;
+  updates?: InputMaybe<Array<ParameterUpdateItem>>;
 };
 
 export enum ParameterType {
-  AttributeName = 'ATTRIBUTE_NAME',
   Choice = 'CHOICE',
   Color = 'COLOR',
-  CoordinateSystem = 'COORDINATE_SYSTEM',
-  DatabaseConnection = 'DATABASE_CONNECTION',
   Datetime = 'DATETIME',
   FileFolder = 'FILE_FOLDER',
-  Geometry = 'GEOMETRY',
-  Message = 'MESSAGE',
   Number = 'NUMBER',
-  Password = 'PASSWORD',
-  ReprojectionFile = 'REPROJECTION_FILE',
   Text = 'TEXT',
-  WebConnection = 'WEB_CONNECTION',
   YesNo = 'YES_NO'
 }
+
+export type ParameterUpdateItem = {
+  config?: InputMaybe<Scalars['JSON']['input']>;
+  defaultValue?: InputMaybe<Scalars['Any']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  paramId: Scalars['ID']['input'];
+  public?: InputMaybe<Scalars['Boolean']['input']>;
+  required?: InputMaybe<Scalars['Boolean']['input']>;
+  type?: InputMaybe<ParameterType>;
+};
 
 export type PreviewSnapshot = {
   __typename?: 'PreviewSnapshot';
@@ -653,6 +679,7 @@ export type Query = {
   node?: Maybe<Node>;
   nodeExecution?: Maybe<NodeExecution>;
   nodes: Array<Maybe<Node>>;
+  parameters: Array<Parameter>;
   projectHistory: Array<ProjectSnapshotMetadata>;
   projectSharingInfo: ProjectSharingInfoPayload;
   projectSnapshot: ProjectSnapshot;
@@ -727,6 +754,11 @@ export type QueryNodesArgs = {
 };
 
 
+export type QueryParametersArgs = {
+  projectId: Scalars['ID']['input'];
+};
+
+
 export type QueryProjectHistoryArgs = {
   projectId: Scalars['ID']['input'];
 };
@@ -790,6 +822,10 @@ export type RemoveMyAuthInput = {
 
 export type RemoveParameterInput = {
   paramId: Scalars['ID']['input'];
+};
+
+export type RemoveParametersInput = {
+  paramIds: Array<Scalars['ID']['input']>;
 };
 
 export enum Role {
@@ -934,13 +970,18 @@ export type UpdateMemberOfWorkspacePayload = {
   workspace: Workspace;
 };
 
+export type UpdateParameterInput = {
+  config?: InputMaybe<Scalars['JSON']['input']>;
+  defaultValue: Scalars['Any']['input'];
+  name: Scalars['String']['input'];
+  public: Scalars['Boolean']['input'];
+  required: Scalars['Boolean']['input'];
+  type: ParameterType;
+};
+
 export type UpdateParameterOrderInput = {
   newIndex: Scalars['Int']['input'];
   paramId: Scalars['ID']['input'];
-};
-
-export type UpdateParameterValueInput = {
-  value: Scalars['Any']['input'];
 };
 
 export type UpdateProjectInput = {
@@ -1122,6 +1163,8 @@ export type ProjectFragment = { __typename?: 'Project', id: string, name: string
 
 export type WorkspaceFragment = { __typename?: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ __typename?: 'WorkspaceMember', userId: string, role: Role, user?: { __typename?: 'User', id: string, email: string, name: string } | null }> };
 
+export type ParameterFragment = { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any };
+
 export type DeploymentFragment = { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null };
 
 export type TriggerFragment = { __typename?: 'Trigger', id: string, createdAt: any, updatedAt: any, lastTriggered?: any | null, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authToken?: string | null, timeInterval?: TimeInterval | null, description: string, deployment: { __typename?: 'Deployment', id: string, projectId?: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project?: { __typename?: 'Project', name: string } | null } };
@@ -1212,6 +1255,50 @@ export type RunProjectMutationVariables = Exact<{
 
 
 export type RunProjectMutation = { __typename?: 'Mutation', runProject?: { __typename?: 'RunProjectPayload', job: { __typename?: 'Job', id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt?: any | null, logsURL?: string | null, outputURLs?: Array<string> | null, debug?: boolean | null, deployment?: { __typename?: 'Deployment', id: string, description: string } | null } } | null };
+
+export type GetProjectParametersQueryVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+}>;
+
+
+export type GetProjectParametersQuery = { __typename?: 'Query', parameters: Array<{ __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any }> };
+
+export type CreateProjectVariableMutationVariables = Exact<{
+  projectId: Scalars['ID']['input'];
+  input: DeclareParameterInput;
+}>;
+
+
+export type CreateProjectVariableMutation = { __typename?: 'Mutation', declareParameter: { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any } };
+
+export type UpdateProjectVariableMutationVariables = Exact<{
+  paramId: Scalars['ID']['input'];
+  input: UpdateParameterInput;
+}>;
+
+
+export type UpdateProjectVariableMutation = { __typename?: 'Mutation', updateParameter: { __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any } };
+
+export type UpdateProjectVariablesMutationVariables = Exact<{
+  input: ParameterBatchInput;
+}>;
+
+
+export type UpdateProjectVariablesMutation = { __typename?: 'Mutation', updateParameters: Array<{ __typename?: 'Parameter', id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config?: any | null, createdAt: any, updatedAt: any }> };
+
+export type DeleteProjectVariableMutationVariables = Exact<{
+  input: RemoveParameterInput;
+}>;
+
+
+export type DeleteProjectVariableMutation = { __typename?: 'Mutation', removeParameter: boolean };
+
+export type DeleteProjectVariablesMutationVariables = Exact<{
+  input: RemoveParametersInput;
+}>;
+
+
+export type DeleteProjectVariablesMutation = { __typename?: 'Mutation', removeParameters: boolean };
 
 export type GetSharedProjectQueryVariables = Exact<{
   token: Scalars['String']['input'];
@@ -1413,6 +1500,21 @@ export const WorkspaceFragmentDoc = gql`
       name
     }
   }
+}
+    `;
+export const ParameterFragmentDoc = gql`
+    fragment Parameter on Parameter {
+  id
+  projectId
+  index
+  name
+  defaultValue
+  type
+  required
+  public
+  config
+  createdAt
+  updatedAt
 }
     `;
 export const TriggerFragmentDoc = gql`
@@ -1734,6 +1836,44 @@ export const RunProjectDocument = gql`
   }
 }
     ${JobFragmentDoc}`;
+export const GetProjectParametersDocument = gql`
+    query GetProjectParameters($projectId: ID!) {
+  parameters(projectId: $projectId) {
+    ...Parameter
+  }
+}
+    ${ParameterFragmentDoc}`;
+export const CreateProjectVariableDocument = gql`
+    mutation CreateProjectVariable($projectId: ID!, $input: DeclareParameterInput!) {
+  declareParameter(projectId: $projectId, input: $input) {
+    ...Parameter
+  }
+}
+    ${ParameterFragmentDoc}`;
+export const UpdateProjectVariableDocument = gql`
+    mutation UpdateProjectVariable($paramId: ID!, $input: UpdateParameterInput!) {
+  updateParameter(paramId: $paramId, input: $input) {
+    ...Parameter
+  }
+}
+    ${ParameterFragmentDoc}`;
+export const UpdateProjectVariablesDocument = gql`
+    mutation UpdateProjectVariables($input: ParameterBatchInput!) {
+  updateParameters(input: $input) {
+    ...Parameter
+  }
+}
+    ${ParameterFragmentDoc}`;
+export const DeleteProjectVariableDocument = gql`
+    mutation DeleteProjectVariable($input: RemoveParameterInput!) {
+  removeParameter(input: $input)
+}
+    `;
+export const DeleteProjectVariablesDocument = gql`
+    mutation DeleteProjectVariables($input: RemoveParametersInput!) {
+  removeParameters(input: $input)
+}
+    `;
 export const GetSharedProjectDocument = gql`
     query GetSharedProject($token: String!) {
   sharedProject(token: $token) {
@@ -2019,6 +2159,24 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     RunProject(variables: RunProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RunProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<RunProjectMutation>({ document: RunProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RunProject', 'mutation', variables);
+    },
+    GetProjectParameters(variables: GetProjectParametersQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetProjectParametersQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectParametersQuery>({ document: GetProjectParametersDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetProjectParameters', 'query', variables);
+    },
+    CreateProjectVariable(variables: CreateProjectVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CreateProjectVariableMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CreateProjectVariableMutation>({ document: CreateProjectVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CreateProjectVariable', 'mutation', variables);
+    },
+    UpdateProjectVariable(variables: UpdateProjectVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateProjectVariableMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateProjectVariableMutation>({ document: UpdateProjectVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateProjectVariable', 'mutation', variables);
+    },
+    UpdateProjectVariables(variables: UpdateProjectVariablesMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateProjectVariablesMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<UpdateProjectVariablesMutation>({ document: UpdateProjectVariablesDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateProjectVariables', 'mutation', variables);
+    },
+    DeleteProjectVariable(variables: DeleteProjectVariableMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteProjectVariableMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteProjectVariableMutation>({ document: DeleteProjectVariableDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteProjectVariable', 'mutation', variables);
+    },
+    DeleteProjectVariables(variables: DeleteProjectVariablesMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<DeleteProjectVariablesMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<DeleteProjectVariablesMutation>({ document: DeleteProjectVariablesDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'DeleteProjectVariables', 'mutation', variables);
     },
     GetSharedProject(variables: GetSharedProjectQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetSharedProjectQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetSharedProjectQuery>({ document: GetSharedProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetSharedProject', 'query', variables);
