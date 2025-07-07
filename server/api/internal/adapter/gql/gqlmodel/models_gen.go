@@ -99,11 +99,13 @@ type CreateWorkspacePayload struct {
 }
 
 type DeclareParameterInput struct {
-	Name     string        `json:"name"`
-	Type     ParameterType `json:"type"`
-	Required bool          `json:"required"`
-	Value    interface{}   `json:"value,omitempty"`
-	Index    *int          `json:"index,omitempty"`
+	Name         string        `json:"name"`
+	Type         ParameterType `json:"type"`
+	Required     bool          `json:"required"`
+	Public       bool          `json:"public"`
+	DefaultValue interface{}   `json:"defaultValue,omitempty"`
+	Config       JSON          `json:"config,omitempty"`
+	Index        *int          `json:"index,omitempty"`
 }
 
 type DeleteDeploymentInput struct {
@@ -266,15 +268,35 @@ type Pagination struct {
 }
 
 type Parameter struct {
-	CreatedAt time.Time     `json:"createdAt"`
-	ID        ID            `json:"id"`
-	Index     int           `json:"index"`
-	Name      string        `json:"name"`
-	ProjectID ID            `json:"projectId"`
-	Required  bool          `json:"required"`
-	Type      ParameterType `json:"type"`
-	UpdatedAt time.Time     `json:"updatedAt"`
-	Value     interface{}   `json:"value"`
+	CreatedAt    time.Time     `json:"createdAt"`
+	ID           ID            `json:"id"`
+	Index        int           `json:"index"`
+	Name         string        `json:"name"`
+	ProjectID    ID            `json:"projectId"`
+	Required     bool          `json:"required"`
+	Public       bool          `json:"public"`
+	Type         ParameterType `json:"type"`
+	UpdatedAt    time.Time     `json:"updatedAt"`
+	DefaultValue interface{}   `json:"defaultValue"`
+	Config       JSON          `json:"config,omitempty"`
+}
+
+type ParameterBatchInput struct {
+	ProjectID ID                           `json:"projectId"`
+	Creates   []*DeclareParameterInput     `json:"creates,omitempty"`
+	Updates   []*ParameterUpdateItem       `json:"updates,omitempty"`
+	Deletes   []ID                         `json:"deletes,omitempty"`
+	Reorders  []*UpdateParameterOrderInput `json:"reorders,omitempty"`
+}
+
+type ParameterUpdateItem struct {
+	ParamID      ID             `json:"paramId"`
+	Name         *string        `json:"name,omitempty"`
+	Type         *ParameterType `json:"type,omitempty"`
+	Required     *bool          `json:"required,omitempty"`
+	Public       *bool          `json:"public,omitempty"`
+	DefaultValue interface{}    `json:"defaultValue,omitempty"`
+	Config       JSON           `json:"config,omitempty"`
 }
 
 type PreviewSnapshot struct {
@@ -368,6 +390,10 @@ type RemoveMyAuthInput struct {
 
 type RemoveParameterInput struct {
 	ParamID ID `json:"paramId"`
+}
+
+type RemoveParametersInput struct {
+	ParamIds []ID `json:"paramIds"`
 }
 
 type RunProjectInput struct {
@@ -472,13 +498,18 @@ type UpdateMemberOfWorkspacePayload struct {
 	Workspace *Workspace `json:"workspace"`
 }
 
+type UpdateParameterInput struct {
+	DefaultValue interface{}   `json:"defaultValue"`
+	Name         string        `json:"name"`
+	Required     bool          `json:"required"`
+	Public       bool          `json:"public"`
+	Type         ParameterType `json:"type"`
+	Config       JSON          `json:"config,omitempty"`
+}
+
 type UpdateParameterOrderInput struct {
 	ParamID  ID  `json:"paramId"`
 	NewIndex int `json:"newIndex"`
-}
-
-type UpdateParameterValueInput struct {
-	Value interface{} `json:"value"`
 }
 
 type UpdateProjectInput struct {
@@ -850,44 +881,28 @@ func (e OrderDirection) MarshalGQL(w io.Writer) {
 type ParameterType string
 
 const (
-	ParameterTypeChoice             ParameterType = "CHOICE"
-	ParameterTypeColor              ParameterType = "COLOR"
-	ParameterTypeDatetime           ParameterType = "DATETIME"
-	ParameterTypeFileFolder         ParameterType = "FILE_FOLDER"
-	ParameterTypeMessage            ParameterType = "MESSAGE"
-	ParameterTypeNumber             ParameterType = "NUMBER"
-	ParameterTypePassword           ParameterType = "PASSWORD"
-	ParameterTypeText               ParameterType = "TEXT"
-	ParameterTypeYesNo              ParameterType = "YES_NO"
-	ParameterTypeAttributeName      ParameterType = "ATTRIBUTE_NAME"
-	ParameterTypeCoordinateSystem   ParameterType = "COORDINATE_SYSTEM"
-	ParameterTypeDatabaseConnection ParameterType = "DATABASE_CONNECTION"
-	ParameterTypeGeometry           ParameterType = "GEOMETRY"
-	ParameterTypeReprojectionFile   ParameterType = "REPROJECTION_FILE"
-	ParameterTypeWebConnection      ParameterType = "WEB_CONNECTION"
+	ParameterTypeText       ParameterType = "TEXT"
+	ParameterTypeNumber     ParameterType = "NUMBER"
+	ParameterTypeChoice     ParameterType = "CHOICE"
+	ParameterTypeFileFolder ParameterType = "FILE_FOLDER"
+	ParameterTypeYesNo      ParameterType = "YES_NO"
+	ParameterTypeDatetime   ParameterType = "DATETIME"
+	ParameterTypeColor      ParameterType = "COLOR"
 )
 
 var AllParameterType = []ParameterType{
-	ParameterTypeChoice,
-	ParameterTypeColor,
-	ParameterTypeDatetime,
-	ParameterTypeFileFolder,
-	ParameterTypeMessage,
-	ParameterTypeNumber,
-	ParameterTypePassword,
 	ParameterTypeText,
+	ParameterTypeNumber,
+	ParameterTypeChoice,
+	ParameterTypeFileFolder,
 	ParameterTypeYesNo,
-	ParameterTypeAttributeName,
-	ParameterTypeCoordinateSystem,
-	ParameterTypeDatabaseConnection,
-	ParameterTypeGeometry,
-	ParameterTypeReprojectionFile,
-	ParameterTypeWebConnection,
+	ParameterTypeDatetime,
+	ParameterTypeColor,
 }
 
 func (e ParameterType) IsValid() bool {
 	switch e {
-	case ParameterTypeChoice, ParameterTypeColor, ParameterTypeDatetime, ParameterTypeFileFolder, ParameterTypeMessage, ParameterTypeNumber, ParameterTypePassword, ParameterTypeText, ParameterTypeYesNo, ParameterTypeAttributeName, ParameterTypeCoordinateSystem, ParameterTypeDatabaseConnection, ParameterTypeGeometry, ParameterTypeReprojectionFile, ParameterTypeWebConnection:
+	case ParameterTypeText, ParameterTypeNumber, ParameterTypeChoice, ParameterTypeFileFolder, ParameterTypeYesNo, ParameterTypeDatetime, ParameterTypeColor:
 		return true
 	}
 	return false

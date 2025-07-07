@@ -1,0 +1,34 @@
+query GetProjectParameters($projectId: ID!) {
+  parameters(projectId: $projectId) {
+    ...Parameter
+  }
+}
+
+mutation CreateProjectVariable(
+  $projectId: ID!
+  $input: DeclareParameterInput!
+) {
+  declareParameter(projectId: $projectId, input: $input) {
+    ...Parameter
+  }
+}
+
+mutation UpdateProjectVariable($paramId: ID!, $input: UpdateParameterInput!) {
+  updateParameter(paramId: $paramId, input: $input) {
+    ...Parameter
+  }
+}
+
+mutation UpdateProjectVariables($input: ParameterBatchInput!) {
+  updateParameters(input: $input) {
+    ...Parameter
+  }
+}
+
+mutation DeleteProjectVariable($input: RemoveParameterInput!) {
+  removeParameter(input: $input)
+}
+
+mutation DeleteProjectVariables($input: RemoveParametersInput!) {
+  removeParameters(input: $input)
+}
