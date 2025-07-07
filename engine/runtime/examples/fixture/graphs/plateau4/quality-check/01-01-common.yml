@@ -139,10 +139,10 @@ nodes:
             env.get("__value").udxDirs
         - attribute: Filename
           expr: |
-            file::extract_filename(env.get("__value").cityGmlPath)
+            file::extract_filename(env.get("__value").path)
         - attribute: "サイズ[KB]"
           expr: |
-            round(env.get("__value").fileSize / 1024)
+            env.get("__value").fileSize / 1024
         - attribute: "1GB以下"
           expr: |
             if env.get("__value").fileSize / 1024 / 1024 / 1024 <= 1 {
