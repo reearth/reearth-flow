@@ -89,7 +89,7 @@
     "react-error-boundary": "6.0.0",
     "react-i18next": "15.5.2",
     "react-map-gl": "8.0.4",
-    "react-resizable-panels": "3.0.2",
+    "react-resizable-panels": "3.0.3",
     "react-yjs": "2.0.1",
     "resium": "1.19.0-beta.1",
     "use-resize-observer": "9.1.0",

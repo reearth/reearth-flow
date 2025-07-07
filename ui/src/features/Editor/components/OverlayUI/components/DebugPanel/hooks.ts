@@ -29,6 +29,12 @@ export default () => {
       debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id),
     [debugRunState, currentProject],
   );
+  const debugJobId = useMemo(
+    () =>
+      debugRunState?.jobs?.find((job) => job.projectId === currentProject?.id)
+        ?.jobId,
+    [debugRunState, currentProject],
+  );
 
   const [showTempPossibleIssuesDialog, setShowTempPossibleIssuesDialog] =
     useState(false);
@@ -186,6 +192,7 @@ export default () => {
   };
 
   return {
+    debugJobId,
     selectedDataURL,
     dataURLs,
     expanded,

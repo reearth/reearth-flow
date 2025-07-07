@@ -13,7 +13,7 @@ const defaultCesiumProps: Partial<ViewerProps> = {
   // sceneModePicker: false,
   sceneMode: SceneMode.COLUMBUS_VIEW,
   homeButton: false,
-  fullscreenButton: false,
+  fullscreenButton: true,
   geocoder: false,
   animation: false,
   navigationHelpButton: false,

@@ -4552,7 +4552,7 @@ __metadata:
     react-error-boundary: "npm:6.0.0"
     react-i18next: "npm:15.5.2"
     react-map-gl: "npm:8.0.4"
-    react-resizable-panels: "npm:3.0.2"
+    react-resizable-panels: "npm:3.0.3"
     react-yjs: "npm:2.0.1"
     read-env: "npm:2.0.0"
     resium: "npm:1.19.0-beta.1"
@@ -12969,13 +12969,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-resizable-panels@npm:3.0.2":
-  version: 3.0.2
-  resolution: "react-resizable-panels@npm:3.0.2"
+"react-resizable-panels@npm:3.0.3":
+  version: 3.0.3
+  resolution: "react-resizable-panels@npm:3.0.3"
   peerDependencies:
     react: ^16.14.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
     react-dom: ^16.14.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
-  checksum: 10c0/b05a14d2921cc72e8cdbd4815c38754b8e05694cdaf8910322a5013c3433538ef32157b146a523449d5ec8a3e46cd68d9df70bfdfde154081bd3f0442c070362
+  checksum: 10c0/4881d24af0bfb6f599b8256a0ffaa248376483e4e65c43be62dfc22d60c2d0fc329211ea1ca409ebebd5f9f6302c3f828bfc341980c1067bd3fcb2d050810d8e
   languageName: node
   linkType: hard
 

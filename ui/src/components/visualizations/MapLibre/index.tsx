@@ -4,7 +4,7 @@ import bbox from "@turf/bbox";
 import maplibregl, { LngLatBounds } from "maplibre-gl";
 import * as React from "react";
 import { useRef, useState, useMemo, useCallback } from "react";
-import { Map } from "react-map-gl/maplibre";
+import { Map, FullscreenControl } from "react-map-gl/maplibre";
 
 import { Button, IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -89,15 +89,15 @@ const MapLibre: React.FC<Props> = ({ className, fileContent, fileType }) => {
             onSelectedFeature={setSelectedFeature}
           />
         )}
+        <FullscreenControl position="top-right" />
+        {selectedFeature && (
+          <MapSidePanel
+            selectedFeature={selectedFeature}
+            setSelectedFeature={setSelectedFeature}
+            onFlyToSelectedFeature={handleFlyToSelectedFeature}
+          />
+        )}
       </Map>
-
-      {selectedFeature && (
-        <MapSidePanel
-          selectedFeature={selectedFeature}
-          setSelectedFeature={setSelectedFeature}
-          onFlyToSelectedFeature={handleFlyToSelectedFeature}
-        />
-      )}
     </div>
   );
 };
