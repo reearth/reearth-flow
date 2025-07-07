@@ -196,36 +196,36 @@ export const toProjectVariable = (
 
 export const toUserParamVarType = (type: ParameterType): VarType => {
   switch (type) {
-    case "ATTRIBUTE_NAME":
-      return "attribute_name";
     case "CHOICE":
       return "choice";
     case "COLOR":
       return "color";
-    case "COORDINATE_SYSTEM":
-      return "coordinate_system";
-    case "DATABASE_CONNECTION":
-      return "database_connection";
+    case "NUMBER":
+      return "number";
+    case "TEXT":
+      return "text";
+    case "YES_NO":
+      return "yes_no";
     case "DATETIME":
       return "datetime";
     case "FILE_FOLDER":
       return "file_folder";
-    case "GEOMETRY":
-      return "geometry";
-    case "MESSAGE":
-      return "message";
-    case "NUMBER":
-      return "number";
-    case "PASSWORD":
-      return "password";
-    case "REPROJECTION_FILE":
-      return "reprojection_file";
-    case "TEXT":
-      return "text";
-    case "WEB_CONNECTION":
-      return "web_connection";
-    case "YES_NO":
-      return "yes_no";
+    // case "GEOMETRY":
+    //   return "geometry";
+    // case "MESSAGE":
+    //   return "message";
+    // case "ATTRIBUTE_NAME":
+    //   return "attribute_name";
+    // case "COORDINATE_SYSTEM":
+    //   return "coordinate_system";
+    // case "DATABASE_CONNECTION":
+    //   return "database_connection";
+    // case "PASSWORD":
+    //   return "password";
+    // case "REPROJECTION_FILE":
+    //   return "reprojection_file";
+    // case "WEB_CONNECTION":
+    //   return "web_connection";
     default:
       return "unsupported";
   }
@@ -235,36 +235,36 @@ export const toGqlParameterType = (
   type: VarType,
 ): ParameterType | undefined => {
   switch (type) {
-    case "attribute_name":
-      return ParameterType.AttributeName;
     case "choice":
       return ParameterType.Choice;
     case "color":
       return ParameterType.Color;
-    case "coordinate_system":
-      return ParameterType.CoordinateSystem;
-    case "database_connection":
-      return ParameterType.DatabaseConnection;
     case "datetime":
       return ParameterType.Datetime;
     case "file_folder":
       return ParameterType.FileFolder;
-    case "geometry":
-      return ParameterType.Geometry;
-    case "message":
-      return ParameterType.Message;
     case "number":
       return ParameterType.Number;
-    case "password":
-      return ParameterType.Password;
-    case "reprojection_file":
-      return ParameterType.ReprojectionFile;
     case "text":
       return ParameterType.Text;
-    case "web_connection":
-      return ParameterType.WebConnection;
     case "yes_no":
       return ParameterType.YesNo;
+    // case "coordinate_system":
+    //   return ParameterType.CoordinateSystem;
+    // case "attribute_name":
+    //   return ParameterType.AttributeName;
+    // case "database_connection":
+    //   return ParameterType.DatabaseConnection;
+    // case "geometry":
+    //   return ParameterType.Geometry;
+    // case "message":
+    //   return ParameterType.Message;
+    // case "password":
+    //   return ParameterType.Password;
+    // case "reprojection_file":
+    //   return ParameterType.ReprojectionFile;
+    // case "web_connection":
+    //   return ParameterType.WebConnection;
     default:
       return undefined;
   }

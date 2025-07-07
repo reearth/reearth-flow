@@ -115,7 +115,7 @@ export type CreateWorkspacePayload = {
 };
 
 export type DeclareParameterInput = {
-  config?: InputMaybe<Scalars['Any']['input']>;
+  config?: InputMaybe<Scalars['JSON']['input']>;
   defaultValue?: InputMaybe<Scalars['Any']['input']>;
   index?: InputMaybe<Scalars['Int']['input']>;
   name: Scalars['String']['input'];
@@ -557,7 +557,7 @@ export type Pagination = {
 
 export type Parameter = {
   __typename?: 'Parameter';
-  config?: Maybe<Scalars['Any']['output']>;
+  config?: Maybe<Scalars['JSON']['output']>;
   createdAt: Scalars['DateTime']['output'];
   defaultValue: Scalars['Any']['output'];
   id: Scalars['ID']['output'];
@@ -579,25 +579,17 @@ export type ParameterBatchInput = {
 };
 
 export enum ParameterType {
-  AttributeName = 'ATTRIBUTE_NAME',
   Choice = 'CHOICE',
   Color = 'COLOR',
-  CoordinateSystem = 'COORDINATE_SYSTEM',
-  DatabaseConnection = 'DATABASE_CONNECTION',
   Datetime = 'DATETIME',
   FileFolder = 'FILE_FOLDER',
-  Geometry = 'GEOMETRY',
-  Message = 'MESSAGE',
   Number = 'NUMBER',
-  Password = 'PASSWORD',
-  ReprojectionFile = 'REPROJECTION_FILE',
   Text = 'TEXT',
-  WebConnection = 'WEB_CONNECTION',
   YesNo = 'YES_NO'
 }
 
 export type ParameterUpdateItem = {
-  config?: InputMaybe<Scalars['Any']['input']>;
+  config?: InputMaybe<Scalars['JSON']['input']>;
   defaultValue?: InputMaybe<Scalars['Any']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
   paramId: Scalars['ID']['input'];
@@ -979,7 +971,7 @@ export type UpdateMemberOfWorkspacePayload = {
 };
 
 export type UpdateParameterInput = {
-  config?: InputMaybe<Scalars['Any']['input']>;
+  config?: InputMaybe<Scalars['JSON']['input']>;
   defaultValue: Scalars['Any']['input'];
   name: Scalars['String']['input'];
   public: Scalars['Boolean']['input'];
