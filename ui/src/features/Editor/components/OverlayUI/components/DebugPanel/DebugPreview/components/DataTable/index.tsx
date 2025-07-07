@@ -28,6 +28,7 @@ const DataTable: React.FC<Props> = ({ fileContent, fileType }) => {
             condensed
             selectColumns
             showFiltering
+            showOrdering={false}
           />
         </div>
       </div>

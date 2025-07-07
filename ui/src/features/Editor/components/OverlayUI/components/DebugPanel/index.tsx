@@ -1,11 +1,11 @@
 import {
   CaretDownIcon,
   CaretUpIcon,
+  CodeIcon,
   EyeIcon,
   GridNineIcon,
   MinusIcon,
   TerminalIcon,
-  TerminalWindowIcon,
 } from "@phosphor-icons/react";
 import { memo } from "react";
 
@@ -52,9 +52,9 @@ const DebugPanel: React.FC = () => {
   return debugJobId ? (
     <div
       className={`pointer-events-auto w-[90vw] cursor-pointer rounded-md bg-secondary shadow-md shadow-secondary transition-all ${minimized ? "h-[24px]" : expanded ? "h-[90vh]" : "h-[500px]"}`}>
-      <div className="flex items-center p-1" onClick={handleExpand}>
-        <div className="flex flex-1 items-center justify-center gap-2">
-          <TerminalWindowIcon />
+      <div className="flex items-center border-b p-1" onClick={handleExpand}>
+        <div className="flex flex-1 items-center justify-center gap-2 ">
+          <TerminalIcon />
           <p className="text-sm font-thin select-none">{t("Debug Run")}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -88,7 +88,7 @@ const DebugPanel: React.FC = () => {
                 className="gap-1 bg-card font-thin"
                 value="debug-logs"
                 onClick={handleTabChange}>
-                <TerminalIcon />
+                <CodeIcon />
                 <p className="text-sm font-thin select-none">
                   {t("Workflow Logs")}
                 </p>
@@ -106,7 +106,6 @@ const DebugPanel: React.FC = () => {
             </TabsList>
           </div>
         </div>
-
         <TabsContent
           className="h-[calc(100%-35px)] overflow-scroll"
           value="debug-logs">
@@ -161,7 +160,7 @@ const DebugPanel: React.FC = () => {
                   fileType={fileType}
                 />
               </ResizablePanel>
-              <ResizableHandle withHandle className="border" />
+              <ResizableHandle />
               <ResizablePanel defaultSize={30} minSize={20}>
                 <DebugPreview
                   debugJobState={debugJobState}
