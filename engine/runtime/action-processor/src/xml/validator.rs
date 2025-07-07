@@ -407,9 +407,9 @@ impl XmlValidator {
 
             // Check if the root schema is already cached
             let root_cache_key = Self::generate_cache_key(&target);
-            
+
             let mut url_to_cache_path = HashMap::new();
-            
+
             // If root schema is already cached, use it directly
             // Note: We assume if the root is cached, its dependencies are also cached
             // since they are fetched together during resolution
@@ -427,7 +427,7 @@ impl XmlValidator {
                     .map_err(|e| XmlProcessorError::Validator(format!("{e:?}")))?,
                 ));
             }
-            
+
             // If not cached, fetch the schema and all its dependencies
             let resolution = resolver.resolve_schema_dependencies(&target)?;
 
@@ -1467,9 +1467,10 @@ mod tests {
         // Verify schema caching worked correctly
         {
             // Check that building schema was cached in filesystem
-            let building_schema_url = "http://schemas.opengis.net/citygml/building/2.0/building.xsd";
+            let building_schema_url =
+                "http://schemas.opengis.net/citygml/building/2.0/building.xsd";
             let cache_key = XmlValidator::generate_cache_key(building_schema_url);
-            
+
             assert!(
                 validator.schema_cache.is_cached(&cache_key),
                 "Should have cached building schema"
@@ -1626,7 +1627,6 @@ mod tests {
                 storage_resolver.clone(),
                 kv_store.clone(),
                 event_hub.clone(),
-                None,
             );
 
             let mut with = HashMap::new();
