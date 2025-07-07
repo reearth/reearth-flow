@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 use std::thread::{self, Builder};
@@ -27,6 +28,52 @@ use crate::kvs::KvStore;
 use super::execution_dag::ExecutionDag;
 use super::source_node::{create_source_node, SourceNode};
 
+/// Helper function to create a node cache for a specific node
+fn create_node_cache(
+    storage_resolver: &Arc<StorageResolver>,
+    project_key: &str,
+    job_id: uuid::Uuid,
+    node_id: &str,
+) -> Result<Arc<reearth_flow_state::State>, std::io::Error> {
+    // Create the cache directory path: projects/<project_key>/jobs/<job_id>/node-cache/<node_id>/
+    let cache_dir = reearth_flow_common::dir::get_job_root_dir_path(project_key, job_id)
+        .map_err(|e| {
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to get job root directory: {}", e),
+            )
+        })?
+        .join("node-cache")
+        .join(node_id);
+
+    // Don't create the directory here - it will be created lazily when needed
+
+    // Create the cache State using the directory
+    let cache_uri =
+        reearth_flow_common::uri::Uri::from_str(cache_dir.to_str().ok_or_else(|| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Invalid cache directory path",
+            )
+        })?)
+        .map_err(|e| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                format!("Failed to create URI from cache directory: {}", e),
+            )
+        })?;
+
+    let cache_state =
+        reearth_flow_state::State::new(&cache_uri, storage_resolver).map_err(|e| {
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to create cache State: {}", e),
+            )
+        })?;
+
+    Ok(Arc::new(cache_state))
+}
+
 pub struct DagExecutor {
     builder_dag: BuilderDag,
     options: ExecutorOptions,
@@ -52,7 +99,9 @@ impl DagExecutor {
     ) -> Result<Self, ExecutionError> {
         let dag_schemas = DagSchemas::from_graphs(entry_graph_id, graphs, factories, global_params);
         let event_hub = EventHub::new(options.event_hub_capacity);
-        let ctx = NodeContext::new(expr_engine, storage_resolver, kv_store, event_hub);
+        // Node cache is None here as we're just building the DAG structure - actual node caches
+        // are created later during execution when we have job-specific context
+        let ctx = NodeContext::new(expr_engine, storage_resolver, kv_store, event_hub, None);
         let builder_dag = BuilderDag::new(ctx, dag_schemas).await?;
         Ok(Self {
             builder_dag,
@@ -63,6 +112,8 @@ impl DagExecutor {
     #[allow(clippy::too_many_arguments)]
     pub async fn start<F: Send + 'static + Future + Unpin + Debug + Clone>(
         self,
+        project_key: String,
+        job_id: uuid::Uuid,
         shutdown: F,
         runtime: Arc<Handle>,
         expr_engine: Arc<Engine>,
@@ -82,15 +133,13 @@ impl DagExecutor {
 
         let event_hub = execution_dag.event_hub().clone();
 
-        let ctx = NodeContext::new(
+        // Start the threads.
+        let source_node = create_source_node(
+            project_key.clone(),
+            job_id,
             Arc::clone(&expr_engine),
             Arc::clone(&storage_resolver),
             Arc::clone(&kv_store),
-            execution_dag.event_hub().clone(),
-        );
-        // Start the threads.
-        let source_node = create_source_node(
-            ctx,
             &mut execution_dag,
             &self.options,
             shutdown.clone(),
@@ -112,11 +161,21 @@ impl DagExecutor {
             match node {
                 NodeKind::Source { .. } => continue,
                 NodeKind::Processor(_) => {
+                    let node_handle = execution_dag.graph()[node_index].handle.clone();
+                    let node_cache = create_node_cache(
+                        &storage_resolver,
+                        &project_key,
+                        job_id,
+                        node_handle.id.as_ref(),
+                    )
+                    .map_err(|e| ExecutionError::Io(e.to_string()))?;
+
                     let ctx = NodeContext::new(
                         Arc::clone(&expr_engine),
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
+                        Some(node_cache),
                     );
                     let processor_node = ProcessorNode::new(
                         ctx,
@@ -129,11 +188,21 @@ impl DagExecutor {
                     join_handles.push(start_processor(processor_node)?);
                 }
                 NodeKind::Sink(_) => {
+                    let node_handle = execution_dag.graph()[node_index].handle.clone();
+                    let node_cache = create_node_cache(
+                        &storage_resolver,
+                        &project_key,
+                        job_id,
+                        node_handle.id.as_ref(),
+                    )
+                    .map_err(|e| ExecutionError::Io(e.to_string()))?;
+
                     let ctx = NodeContext::new(
                         Arc::clone(&expr_engine),
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
+                        Some(node_cache),
                     );
                     let sink_node = SinkNode::new(
                         ctx,

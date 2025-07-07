@@ -118,6 +118,7 @@ pub(crate) fn execute(workflow: &str) {
     let handlers: Vec<Arc<dyn reearth_flow_runtime::event::EventHandler>> =
         vec![Arc::new(EventHandler)];
     Runner::run_with_event_handler(
+        "engine".to_string(),
         job_id,
         workflow,
         ALL_ACTION_FACTORIES.clone(),
