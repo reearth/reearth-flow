@@ -51,6 +51,7 @@ func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.Decla
 		}
 	}()
 
+	// Check if project exists
 	proj, err := i.projectRepo.FindByID(ctx, param.ProjectID)
 	if err != nil {
 		return nil, err
@@ -59,6 +60,7 @@ func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.Decla
 		return nil, rerror.ErrNotFound
 	}
 
+	// Get next index if not specified
 	var index int
 	if param.Index == nil {
 		params, err := i.paramRepo.FindByProject(ctx, param.ProjectID)
@@ -72,6 +74,7 @@ func (i *Parameter) DeclareParameter(ctx context.Context, param interfaces.Decla
 		index = *param.Index
 	}
 
+	// Create parameter
 	p, err := parameter.New().
 		ProjectID(param.ProjectID).
 		Name(param.Name).
@@ -333,9 +336,11 @@ func (i *Parameter) UpdateParameterOrder(ctx context.Context, param interfaces.U
 		return nil, rerror.ErrNotFound
 	}
 
+	// Update indices
 	currentIndex := targetParam.Index()
 	newIndex := param.NewIndex
 
+	// Reorder parameters
 	for _, p := range *params {
 		switch {
 		case p.ID() == param.ParamID:
