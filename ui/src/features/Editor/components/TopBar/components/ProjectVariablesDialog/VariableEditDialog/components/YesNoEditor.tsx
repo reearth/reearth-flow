@@ -22,7 +22,9 @@ export const YesNoEditor: React.FC<Props> = ({ variable, onUpdate }) => {
     if (typeof value === "boolean") return value;
     if (typeof value === "string") {
       const lowerValue = value.toLowerCase();
-      return lowerValue === "true" || lowerValue === "yes" || lowerValue === "1";
+      return (
+        lowerValue === "true" || lowerValue === "yes" || lowerValue === "1"
+      );
     }
     if (typeof value === "number") return value !== 0;
     return false;
@@ -33,9 +35,7 @@ export const YesNoEditor: React.FC<Props> = ({ variable, onUpdate }) => {
   return (
     <div className="space-y-4">
       <div>
-        <Label className="text-sm font-medium">
-          {t("Default Value")}
-        </Label>
+        <Label className="text-sm font-medium">{t("Default Value")}</Label>
         <div className="mt-2 flex items-center space-x-3">
           <Switch
             checked={isChecked}

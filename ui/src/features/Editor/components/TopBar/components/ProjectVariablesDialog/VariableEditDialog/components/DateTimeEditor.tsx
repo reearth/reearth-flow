@@ -1,8 +1,4 @@
-import {
-  Input,
-  Label,
-  Switch,
-} from "@flow/components";
+import { Input, Label, Switch } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { ProjectVariable, DateTimeConfig } from "@flow/types";
 
@@ -139,10 +135,9 @@ export const DateTimeEditor: React.FC<Props> = ({ variable, onUpdate }) => {
             </span>
           </div>
           <p className="mt-2 text-sm text-muted-foreground">
-            {allowTime 
+            {allowTime
               ? t("Date and time values will use the browser's local timezone")
-              : t("Date values are timezone-independent")
-            }
+              : t("Date values are timezone-independent")}
           </p>
         </div>
       </div>
@@ -214,13 +209,23 @@ export const DateTimeEditor: React.FC<Props> = ({ variable, onUpdate }) => {
             value={formattedValue}
             onFocus={(e) => e.stopPropagation()}
             onChange={(e) => handleDefaultValueChange(e.target.value)}
-            min={allowTime 
-              ? (config.minDate ? formatDateTimeMinMax(config.minDate) : undefined)
-              : (config.minDate ? formatDateOnly(config.minDate) : undefined)
+            min={
+              allowTime
+                ? config.minDate
+                  ? formatDateTimeMinMax(config.minDate)
+                  : undefined
+                : config.minDate
+                  ? formatDateOnly(config.minDate)
+                  : undefined
             }
-            max={allowTime 
-              ? (config.maxDate ? formatDateTimeMinMax(config.maxDate) : undefined)
-              : (config.maxDate ? formatDateOnly(config.maxDate) : undefined)
+            max={
+              allowTime
+                ? config.maxDate
+                  ? formatDateTimeMinMax(config.maxDate)
+                  : undefined
+                : config.maxDate
+                  ? formatDateOnly(config.maxDate)
+                  : undefined
             }
           />
           <p className="mt-1 text-sm text-muted-foreground">

@@ -89,8 +89,15 @@ export const DefaultValueDisplay: React.FC<{
   switch (originalType) {
     case "choice": {
       // Handle new choice format with config.choices
-      if (variable.config && typeof variable.config === "object" && "choices" in variable.config) {
-        const choiceConfig = variable.config as { choices: string[]; allowMultiple?: boolean };
+      if (
+        variable.config &&
+        typeof variable.config === "object" &&
+        "choices" in variable.config
+      ) {
+        const choiceConfig = variable.config as {
+          choices: string[];
+          allowMultiple?: boolean;
+        };
         const choices = choiceConfig.choices || [];
         const isMultiple = choiceConfig.allowMultiple || false;
 
@@ -106,10 +113,9 @@ export const DefaultValueDisplay: React.FC<{
           return (
             <div className="flex items-center gap-2">
               <span className="font-medium">
-                {defaultValue.length === 1 
+                {defaultValue.length === 1
                   ? defaultValue[0]
-                  : `${defaultValue.length} ${t("selected")}`
-                }
+                  : `${defaultValue.length} ${t("selected")}`}
               </span>
               <span className="text-sm text-muted-foreground">
                 ({choices.length} {t("options")})
@@ -117,7 +123,7 @@ export const DefaultValueDisplay: React.FC<{
             </div>
           );
         }
-        
+
         // Handle single selection (string)
         if (typeof defaultValue === "string" && defaultValue) {
           return (
