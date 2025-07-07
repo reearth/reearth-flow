@@ -167,8 +167,7 @@ mod tests {
 
     #[test]
     fn test_http_schema_fetcher_with_retry_config() {
-        let fetcher = HttpSchemaFetcher::new()
-            .with_retry_config(5, Duration::from_millis(500));
+        let fetcher = HttpSchemaFetcher::new().with_retry_config(5, Duration::from_millis(500));
         assert_eq!(fetcher.max_retries, 5);
         assert_eq!(fetcher.retry_delay, Duration::from_millis(500));
     }
@@ -176,8 +175,14 @@ mod tests {
     #[test]
     fn test_mock_schema_fetcher() {
         let mock = MockSchemaFetcher::new()
-            .with_response("http://example.com/schema.xsd", Ok("test schema".to_string()))
-            .with_response("http://error.com/schema.xsd", Err(XmlProcessorError::Validator("Error".to_string())));
+            .with_response(
+                "http://example.com/schema.xsd",
+                Ok("test schema".to_string()),
+            )
+            .with_response(
+                "http://error.com/schema.xsd",
+                Err(XmlProcessorError::Validator("Error".to_string())),
+            );
 
         // Test successful fetch
         let result = mock.fetch_schema("http://example.com/schema.xsd");

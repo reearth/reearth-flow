@@ -18,7 +18,7 @@ pub trait SchemaCache: Send + Sync {
 
     /// Check if cache is available
     fn is_available(&self) -> bool;
-    
+
     /// Check if a schema is already cached
     fn is_cached(&self, key: &str) -> bool;
 }
@@ -44,7 +44,7 @@ impl SchemaCache for NoOpSchemaCache {
     fn is_available(&self) -> bool {
         false
     }
-    
+
     fn is_cached(&self, _key: &str) -> bool {
         false
     }
@@ -119,7 +119,7 @@ impl SchemaCache for FileSystemSchemaCache {
     fn is_available(&self) -> bool {
         true
     }
-    
+
     fn is_cached(&self, key: &str) -> bool {
         let path = self.get_full_path(key);
         path.exists()

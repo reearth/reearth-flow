@@ -167,7 +167,7 @@ When creating git commits, do not include Claude Code attribution or "Generated 
 
 ## Development Memo
 
-- **Implementation Guideline**: After completing implementation, always run `cargo test` and `cargo make clippy`
+- **Implementation Guideline**: After completing implementation, always run `cargo test`, `cargo make clippy` and `cargo fmt --all`
 - Clippy Reminder: When using clippy, use `cargo make clippy`. Make sure to run it as the last step after completing modifications.
 
 ## Runtime Architecture Deep Dive
