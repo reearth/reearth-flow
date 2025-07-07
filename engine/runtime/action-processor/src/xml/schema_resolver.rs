@@ -173,7 +173,7 @@ impl XmlSchemaResolver {
                 let protocol_end = separator_pos + PROTOCOL_SEPARATOR.len();
                 if let Some(path_start) = base_url[protocol_end..].find('/') {
                     let base_host = &base_url[..protocol_end + path_start];
-                    return Ok(format!("{}{}", base_host, url));
+                    return Ok(format!("{base_host}{url}"));
                 }
             }
         }
@@ -181,9 +181,9 @@ impl XmlSchemaResolver {
         // Otherwise, resolve as relative URL
         if let Some(last_slash) = base_url.rfind('/') {
             let base_dir = &base_url[..last_slash];
-            Ok(format!("{}/{}", base_dir, url))
+            Ok(format!("{base_dir}/{url}"))
         } else {
-            Ok(format!("{}/{}", base_url, url))
+            Ok(format!("{base_url}/{url}"))
         }
     }
 }

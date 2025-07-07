@@ -60,8 +60,7 @@ impl FileSystemSchemaCache {
         // Create the directory if it doesn't exist
         std::fs::create_dir_all(&root_path).map_err(|e| {
             super::errors::XmlProcessorError::Validator(format!(
-                "Failed to create cache directory: {}",
-                e
+                "Failed to create cache directory: {e}"
             ))
         })?;
 
@@ -71,7 +70,7 @@ impl FileSystemSchemaCache {
     fn get_full_path(&self, key: &str) -> PathBuf {
         // Replace directory separators in key to avoid path traversal
         let safe_key = key.replace(['/', '\\'], "_");
-        self.root_path.join(format!("{}.xsd", safe_key))
+        self.root_path.join(format!("{safe_key}.xsd"))
     }
 }
 
@@ -83,17 +82,15 @@ impl SchemaCache for FileSystemSchemaCache {
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent).map_err(|e| {
                 super::errors::XmlProcessorError::Validator(format!(
-                    "Failed to create parent directories: {}",
-                    e
+                    "Failed to create parent directories: {e}"
                 ))
             })?;
         }
 
         std::fs::write(&path, content).map_err(|e| {
             super::errors::XmlProcessorError::Validator(format!(
-                "Failed to write schema to {}: {}",
-                path.display(),
-                e
+                "Failed to write schema to {}: {e}",
+                path.display()
             ))
         })
     }
@@ -105,9 +102,8 @@ impl SchemaCache for FileSystemSchemaCache {
             Ok(content) => Ok(Some(content)),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
             Err(e) => Err(super::errors::XmlProcessorError::Validator(format!(
-                "Failed to read schema from {}: {}",
-                path.display(),
-                e
+                "Failed to read schema from {}: {e}",
+                path.display()
             ))),
         }
     }

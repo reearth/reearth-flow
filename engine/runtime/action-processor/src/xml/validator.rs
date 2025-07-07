@@ -342,7 +342,7 @@ impl Processor for XmlValidator {
                             AttributeValue::Array(vec![AttributeValue::Map(
                                 ValidationResult::new(
                                     "SchemaError",
-                                    &format!("Schema validation failed: {}", e),
+                                    &format!("Schema validation failed: {e}"),
                                 )
                                 .into(),
                             )]),
@@ -373,7 +373,7 @@ impl XmlValidator {
             url.hash(&mut hasher);
             format!("{:x}", hasher.finish())
         };
-        let filename = url.split('/').last().unwrap_or("schema.xsd");
+        let filename = url.split('/').next_back().unwrap_or("schema.xsd");
         format!("xmlvalidator-schema/{}-{}", &hash[..8], filename)
     }
 
@@ -447,11 +447,11 @@ impl XmlValidator {
                     if url != import_url {
                         // Replace absolute URLs with cached file paths
                         content = content.replace(
-                            &format!(r#"schemaLocation="{}""#, import_url),
+                            &format!(r#"schemaLocation="{import_url}""#),
                             &format!(r#"schemaLocation="file://{}""#, import_path.display()),
                         );
                         content = content.replace(
-                            &format!(r#"schemaLocation='{}'"#, import_url),
+                            &format!(r#"schemaLocation='{import_url}'"#),
                             &format!(r#"schemaLocation='file://{}'"#, import_path.display()),
                         );
                     }
@@ -643,7 +643,7 @@ fn recursive_check_namespace(
             if !namespaces.iter().any(|n| n.get_prefix() == ns.get_prefix()) {
                 result.push(ValidationResult::new(
                     "NamespaceError",
-                    format!("No namespace declaration for {}", ns.get_prefix()).as_str(),
+                    &format!("No namespace declaration for {}", ns.get_prefix()),
                 ));
             }
         }
@@ -654,7 +654,7 @@ fn recursive_check_namespace(
                 if !namespaces.iter().any(|n| n.get_prefix() == prefix) {
                     result.push(ValidationResult::new(
                         "NamespaceError",
-                        format!("No namespace declaration for {prefix}").as_str(),
+                        &format!("No namespace declaration for {prefix}"),
                     ));
                 }
             } else {
@@ -1572,8 +1572,8 @@ mod tests {
                     if let AttributeValue::Array(errors) = error_attr {
                         assert!(!errors.is_empty(), "Should have validation errors");
                         // Check if error message contains information about XML declaration
-                        let error_str = format!("{:?}", errors);
-                        println!("Actual error output: {}", error_str);
+                        let error_str = format!("{errors:?}");
+                        println!("Actual error output: {error_str}");
                         // The error is reported as "Invalid document structure" because
                         // libxml2 fails to parse the schema with multiple XML declarations
                         assert!(
@@ -1581,8 +1581,7 @@ mod tests {
                                 || error_str.contains("XML declaration")
                                 || error_str.contains("parser error")
                                 || error_str.contains("SchemaError"),
-                            "Error should indicate schema parsing issue: {}",
-                            error_str
+                            "Error should indicate schema parsing issue: {error_str}"
                         );
                     }
                 } else {
@@ -1771,8 +1770,8 @@ mod tests {
                 {
                     if let AttributeValue::Array(errors) = error_attr {
                         assert!(!errors.is_empty(), "Should have validation errors");
-                        let error_str = format!("{:?}", errors);
-                        println!("Nested schema dependency error: {}", error_str);
+                        let error_str = format!("{errors:?}");
+                        println!("Nested schema dependency error: {error_str}");
 
                         // The error should indicate failure to load external entity
                         assert!(
@@ -1781,8 +1780,7 @@ mod tests {
                                 || error_str.contains("SchemaError")
                                 || error_str.contains("Invalid document structure")
                                 || error_str.contains("No mock response for URL"),
-                            "Error should indicate schema loading issue: {}",
-                            error_str
+                            "Error should indicate schema loading issue: {error_str}"
                         );
                     }
                 } else {
@@ -1884,7 +1882,7 @@ mod tests {
                     if let Some(error_attr) =
                         send_features[0].attributes.get(&Attribute::new("xmlError"))
                     {
-                        println!("Validation failed with errors: {:?}", error_attr);
+                        println!("Validation failed with errors: {error_attr:?}");
                     }
                 }
 
