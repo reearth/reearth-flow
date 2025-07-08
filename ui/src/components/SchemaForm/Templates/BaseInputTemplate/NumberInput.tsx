@@ -4,7 +4,7 @@ import {
   RJSFSchema,
   StrictRJSFSchema,
 } from "@rjsf/utils";
-import { ChangeEvent } from "react";
+import { ChangeEvent, useCallback } from "react";
 
 import { Button, Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -45,20 +45,23 @@ export const NumberInput = <
   const defaultValue = schema.default ?? "";
   const { step, min, max } = inputProps.inputProps || {};
 
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value;
+  const handleChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const inputValue = e.target.value;
 
-    if (inputValue === "") {
-      return onChangeOverride || onChange(options.emptyValue);
-    }
+      if (inputValue === "") {
+        return onChangeOverride || onChange(options.emptyValue);
+      }
 
-    const numericValue = parseFloat(inputValue);
-    if (!isNaN(numericValue)) {
-      return onChangeOverride || onChange(numericValue);
-    }
+      const numericValue = parseFloat(inputValue);
+      if (!isNaN(numericValue)) {
+        return onChangeOverride || onChange(numericValue);
+      }
 
-    // If parsing fails, don't update (maintains current value)
-  };
+      // If parsing fails, don't update (maintains current value)
+    },
+    [onChangeOverride, onChange, options.emptyValue],
+  );
 
   const displayValue =
     value !== null && value !== undefined ? String(value) : "";

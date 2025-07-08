@@ -5,6 +5,7 @@ import {
   StrictRJSFSchema,
   WidgetProps,
 } from "@rjsf/utils";
+import { useCallback } from "react";
 
 import {
   DropdownMenu,
@@ -32,17 +33,26 @@ const SelectWidget = <
 }: WidgetProps<T, S, F>) => {
   const { enumOptions, enumDisabled } = options;
 
-  const getCurrentLabel = () => {
+  const getCurrentLabel = useCallback(() => {
     const option = enumOptions?.find((opt: any) => opt.value === value);
     return option ? option.label : placeholder;
-  };
+  }, [enumOptions, value, placeholder]);
 
-  const handleSelect = (selectedValue: any) => {
-    onChange(selectedValue);
-  };
+  const handleSelect = useCallback(
+    (selectedValue: any) => {
+      onChange(selectedValue);
+    },
+    [onChange],
+  );
 
-  const handleBlur = () => onBlur?.(id, value);
-  const handleFocus = () => onFocus?.(id, value);
+  const handleBlur = useCallback(
+    () => onBlur?.(id, value),
+    [onBlur, id, value],
+  );
+  const handleFocus = useCallback(
+    () => onFocus?.(id, value),
+    [onFocus, id, value],
+  );
 
   return (
     <DropdownMenu modal={true}>

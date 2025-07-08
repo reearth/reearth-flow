@@ -67,6 +67,8 @@ const ParamEditor: React.FC<Props> = ({
   const [updatedCustomization, setUpdatedCustomization] = useState(
     nodeMeta.customizations,
   );
+  const [isParamsValid, setIsParamsValid] = useState(true);
+  const [isCustomizationsValid, setIsCustomizationsValid] = useState(true);
 
   const handleParamChange = (data: any) => {
     setUpdatedParams(data);
@@ -76,23 +78,36 @@ const ParamEditor: React.FC<Props> = ({
     setUpdatedCustomization(data);
   };
 
+  const handleParamsValidationChange = (isValid: boolean) => {
+    setIsParamsValid(isValid);
+  };
+
+  const handleCustomizationsValidationChange = (isValid: boolean) => {
+    setIsCustomizationsValid(isValid);
+  };
+
   const [activeTab, setActiveTab] = useState(
     createdAction && !createdAction.parameter ? "customizations" : "params",
   );
 
   const handleUpdate = () => {
-    if (activeTab === "params") {
+    if (activeTab === "params" && isParamsValid) {
       onUpdate(nodeId, updatedParams, "params");
-    } else if (nodeType === "subworkflow" && nodeMeta.subworkflowId) {
-      onUpdate(nodeId, updatedCustomization, "customizations");
-      onWorkflowRename?.(
-        nodeMeta?.subworkflowId,
-        updatedCustomization?.customName || nodeMeta?.officialName,
-      );
-    } else {
-      onUpdate(nodeId, updatedCustomization, "customizations");
+    } else if (activeTab === "customizations" && isCustomizationsValid) {
+      if (nodeType === "subworkflow" && nodeMeta.subworkflowId) {
+        onUpdate(nodeId, updatedCustomization, "customizations");
+        onWorkflowRename?.(
+          nodeMeta?.subworkflowId,
+          updatedCustomization?.customName || nodeMeta?.officialName,
+        );
+      } else {
+        onUpdate(nodeId, updatedCustomization, "customizations");
+      }
     }
   };
+
+  const isCurrentTabValid =
+    activeTab === "params" ? isParamsValid : isCustomizationsValid;
 
   return (
     <div className="flex h-[60vh] flex-col gap-4 overflow-hidden">
@@ -139,6 +154,7 @@ const ParamEditor: React.FC<Props> = ({
                     schema={patchedSchemaParams}
                     defaultFormData={updatedParams}
                     onChange={handleParamChange}
+                    onValidationChange={handleParamsValidationChange}
                   />
                 )}
               </div>
@@ -146,7 +162,7 @@ const ParamEditor: React.FC<Props> = ({
                 className="shrink-0 self-end"
                 size="lg"
                 onClick={handleUpdate}
-                disabled={readonly}>
+                disabled={readonly || !isCurrentTabValid}>
                 {t("Update")}
               </Button>
             </div>
@@ -171,6 +187,7 @@ const ParamEditor: React.FC<Props> = ({
                       schema={createdAction?.customizations}
                       defaultFormData={updatedCustomization}
                       onChange={handleCustomizationChange}
+                      onValidationChange={handleCustomizationsValidationChange}
                     />
                   </div>
                 )}
@@ -179,7 +196,7 @@ const ParamEditor: React.FC<Props> = ({
                 className="shrink-0 self-end"
                 size="lg"
                 onClick={handleUpdate}
-                disabled={readonly}>
+                disabled={readonly || !isCurrentTabValid}>
                 {t("Update")}
               </Button>
             </div>

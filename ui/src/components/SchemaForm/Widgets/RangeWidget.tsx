@@ -5,7 +5,7 @@ import {
   StrictRJSFSchema,
   WidgetProps,
 } from "@rjsf/utils";
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useCallback, useState } from "react";
 
 import { Button, Input, Label } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -38,16 +38,19 @@ const RangeWidget = <
   // Ensure value is within bounds
   const normalizedValue = Math.max(min, Math.min(max, Number(value) || min));
 
-  const handleSliderChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const newValue = Number(e.target.value);
-    onChange(newValue);
-  };
+  const handleSliderChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      const newValue = Number(e.target.value);
+      onChange(newValue);
+    },
+    [onChange],
+  );
 
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
-  };
+  }, []);
 
-  const handleInputSubmit = () => {
+  const handleInputSubmit = useCallback(() => {
     const numericValue = Number(inputValue);
     if (!isNaN(numericValue)) {
       const boundedValue = Math.max(min, Math.min(max, numericValue));
@@ -57,20 +60,23 @@ const RangeWidget = <
       setInputValue(String(normalizedValue));
     }
     setIsEditing(false);
-  };
+  }, [inputValue, min, max, onChange, normalizedValue]);
 
-  const handleInputKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      handleInputSubmit();
-    } else if (e.key === "Escape") {
-      setInputValue(String(normalizedValue));
-      setIsEditing(false);
-    }
-  };
+  const handleInputKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === "Enter") {
+        handleInputSubmit();
+      } else if (e.key === "Escape") {
+        setInputValue(String(normalizedValue));
+        setIsEditing(false);
+      }
+    },
+    [handleInputSubmit, normalizedValue],
+  );
 
-  const handleReset = () => {
+  const handleReset = useCallback(() => {
     onChange(defaultValue);
-  };
+  }, [onChange, defaultValue]);
 
   const percentage = ((normalizedValue - min) / (max - min)) * 100;
 
