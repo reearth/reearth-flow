@@ -53,7 +53,7 @@ func TestCreateAsset(t *testing.T) {
 
 	// Add operations field
 	operations := fmt.Sprintf(`{
-		"query": "mutation CreateAsset($file: Upload!) { createAsset(input: {workspaceId: \"%s\", file: $file}) { asset { id fileName size contentType previewType } } }",
+		"query": "mutation CreateAsset($file: Upload!) { createAsset(input: {workspaceId: \"%s\", file: $file}) { asset { id fileName size contentType previewType url } } }",
 		"variables": { "file": null }
 	}`, wId1)
 	_ = writer.WriteField("operations", operations)
