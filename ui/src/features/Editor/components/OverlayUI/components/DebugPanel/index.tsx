@@ -67,7 +67,7 @@ const DebugPanel: React.FC = () => {
 
   return debugJobId ? (
     <div
-      className={`pointer-events-auto w-[80vw] cursor-pointer rounded-md bg-secondary shadow-md shadow-secondary transition-all ${minimized ? "h-[32px]" : expanded || hideTabularViewer ? "h-[80vh]" : "h-[500px]"}`}>
+      className={`pointer-events-auto w-[80vw] cursor-pointer overflow-hidden rounded-md bg-secondary shadow-md shadow-secondary transition-all ${minimized ? "h-[32px]" : expanded || hideTabularViewer ? "h-[80vh]" : "h-[500px]"}`}>
       <div
         className={`flex items-center ${minimized ? "" : "border-b"} p-1`}
         onClick={handleExpand}>
