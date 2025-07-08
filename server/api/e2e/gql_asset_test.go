@@ -33,7 +33,7 @@ func TestQueryAssets(t *testing.T) {
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-	
+
 	projectID := o.Value("data").Object().Value("createProject").Object().Value("project").Object().Value("id").String().Raw()
 
 	// Query assets for the project
@@ -75,7 +75,7 @@ func TestCreateAsset(t *testing.T) {
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-	
+
 	projectID := o.Value("data").Object().Value("createProject").Object().Value("project").Object().Value("id").String().Raw()
 
 	// Create multipart form with file upload
@@ -140,7 +140,7 @@ func TestRemoveAsset(t *testing.T) {
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-	
+
 	projectID := o.Value("data").Object().Value("createProject").Object().Value("project").Object().Value("id").String().Raw()
 
 	// Create an asset first
@@ -228,7 +228,7 @@ func TestAssetSorting(t *testing.T) {
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-	
+
 	projectID := o.Value("data").Object().Value("createProject").Object().Value("project").Object().Value("id").String().Raw()
 
 	// Create multiple assets
@@ -303,7 +303,7 @@ func TestAssetKeywordSearch(t *testing.T) {
 		WithHeader("Content-Type", "application/json").
 		WithHeader("X-Reearth-Debug-User", uId1.String()).
 		WithBytes(jsonData).Expect().Status(http.StatusOK).JSON().Object()
-	
+
 	projectID := o.Value("data").Object().Value("createProject").Object().Value("project").Object().Value("id").String().Raw()
 
 	// Create assets with different names

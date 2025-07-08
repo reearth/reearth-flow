@@ -15,7 +15,7 @@ func TestAsset_Builder(t *testing.T) {
 	wid := accountdomain.NewWorkspaceID()
 	uid := accountdomain.NewUserID()
 	now := time.Now()
-	
+
 	previewType := PreviewTypeImage
 	status := ArchiveExtractionStatusDone
 	tid := id.NewThreadID()
@@ -90,7 +90,7 @@ func TestAsset_NilHandling(t *testing.T) {
 
 func TestAsset_CreatedByIntegration(t *testing.T) {
 	iid := id.NewIntegrationID()
-	
+
 	a := New().
 		NewID().
 		Project(id.NewProjectID()).
@@ -113,7 +113,7 @@ func TestAsset_List(t *testing.T) {
 	aid2 := NewID()
 	aid3 := NewID()
 	uid := accountdomain.NewUserID()
-	
+
 	a1 := New().
 		ID(aid1).
 		Project(id.NewProjectID()).
@@ -126,7 +126,7 @@ func TestAsset_List(t *testing.T) {
 		ContentType("text/plain").
 		NewUUID().
 		MustBuild()
-		
+
 	a2 := New().
 		ID(aid2).
 		Project(id.NewProjectID()).
@@ -139,7 +139,7 @@ func TestAsset_List(t *testing.T) {
 		ContentType("text/plain").
 		NewUUID().
 		MustBuild()
-		
+
 	a3 := New().
 		ID(aid3).
 		Project(id.NewProjectID()).
@@ -155,7 +155,7 @@ func TestAsset_List(t *testing.T) {
 
 	list := List{a1, a2, nil, a3}
 	ids := list.IDs()
-	
+
 	assert.Len(t, ids, 3)
 	assert.Contains(t, ids, aid1)
 	assert.Contains(t, ids, aid2)
@@ -189,16 +189,16 @@ func TestExtendedPreviewTypes(t *testing.T) {
 	pt, ok := PreviewTypeFrom("image")
 	assert.True(t, ok)
 	assert.Equal(t, PreviewTypeImage, pt)
-	
+
 	// Test extended preview types
 	pt, ok = PreviewTypeFrom("geojson")
 	assert.True(t, ok)
 	assert.Equal(t, PreviewTypeGeoJSON, pt)
-	
+
 	pt, ok = PreviewTypeFrom("pdf")
 	assert.True(t, ok)
 	assert.Equal(t, PreviewTypePDF, pt)
-	
+
 	// Test unknown type
 	pt, ok = PreviewTypeFrom("unknown_type")
 	assert.False(t, ok)

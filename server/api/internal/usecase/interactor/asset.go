@@ -85,11 +85,11 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 		ContentType(inp.File.ContentType).
 		NewUUID().
 		CoreSupport(true)
-	
+
 	if previewType != nil {
 		builder = builder.Type(*previewType)
 	}
-	
+
 	a, err := builder.Build()
 	if err != nil {
 		return nil, err

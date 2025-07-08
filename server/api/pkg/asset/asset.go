@@ -71,9 +71,9 @@ func NewProjectID() id.ProjectID {
 
 // Builder creates a new asset using reearthx's builder
 type Builder struct {
-	rxBuilder *reearthxasset.Builder
-	projectID *id.ProjectID
-	threadID  *id.ThreadID
+	rxBuilder     *reearthxasset.Builder
+	projectID     *id.ProjectID
+	threadID      *id.ThreadID
 	integrationID *id.IntegrationID
 }
 

@@ -74,7 +74,7 @@ func TestAsset_Create(t *testing.T) {
 	assert.Equal(t, "", res.ContentType())
 	assert.NotEmpty(t, res.UUID())
 	assert.NotEmpty(t, res.URL())
-	
+
 	a, err := uc.repos.Asset.FindByID(ctx, res.ID())
 	assert.NoError(t, err)
 	assert.Equal(t, res, a)

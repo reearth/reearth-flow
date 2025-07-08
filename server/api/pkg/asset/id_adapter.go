@@ -144,12 +144,12 @@ func (w *AssetWrapper) ID() id.AssetID {
 func (w *AssetWrapper) Project() id.ProjectID {
 	rxProject := w.asset.Project()
 	flowProject := ConvertProjectIDFromReearthx(rxProject)
-	
+
 	// If this is our special workspace-only project ID, return empty
 	if flowProject == WorkspaceOnlyProjectID {
 		return id.ProjectID{}
 	}
-	
+
 	return flowProject
 }
 
