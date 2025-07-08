@@ -35,7 +35,8 @@ type Job struct {
 	permissionChecker gateway.PermissionChecker
 	watchersMu        sync.Mutex
 	activeWatchers    map[string]bool
-	statusUpdateMu    sync.Mutex
+	jobLocksMu        sync.RWMutex
+	jobLocks          map[string]*sync.Mutex
 }
 
 type NotificationPayload struct {
@@ -62,7 +63,34 @@ func NewJob(
 		notifier:          notification.NewHTTPNotifier(),
 		permissionChecker: permissionChecker,
 		activeWatchers:    make(map[string]bool),
+		jobLocks:          make(map[string]*sync.Mutex),
 	}
+}
+
+func (i *Job) getJobLock(jobID string) *sync.Mutex {
+	i.jobLocksMu.RLock()
+	if lock, exists := i.jobLocks[jobID]; exists {
+		i.jobLocksMu.RUnlock()
+		return lock
+	}
+	i.jobLocksMu.RUnlock()
+
+	i.jobLocksMu.Lock()
+	defer i.jobLocksMu.Unlock()
+
+	if lock, exists := i.jobLocks[jobID]; exists {
+		return lock
+	}
+
+	lock := &sync.Mutex{}
+	i.jobLocks[jobID] = lock
+	return lock
+}
+
+func (i *Job) cleanupJobLock(jobID string) {
+	i.jobLocksMu.Lock()
+	defer i.jobLocksMu.Unlock()
+	delete(i.jobLocks, jobID)
 }
 
 func (i *Job) checkPermission(ctx context.Context, action string) error {
@@ -74,8 +102,9 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 		return nil, err
 	}
 
-	i.statusUpdateMu.Lock()
-	defer i.statusUpdateMu.Unlock()
+	jobLock := i.getJobLock(jobID.String())
+	jobLock.Lock()
+	defer jobLock.Unlock()
 
 	j, err := i.jobRepo.FindByID(ctx, jobID)
 	if err != nil {
@@ -210,6 +239,7 @@ func (i *Job) runMonitoringLoop(ctx context.Context, j *job.Job) {
 		delete(i.activeWatchers, jobID)
 		i.watchersMu.Unlock()
 		i.monitor.Remove(jobID)
+		i.cleanupJobLock(jobID)
 		log.Infof("Monitoring cleanup completed for job ID %s", jobID)
 	}()
 
@@ -259,8 +289,9 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 
 	newStatus := job.Status(status)
 
-	i.statusUpdateMu.Lock()
-	defer i.statusUpdateMu.Unlock()
+	jobLock := i.getJobLock(j.ID().String())
+	jobLock.Lock()
+	defer jobLock.Unlock()
 
 	currentJob, err := i.jobRepo.FindByID(ctx, j.ID())
 	if err != nil {
